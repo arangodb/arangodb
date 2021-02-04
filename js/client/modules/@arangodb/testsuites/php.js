@@ -44,8 +44,8 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -155,7 +155,9 @@ function phpDriver (options) {
   localOptions.test = '';
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'php_test.js'], 'php_test', runInPhpTest);
+  let rc = tu.performTests(localOptions, [ 'php_test.js'], 'php_test', runInPhpTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 

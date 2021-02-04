@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,7 +119,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
       auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
       Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
       if (rv.fail()) {
-        return Result(rv.errorNumber(), "could not retrieve estimates: '" + rv.errorMessage() + "'");
+        return Result(rv.errorNumber(), basics::StringUtils::concatT(
+                                            "could not retrieve estimates: '",
+                                            rv.errorMessage(), "'"));
       }
 
       // we will merge in the index estimates later
@@ -361,9 +363,10 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
   TRI_ASSERT(collection);
   VPackBuilder normalized;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  auto res = engine->indexFactory().enhanceIndexDefinition(  // normalize definition
-      input, normalized, create, collection->vocbase()       // args
+  StorageEngine& engine =
+      collection->vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  auto res = engine.indexFactory().enhanceIndexDefinition(  // normalize definition
+      input, normalized, create, collection->vocbase()      // args
   );
 
   if (res.fail()) {

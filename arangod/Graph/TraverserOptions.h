@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,6 +63,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
  public:
   enum UniquenessLevel { NONE, PATH, GLOBAL };
+  enum class Order { DFS, BFS, WEIGHTED };
 
  protected:
   std::unordered_map<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
@@ -84,13 +85,17 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
-  bool useBreadthFirst;
-
   bool useNeighbors;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
+
+  Order mode;
+
+  std::string weightAttribute;
+
+  double defaultWeight;
 
   std::vector<std::string> vertexCollections;
 
@@ -101,8 +106,7 @@ struct TraverserOptions : public graph::BaseOptions {
   TraverserOptions(arangodb::aql::QueryContext& query,
                    arangodb::velocypack::Slice definition);
 
-  TraverserOptions(arangodb::aql::QueryContext&,
-                   arangodb::velocypack::Slice info,
+  TraverserOptions(arangodb::aql::QueryContext& query, arangodb::velocypack::Slice info,
                    arangodb::velocypack::Slice collections);
 
   /// @brief This copy constructor is only working during planning phase.
@@ -139,6 +143,8 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool hasEdgeFilter(int64_t, size_t) const;
 
+  bool hasWeightAttribute() const;
+
   bool hasVertexCollectionRestrictions() const;
 
   bool evaluateEdgeExpression(arangodb::velocypack::Slice,
@@ -160,6 +166,12 @@ struct TraverserOptions : public graph::BaseOptions {
 
   bool usesPrune() const { return _pruneExpression != nullptr; }
 
+  bool isUseBreadthFirst() const { return mode == Order::BFS; }
+
+  bool isUniqueGlobalVerticesAllowed() const { return mode == Order::BFS || mode == Order::WEIGHTED; }
+
+  double weightEdge(VPackSlice edge) const;
+
   aql::PruneExpressionEvaluator* getPruneEvaluator() {
     TRI_ASSERT(usesPrune());
     return _pruneExpression.get();
@@ -170,6 +182,8 @@ struct TraverserOptions : public graph::BaseOptions {
   auto setProducePaths(bool value) -> void { _producePaths = value; }
 
   auto producePaths() -> bool { return _producePaths; }
+
+  auto explicitDepthLookupAt() const -> std::unordered_set<std::size_t>;
 };
 }  // namespace traverser
 }  // namespace arangodb

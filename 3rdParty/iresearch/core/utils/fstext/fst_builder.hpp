@@ -62,30 +62,39 @@
 #include "utils/string.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+struct fst_stats {
+  size_t num_states{}; // total number of states
+  size_t num_arcs{};   // total number of arcs
+
+  template<typename Weight>
+  void operator()(const Weight&) noexcept { }
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @class fst_builder
 /// @brief helper class for building minimal acyclic subsequential transducers
 ///        algorithm is described there:
 ///        http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.24.3698
 //////////////////////////////////////////////////////////////////////////////
-template<typename Char, typename Fst>
+template<typename Char, typename Fst, typename Stats = fst_stats>
 class fst_builder : util::noncopyable {
  public:
   typedef Fst fst_t;
   typedef Char char_t;
   typedef basic_string_ref<char_t> key_t;
+  typedef Stats stats_t;
   typedef typename fst_t::Weight weight_t;
   typedef typename fst_t::Arc arc_t;
   typedef typename fst_t::StateId stateid_t;
   typedef typename arc_t::Label label_t;
 
-  static const stateid_t final = 0;
+  static constexpr stateid_t final = 0;
 
-  explicit fst_builder(fst_t& fst) : fst_(fst) {
-    // initialize final state
-    fst_.AddState();
-    fst_.SetFinal(final, weight_t::One());
+  explicit fst_builder(fst_t& fst)
+    : states_map_(16, state_emplace(stats_)), fst_(fst) {
+    reset();
   }
 
   void add(const key_t& in, const weight_t& out) {
@@ -165,7 +174,7 @@ class fst_builder : util::noncopyable {
     last_ = in;
   }
 
-  void finish() {
+  stats_t finish() {
     stateid_t start = fst_builder::final;
 
     if (!states_.empty()) {
@@ -182,6 +191,11 @@ class fst_builder : util::noncopyable {
     // set the start state
     fst_.SetStart(start);
     fst_.SetFinal(start, start_out_);
+
+    // count start state
+    stats_(start_out_);
+
+    return stats_;
   }
 
   void reset() {
@@ -192,9 +206,16 @@ class fst_builder : util::noncopyable {
     fst_.AddState();
     fst_.SetFinal(final, weight_t::One());
 
+    // reset stats
+    stats_ = {};
+    stats_.num_states = 1;
+    stats_.num_arcs = 0;
+    stats_(weight_t::One());
+
+    states_.clear();
     states_map_.reset();
-    last_ = key_t();
-    start_out_ = weight_t();
+    last_ = {};
+    start_out_ = weight_t{};
   }
 
  private:
@@ -231,7 +252,8 @@ class fst_builder : util::noncopyable {
   }; // arc
 
   struct state : private util::noncopyable {
-    state() = default;
+    explicit state(bool final = false)
+      : final(final) { }
 
     state(state&& rhs) noexcept
       : arcs(std::move(rhs.arcs)),
@@ -301,20 +323,33 @@ class fst_builder : util::noncopyable {
     }
   };
 
-  struct state_emplace {
+  class state_emplace {
+   public:
+    explicit state_emplace(stats_t& stats) noexcept
+      : stats_(&stats) {
+    }
+
     stateid_t operator()(const state& s, fst_t& fst) const {
       const stateid_t id = fst.AddState();
 
       if (s.final) {
         fst.SetFinal(id, s.out);
+        (*stats_)(s.out);
       }
 
       for (const arc& a : s.arcs) {
         fst.EmplaceArc(id, a.label, a.label, a.out, a.id);
+        (*stats_)(a.out);
       }
+
+      ++stats_->num_states;
+      stats_->num_arcs += s.arcs.size();
 
       return id;
     }
+
+   private:
+    stats_t* stats_;
   };
 
   using states_map = fst_states_map<
@@ -345,6 +380,7 @@ class fst_builder : util::noncopyable {
     }
   }
 
+  stats_t stats_;
   states_map states_map_;
   std::vector<state> states_; // current states
   weight_t start_out_; // output for "empty" input
@@ -352,6 +388,6 @@ class fst_builder : util::noncopyable {
   fst_t& fst_;
 }; // fst_builder
 
-NS_END
+}
 
 #endif

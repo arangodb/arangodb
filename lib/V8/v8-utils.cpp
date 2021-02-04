@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -132,6 +132,26 @@ static UniformCharacter JSNumGenerator("0123456789");
 static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
+
+arangodb::Result doSleep(double n, arangodb::application_features::ApplicationServer& server) {
+  double until = TRI_microtime() + n;
+
+  while (true) {
+    if (server.isStopping()) {
+      return {TRI_ERROR_SHUTTING_DOWN};
+    }
+
+    double now = TRI_microtime();
+    if (now >= until) {
+      return {};
+    }
+    uint64_t duration =
+        (until - now >= 0.5) ? 100000 : static_cast<uint64_t>((until - now) * 1000000);
+
+    std::this_thread::sleep_for(std::chrono::microseconds(duration));
+  }
+}
+
 }  // namespace
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
@@ -153,7 +173,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 ////////////////////////////////////////////////////////////////////////////////
 
 static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                              std::string const& message) noexcept {
+                              std::string_view message) noexcept {
   try {
     TRI_GET_GLOBALS();
     if (errorNumber == TRI_ERROR_OUT_OF_MEMORY) {
@@ -209,7 +229,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
-                               bool execute, bool useGlobalContext) {
+                               bool execute) {
   v8::HandleScope handleScope(isolate);
 
   TRI_GET_GLOBALS();
@@ -230,19 +250,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   }
 
   auto guard = scopeGuard([&content] { TRI_FreeString(content); });
-
-  if (useGlobalContext) {
-    constexpr char const* prologue = "(function() { ";
-    constexpr char const* epilogue = "/* end-of-file */ })()";
-
-    char* contentWrapper = TRI_Concatenate3String(prologue, content, epilogue);
-
-    TRI_FreeString(content);
-
-    length += strlen(prologue) + strlen(epilogue);
-    content = contentWrapper;
-
-  }
 
   if (content == nullptr) {
     LOG_TOPIC("89c6f", ERR, arangodb::Logger::FIXME)
@@ -291,55 +298,6 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   LOG_TOPIC("fe6a4", TRACE, arangodb::Logger::FIXME)
       << "loaded JavaScript file: '" << filename << "'";
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reads all files from a directory into the current context
-////////////////////////////////////////////////////////////////////////////////
-
-static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
-                                    bool execute, bool useGlobalContext) {
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
-
-  LOG_TOPIC("65c8d", TRACE, arangodb::Logger::FIXME)
-      << "loading JavaScript directory: '" << path << "'";
-
-  std::vector<std::string> files = TRI_FilesDirectory(path);
-
-  bool result = true;
-
-  for (auto const& filename : files) {
-    if (!StringUtils::isSuffix(filename, ".js")) {
-      continue;
-    }
-
-    v8::TryCatch tryCatch(isolate);
-
-    std::string full = FileUtils::buildFilename(path, filename);
-
-    if (!v8security.isAllowedToAccessPath(isolate, full, FSAccessType::READ)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     std::string("not allowed to read files in this path: ") + full);
-    }
-
-    bool ok = LoadJavaScriptFile(isolate, full.c_str(), execute, useGlobalContext);
-
-    result = result && ok;
-
-    if (!ok) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
-      } else {
-        TRI_GET_GLOBALS();
-        v8g->_canceled = true;
-      }
-    }
-  }
-
-  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1008,9 +966,14 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
 
-    if (ep == nullptr) {
+    if (ep.get() == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      std::string("invalid URL ") + url);
+    }
+
+    if (ep.get()->isBroadcastBind()) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     std::string("Cannot connect to INADDR_ANY or INADDR6_ANY ") + url);
     }
 
     std::unique_ptr<GeneralClientConnection> connection(
@@ -1660,7 +1623,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!cwd.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(cwd.sysErrorNumber(),
                                    "cannot get current working directory: " +
-                                       cwd.errorMessage());
+                                       std::string{cwd.errorMessage()});
   }
 
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
@@ -3948,23 +3911,11 @@ static void JS_Sleep(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   double n = correctTimeoutToExecutionDeadlineS(TRI_ObjectToDouble(isolate, args[0]));
-  double until = TRI_microtime() + n;
   
   TRI_GET_GLOBALS();
-
-  while (true) {
-    if (v8g->_server.isStopping()) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    }
-
-    double now = TRI_microtime();
-    if (now >= until) {
-      break;
-    }
-    uint64_t duration =
-        (until - now >= 0.1) ? 100000 : static_cast<uint64_t>((until - now) * 1000000);
-
-    std::this_thread::sleep_for(std::chrono::microseconds(duration));
+  Result res = ::doSleep(n, v8g->_server);
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res.errorNumber());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4022,9 +3973,10 @@ static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // wait without gc
-  double until = TRI_microtime() + n;
-  while (TRI_microtime() < until) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+  TRI_GET_GLOBALS();
+  Result res = ::doSleep(n, v8g->_server);
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res.errorNumber());
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -5217,12 +5169,15 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // V8 didn't provide any extra information about this error; just print the
   // exception.
   if (message.IsEmpty()) {
-    if (exceptionString == nullptr) {
-      LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
-          << "JavaScript exception";
-    } else {
-      LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
-          << "JavaScript exception: " << exceptionString;
+    if (!isolate->IsExecutionTerminating()) {
+      if (exceptionString == nullptr || *exceptionString == '\0') {
+        LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception";
+      } else {
+        TRI_ASSERT(exceptionString != nullptr);
+        LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception: " << exceptionString;
+      }
     }
   } else {
     TRI_Utf8ValueNFC filename(isolate, message->GetScriptResourceName());
@@ -5288,15 +5243,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ExecuteGlobalJavaScriptFile(v8::Isolate* isolate, char const* filename) {
-  return LoadJavaScriptFile(isolate, filename, true, false);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes all files from a directory in a local context
-////////////////////////////////////////////////////////////////////////////////
-
-bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const* path) {
-  return LoadJavaScriptDirectory(isolate, path, true, true);
+  return LoadJavaScriptFile(isolate, filename, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5304,7 +5251,7 @@ bool TRI_ExecuteLocalJavaScriptDirectory(v8::Isolate* isolate, char const* path)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename) {
-  return LoadJavaScriptFile(isolate, filename, false, false);
+  return LoadJavaScriptFile(isolate, filename, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5389,14 +5336,15 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
-                           std::string const& message, bool autoPrepend) {
+                           std::string_view message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 
   try {
     // does string concatenation, so we must wrap this in a try...catch block
     if (autoPrepend && message.empty()) {
       CreateErrorObject(isolate, errorNumber,
-                        message + ": " + std::string(TRI_errno_string(errorNumber)));
+                        basics::StringUtils::concatT(message, ": ",
+                                                     TRI_errno_string(errorNumber)));
     } else {
       CreateErrorObject(isolate, errorNumber, message);
     }
@@ -5520,7 +5468,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
 
     size_t i = 0;
     while (TRI_microtime() < until) {
-      if (++i % 1000 == 0) {
+      if (++i % 1024 == 0) {
         // garbage collection only every x iterations, otherwise we'll use too
         // much CPU
         if (++gcTries > gcAttempts || SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
@@ -5737,7 +5685,7 @@ void TRI_InitV8Utils(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"), JS_SplitWordlist, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

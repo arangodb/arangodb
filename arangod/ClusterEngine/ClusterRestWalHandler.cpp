@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -105,7 +105,6 @@ void ClusterRestWalHandler::flush() {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = 300.0;
 
   if (slice.isObject()) {
     // got a request body
@@ -122,11 +121,6 @@ void ClusterRestWalHandler::flush() {
     } else if (value.isBoolean()) {
       waitForCollector = value.getBoolean();
     }
-
-    value = slice.get("maxWaitTime");
-    if (value.isNumber()) {
-      maxWaitTime = value.getNumericValue<double>();
-    }
   } else {
     // no request body
     bool found;
@@ -142,16 +136,10 @@ void ClusterRestWalHandler::flush() {
         waitForCollector = (v == "1" || v == "true");
       }
     }
-    {
-      std::string const& v = _request->value("maxWaitTime", found);
-      if (found) {
-        maxWaitTime = basics::StringUtils::doubleDecimal(v);
-      }
-    }
   }
 
   auto& feature = server().getFeature<ClusterFeature>();
-  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }

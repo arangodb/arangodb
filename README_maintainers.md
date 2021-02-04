@@ -259,6 +259,74 @@ symbols are installed, there will be name information about the called procedure
 mangled format) plus the offsets into the procedures. If no debug symbols are
 installed, symbol names and offsets cannot be shown for the stack frames.
 
+### Memory profiling
+
+Starting in 3.6 we have support for heap profiling when using jemalloc on Linux.
+Here is how it is used:
+
+Use this `cmake` option in addition to the normal options:
+
+```
+-DUSE_JEMALLOC_PROF
+```
+
+when building. Make sure you are using the builtin `jemalloc`. You need
+debugging symbols to analyze the heap dumps later on, so compile with
+`-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
+less confusing in the end. 
+
+Then set the environment variable for each instance you want to profile:
+
+```
+export MALLOC_CONF="prof:true"
+```
+
+When this is done, `jemalloc` internally does some profiling. You can
+then use this endpoint to get a heap dump:
+
+```
+curl "http://localhost:8529/_admin/status?memory=true" > heap.dump
+```
+
+You can analyze such a heap dump with the `jeprof` tool, either by
+inspecting a single dump like this:
+
+```
+jeprof build/bin/arangod heap.dump
+```
+
+or compare two dumps which were done on the same process to analyze
+the difference:
+
+```
+jeprof build/bin/arangod --base=heap.dump heap.dump2
+```
+
+So far, we have mostly used the `web` command to open a picture in a
+browser. It produces an `svg` file.
+
+The tool isn't perfect, but can often point towards the place which
+produces for example a memory leak or a lot of memory usage.
+
+This is known to work under Linux and the `jeprof` tool comes with the
+`libjemalloc-dev` package on Ubuntu.
+
+Using it with the integration tests is possible; snapshots will be taken before
+the first and after each subsequent testcase executed.
+
+The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
+specified amount of time:
+
+    export SLEEP_FOR=$((5*60))
+    ./scripts/unittest shell_client \
+       --memprof true \
+       --test shell-sleep-grey.js \
+       --oneTestTimeout ((6*60)) \
+       --cleanup false
+    ...
+    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
+    ...
+
 ### Core Dumps
 
 A core dump consists of the recorded state of the working memory of a process at
@@ -526,15 +594,26 @@ and use the commands above to obtain stacktraces.
 
 There are several major places where unittests live:
 
-| Path                         | Description
-|:-----------------------------|:-----------------------------
-| `tests/js/server/`           | JavaScript tests, runnable on the server
-| `tests/js/common/`           | JavaScript tests, runnable on the server & via arangosh
-| `tests/js/common/test-data/` | Mock data used for the JavaScript tests
-| `tests/js/client/`           | JavaScript tests, runnable via arangosh
-| `tests/rb/`                  | rspec tests (Ruby)
-| `tests/rb/HttpInterface/`    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
-| `tests/` (remaining)         | Google Test unittests
+| Path / File                                                  | Description
+|:-------------------------------------------------------------|:-----------------------------
+| `tests/js/server/`                                           | JavaScript tests, runnable on the server
+| `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh
+| `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests
+| `tests/js/client/`                                           | JavaScript tests, runnable via arangosh
+| `tests/rb/`                                                  | rspec tests (Ruby)
+| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
+| `tests/` (remaining)                                         | Google Test unittests
+| implementation specific files                                |
+| `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`
+| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.
+| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating
+| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes 
+| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
+| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
+| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions
 
@@ -578,6 +657,12 @@ Run specific gtest tests:
     ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Controlling the place where the test-data is stored:
+
+    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
+
+(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
 
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
@@ -659,6 +744,14 @@ Testing a single rspec test:
 Running a test against a server you started (instead of letting the script start its own server):
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+
+Re-running previously failed tests:
+
+    scripts/unittest <args> --failed
+
+The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
+The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
+This failed filter should work for all jsunity, mocha and rspec tests.
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
@@ -745,7 +838,11 @@ the tests expect to have at least 3 DB-Servers.
 
 Pre-requisites:
  - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
- - have a maven binary in the path (mvn)
+ - have a maven binary in the path (mvn) configured to use JDK 11
+ 
+You can check if maven is correctly configured to use JDK 11 executing: `mvn -version`.
+In case you have multiple JVMs in your machine and JDK 11 is not the default one, you can set
+the environment variable `JAVA_HOME` to the root path of JDK 11.
 
 Once this is completed, you may run it like this:
 

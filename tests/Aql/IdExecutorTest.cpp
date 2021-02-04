@@ -38,8 +38,9 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
+#include "Aql/SubqueryStartExecutor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/velocypack-aliases.h>
 
@@ -267,7 +268,17 @@ INSTANTIATE_TEST_CASE_P(IdExecutorTest, IdExecutorTestCombiner,
                         ::testing::Combine(inputs, upstreamStates, clientCalls,
                                            ::testing::Bool()));
 
-class IdExecutionBlockTest : public AqlExecutorTestCase<> {};
+class IdExecutionBlockTest : public AqlExecutorTestCase<> {
+ protected:
+  auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {
+    TRI_ASSERT(nestingLevel > 0);
+    RegIdSetStack toKeepStack{};
+    for (size_t i = 0; i < nestingLevel; ++i) {
+      toKeepStack.emplace_back(RegIdSet{0});
+    }
+    return RegisterInfos(RegIdSet{0}, {}, 1, 1, {}, std::move(toKeepStack));
+  }
+};
 
 // The IdExecutor has a specific initializeCursor method in ExecutionBlockImpl
 TEST_F(IdExecutionBlockTest, test_initialize_cursor_get) {
@@ -408,6 +419,26 @@ TEST_F(IdExecutionBlockTest, test_hardlimit_single_row_fetcher) {
       .setCall(AqlCall{0, AqlCall::Infinity{}, 2u, false})
       .expectOutput({0}, {{1}, {2}})
       .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_F(IdExecutionBlockTest, test_in_subquery) {
+  RegisterInfos registerInfos{{}, {}, 1, 1, {}, {RegIdSet{0}}};
+  IdExecutorInfos executorInfos{false};
+  AqlCallStack callStack{AqlCallList{AqlCall{}}};
+  callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  makeExecutorTestHelper()
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(2),
+                                          makeSubqueryRegisterInfos(2),
+                                          ExecutionNode::SUBQUERY_START)
+      .addConsumer<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>(
+          std::move(registerInfos), std::move(executorInfos))
+      .setInputValueList(1, 2, 3, 4)
+      .setCallStack(callStack)
+      .expectOutput({0}, {{1}, {1}, {2}, {2}, {3}, {3}, {4}, {4}},
+                    {{1, 0}, {3, 0}, {5, 0}, {7, 0}})
+      .expectSkipped(0, 0)
       .expectedState(ExecutionState::DONE)
       .run();
 }

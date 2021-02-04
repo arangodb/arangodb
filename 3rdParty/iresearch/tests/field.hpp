@@ -26,7 +26,7 @@
 
 #include "analysis/token_streams.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct data_output;
 
@@ -209,6 +209,6 @@ class IRESEARCH_API binary_field : public field, private util::noncopyable {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // binary_field
 
-NS_END
+}
 
 #endif

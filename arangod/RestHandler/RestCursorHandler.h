@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
   void cancel() override final;
-  void handleError(basics::Exception const&) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -198,17 +197,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   bool _queryKilled;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief whether or not the finalize operation is allowed to further process
-  /// the request data. this will not work if the original request cannot be
-  /// parsed successfully. this is used by RestCursorHandler::finalizeExecute
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool _isValidForFinalize;
-
-  /// @brief whether or not an audit message has already been logged
-  bool _auditLogged;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid

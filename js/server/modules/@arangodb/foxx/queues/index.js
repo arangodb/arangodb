@@ -24,8 +24,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const isCluster = require('@arangodb/cluster').isCluster();
-const isAgent = global.ArangoAgent.enabled();
-
+const isAgent = global.ArangoServerState.role() === 'AGENT';
 var _ = require('lodash');
 var internal = require('internal');
 var flatten = require('internal').flatten;
@@ -214,7 +213,7 @@ function asNumber (num) {
 
 function updateQueueDelayClusterAware () {
   if (isCluster && !isAgent) {
-    global.ArangoAgency.set('Current/FoxxmasterQueueupdate', true);
+    global.ArangoServerState.setFoxxmasterQueueupdate(true);
   }
   updateQueueDelay();
 }

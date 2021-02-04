@@ -337,7 +337,7 @@ function ActiveFailoverSuite() {
       do {
         let endpoints = getClusterEndpoints();
         if (endpoints.length === servers.length && endpoints[0] === currentLead) {
-          db._collection(cname).truncate();
+          db._collection(cname).truncate({ compact: false });
           return ;
         }
         print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
@@ -348,7 +348,7 @@ function ActiveFailoverSuite() {
       print("endpoints: ", endpoints, " servers: ", servers);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
-      db._collection(cname).truncate();
+      db._collection(cname).truncate({ compact: false });
     },
 
     tearDownAll: function () {

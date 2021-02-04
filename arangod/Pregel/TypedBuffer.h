@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,34 +53,35 @@ namespace pregel {
 /// continuous memory buffer with a fixed capacity
 template <typename T>
 struct TypedBuffer {
-  static_assert(std::is_default_constructible<T>::value, "");
+  static_assert(std::is_default_constructible<T>::value, "Stored type T has to be default constructible");
   
   /// close file (see close() )
   virtual ~TypedBuffer() = default;
-  TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
+  TypedBuffer() noexcept
+    : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure
   virtual void close() = 0;
 
   /// raw access
-  T* begin() const { return _begin; }
-  T* end() const { return _end; }
+  T* begin() const noexcept { return _begin; }
+  T* end() const noexcept { return _end; }
 
-  T& back() const {
+  T& back() const noexcept {
     return *(_end - 1);
   }
 
   /// get size
-  size_t size() const {
+  size_t size() const noexcept {
     TRI_ASSERT(_end >= _begin);
     return static_cast<size_t>(_end - _begin);
   }
   /// get number of actually mapped bytes
-  size_t capacity() const {
+  size_t capacity() const noexcept {
     TRI_ASSERT(_capacity >= _begin);
     return static_cast<size_t>(_capacity - _begin);
   }
-  size_t remainingCapacity() const {
+  size_t remainingCapacity() const noexcept {
     TRI_ASSERT(_capacity >= _end);
     return static_cast<size_t>(_capacity - _end);
   }
@@ -94,16 +95,16 @@ struct TypedBuffer {
   
   template <typename U = T>
   typename std::enable_if<std::is_trivially_constructible<U>::value>::type
-  advance(std::size_t value) {
+  advance(std::size_t value) noexcept {
     TRI_ASSERT((_end + value) <= _capacity);
     _end += value;
   }
   
  private:
   /// don't copy object
-  TypedBuffer(const TypedBuffer&) = delete;
+  TypedBuffer(TypedBuffer const&) = delete;
   /// don't copy object
-  TypedBuffer& operator=(const TypedBuffer&) = delete;
+  TypedBuffer& operator=(TypedBuffer const&) = delete;
 
  protected:
   T* _begin; // begin
@@ -114,7 +115,8 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit VectorTypedBuffer(size_t capacity) 
+      : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
@@ -157,7 +159,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
   size_t _mappedSize;     // actually mapped size
   
  public:
-  explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit MappedFileBuffer(size_t capacity) 
+      : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0u);
     double tt = TRI_microtime();
     int64_t tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);

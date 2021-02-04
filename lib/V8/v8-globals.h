@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -240,12 +240,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
     TRI_V8_SET_TYPE_ERROR(message);      \
     return;                              \
   } while (0)
-
-/// @brief "not yet implemented" handler for sharding
-#define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection && ServerState::instance()->isCoordinator()) {       \
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
-  }
 
 /// @brief Return undefined (default..)
 ///   implicitly requires 'args and 'isolate' to be available
@@ -731,6 +725,9 @@ struct TRI_v8_global_t {
 
   /// @brief "waitForSync" key name
   v8::Persistent<v8::String> WaitForSyncKey;
+
+  /// @brief "compact" key name
+  v8::Persistent<v8::String> CompactKey;
 
   /// @brief "_dbCache" key name
   v8::Persistent<v8::String> _DbCacheKey;

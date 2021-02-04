@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,6 +41,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -67,34 +68,17 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id().id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
     // Make sure we did not miss a callback
     _agencyCallback->refetchAndUpdate(true, false);
     return _present.load();
-  };
+  }
 
-private:
-  AgencyCallbackRegistry *_agencyCallbackRegistry;
+ private:
+  AgencyCallbackRegistry* _agencyCallbackRegistry;
   std::shared_ptr<AgencyCallback> _agencyCallback;
 
   // TODO: this does not really need to be atomic: We only write to it
@@ -367,9 +351,9 @@ class ClusterInfo final {
       std::function<void()> const&, AgencyCallbackRegistry*);
     explicit SyncerThread(SyncerThread const&);
     ~SyncerThread();
-    void beginShutdown();
-    void run();
-    void start();
+    void beginShutdown() override;
+    void run() override;
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
@@ -420,7 +404,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*,
+                       int syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -433,6 +418,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -488,7 +476,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -529,13 +517,13 @@ public:
   /// @brief ask whether a cluster database exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool doesDatabaseExist(DatabaseID const&, bool reload = false);
+  bool doesDatabaseExist(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> databases(bool reload = false);
+  std::vector<DatabaseID> databases();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -1094,6 +1082,10 @@ public:
 
   cluster::RebootTracker _rebootTracker;
 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  int const _syncerShutdownCode;
+
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
@@ -1186,28 +1178,10 @@ public:
   Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the sole instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* _theinstance;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t const MinIdsPerBatch = 1000000;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief default wait timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const operationTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reload timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const reloadServerListTimeout;
+  static constexpr uint64_t MinIdsPerBatch = 1000000;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check analyzers precondition timeout in seconds

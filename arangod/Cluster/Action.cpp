@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 
 #include "Action.h"
 
+#include "Basics/Exceptions.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropCollection.h"
@@ -31,7 +32,6 @@
 #include "Cluster/DropIndex.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/MaintenanceStrings.h"
-#include "Cluster/NonAction.h"
 #include "Cluster/ResignShardLeadership.h"
 #include "Cluster/SynchronizeShard.h"
 #include "Cluster/TakeoverShardLeadership.h"
@@ -125,9 +125,10 @@ Action::~Action() = default;
 void Action::create(MaintenanceFeature& feature, ActionDescription const& description) {
   auto factory = factories.find(description.name());
 
-  _action = (factory != factories.end())
-                ? factory->second(feature, description)
-                : std::unique_ptr<ActionBase>(new NonAction(feature, description));
+  if (ADB_UNLIKELY(factory == factories.end())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid action type: " + description.name());
+  }
+  _action = factory->second(feature, description);
 }
 
 ActionDescription const& Action::describe() const {

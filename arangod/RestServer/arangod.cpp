@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,8 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
 #include "Basics/directories.h"
+#include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 
 #include "Actions/ActionFeature.h"
@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/ConfigFeature.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "ApplicationFeatures/DaemonFeature.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
@@ -40,6 +41,7 @@
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
@@ -107,10 +109,9 @@
 #include "Ssl/SslFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 
 #ifdef _WIN32
@@ -153,7 +154,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         std::type_index(typeid(AgencyFeature)),
         std::type_index(typeid(ClusterFeature)),
         std::type_index(typeid(DaemonFeature)),
-        std::type_index(typeid(FoxxQueuesFeature)),
+        std::type_index(typeid(FoxxFeature)),
         std::type_index(typeid(GeneralServerFeature)),
         std::type_index(typeid(GreetingsFeature)),
         std::type_index(typeid(HttpEndpointProvider)),
@@ -180,6 +181,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<V8FeaturePhase>();
 
     // Adding the features
+    server.addFeature<MetricsFeature>();
     server.addFeature<ActionFeature>();
     server.addFeature<AgencyFeature>();
     server.addFeature<AqlFeature>();
@@ -191,15 +193,18 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ClusterUpgradeFeature>();
     server.addFeature<ConfigFeature>(name);
     server.addFeature<ConsoleFeature>();
+    server.addFeature<CpuUsageFeature>();
     server.addFeature<DatabaseFeature>();
     server.addFeature<DatabasePathFeature>();
     server.addFeature<EndpointFeature, HttpEndpointProvider>();
     server.addFeature<EngineSelectorFeature>();
     server.addFeature<EnvironmentFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
     server.addFeature<FileDescriptorsFeature>();
+#endif
     server.addFeature<FlushFeature>();
     server.addFeature<FortuneFeature>();
-    server.addFeature<FoxxQueuesFeature>();
+    server.addFeature<FoxxFeature>();
     server.addFeature<FrontendFeature>();
     server.addFeature<GeneralServerFeature>();
     server.addFeature<GreetingsFeature>();
@@ -212,7 +217,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<LoggerFeature>(true);
     server.addFeature<MaintenanceFeature>();
     server.addFeature<MaxMapCountFeature>();
-    server.addFeature<MetricsFeature>();
     server.addFeature<NetworkFeature>();
     server.addFeature<NonceFeature>();
     server.addFeature<PrivilegeFeature>();
@@ -221,13 +225,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     server.addFeature<ReplicationFeature>();
     server.addFeature<ReplicationMetricsFeature>();
     server.addFeature<ReplicationTimeoutFeature>();
-    server.addFeature<RocksDBOptionFeature>();
     server.addFeature<SchedulerFeature>();
     server.addFeature<ScriptFeature>(&ret);
     server.addFeature<ServerFeature>(&ret);
     server.addFeature<ServerIdFeature>();
     server.addFeature<ServerSecurityFeature>();
     server.addFeature<ShardingFeature>();
+    server.addFeature<SharedPRNGFeature>();
     server.addFeature<ShellColorsFeature>();
     server.addFeature<ShutdownFeature>(
         std::vector<std::type_index>{std::type_index(typeid(ScriptFeature))});

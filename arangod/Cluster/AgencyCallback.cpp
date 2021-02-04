@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,8 @@
 #include <chrono>
 #include <thread>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/ConditionLocker.h"
@@ -131,11 +133,13 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false) || forceCheck) {
+  if (!_lastData || 
+      forceCheck || 
+      !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false)) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
-    if (execute(newData)) {
+    if (execute(newData->slice())) {
       _lastData = newData;
     } else {
       LOG_TOPIC("337dc", DEBUG, Logger::CLUSTER)
@@ -147,25 +151,24 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forc
 bool AgencyCallback::executeEmpty() {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("96022", DEBUG, Logger::CLUSTER) << "Executing (empty)";
-  bool result = _cb(VPackSlice::noneSlice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
-  }
-  return result;
+  return execute(VPackSlice::noneSlice());
 }
 
-bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
+bool AgencyCallback::execute(velocypack::Slice newData) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing";
-  bool result = _cb(newData->slice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
+  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing" << (newData.isNone() ? " (empty)" : "");
+  try {
+    bool result = _cb(newData);
+    if (result) {
+      _wasSignaled = true;
+      _cv.signal();
+    }
+    return result;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("1de99", WARN, Logger::CLUSTER) << "AgencyCallback execution failed: " << ex.what();
+    throw;
   }
-  return result;
 }
 
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {

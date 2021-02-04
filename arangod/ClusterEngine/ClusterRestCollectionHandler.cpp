@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,9 @@ Result ClusterRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<Logic
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(_vocbase.name(),
-                                                                    coll->name());
+    Result res =
+        arangodb::rocksdb::recalculateCountsOnAllDBServers(server(), _vocbase.name(),
+                                                           coll->name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));

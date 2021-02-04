@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -517,6 +517,15 @@ class RocksDBCuckooIndexEstimator {
   void setAppliedSeq(rocksdb::SequenceNumber seq) {
     _appliedSeq.store(seq, std::memory_order_release);
     _needToPersist.store(true, std::memory_order_release);
+  }
+
+  void clearInRecovery(rocksdb::SequenceNumber seq) {
+    if (seq <= _appliedSeq.load(std::memory_order_acquire)) {
+      // already incorporated in estimator values
+      return;
+    }
+    clear();
+    setAppliedSeq(seq);
   }
 
  private:  // methods

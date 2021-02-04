@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,8 +43,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
  public:
   RestStatus execute() override;
-  char const* name() const final { return "RestAdminClusterHandler"; }
-  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
+  char const* name() const override final { return "RestAdminClusterHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   static std::string const Health;

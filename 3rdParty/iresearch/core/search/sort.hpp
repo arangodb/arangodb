@@ -31,7 +31,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/iterator.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 struct collector;
 struct data_output;
@@ -714,14 +714,14 @@ class prepared_sort_base<ScoreType, void, TraitsType> : public sort::prepared {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store the score type (i.e. sizeof(score))
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> score_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> score_size() const noexcept override final {
     return std::make_pair(sizeof(score_t), alignof(score_t));
   }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief number of bytes required to store stats
   ////////////////////////////////////////////////////////////////////////////////
-  virtual inline std::pair<size_t, size_t> stats_size() const noexcept final {
+  virtual inline std::pair<size_t, size_t> stats_size() const noexcept override final {
     return std::make_pair(size_t(0), size_t(0));
   }
 }; // prepared_sort_base
@@ -1183,6 +1183,6 @@ class IRESEARCH_API order final {
 static_assert(std::is_nothrow_move_constructible_v<order>);
 static_assert(std::is_nothrow_move_constructible_v<order>);
 
-NS_END
+}
 
 #endif

@@ -126,6 +126,9 @@ One of the possible log levels.
 @RESTBODYPARAM{agencycomm,string,optional,string}
 One of the possible log levels.
 
+@RESTBODYPARAM{agencystore,string,optional,string}
+One of the possible log levels.
+
 @RESTBODYPARAM{aql,string,optional,string}
 One of the possible log levels.
 

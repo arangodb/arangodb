@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include <mutex>
 
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace velocypack {
 class Slice;
@@ -42,14 +43,13 @@ namespace aql {
 
 class AqlItemBlock;
 class SharedAqlItemBlockPtr;
-struct ResourceMonitor;
 
 class AqlItemBlockManager {
   friend class SharedAqlItemBlockPtr;
 
  public:
   /// @brief create the manager
-  explicit AqlItemBlockManager(ResourceMonitor*, SerializationFormat format);
+  explicit AqlItemBlockManager(arangodb::ResourceMonitor&, SerializationFormat format);
 
   /// @brief destroy the manager
   TEST_VIRTUAL ~AqlItemBlockManager();
@@ -61,7 +61,7 @@ class AqlItemBlockManager {
   /// @brief request a block and initialize it from the slice
   TEST_VIRTUAL SharedAqlItemBlockPtr requestAndInitBlock(velocypack::Slice slice);
 
-  TEST_VIRTUAL ResourceMonitor* resourceMonitor() const noexcept;
+  TEST_VIRTUAL arangodb::ResourceMonitor& resourceMonitor() const noexcept;
 
   SerializationFormat getFormatType() const { return _format; }
 
@@ -84,7 +84,7 @@ class AqlItemBlockManager {
   TEST_VIRTUAL void returnBlock(AqlItemBlock*& block) noexcept;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
   SerializationFormat const _format;
 
   static constexpr uint32_t numBuckets = 12;

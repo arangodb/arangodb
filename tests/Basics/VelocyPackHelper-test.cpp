@@ -45,19 +45,6 @@
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
-TEST(VPackHelperTest, tst_patch_double) {
-  VPackBuilder b;
-  b.add(VPackValue(double(1.0)));
-  
-  EXPECT_DOUBLE_EQ(double(1.0), b.slice().getDouble());
-
-  arangodb::basics::VelocyPackHelper::patchDouble(b.slice(), double(2.0));
-  EXPECT_DOUBLE_EQ(double(2.0), b.slice().getDouble());
-  
-  arangodb::basics::VelocyPackHelper::patchDouble(b.slice(), double(-34.456));
-  EXPECT_DOUBLE_EQ(double(-34.456), b.slice().getDouble());
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test compare values with equal values
 ////////////////////////////////////////////////////////////////////////////////

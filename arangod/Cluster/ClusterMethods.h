@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,24 +51,15 @@ class ClusterTraverserCache;
 
 namespace velocypack {
 class Builder;
+class HashedStringRef;
 }
 
 namespace traverser {
 struct TraverserOptions;
 }
 
-struct ClusterCommResult;
 class ClusterFeature;
 struct OperationOptions;
-
-/// @brief convert ClusterComm error into arango error code
-int handleGeneralCommErrors(arangodb::ClusterCommResult const* res);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a copy of all HTTP headers to forward
-////////////////////////////////////////////////////////////////////////////////
-
-network::Headers getForwardableRequestHeaders(GeneralRequest*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a list of attributes have the same values in two vpack
@@ -97,6 +88,17 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        std::string const& dbname,
                                                        std::string const& collname,
                                                        OperationOptions const& options);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns checksum for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
@@ -170,9 +172,11 @@ futures::Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& 
 ///        the lake is cleared.
 ///        TraversalVariant
 
-Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
+Result fetchEdgesFromEngines(transaction::Methods& trx, 
+                             graph::ClusterTraverserCache& travCache,
                              traverser::TraverserOptions const* opts,
-                             arangodb::velocypack::StringRef vertexId, size_t depth,
+                             arangodb::velocypack::StringRef vertexId, 
+                             size_t depth,
                              std::vector<arangodb::velocypack::Slice>& result);
 
 /// @brief fetch edges from TraverserEngines
@@ -189,11 +193,10 @@ Result fetchEdgesFromEngines(transaction::Methods& trx, graph::ClusterTraverserC
 
 Result fetchEdgesFromEngines(
             transaction::Methods& trx,
-            std::unordered_map<ServerID, aql::EngineId> const* engines,
-            arangodb::velocypack::Slice vertexId, bool backward,
-            std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>& cache,
+            graph::ClusterTraverserCache& travCache,
+            arangodb::velocypack::Slice vertexId, bool 
+            backward,
             std::vector<arangodb::velocypack::Slice>& result,
-            std::vector<std::shared_ptr<arangodb::velocypack::UInt8Buffer>>& datalake,
             size_t& read);
 
 /// @brief fetch vertices from TraverserEngines
@@ -207,10 +210,9 @@ Result fetchEdgesFromEngines(
 
 void fetchVerticesFromEngines(
     transaction::Methods& trx,
-    std::unordered_map<ServerID, aql::EngineId> const*,
-    std::unordered_set<arangodb::velocypack::StringRef>&,
-    std::unordered_map<arangodb::velocypack::StringRef, arangodb::velocypack::Slice>&,
-    std::vector<std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>>>& datalake,
+    graph::ClusterTraverserCache& travCache,
+    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexId,
+    std::unordered_map<arangodb::velocypack::HashedStringRef, arangodb::velocypack::Slice>& result,
     bool forShortestPath);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -234,7 +236,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 ////////////////////////////////////////////////////////////////////////////////
 
 int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                           bool waitForCollector, double maxWaitTime = -1.0);
+                           bool waitForCollector);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
@@ -335,6 +337,24 @@ class ClusterMethods {
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
       std::shared_ptr<LogicalCollection> const& colPtr);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be triggered directly by operations.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  static bool filterHiddenCollections(LogicalCollection const& c);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be included in links
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool includeHiddenCollectionInLink(std::string const& name);
+
+  /// @brief removes smart name suffixes from collection names.
+  /// @param possiblySmartName  collection name with possible smart suffixes.
+  /// Will be modified inplace 
+  static void realNameFromSmartName(std::string& possiblySmartName);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

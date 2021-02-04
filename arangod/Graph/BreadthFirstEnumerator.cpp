@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,8 +49,10 @@ BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser, TraverserOp
       _schreierIndex(0),
       _lastReturned(0),
       _currentDepth(0),
-      _toSearchPos(0) {
-  _schreier.reserve(32);
+      _toSearchPos(0) {}
+
+BreadthFirstEnumerator::~BreadthFirstEnumerator() {
+  _opts->resourceMonitor().decreaseMemoryUsage(_schreier.capacity() * pathStepSize());
 }
 
 void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef startVertex) {
@@ -64,6 +66,7 @@ void BreadthFirstEnumerator::setStartVertex(arangodb::velocypack::StringRef star
   _currentDepth = 0;
   _toSearchPos = 0;
 
+  growStorage();
   _schreier.emplace_back(startVertex);
   _toSearch.emplace_back(NextStep(0));
 }
@@ -142,6 +145,8 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
+        growStorage();
+        TRI_ASSERT(_schreier.capacity() > _schreier.size());
         _schreier.emplace_back(nextIdx, std::move(eid), vId);
         if (_currentDepth < _opts->maxDepth - 1) {
           // Prune here
@@ -155,6 +160,8 @@ bool BreadthFirstEnumerator::next() {
     });
     
     incHttpRequests(cursor->httpRequests());
+    
+    _opts->isQueryKilledCallback();
 
     if (!shouldReturnPath) {
       _lastReturned = _schreierIndex;
@@ -319,4 +326,31 @@ bool BreadthFirstEnumerator::shouldPrune() {
     evaluator->injectPath(path);
   }
   return evaluator->evaluate();
+}
+
+void BreadthFirstEnumerator::growStorage() {
+  size_t capacity;
+  if (_schreier.empty()) {
+    // minimal reserve size
+    capacity = 8;
+  } else {
+    capacity = _schreier.size() + 1;
+    if (capacity > _schreier.capacity()) {
+      capacity *= 2;
+    }
+  }
+
+  TRI_ASSERT(capacity > _schreier.size());
+  if (capacity > _schreier.capacity()) {
+    arangodb::ResourceUsageScope guard(_opts->resourceMonitor(), (capacity - _schreier.capacity()) * pathStepSize());
+
+    _schreier.reserve(capacity);
+
+    // now we are responsible for tracking the memory
+    guard.steal();
+  }
+}
+
+constexpr size_t BreadthFirstEnumerator::pathStepSize() const noexcept {
+  return sizeof(void*) + sizeof(PathStep) + 2 * sizeof(NextStep);
 }

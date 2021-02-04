@@ -51,13 +51,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { AsyncBlock, CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -89,7 +89,7 @@ function ahuacatlProfilerTestSuite () {
     /*testEnumerateCollectionBlock1: function () {
       const col = db._create(colName);
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@col': colName});
@@ -116,7 +116,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = (rows) => ({'@col': colName, rows});
@@ -151,7 +151,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       col.ensureIndex({ type: "hash", fields: [ "value" ] });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = (rows) => ({'@col': colName, rows});
@@ -354,7 +354,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});
@@ -387,7 +387,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});
@@ -421,7 +421,7 @@ function ahuacatlProfilerTestSuite () {
       const col = db._create(colName);
       const view = db._createView(viewName, "arangosearch", { links: { [colName]: { includeAllFields: true } } });
       const prepare = (rows) => {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const bind = () => ({'@view': viewName});

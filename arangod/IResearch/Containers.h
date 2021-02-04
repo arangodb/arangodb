@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,10 +26,13 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_CONTAINERS_H 1
 
 #include <memory>
+#include <shared_mutex>
 #include <unordered_map>
 
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 
 #include "utils/async_utils.hpp"
 #include "utils/hash_utils.hpp"
@@ -48,22 +51,89 @@ namespace arangodb {
 namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief std::unique_lock<...> compliant wrapper for arangodb::ReadWriteLock
+////////////////////////////////////////////////////////////////////////////////
+class ReadMutex {
+ public:
+  ReadMutex(basics::ReadWriteLock& mtx) noexcept
+    : _mtx(&mtx) {
+  }
+  ReadMutex(ReadMutex&& rhs) noexcept
+    : _mtx(rhs._mtx) {
+    rhs._mtx = nullptr;
+  }
+
+  void lock() { _mtx->lockRead(); }
+  bool try_lock() noexcept { return _mtx->tryLockRead(); }
+  void unlock() { _mtx->unlockRead(); }
+
+ private:
+  ReadMutex(ReadMutex const&) = delete;
+  ReadMutex operator=(ReadMutex const&) = delete;
+  ReadMutex operator=(ReadMutex&&) = delete;
+
+  basics::ReadWriteLock* _mtx;
+}; // ReadMutex
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a read-mutex for a resource
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+class ResourceMutexT {
+ public:
+  explicit ResourceMutexT(T* resource) noexcept
+      : _readMutex(_mutex),
+        _resource(resource) {
+  }
+  ~ResourceMutexT() { reset(); }
+
+  std::unique_lock<ReadMutex> lock() const {
+    return std::unique_lock<ReadMutex>{ _readMutex };
+  }
+
+  std::unique_lock<ReadMutex> try_lock() const noexcept {
+    return { _readMutex, std::try_to_lock };
+  }
+
+  // will block until a write lock can be acquired on the _mutex
+  void reset() {
+    WRITE_LOCKER(lock, _mutex);
+    _resource = nullptr;
+  }
+
+  T* get() const noexcept {
+    TRI_ASSERT(_mutex.isLocked());
+    return _resource;
+  }
+
+  bool empty() const {
+    auto lock = irs::make_unique_lock(_readMutex);
+    return nullptr == _resource;
+  }
+
+ private:
+  basics::ReadWriteLock _mutex;
+  mutable ReadMutex _readMutex; // read-lock to prevent '_resource' reset()
+  T* _resource;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief a read-mutex for a resource
 ////////////////////////////////////////////////////////////////////////////////
 class ResourceMutex {
  public:
   typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
-  explicit ResourceMutex(void* resource)
+  explicit ResourceMutex(void* resource) noexcept
       : _readMutex(_mutex), _resource(resource) {}
   ~ResourceMutex() { reset(); }
   operator bool() { return get() != nullptr; }
-  ReadMutex& mutex() const {
+  ReadMutex& mutex() const noexcept {
     return _readMutex;
   }              // prevent '_resource' reset()
   void reset();  // will block until a write lock can be acquired on the _mutex
 
  protected:
-  void* get() const { return _resource.load(); }
+  void* get() const noexcept { return _resource.load(); }
 
  private:
   irs::async_utils::read_write_mutex _mutex;  // read-lock to prevent '_resource' reset()

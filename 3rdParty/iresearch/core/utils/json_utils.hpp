@@ -25,7 +25,7 @@
 
 #include "string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename GenericObject>
 inline bool get_uint64(GenericObject const& json,
@@ -63,6 +63,6 @@ inline bool get_bool(GenericObject const& json,
   return true;
 }
 
-NS_END
+}
 
 #endif // IRESEARCH_JSON_UTILS_H

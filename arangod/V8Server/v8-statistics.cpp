@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -199,7 +199,9 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::enabled());
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -257,6 +259,10 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // request counters
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
               v8::Number::New(isolate, (double)stats.totalRequests.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsSuperuser"),
+              v8::Number::New(isolate, (double)stats.totalRequestsSuperuser.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsUser"),
+              v8::Number::New(isolate, (double)stats.totalRequestsUser.get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
               v8::Number::New(isolate, (double)stats.asyncRequests.get())).FromMaybe(false);
   result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsGet"),

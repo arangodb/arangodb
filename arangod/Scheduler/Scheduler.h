@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,24 +61,27 @@ class Scheduler {
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
  public:
-  class WorkItem;
+  class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
-  typedef std::shared_ptr<WorkItem> WorkHandle;
+  typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
 
-  // Enqueues a task - this is implemented on the specific scheduler
-  // May throw.
-  virtual bool queue(RequestLane lane, fu2::unique_function<void()>) ADB_WARN_UNUSED_RESULT = 0;
+
+  template<typename F, std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
+  [[nodiscard]] bool queue(RequestLane lane, F&& fn) {
+    auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(std::forward<F>(fn));
+    return queueItem(lane, std::move(item));
+  }
 
   // Enqueues a task after delay - this uses the queue functions above.
-  // WorkHandle is a shared_ptr to a WorkItem. If all references the WorkItem
+  // WorkHandle is a shared_ptr to a DelayedWorkItem. If all references the DelayedWorkItem
   // are dropped, the task is canceled. It will return true if queued, false
   // otherwise
   virtual std::pair<bool, WorkHandle> queueDelay(RequestLane lane, clock::duration delay,
                                                  fu2::unique_function<void(bool canceled)> handler);
 
-  class WorkItem final {
+  class DelayedWorkItem {
    public:
-    ~WorkItem() {
+    ~DelayedWorkItem() {
       try {
         cancel();
       } catch (...) {
@@ -86,26 +89,28 @@ class Scheduler {
       }
     }
 
-    // Cancels the WorkItem
+    // Cancels the DelayedWorkItem
     void cancel() { executeWithCancel(true); }
 
-    // Runs the WorkItem immediately
+    // Runs the DelayedWorkItem immediately
     void run() { executeWithCancel(false); }
 
-    explicit WorkItem(fu2::unique_function<void(bool canceled)>&& handler,
+    explicit DelayedWorkItem(fu2::unique_function<void(bool canceled)>&& handler,
                       RequestLane lane, Scheduler* scheduler)
         : _handler(std::move(handler)), _lane(lane), _disable(false), _scheduler(scheduler) {}
 
-   private:
-    // This is not copyable or movable
-    WorkItem(WorkItem const&) = delete;
-    WorkItem(WorkItem&&) = delete;
-    void operator=(WorkItem const&) const = delete;
 
+    // This is not copyable or movable
+    DelayedWorkItem(DelayedWorkItem const&) = delete;
+    DelayedWorkItem(DelayedWorkItem&&) noexcept = delete;
+    void operator=(DelayedWorkItem const&) = delete;
+    void operator=(DelayedWorkItem &&) noexcept = delete;
+
+   private:
     inline void executeWithCancel(bool arg) {
       bool disabled = _disable.exchange(true);
       // If exchange returns false, the item was not yet scheduled.
-      // Hence we are the first dealing with this WorkItem
+      // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
@@ -133,6 +138,21 @@ class Scheduler {
 
  protected:
   application_features::ApplicationServer& _server;
+
+  struct WorkItemBase {
+    virtual ~WorkItemBase() = default;
+    virtual void invoke() = 0;
+  };
+
+  template<typename F>
+  struct WorkItem final : WorkItemBase, F {
+    explicit WorkItem(F f) : F(std::move(f)) {}
+    void invoke() override { this->operator()(); }
+  };
+
+  // Enqueues a task - this is implemented on the specific scheduler
+  // May throw.
+  [[nodiscard]] virtual bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) = 0;
 
  public:
     // delay Future returns a future that will be fulfilled after the given duration
@@ -176,7 +196,7 @@ class Scheduler {
   // Removed all tasks from the priority queue and cancels them
   void cancelAllCronTasks();
 
-  typedef std::pair<clock::time_point, std::weak_ptr<WorkItem>> CronWorkItem;
+  typedef std::pair<clock::time_point, std::weak_ptr<DelayedWorkItem>> CronWorkItem;
 
   struct CronWorkItemCompare {
     bool operator()(CronWorkItem const& left, CronWorkItem const& right) const {
@@ -203,6 +223,13 @@ class Scheduler {
 
   virtual void toVelocyPack(velocypack::Builder&) const = 0;
   virtual QueueStatistics queueStatistics() const = 0;
+
+  /// @brief approximate fill grade of the scheduler's queue (in %)
+  virtual double approximateQueueFillGrade() const = 0;
+
+  /// @brief fill grade of the scheduler's queue (in %) from which onwards
+  /// the server is considered unavailable (because of overload)
+  virtual double unavailabilityQueueFillGrade() const = 0;
 
   // ---------------------------------------------------------------------------
   // Start/Stop/IsRunning stuff

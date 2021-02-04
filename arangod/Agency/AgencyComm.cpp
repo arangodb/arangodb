@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,22 +24,9 @@
 
 #include "AgencyComm.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/application-exit.h"
-#include "RestServer/ServerFeature.h"
-
-#include <memory>
-#include <thread>
-#ifdef DEBUG_SYNC_REPLICATION
-#include <atomic>
-#endif
-
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-#include <set>
-
-#include "Agency/AsyncAgencyComm.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
@@ -48,6 +35,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
@@ -56,9 +44,18 @@
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "RestServer/MetricsFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
+#include "RestServer/ServerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/HealthData.h"
+#include "StorageEngine/StorageEngine.h"
+
+#include <memory>
+#include <set>
+#include <thread>
+
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
 
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
@@ -66,13 +63,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-
-#ifdef DEBUG_SYNC_REPLICATION
-static std::atomic<uint64_t> debugUniqId(1);
-bool AgencyComm::syncReplDebug = false;
-#endif
 
 static void addEmptyVPackObject(std::string const& name, VPackBuilder& builder) {
   builder.add(name, VPackSlice::emptyObjectSlice());
@@ -439,7 +430,7 @@ int AgencyCommResult::errorCode() const {
 }
 
 std::string AgencyCommResult::errorMessage() const {
-  return asResult().errorMessage();
+  return std::string{asResult().errorMessage()};
 }
 
 std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
@@ -645,9 +636,9 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
           StaticStrings::AgencyCommRequestTimeMs)) {}
 
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
-  // construct JSON value { "status": "...", "time": "..." }
+  // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
-
+  
   try {
     builder.openObject();
     std::string const status =
@@ -655,7 +646,15 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
     builder.add("status", VPackValue(status));
     std::string const stamp = AgencyCommHelper::generateStamp();
     builder.add("time", VPackValue(stamp));
+
+    if (ServerState::instance()->isDBServer()) {
+      // use storage engine health self-assessment and send it to agency too
+      arangodb::HealthData hd = _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
+      hd.toVelocyPack(builder);
+    }
+
     builder.close();
+
   } catch (...) {
     return AgencyCommResult();
   }
@@ -855,11 +854,6 @@ AgencyCommResult AgencyComm::casValue(std::string const& key, VPackSlice const& 
 }
 
 uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
-#ifdef DEBUG_SYNC_REPLICATION
-  if (AgencyComm::syncReplDebug == true) {
-    return debugUniqId++;
-  }
-#endif
   AgencyCommResult readResult;
   AgencyCommResult writeResult;
 
@@ -883,7 +877,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
     try {
       oldValue = oldSlice.getNumber<decltype(oldValue)>();
-    } catch (velocypack::Exception& e) {
+    } catch (velocypack::Exception const& e) {
       LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
           << "Sync/LatestID in agency could not be parsed: " << e.what()
           << "; If this error persists, contact the ArangoDB support.";
@@ -1353,10 +1347,6 @@ bool AgencyComm::tryInitializeStructure() {
       builder.add(VPackValue("FailedServers"));
       { VPackObjectBuilder dd(&builder); }
       builder.add("Lock", VPackValue("UNLOCKED"));
-      // MapLocalToID is not used for anything since 3.4. It was used in
-      // previous versions to store server ids from --cluster.my-local-info that
-      // were mapped to server UUIDs
-      addEmptyVPackObject("MapLocalToID", builder);
       addEmptyVPackObject("Failed", builder);
       addEmptyVPackObject("Finished", builder);
       addEmptyVPackObject("Pending", builder);

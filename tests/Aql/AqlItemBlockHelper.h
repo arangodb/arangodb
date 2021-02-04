@@ -29,8 +29,8 @@
 #include <variant>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/overload.h"
 
 #include "AqlHelper.h"
@@ -112,20 +112,22 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
   }
   SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
 
-  for (size_t row = 0; row < matrix.size(); row++) {
-    for (RegisterId col = 0; col < columns; col++) {
-      auto const& entry = matrix[row][col];
-      auto value =
-          std::visit(overload{
-                         [](NoneEntry) { return AqlValue{}; },
-                         [](int i) { return AqlValue{AqlValueHintInt{i}}; },
-                         [](const char* json) {
-                           VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-                           return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-                         },
-                     },
-                     entry);
-      block->setValue(row, col, value);
+  if constexpr (columns > 0) {
+    for (size_t row = 0; row < matrix.size(); row++) {
+      for (RegisterId col = 0; col < columns; col++) {
+        auto const& entry = matrix[row][col];
+        auto value =
+            std::visit(overload{
+                           [](NoneEntry) { return AqlValue{}; },
+                           [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+                           [](const char* json) {
+                             VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                             return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+                           },
+                       },
+                       entry);
+        block->setValue(row, col, value);
+      }
     }
   }
 

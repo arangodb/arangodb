@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::basics;
 using namespace arangodb::methods;
 using namespace arangodb::rest;
 
@@ -186,14 +187,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   // Add `moreDirt` to `dirty` but remove from `moreDirt`, if already dirty anyway.
   // Then we can reasonably be surprised if we find anything in a database in `moreDirt`.
   for (auto it = moreDirt.begin(); it != moreDirt.end();) {
-    if (dirty.find(*it) != dirty.end()) {
+    if (dirty.find(*it) == dirty.end()) {
       dirty.insert(*it);
       it++;
     } else {
       it = moreDirt.erase(it);
     }
   }
-
 
   if (dirty.empty()) {
     LOG_TOPIC("0a62f", DEBUG, Logger::MAINTENANCE)
@@ -204,14 +204,6 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
-  if (!dirty.empty() && plan.empty()) {
-    // TODO increase log level, except during shutdown?
-    LOG_TOPIC("0a6f2", DEBUG, Logger::MAINTENANCE)
-        << "DBServerAgencySync::execute no plan change set";
-    result.success = true;
-    result.errorMessage = "DBServerAgencySync::execute no reconciliation plan";
-    return result;
-  }
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
@@ -224,8 +216,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE) << "After getLocalCollections for phaseOne";
   if (!glc.ok()) {
-    result.errorMessage = "Could not do getLocalCollections for phase 1: '";
-    result.errorMessage.append(glc.errorMessage()).append("'");
+    result.errorMessage =
+        StringUtils::concatT("Could not do getLocalCollections for phase 1: '",
+                             glc.errorMessage(), "'");
     return result;
   }
   LOG_TOPIC("54263", TRACE, Logger::MAINTENANCE) << "local for phaseOne: " << local;
@@ -281,8 +274,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     LOG_TOPIC("d15b5", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo - local state: " << local;
     if (!glc.ok()) {
-      result.errorMessage = "Could not do getLocalCollections for phase 2: '";
-      result.errorMessage.append(glc.errorMessage()).append("'");
+      result.errorMessage = StringUtils::concatT(
+          "Could not do getLocalCollections for phase 2: '", glc.errorMessage(),
+          "'");
       return result;
     }
 
@@ -354,7 +348,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
       } else {
         // Report an error:
         result = DBServerAgencySyncResult(
-          false, "Error in phase 2: " + tmp.errorMessage(), 0, 0);
+            false, StringUtils::concatT("Error in phase 2: ", tmp.errorMessage()), 0, 0);
       }
     } else {
       // This code should never run, it is only there to debug problems if

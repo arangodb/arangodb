@@ -26,7 +26,7 @@
 
 #include "bitset.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a growable implementation of a bitset
@@ -335,6 +335,6 @@ class bitvector final {
 static_assert(std::is_nothrow_move_constructible<bitvector>::value,
               "default move constructor expected");
 
-NS_END
+}
 
 #endif

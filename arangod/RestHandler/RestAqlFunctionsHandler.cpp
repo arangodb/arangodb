@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,9 +44,8 @@ RestStatus RestAqlFunctionsHandler::execute() {
 
     builder.openObject();
     builder.add(VPackValue("functions"));
-    auto functions = aql::AqlFunctionFeature::AQLFUNCTIONS;
-    TRI_ASSERT(functions != nullptr);
-    functions->toVelocyPack(builder);
+    auto& functions = server().getFeature<aql::AqlFunctionFeature>();
+    functions.toVelocyPack(builder);
     builder.close();
 
     generateResult(rest::ResponseCode::OK, builder.slice());

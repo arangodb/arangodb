@@ -366,7 +366,7 @@ function optimizerCollectMethodsTestSuite () {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual(query[1], node.collectOptions.method, query);
-            if (node.outVariable && !node.count) {
+            if (node.outVariable) {
               hasInto = true;
             }
           }
@@ -405,7 +405,7 @@ function optimizerCollectMethodsTestSuite () {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.collectOptions.method);
-            if (node.outVariable && !node.count) {
+            if (node.outVariable) {
               hasInto = true;
             }
           }
@@ -448,7 +448,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
    
     testManyCollects : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       c.insert({ value: 3 });
       var q = "", g = [];
       for (var i = 0; i < 10; ++i) {
@@ -480,7 +480,7 @@ function optimizerCollectMethodsTestSuite () {
         if (node.type === "CollectNode") {
           ++aggregateNodes;
           assertEqual("sorted", node.collectOptions.method);
-          if (node.outVariable && !node.count) {
+          if (node.outVariable) {
             hasInto = true;
           }
         }

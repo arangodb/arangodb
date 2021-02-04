@@ -780,7 +780,7 @@ constexpr int TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN               
 constexpr int TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES             = 1469;
 
 /// 1470: ERROR_CLUSTER_UNSUPPORTED
-/// "unsupported operation or parameter"
+/// "unsupported operation or parameter for clusters"
 /// Will be raised when there is an attempt to carry out an operation that is
 /// not supported in the context of a sharded collection.
 constexpr int TRI_ERROR_CLUSTER_UNSUPPORTED                                     = 1470;
@@ -1158,6 +1158,12 @@ constexpr int TRI_ERROR_QUERY_USER_ASSERT                                       
 /// Will be raised if and user provided expression fails to evaluate to true
 constexpr int TRI_ERROR_QUERY_USER_WARN                                         = 1594;
 
+/// 1595: ERROR_QUERY_WINDOW_AFTER_MODIFICATION
+/// "window operation after data-modification"
+/// Will be raised when a window node is created after a data-modification
+/// operation.
+constexpr int TRI_ERROR_QUERY_WINDOW_AFTER_MODIFICATION                         = 1595;
+
 /// 1600: ERROR_CURSOR_NOT_FOUND
 /// "cursor not found"
 /// Will be raised when a cursor is requested via its id but a cursor with that
@@ -1287,6 +1293,11 @@ constexpr int TRI_ERROR_LDAP_NOT_ONE_USER_FOUND                                 
 /// "LDAP found a user, but its not the desired one"
 /// LDAP found a user, but its not the desired one
 constexpr int TRI_ERROR_LDAP_USER_NOT_IDENTIFIED                                = 1808;
+
+/// 1809: ERROR_LDAP_OPERATIONS_ERROR
+/// "LDAP returned an operations error"
+/// LDAP returned an operations error
+constexpr int TRI_ERROR_LDAP_OPERATIONS_ERROR                                   = 1809;
 
 /// 1820: ERROR_LDAP_INVALID_MODE
 /// "invalid ldap mode"
@@ -1665,8 +1676,8 @@ constexpr int TRI_ERROR_NO_SMART_GRAPH_ATTRIBUTE                                
 constexpr int TRI_ERROR_CANNOT_DROP_SMART_COLLECTION                            = 4002;
 
 /// 4003: ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE
-/// "in smart vertex collections _key must be prefixed with the value of the
-/// "smart graph attribute"
+/// "in smart vertex collections _key must be a string and prefixed with the
+/// "value of the smart graph attribute"
 /// In a smart vertex collection _key must be prefixed with the value of the
 /// SmartGraph attribute.
 constexpr int TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE         = 4003;
@@ -1916,6 +1927,11 @@ constexpr int TRI_ERROR_HOT_BACKUP_DBSERVERS_AWOL                               
 /// "analyzers in plan could not be modified"
 /// Plan could not be modified while creating or deleting Analyzers revision
 constexpr int TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN              = 7021;
+
+/// 8001: ERROR_AIR_EXECUTION_ERROR
+/// "error during AIR execution"
+/// During the execution of an AIR program an error occurred
+constexpr int TRI_ERROR_AIR_EXECUTION_ERROR                                     = 8001;
 
 
 /// register all errors for ArangoDB

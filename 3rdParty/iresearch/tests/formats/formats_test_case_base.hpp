@@ -258,12 +258,12 @@ class format_test_case : public index_test_base {
 
 } // tests
 
-NS_ROOT
+namespace iresearch {
 
 // use base irs::position type for ancestors
 template<>
 struct type<tests::format_test_case::position> : type<irs::position> { };
 
-NS_END
+}
 
 #endif // IRESEARCH_FORMAT_TEST_CASE_BASE

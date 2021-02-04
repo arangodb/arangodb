@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,9 +46,9 @@ void handleGossipResponse(arangodb::network::Response const& r,
   std::string newLocation;
 
   if (r.ok()) {
-    velocypack::Slice payload = r.response->slice();
+    velocypack::Slice payload = r.slice();
 
-    switch (r.response->statusCode()) {
+    switch (r.statusCode()) {
       case 200:  // Digest other configuration
         LOG_TOPIC("4995a", DEBUG, Logger::AGENCY)
             << "Got result of gossip message, code: 200"
@@ -58,7 +58,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
 
       case 307:  // Add new endpoint to gossip peers
         bool found;
-        newLocation = r.response->header.metaByKey("location", found);
+        newLocation = r.response().header.metaByKey("location", found);
 
         if (found) {
           if (newLocation.compare(0, 5, "https") == 0) {
@@ -85,7 +85,7 @@ void handleGossipResponse(arangodb::network::Response const& r,
         break;
 
       default:
-        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.response->statusCode()
+        LOG_TOPIC("bed89", ERR, Logger::AGENCY) << "Got error " << r.statusCode()
         << " from gossip endpoint";
         std::this_thread::sleep_for(std::chrono::seconds(40));
         break;
@@ -296,7 +296,7 @@ bool Inception::restartingActiveAgent() {
       auto comres = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
                                          greetBuffer, reqOpts).get();
       
-      if (comres.ok() && comres.response->statusCode() == fuerte::StatusOK) {
+      if (comres.ok() && comres.statusCode() == fuerte::StatusOK) {
         
         VPackSlice const theirConfig = comres.slice();
 

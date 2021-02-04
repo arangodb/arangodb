@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -270,14 +270,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   auto outputRegisters = RegIdSet{};
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
                                       it->second.registerId);
     outputRegisters.emplace(it->second.registerId);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
@@ -328,7 +328,7 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
 
 void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
                                                bool withProperties) const {
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
       vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
@@ -337,7 +337,7 @@ void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPath
     c.setVertexOutput(vertexOutVariable);
   }
 
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
       edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);

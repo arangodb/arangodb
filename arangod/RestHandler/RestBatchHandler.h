@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,7 +67,7 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestBatchHandler"; }
   // be pessimistic about what this handler does... it may invoke V8
   // or not, but as we don't know where, we need to assume it
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
   RestStatus executeHttp();

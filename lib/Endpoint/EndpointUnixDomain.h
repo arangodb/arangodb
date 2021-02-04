@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,12 +61,6 @@ class EndpointUnixDomain final : public Endpoint {
   
   // cppcheck-suppress virtualCallInConstructor; bogus
   void disconnect() override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief init an incoming connection
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool initIncoming(TRI_socket_t) override;
 
   int domain() const override { return AF_UNIX; }
   int port() const override { return 0; }

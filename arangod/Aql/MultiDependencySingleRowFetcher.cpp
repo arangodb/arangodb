@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,7 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-MultiDependencySingleRowFetcher::UpstreamSkipReport::UpstreamSkipReport() {}
+MultiDependencySingleRowFetcher::UpstreamSkipReport::UpstreamSkipReport() = default;
 
 auto MultiDependencySingleRowFetcher::UpstreamSkipReport::isInitialized() const -> bool {
   return _isInitialized;
@@ -77,6 +77,13 @@ auto MultiDependencySingleRowFetcher::UpstreamSkipReport::setFullCount(size_t su
     -> void {
   TRI_ASSERT(subqueryDepth < _report.size());
   _report[subqueryDepth].second = skipped;
+}
+
+auto MultiDependencySingleRowFetcher::UpstreamSkipReport::incFullCount(size_t subqueryDepth,
+                                                                       size_t skipped)
+    -> void {
+  TRI_ASSERT(subqueryDepth < _report.size());
+  _report[subqueryDepth].second += skipped;
 }
 
 MultiDependencySingleRowFetcher::DependencyInfo::DependencyInfo()
@@ -158,12 +165,9 @@ auto MultiDependencySingleRowFetcher::execute(AqlCallStack const& stack,
                                               AqlCallSet const& aqlCallSet)
     -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>> {
   TRI_ASSERT(_callsInFlight.size() == numberDependencies());
-  if (!_maximumSkipReport.isInitialized()) {
+   if (!_maximumSkipReport.isInitialized()) {
     size_t levels = stack.subqueryLevel();
-    _maximumSkipReport.initialize(levels);
-    for (auto& depRep : _dependencySkipReports) {
-      depRep.initialize(levels);
-    }
+    initializeReports(levels);
   }
 
   auto ranges = std::vector<std::pair<size_t, AqlItemBlockInputRange>>{};
@@ -290,6 +294,12 @@ auto MultiDependencySingleRowFetcher::resetDidReturnSubquerySkips(size_t shadowR
   }
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+auto MultiDependencySingleRowFetcher::initialize(size_t subqueryDepth) -> void {
+  initializeReports(subqueryDepth);
+}
+#endif
+
 AqlCallStack MultiDependencySingleRowFetcher::adjustStackWithSkipReport(
     AqlCallStack const& callStack, const size_t dependency) {
   // Copy the original
@@ -387,9 +397,11 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
       auto const reportedFullCount = _maximumSkipReport.getFullCount(reportLevel);
 
       auto const branchSkip = branchReport.getSkipped(reportLevel);
-      auto const branchFullCount = branchReport.getFullCount(reportLevel);
+      // NOTE: Unused, only used in assert which is disabled for now.
+      // auto const branchFullCount = branchReport.getFullCount(reportLevel);
 
       auto const branchSkipNext = branchSkip + (std::max)(call.getOffset(), skipped);
+
       branchReport.setSkipped(reportLevel, branchSkipNext);
 
       if (branchSkipNext > reportedSkip) {
@@ -398,9 +410,15 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
 
       if (skipped > call.getOffset()) {
         // In the current implementation we get the fullCount guaranteed in
-        // one go. If this assert triggers, we can easily transform the following code
-        // into an increment of branchFullCount instead of assignement
-        TRI_ASSERT(branchFullCount == 0);
+        // one go. If this assert triggers, we can easily transform the
+        // following code into an increment of branchFullCount instead of
+        // assignement.
+
+        // NOTE: The following assert does not hold true in all
+        // FILTER LIMIT cases over subqueries. We may have buffered subquery
+        // executions, which are discarded and transformed to fullCount insted
+        // TRI_ASSERT(branchFullCount == 0);
+
         // If this assert kicks in, the counters are off, too many rows are skipped
         TRI_ASSERT(call.needsFullCount());
         auto const branchFullCountNext = skipped - call.getOffset();
@@ -408,7 +426,11 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
         branchReport.setFullCount(reportLevel, branchFullCountNext);
         if (reportedFullCount < branchFullCountNext) {
           // We can only have one fullCount value.
-          TRI_ASSERT(reportedFullCount == 0);
+          // NOTE: The following assert does not hold true
+          // in all FILTER LIMIT cases over subqueries.
+          // We may have buffered subquery executions, which are discarded
+          // and transformed to fullCount insted
+          // TRI_ASSERT(reportedFullCount == 0);
           _maximumSkipReport.setFullCount(reportLevel, branchFullCountNext);
         } else {
           // WE cannot have different fullCounts on different Branches
@@ -433,5 +455,38 @@ void MultiDependencySingleRowFetcher::reportSkipForDependency(AqlCallStack const
                                   })
                      ->getFullCount(reportLevel));
     }
+  }
+}
+
+void MultiDependencySingleRowFetcher::reportSubqueryFullCounts(
+    size_t subqueryDepth, std::vector<size_t> const& skippedInDependency) {
+  // We need to have exactly one value per dependency
+  TRI_ASSERT(skippedInDependency.size() == _dependencySkipReports.size());
+  for (size_t dependency = 0; dependency < skippedInDependency.size(); ++dependency) {
+    auto& branchReport = _dependencySkipReports[dependency];
+    branchReport.incFullCount(subqueryDepth, skippedInDependency[dependency]);
+    auto const& newFC = branchReport.getFullCount(subqueryDepth);
+    if (newFC > _maximumSkipReport.getFullCount(subqueryDepth)) {
+      _maximumSkipReport.setFullCount(subqueryDepth, newFC);
+    }
+  }
+
+  // This code can only run AFTER the skip has already been consumed, otherwise the caling SubqueryEnd cannot take the decission to
+  // revert to a hardLimit/fullCount without having the former limit fulfilled.
+  // _maximumReport needs to contain maximum values
+  TRI_ASSERT(_maximumSkipReport.getFullCount(subqueryDepth) ==
+             std::max_element(_dependencySkipReports.begin(),
+                              _dependencySkipReports.end(),
+                              [subqueryDepth](auto const& a, auto const& b) -> bool {
+                                return a.getFullCount(subqueryDepth) <
+                                       b.getFullCount(subqueryDepth);
+                              })
+                 ->getFullCount(subqueryDepth));
+}
+
+void MultiDependencySingleRowFetcher::initializeReports(size_t subqueryDepth) {
+  _maximumSkipReport.initialize(subqueryDepth);
+  for (auto& depRep : _dependencySkipReports) {
+    depRep.initialize(subqueryDepth);
   }
 }

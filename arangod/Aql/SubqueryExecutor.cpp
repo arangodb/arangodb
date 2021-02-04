@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,11 @@
 #include "SubqueryExecutor.h"
 
 #include "Aql/AqlCallStack.h"
+#include "Aql/AqlValueMaterializer.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Logger/LogMacros.h"
 
@@ -35,24 +37,34 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+// TODO: the entire executor is only needed to execute non-spliced subqueries sent
+// by a 3.7 coordinator. It can be removed in 3.9
 SubqueryExecutorInfos::SubqueryExecutorInfos(ExecutionBlock& subQuery,
+                                             QueryContext& query,
                                              RegisterId outReg, bool subqueryIsConst)
     : _subQuery(subQuery),
+      _query(query),
       _outReg(outReg),
       _returnsData(subQuery.getPlanNode()->getType() == ExecutionNode::RETURN),
       _isConst(subqueryIsConst) {}
+
+QueryContext& SubqueryExecutorInfos::query() noexcept {
+  return _query;
+}
 
 template <bool isModificationSubquery>
 SubqueryExecutor<isModificationSubquery>::SubqueryExecutor(Fetcher& fetcher,
                                                            SubqueryExecutorInfos& infos)
     : _fetcher(fetcher),
       _infos(infos),
+      _trx(infos.query().newTrxContext()),
       _state(ExecutorState::HASMORE),
       _subqueryInitialized(false),
       _shutdownDone(false),
       _shutdownResult(TRI_ERROR_INTERNAL),
       _subquery(infos.getSubquery()),
-      _subqueryResults(nullptr),
+      _subqueryResults(),
+      _subqueryResultsBuilder(_subqueryResults),
       _input(CreateInvalidInputRowHint{}) {}
 
 template <bool isModificationSubquery>
@@ -82,7 +94,8 @@ auto SubqueryExecutor<isModificationSubquery>::initializeSubquery(AqlItemBlockIn
       // Error during initialize cursor
       THROW_ARANGO_EXCEPTION(result);
     }
-    _subqueryResults = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
+    _subqueryResultsBuilder.clear();
+    _subqueryResultsBuilder.openArray();
   }
   // on const subquery we can retoggle init as soon as we have new input.
   _subqueryInitialized = true;
@@ -151,10 +164,17 @@ auto SubqueryExecutor<isModificationSubquery>::produceRows(AqlItemBlockInputRang
         }
 
         if (_infos.returnsData()) {
-          TRI_ASSERT(_subqueryResults != nullptr);
           INTERNAL_LOG_SQ << uint64_t(this)
                        << " store subquery result for writing " << block->numRows();
-          _subqueryResults->emplace_back(std::move(block));
+     
+          TRI_ASSERT(_subqueryResultsBuilder.isOpenArray());
+          auto& vopts = _trx.vpackOptions();
+          AqlValueMaterializer materializer(&vopts);
+          for (size_t i = 0; i < block->numRows(); ++i) {
+            AqlValueMaterializer materializer(&vopts);
+            VPackSlice slice = materializer.slice(block->getValueReference(i, 0), false);
+            _subqueryResultsBuilder.add(slice);
+          }
         }
       }
 
@@ -192,20 +212,21 @@ void SubqueryExecutor<isModificationSubquery>::writeOutput(OutputAqlItemRow& out
     // In the non const case we need to move the data into the output for every
     // row.
     // In the const case we need to move the data into the output once per block.
-    TRI_ASSERT(_subqueryResults != nullptr);
-
     // We assert !returnsData => _subqueryResults is empty
-    TRI_ASSERT(_infos.returnsData() || _subqueryResults->empty());
-    AqlValue resultDocVec{_subqueryResults.get()};
+    TRI_ASSERT(_subqueryResultsBuilder.isOpenArray());
+    _subqueryResultsBuilder.close();
+
+    TRI_ASSERT(_infos.returnsData() || _subqueryResultsBuilder.slice().length() == 0);
+    AqlValue resultDocVec{std::move(_subqueryResults)};
     AqlValueGuard guard{resultDocVec, true};
     // Responsibility is handed over
-    std::ignore = _subqueryResults.release();
+    _subqueryResultsBuilder = arangodb::velocypack::Builder(_subqueryResults);
     output.moveValueInto(_infos.outputRegister(), _input, guard);
-    TRI_ASSERT(_subqueryResults == nullptr);
+    TRI_ASSERT(_subqueryResultsBuilder.isEmpty() || _subqueryResultsBuilder.isOpenArray());
   } else {
     // In this case we can simply reference the last written value
     // We are not responsible for anything ourselves anymore
-    TRI_ASSERT(_subqueryResults == nullptr);
+    TRI_ASSERT(_subqueryResultsBuilder.isEmpty() || _subqueryResultsBuilder.isOpenArray());
     bool didReuse = output.reuseLastStoredValue(_infos.outputRegister(), _input);
     TRI_ASSERT(didReuse);
   }

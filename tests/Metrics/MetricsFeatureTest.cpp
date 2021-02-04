@@ -47,7 +47,7 @@ TEST_F(MetricsFeatureTest, test_counter) {
   auto& counter = feature.counter("counter", 0, "one counter");
   auto& labeledCounter = feature.counter({"counter", "label=\"label\""}, 0, "another counter");
 
-  ASSERT_DOUBLE_EQ(counter.load(), 0);
+  ASSERT_EQ(counter.load(), 0);
   std::string s;
   counter.toPrometheus(s);
   std::cout << s << std::endl;

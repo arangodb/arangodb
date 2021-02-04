@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,11 +123,13 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
  private:
   /// @brief create the iterator
-  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*) const;
+  std::unique_ptr<IndexIterator> createEqIterator(transaction::Methods*,
+                                                  arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*, bool) const;
 
-  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*, arangodb::aql::AstNode const*,
-                                                  arangodb::aql::AstNode const*) const;
+  std::unique_ptr<IndexIterator> createInIterator(transaction::Methods*,
+                                                  arangodb::aql::AstNode const*,
+                                                  arangodb::aql::AstNode const*, bool) const;
 
   /// @brief populate the keys builder with a single (string) lookup value
   void fillLookupValue(arangodb::velocypack::Builder& keys,

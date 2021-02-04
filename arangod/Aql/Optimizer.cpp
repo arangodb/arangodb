@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,6 @@
 
 using namespace arangodb::aql;
 
-// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
@@ -73,12 +72,18 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  bool before(ExecutionNode* node) override {
+    TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
+    return false;
+  }
+};
 
 // Check the plan for inconsistencies, like more than one parent or dependency,
 // or mismatching parents and dependencies in adjacent nodes.
 class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
+  explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
 
   bool before(ExecutionNode* node) override {
     bool ok = true;
@@ -239,21 +244,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   _plans.clear();
   _plans.push_back(std::move(plan), _rules.begin());
 
-  if (!queryOptions.inspectSimplePlans &&
-      !arangodb::ServerState::instance()->isCoordinator() && initialPlan->isDeadSimple()) {
-    // the plan is so simple that any further optimizations would probably cost
-    // more than simply executing the plan
-    initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= ProfileLevel::Blocks) {
-      // if profiling is turned on, we must do the cost estimation here
-      // because the cost estimation must be done while the transaction
-      // is still running
-      initialPlan->invalidateCost();
-      initialPlan->getCost();
-    }
-    return;
-  }
-
   // enable/disable rules as per user request
   for (auto const& name : queryOptions.optimizerRules) {
     if (name.empty()) {
@@ -371,6 +361,15 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   // finalize plans
   for (auto& plan : _plans.list) {
     plan.first->findVarUsage();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+      continue;
+    }
+
+    NoSubqueryChecker checker;
+    plan.first->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
   }
 
   // do cost estimation

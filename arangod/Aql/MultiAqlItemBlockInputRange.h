@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,6 +83,11 @@ class MultiAqlItemBlockInputRange {
 
   // This discards all remaining data rows
   auto skipAllRemainingDataRows() -> size_t;
+
+  // Skips all ShadowRows of lower or equal depth then given in all
+  // locally known ranges. Reports the amount of skipped equal depth
+  // ShadowRows per depth.
+  auto skipAllShadowRowsOfDepth(size_t depth) -> std::vector<size_t>;
 
   // Subtract up to count rows from the local _skipped state
   auto skipForDependency(size_t const dependency, size_t count) -> size_t;

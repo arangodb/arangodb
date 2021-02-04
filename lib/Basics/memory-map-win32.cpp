@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,61 +33,6 @@
 #include "Windows.h"
 
 using namespace arangodb;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes changes made in memory back to disk
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
-                    size_t numOfBytesToFlush, int flags) {
-  // ...........................................................................
-  // Possible flags to send are (based upon the Ubuntu Linux ASM include files:
-  // #define MS_ASYNC        1             /* sync memory asynchronously */
-  // #define MS_INVALIDATE   2               /* invalidate the caches */
-  // #define MS_SYNC         4               /* synchronous memory sync */
-  // Note: under windows all flushes are achieved synchronously, however
-  // under windows, there is no guarentee that the underlying disk hardware
-  // cache has physically written to disk.
-  // FlushFileBuffers ensures file written to disk
-  // ...........................................................................
-
-  // ...........................................................................
-  // Whenever we talk to the memory map functions, we require a file handle
-  // rather than a file descriptor. However, we only store file descriptors for
-  // now - this may change.
-  // ...........................................................................
-
-  if (fileDescriptor < 0) {
-    // an invalid file descriptor of course means an invalid handle
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // ...........................................................................
-  // Attempt to convert file descriptor into an operating system file handle
-  // ...........................................................................
-
-  HANDLE fileHandle = (HANDLE)_get_osfhandle(fileDescriptor);
-
-  // ...........................................................................
-  // An invalid file system handle was returned.
-  // ...........................................................................
-
-  if (fileHandle == INVALID_HANDLE_VALUE) {
-    return TRI_ERROR_SYS_ERROR;
-  }
-
-  BOOL result = FlushViewOfFile(startingAddress, numOfBytesToFlush);
-
-  if (result && ((flags & MS_SYNC) == MS_SYNC)) {
-    result = FlushFileBuffers(fileHandle);
-  }
-
-  if (result) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return TRI_ERROR_ARANGO_MSYNC_FAILED;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maps a file on disk onto memory
@@ -291,76 +236,11 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets various protection levels with the memory mapped file
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_ProtectMMFile(void* memoryAddress, size_t numOfBytesToProtect,
-                      int flags, int fileDescriptor) {
-  DWORD objectProtection = PAGE_READONLY;
-  DWORD viewProtection = FILE_MAP_READ;
-
-  if ((flags & PROT_READ) == PROT_READ) {
-    if ((flags & PROT_EXEC) == PROT_EXEC) {
-      if ((flags & PROT_WRITE) == PROT_WRITE) {
-        objectProtection = PAGE_EXECUTE_READWRITE;
-        viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-      } else {
-        objectProtection = PAGE_EXECUTE_READ;
-        viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
-      }
-    }
-
-    else if ((flags & PROT_WRITE) == PROT_WRITE) {
-      objectProtection = PAGE_READWRITE;
-      viewProtection = FILE_MAP_ALL_ACCESS;
-    }
-
-    else {
-      objectProtection = PAGE_READONLY;
-    }
-  }  // end of PROT_READ
-
-  else if ((flags & PROT_EXEC) == PROT_EXEC) {
-    if ((flags & PROT_WRITE) == PROT_WRITE) {
-      objectProtection = PAGE_EXECUTE_READWRITE;
-      viewProtection = FILE_MAP_ALL_ACCESS | FILE_MAP_EXECUTE;
-    } else {
-      objectProtection = PAGE_EXECUTE_READ;
-      viewProtection = FILE_MAP_READ | FILE_MAP_EXECUTE;
-    }
-
-  }  // end of PROT_EXEC
-
-  else if ((flags & PROT_WRITE) == PROT_WRITE) {
-    objectProtection = PAGE_READWRITE;
-    viewProtection = FILE_MAP_ALL_ACCESS;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming sequential memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_MMFileAdvise(void*, size_t, int) {
   // Not on Windows
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief locks a region in memory
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_MMFileLock(void* memoryAddress, size_t numOfBytes) {
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unlocks a mapped region from memory
-////////////////////////////////////////////////////////////////////////////////
-
-int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes) {
   return TRI_ERROR_NO_ERROR;
 }
 

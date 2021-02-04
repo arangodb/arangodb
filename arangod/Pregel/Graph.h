@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,10 @@
 #ifndef ARANGODB_PREGEL_GRAPH_STRUCTURE_H
 #define ARANGODB_PREGEL_GRAPH_STRUCTURE_H 1
 
+#include "Basics/debugging.h"
+
 #include <velocypack/StringRef.h>
+#include <velocypack/Slice.h>
 
 #include <cstdint>
 #include <functional>
@@ -33,23 +36,20 @@
 namespace arangodb {
 namespace pregel {
 
-// typedef uint64_t PregelKey;
 typedef uint16_t PregelShard;
 const PregelShard InvalidPregelShard = -1;
 
 struct PregelID {
-  std::string key; // std::string 24
-  PregelShard shard; // uint16_t
+  std::string key;    // std::string 24
+  PregelShard shard;  // uint16_t
 
   PregelID() : key(""), shard(InvalidPregelShard) {}
   PregelID(PregelShard s, std::string const& k) : key(k), shard(s) {}
-  // PregelID(PregelShard s, std::string const& k) : shard(s),
-  // key(std::stoull(k)) {}
 
   bool operator==(const PregelID& rhs) const {
     return shard == rhs.shard && key == rhs.key;
   }
-  
+
   bool operator!=(const PregelID& rhs) const {
     return shard != rhs.shard || key != rhs.key;
   }
@@ -58,9 +58,8 @@ struct PregelID {
     return shard < rhs.shard || (shard == rhs.shard && key < rhs.key);
   }
 
-  bool isValid() const {
-    return shard != InvalidPregelShard && !key.empty();
-  }
+  bool isValid() const { return shard != InvalidPregelShard && !key.empty(); }
+
 };
 
 template <typename V, typename E>
@@ -73,9 +72,7 @@ class Edge {
   template <typename V, typename E2>
   friend class GraphStore;
 
-  static_assert(sizeof(std::string) > 2, "");
-
-  // these members are initialized by the GrapStore
+  // these members are initialized by the GraphStore
   char* _toKey;             // uint64_t
   uint16_t _toKeyLength;    // uint16_t
   PregelShard _targetShard; // uint16_t
@@ -84,103 +81,118 @@ class Edge {
 
  public:
 
-  // size_t getSize() { return sizeof(EdgeEntry) + _vertexIDSize + _dataSize; }
   velocypack::StringRef toKey() const { return velocypack::StringRef(_toKey, _toKeyLength); }
-  // size_t getDataSize() { return _dataSize; }
-  E& data() {
-    return _data;  // static_cast<E>(this + sizeof(EdgeEntry) + _vertexIDSize);
+  E& data() noexcept {
+    return _data;
   }
-  // PregelShard sourceShard() const { return _sourceShard; }
-  PregelShard targetShard() const { return _targetShard; }
+  PregelShard targetShard() const noexcept { return _targetShard; }
 };
 
 template <typename V, typename E>
 // cppcheck-suppress noConstructor
 class Vertex {
-  friend class GraphStore<V,E>;
-  
-  const char* _key; // uint64_t
-  
-  // these members are initialized by the GrapStore
+  char const* _key; // uint64_t
+
+  // these members are initialized by the GraphStore
   Edge<E>* _edges; // uint64_t
-  size_t _edgeCount; // uint64_t
-  
-  uint16_t _keyLength; // uint16_t
+
+  // the number of edges per vertex is limited to 4G.
+  // this should be more than enough
+  uint32_t _edgeCount; // uint32_t
+
+  // combined uint16_t attribute fusing the active bit
+  // and the length of the key in its other 15 bits. we do this
+  // to save RAM/space (we may have _lots_ of vertices).
+  // according to cppreference.com it is implementation-defined
+  // if multiple variables in a bitfield are tightly packed or
+  // not. in order to protect us from compilers that don't tightly
+  // pack bitfield variables, we validate the size of the struct
+  // via static_assert in the constructor of Vertex<V, E>.
+  uint16_t _active : 1; // uint16_t (shared with _keyLength)
+  uint16_t _keyLength : 15; // uint16_t (shared with _active)
+
   PregelShard _shard; // uint16_t
-  
+
   V _data; // variable byte size
-  
-  bool _active = true; // bool8_t
 
  public:
-  
-  Edge<E>* getEdges() const { return _edges; }
-  size_t getEdgeCount() const { return _edgeCount; }
-  
-  bool active() const { return _active; }
-  void setActive(bool bb) { _active = bb; }
+  Vertex() noexcept
+    : _key(nullptr),
+      _edges(nullptr),
+      _edgeCount(0),
+      _active(1),
+      _keyLength(0),
+      _shard(InvalidPregelShard) {
+    TRI_ASSERT(keyLength() == 0);
+    TRI_ASSERT(active());
 
-  PregelShard shard() const { return _shard; }
-  velocypack::StringRef key() const { return velocypack::StringRef(_key, _keyLength); };
+    // make sure that Vertex has the smallest possible size, especially
+    // that the bitfield for _acitve and _keyLength takes up only 16 bits in total.
+    static_assert(
+        sizeof(Vertex<V, E>) == sizeof(char const*) +
+                                sizeof(Edge<E>*) +
+                                sizeof(uint32_t) +
+                                sizeof(uint16_t) + // combined size of the bitfield
+                                sizeof(PregelShard) +
+                                std::max<size_t>(8U, sizeof(V)),
+        "invalid size of Vertex");
+  }
+
+  // note: the destructor for this type is never called,
+  // so it must not allocate any memory or take ownership
+  // of anything
+
+  Edge<E>* getEdges() const noexcept { return _edges; }
+
+  // adds an edge for the vertex. returns the number of edges
+  // after the addition. note that the caller must make sure that
+  // we don't end up with more than 4GB edges per verte.
+  size_t addEdge(Edge<E>* edge) noexcept {
+    // must only be called during initial vertex creation
+    TRI_ASSERT(active());
+    TRI_ASSERT(_edgeCount < maxEdgeCount());
+
+    if (_edges == nullptr) {
+      _edges = edge;
+    }
+    return static_cast<size_t>(++_edgeCount);
+  }
+
+  // returns the number of associated edges
+  size_t getEdgeCount() const noexcept { return static_cast<size_t>(_edgeCount); }
+
+  // maximum number of edges that can be added for each vertex
+  static constexpr size_t maxEdgeCount() { return static_cast<size_t>(std::numeric_limits<decltype(_edgeCount)>::max()); }
+
+  void setActive(bool bb) noexcept {
+    _active = bb ? 1 : 0;
+    TRI_ASSERT((bb && active()) || (!bb && !active()));
+  }
+
+  bool active() const noexcept { return _active == 1; }
+
+  void setShard(PregelShard shard) noexcept { _shard = shard; }
+  PregelShard shard() const noexcept { return _shard; }
+
+  void setKey(char const* key, uint16_t keyLength) noexcept {
+    // must only be called during initial vertex creation
+    TRI_ASSERT(active());
+    TRI_ASSERT(this->keyLength() == 0);
+    _key = key;
+    _keyLength = keyLength;
+    TRI_ASSERT(active());
+    TRI_ASSERT(this->keyLength() == keyLength);
+  }
+
+  uint16_t keyLength() const noexcept { return _keyLength; }
+
+  velocypack::StringRef key() const { return velocypack::StringRef(_key, keyLength()); }
   V const& data() const& { return _data; }
   V& data() & { return _data; }
-  
-  PregelID pregelId() const { return PregelID(_shard, std::string(_key, _keyLength)); }
-  /*std::string const& key() const {
-    return std::string(_key, _keySize);
-  };*/
+
+  PregelID pregelId() const { return PregelID(_shard, std::string(_key, keyLength())); }
 };
 
-// unused right now
-/*class LinkedListIterator {
- private:
-  intptr_t _begin, _end, _current;
-
-  VertexIterator(const VertexIterator&) = delete;
-  VertexIterator& operator=(const FileInfo&) = delete;
-
- public:
-  typedef VertexIterator iterator;
-  typedef const VertexIterator const_iterator;
-
-  VertexIterator(intptr_t beginPtr, intptr_t endPtr)
-      : _begin(beginPtr), _end(endPtr), _current(beginPtr) {}
-
-  iterator begin() { return VertexIterator(_begin, _end); }
-  const_iterator begin() const { return VertexIterator(_begin, _end); }
-  iterator end() {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-  const_iterator end() const {
-    auto it = VertexIterator(_begin, _end);
-    it._current = it._end;
-    return it;
-  }
-
-  // prefix ++
-  VertexIterator& operator++() {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  // postfix ++
-  VertexIterator& operator++(int) {
-    VertexEntry* entry = (VertexEntry*)_current;
-    _current += entry->getSize();
-    return *this;
-  }
-
-  VertexEntry* operator*() const {
-    return _current != _end ? (VertexEntry*)_current : nullptr;
-  }
-
-  bool operator!=(VertexIterator const& other) const {
-    return _current != other._current;
-  }
-};*/
 }  // namespace pregel
 }  // namespace arangodb
 

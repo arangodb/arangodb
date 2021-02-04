@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -366,20 +366,6 @@ void TRI_EraseFrontStringBuffer(TRI_string_buffer_t* self, size_t len) {
   }
 }
 
-/// @brief removes the first characters but does not clear the remaining
-/// buffer space
-void TRI_MoveFrontStringBuffer(TRI_string_buffer_t* self, size_t len) {
-  size_t off = (size_t)(self->_current - self->_buffer);
-
-  if (off <= len) {
-    TRI_ResetStringBuffer(self);
-  } else if (0 < len) {
-    memmove(self->_buffer, self->_buffer + len, off - len);
-    self->_current -= len;
-    *self->_current = '\0';
-  }
-}
-
 /// @brief replaces characters
 int TRI_ReplaceStringStringBuffer(TRI_string_buffer_t* self, char const* str, size_t len) {
   self->_current = self->_buffer;
@@ -521,51 +507,6 @@ int AppendJsonEncoded(TRI_string_buffer_t* self, char const* src, size_t length,
 int TRI_AppendJsonEncodedStringStringBuffer(TRI_string_buffer_t* self, char const* src,
                                             size_t length, bool escapeSlash) {
   return AppendJsonEncoded(self, src, length, escapeSlash);
-}
-
-/// @brief appends integer with two digits
-int TRI_AppendInteger2StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 2);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief appends integer with three digits
-int TRI_AppendInteger3StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 3);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 100U) % 10 + '0');
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief appends integer with four digits
-int TRI_AppendInteger4StringBuffer(TRI_string_buffer_t* self, uint32_t attr) {
-  int res = Reserve(self, 4);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  AppendChar(self, (attr / 1000U) % 10 + '0');
-  AppendChar(self, (attr / 100U) % 10 + '0');
-  AppendChar(self, (attr / 10U) % 10 + '0');
-  AppendChar(self, attr % 10 + '0');
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief appends integer with 8 bits
@@ -729,32 +670,6 @@ int TRI_AppendDoubleStringBuffer(TRI_string_buffer_t* self, double attr) {
 
   int length = fpconv_dtoa(attr, self->_current);
   self->_current += static_cast<size_t>(length);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief appends time in standard format
-int TRI_AppendTimeStringBuffer(TRI_string_buffer_t* self, int32_t attr) {
-  int hour;
-  int minute;
-  int second;
-  int res;
-
-  hour = attr / 3600;
-  minute = (attr / 60) % 60;
-  second = attr % 60;
-
-  res = Reserve(self, 9);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)hour);
-  AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)minute);
-  AppendChar(self, ':');
-  TRI_AppendInteger2StringBuffer(self, (uint32_t)second);
 
   return TRI_ERROR_NO_ERROR;
 }

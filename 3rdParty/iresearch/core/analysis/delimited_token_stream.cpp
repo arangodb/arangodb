@@ -27,7 +27,7 @@
 
 #include "delimited_token_stream.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::bytes_ref eval_term(irs::bstring& buf, const irs::bytes_ref& data) {
   if (!data.size() || '"' != data[0]) {
@@ -196,10 +196,10 @@ bool normalize_text_config(const irs::string_ref& delimiter, std::string& defini
 REGISTER_ANALYZER_JSON(irs::analysis::delimited_token_stream, make_json, normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::delimited_token_stream, make_text, normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
   : attributes{{
@@ -257,5 +257,5 @@ bool delimited_token_stream::reset(const string_ref& data) {
   return true;
 }
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT

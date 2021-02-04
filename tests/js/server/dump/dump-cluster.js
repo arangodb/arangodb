@@ -881,7 +881,7 @@ function dumpTestEnterpriseSuite () {
       let props = view.properties();
       assertEqual("UnitTestsDumpSmartView", view.name());
       assertTrue(props.hasOwnProperty("links"));
-      assertEqual(Object.keys(props.links).length, 4); // virtual collecion + 3 system collections
+      assertEqual(Object.keys(props.links).length, 3); // virtual collecion + 2 system collections
 
       // UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("UnitTestDumpSmartEdges"));
@@ -894,14 +894,7 @@ function dumpTestEnterpriseSuite () {
       assertTrue("UnitTestsDumpView::smartCustom", props.links.UnitTestDumpSmartEdges.fields.text.analyzers[1]);
 
       // _to_UnitTestDumpSmartEdges
-      assertTrue(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("includeAllFields"));
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.includeAllFields);
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.hasOwnProperty("fields"));
-      assertEqual(Object.keys(props.links._to_UnitTestDumpSmartEdges.fields).length, 1);
-      assertTrue(props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers.length, 2);
-      assertTrue("text_en", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[0]);
-      assertTrue("UnitTestsDumpView::smartCustom", props.links._to_UnitTestDumpSmartEdges.fields.text.analyzers[1]);
+      assertFalse(props.links.hasOwnProperty("_to_UnitTestDumpSmartEdges"));
 
       // _from_UnitTestDumpSmartEdges
       assertTrue(props.links.hasOwnProperty("_from_UnitTestDumpSmartEdges"));

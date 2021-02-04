@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -42,6 +43,8 @@
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -63,6 +66,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
+      _lane(RequestLane::UNDEFINED),
       _canceled(false) {}
 
 RestHandler::~RestHandler() = default;
@@ -89,6 +93,50 @@ uint64_t RestHandler::messageId() const {
   }
 
   return messageId;
+}
+  
+RequestLane RestHandler::determineRequestLane() {
+  if (_lane == RequestLane::UNDEFINED) {
+    bool found;
+    _request->header(StaticStrings::XArangoFrontend, found);
+
+    if (found) {
+      _lane = RequestLane::CLIENT_UI;
+    } else {
+      _lane = lane();
+    }
+  }
+  TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+  return _lane;
+}
+
+void RestHandler::trackQueueStart() noexcept {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _statistics.SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+}
+
+void RestHandler::trackQueueEnd() noexcept {
+  _statistics.SET_QUEUE_END();
+}
+
+void RestHandler::trackTaskStart() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+  }
+}
+
+void RestHandler::trackTaskEnd() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    
+    // update the time the last low priority item spent waiting in the queue.
+    
+    // the queueing time is in ms
+    uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+  }
 }
 
 RequestStatistics::Item&& RestHandler::stealStatistics() {
@@ -145,6 +193,10 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   std::map<std::string, std::string> headers{_request->headers().begin(),
                                              _request->headers().end()};
+
+  // always remove HTTP "Connection" header, so that we don't relay 
+  // "Connection: Close" or "Connection: Keep-Alive" or such
+  headers.erase(StaticStrings::Connection);
 
   if (headers.find(StaticStrings::Authorization) == headers.end()) {
     // No authorization header is set, this is in particular the case if this
@@ -203,8 +255,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
       return Result(res);
     }
 
-    resetResponse(static_cast<rest::ResponseCode>(response.response->statusCode()));
-    _response->setContentType(fuerte::v1::to_string(response.response->contentType()));
+    resetResponse(static_cast<rest::ResponseCode>(response.statusCode()));
+    _response->setContentType(fuerte::v1::to_string(response.response().contentType()));
     
     if (!useVst) {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -212,13 +264,13 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
-      httpResponse->body() = response.response->payloadAsString();
+      httpResponse->body() = response.response().payloadAsString();
     } else {
-      _response->setPayload(std::move(*response.response->stealPayload()));
+      _response->setPayload(std::move(*response.response().stealPayload()));
     }
     
 
-    auto const& resultHeaders = response.response->messageHeader().meta();
+    auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
       if (it.first == "http/1.1") {
         // never forward this header, as the HTTP response code was already set
@@ -242,17 +294,15 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11929", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << ex.what();
+    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbc", WARN, arangodb::Logger::FIXME)
-    << "caught velocypack exception in " << name() << ": "
+    << "maintainer mode: caught velocypack exception in " << name() << ": "
     << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
     (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
      ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -262,25 +312,22 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept {
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f6", WARN, arangodb::Logger::FIXME)
-    << "caught memory exception in " << name() << ": "
+    << "maintainer mode: caught memory exception in " << name() << ": "
     << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252ea", WARN, arangodb::Logger::FIXME)
-    << "caught exception in " << name() << ": " << ex.what();
+    << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+    LOG_TOPIC("f729d", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -361,7 +408,6 @@ void RestHandler::prepareEngine() {
 
   if (_canceled) {
     _state = HandlerState::FAILED;
-    _statistics.SET_EXECUTE_ERROR();
 
     Exception err(TRI_ERROR_REQUEST_CANCELED,
                   "request has been canceled by user", __FILE__, __LINE__);
@@ -374,14 +420,11 @@ void RestHandler::prepareEngine() {
     _state = HandlerState::EXECUTE;
     return;
   } catch (Exception const& ex) {
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (std::exception const& ex) {
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -433,17 +476,15 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     handleError(ex);
   } catch (arangodb::velocypack::Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("fdcbb", WARN, arangodb::Logger::FIXME)
-        << "caught velocypack exception in " << name() << ": "
+        << "maintainer mode: caught velocypack exception in " << name() << ": "
         << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
          ex.errorCode() == arangodb::velocypack::Exception::UnexpectedControlCharacter);
@@ -453,25 +494,22 @@ void RestHandler::executeEngine(bool isContinue) {
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("5c9f5", WARN, arangodb::Logger::FIXME)
-        << "caught memory exception in " << name() << ": "
+        << "maintainer mode: caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("252e9", WARN, arangodb::Logger::FIXME)
-        << "caught exception in " << name() << ": " << ex.what();
+        << "maintainer mode: caught exception in " << name() << ": " << ex.what();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "caught unknown exception in " << name();
+    LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME) << "maintainer mode: caught unknown exception in " << name();
 #endif
-    _statistics.SET_EXECUTE_ERROR();
     Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
@@ -480,7 +518,7 @@ void RestHandler::executeEngine(bool isContinue) {
 }
 
 void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
-                                std::string_view const message) {
+                                std::string_view const errorMessage) {
   resetResponse(code);
 
   if (_request->requestType() != rest::RequestType::HEAD) {
@@ -490,7 +528,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(VPackValue(VPackValueType::Object));
       builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       builder.add(StaticStrings::Error, VPackValue(true));
-      builder.add(StaticStrings::ErrorMessage, VPackValue(message));
+      builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
       builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
@@ -525,13 +563,13 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorCode) {
-  char const* message = TRI_errno_string(errorCode);
+void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
+  char const* message = TRI_errno_string(errorNumber);
 
   if (message != nullptr) {
-    generateError(code, errorCode, std::string(message));
+    generateError(code, errorNumber, std::string_view(message));
   } else {
-    generateError(code, errorCode, std::string("unknown error"));
+    generateError(code, errorNumber, std::string_view("unknown error"));
   }
 }
 

@@ -189,7 +189,7 @@ ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY,1466,"must not specify _key for this collecti
 ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS,1467,"got contradicting answers from different shards","Will be raised if a Coordinator in a cluster gets conflicting results from different shards, which should never happen."
 ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN,1468,"not all sharding attributes given","Will be raised if a Coordinator tries to find out which shard is responsible for a partial document, but cannot do this because not all sharding attributes are specified."
 ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES,1469,"must not change the value of a shard key attribute","Will be raised if there is an attempt to update the value of a shard attribute."
-ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
+ERROR_CLUSTER_UNSUPPORTED,1470,"unsupported operation or parameter for clusters","Will be raised when there is an attempt to carry out an operation that is not supported in the context of a sharded collection."
 ERROR_CLUSTER_ONLY_ON_COORDINATOR,1471,"this operation is only valid on a coordinator in a cluster","Will be raised if there is an attempt to run a Coordinator-only operation on a different type of node."
 ERROR_CLUSTER_READING_PLAN_AGENCY,1472,"error reading Plan in agency","Will be raised if a Coordinator or DB-Server cannot read the Plan in the Agency."
 ERROR_CLUSTER_COULD_NOT_TRUNCATE_COLLECTION,1473,"could not truncate collection","Will be raised if a Coordinator cannot truncate all shards of a cluster collection."
@@ -273,6 +273,8 @@ ERROR_QUERY_NOT_FOUND,1591,"query ID not found","Will be raised when an Id of a 
 ERROR_QUERY_USER_ASSERT,1593,"%s","Will be raised if and user provided expression fails to evaluate to true"
 ERROR_QUERY_USER_WARN,1594,"%s","Will be raised if and user provided expression fails to evaluate to true"
 
+ERROR_QUERY_WINDOW_AFTER_MODIFICATION,1595,"window operation after data-modification","Will be raised when a window node is created after a data-modification operation."
+
 ################################################################################
 ## ArangoDB cursor errors
 ################################################################################
@@ -328,6 +330,7 @@ ERROR_LDAP_CANNOT_START_TLS,1805,"cannot start a TLS LDAP session","can not star
 ERROR_LDAP_FOUND_NO_OBJECTS,1806,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
 ERROR_LDAP_NOT_ONE_USER_FOUND,1807,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
 ERROR_LDAP_USER_NOT_IDENTIFIED,1808,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
+ERROR_LDAP_OPERATIONS_ERROR,1809,"LDAP returned an operations error","LDAP returned an operations error"
 ERROR_LDAP_INVALID_MODE,1820,"invalid ldap mode","cant distinguish a valid mode for provided LDAP configuration"
 
 ################################################################################
@@ -443,7 +446,7 @@ ERROR_MODULE_FAILURE,3103,"failed to invoke module","Failed to invoke the module
 ERROR_NO_SMART_COLLECTION,4000,"collection is not smart","The requested collection needs to be smart, but it ain't"
 ERROR_NO_SMART_GRAPH_ATTRIBUTE,4001,"smart graph attribute not given","The given document does not have the SmartGraph attribute set."
 ERROR_CANNOT_DROP_SMART_COLLECTION,4002,"cannot drop this smart collection","This smart collection cannot be dropped, it dictates sharding in the graph."
-ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."
+ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE,4003,"in smart vertex collections _key must be a string and prefixed with the value of the smart graph attribute","In a smart vertex collection _key must be prefixed with the value of the SmartGraph attribute."
 ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart graph attribute","The given smartGraph attribute is illegal and cannot be used for sharding. All system attributes are forbidden."
 ERROR_SMART_GRAPH_ATTRIBUTE_MISMATCH,4005,"smart graph attribute mismatch","The SmartGraph attribute of the given collection does not match the SmartGraph attribute of the graph."
 ERROR_INVALID_SMART_JOIN_ATTRIBUTE,4006,"invalid smart join attribute declaration","Will be raised when the smartJoinAttribute declaration is invalid."
@@ -523,3 +526,8 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
+
+################################################################################
+## AIR errors
+################################################################################
+ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"

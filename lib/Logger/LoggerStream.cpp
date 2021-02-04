@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,9 @@ namespace arangodb {
 
 LoggerStreamBase::LoggerStreamBase()
     : _topicId(LogTopic::MAX_LOG_TOPICS),
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+      _topicLevel(LogLevel::DEFAULT),
+#endif
       _level(LogLevel::DEFAULT),
       _line(0),
       _logid(nullptr),
@@ -47,30 +50,33 @@ LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
 
 LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
   _topicId = topic.id();
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  _topicLevel = topic.level();
+#endif
   return *this;
   }
 
 // print a hex representation of the binary data
-  LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
-    try {
-      uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
-      uint8_t const* end = ptr + binary.size;
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
+  try {
+    uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
+    uint8_t const* end = ptr + binary.size;
 
-      while (ptr < end) {
-        uint8_t n = *ptr;
+    while (ptr < end) {
+      uint8_t n = *ptr;
 
-        uint8_t n1 = n >> 4;
-        uint8_t n2 = n & 0x0F;
+      uint8_t n1 = n >> 4;
+      uint8_t n2 = n & 0x0F;
 
-        _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
-             << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
-        ++ptr;
-      }
-    } catch (...) {
-      // ignore any errors here. logging should not have side effects
+      _out << "\\x" << static_cast<char>((n1 < 10) ? ('0' + n1) : ('A' + n1 - 10))
+           << static_cast<char>((n2 < 10) ? ('0' + n2) : ('A' + n2 - 10));
+      ++ptr;
     }
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
 
-    return *this;
+  return *this;
 }
 
 // print a character array
@@ -131,6 +137,14 @@ LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexc
 
 LoggerStream::~LoggerStream() {
   try {
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+    // log maintainer mode disables this if in the macro, do it here:
+    if (!::arangodb::Logger::_isEnabled(_level, _topicLevel)) {
+      return;
+    }
+#endif
+    // TODO: with c++20, we can get a view on the stream's underlying buffer,
+    // without copying it
     Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
   } catch (...) {
     try {

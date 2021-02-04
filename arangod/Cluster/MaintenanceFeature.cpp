@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -267,7 +267,7 @@ void MaintenanceFeature::start() {
 void MaintenanceFeature::beginShutdown() {
   if (_resignLeadershipOnShutdown && ServerState::instance()->isDBServer()) {
     struct callback_data {
-      uint64_t _jobId;  // initialised before callback
+      uint64_t _jobId;  // initialized before callback
       bool _completed;  // populated by the callback
       std::mutex _mutex;  // mutex used by callback and loop to sync access to callback_data
       std::condition_variable _cv;  // signaled if callback has found something
@@ -996,7 +996,7 @@ std::unordered_set<std::string> MaintenanceFeature::dirty(
     _firstRun = false;
   } else {
     if (!more.empty()) {
-      ret.insert(std::make_move_iterator(more.begin()),std::make_move_iterator(more.end()));
+      ret.insert(more.begin(), more.end());
     }
   }
   return ret;
@@ -1006,7 +1006,7 @@ std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
   return server().getFeature<ClusterFeature>().allDatabases();
 }
 
-size_t MaintenanceFeature::lastNumberOfDatabases() {
+size_t MaintenanceFeature::lastNumberOfDatabases() const {
   // This number is not guarded relies on single threadedness of the maintenance
   return _lastNumberOfDatabases;
 }

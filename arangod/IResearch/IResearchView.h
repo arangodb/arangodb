@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,10 +51,10 @@ namespace iresearch {
 /// --SECTION--                                            Forward declarations
 ///////////////////////////////////////////////////////////////////////////////
 
-class IResearchFeature;  // forward declaration
-class IResearchLink;     // forward declaration
+class IResearchFeature;
+class AsyncLinkHandle;
 template <typename T>
-class TypedResourceMutex;  // forward declaration
+class TypedResourceMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -76,7 +76,7 @@ class TypedResourceMutex;  // forward declaration
 ///       the IResearchLink or IResearchViewBlock
 ///////////////////////////////////////////////////////////////////////////////
 class IResearchView final: public arangodb::LogicalView {
-  typedef std::shared_ptr<TypedResourceMutex<IResearchLink>> AsyncLinkPtr;
+  typedef std::shared_ptr<AsyncLinkHandle> AsyncLinkPtr;
 
  public:
 

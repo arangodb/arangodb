@@ -148,25 +148,27 @@ var updateFishbowlFromZip = function (filename) {
       }
     }
 
-    db._executeTransaction({
-      collections: {
-        exclusive: fishbowl.name()
-      },
-      action: function (params) {
-        var c = require('internal').db._collection(params.collection);
-        c.truncate();
+    if (fishbowl) {
+      db._executeTransaction({
+        collections: {
+          exclusive: fishbowl.name()
+        },
+        action: function (params) {
+          var c = require('internal').db._collection(params.collection);
+          c.truncate();
 
-        params.services.forEach(function (service) {
-          c.insert(service);
-        });
-      },
-      params: {
-        services: toSave,
-        collection: fishbowl.name()
-      }
-    });
+          params.services.forEach(function (service) {
+            c.insert(service);
+          });
+        },
+        params: {
+          services: toSave,
+          collection: fishbowl.name()
+        }
+      });
 
-    require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
+      require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
+    }
   }
 };
 
@@ -260,7 +262,7 @@ function availableJson (matchEngine) {
   let result = [];
 
   let fishbowl = getFishbowlStorage();
-  if (fishbowl) {
+  if (fishbowl && fishbowl.count() > 0) {
     let cursor = fishbowl.all();
 
     while (cursor.hasNext()) {

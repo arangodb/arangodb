@@ -25,5 +25,5 @@
 #include "search/filter.hpp"
 
 TEST(boost_attribute_test, consts) {
-  ASSERT_EQ(1.f, irs::no_boost());
+  static_assert(1.f == irs::no_boost());
 }

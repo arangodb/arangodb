@@ -143,7 +143,7 @@ TEST(EngineInfoContainerTest, it_should_create_an_executionengine_for_the_first_
   auto q = server.createFakeQuery("RETURN 1");
   ASSERT_EQ(q->rootEngine()->blocksForTesting().size(), 3);
   
-  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2];
+  ExecutionBlock* block = q->rootEngine()->blocksForTesting()[2].get();
   ASSERT_EQ(block->getPlanNode()->getType(), ExecutionNode::RETURN);
   
   ASSERT_EQ(q->snippets().size(), 1);
@@ -297,7 +297,7 @@ TEST(EngineInfoContainerTest,
   // Close the second snippet
   testee.closeSnippet();
   ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
 
   std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
@@ -551,7 +551,7 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
 
   testee.addNode(&tbNode);
   ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   std::vector<uint64_t> coordinatorQueryIds{};
   auto result =
@@ -735,7 +735,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
   */
   std::vector<uint64_t> coordinatorQueryIds{};
   ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   auto result =
       testee.buildEngines(query,
@@ -912,7 +912,7 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
       });
   */
   ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
    std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
   auto result =

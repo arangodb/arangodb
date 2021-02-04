@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,6 +120,11 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
   if (key == StaticStrings::Accept) {
     StringUtils::tolowerInPlace(value);
     _contentTypeResponse = rest::stringToContentType(value, ContentType::VPACK);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
+    }
     return;  // don't insert this header!!
   } else if ((_contentType == ContentType::UNSET) &&
              (key == StaticStrings::ContentTypeHeader)) {
@@ -138,8 +143,6 @@ void VstRequest::setHeader(VPackSlice keySlice, VPackSlice valSlice) {
 }
 
 void VstRequest::parseHeaderInformation() {
-  using namespace std;
-  
   /// the header was already validated here, the actual body was not
   VPackSlice vHeader(_payload.data());
   if (!vHeader.isArray() || vHeader.length() != 7) {
@@ -168,11 +171,11 @@ void VstRequest::parseHeaderInformation() {
 
     for (auto it : VPackObjectIterator(params, true)) {
       if (it.value.isArray()) {
-        vector<string> tmp;
+        std::vector<std::string> tmp;
         for (auto itInner : VPackArrayIterator(it.value)) {
           tmp.emplace_back(itInner.copyString());
         }
-        _arrayValues.try_emplace(it.key.copyString(), move(tmp));
+        _arrayValues.try_emplace(it.key.copyString(), std::move(tmp));
       } else {
         _values.try_emplace(it.key.copyString(), it.value.copyString());
       }

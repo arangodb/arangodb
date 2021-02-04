@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -287,7 +287,9 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs,
+                      std::string const& dbname);
 
   /// @brief whether or not the index is persistent (storage on durable media)
   /// or not (RAM only)
@@ -452,6 +454,7 @@ class Index {
   /// @brief generate error result
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  void addErrorMsg(result::Error& err, std::string const& key);
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,6 +64,11 @@ class AqlItemMatrix {
   uint64_t size() const noexcept;
 
   /**
+   * @brief Calculate the memory usage for the row indexes of the matrix
+   */
+  size_t memoryUsageForRowIndexes() const noexcept;
+
+  /**
    * @brief Number of registers, i.e. width of the matrix.
    */
   RegisterCount getNumRegisters() const noexcept;
@@ -73,7 +78,7 @@ class AqlItemMatrix {
    *
    * @return True if empty
    */
-  bool empty() const noexcept;
+  bool blocksEmpty() const noexcept;
 
   void clear();
 
@@ -104,10 +109,20 @@ class AqlItemMatrix {
 
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
+  /**
+   * @brief Skip over all shadowRows with a Subquery-depth <= depth
+   *
+   * @return firstValue: The number of ShadowRows in depth Skipped
+   *         secondValue: The first shadowRow of Subquery-depth > depth, or not-initialize if no such row exists.
+   * Invariant: secondValue.initialized() <=> this.numberBlocks() > 0
+   */
+  [[nodiscard]] auto skipAllShadowRowsOfDepth(size_t depth)
+      -> std::tuple<size_t, ShadowAqlItemRow>;
+
  private:
   std::vector<SharedAqlItemBlockPtr> _blocks;
 
-  uint64_t _size;
+  uint64_t _numDataRows;
 
   RegisterCount _nrRegs;
   size_t _startIndexInFirstBlock{0};

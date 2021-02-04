@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -272,7 +272,7 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack) -> Execution
 template <class Executor>
 std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>::getSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)}, true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateGetSome(atMost)});
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(skipped.nothingSkipped());
   return {state, std::move(block)};
@@ -283,7 +283,7 @@ std::pair<ExecutionState, SharedAqlItemBlockPtr> BlocksWithClientsImpl<Executor>
 template <class Executor>
 std::pair<ExecutionState, size_t> BlocksWithClientsImpl<Executor>::skipSomeForShard(
     size_t atMost, std::string const& shardId) {
-  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)}, true);
+  AqlCallStack stack(AqlCallList{AqlCall::SimulateSkipSome(atMost)});
   auto [state, skipped, block] = executeForClient(stack, shardId);
   TRI_ASSERT(block == nullptr);
   return {state, skipped.getSkipCount()};

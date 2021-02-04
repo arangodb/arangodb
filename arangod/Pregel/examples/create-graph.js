@@ -20,12 +20,10 @@ module.exports = function (gname, shards, repFac) {
   if (!exists) {
     graph = graph_module._create(gname);
     db._create(vColl, {numberOfShards: shards,
-                       indexBuckets: shards,
                        replicationFactor:repFac});
     graph._addVertexCollection(vColl);
     db._createEdgeCollection(eColl, {
                              numberOfShards: shards,
-                             //indexBuckets: shards,
                              replicationFactor: repFac,
                              shardKeys:["vertex"],
                              distributeShardsLike:vColl});

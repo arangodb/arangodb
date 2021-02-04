@@ -74,6 +74,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+### fastvalidate-utf8
+
+* Name: fastvalidate-utf8
+* Version: (none)
+* Date: 2017-02-28 13:11:35Z 
+* Project Home: https://github.com/lemire/fastvalidate-utf-8
+* License: https://raw.githubusercontent.com/lemire/fastvalidate-utf-8/master/LICENSE-APACHE
+* License Name: Apache License 2.0
+* License Id: Apache-2.0
+
 ### fpconv_dtoa
 
 * Name: fpconv
@@ -377,8 +387,8 @@ _Enterprise Edition only_
 ### libunwind
 
 * Name: libunwind
-* Version: 1.4
-* Date: 2020-03-31 16:12:36Z
+* Version: 1.5
+* Date: 2020-11-10 16:16:31Z
 * Project Home: https://github.com/libunwind/libunwind
 * License: https://raw.githubusercontent.com/libunwind/libunwind/master/LICENSE
 * License Name: MIT License
@@ -457,8 +467,8 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.7
-* Date: 2017-08-25 00:37:10Z
+* Version: 1.1.8
+* Date: 2020-10-29 23:00:50Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING
 * License Name: BSD 3-clause "New" or "Revised" License
@@ -549,8 +559,8 @@ _Enterprise Edition only_
 #### IANA Time Zone Database (tzdata)
 
 Name: Time Zone Database
-Version: 2020a
-Date: 2020-04-23
+Version: 2020f
+Date: 2020-12-29
 Project https://www.iana.org/time-zones
 License: https://raw.githubusercontent.com/arangodb/arangodb/devel/3rdParty/tzdata/LICENSE
 License Name: Public Domain
@@ -559,8 +569,8 @@ License Id: -
 #### Unicode CLDR Project (windowsZones.xml)
 
 Name: Unicode CLDR Project
-Version: 37
-Date: 2020-09-04 15:01:52Z
+Version: 38.1
+Date: 2020-11-19
 Project Home: https://github.com/unicode-org/cldr
 License: https://raw.githubusercontent.com/unicode-org/cldr/master/ICU-LICENSE
 License Name: ICU License

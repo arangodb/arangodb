@@ -31,7 +31,7 @@
 // @brief data buffers used internally and not exported via public API
 // -------------------------------------------------------------------
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // basic_allocator
@@ -255,7 +255,7 @@ template<
 
   inline void oversize(size_t minsize, size_t chunksize = DEF_ALIGN) {
     if (minsize > capacity()) {
-      reserve(iresearch::oversize(chunksize, capacity(), minsize));
+      reserve(irs::oversize(chunksize, capacity(), minsize));
     }
   }
 
@@ -441,6 +441,6 @@ template<
 typedef basic_string_builder<byte_type> bstring_builder; // byte string
 typedef basic_string_builder<char> cstring_builder;      // char string
 
-NS_END
+}
 
 #endif

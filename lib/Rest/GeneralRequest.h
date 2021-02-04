@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -210,6 +210,7 @@ class GeneralRequest {
   ContentType contentType() const { return _contentType; }
   /// @brief should generally reflect the Accept header
   ContentType contentTypeResponse() const { return _contentTypeResponse; }
+  std::string const& contentTypeResponsePlain() const { return _contentTypeResponsePlain; }
   /// @brief should generally reflect the Accept-Encoding header
   EncodingType acceptEncoding() const { return _acceptEncoding; }
 
@@ -233,6 +234,7 @@ class GeneralRequest {
   std::string _fullUrl;
   std::string _requestPath;
   std::string _prefix;  // part of path matched by rest route
+  std::string  _contentTypeResponsePlain;
   std::vector<std::string> _suffixes; // path suffixes
 
   std::unordered_map<std::string, std::string> _headers;

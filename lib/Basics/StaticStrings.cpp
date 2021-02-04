@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -67,6 +67,7 @@ std::string const StaticStrings::Prefix("prefix");
 std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::PreserveRevisionIds("preserveRevisionIds");
+std::string const StaticStrings::Compact("compact");
 
 // replication headers
 std::string const StaticStrings::ReplicationHeaderCheckMore(
@@ -229,18 +230,16 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
+std::string const StaticStrings::EncodingIdentity("identity");
 std::string const StaticStrings::EncodingDeflate("deflate");
 
 // collection attributes
 std::string const StaticStrings::CacheEnabled("cacheEnabled");
 std::string const StaticStrings::DistributeShardsLike("distributeShardsLike");
-std::string const StaticStrings::DoCompact("doCompact");
 std::string const StaticStrings::Indexes("indexes");
 std::string const StaticStrings::IsSmart("isSmart");
 std::string const StaticStrings::IsSmartChild("isSmartChild");
 std::string const StaticStrings::NumberOfShards("numberOfShards");
-std::string const StaticStrings::IndexBuckets("indexBuckets");
-std::string const StaticStrings::JournalSize("journalSize");
 std::string const StaticStrings::MinReplicationFactor("minReplicationFactor");
 std::string const StaticStrings::MinRevision("minRevision");
 std::string const StaticStrings::ObjectId("objectId");
@@ -273,6 +272,28 @@ std::string const StaticStrings::GraphOrphans("orphanCollections");
 std::string const StaticStrings::GraphInitial("initial");
 std::string const StaticStrings::GraphInitialCid("initialCid");
 std::string const StaticStrings::GraphName("name");
+std::string const StaticStrings::GraphTraversalProfileLevel("traversalProfile");
+
+// Pregel Section Start
+
+// Pregel Accumulator Attributes
+std::string const StaticStrings::AccumulatorHot("hot");
+std::string const StaticStrings::AccumulatorCold("cold");
+std::string const StaticStrings::AccumulatorValue("value");
+std::string const StaticStrings::AccumulatorSender("sender");
+std::string const StaticStrings::AccumulatorName("accumulator");
+
+// Pregel VertexComputation Attributes
+std::string const StaticStrings::VertexComputationPregelId("pregel-id");
+std::string const StaticStrings::VertexComputationVertexId("vertex");
+std::string const StaticStrings::VertexComputationPhase("phase");
+std::string const StaticStrings::VertexComputationGlobalSuperstep("global-superstep");
+std::string const StaticStrings::VertexComputationPhaseStep("phase-step");
+std::string const StaticStrings::VertexComputationMessage("message");
+std::string const StaticStrings::VertexComputationVoteActive("vote-active");
+std::string const StaticStrings::VertexComputationVoteHalt("vote-halt");
+
+// Pregel Section End
 
 // Query Strings
 std::string const StaticStrings::QuerySortASC("ASC");
@@ -284,6 +305,12 @@ std::string const StaticStrings::GraphQueryVertices("vertices");
 std::string const StaticStrings::GraphQueryPath("path");
 std::string const StaticStrings::GraphQueryGlobal("global");
 std::string const StaticStrings::GraphQueryNone("none");
+std::string const StaticStrings::GraphQueryWeights("weights");
+std::string const StaticStrings::GraphQueryOrder("order");
+std::string const StaticStrings::GraphQueryOrderBFS("bfs");
+std::string const StaticStrings::GraphQueryOrderDFS("dfs");
+std::string const StaticStrings::GraphQueryOrderWeighted("weighted");
+std::string const StaticStrings::GraphQueryShortestPathType("shortestPathType");
 
 // rest query parameter
 std::string const StaticStrings::GraphDropCollections("dropCollections");
@@ -344,9 +371,14 @@ std::string const StaticStrings::AqlRemoteStateDone("done");
 std::string const StaticStrings::AqlRemoteStateHasmore("hasmore");
 std::string const StaticStrings::AqlCallListSpecific("specifics");
 std::string const StaticStrings::AqlCallListDefault("default");
-std::string const StaticStrings::ArangoSearchAnalyzersRevision("analyzersRevision");
-std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision("current");
+std::string const StaticStrings::ArangoSearchAnalyzersRevision(
+    "analyzersRevision");
+std::string const StaticStrings::ArangoSearchCurrentAnalyzersRevision(
+    "current");
 std::string const StaticStrings::ArangoSearchSystemAnalyzersRevision("system");
+
+// aql http headers
+std::string const StaticStrings::AqlShardIdHeader("x-shard-id");
 
 // validation
 std::string const StaticStrings::ValidationLevelNone("none");
@@ -428,3 +460,6 @@ std::string const StaticStrings::SupervisionAccumRuntimeWaitForSyncMs(
     "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec");
 std::string const StaticStrings::SupervisionFailedServerCount(
     "arangodb_agency_supervision_failed_server_count");
+
+// TODO REMOVE ME AFTER REFACTOR IS DONE
+std::string const StaticStrings::GraphRefactorFlag("refactor");

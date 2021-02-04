@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -216,8 +216,8 @@ bool RestBatchHandler::executeNextHandler() {
   {
     auto response = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
                                                    std::make_unique<StringBuffer>(false));
-    handler = GeneralServerFeature::HANDLER_FACTORY->createHandler(
-        server(), std::move(request), std::move(response));
+    auto& factory = server().getFeature<GeneralServerFeature>().handlerFactory();
+    handler = factory.createHandler(server(), std::move(request), std::move(response));
 
     if (handler == nullptr) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,7 +222,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
 
   // reset the traverser; this is mainly needed because the traverser is
   // part of the KShortestPathsExecutorInfos, and hence not recreated when
-  // a cursor is initialised.
+  // a cursor is initialized.
   void clear() override;
 
   // This is here because we inherit from ShortestPathFinder (to get the destroyEngines function)
@@ -234,7 +234,7 @@ class KShortestPathsFinder : public ShortestPathFinder {
     return false;
   }
 
-  // initialise k Shortest Paths
+  // initialize k Shortest Paths
   TEST_VIRTUAL bool startKShortestPathsTraversal(arangodb::velocypack::Slice const& start,
                                                  arangodb::velocypack::Slice const& end);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
@@ -71,7 +71,7 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
   startsAfter<SystemDatabaseFeature>();
 
   // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FoxxFeature>();
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -215,7 +215,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
         << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+    vocbase->server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
         vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -267,7 +267,7 @@ void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) 
                                 /*new*/ myIdBuilder.slice(),
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         }
-        if (res.successful()) {  // sucessfull leadership takeover
+        if (res.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
         }  // ignore for now, heartbeat thread will handle it
       }
@@ -295,7 +295,9 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
-  bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
+  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                   server().isEnabled<V8DealerFeature>() &&
+                   server().getFeature<V8DealerFeature>().isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -337,7 +339,7 @@ void BootstrapFeature::start() {
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
           vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();

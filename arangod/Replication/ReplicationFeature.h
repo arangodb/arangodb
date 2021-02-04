@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/Metrics.h"
 
 struct TRI_vocbase_t;
 
@@ -94,13 +95,13 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   /// must only be called after a successful call to trackTailingstart
   void trackTailingEnd() noexcept;
 
+  void trackInventoryRequest() { ++_inventoryRequests; }
+
   /// @brief set the x-arango-endpoint header
-  static void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
+  void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
 
   /// @brief fill a response object with correct response for a follower
-  static void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
-
-  static ReplicationFeature* INSTANCE;
+  void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
 
  private:
   /// @brief connection timeout for replication requests
@@ -132,6 +133,8 @@ class ReplicationFeature final : public application_features::ApplicationFeature
   uint64_t _maxParallelTailingInvocations;
 
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
+
+  Counter& _inventoryRequests;
 };
 
 }  // namespace arangodb

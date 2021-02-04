@@ -35,7 +35,7 @@
 
 #include <unordered_map>
 
-NS_LOCAL
+namespace {
 
 class all_iterator final : public irs::doc_iterator {
  public:
@@ -44,7 +44,13 @@ class all_iterator final : public irs::doc_iterator {
   }
 
   virtual bool next() noexcept override {
-    return !irs::doc_limits::eof(seek(doc_.value + 1));
+    if (doc_.value >= max_doc_) {
+      doc_.value = irs::doc_limits::eof();
+      return false;
+    } else {
+      doc_.value++;
+      return true;
+    }
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
@@ -225,9 +231,9 @@ bool read_columns_meta(
   return true;
 }
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // segment_reader
@@ -481,4 +487,4 @@ const columnstore_reader::column_reader* segment_reader_impl::column_reader(
     : nullptr;
 }
 
-NS_END
+}

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -121,7 +121,7 @@ void RestClusterHandler::handleAgencyCache() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce an agency cache dump");
       return;
     }
   }
@@ -145,7 +145,7 @@ void RestClusterHandler::handleClusterInfo() {
     }
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights to produce an agency dump");
+                    "you need admin rights to produce a cluster info dump");
       return;
     }
   }
@@ -153,9 +153,7 @@ void RestClusterHandler::handleClusterInfo() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto dump = ci.toVelocyPack();
 
-  LOG_DEVEL << dump.toJson();
   generateResult(rest::ResponseCode::OK, dump.slice());
-
 }
 
 /// @brief returns information about all coordinator endpoints
@@ -166,8 +164,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   if (ServerState::instance()->isCoordinator()) {
     endpoints = ci.getCurrentCoordinators();
   } else if (ServerState::instance()->isSingleServer()) {
-    ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-    if (!replication->isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
+    ReplicationFeature& replication = server().getFeature<ReplicationFeature>();
+    if (!replication.isActiveFailoverEnabled() || !AsyncAgencyCommManager::isEnabled()) {
       generateError(Result(TRI_ERROR_NOT_IMPLEMENTED,
                            "automatic failover is not enabled"));
       return;

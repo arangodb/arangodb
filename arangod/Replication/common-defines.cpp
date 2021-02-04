@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,8 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  if (name.compare(0, 11, "_statistics") == 0 ||
+  // check if the name starts with _statistics
+  if (name.compare(0, 11, StaticStrings::StatisticsCollection) == 0 ||
       name == "_routing") {
     // these system collections will always be excluded
     return true;

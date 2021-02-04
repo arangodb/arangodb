@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexc
 
 std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   std::vector<RowIndex> result;
-  if (!empty()) {
+  if (!blocksEmpty()) {
     result.reserve(size());
     for (auto const& [index, block] : enumerate(_blocks)) {
       // Default case, 0 -> end
@@ -78,18 +78,22 @@ std::vector<AqlItemMatrix::RowIndex> AqlItemMatrix::produceRowIndexes() const {
   return result;
 }
 
-bool AqlItemMatrix::empty() const noexcept { return _blocks.empty(); }
+bool AqlItemMatrix::blocksEmpty() const noexcept { return _blocks.empty(); }
 
 void AqlItemMatrix::clear() {
   _blocks.clear();
-  _size = 0;
+  _numDataRows = 0;
   _startIndexInFirstBlock = 0;
   _stopIndexInLastBlock = InvalidRowIndex;
 }
 
 RegisterCount AqlItemMatrix::getNumRegisters() const noexcept { return _nrRegs; }
 
-uint64_t AqlItemMatrix::size() const noexcept { return _size; }
+uint64_t AqlItemMatrix::size() const noexcept { return _numDataRows; }
+
+size_t AqlItemMatrix::memoryUsageForRowIndexes() const noexcept {
+  return size() * sizeof(RowIndex);
+}
 
 void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
   // If we are stopped by shadow row, we first need to solve this blockage
@@ -119,9 +123,9 @@ void AqlItemMatrix::addBlock(SharedAqlItemBlockPtr blockPtr) {
     TRI_ASSERT(shadowRowsBegin != shadowRowsEnd);
     // Let us stop on the first
     _stopIndexInLastBlock = *shadowRowsBegin;
-    _size += _stopIndexInLastBlock;
+    _numDataRows += _stopIndexInLastBlock;
   } else {
-    _size += blockPtr->numRows();
+    _numDataRows += blockPtr->numRows();
   }
 
   // Move block into _blocks
@@ -149,13 +153,13 @@ ShadowAqlItemRow AqlItemMatrix::popShadowRow() {
     TRI_ASSERT(stoppedOnShadowRow());
     // We move always forward
     TRI_ASSERT(_stopIndexInLastBlock >= _startIndexInFirstBlock);
-    _size = _stopIndexInLastBlock - _startIndexInFirstBlock;
+    _numDataRows = _stopIndexInLastBlock - _startIndexInFirstBlock;
   } else {
     _stopIndexInLastBlock = InvalidRowIndex;
     TRI_ASSERT(!stoppedOnShadowRow());
     // _stopIndexInLastBlock a 0 based index. size is a counter.
     TRI_ASSERT(blockPtr->numRows() >= _startIndexInFirstBlock);
-    _size = blockPtr->numRows() - _startIndexInFirstBlock;
+    _numDataRows = blockPtr->numRows() - _startIndexInFirstBlock;
   }
   if (_startIndexInFirstBlock >= _blocks.back()->numRows()) {
     // The last block is also fully used
@@ -175,7 +179,7 @@ ShadowAqlItemRow AqlItemMatrix::peekShadowRow() const {
 }
 
 AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
-    : _size(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
+    : _numDataRows(0), _nrRegs(nrRegs), _stopIndexInLastBlock(InvalidRowIndex) {}
 
 [[nodiscard]] auto AqlItemMatrix::countDataRows() const noexcept -> std::size_t {
   size_t num = 0;
@@ -208,4 +212,26 @@ AqlItemMatrix::AqlItemMatrix(RegisterCount nrRegs)
     return false;
   }
   return _stopIndexInLastBlock + 1 < _blocks.back()->numRows();
+}
+
+[[nodiscard]] auto AqlItemMatrix::skipAllShadowRowsOfDepth(size_t depth)
+    -> std::tuple<size_t, ShadowAqlItemRow> {
+  if (_blocks.empty()) {
+    // Nothing to do
+    return {0, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
+  }
+  size_t skipped = 0;
+  while (stoppedOnShadowRow()) {
+    auto shadow = popShadowRow();
+    if (shadow.getDepth() > depth) {
+      return {skipped, shadow};
+    }
+    if (shadow.getDepth() == depth) {
+      skipped++;
+    }
+  }
+  // If we get here we only have data left, and have not run over a
+  // shadowRow we shall not skip. Drop all
+  clear();
+  return {skipped, ShadowAqlItemRow{CreateInvalidShadowRowHint()}};
 }

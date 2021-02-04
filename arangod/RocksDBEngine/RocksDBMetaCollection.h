@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -62,9 +62,9 @@ class RocksDBMetaCollection : public PhysicalCollection {
   int lockRead(double timeout = 0.0);
   void unlockRead();
   
-  /// recalculte counts for collection in case of failure
-  uint64_t recalculateCounts();
-  
+  /// recalculate counts for collection in case of failure, blocks other writes for a short period
+  uint64_t recalculateCounts() override;
+ 
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
   Result compact() override final;
@@ -131,6 +131,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RocksDBMetadata _meta;     /// collection metadata
   /// @brief collection lock used for write access
   mutable basics::ReadWriteLock _exclusiveLock;
+  /// @brief collection lock used for recalculation count values
+  mutable std::mutex _recalculationLock;
 
  private:
   std::atomic<uint64_t> _objectId;  /// rocksdb-specific object id for collection

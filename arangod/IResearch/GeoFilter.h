@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -38,11 +39,21 @@ class GeoFilter;
 class GeoDistanceFilter;
 
 enum class GeoFilterType : uint32_t {
-  NEARBY = 0,
-  INTERSECTS,
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if a given shape intersects indexed data
+  ////////////////////////////////////////////////////////////////////////////////
+  INTERSECTS = 0,
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if a given shape fully contains indexed data
+  ////////////////////////////////////////////////////////////////////////////////
   CONTAINS,
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief check if a given shape is fully contained within indexed data
+  ////////////////////////////////////////////////////////////////////////////////
   IS_CONTAINED
-};
+}; // GeoFilterType
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @struct GeoFilterOptions
@@ -75,7 +86,7 @@ struct GeoFilterOptions {
   geo::ShapeContainer shape;
   std::string prefix;
   S2RegionTermIndexer::Options options;
-  GeoFilterType type{GeoFilterType::NEARBY};
+  GeoFilterType type{GeoFilterType::INTERSECTS};
 }; // GeoFilterOptions
 
 //////////////////////////////////////////////////////////////////////////////
@@ -97,7 +108,7 @@ class GeoFilter final
     const irs::index_reader& rdr,
     const irs::order::prepared& ord,
     irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const;
+    const irs::attribute_provider* /*ctx*/) const override;
 }; // GeoFilter
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +152,7 @@ class GeoDistanceFilter final
     const irs::index_reader& rdr,
     const irs::order::prepared& ord,
     irs::boost_t boost,
-    const irs::attribute_provider* /*ctx*/) const;
+    const irs::attribute_provider* /*ctx*/) const override;
 }; // GeoDistanceFilter
 
 } // iresearch

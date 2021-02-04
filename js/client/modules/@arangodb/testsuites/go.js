@@ -41,8 +41,8 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const platform = require('internal').platform;
 const time = require('internal').time;
@@ -64,7 +64,7 @@ const testPaths = {
 
 function goDriver (options) {
   function runInGoTest (options, instanceInfo, file, addArgs) {
-    process.env['TEST_ENDPOINTS'] = instanceInfo.url;
+    process.env['TEST_ENDPOINTS'] = instanceInfo.urls.join(',');
     process.env['TEST_AUTHENTICATION'] = 'basic:root:';
     let jwt = pu.getJwtSecret(options);
     if (jwt) {
@@ -213,7 +213,9 @@ function goDriver (options) {
   }
   localOptions['server.jwt-secret'] = 'haxxmann';
 
-  return tu.performTests(localOptions, [ 'go_test.js'], 'go_test', runInGoTest);
+  let rc = tu.performTests(localOptions, [ 'go_test.js'], 'go_test', runInGoTest);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 
