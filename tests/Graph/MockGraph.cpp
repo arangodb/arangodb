@@ -208,8 +208,8 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     arangodb::aql::RestAqlHandler aqlHandler{server.server(), fakeRequest.release(),
                                              fakeResponse.release(), &queryRegistry};
 
-    auto response = aqlHandler.stealResponse(); // Read: (EngineId eid)
     aqlHandler.execute();
+    auto response = aqlHandler.stealResponse(); // Read: (EngineId eid)
   }
 
   for (auto const& vertex : vertices()) {
