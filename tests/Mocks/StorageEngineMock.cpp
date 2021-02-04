@@ -1291,6 +1291,41 @@ arangodb::Result PhysicalCollectionMock::remove(
     _graveyard.emplace_back(old->second.rawData());
     TRI_ASSERT(previous.revisionId() ==
                arangodb::RevisionId::fromSlice(old->second.data()));
+    for (auto& index : _indexes) {
+      if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        auto* l = static_cast<EdgeIndexMock*>(index.get());
+        if (!l->remove(trx, old->second.docId(),
+                       old->second.data(), arangodb::IndexOperationMode::normal)
+                 .ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        continue;
+      } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        auto* l = static_cast<HashIndexMock*>(index.get());
+        if (!l->remove(trx, old->second.docId(),
+                       old->second.data()).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        continue;
+      } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        if (arangodb::ServerState::instance()->isCoordinator()) {
+          auto* l =
+              static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+          if (!l->remove(trx, old->second.docId(),
+                       old->second.data()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+        } else {
+          auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
+          if (!l->remove(trx, old->second.docId(),
+                       old->second.data()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+        }
+        continue;
+      }
+      TRI_ASSERT(false);
+    }
     _documents.erase(keyRef);
     return arangodb::Result(TRI_ERROR_NO_ERROR);  // assume document was removed
   }
@@ -1321,6 +1356,32 @@ arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods
                                                   arangodb::OperationOptions& options) {
   before();
   _documents.clear();
+  TRI_voc_tick_t truncateTick{0}; // seems to be ignored for mocks so just keep it 0
+  for (auto& index : _indexes) {
+    if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto* l = static_cast<EdgeIndexMock*>(index.get());
+      l->afterTruncate(truncateTick, &trx);
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+      auto* l = static_cast<HashIndexMock*>(index.get());
+      l->afterTruncate(truncateTick, &trx);
+      continue;
+    } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+      if (arangodb::ServerState::instance()->isCoordinator()) {
+        auto* l =
+            static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+        auto* irL = static_cast<arangodb::iresearch::IResearchLink*>(l);
+        irL->afterTruncate(truncateTick, &trx);
+      } else {
+        // multiple inheritance so needs additional call to disambiguate afterTruncate
+        auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
+        auto* irL = static_cast<arangodb::iresearch::IResearchLink*>(l);
+        irL->afterTruncate(truncateTick, &trx);
+      }
+      continue;
+    }
+    TRI_ASSERT(false);
+  }
   return arangodb::Result();
 }
 
@@ -1342,6 +1403,8 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
   auto it = _documents.find(keyRef);
   if (it != _documents.end()) {
     auto doc = it->second.data();
+    auto oldDocId = it->second.docId();
+    VPackBuilder oldDoc(it->second.data());
     if (!options.ignoreRevs) {
       arangodb::RevisionId expectedRev = arangodb::RevisionId::none();
       if (newSlice.isObject()) {
@@ -1384,6 +1447,55 @@ arangodb::Result PhysicalCollectionMock::updateInternal(
 
     result.setManaged(it->second.vptr());
     TRI_ASSERT(result.revisionId() != previous.revisionId());
+    for (auto& index : _indexes) {
+      if (index->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+        auto* l = static_cast<EdgeIndexMock*>(index.get());
+        if (!l->remove(*trx, oldDocId,
+                       oldDoc.slice(), arangodb::IndexOperationMode::normal).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        if (!l->insert(*trx, it->second.docId(),
+                       it->second.data()).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        continue;
+      } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_HASH_INDEX) {
+        auto* l = static_cast<HashIndexMock*>(index.get());
+        if (!l->remove(*trx, oldDocId,
+                       oldDoc.slice()).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        if (!l->insert(*trx, it->second.docId(),
+                       it->second.data()).ok()) {
+          return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+        }
+        continue;
+      } else if (index->type() == arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
+        if (arangodb::ServerState::instance()->isCoordinator()) {
+          auto* l =
+              static_cast<arangodb::iresearch::IResearchLinkCoordinator*>(index.get());
+          if (!l->remove(*trx, oldDocId,
+                         oldDoc.slice()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+          if (!l->insert(*trx, it->second.docId(),
+                         it->second.data()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+        } else {
+          auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(index.get());
+          if (!l->remove(*trx, oldDocId,
+                         oldDoc.slice()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+          if (!l->insert(*trx, it->second.docId(), it->second.data()).ok()) {
+            return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
+          }
+        }
+        continue;
+      }
+      TRI_ASSERT(false);
+    }
     return TRI_ERROR_NO_ERROR;
   }
   return arangodb::Result(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
