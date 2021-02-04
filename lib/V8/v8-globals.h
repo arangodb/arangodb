@@ -85,7 +85,7 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 
 static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
                                                         void const* ptr, std::size_t length) {
-  if (ADB_UNLIKELY(length > std::numeric_limits<int>::max())) {
+  if (ADB_UNLIKELY(length > (unsigned int)std::numeric_limits<int>::max())) {
     throw std::overflow_error("string length out of range");
   }
   return v8Utf8StringFactory(isolate, ptr, static_cast<int>(length));
@@ -99,7 +99,9 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, T const&);
 
 template <std::size_t n>
 v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, char const (&arg)[n]) {
-  return v8Utf8StringFactory(isolate, arg, n);
+  static_assert(n > 0);
+  TRI_ASSERT(arg[n-1] == '\0');
+  return v8Utf8StringFactory(isolate, arg, n-1);
 }
 
 /// @brief shortcut for creating a v8 symbol for the specified string
@@ -224,9 +226,9 @@ v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, char const (&ar
   } while (0)
 
 /// @brief shortcut for throwing an error
-#define TRI_V8_SET_ERROR(message)                                                       \
-  do {                                                                                  \
-    isolate->ThrowException(v8::Exception::Error(TRI_V8_STD_STRING(isolate, message))); \
+#define TRI_V8_SET_ERROR(message)                                                   \
+  do {                                                                              \
+    isolate->ThrowException(v8::Exception::Error(TRI_V8_STRING(isolate, message))); \
   } while (0)
 
 #define TRI_V8_THROW_ERROR(message) \
