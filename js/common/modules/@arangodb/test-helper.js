@@ -160,7 +160,7 @@ exports.Helper = {
   },
 };
 
-exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
+exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
   for (let testcase in deriveFrom) {
     let targetTestCase = testcase + namespace;
     if (testcase === "setUp" ||
@@ -169,6 +169,10 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
         testcase === "tearDownAll") {
       targetTestCase = testcase;
     }
+    if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)){
+      continue;
+    }
+
     if (deriveTo.hasOwnProperty(targetTestCase)) {
       throw("Duplicate testname - deriveTo already has the property " + targetTestCase);
     }
