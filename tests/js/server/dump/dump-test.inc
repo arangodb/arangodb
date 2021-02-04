@@ -370,7 +370,7 @@
         if (args.autoIncDocCount === 1001) {
           doc = c.save({});
           assertEqual(doc._key, "42091");
-        } else {
+        } else if (args.autoIncDocCount === 2001) {
           // hot backup case:
           for (var j = 0; i < 1000; ++i) {
             let doc = c.document(String(7 + ((1000 + j) * 42)));
