@@ -5169,12 +5169,15 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   // V8 didn't provide any extra information about this error; just print the
   // exception.
   if (message.IsEmpty()) {
-    if (exceptionString == nullptr) {
-      LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
-          << "JavaScript exception";
-    } else {
-      LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
-          << "JavaScript exception: " << exceptionString;
+    if (!isolate->IsExecutionTerminating()) {
+      if (exceptionString == nullptr || *exceptionString == '\0') {
+        LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception";
+      } else {
+        TRI_ASSERT(exceptionString != nullptr);
+        LOG_TOPIC("7e60e", ERR, arangodb::Logger::FIXME)
+            << "JavaScript exception: " << exceptionString;
+      }
     }
   } else {
     TRI_Utf8ValueNFC filename(isolate, message->GetScriptResourceName());
