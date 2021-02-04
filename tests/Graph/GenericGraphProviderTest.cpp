@@ -107,7 +107,12 @@ class GraphProviderTest : public ::testing::Test {
       {
         arangodb::tests::mocks::MockDBServer server{};
         graph.prepareServer(server);
-        preparedResponses = graph.simulateApi(server);
+        std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
+        preparedResponses = graph.simulateApi(server, verticesList);
+        LOG_DEVEL << "Debug, size is: " << preparedResponses.size();
+        for (auto const& resp : preparedResponses) {
+          LOG_DEVEL << resp.generateResponse()->copyPayload().get()->toString();
+        }
       }
 
       server = std::make_unique<mocks::MockCoordinator>(false);

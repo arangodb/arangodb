@@ -155,7 +155,8 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
 
 template <>
 // Future: Also engineID's need to be returned here.
-std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(MockDBServer& server) const {
+std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
+    MockDBServer& server, std::unordered_set<VertexDef, hashVertexDef> verticesList) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
   std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
@@ -209,10 +210,16 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
                                              fakeResponse.release(), &queryRegistry};
 
     aqlHandler.execute();
-    auto response = aqlHandler.stealResponse(); // Read: (EngineId eid)
+    auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
+    // TODO: read resposnse (eid)
   }
 
-  for (auto const& vertex : vertices()) {
+  // merge given vertices with available graph vertices
+  verticesList.insert(vertices().begin(), vertices().end());
+
+  for (auto const& vertex : verticesList) {
+    LOG_DEVEL << "  -> " << vertex._id;
+
     // 1.) fetch the vertex itself
     arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
     auto fakeResponse = std::make_unique<GeneralResponseMock>();
@@ -226,11 +233,6 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     leased.add(VPackValue(vertex._id));
     leased.close();  // 'keys' Array
     leased.close();  // base object
-
-    /*
-     * 1.) Put Slice into RestAqlHandler
-     *   ->
-     */
 
     // Request muss ins array: preparedResponses
     prep.setRequestType(arangodb::rest::RequestType::PUT);
