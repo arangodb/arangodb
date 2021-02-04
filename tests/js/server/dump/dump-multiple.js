@@ -22,10 +22,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Wilfried Goesgens
+/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
@@ -79,11 +80,12 @@ jsunity.run(function dump_single_testsuite() {
       "testShards",
       "testReplicationFactor",
 
-      "testKeygenPadded", // TODO: should we?
-      "testKeygenUuid", // TODO: should we?
-      "testAnalyzers", // TODO: should we?
-      "testIndexAnalyzerCollection", // TODO: should we?
-      "testJobsAndQueues", // TODO: should we?
+      // TODO: should we also have these tests in this scenario?
+      "testKeygenPadded",
+      "testKeygenUuid",
+      "testAnalyzers",
+      "testIndexAnalyzerCollection",
+      "testJobsAndQueues",
       "testReplicationFactor",
       
       // enterprise graph tests:
