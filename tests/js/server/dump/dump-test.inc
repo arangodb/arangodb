@@ -33,6 +33,7 @@
   const fs = require('fs');
   const internal = require("internal");
   const jsunity = require("jsunity");
+  const users = require("@arangodb/users");
   const analyzers = require("@arangodb/analyzers");
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
@@ -88,6 +89,20 @@
     console.info("Test suite arguments: " + JSON.stringify(args));
 
     return {
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test the users
+      ////////////////////////////////////////////////////////////////////////////////
+
+      testUsers : function () {
+        let uName = "foobaruser";
+
+        assertTrue(users.exists(uName));
+        assertEqual(users.permission(uName, "_system"), 'rw');
+        assertEqual(users.permission(uName, "UnitTestsDumpSrc"), 'rw');
+        assertEqual(users.permission(uName, "UnitTestsDumpEmpty"), 'rw');
+
+        assertTrue(users.isValid("foobaruser", "foobarpasswd"));
+      },
 
       ////////////////////////////////////////////////////////////////////////////////
       /// @brief test db properties

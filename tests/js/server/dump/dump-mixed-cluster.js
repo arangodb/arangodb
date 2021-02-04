@@ -45,8 +45,9 @@ jsunity.run(function dump_single_testsuite() {
   deriveTestSuite(
     baseTests(),
     suite,
-    "_single",
+    "_mixed_cluster",
     [
+      "testUsers",
       // tests not supported by mixed setups:
       "testDatabaseProperties",
       "testShards",

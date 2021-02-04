@@ -45,10 +45,12 @@ jsunity.run(function dump_single_testsuite() {
   deriveTestSuite(
     baseTests(),
     suite,
-    "_single",
+    "_mixed",
     [
       // TODO: these tests need to actually be fixed!
       "testAnalyzers",
+      // no auth support here
+      "testUsers",
       // single server tests that weren't supported in cluster:
       "testKeygenAutoInc",
       "testTransactionCommit",

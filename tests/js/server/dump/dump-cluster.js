@@ -68,6 +68,7 @@ jsunity.run(function dump_cluster_testsuite() {
     suite,
     "_cluster",
     [
+      "testUsers",
       "testKeygenAutoInc",
       "testTransactionCommit",
       "testTransactionUpdate",

@@ -47,6 +47,7 @@ jsunity.run(function dump_single_testsuite() {
     suite,
     "_single",
     [
+      "testUsers",
       // cluster tests:
       "testDatabaseProperties",
       "testShards",

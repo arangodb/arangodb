@@ -80,8 +80,10 @@ jsunity.run(function dump_single_testsuite() {
       uuidDocCount: 2001
     }),
     suite,
-    "_single",
+    "_modified",
     [ // TODO: do we want to do these tests for hotbackup too?
+      // no auth support here
+      "testUsers",
       // cluster tests:
       "testDatabaseProperties",
       "testShards",
