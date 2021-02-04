@@ -127,6 +127,7 @@ struct envelope {
    private:
     friend write_trx;
     precs_trx(builder_ptr b) : _builder(std::move(b)) {
+      _builder->close();
       _builder->openObject();
     }
     builder_ptr _builder;
