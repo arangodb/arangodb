@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix `/_admin/cluster/removeServer` API.
+  This often returned HTTP 500 with an error message "Need open Array" due to
+  an internal error when setting up agency preconditions.
+
 * Remove logging startup options `--log.api-enabled` and `--log.keep-logrotate` 
   for all client tools (arangosh, arangodump, arangorestore etc.), as these 
   options are only meaningful for arangod.
