@@ -72,6 +72,8 @@ jsunity.run(function dump_single_testsuite() {
     suite,
     "_multiple",
     [
+      // no auth support here
+      "testUsers",
       // cluster tests:
       "testDatabaseProperties",
       "testShards",
