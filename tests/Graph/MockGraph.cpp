@@ -185,7 +185,7 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     builder.close(); // object snippets
 
     builder.add("variables", VPackValue(VPackValueType::Array));
-    builder.close(); // object snippets
+    builder.close(); // object variables
 
     //builder.add("traverserEngines", VPackValue(VPackValueType::Array));
     //builder.close(); // object traverserEngines
