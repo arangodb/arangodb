@@ -169,12 +169,27 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(Moc
     VPackBuilder builder;
     builder.openObject();
     builder.add("lockInfo", VPackValue(VPackValueType::Object));
-    builder.add("READ", VPackValue(VPackValueType::Array));
+
+    builder.add("read", VPackValue(VPackValueType::Array));
     // append here the collection names (?) <-- TODO: Check RestAqlHandler.cpp:230
     builder.add(VPackValue(_vertexCollectionName));
     builder.add(VPackValue(_edgeCollectionName));
     builder.close(); // array READ
     builder.close(); // object lockInfo
+
+    builder.add("options", VPackValue(VPackValueType::Object));
+    builder.add("ttl", VPackValue(120));
+    builder.close(); // object options
+
+    builder.add("snippets", VPackValue(VPackValueType::Object));
+    builder.close(); // object snippets
+
+    builder.add("variables", VPackValue(VPackValueType::Array));
+    builder.close(); // object snippets
+
+    //builder.add("traverserEngines", VPackValue(VPackValueType::Array));
+    //builder.close(); // object traverserEngines
+
     builder.close(); // object (outer)
 
     prep.addBody(builder.slice());
