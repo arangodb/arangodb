@@ -49,8 +49,10 @@ typedef AqlValue (*FunctionImplementation)(arangodb::aql::ExpressionContext*,
                                            AstNode const&,
                                            VPackFunctionParameters const&);
 
-void registerError(ExpressionContext* expressionContext, char const* functionName, ErrorCode code);
-void registerWarning(ExpressionContext* expressionContext, char const* functionName, ErrorCode code);
+void registerError(ExpressionContext* expressionContext,
+                   char const* functionName, ErrorCode code);
+void registerWarning(ExpressionContext* expressionContext,
+                     char const* functionName, ErrorCode code);
 void registerWarning(ExpressionContext* expressionContext, char const* functionName, Result const& rr);
 void registerInvalidArgumentWarning(ExpressionContext* expressionContext, char const* functionName);
 

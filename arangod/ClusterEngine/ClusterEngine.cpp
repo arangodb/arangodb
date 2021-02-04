@@ -175,12 +175,13 @@ void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       bool includeIndexes, TRI_voc_tick_t maxTick) {}
 
 ErrorCode ClusterEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                            arangodb::velocypack::Builder& result,
-                                            bool wasCleanShutdown, bool isUpgrade) {
+                                                  arangodb::velocypack::Builder& result,
+                                                  bool wasCleanShutdown, bool isUpgrade) {
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Builder& result) {
   return TRI_ERROR_NO_ERROR;
 }
 

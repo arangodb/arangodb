@@ -581,7 +581,8 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory
+    LOG_TOPIC("dd1c0", DEBUG, Logger::V8)
+        << "Copying JS installation files from '" << _startupDirectory
         << "' to '" << copyJSPath << "'";
     auto res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {

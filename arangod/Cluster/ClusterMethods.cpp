@@ -464,8 +464,8 @@ struct CrudOperationCtx {
   } else {
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
-    auto res = collinfo.getResponsibleShard(value, /*docComplete*/false, shardID,
-                                           usesDefaultShardingAttributes);
+    auto res = collinfo.getResponsibleShard(value, /*docComplete*/ false, shardID,
+                                            usesDefaultShardingAttributes);
 
     if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
@@ -2461,7 +2461,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync, bool waitForCollector) {
+::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
+                                   bool waitForCollector) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2499,7 +2500,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   }
   return TRI_ERROR_NO_ERROR;
 }
- 
+
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature& feature,
                              bool changeLevel, bool compactBottomMostLevel) {

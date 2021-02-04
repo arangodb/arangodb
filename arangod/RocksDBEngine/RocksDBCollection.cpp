@@ -996,7 +996,6 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
   }
 
-
   auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
 
   if (r != TRI_ERROR_NO_ERROR) {

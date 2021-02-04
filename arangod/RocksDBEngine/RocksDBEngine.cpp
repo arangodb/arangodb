@@ -1108,7 +1108,8 @@ ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Builder& result) {
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
   rocksdb::Slice upper = bounds.end();
   rocksdb::ColumnFamilyHandle* cf =
@@ -1208,7 +1209,8 @@ int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) 
 }
 
 ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                       velocypack::Slice slice, bool doSync) {
+                                                             velocypack::Slice slice,
+                                                             bool doSync) {
   RocksDBKey key;
 
   key.constructReplicationApplierConfig(vocbase.id());
@@ -1355,8 +1357,8 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   auto* rcoll = static_cast<RocksDBMetaCollection*>(coll.getPhysical());
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
-  
-  auto resLock = rcoll->lockWrite(); // technically not necessary
+
+  auto resLock = rcoll->lockWrite();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }

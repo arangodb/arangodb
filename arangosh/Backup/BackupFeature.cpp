@@ -91,7 +91,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
     }
     auto err = ErrorCode{errorNum};
     return {err, concatT("got invalid response from server: HTTP ",
-                              itoa(response->getHttpReturnCode()), ": ", errorMsg)};
+                         itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
   return {TRI_ERROR_NO_ERROR};
 }

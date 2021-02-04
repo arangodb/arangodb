@@ -162,74 +162,72 @@ RestStatus RestAgencyHandler::pollIndex(
 
   if (std::get<1>(pollResult)) {
     return waitForFuture(
-      std::move(std::get<0>(pollResult)).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
-        VPackSlice res = rb->slice();
+        std::move(std::get<0>(pollResult))
+            .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+              VPackSlice res = rb->slice();
 
-        if (res.isObject() && res.hasKey("result")) {
-
-          if (res.hasKey("error")) { // leadership loss
-            generateError(
-              rest::ResponseCode::SERVICE_UNAVAILABLE,
-              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-            return;
-          }
-
-          VPackSlice slice = res.get("result");
-
-          if (slice.hasKey("log")) {
-            VPackBuilder builder;
-            {
-              VPackObjectBuilder ob(&builder);
-              builder.add(StaticStrings::Error, VPackValue(false));
-              builder.add("code", VPackValue(int(ResponseCode::OK)));
-              builder.add(VPackValue("result"));
-              VPackObjectBuilder r(&builder);
-              if (!slice.get("firstIndex").isNumber()) {
-                generateError(
-                  rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
-                return;
-              } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
-                generateError(
-                  rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
-                return;
-              }
-              uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(), i = 0;
-
-              builder.add("commitIndex", slice.get("commitIndex"));
-              VPackSlice logs = slice.get("log");
-              if (start <= firstIndex) {
-                builder.add("firstIndex", logs[i].get("index"));
-              }
-              builder.add(VPackValue("log"));
-              VPackArrayBuilder a(&builder);
-              if (start <= firstIndex) {
-                uint64_t i = start - firstIndex;
-                for (; i < logs.length(); ++i) {
-                  builder.add(logs[i]);
+              if (res.isObject() && res.hasKey("result")) {
+                if (res.hasKey("error")) {  // leadership loss
+                  generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                                TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+                  return;
                 }
+
+                VPackSlice slice = res.get("result");
+
+                if (slice.hasKey("log")) {
+                  VPackBuilder builder;
+                  {
+                    VPackObjectBuilder ob(&builder);
+                    builder.add(StaticStrings::Error, VPackValue(false));
+                    builder.add("code", VPackValue(int(ResponseCode::OK)));
+                    builder.add(VPackValue("result"));
+                    VPackObjectBuilder r(&builder);
+                    if (!slice.get("firstIndex").isNumber()) {
+                      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                                    "invalid first log index.");
+                      return;
+                    } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+                      generateError(
+                          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                          "first log index is greater than requested.");
+                      return;
+                    }
+                    uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(),
+                             i = 0;
+
+                    builder.add("commitIndex", slice.get("commitIndex"));
+                    VPackSlice logs = slice.get("log");
+                    if (start <= firstIndex) {
+                      builder.add("firstIndex", logs[i].get("index"));
+                    }
+                    builder.add(VPackValue("log"));
+                    VPackArrayBuilder a(&builder);
+                    if (start <= firstIndex) {
+                      uint64_t i = start - firstIndex;
+                      for (; i < logs.length(); ++i) {
+                        builder.add(logs[i]);
+                      }
+                    }
+                  }
+                  generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+                  return;
+                } else {
+                  generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+                  return;
+                }
+              } else {
+                generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
-            }
-            generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
-            return;
-          } else {
-            generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
-            return;
-          }
-        } else {
-          generateError(
-            rest::ResponseCode::SERVICE_UNAVAILABLE,
-            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-        }
-      })
-      .thenError<VPackException>([this](VPackException const& e) {
-        generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-      })
-      .thenError<std::exception>([this](std::exception const& e) {
-        generateError(
-          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-      }));
+            })
+            .thenError<VPackException>([this](VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            })
+            .thenError<std::exception>([this](std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }));
   } else {
     auto const& leader = std::get<2>(pollResult);
     if (leader == NO_LEADER) {

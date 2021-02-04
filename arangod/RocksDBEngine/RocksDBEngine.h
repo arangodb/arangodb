@@ -169,8 +169,9 @@ class RocksDBEngine final : public StorageEngine {
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                     arangodb::velocypack::Builder& result,
+                                     bool wasCleanShutdown, bool isUpgrade) override;
 
   ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
@@ -189,8 +190,9 @@ class RocksDBEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   int removeReplicationApplierConfiguration() override;
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice slice, bool doSync) override;
-  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
+                                                velocypack::Slice slice, bool doSync) override;
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;

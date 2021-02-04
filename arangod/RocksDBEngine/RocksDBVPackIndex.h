@@ -143,9 +143,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   /// @brief helper function to insert a document into any index type
   ErrorCode fillElement(velocypack::Builder& leased,
-                  LocalDocumentId const& documentId, VPackSlice const& doc,
-                  ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-                  ::arangodb::containers::SmallVector<uint64_t>& hashes);
+                        LocalDocumentId const& documentId, VPackSlice const& doc,
+                        ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                        ::arangodb::containers::SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices

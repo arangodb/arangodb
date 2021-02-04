@@ -564,7 +564,7 @@ void RestHandler::compressResponse() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
-  const auto *message = TRI_errno_string(errorNumber);
+  const auto* message = TRI_errno_string(errorNumber);
 
   if (message != nullptr) {
     generateError(code, errorNumber, std::string_view(message));

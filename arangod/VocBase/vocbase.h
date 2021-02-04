@@ -367,7 +367,7 @@ struct TRI_vocbase_t {
 
   /// @brief drops a collection, worker function
   ErrorCode dropCollectionWorker(arangodb::LogicalCollection* collection,
-                           DropState& state, double timeout);
+                                 DropState& state, double timeout);
 
   /// @brief adds a new view
   /// caller must hold _dataSourceLock in write mode or set doLock

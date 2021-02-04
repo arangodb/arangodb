@@ -1162,22 +1162,23 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 
   auto self(shared_from_this());
 
-  return waitForFuture(sendTransaction()
-                           .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
-                             if (result.ok() && result.statusCode() == 200) {
-                               return waitForSupervisionState(wantToActive);
-                             } else {
-                               generateError(result.asResult());
-                             }
-                             return futures::makeFuture();
-                           })
-                           .thenError<VPackException>([this](VPackException const& e) {
+  return waitForFuture(
+      sendTransaction()
+          .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == 200) {
+              return waitForSupervisionState(wantToActive);
+            } else {
+              generateError(result.asResult());
+            }
+            return futures::makeFuture();
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
@@ -1749,12 +1750,13 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(handlePostRebalanceShards(algorithm)
-                           .thenError<VPackException>([this](VPackException const& e) {
+  return waitForFuture(
+      handlePostRebalanceShards(algorithm)
+          .thenError<VPackException>([this](VPackException const& e) {
             generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }

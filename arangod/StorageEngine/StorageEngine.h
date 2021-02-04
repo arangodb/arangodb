@@ -146,10 +146,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   // corresponding indexes) that were detected by the storage engine. called at
   // server start separately for each database
   virtual ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Builder& result,
-                                       bool wasCleanShutdown, bool isUpgrade) = 0;
+                                             arangodb::velocypack::Builder& result,
+                                             bool wasCleanShutdown, bool isUpgrade) = 0;
 
-  virtual ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) = 0;
+  virtual ErrorCode getViews(TRI_vocbase_t& vocbase,
+                             arangodb::velocypack::Builder& result) = 0;
 
   // return the absolute path for the VERSION file of a database
   virtual std::string versionFilename(TRI_voc_tick_t id) const = 0;

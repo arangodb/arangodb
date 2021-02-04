@@ -56,7 +56,7 @@ public:
 
   /// @brief register a warning (convenience overload)
   void registerWarning(ErrorCode code, std::string const& details);
-      
+
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
   
   bool empty() const;
@@ -66,7 +66,7 @@ public:
   std::vector<std::pair<int, std::string>> all() const;
 
   static std::string buildFormattedString(ErrorCode code, char const* details);
-  
+
  private:
   
   mutable std::mutex _mutex;

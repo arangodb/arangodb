@@ -48,7 +48,8 @@ class NetworkFeature;
 namespace network {
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest, network::EndpointSpec&);
+ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
+                             network::EndpointSpec&);
 ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest, network::EndpointSpec&);
 
 Result resultFromBody(std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,

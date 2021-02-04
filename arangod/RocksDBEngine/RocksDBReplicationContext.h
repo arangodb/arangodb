@@ -159,7 +159,8 @@ class RocksDBReplicationContext {
   // ========================= Dump API =============================
 
   struct DumpResult {
-    explicit DumpResult(ErrorCode res) : hasMore(false), includedTick(0), _result(res) {}
+    explicit DumpResult(ErrorCode res)
+        : hasMore(false), includedTick(0), _result(res) {}
     DumpResult(ErrorCode res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;

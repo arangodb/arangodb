@@ -1931,7 +1931,8 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx) {
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  auto dbServerResult = std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -2237,7 +2238,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  auto dbServerResult = std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -2902,8 +2904,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-          << " first collection name: " << infos[0].name
-          << " result: " << *tmpRes;
+          << " first collection name: " << infos[0].name << " result: " << *tmpRes;
       return {*tmpRes, *errMsg};
     }
 
@@ -3007,7 +3008,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-  auto dbServerResult = std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -4287,7 +4289,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
 
-  auto dbServerResult = std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& current) {
     if (numberOfShards == 0) {
       return false;
