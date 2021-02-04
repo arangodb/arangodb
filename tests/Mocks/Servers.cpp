@@ -603,6 +603,8 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     VPackObjectBuilder guard(&props);
     props.add(StaticStrings::DataSourceType, VPackValue(type));
     props.add(StaticStrings::DataSourceName, VPackValue(collectionName));
+    props.add(StaticStrings::DataSourcePlanId, VPackValue(cid));
+    props.add(StaticStrings::DataSourceId, VPackValue(cid));
   }
   LogicalCollection dummy(*vocbase, props.slice(), true);
   
@@ -673,6 +675,7 @@ MockDBServer::MockDBServer(bool useAgencyMock, bool start)
     startFeatures();
     createDatabase("_system");
   }
+   ServerState::instance()->setId("PRMR_0001");
 }
 
 MockDBServer::~MockDBServer() = default;
@@ -722,12 +725,11 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
     VPackObjectBuilder guard(props.get());
     props->add(StaticStrings::DataSourceType, VPackValue(clusterCollection.type()));
     props->add(StaticStrings::DataSourceName, VPackValue(shardName));
-    props->add(StaticStrings::DataSourcePlanId, VPackValue(clusterCollection.planId().id()));
   }
   maintenance::ActionDescription ad(
       std::map<std::string, std::string>{{maintenance::NAME, maintenance::CREATE_COLLECTION},
                                          {maintenance::COLLECTION,
-                                          clusterCollection.name()},
+                                          basics::StringUtils::itoa(clusterCollection.planId().id())},
                                          {maintenance::SHARD, shardName},
                                          {maintenance::DATABASE, dbName},
                                          {maintenance::SERVER_ID, "PRMR_0001"},
