@@ -93,20 +93,20 @@ class RocksDBIndex : public Index {
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const doc,
-                        OperationOptions& options) = 0;
+                        arangodb::velocypack::Slice doc,
+                        OperationOptions const& options) = 0;
 
   /// remove index elements and put it in the specified write batch.
   virtual Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const doc) = 0;
+                        arangodb::velocypack::Slice doc) = 0;
 
   virtual Result update(transaction::Methods& trx, RocksDBMethods* methods,
                         LocalDocumentId const& oldDocumentId,
-                        arangodb::velocypack::Slice const oldDoc,
+                        arangodb::velocypack::Slice oldDoc,
                         LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const newDoc,
-                        OperationOptions& options);
+                        velocypack::Slice newDoc,
+                        OperationOptions const& options);
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }
 

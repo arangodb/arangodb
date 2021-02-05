@@ -122,17 +122,17 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                OperationOptions const& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const newDoc,
-                OperationOptions& options) override;
+                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice newDoc,
+                OperationOptions const& options) override;
 
  private:
   /// @brief return the number of paths
