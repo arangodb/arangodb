@@ -370,7 +370,7 @@ devel
   run in parallel. The defaults are intentionally high in order to not stop any valid,
   previously working queries from succedding.
 
-* Added startup options `--audit.queue` to control audit logging queuing
+* Added startup option `--audit.queue` to control audit logging queuing
   behavior (Enterprise Edition only):
 
   The option controls whether audit log messages are submitted to a queue
