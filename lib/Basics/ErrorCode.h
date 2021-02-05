@@ -37,9 +37,7 @@ class ErrorCode {
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  // TODO Remove this later, or at least mark it explicit, and fix remaining
-  //      compile errors.
-  constexpr operator int() const noexcept { return _value; }
+  constexpr explicit operator int() const noexcept { return _value; }
 
   [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept -> bool {
     return _value == other._value;
