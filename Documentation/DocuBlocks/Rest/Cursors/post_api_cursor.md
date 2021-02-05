@@ -76,17 +76,17 @@ There is also a server configuration option `--query.fail-on-warning` for settin
 default value for *failOnWarning* so it does not need to be set on a per-query level.
 
 @RESTSTRUCT{stream,post_api_cursor_opts,boolean,optional,}
-Specify *true* and the query will be executed in a **streaming** fashion. The query result is
-not stored on the server, but calculated on the fly. *Beware*: long-running queries will
-need to hold the collection locks for as long as the query cursor exists.
-When set to *false* a query will be executed right away in its entirety.
-In that case query results are either returned right away (if the result set is small enough),
-or stored on the arangod instance and accessible via the cursor API (with respect to the `ttl`).
-It is advisable to *only* use this option on short-running queries or without exclusive locks
-(write-locks on MMFiles).
-Please note that the query options `cache`, `count` and `fullCount` will not work on streaming queries.
-Additionally query statistics, warnings and profiling data will only be available after the query is finished.
-The default value is *false*
+Specify *true* and the query will be executed in a **streaming** fashion.
+The query result is not stored on the server, but calculated on the fly.
+When set to *false* the query will be executed in its entirety before results
+become available. If the result set is small enough then results are returned
+right away, but otherwise they are stored on the arangod instance and will
+be accessible via the cursor API (with respect to the `ttl`).
+It is advisable to only use this option for queries without exclusive locks.
+Please note that the query options `cache`, `count` and `fullCount` will not
+work on streaming queries. Additionally, query statistics, warnings and
+profiling data will only be available after the query is finished.
+The default value is *false*.
 
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
