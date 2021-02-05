@@ -72,7 +72,7 @@ static std::string const UNKNOWN = "UNKNOWN";
 
 std::string const LogThreadName("Logging");
 
-class DefaultLogGroup : public LogGroup {
+class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
 };
 DefaultLogGroup defaultLogGroupInstance;
@@ -141,22 +141,9 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 
   LogLevel level;
+  bool isValid = translateLogLevel(l, isGeneral, level);
 
-  if (l == "fatal") {
-    level = LogLevel::FATAL;
-  } else if (l == "error" || l == "err") {
-    level = LogLevel::ERR;
-  } else if (l == "warning" || l == "warn") {
-    level = LogLevel::WARN;
-  } else if (l == "info") {
-    level = LogLevel::INFO;
-  } else if (l == "debug") {
-    level = LogLevel::DEBUG;
-  } else if (l == "trace") {
-    level = LogLevel::TRACE;
-  } else if (!isGeneral && (l.empty() || l == "default")) {
-    level = LogLevel::DEFAULT;
-  } else {
+  if (!isValid) {
     if (!isGeneral) {
       LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
       return;
@@ -312,6 +299,28 @@ void Logger::setUseJson(bool value) {
   }
 
   _useJson = value;
+}
+
+bool Logger::translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept {
+  if (l == "fatal") {
+    level = LogLevel::FATAL;
+  } else if (l == "error" || l == "err") {
+    level = LogLevel::ERR;
+  } else if (l == "warning" || l == "warn") {
+    level = LogLevel::WARN;
+  } else if (l == "info") {
+    level = LogLevel::INFO;
+  } else if (l == "debug") {
+    level = LogLevel::DEBUG;
+  } else if (l == "trace") {
+    level = LogLevel::TRACE;
+  } else if (!isGeneral && (l.empty() || l == "default")) {
+    level = LogLevel::DEFAULT;
+  } else {
+    return false;
+  }
+
+  return true;
 }
 
 std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
@@ -568,9 +577,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   // logging itself must never cause an exeption to escape
 }
 
-void Logger::append(LogGroup& group, std::unique_ptr<LogMessage>& msg,
+void Logger::append(LogGroup& group, 
+                    std::unique_ptr<LogMessage>& msg,
                     bool forceDirect,
                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
+  msg->shrink(group.maxLogEntryLength());
+
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output window and the Windows event log.
   // note that these loggers do not require any configuration so we can always and safely invoke them.
@@ -617,7 +629,7 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
   if (threaded) {
     _loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
     if (!_loggingThread->start()) {
-      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::STATISTICS)
+      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }

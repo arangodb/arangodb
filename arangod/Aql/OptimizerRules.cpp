@@ -896,7 +896,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
       auto args = ast->createNodeArray();
       args->addMember(rhs);
       auto sorted =
-          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
+          ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
       inNode->changeMember(1, sorted);
       modified = true;
       continue;
@@ -990,7 +990,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt, std::unique_ptr<ExecutionPl
     auto args = ast->createNodeArray();
     args->addMember(originalArg);
     auto sorted =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args);
+        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), args, true);
 
     auto outVar = ast->variables()->createTemporaryVariable();
     auto expression = std::make_unique<Expression>(ast, sorted);
@@ -6996,7 +6996,7 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
 
     addLocationArg(args);
     AstNode* func =
-        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args);
+        ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("GEO_DISTANCE"), args, true);
 
     TRI_ASSERT(info.maxDistanceExpr || info.minDistanceExpr || info.sorted);
     if (info.minDistanceExpr != nullptr) {
@@ -7026,9 +7026,9 @@ static std::unique_ptr<Condition> buildGeoCondition(ExecutionPlan* plan,
     args->addMember(info.filterExpr);
     addLocationArg(args);
     if (info.filterMode == geo::FilterType::CONTAINS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args));
+      cond->andCombine(ast->createNodeFunctionCall("GEO_CONTAINS", args, true));
     } else if (info.filterMode == geo::FilterType::INTERSECTS) {
-      cond->andCombine(ast->createNodeFunctionCall("GEO_INTERSECTS", args));
+      cond->andCombine(ast->createNodeFunctionCall("GEO_INTERSECTS", args, true));
     } else {
       TRI_ASSERT(false);
     }
