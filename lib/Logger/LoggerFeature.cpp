@@ -120,6 +120,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
+  
+  options
+      ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
+                  new UInt32Parameter(&_maxEntryLength))
+      .setIntroducedIn(30800);
 
   options
       ->addOption("--log.use-local-time", "use local timezone instead of UTC",
@@ -364,6 +369,9 @@ void LoggerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 #endif
+  
+  // set maximum length for each log entry
+  Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(128, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
   Logger::setShowIds(_showIds);
