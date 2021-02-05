@@ -143,6 +143,9 @@ devel
     document update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+  
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
