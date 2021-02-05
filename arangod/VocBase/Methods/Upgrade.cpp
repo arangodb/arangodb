@@ -140,7 +140,12 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   switch (vinfo.status) {
     case VersionResult::INVALID:
       TRI_ASSERT(false);  // never returned by Version::check
+      break;
     case VersionResult::VERSION_MATCH:
+      if (isUpgrade) {
+        dbflag = Flags::DATABASE_UPGRADE; // forcing the upgrade as server is in 
+                                          // upgrade state with some features disabled
+      }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
