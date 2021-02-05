@@ -1,4 +1,5 @@
-/*jshint globalstrict:false, strict:false, maxlen : 4000 */
+/*jshint globalstrict:false, strict:false, maxlen:4000 */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -21,13 +22,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
 
 var internal = require("internal");
 var jsunity = require("jsunity");
@@ -38,12 +37,32 @@ const base = require("fs").join(
   'dump-test.inc');
 const baseTests = require("internal").load(base);
 
-jsunity.run(function dump_cluster_testsuite() {
+
+jsunity.run(function dump_single_testsuite() {
 
   let suite = {};
-  let enterpriseTests = [];
-  if (!internal.isEnterprise()) {
-    enterpriseTests = [
+
+  deriveTestSuite(
+    baseTests(),
+    suite,
+    "_mixed",
+    [
+      // TODO: these tests need to actually be fixed!
+      "testAnalyzers",
+      // no auth support here
+      "testUsers",
+      // single server tests that weren't supported in cluster:
+      "testKeygenAutoInc",
+      "testTransactionCommit",
+      "testTransactionUpdate",
+      "testTransactionAbort",
+      
+      // cluster tests:
+      "testDatabaseProperties",
+      "testShards",
+      "testReplicationFactor",
+      
+      // enterprise graph tests: (TODO: should they be able to be run in single?)
       "testVertices",
       "testVerticesAqlRead",
       "testVerticesAqlInsert",
@@ -62,19 +81,7 @@ jsunity.run(function dump_cluster_testsuite() {
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute"
-    ];
-  }
-  deriveTestSuite(
-    baseTests(),
-    suite,
-    "_cluster",
-    [
-      "testUsers",
-      "testKeygenAutoInc",
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
-    ].concat(enterpriseTests)
+    ]
   );
 
   return suite;

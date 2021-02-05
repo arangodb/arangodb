@@ -61,8 +61,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   Result insert(transaction::Methods& trx,
                 RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId,
-                VPackSlice const doc,
-                OperationOptions& /*options*/) override {
+                VPackSlice doc,
+                OperationOptions const& /*options*/) override {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
@@ -86,7 +86,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   Result remove(transaction::Methods& trx,
                 RocksDBMethods*,
                 LocalDocumentId const& documentId,
-                VPackSlice const doc) override {
+                VPackSlice doc) override {
     return IResearchLink::remove(trx, documentId, doc);
   }
 
