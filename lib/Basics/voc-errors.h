@@ -210,6 +210,11 @@ constexpr int TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 
 /// operation, or if a request is not acceptable for a leader or follower.
 constexpr int TRI_ERROR_HTTP_NOT_ACCEPTABLE                                     = 406;
 
+/// 409: ERROR_HTTP_CONFLICT
+/// "conflict"
+/// Will be raised when a conflict occurs in an HTTP operation.
+constexpr int TRI_ERROR_HTTP_CONFLICT                                           = 409;
+
 /// 412: ERROR_HTTP_PRECONDITION_FAILED
 /// "precondition failed"
 /// Will be raised when a precondition for an HTTP request is not met.
@@ -219,6 +224,12 @@ constexpr int TRI_ERROR_HTTP_PRECONDITION_FAILED                                
 /// "internal server error"
 /// Will be raised when an internal server is encountered.
 constexpr int TRI_ERROR_HTTP_SERVER_ERROR                                       = 500;
+
+/// 501: ERROR_HTTP_NOT_IMPLEMENTED
+/// "not implemented"
+/// Will be raised when an API is called this is not implemented in general, or
+/// not implemented for the current setup.
+constexpr int TRI_ERROR_HTTP_NOT_IMPLEMENTED                                    = 501;
 
 /// 503: ERROR_HTTP_SERVICE_UNAVAILABLE
 /// "service unavailable"
