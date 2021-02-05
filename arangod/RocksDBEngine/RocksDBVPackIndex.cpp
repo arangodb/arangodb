@@ -665,7 +665,7 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const doc, OperationOptions& options) {
+                                 velocypack::Slice const doc, OperationOptions const& options) {
   IndexOperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
@@ -811,10 +811,10 @@ namespace {
 
 Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& oldDocumentId,
-                                 velocypack::Slice const oldDoc,
+                                 velocypack::Slice oldDoc,
                                  LocalDocumentId const& newDocumentId,
-                                 velocypack::Slice const newDoc,
-                                 OperationOptions& options) {
+                                 velocypack::Slice newDoc,
+                                 OperationOptions const& options) {
   if (!_unique) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays

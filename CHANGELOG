@@ -40,6 +40,12 @@ devel
   behavior when setting the option to a value of `jwt` (meaning the REST API
   for logging is only available for superusers with a valid JWT token).
 
+* Split the update operations for the _fishbowl system collection with Foxx
+  apps into separate insert/replace and remove operations. This makes the
+  overall update not atomic, but as removes are unlikely here, we can now get
+  away with a simple multi-document insert-replace operation instead of a
+  truncate and an exclusive transaction, which was used before.
+
 * Fix `/_admin/cluster/removeServer` API.
   This often returned HTTP 500 with an error message "Need open Array" due to
   an internal error when setting up agency preconditions.
@@ -176,6 +182,9 @@ devel
     document update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+  
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
