@@ -34,7 +34,7 @@ v3.7.7 (XXXX-XX-XX)
     between informational, warning and error messages. 
 
 * Honor the value of startup option `--log.api-enabled` when set to `false`.
-  THe desired behavior in this case is to turn off the REST API for logging,
+  The desired behavior in this case is to turn off the REST API for logging,
   but was not implemented. The default value for the option is `true`, so the
   REST API is enabled. This behavior did not change, and neither did the 
   behavior when setting the option to a value of `jwt` (meaning the REST API
