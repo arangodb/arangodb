@@ -170,9 +170,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 
 static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  auto res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " + strerror(res));
+  std::string message("read failed for file '" + filename + "': " + TRI_last_error());
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -234,11 +233,10 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
   int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
-    std::string message("read failed for file '" + filename + "': " + strerror(res));
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    std::string message("read failed for file '" + filename + "': " + TRI_last_error());
     LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
-    return {TRI_ERROR_SYS_ERROR, message};
+    return {res, message};
   }
 
   TRI_DEFER(TRI_CLOSE(fd));
@@ -466,7 +464,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
         // Handle subdirectories:
         if (isSubDirectory(src)) {
           long systemError;
-          int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+          auto rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
           if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
             rc_bool = false;
             break;

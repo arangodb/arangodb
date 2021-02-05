@@ -58,7 +58,7 @@ int TRI_IntHex(char ch, int errorValue) {
 
 double TRI_DoubleString(char const* str) {
   char* endptr;
-  errno = TRI_ERROR_NO_ERROR;
+  errno = 0;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 

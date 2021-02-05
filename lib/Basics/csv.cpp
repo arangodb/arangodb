@@ -116,7 +116,7 @@ void TRI_UseBackslashCsvParser(TRI_csv_parser_t* parser, bool value) {
 /// @brief parses a CSV line
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length) {
+ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t length) {
   char* ptr;
   char* qtr;
 
