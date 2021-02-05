@@ -2646,7 +2646,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
     }
   }
 
-  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, true, false).ok());  // run upgrade
+  EXPECT_TRUE(arangodb::methods::Upgrade::startup(*vocbase, false, false).ok());  // run upgrade
 
   {
     auto indexes = logicalCollection->getIndexes();
