@@ -156,7 +156,8 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
 template <>
 // Future: Also engineID's need to be returned here.
 std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
-    MockDBServer& server, std::unordered_set<VertexDef, hashVertexDef> verticesList) const {
+    MockDBServer& server, std::unordered_set<VertexDef, hashVertexDef> verticesList,
+    arangodb::graph::BaseOptions& opts, aql::ExecutionPlan* queryPlan, aql::AstNode* condition) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
   std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
@@ -187,18 +188,73 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
 
     builder.add("options", VPackValue(VPackValueType::Object));
     builder.add("ttl", VPackValue(120));
-    builder.close(); // object options
+    builder.close();  // object options
 
     builder.add("snippets", VPackValue(VPackValueType::Object));
-    builder.close(); // object snippets
+    builder.close();  // object snippets
 
     builder.add("variables", VPackValue(VPackValueType::Array));
-    builder.close(); // object variables
+    builder.close();  // object variables
 
-    //builder.add("traverserEngines", VPackValue(VPackValueType::Array));
-    //builder.close(); // object traverserEngines
+    // TODO: traverserEngines need to be available and generated
+    /*
+     * Testing Start
+     */
+    builder.add("traverserEngines", VPackValue(VPackValueType::Array));
 
-    builder.close(); // object (outer)
+    builder.openObject(); // main container
+
+    builder.add(VPackValue("options"));
+
+    // create collectionToShardMap
+    std::map<std::string, std::string> collectionToShard {};
+    for (auto const& vertexTuple: getVertexShardNameServerPairs()) {
+      collectionToShard[vertexTuple.first] = vertexTuple.second;
+    }
+    for (auto const& edgeTuple: getEdgeShardNameServerPairs()) {
+      collectionToShard[edgeTuple.first] = edgeTuple.second;
+    }
+    LOG_DEVEL << "Collection list: " << collectionToShard.size();
+    LOG_DEVEL << "TODO: Info for Michael -> this was my last attempt to fix the creation of baseLookupInfos"
+                 << "as I've seen this correctly we need to set setCollectionToShard() and then addLookupInfo."
+                 << "addLookupInfo needs a ";
+    opts.setCollectionToShard(collectionToShard);
+    opts.addLookupInfo(queryPlan, "v", "attributeName", condition, false);
+    opts.addLookupInfo(queryPlan, "e", "attributeName", condition, false);
+
+    opts.buildEngineInfo(builder);
+
+    builder.add(VPackValue("shards"));
+    builder.openObject();
+
+    builder.add(VPackValue("vertices"));
+    builder.openObject();
+
+    for (auto const& vertexTuple: getVertexShardNameServerPairs()) {
+      builder.add(_vertexCollectionName, VPackValue(VPackValueType::Array));
+      builder.add(VPackValue(vertexTuple.first)); // shardID
+      builder.close(); // inner array
+    }
+
+    builder.close(); // vertices
+
+    builder.add(VPackValue("edges"));
+    builder.openArray();
+    for (auto const& edgeTuple: getEdgeShardNameServerPairs()) {
+      builder.openArray();
+      builder.add(VPackValue(edgeTuple.first)); // shardID
+      builder.close(); // inner array
+    }
+    builder.close(); // edges
+    builder.close(); // shards
+    builder.close(); // main container
+    builder.close(); // array traverserEngines
+    /*
+     * Testing End
+     */
+
+    builder.close();  // object (outer)
+    LOG_DEVEL << builder.toJson();
 
     prep.addBody(builder.slice());
     prep.addSuffix("setup");
@@ -211,6 +267,7 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
 
     aqlHandler.execute();
     auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
+    LOG_DEVEL << static_cast<GeneralResponseMock*>(response.get())->_payload.toJson();
     // TODO: read resposnse (eid)
   }
 

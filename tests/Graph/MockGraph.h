@@ -28,6 +28,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 
+#include "Graph/BaseOptions.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 #include <velocypack/velocypack-aliases.h>
@@ -106,7 +108,8 @@ class MockGraph {
 
   template <class ServerType>
   std::vector<arangodb::tests::PreparedRequestResponse> simulateApi(
-      ServerType& server, std::unordered_set<VertexDef, hashVertexDef> verticesList) const;
+      ServerType& server, std::unordered_set<VertexDef, hashVertexDef> verticesList,
+      arangodb::graph::BaseOptions& opts, aql::ExecutionPlan* queryPlan, aql::AstNode* condition) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName) const;
