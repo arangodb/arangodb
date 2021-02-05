@@ -1,9 +1,6 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
-* Refactored testsuites for dump & restore, and added tests for autoincrement,
-  padded and uuid key generators to it.
-
 * Added metrics for document read and write operations:
 
   - `arangodb_document_writes: Total number of document write operations
