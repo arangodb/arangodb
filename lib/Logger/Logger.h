@@ -98,8 +98,8 @@ struct LogMessage {
   void shrink(std::size_t maxLength) {
     if (_message.size() > maxLength) {
       _message.resize(maxLength);
+      _message.append("...", 3);
     }
-    _message.append("...", 3);
   }
 
   char const* _function;
