@@ -64,8 +64,12 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
   /// @brief return all buffered log entries
   std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
 
+  /// @brief clear all log entries
+  void clear();
+
  private:
   std::shared_ptr<LogAppender> _inMemoryAppender;
+  std::string _minInMemoryLogLevel;
   bool _useInMemoryAppender;
 };
 
