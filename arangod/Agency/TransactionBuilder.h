@@ -30,8 +30,14 @@
 #include <type_traits>
 #include <vector>
 
-namespace arangodb {
-namespace agency {
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "Basics/debugging.h"
+
+#include "AgencyComm.h"
+
+namespace arangodb::agency {
 
 namespace detail {
 struct no_op_deleter {
@@ -110,9 +116,9 @@ struct envelope {
       return std::move(*this);
     }
 
-    envelope end() {
+    envelope end(std::string clientId = {}) {
       _builder->close();
-      _builder->add(VPackValue(AgencyWriteTransaction::randomClientId()));
+      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
@@ -127,16 +133,17 @@ struct envelope {
    private:
     friend write_trx;
     precs_trx(builder_ptr b) : _builder(std::move(b)) {
+      _builder->close();
       _builder->openObject();
     }
     builder_ptr _builder;
   };
 
   struct write_trx {
-    envelope end() {
+    envelope end(std::string clientId = {}) {
       _builder->close();
       _builder->add(VPackSlice::emptyObjectSlice());
-      _builder->add(VPackValue(AgencyWriteTransaction::randomClientId()));
+      _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
       _builder->close();
       return envelope(_builder.release());
     }
@@ -227,6 +234,5 @@ struct envelope {
   builder_ptr _builder;
 };
 
-}  // namespace agency
 }  // namespace arangodb
 #endif
