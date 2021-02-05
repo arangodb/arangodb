@@ -2090,11 +2090,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
 
     if (sizeRead < bufferSize) {
       if (feof(fin) == 0) {
-        if (errno != 0) {
-          res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        } else {
-          res = TRI_ERROR_NO_ERROR;
-        }
+        res = TRI_ERROR_FAILED;
         break;
       }
     }
@@ -2735,4 +2731,3 @@ std::string TRI_SHA256Functor::finalize() {
   }
   return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
 }
-
