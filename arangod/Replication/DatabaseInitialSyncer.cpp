@@ -625,7 +625,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
     } catch (velocypack::Exception const& e) {
       LOG_TOPIC("b9f4f", ERR, Logger::REPLICATION)
           << "Error parsing VPack response: " << e.what();
-      return Result(TRI_ERROR_INTERNAL, e.what());
+      return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, e.what());
     }
 
   } else {
@@ -655,7 +655,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       } catch (velocypack::Exception const& e) {
         LOG_TOPIC("746ea", ERR, Logger::REPLICATION)
             << "while parsing collection dump: " << e.what();
-        return Result(TRI_ERROR_INTERNAL, e.what());
+        return Result(TRI_ERROR_HTTP_CORRUPTED_JSON, e.what());
       }
 
       p = q + 1;
