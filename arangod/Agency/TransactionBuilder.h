@@ -116,7 +116,7 @@ struct envelope {
       return std::move(*this);
     }
 
-    envelope end(std::string clientId = {}) {
+    envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
       _builder->close();
@@ -140,7 +140,7 @@ struct envelope {
   };
 
   struct write_trx {
-    envelope end(std::string clientId = {}) {
+    envelope end(std::string const& clientId = {}) {
       _builder->close();
       _builder->add(VPackSlice::emptyObjectSlice());
       _builder->add(VPackValue(clientId.empty() ? AgencyWriteTransaction::randomClientId() : clientId));
