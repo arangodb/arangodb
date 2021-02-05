@@ -100,7 +100,7 @@
             shardProgress = percentify(value.progress.current / value.progress.total * 100);
           }
           if (shardProgress === '' || followersSyncing === '') {
-            shardProgress = 'pending...';
+            shardProgress = 'waiting for slot...';
           }
 
           shardProgress = '<span>' + shardProgress + '</span>';
