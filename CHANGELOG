@@ -1,33 +1,40 @@
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
-* Added metrics for document read and write operations:
+* Split the update operations for the _fishbowl system collection with Foxx
+  apps into separate insert/replace and remove operations. This makes the
+  overall update not atomic, but as removes are unlikely here, we can now get
+  away with a simple multi-document insert-replace operation instead of a
+  truncate and an exclusive transaction, which was used before.
 
+* Added metrics for document read and write operations:
+  
   - `arangodb_document_writes: Total number of document write operations
     (successful and failed) not performed by synchronous replication.
   - `arangodb_document_writes_replication`: Total number of document write
-    operations (successful and failed) by synchronous replication.
+    operations (successful and failed) by cluster synchronous replication.
   - `arangodb_collection_truncates`: Total number of collection truncate
-    operations (successful and failed) not performed by synchronous replication.
+    operations (successful and failed) not performed by cluster synchronous
+    replication.
   - `arangodb_collection_truncates_replication`: Total number of collection
-    truncate
-    operations (successful and failed) by synchronous replication.
-  - `arangodb_document_read_time`: Execution time histogram of all document read
-    operations (successful and failed) [s].
-  - `arangodb_document_insert_time`: Execution time histogram of all document
-    insert
-    operations (successful and failed) [s].
-  - `arangodb_document_replace_time`: Execution time histogram of all document
-    replace
-    operations (successful and failed) [s].
-  - `arangodb_document_remove_time`: Execution time histogram of all document
-    remove
-    operations (successful and failed) [s].
-  - `arangodb_document_update_time`: Execution time histogram of all document
-    update
-    operations (successful and failed) [s].
+    truncate operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document
+    primary key read operations (successful and failed) [s]. Note: this
+    does not include secondary index lookups, range scans and full collection
+    scans.
+  - `arangodb_document_insert_time`: Execution time histogram of all
+    document insert operations (successful and failed) [s].
+  - `arangodb_document_replace_time`: Execution time histogram of all
+    document replace operations (successful and failed) [s].
+  - `arangodb_document_remove_time`: Execution time histogram of all
+    document remove operations (successful and failed) [s].
+  - `arangodb_document_update_time`: Execution time histogram of all
+    document update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed issue #12543: Unused Foxx service config can not be discarded.
 
