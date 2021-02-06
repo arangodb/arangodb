@@ -388,7 +388,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << idx->objectId() << "'";
       output.clear();
 
-      est->serialize(output, maxCommitSeq);
+      est->serialize(output, maxCommitSeq, /*compressed*/ true);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)

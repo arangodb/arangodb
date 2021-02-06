@@ -28,6 +28,8 @@
 #include <set>
 #include <map>
 
+#include <snappy.h>
+
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
@@ -36,6 +38,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimatorForward.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include <rocksdb/types.h>
@@ -67,9 +70,7 @@ class HashWithSeed {
   }
 };
 
-template <class Key, class HashKey = HashWithSeed<Key, 0xdeadbeefdeadbeefULL>,
-          class Fingerprint = HashWithSeed<Key, 0xabcdefabcdef1234ULL>,
-          class HashShort = HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL>, class CompKey = std::equal_to<Key>>
+template <class Key, class HashKey, class Fingerprint, class HashShort, class CompKey>
 class RocksDBCuckooIndexEstimator {
   // Note that the following has to be a power of two and at least 4!
   static constexpr uint32_t kSlotsPerBucket = 4;
@@ -87,15 +88,11 @@ class RocksDBCuckooIndexEstimator {
   struct Slot {
    private:
     uint16_t* _data;
-
     uint32_t* _counter;
 
    public:
     explicit Slot(uint16_t* data) : _data(data), _counter(nullptr) {}
-
-    ~Slot() {
-      // Not responsible for anything
-    }
+    ~Slot() = default;
 
     bool operator==(const Slot& other) const { return _data == other._data; }
 
@@ -148,19 +145,44 @@ class RocksDBCuckooIndexEstimator {
   };
 
   enum SerializeFormat : char {
-    // To describe this format we use | as a seperator for readability, but it
-    // is NOT a printed character in the serialized string
-    // NOCOMPRESSION:
-    // type|length|size|nrUsed|nrCuckood|nrTotal|niceSize|logSize|base|counters
-    NOCOMPRESSION = '1'
+    // Estimators are serialized in the following way:
+    // - the first 8 bytes contain the applied seq number, little endian
+    // - the next byte contains the serialization format, which is one of the 
+    //   values from this enum
+    // - the following bytes are format-specific payload
+    //
+    //   appliedSeq|format|payload
 
+    // To describe formats we use | as a seperator for readability, but it
+    // is NOT a printed character in the serialized string. 
+    
+    // UNCOMPRESSED:
+    // serializes all instance members in a simple way, writing them all out
+    // one after another. the values are not compressed and will use a lot of
+    // space because even small numbers are serialized as 64bit values.
+    //
+    //   size|nrUsed|nrCuckood|nrTotal|niceSize|logSize|base|counters
+    UNCOMPRESSED = '1',
+
+    // COMPRESSED: 
+    // first serializes everything using the UNCOMPRESSED format, and then
+    // compressed it with Snappy compression into a shorter equivalent.
+    // after compression, we only have a size of the compressed blob, and
+    // the compressed blob itself. we end up with:
+    //
+    //   size|compressedBlob
+    //
+    // when uncompressing the compressed blob, it will contain the UNCOMPRESSED
+    // serialized data structure
+    COMPRESSED = '2',
   };
 
  public:
   static bool isFormatSupported(arangodb::velocypack::StringRef serialized) {
     TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
     switch (serialized[sizeof(_appliedSeq)]) {
-      case SerializeFormat::NOCOMPRESSION:
+      case SerializeFormat::UNCOMPRESSED:
+      case SerializeFormat::COMPRESSED:
         return true;
     }
     return false;
@@ -194,7 +216,7 @@ class RocksDBCuckooIndexEstimator {
     initializeDefault();
   }
 
-  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef const serialized)
+  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized)
       : _randState(0x2636283625154737ULL),
         _logSize(0),
         _size(0),
@@ -212,20 +234,8 @@ class RocksDBCuckooIndexEstimator {
         _nrTotal(0),
         _appliedSeq(0),
         _needToPersist(false) {
-    switch (serialized[sizeof(_appliedSeq)]) {
-      case SerializeFormat::NOCOMPRESSION: {
-        deserializeUncompressed(serialized);
-        break;
-      }
-      default: {
-        LOG_TOPIC("bcd09", WARN, arangodb::Logger::ENGINES)
-            << "unable to restore index estimates: invalid format found";
-        // Do not construct from serialization, use other constructor instead
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "unable to restore index estimates: invalid format found");
-      }
-    }
+    // note: this may throw!
+    deserialize(serialized);
   }
 
   ~RocksDBCuckooIndexEstimator() {
@@ -251,7 +261,12 @@ class RocksDBCuckooIndexEstimator {
    * @param  serialized String for output
    * @param  commitSeq  Above that are still uncommited operations
    */
-  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq) {
+  void serialize(std::string& serialized, rocksdb::SequenceNumber maxCommitSeq, bool compress) {
+    SerializeFormat format = SerializeFormat::UNCOMPRESSED;
+    if (compress) {
+      format = SerializeFormat::COMPRESSED;
+    }
+
     // We always have to start with the commit seq, type and then the length
 
     // commit seq, above that is an uncommited operations
@@ -267,9 +282,12 @@ class RocksDBCuckooIndexEstimator {
       appliedSeq = std::max(appliedSeq, _appliedSeq.load(std::memory_order_acquire));
       TRI_ASSERT(appliedSeq != std::numeric_limits<rocksdb::SequenceNumber>::max());
       rocksutils::uint64ToPersistent(serialized, appliedSeq);
-
-      // type
-      serialized += SerializeFormat::NOCOMPRESSION;
+        
+      // type byte
+      serialized += format;
+        
+      // note where we left off. we need this for the compressed format later
+      size_t leftOff = serialized.size();
 
       // length
       uint64_t serialLength =
@@ -283,27 +301,32 @@ class RocksDBCuckooIndexEstimator {
       rocksutils::uint64ToPersistent(serialized, serialLength);
 
       // Add all member variables
-      rocksutils::uint64ToPersistent(serialized, _size);
-      rocksutils::uint64ToPersistent(serialized, _nrUsed);
-      rocksutils::uint64ToPersistent(serialized, _nrCuckood);
-      rocksutils::uint64ToPersistent(serialized, _nrTotal);
-      rocksutils::uint64ToPersistent(serialized, _niceSize);
-      rocksutils::uint64ToPersistent(serialized, _logSize);
-
+      appendHeader(serialized);
       // Add the data blob
-      // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
-      TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
+      appendDataBlob(serialized);
 
-      for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
-        rocksutils::uint16ToPersistent(serialized,
-                                       *(reinterpret_cast<uint16_t*>(_base + i)));
-      }
+      // compression is always on top of the UNCOMPRESSED format, so we run the
+      // compression only after we have written out the full UNCOMPRESSED data
+      if (format == SerializeFormat::COMPRESSED) {
+        // compression starts at the point where we left off, i.e. at the byte
+        // following the format byte.
+        // we compress data in a scratch buffer, because compression input and
+        // output must not overlap.
+        std::string scratch;
+        snappy::Compress(serialized.data() + leftOff, serialized.size() - leftOff, &scratch);
 
-      TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
+        // scratch now contains the compressed value of UNCOMPRESSED
 
-      for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
-        rocksutils::uint32ToPersistent(serialized,
-                                       *(reinterpret_cast<uint32_t*>(_counters + i)));
+        TRI_ASSERT(serialized.size() > leftOff);
+        // serialized still contains the UNCOMPRESSED data. rewind it to the
+        // byte following the format byte, so we can now append the compressed
+        // data instead.
+        serialized.resize(leftOff);
+       
+        // append compressed size
+        rocksutils::uint64ToPersistent(serialized, scratch.size());
+        // append compressed blob
+        serialized.append(scratch);
       }
 
       bool havePendingUpdates = !_insertBuffers.empty() || !_removalBuffers.empty() ||
@@ -312,6 +335,30 @@ class RocksDBCuckooIndexEstimator {
     }
 
     _appliedSeq.store(appliedSeq, std::memory_order_release);
+  }
+  
+  void appendHeader(std::string& result) const {
+    rocksutils::uint64ToPersistent(result, _size);
+    rocksutils::uint64ToPersistent(result, _nrUsed);
+    rocksutils::uint64ToPersistent(result, _nrCuckood);
+    rocksutils::uint64ToPersistent(result, _nrTotal);
+    rocksutils::uint64ToPersistent(result, _niceSize);
+    rocksutils::uint64ToPersistent(result, _logSize);
+  }
+
+  void appendDataBlob(std::string& result) const {
+    // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize
+    TRI_ASSERT((_size * kSlotSize * kSlotsPerBucket) <= _slotAllocSize);
+    for (uint64_t i = 0; i < (_size * kSlotSize * kSlotsPerBucket); i += kSlotSize) {
+      rocksutils::uint16ToPersistent(result,
+                                     *(reinterpret_cast<uint16_t*>(_base + i)));
+    }
+
+    TRI_ASSERT((_size * kCounterSize * kSlotsPerBucket) <= _counterAllocSize);
+    for (uint64_t i = 0; i < (_size * kCounterSize * kSlotsPerBucket); i += kCounterSize) {
+      rocksutils::uint32ToPersistent(result,
+                                     *(reinterpret_cast<uint32_t*>(_counters + i)));
+    }
   }
 
   /// @brief only call directly during startup/recovery; otherwise buffer
@@ -801,26 +848,70 @@ class RocksDBCuckooIndexEstimator {
     return static_cast<uint8_t>((_randState >> 37) & 0xff);
   }
 
-  void deserializeUncompressed(arangodb::velocypack::StringRef const& serialized) {
-    // Assert that we have at least the member variables
-    TRI_ASSERT(serialized.size() >=
-               (sizeof(_appliedSeq)) +
-                   (sizeof(SerializeFormat) + sizeof(uint64_t) + sizeof(_size) +
-                    sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
-                    sizeof(_niceSize) + sizeof(_logSize)));
+  void deserialize(arangodb::velocypack::StringRef serialized) {
+    // minimum size
+    TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + 1);
+    
     char const* current = serialized.data();
-
+    
     _appliedSeq = rocksutils::uint64FromPersistent(current);
     current += sizeof(_appliedSeq);
 
-    TRI_ASSERT(*current == SerializeFormat::NOCOMPRESSION);
-    current++;  // Skip format char
+    SerializeFormat format = static_cast<SerializeFormat>(*current);
+    // Skip format char
+    ++current;
+    
+    if (format == SerializeFormat::UNCOMPRESSED) {
+      // UNCOMPRESSED format.
+      // we have a subroutine which we can invoke on it.
+      return deserializeUncompressedBody(serialized.substr(current - serialized.data()));
+    }
+    
+    if (format == SerializeFormat::COMPRESSED) {
+      // COMPRESSED format.
+      // in order to handle this, we first need to uncompress the data.
+      // the uncompressed data then is the data in UNCOMPRESSED format.
 
+      // read compressed length
+      uint64_t compressedLength = rocksutils::uint64FromPersistent(current);
+      TRI_ASSERT(compressedLength == serialized.size() - sizeof(uint64_t) - sizeof(SerializeFormat) - sizeof(uint64_t));
+
+      current += sizeof(uint64_t);
+
+      // uncompress data in scratch buffer
+      std::string scratch;
+      snappy::Uncompress(current, compressedLength, &scratch);
+      // now scratch contains the UNCOMPRESSED data
+
+      // from now on, we have an UNCOMPRESSED value, and can pretend
+      // it was always like this
+      return deserializeUncompressedBody(arangodb::velocypack::StringRef(scratch));
+    }
+
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "unable to restore index estimates: invalid format found");
+  }
+
+  void deserializeUncompressedBody(arangodb::velocypack::StringRef serialized) {
+    // Assert that we have at least the member variables
+    constexpr size_t minRequiredSize = 
+                   sizeof(uint64_t) + sizeof(_size) +
+                   sizeof(_nrUsed) + sizeof(_nrCuckood) + sizeof(_nrTotal) +
+                   sizeof(_niceSize) + sizeof(_logSize);
+    TRI_ASSERT(serialized.size() > minRequiredSize);
+    if (serialized.size() <= minRequiredSize) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "unable to restore index estimates: invalid format found");
+    }
+
+    char const* current = serialized.data();
     uint64_t length = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
     // Validate that the serialized format is exactly as long as
     // we expect it to be
-    TRI_ASSERT(serialized.size() == length + sizeof(_appliedSeq));
+    TRI_ASSERT(serialized.size() + sizeof(SerializeFormat) == length);
 
     _size = rocksutils::uint64FromPersistent(current);
     current += sizeof(uint64_t);
@@ -849,11 +940,10 @@ class RocksDBCuckooIndexEstimator {
 
     // Validate that we have enough data in the serialized format.
     TRI_ASSERT(serialized.size() ==
-               (sizeof(_appliedSeq) + sizeof(SerializeFormat) +
-                sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) +
-                sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
-                sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket)) +
-                   (_size * kCounterSize * kSlotsPerBucket));
+                  sizeof(uint64_t) + sizeof(_size) + sizeof(_nrUsed) +
+                  sizeof(_nrCuckood) + sizeof(_nrTotal) + sizeof(_niceSize) +
+                  sizeof(_logSize) + (_size * kSlotSize * kSlotsPerBucket) +
+                     (_size * kCounterSize * kSlotsPerBucket));
 
     // Insert the raw data
     // Size is as follows: nrOfBuckets * kSlotsPerBucket * SlotSize

@@ -1,6 +1,12 @@
 devel
 -----
 
+* Decrease the size of serialized index esimtates, by introducing a 
+  compressed serialization format. The compressed format uses the previous
+  uncompressed format internally, compresses it, and stores the compressed
+  data instead. This makes serialized index estimates a lot smaller, which
+  in turn decreases the size of I/O operations for index maintenance.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual
