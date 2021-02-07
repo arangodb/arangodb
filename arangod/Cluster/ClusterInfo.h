@@ -55,6 +55,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -595,6 +596,22 @@ public:
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
+  /// @brief return shard statistics for the specified database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                       std::string const& restrictServer,
+                                       arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics for all databases, totals,
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobal(std::string const& restrictServer,
+                                  arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics, separate for each database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                          arangodb::velocypack::Builder& builder) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
@@ -638,7 +655,7 @@ public:
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -860,19 +877,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate planned
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidatePlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrent();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////

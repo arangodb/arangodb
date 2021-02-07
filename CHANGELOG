@@ -1,6 +1,26 @@
 devel
 -----
 
+* Added new REST APIs for retrieving the sharding distribution in:
+
+  - GET `/_api/database/shardDistribution` will return the number of 
+    collections, shards, leaders and followers for the database it is run
+    inside. The request can optionally be restricted to include data from 
+    only a single DB server, by passing the `DBserver` URL parameter.
+
+    This API can only be used on coordinators.
+
+  - GET `/_admin/cluster/shardDistribution` will return global statistics
+    on the current shard distribution, showing the total number of databases,
+    collections, shards, leaders and followers for the entire cluster. 
+    The results can optionally be restricted to include data from only a
+    single DB server, by passing the `DBserver` URL parameter.
+    By setting the `details` URL parameter, the response will not contain
+    aggregates, but instead one entry per available database will be returned.
+
+    This API can only be used in the `_system` database of coordinators, and
+    requires admin user privileges.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual

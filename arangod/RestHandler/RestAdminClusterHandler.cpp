@@ -38,6 +38,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
@@ -270,6 +271,7 @@ std::string const RestAdminClusterHandler::MoveShard = "moveShard";
 std::string const RestAdminClusterHandler::QueryJobStatus = "queryAgencyJob";
 std::string const RestAdminClusterHandler::RemoveServer = "removeServer";
 std::string const RestAdminClusterHandler::RebalanceShards = "rebalanceShards";
+std::string const RestAdminClusterHandler::ShardStatistics = "shardStatistics";
 
 RestStatus RestAdminClusterHandler::execute() {
   // No more check for admin rights here, since we handle this in every individual
@@ -313,6 +315,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRemoveServer();
     } else if (command == RebalanceShards) {
       return handleRebalanceShards();
+    } else if (command == ShardStatistics) {
+      return handleShardStatistics();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -488,6 +492,49 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "expecting string or object with key `server`");
+  return RestStatus::DONE;
+}
+
+RestStatus RestAdminClusterHandler::handleShardStatistics() {
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+    
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    return RestStatus::DONE;
+  }
+  
+  if (!_vocbase.isSystem()) {
+    generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
+                  TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    return RestStatus::DONE;
+  }
+  
+  std::string const& restrictServer = _request->value("DBserver");
+  bool details = _request->parsedValue("details", false);
+
+  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  VPackBuilder builder;
+  Result res;
+
+  if (details) {
+    res = ci.getShardStatisticsGlobalDetailed(restrictServer, builder);
+  } else {
+    res = ci.getShardStatisticsGlobal(restrictServer, builder);
+  }
+  if (res.ok()) {
+    generateOk(rest::ResponseCode::OK, builder.slice());
+  } else {
+    generateError(res);
+  }
+
   return RestStatus::DONE;
 }
 
@@ -1153,12 +1200,12 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::waitForSupervisionS
       });
 }
 
-RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
+RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate) {
   auto maintenancePath =
       arangodb::cluster::paths::root()->arango()->supervision()->maintenance();
 
   auto sendTransaction = [&] {
-    if (wantToActive) {
+    if (wantToActivate) {
       constexpr int timeout = 3600; // 1 hour
       return AsyncAgencyComm().setValue(60s, maintenancePath, 
           VPackValue(timepointToString(
@@ -1171,9 +1218,9 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
   auto self(shared_from_this());
 
   return waitForFuture(sendTransaction()
-                           .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
+                           .thenValue([this, wantToActivate](AsyncAgencyCommResult&& result) {
                              if (result.ok() && result.statusCode() == 200) {
-                               return waitForSupervisionState(wantToActive);
+                               return waitForSupervisionState(wantToActivate);
                              } else {
                                generateError(result.asResult());
                              }
