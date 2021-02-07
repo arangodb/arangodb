@@ -71,7 +71,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   ~RocksDBVPackIndex();
 
-  bool hasSelectivityEstimate() const override { return true; }
+  bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 

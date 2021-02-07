@@ -375,15 +375,14 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
       _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
-  if (!_unique && !ServerState::instance()->isCoordinator()) {
+  if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
         RocksDBIndex::ESTIMATOR_SIZE);
-    TRI_ASSERT(_estimator != nullptr);
   }
+  
   TRI_ASSERT(!_fields.empty());
-
   TRI_ASSERT(iid.isSet());
 
   fillPaths(_paths, _expanding);
@@ -391,11 +390,18 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
 
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() = default;
+  
+bool RocksDBVPackIndex::hasSelectivityEstimate() const {
+  return true;
+}
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
+  }
+  if (_estimator == nullptr) {
+    return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
@@ -1304,6 +1310,9 @@ void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator
 
 void RocksDBVPackIndex::recalculateEstimates() {
   if (unique()) {
+    return;
+  }
+  if (_estimator == nullptr) {
     return;
   }
 
