@@ -1,8 +1,8 @@
 devel
 -----
 
-* Do not create index estimator objects for proxy collection object on 
-  coordinators and DB servers. Proxy objects are created on coordinator and
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
   DB servers for all shards, and they also make index objects available. In
   order to reduce the memory usage by these objects, we don't create any
   index estimator objects for indexes in those proxy objects. Index estimators
