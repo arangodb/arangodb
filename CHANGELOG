@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added new REST APIs for retrieving the sharding distribution in:
+* Added new REST APIs for retrieving the sharding distribution:
 
   - GET `/_api/database/shardDistribution` will return the number of 
     collections, shards, leaders and followers for the database it is run
