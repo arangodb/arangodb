@@ -47,7 +47,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   arangodb::Result verifyPermitted();
   void clearLogs();
   void reportLogs(bool newFormat);
-  void setLogLevel();
+  void handleLogLevel();
 
 };
 }  // namespace arangodb

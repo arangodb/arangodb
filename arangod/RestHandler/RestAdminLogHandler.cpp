@@ -87,12 +87,14 @@ RestStatus RestAdminLogHandler::execute() {
       reportLogs(/*newFormat*/ false);
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
       reportLogs(/*newFormat*/ true);
+    } else if (suffixes.size() == 1 && suffixes[0] == "level") {
+      handleLogLevel();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "superfluous suffix, expecting /_admin/log/entries");
     }
   } else {
-    setLogLevel();
+    handleLogLevel();
   }
 
   return RestStatus::DONE;
@@ -315,7 +317,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-void RestAdminLogHandler::setLogLevel() {
+void RestAdminLogHandler::handleLogLevel() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   // was validated earlier
