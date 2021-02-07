@@ -42,14 +42,17 @@ function shardStatisticsSuite() {
   };
 
   let cleanCollections = function () {
+    let old = db._name();
     db._useDatabase(cn);
     for (let i = 0; i < 5; ++i) {
       db._drop(cn + i);
     }
+    db._useDatabase(old);
   };
 
   return {
     setUpAll : function () {
+      db._useDatabase("_system");
       try {
         db._dropDatabase(cn);
       } catch (err) {}
@@ -57,6 +60,7 @@ function shardStatisticsSuite() {
     },
     
     tearDownAll : function () {
+      db._useDatabase("_system");
       try {
         db._dropDatabase(cn);
       } catch (err) {}
