@@ -34,6 +34,7 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Basics/debugging.h"
 #include "Basics/fasthash.h"
 
 #include <rocksdb/types.h>
@@ -139,6 +140,16 @@ class RocksDBCuckooIndexEstimator {
     void injectCounter(uint32_t* cnt) { _counter = cnt; }
   };
 
+ public:
+  explicit RocksDBCuckooIndexEstimator(uint64_t size);
+
+  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized);
+
+  ~RocksDBCuckooIndexEstimator();
+
+  RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
+  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
+  
   enum SerializeFormat : char {
     // Estimators are serialized in the following way:
     // - the first 8 bytes contain the applied seq number, little endian
@@ -171,26 +182,8 @@ class RocksDBCuckooIndexEstimator {
     // serialized data structure
     COMPRESSED = '2',
   };
-
- public:
-  static bool isFormatSupported(arangodb::velocypack::StringRef serialized) {
-    TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
-    switch (serialized[sizeof(_appliedSeq)]) {
-      case SerializeFormat::UNCOMPRESSED:
-      case SerializeFormat::COMPRESSED:
-        return true;
-    }
-    return false;
-  }
-
-  explicit RocksDBCuckooIndexEstimator(uint64_t size);
-
-  explicit RocksDBCuckooIndexEstimator(arangodb::velocypack::StringRef serialized);
-
-  ~RocksDBCuckooIndexEstimator();
-
-  RocksDBCuckooIndexEstimator(RocksDBCuckooIndexEstimator const&) = delete;
-  RocksDBCuckooIndexEstimator& operator=(RocksDBCuckooIndexEstimator const&) = delete;
+  
+  static bool isFormatSupported(arangodb::velocypack::StringRef serialized);
 
   /**
    * @brief Serialize estimator for persistence, applying any buffered updates
@@ -204,11 +197,11 @@ class RocksDBCuckooIndexEstimator {
    *
    * @param  serialized String for output
    * @param  commitSeq  Above that are still uncommited operations
-   * @param  compressed Whether or not the COMPRESSED format should be used
+   * @param  format     The serialization format to use
    */
   void serialize(std::string& serialized, 
                  rocksdb::SequenceNumber maxCommitSeq, 
-                 bool compress);
+                 SerializeFormat format);
   
   /// @brief only call directly during startup/recovery; otherwise buffer
   void clear();
@@ -524,7 +517,9 @@ class RocksDBCuckooIndexEstimator {
   HashWithSeed<uint16_t, 0xfedcbafedcba4321ULL> _hasherShort;
 
   arangodb::basics::ReadWriteLock mutable _lock;
-};  // namespace arangodb
+}; 
+
+using RocksDBCuckooIndexEstimatorType = RocksDBCuckooIndexEstimator<uint64_t>;
 
 }  // namespace arangodb
 

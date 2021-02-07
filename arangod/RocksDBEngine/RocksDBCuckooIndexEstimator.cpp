@@ -89,6 +89,17 @@ RocksDBCuckooIndexEstimator<Key>::~RocksDBCuckooIndexEstimator() {
   delete[] _slotBase;
   delete[] _counterBase;
 }
+  
+template <class Key>
+/*static*/ bool RocksDBCuckooIndexEstimator<Key>::isFormatSupported(arangodb::velocypack::StringRef serialized) {
+  TRI_ASSERT(serialized.size() > sizeof(_appliedSeq) + sizeof(char));
+  switch (serialized[sizeof(_appliedSeq)]) {
+    case SerializeFormat::UNCOMPRESSED:
+    case SerializeFormat::COMPRESSED:
+      return true;
+  }
+  return false;
+}
 
 /**
  * @brief Serialize estimator for persistence, applying any buffered updates
@@ -106,11 +117,7 @@ RocksDBCuckooIndexEstimator<Key>::~RocksDBCuckooIndexEstimator() {
 template <class Key>
 void RocksDBCuckooIndexEstimator<Key>::serialize(std::string& serialized, 
                                                  rocksdb::SequenceNumber maxCommitSeq, 
-                                                 bool compress) {
-  SerializeFormat format = SerializeFormat::UNCOMPRESSED;
-  if (compress) {
-    format = SerializeFormat::COMPRESSED;
-  }
+                                                 SerializeFormat format) {
 
   // We always have to start with the commit seq, type and then the length
 

@@ -325,11 +325,11 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
 }
   
 /// @brief get index estimator, optional
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() { 
+RocksDBCuckooIndexEstimatorType* RocksDBIndex::estimator() { 
   return nullptr; 
 }
 
-void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) {}
 
 void RocksDBIndex::recalculateEstimates() {}
 

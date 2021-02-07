@@ -86,8 +86,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
   void recalculateEstimates() override;
 
   void toVelocyPack(VPackBuilder&, std::underlying_type<Index::Serialize>::type) const override;
@@ -152,7 +152,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 
   /// @brief The list of attributes covered by this index.
   ///        First is the actual index attribute (e.g. _from), second is the
