@@ -46,7 +46,7 @@ struct LogBuffer {
   LogLevel _level;
   uint32_t _topicId;
   time_t _timestamp;
-  char _message[256];
+  char _message[512];
 
   LogBuffer(); 
 };
@@ -62,7 +62,8 @@ class LogBufferFeature final : public application_features::ApplicationFeature {
   void prepare() override;
 
   /// @brief return all buffered log entries
-  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel);
+  std::vector<LogBuffer> entries(LogLevel, uint64_t start, bool upToLevel, 
+                                 std::string const& searchString);
 
   /// @brief clear all log entries
   void clear();
