@@ -77,6 +77,21 @@ std::size_t ResourceMonitor::memoryLimit() const noexcept {
   
 /// @brief increase memory usage by <value> bytes. may throw!
 void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
+  // this function may modify up to 3 atomic variables:
+  // - the current local memory usage
+  // - the peak local memory usage
+  // - the global memory usage
+  // the order in which we update these atomic variables is not important,
+  // as long as everything is eventually consistent. 
+  // in case this function triggers a "resource limit exceeded" error, 
+  // the only thing that can have happened is the update of the current local
+  // memory usage, which this function will roll back again.
+  // as this function only adds and subtracts values from the memory usage
+  // counters, it only does not lead to any lost updates due to data races
+  // with other threads.
+  // the peak memory usage value is updated with a CAS operation, so again
+  // there will no be lost updates.
+
   std::size_t const previous = _currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
   std::size_t const current = previous + value;
   
@@ -138,6 +153,8 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // only when there was a change in the number of buckets.
     std::size_t peak = _currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
     std::size_t const newPeak = currentBuckets * bucketSize;
+    // do a CAS here, as concurrent threads may work on the peak memory usage at the
+    // very same time.
     while (peak < newPeak) {
       if (_currentResources.peakMemoryUsage.compare_exchange_weak(peak, newPeak,
                                                                   std::memory_order_release,
@@ -149,6 +166,12 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
 }
   
 void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
+  // this function will always decrease the current local memory usage value,
+  // and may in addition lead to a decrease of the global memory usage value.
+  // as it only subtracts from these counters, it will not lead to any lost
+  // updates even if there are concurrent threads working on the same counters.
+  // note that peak memory usage is not changed here, as this is only relevant
+  // when we are _increasing_ memory usage.
   std::size_t const previous = _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
   std::size_t const current = previous - value;
