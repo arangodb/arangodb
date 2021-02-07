@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
@@ -50,7 +51,7 @@ LogBuffer::LogBuffer()
     : _id(0), 
       _level(LogLevel::DEFAULT), 
       _topicId(0), 
-      _timestamp(0) {
+      _timestamp(0.0) {
   memset(&_message[0], 0, sizeof(_message));
 }
 
@@ -72,7 +73,7 @@ class LogAppenderRingBuffer final : public LogAppender {
       return;
     }
 
-    auto timestamp = time(nullptr);
+    double timestamp = TRI_microtime();
 
     MUTEX_LOCKER(guard, _lock);
 
