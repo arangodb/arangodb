@@ -36,6 +36,12 @@ devel
   off, so that individual queries can only lower their maximum allowed memory
   usage. 
 
+* Added metric `arangodb_aql_global_memory_usage` to expose the total amount
+  of memory (in steps of 32 kb) that is currently in use by all AQL queries.
+
+* Added metric `arangodb_aql_global_memory_limit` to expose the memory limit 
+  from startup option `--query.global-memory-limit`.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual
