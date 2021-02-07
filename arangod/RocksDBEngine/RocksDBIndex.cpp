@@ -323,6 +323,15 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
     }
   }
 }
+  
+/// @brief get index estimator, optional
+RocksDBCuckooIndexEstimator<uint64_t>* RocksDBIndex::estimator() { 
+  return nullptr; 
+}
+
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
+
+void RocksDBIndex::recalculateEstimates() {}
 
 RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectId, bool unique) {
   switch (type) {
