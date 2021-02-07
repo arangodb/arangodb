@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -136,7 +137,15 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
           "arangodb_aql_slow_query", 0, "Total number of slow AQL queries finished")),
       _runningQueries(
         server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")) {
+          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")),
+      _globalQueryMemoryUsage(
+        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_aql_global_memory_usage", 0, std::string("Total memory usage of all AQL queries executing [bytes]"
+          ", granulariy: ") + std::to_string(ResourceMonitor::bucketSize) + " bytes steps")),
+      _globalQueryMemoryLimit(
+        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_aql_global_memory_limit", 0, "Total memory limit for all AQL queries combined [bytes]")) {
+  
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -316,7 +325,9 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 
 void QueryRegistryFeature::prepare() {
   // set the global memory limit
-  ResourceMonitor::globalMemoryLimit(_queryGlobalMemoryLimit);
+  GlobalResourceMonitor::instance().memoryLimit(_queryGlobalMemoryLimit);
+  // prepare gauge value
+  _globalQueryMemoryLimit = _queryGlobalMemoryLimit;
 
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
@@ -355,15 +366,23 @@ void QueryRegistryFeature::unprepare() {
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
+void QueryRegistryFeature::updateMetrics() {
+  GlobalResourceMonitor const& global = GlobalResourceMonitor::instance();
+  _globalQueryMemoryLimit = global.memoryLimit();
+
+  _globalQueryMemoryUsage = global.current();
+  _globalQueryMemoryLimit = global.memoryLimit();
+}
+
 void QueryRegistryFeature::trackQueryStart() noexcept {
-  _runningQueries += 1;
+  ++_runningQueries;
 }
 
 void QueryRegistryFeature::trackQueryEnd(double time) { 
   ++_queriesCounter; 
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
-  _runningQueries -= 1;
+  --_runningQueries;
 }
 
 void QueryRegistryFeature::trackSlowQuery(double time) { 

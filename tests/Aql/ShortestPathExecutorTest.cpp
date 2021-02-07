@@ -42,6 +42,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/ShortestPathExecutor.h"
 #include "Aql/Stats.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
@@ -325,53 +326,54 @@ struct ShortestPathTestParameters {
 };
 
 class ShortestPathExecutorTest : public ::testing::Test {
-  protected:
+ protected:
   ShortestPathTestParameters parameters;
 
-MockAqlServer server;
-ExecutionState state;
-arangodb::ResourceMonitor monitor;
-AqlItemBlockManager itemBlockManager;
-std::unique_ptr<arangodb::aql::Query> fakedQuery;
-TestShortestPathOptions options;
-TokenTranslator& translator;
+  MockAqlServer server;
+  ExecutionState state;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager;
+  std::unique_ptr<arangodb::aql::Query> fakedQuery;
+  TestShortestPathOptions options;
+  TokenTranslator& translator;
 
-RegisterInfos registerInfos;
-// parameters are copied because they are const otherwise
-// and that doesn't mix with std::move
-ShortestPathExecutorInfos executorInfos;
+  RegisterInfos registerInfos;
+  // parameters are copied because they are const otherwise
+  // and that doesn't mix with std::move
+  ShortestPathExecutorInfos executorInfos;
 
-FakePathFinder& finder;
+  FakePathFinder& finder;
 
-SharedAqlItemBlockPtr inputBlock;
-AqlItemBlockInputRange input;
+  SharedAqlItemBlockPtr inputBlock;
+  AqlItemBlockInputRange input;
 
-std::shared_ptr<arangodb::velocypack::Builder> fakeUnusedBlock;
-SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
+  std::shared_ptr<arangodb::velocypack::Builder> fakeUnusedBlock;
+  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher;
 
-ShortestPathExecutor testee;
+  ShortestPathExecutor testee;
 
-ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
-    : parameters(std::move(parameters_)),
-      server{},
-      itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
-      fakedQuery(server.createFakeQuery()),
-      options(fakedQuery.get()),
-      translator(*(static_cast<TokenTranslator*>(options.cache()))),
-      registerInfos(parameters._inputRegisters, parameters._outputRegisters, 2,
-                    4, {}, {RegIdSet{0, 1}}),
-      executorInfos(std::make_unique<FakePathFinder>(options, translator),
-                    std::move(parameters._registerMapping),
-                    std::move(parameters._source), std::move(parameters._target)),
-      finder(static_cast<FakePathFinder&>(executorInfos.finder())),
-      inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
-      input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
-      fakeUnusedBlock(VPackParser::fromJson("[]")),
-      fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
-      testee(fetcher, executorInfos) {
-  for (auto&& p : parameters._paths) {
-    finder.addPath(std::move(p));
-  }
+  ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
+      : parameters(std::move(parameters_)),
+        server{},
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        fakedQuery(server.createFakeQuery()),
+        options(fakedQuery.get()),
+        translator(*(static_cast<TokenTranslator*>(options.cache()))),
+        registerInfos(parameters._inputRegisters, parameters._outputRegisters, 2,
+                      4, {}, {RegIdSet{0, 1}}),
+        executorInfos(std::make_unique<FakePathFinder>(options, translator),
+                      std::move(parameters._registerMapping),
+                      std::move(parameters._source), std::move(parameters._target)),
+        finder(static_cast<FakePathFinder&>(executorInfos.finder())),
+        inputBlock(buildBlock<2>(itemBlockManager, std::move(parameters._inputMatrix))),
+        input(AqlItemBlockInputRange(ExecutorState::DONE, 0, inputBlock, 0)),
+        fakeUnusedBlock(VPackParser::fromJson("[]")),
+        fetcher(itemBlockManager, fakeUnusedBlock->steal(), false),
+        testee(fetcher, executorInfos) {
+    for (auto&& p : parameters._paths) {
+     finder.addPath(std::move(p));
+    }
   }
 
   size_t ExpectedNumberOfRowsProduced(size_t expectedFound) {

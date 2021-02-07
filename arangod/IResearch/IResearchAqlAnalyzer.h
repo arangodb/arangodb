@@ -31,7 +31,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Basics/ResourceUsage.h"
 #include "StorageEngine/TransactionState.h"
 
 #include <string>
@@ -97,7 +96,6 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   irs::increment _inc;
   std::string _str;
   Options _options;
-  arangodb::ResourceMonitor _resourceMonitor;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   arangodb::aql::ExecutionEngine _engine;

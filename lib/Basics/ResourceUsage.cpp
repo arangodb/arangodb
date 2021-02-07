@@ -22,77 +22,53 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/ResourceUsage.h"
+#include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 using namespace arangodb;
-  
-/// @brief maximum allowed global memory limit for all tracked operations combined.
-/// a value of 0 means that there will be no global limit enforced.
-/*static*/ std::size_t ResourceMonitor::_globalMemoryLimit = 0;
 
-/// @brief the current combined memory usage of all tracked operations.
-/// should only very brief go above "_globalMemoryLimit" (if it goes
-/// above it, it will instantly throw an exception so that memory usage
-/// will go down again quickly).
-/// this counter is updated by local instances only if there is a substantial
-/// allocation/deallocation. it is intentionally _not_ updated on every
-/// small allocation/deallocation. the granularity for the values in this
-/// counter is bucketSize.
-/*static*/ std::atomic<std::size_t> ResourceMonitor::_globalMemoryUsage{0};
-
-ResourceMonitor::ResourceMonitor() noexcept
-    : _currentResources(), 
-      _memoryLimit(0) {}
+ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
+    : _current(0),
+      _peak(0),
+      _limit(0),
+      _global(global) {}
 
 ResourceMonitor::~ResourceMonitor() {
   // this assertion is here to ensure that our memory usage tracking works
   // correctly, and everything that we accounted for is actually properly torn
   // down. the assertion will have no effect in production.
-  TRI_ASSERT(_currentResources.memoryUsage.load(std::memory_order_relaxed) == 0);
+  TRI_ASSERT(_current.load(std::memory_order_relaxed) == 0);
 }
   
 /// @brief sets a memory limit
 void ResourceMonitor::memoryLimit(std::size_t value) noexcept { 
-  _memoryLimit = value; 
+  _limit = value; 
 }
 
 /// @brief returns the current memory limit
 std::size_t ResourceMonitor::memoryLimit() const noexcept { 
-  return _memoryLimit; 
-}
-  
-/// @brief sets the global memory limit
-/*static*/ void ResourceMonitor::globalMemoryLimit(std::size_t value) noexcept { 
-  _globalMemoryLimit = value; 
-}
-
-/// @brief returns the global memory limit
-/*static*/ std::size_t ResourceMonitor::globalMemoryLimit() noexcept { 
-  return _globalMemoryLimit; 
-}
-
-/// @brief returns the current global memory usage
-/*static*/ std::size_t ResourceMonitor::globalMemoryUsage() noexcept { 
-  return _globalMemoryUsage.load(std::memory_order_relaxed);
+  return _limit; 
 }
   
 /// @brief increase memory usage by <value> bytes. may throw!
+/// this function may modify up to 3 atomic variables:
+/// - the current local memory usage
+/// - the peak local memory usage
+/// - the global memory usage
+/// the order in which we update these atomic variables is not important,
+/// as long as everything is eventually consistent. 
+/// in case this function triggers a "resource limit exceeded" error, 
+/// the only thing that can have happened is the update of the current local
+/// memory usage, which this function will roll back again.
+/// as this function only adds and subtracts values from the memory usage
+/// counters, it only does not lead to any lost updates due to data races
+/// with other threads.
+/// the peak memory usage value is updated with a CAS operation, so again
+/// there will no be lost updates.
 void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
-  // this function may modify up to 3 atomic variables:
-  // - the current local memory usage
-  // - the peak local memory usage
-  // - the global memory usage
-  // the order in which we update these atomic variables is not important,
-  // as long as everything is eventually consistent. 
-  // in case this function triggers a "resource limit exceeded" error, 
-  // the only thing that can have happened is the update of the current local
-  // memory usage, which this function will roll back again.
-  // as this function only adds and subtracts values from the memory usage
-  // counters, it only does not lead to any lost updates due to data races
-  // with other threads.
-  // the peak memory usage value is updated with a CAS operation, so again
-  // there will no be lost updates.
-
-  std::size_t const previous = _currentResources.memoryUsage.fetch_add(value, std::memory_order_relaxed);
+  std::size_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
   std::size_t const current = previous + value;
   
   // now calculate if the number of buckets used by instance's allocations stays the 
@@ -116,11 +92,11 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // we have piled up changes by lots of small allocations so far.
     // time for some memory expensive checks now...
 
-    if (_memoryLimit > 0 && ADB_UNLIKELY(current > _memoryLimit)) {
+    if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.
-      _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+      _current.fetch_sub(value, std::memory_order_relaxed);
 
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
@@ -129,36 +105,23 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // instance's own memory usage counter has been updated successfully once we got here.
 
     // now modify the global counter value, too.
-    diff *= bucketSize;
-
-    TRI_ASSERT((diff % bucketSize) == 0);
-
-    std::size_t previousGlobal = _globalMemoryUsage.fetch_add(diff, std::memory_order_relaxed);
-    std::size_t currentGlobal = previousGlobal + diff;
-    
-    if (_globalMemoryLimit > 0 && ADB_UNLIKELY(currentGlobal > _globalMemoryLimit)) {
+    if (!_global.increaseMemoryUsage(diff * bucketSize)) {
       // the allocation would exceed the global maximum value, so we need to roll back.
-
-      // revert the change to the global counter
-      _globalMemoryUsage.fetch_sub(diff, std::memory_order_relaxed);
-    
-      // revert the change to the local counter
-      _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+      _current.fetch_sub(value, std::memory_order_relaxed);
 
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "global memory limit exceeded");
     }
+    // increasing the global counter has succeeded!
  
     // update the peak memory usage counter for the local instance. we do this
     // only when there was a change in the number of buckets.
-    std::size_t peak = _currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+    std::size_t peak = _peak.load(std::memory_order_relaxed);
     std::size_t const newPeak = currentBuckets * bucketSize;
     // do a CAS here, as concurrent threads may work on the peak memory usage at the
     // very same time.
     while (peak < newPeak) {
-      if (_currentResources.peakMemoryUsage.compare_exchange_weak(peak, newPeak,
-                                                                  std::memory_order_release,
-                                                                  std::memory_order_relaxed)) {
+      if (_peak.compare_exchange_weak(peak, newPeak, std::memory_order_release, std::memory_order_relaxed)) {
         break;
       }
     }
@@ -172,7 +135,7 @@ void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
   // updates even if there are concurrent threads working on the same counters.
   // note that peak memory usage is not changed here, as this is only relevant
   // when we are _increasing_ memory usage.
-  std::size_t const previous = _currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
+  std::size_t const previous = _current.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
   std::size_t const current = previous - value;
   
@@ -180,27 +143,22 @@ void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
 
   if (diff != 0) {
     // number of buckets has changed. now we will update the global counter!
-    diff *= bucketSize;
-
-    TRI_ASSERT((diff % bucketSize) == 0);
-  
-    [[maybe_unused]] std::size_t previousGlobal = _globalMemoryUsage.fetch_sub(diff, std::memory_order_relaxed);
-    TRI_ASSERT(previousGlobal >= diff);
-    
+    _global.decreaseMemoryUsage(diff * bucketSize);
     // no need to update the peak memory usage counter here
   }
 }
   
-size_t ResourceMonitor::currentMemoryUsage() const noexcept {
-  return _currentResources.memoryUsage.load(std::memory_order_relaxed);
+size_t ResourceMonitor::current() const noexcept {
+  return _current.load(std::memory_order_relaxed);
 }
 
-std::size_t ResourceMonitor::peakMemoryUsage() const noexcept {
-  return _currentResources.peakMemoryUsage.load(std::memory_order_relaxed);
+std::size_t ResourceMonitor::peak() const noexcept {
+  return _peak.load(std::memory_order_relaxed);
 }
 
 void ResourceMonitor::clear() noexcept {
-  _currentResources.clear();
+  _current = 0;
+  _peak = 0;
 }
   
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value)

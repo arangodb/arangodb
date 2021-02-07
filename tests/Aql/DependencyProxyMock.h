@@ -29,6 +29,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
+#include "Basics/ResourceUsage.h"
 
 #include <cstdint>
 #include <queue>

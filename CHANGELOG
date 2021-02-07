@@ -23,10 +23,10 @@ devel
   the former must be set at least as high as the latter.
 
   To reduce the cost of globally tracking the memory usage of AQL queries, the
-  global memory usage counter is only updated in steps of 64 kb, making
+  global memory usage counter is only updated in steps of 32 kb, making
   this also the minimum granularity of the global memory usage figure.
   In the same fashion, the granularity of the peak memory usage counter inside
-  each query was also adjusted to steps of 64 kb.
+  each query was also adjusted to steps of 32 kb.
 
 * Added startup option `--query.memory-limit-override` to control whether
   individual AQL queries can increase their memory limit via the `memoryLimit`

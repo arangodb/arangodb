@@ -31,9 +31,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
-
-#include "Logger/LogMacros.h"
-
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
@@ -50,7 +49,8 @@ class SubqueryEndExecutorTest : public ::testing::Test {
       : _infos(nullptr, monitor, RegisterId{0}, RegisterId{0}) {}
 
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   SubqueryEndExecutorInfos _infos;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{

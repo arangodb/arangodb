@@ -46,6 +46,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
+  void updateMetrics();
+
   // tracks a query start
   void trackQueryStart() noexcept;
   // tracks a query completion, using execution time
@@ -111,6 +113,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
   Gauge<uint64_t>& _runningQueries;
+  Gauge<uint64_t>& _globalQueryMemoryUsage;
+  Gauge<uint64_t>& _globalQueryMemoryLimit;
 };
 
 }  // namespace arangodb

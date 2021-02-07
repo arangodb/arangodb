@@ -43,6 +43,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -131,7 +133,8 @@ static constexpr auto onlySkipAndCount = []() -> const AqlCall {
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
-  arangodb::ResourceMonitor monitor{};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 

@@ -26,6 +26,8 @@
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -55,7 +57,8 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
-  arangodb::ResourceMonitor resourceMonitor{};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}

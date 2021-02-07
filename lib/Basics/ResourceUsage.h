@@ -25,40 +25,29 @@
 #define ARANGOD_BASICS_RESOURCE_USAGE_H 1
 
 #include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/debugging.h"
-#include "Basics/system-compiler.h"
 
 #include <atomic>
+#include <cstddef>
 
 namespace arangodb {
-
-struct ResourceUsage final {
-  constexpr ResourceUsage() 
-      : memoryUsage(0), 
-        peakMemoryUsage(0) {}
-
-  void clear() { 
-    memoryUsage = 0; 
-    peakMemoryUsage = 0;
-  }
-
-  std::atomic<std::size_t> memoryUsage;
-  std::atomic<std::size_t> peakMemoryUsage;
-};
+class GlobalResourceMonitor;
 
 struct alignas(64) ResourceMonitor final {
   /// @brief: granularity of allocations that we track. this should be a 
   /// power of 2, so dividing by it is efficient!
   /// note: whatever this value is, it will also dictate the minimum granularity
   /// of the global memory usage counter, plus the granularity for each query's
-  /// peak memory usage value
-  static constexpr std::size_t bucketSize = 65536;
+  /// peak memory usage value.
+  /// note: if you adjust this value, keep in mind that making the bucket size
+  /// smaller will lead to better granularity, but also will increase the number
+  /// of atomic updates we need to make inside increaseMemoryUsage() and
+  /// decreaseMemoryUsage().
+  static constexpr std::size_t bucketSize = 32768;
 
   ResourceMonitor(ResourceMonitor const&) = delete;
   ResourceMonitor& operator=(ResourceMonitor const&) = delete;
 
-  ResourceMonitor() noexcept;
+  explicit ResourceMonitor(GlobalResourceMonitor& global) noexcept;
   ~ResourceMonitor();
 
   /// @brief sets a memory limit
@@ -67,15 +56,6 @@ struct alignas(64) ResourceMonitor final {
   /// @brief returns the current memory limit
   std::size_t memoryLimit() const noexcept;
   
-  /// @brief sets the global memory limit
-  static void globalMemoryLimit(std::size_t value) noexcept;
-
-  /// @brief returns the global memory limit
-  static std::size_t globalMemoryLimit() noexcept;
-
-  /// @brief returns the current global memory usage
-  static std::size_t globalMemoryUsage() noexcept;
-
   /// @brief increase memory usage by <value> bytes. may throw!
   void increaseMemoryUsage(std::size_t value);
 
@@ -83,10 +63,10 @@ struct alignas(64) ResourceMonitor final {
   void decreaseMemoryUsage(std::size_t value) noexcept;
 
   /// @brief return the current memory usage of the instance
-  size_t currentMemoryUsage() const noexcept;
+  size_t current() const noexcept;
   
   /// @brief return the peak memory usage of the instance
-  std::size_t peakMemoryUsage() const noexcept;
+  std::size_t peak() const noexcept;
 
   /// @brief reset counters for the local instance  
   void clear() noexcept;
@@ -99,15 +79,16 @@ struct alignas(64) ResourceMonitor final {
     // this is intentionally an integer division, which truncates any remainders.
     // we want this to be fast, so bucketSize should be a power of 2 and the div
     // operation can be substituted by a bit shift operation.
+    static_assert(bucketSize != 0);
+    static_assert((bucketSize % 256) == 0);
     return value / bucketSize;
   }
 
  private:
-  ResourceUsage _currentResources;
-  std::size_t _memoryLimit;
-
-  static std::size_t _globalMemoryLimit;
-  static std::atomic<std::size_t> _globalMemoryUsage;
+  std::atomic<std::size_t> _current;
+  std::atomic<std::size_t> _peak;
+  std::size_t _limit;
+  GlobalResourceMonitor& _global;
 };
 
 /// @brief RAII object for temporary resource tracking

@@ -25,6 +25,8 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "AqlItemBlockHelper.h"
 
@@ -179,7 +181,8 @@ auto MakeSkipResult(size_t const i) -> SkipResult {
 
 TEST(DeSerializeAqlExecuteResultTest, test) {
   
-  ResourceMonitor resourceMonitor{};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
   AqlItemBlockManager manager{resourceMonitor, SerializationFormat::SHADOWROWS};
 
   auto const testingAqlExecuteResults = std::array{

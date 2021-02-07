@@ -43,6 +43,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/TraversalStats.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
@@ -230,7 +231,8 @@ class KShortestPathsExecutorTest
 
   MockAqlServer server;
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 

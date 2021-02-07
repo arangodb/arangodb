@@ -26,6 +26,7 @@
 
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
+#include "Logger/LogMacros.h"
 
 #include <queue>
 
@@ -39,7 +40,7 @@ class FifoQueue {
   // TODO: Add Sorting (Performance - will be implemented in the future - cluster relevant)
   // -> loose ends to the end
 
-  FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {}
   ~FifoQueue() { this->clear(); }
 
@@ -48,12 +49,12 @@ class FifoQueue {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
       _queue.clear();
     }
-  };
+  }
 
   void append(Step step) {
     _resourceMonitor.increaseMemoryUsage(sizeof(Step));
     _queue.push_back(std::move(step));
-  };
+  }
 
   bool hasProcessableElement() const {
     if (!isEmpty()) {
@@ -62,9 +63,9 @@ class FifoQueue {
     }
 
     return false;
-  };
+  }
 
-  size_t size() const { return _queue.size(); };
+  size_t size() const { return _queue.size(); }
 
   bool isEmpty() const { return _queue.empty(); }
 
@@ -79,7 +80,7 @@ class FifoQueue {
     }
 
     return steps;
-  };
+  }
 
   Step pop() {
     TRI_ASSERT(!isEmpty());
@@ -88,7 +89,7 @@ class FifoQueue {
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS) << "<FifoQueue> Pop: " << first.toString();
     _queue.pop_front();
     return first;
-  };
+  }
 
  private:
   /// @brief queue datastore

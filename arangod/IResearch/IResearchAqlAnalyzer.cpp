@@ -40,6 +40,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -471,10 +472,10 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
-    _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
+    _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
-  _resourceMonitor.memoryLimit(_options.memoryLimit);
+  _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());

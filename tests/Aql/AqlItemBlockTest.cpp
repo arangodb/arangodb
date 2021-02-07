@@ -25,6 +25,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/InputAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -41,7 +43,8 @@ namespace aql {
 
 class AqlItemBlockTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [
@@ -518,7 +521,8 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
 
 class AqlItemBlockClassicTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::CLASSIC};
   std::shared_ptr<VPackBuilder> _dummyData{VPackParser::fromJson(R"(
           [

@@ -32,6 +32,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -90,9 +91,12 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 }
 
 void MetricsFeature::toPrometheus(std::string& result) const {
-
   // minimize reallocs
   result.reserve(32768);
+  
+  // QueryRegistryFeature
+  auto& q = server().getFeature<QueryRegistryFeature>();
+  q.updateMetrics();
 
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
