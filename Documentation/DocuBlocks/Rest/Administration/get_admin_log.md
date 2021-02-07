@@ -110,6 +110,9 @@ the API is disabled, all requests will be responded to with HTTP 403. If the
 API is enabled, accessing it requires admin privileges, or even superuser
 privileges, depending on the value of the `--log.api-enabled` startup option.
 
+This API is **deprecated** in favor of the `/_admin/log/entries` REST API, which 
+provides the same data in a more intuitive and easier to process format.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
