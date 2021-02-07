@@ -30,8 +30,10 @@
 #include <map>
 #include <set>
 #include <utility>
+#include <vector>
 
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Basics/fasthash.h"
 
 #include <rocksdb/types.h>
