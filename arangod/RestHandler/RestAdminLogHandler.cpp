@@ -196,7 +196,10 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
       start = std::min<size_t>(start, entries.size());
     }
 
-    result.openArray();
+    result.openObject();
+    result.add("total", VPackValue(entries.size()));
+
+    result.add("messages", VPackValue(VPackValueType::Array));
     for (size_t i = start; i < entries.size(); ++i) {
       if (i - start >= size) {
         // produced enough results
@@ -214,6 +217,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
       result.close();
     }
 
+    result.close(); // messages
     result.close();
   } else {
     // old log format

@@ -1,4 +1,3 @@
-
 @startDocuBlock get_admin_log_entries
 @brief returns the server logs
 
@@ -40,7 +39,10 @@ imposes a chronological order. The default value is *asc*.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
-The result is a JSON array with log messages that matched the search criteria.
+The result is a JSON object with the following properties:
+
+- **total**: the total amount of log entries before pagination 
+- **messages**: an array with log messages that matched the criteria
 
 This API can be turned off via the startup option `--log.api-enabled`. In case
 the API is disabled, all requests will be responded to with HTTP 403. If the
