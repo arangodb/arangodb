@@ -55,8 +55,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include <stddef.h>
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
@@ -95,12 +95,19 @@ struct LogMessage {
         _message(std::move(message)),
         _offset(offset) {}
 
+  void shrink(std::size_t maxLength) {
+    if (_message.size() > maxLength) {
+      _message.resize(maxLength);
+      _message.append("...", 3);
+    }
+  }
+
   char const* _function;
   char const* _file;
   int const _line;
   LogLevel const _level;
   size_t const _topicId;
-  std::string const _message;
+  std::string _message;
   size_t const _offset;
 };
 
@@ -273,6 +280,8 @@ class Logger {
 
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
+
+  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
 
   static std::string const& translateLogLevel(LogLevel) noexcept;
 

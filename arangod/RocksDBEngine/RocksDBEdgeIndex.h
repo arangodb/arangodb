@@ -115,11 +115,11 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId, velocypack::Slice const doc,
-                OperationOptions& options) override;
+                OperationOptions const& /*options*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const doc) override;
+                velocypack::Slice doc) override;
 
  private:
   /// @brief create the iterator

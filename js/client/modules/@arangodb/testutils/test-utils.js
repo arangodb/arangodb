@@ -923,6 +923,13 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
         message: "test ran into timeout. Original test status: " + JSON.stringify(result),
       };
     }
+    if (result === undefined) {
+      return {
+        timeout: true,
+        status: false,
+        message: "test didn't return any result at all!"
+      };
+    }
     return result;
   } catch (ex) {
     let timeout = SetGlobalExecutionDeadlineTo(0.0);

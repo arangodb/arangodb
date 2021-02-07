@@ -1,7 +1,8 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/*jshint globalstrict:false, strict:false */
+/* global getOptions, assertEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup collections for dump/reload tests
+/// @brief test for security-related server options
 ///
 /// @file
 ///
@@ -21,30 +22,34 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+if (getOptions === true) {
+  return {
+    'log.in-memory': "false"
+  };
+}
 
-const base = require("fs").join(
-  require('internal').pathForTesting('server'),
-  'dump',
-  'dump-setup-common.inc');
-const setup = require(base);
+const jsunity = require('jsunity');
 
-(function () {
-  setup.cleanup();
-  setup.createEmpty();
-  setup.createUsers();
-  setup.createMany();
-  setup.createOrder();
-  
-  setup.createFoxx();
-})();
+function testSuite() {
+  return {
+    testApiGet : function() {
+      let res = arango.GET("/_admin/log");
+      assertEqual(0, res.totalAmount);
+      assertEqual([], res.lid);
+      assertEqual([], res.topic);
+      assertEqual([], res.level);
+      assertEqual([], res.timestamp);
+      assertEqual([], res.text);
+    },
+    
+  };
+}
 
-return {
-  status: true
-};
+jsunity.run(testSuite);
+return jsunity.done();

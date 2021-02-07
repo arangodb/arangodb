@@ -56,8 +56,9 @@ LogBuffer::LogBuffer()
 /// @brief logs to a fixed size ring buffer in memory
 class LogAppenderRingBuffer final : public LogAppender {
  public:
-  LogAppenderRingBuffer() 
+  explicit LogAppenderRingBuffer(LogLevel minLogLevel) 
       : LogAppender(),
+        _minLogLevel(minLogLevel),
         _id(0) {
     MUTEX_LOCKER(guard, _lock);
     _buffer.resize(LogBufferFeature::BufferSize);
@@ -65,9 +66,8 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  public:
   void logMessage(LogMessage const& message) override {
-    if (message._level == LogLevel::FATAL) {
-      // no need to track FATAL messages here, as the process will go down
-      // anyway
+    if (message._level > _minLogLevel) {
+      // logger not configured to log these messages
       return;
     }
 
@@ -84,6 +84,13 @@ class LogAppenderRingBuffer final : public LogAppender {
     ptr._timestamp = timestamp;
     TRI_CopyString(ptr._message, message._message.c_str() + message._offset,
                    sizeof(ptr._message) - 1);
+  }
+
+  void clear() {
+    MUTEX_LOCKER(guard, _lock);
+    _id = 0;
+    _buffer.clear();
+    _buffer.resize(LogBufferFeature::BufferSize);
   }
 
   std::string details() const override {
@@ -133,6 +140,7 @@ class LogAppenderRingBuffer final : public LogAppender {
 
  private:
   Mutex _lock;
+  LogLevel const _minLogLevel;
   uint64_t _id;
   std::vector<LogBuffer> _buffer;
 };
@@ -184,6 +192,7 @@ class LogAppenderEventLog final : public LogAppender {
 
 LogBufferFeature::LogBufferFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "LogBuffer"),
+      _minInMemoryLogLevel("info"),
       _useInMemoryAppender(true) {
   setOptional(true);
   startsAfter<LoggerFeature>();
@@ -202,6 +211,14 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                   new BooleanParameter(&_useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
                   .setIntroducedIn(30701);
+  
+  std::unordered_set<std::string> const logLevels = { "fatal", "error", "err", "warning", "warn", "info", "debug", "trace" };
+  options
+      ->addOption("--log.in-memory-level", "use in-memory log appender only for this log level and higher",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_minInMemoryLogLevel, logLevels),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                  .setIntroducedIn(30800);
 }
 
 void LogBufferFeature::prepare() {
@@ -209,8 +226,20 @@ void LogBufferFeature::prepare() {
     // only create the in-memory appender when we really need it. if we created it
     // in the ctor, we would waste a lot of memory in case we don't need the in-memory
     // appender. this is the case for simple command such as `--help` etc.
-    _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>();
+    LogLevel level;
+    bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
+    if (!isValid) {
+      level = LogLevel::INFO;
+    }
+
+    _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>(level);
     LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
+  }
+}
+
+void LogBufferFeature::clear() {
+  if (_inMemoryAppender != nullptr) {
+    static_cast<LogAppenderRingBuffer*>(_inMemoryAppender.get())->clear();
   }
 }
 
