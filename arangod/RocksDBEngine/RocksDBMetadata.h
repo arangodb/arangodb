@@ -149,9 +149,12 @@ struct RocksDBMetadata final {
 
   /// @brief remove collection metadata
   static Result deleteCollectionMeta(rocksdb::DB*, uint64_t objectId);
+  static Result deleteCollectionMetaBatch(rocksdb::DB*, uint64_t objectId, rocksdb::WriteBatch &wb);
 
   /// @brief remove collection index estimate
   static Result deleteIndexEstimate(rocksdb::DB*, uint64_t objectId);
+  static Result deleteIndexEstimateBatch(rocksdb::DB*, uint64_t objectId,
+                                         rocksdb::WriteBatch& wb);
 
  private:
   /// @brief apply counter adjustments, only call from sync thread

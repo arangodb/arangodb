@@ -669,6 +669,43 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
   return DocCount(0, 0, 0, RevisionId::none());
 }
 
+Result RocksDBMetadata::deleteCollectionMetaBatch(rocksdb::DB*, uint64_t objectId, rocksdb::WriteBatch &wb) {
+  rocksdb::ColumnFamilyHandle* const cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+
+    // Step 1. delete the document count
+  RocksDBKey key;
+  key.constructCounterValue(objectId);
+  rocksdb::Status s = wb.Delete(cf, key.string());
+  if (!s.ok()) {
+    LOG_TOPIC("93718", ERR, Logger::ENGINES)
+        << "could not delete counter value for collection with objectId '"
+        << objectId << "': " << s.ToString();
+    // try to remove the key generator value regardless
+  } else {
+    LOG_TOPIC("93719", TRACE, Logger::ENGINES)
+        << "deleted counter for collection with objectId '" << objectId << "'";
+  }
+
+  key.constructKeyGeneratorValue(objectId);
+  s = wb.Delete(cf, key.string());
+  if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
+        << "could not delete key generator value: " << s.ToString();
+    return rocksutils::convertStatus(s);
+  }
+
+  key.constructRevisionTreeValue(objectId);
+  s = wb.Delete(cf, key.string());
+  if (!s.ok() && !s.IsNotFound()) {
+    LOG_TOPIC("af3dd", ERR, Logger::ENGINES)
+        << "could not delete revision tree value: " << s.ToString();
+    return rocksutils::convertStatus(s);
+  }
+
+  return Result();
+}
+
 /// @brief remove collection metadata
 /*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db,
                                                               uint64_t objectId) {
@@ -718,6 +755,18 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
   RocksDBKey key;
   key.constructIndexEstimateValue(objectId);
   rocksdb::Status s = db->Delete(wo, cf, key.string());
+  if (!s.ok() && !s.IsNotFound()) {
+    return rocksutils::convertStatus(s);
+  }
+  return Result();
+}
+
+/*static*/ Result RocksDBMetadata::deleteIndexEstimateBatch(rocksdb::DB* db, uint64_t objectId, rocksdb::WriteBatch& wb) {
+  rocksdb::ColumnFamilyHandle* const cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
+  RocksDBKey key;
+  key.constructIndexEstimateValue(objectId);
+  rocksdb::Status s = wb.Delete(cf, key.string());
   if (!s.ok() && !s.IsNotFound()) {
     return rocksutils::convertStatus(s);
   }

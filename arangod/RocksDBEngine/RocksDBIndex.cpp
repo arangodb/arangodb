@@ -204,6 +204,23 @@ void RocksDBIndex::destroyCache() {
   _cache.reset();
 }
 
+
+Result RocksDBIndex::dropWithBatch(rocksdb::WriteBatch& wb) {
+  auto* coll = toRocksDBCollection(_collection);
+  // edge index needs to be dropped with prefixSameAsStart = false
+  // otherwise full index scan will not work
+  bool const prefixSameAsStart = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
+  bool const useRangeDelete = coll->meta().numberDocuments() >= 32 * 1024;
+
+  RocksDBEngine& engine =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  arangodb::Result r = rocksutils::removeLargeRange(engine.db(), this->getBounds(),
+                                                    prefixSameAsStart, useRangeDelete);
+  auto bounds = this->getBounds();
+  auto res = wb.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  return rocksutils::convertStatus(res);
+}
+
 Result RocksDBIndex::drop() {
   auto* coll = toRocksDBCollection(_collection);
   // edge index needs to be dropped with prefixSameAsStart = false

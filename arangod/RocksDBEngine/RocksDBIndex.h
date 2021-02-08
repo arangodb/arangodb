@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
 #include <rocksdb/status.h>
+#include <rocksdb/write_batch.h>
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
@@ -73,6 +74,7 @@ class RocksDBIndex : public Index {
   size_t memory() const override;
 
   Result drop() override;
+  Result dropWithBatch(rocksdb::WriteBatch& wb);
 
   virtual void afterTruncate(TRI_voc_tick_t tick,
                              transaction::Methods* trx) override;

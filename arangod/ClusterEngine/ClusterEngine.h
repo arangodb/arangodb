@@ -178,6 +178,8 @@ class ClusterEngine final : public StorageEngine {
                         LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
+  arangodb::Result dropCollectionFast(TRI_vocbase_t& vocbase,
+                                      LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection, bool doSync) override;

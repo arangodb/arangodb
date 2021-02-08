@@ -1351,6 +1351,109 @@ void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
   replicationManager()->drop(&coll);
 }
 
+arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
+                                                   LogicalCollection& collection) {
+
+  auto* rocksdb_collection = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
+  bool const compactAfterDrop = rocksdb_collection->meta().numberDocuments() >= 32 * 1024;
+
+  rocksdb::DB* db = _db->GetRootDB();
+
+  TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_DELETED);
+
+
+
+  // Prepare collection remove batch
+  rocksdb::WriteBatch batch;
+  {
+    RocksDBLogValue logValue =
+        RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
+                                        arangodb::velocypack::StringRef(
+                                            collection.guid()));
+    batch.PutLogData(logValue.slice());
+  }
+  {
+    RocksDBKey key;
+    key.constructCollection(vocbase.id(), collection.id());
+    batch.Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+                 key.string());
+  }
+
+  Result res =
+      RocksDBMetadata::deleteCollectionMetaBatch(db, rocksdb_collection->objectId(), batch);
+  if (res.fail()) {
+    LOG_TOPIC("2c890", ERR, Logger::ENGINES)
+        << "error removing collection meta-data: "
+        << res.errorMessage();  // continue regardless
+  }
+
+  // delete indexes, RocksDBIndex::drop() has its own check
+  std::vector<std::shared_ptr<Index>> vecShardIndex = rocksdb_collection->getIndexes();
+  TRI_ASSERT(!vecShardIndex.empty());
+
+  for (auto& index : vecShardIndex) {
+    auto* ridx = static_cast<RocksDBIndex*>(index.get());
+    res = RocksDBMetadata::deleteIndexEstimateBatch(db, ridx->objectId(), batch);
+    if (res.fail()) {
+      LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
+      << "could not delete index estimate: " << res.errorMessage();
+    }
+
+    auto dropRes = ridx->dropWithBatch(batch).errorNumber();
+
+    if (dropRes != TRI_ERROR_NO_ERROR) {
+      // We try to remove all indexed values.
+      // If it does not work they cannot be accessed any more and leaked.
+      // User View remains consistent.
+      LOG_TOPIC("97176", ERR, Logger::ENGINES)
+      << "unable to drop index: " << TRI_errno_string(dropRes);
+      //      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
+  // delete documents
+  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(rocksdb_collection->objectId());
+  batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+
+  // fire!
+  rocksdb::WriteOptions wo;
+  rocksdb::Status s = db->Write(wo, &batch);
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+
+
+  // remove from map
+  {
+    WRITE_LOCKER(guard, _mapLock);
+    _collectionMap.erase(rocksdb_collection->objectId());
+  }
+
+  // run compaction for data only if collection contained a considerable
+  // amount of documents. otherwise don't run compaction, because it will
+  // slow things down a lot, especially during tests that create/drop LOTS
+  // of collections
+  if (compactAfterDrop) {
+    rocksdb_collection->compact();
+  }
+
+  // TODO compact indexes as well and drop the caches
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // check if documents have been deleted
+  size_t numDocs = rocksutils::countKeyRange(_db, bounds, true);
+
+  if (numDocs > 0) {
+    std::string errorMsg(
+        "deletion check in collection drop failed - not all documents "
+        "have been deleted. remaining: ");
+    errorMsg.append(std::to_string(numDocs));
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
+  }
+#endif
+  return Result();
+}
 
 arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                LogicalCollection& coll) {
