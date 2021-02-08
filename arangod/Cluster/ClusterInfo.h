@@ -1084,7 +1084,7 @@ public:
 
   /// @brief error code sent to all remaining promises of the syncers at shutdown. 
   /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
-  int const _syncerShutdownCode;
+  ErrorCode const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered

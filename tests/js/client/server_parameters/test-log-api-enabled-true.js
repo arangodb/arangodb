@@ -53,7 +53,7 @@ function testSuite() {
       let res = arango.GET("/_admin/log/level");
       Object.keys(res).forEach((k) => {
         let level = res[k];
-        assertNotEqual(-1, levels.indexOf(level));
+        assertNotEqual(-1, levels.indexOf(level), level);
       });
     },
     

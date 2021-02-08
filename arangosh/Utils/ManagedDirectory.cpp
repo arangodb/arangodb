@@ -90,7 +90,11 @@ inline int openFile(std::string const& path, int flags) {
 /// @brief Closes an open file and sets the status
 inline void closeFile(int& fd, arangodb::Result& status) {
   TRI_ASSERT(fd >= 0);
-  status = arangodb::Result{TRI_CLOSE(fd)};
+  if (0 != TRI_CLOSE(fd)) {
+    status = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  } else {
+    status = arangodb::Result{};
+  }
   fd = -1;
 }
 
@@ -279,7 +283,7 @@ ManagedDirectory::ManagedDirectory(application_features::ApplicationServer& serv
     if (create) {
       long systemError;
       std::string errorMessage;
-      int res = TRI_CreateDirectory(_path.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateDirectory(_path.c_str(), systemError, errorMessage);
       if (res != TRI_ERROR_NO_ERROR) {
         if (res == TRI_ERROR_SYS_ERROR) {
           res = TRI_ERROR_CANNOT_CREATE_DIRECTORY;

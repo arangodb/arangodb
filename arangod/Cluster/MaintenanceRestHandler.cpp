@@ -74,8 +74,7 @@ RestStatus MaintenanceRestHandler::execute() {
       break;
 
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       break;
   }  // switch
 

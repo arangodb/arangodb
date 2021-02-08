@@ -79,6 +79,7 @@ const arangodb::Result ErrorMalformedJsonResponse = {
 /// @brief check whether HTTP response is valid, complete, and not an error
 arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& client,
                                    std::unique_ptr<arangodb::httpclient::SimpleHttpResult> const& response) {
+  using arangodb::basics::StringUtils::concatT;
   using arangodb::basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
     return {TRI_ERROR_INTERNAL,
@@ -93,8 +94,9 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
       errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
       errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
-    return {errorNum, "got invalid response from server: HTTP " +
-                          itoa(response->getHttpReturnCode()) + ": " + errorMsg};
+    auto err = ErrorCode{errorNum};
+    return {err, concatT("got invalid response from server: HTTP ",
+                         itoa(response->getHttpReturnCode()), ": ", errorMsg)};
   }
   return {};
 }
