@@ -97,7 +97,7 @@ class AgencyCache final : public arangodb::Thread {
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
-  futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
 
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
