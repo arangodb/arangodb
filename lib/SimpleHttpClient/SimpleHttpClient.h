@@ -297,7 +297,7 @@ class SimpleHttpClient {
   /// @brief register an error message
   //////////////////////////////////////////////////////////////////////////////
 
-  void setErrorMessage(std::string_view message, int error) {
+  void setErrorMessage(std::string_view message, ErrorCode error) {
     if (error != TRI_ERROR_NO_ERROR) {
       _errorMessage = basics::StringUtils::concatT(message, ": ", TRI_errno_string(error));
     } else {
@@ -315,13 +315,14 @@ class SimpleHttpClient {
   /// @brief fetch the version from the server
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getServerVersion(int* errorCode = nullptr);
+  std::string getServerVersion(ErrorCode* errorCode = nullptr);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief extract an error message from a response
   //////////////////////////////////////////////////////////////////////////////
 
-  std::string getHttpErrorMessage(SimpleHttpResult const*, int* errorCode = nullptr);
+  std::string getHttpErrorMessage(SimpleHttpResult const* result,
+                                  ErrorCode* errorCode = nullptr);
 
   SimpleHttpClientParams& params() { return _params; };
 
