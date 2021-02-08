@@ -651,7 +651,7 @@ function optimizerRuleTestSuite () {
         ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "REPLACE"],
       ];
 
-      const explainer = require("@arangodb/aql/explainer")
+      const explainer = require("@arangodb/aql/explainer");
       queries.forEach(function(query, i) {
         const output = explainer.explain(query[0], {...thisRuleEnabled, colors: false}, false);
         const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT\(k, { "allowKeyConversionToObject" : true, "ignoreErrors" : false, "canUseCustomKey" : true }\)/);
@@ -663,7 +663,7 @@ function optimizerRuleTestSuite () {
     
     testInsertsDistributeInputCalculationForInsert : function () {
       const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
-      const explainer = require("@arangodb/aql/explainer")
+      const explainer = require("@arangodb/aql/explainer");
       const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
       const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
       assertTrue(variable);
@@ -674,7 +674,7 @@ function optimizerRuleTestSuite () {
     
     testInsertsDistributeInputCalculationForUpsert : function () {
       const query = "FOR k IN  ['1','2','3'] UPSERT {_key: k} INSERT { miau: 42 } UPDATE { } IN  " + cn1;
-      const explainer = require("@arangodb/aql/explainer")
+      const explainer = require("@arangodb/aql/explainer");
       const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
       const distributeVar = output.match(/LET #([0-9]+) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
       const inputVar = output.match(/LET #([0-9]+) = \{ \"miau\" : 42 \}/);
