@@ -102,10 +102,10 @@ class Parser {
   QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, char const*, int, int);
+  void registerParseError(int, char const*, std::string_view, int, int);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int errorCode, std::string_view data, int line, int column);
+  void registerParseError(int, std::string_view, int, int);
   
   /// @brief register a warning
   void registerWarning(int, std::string_view, int, int);

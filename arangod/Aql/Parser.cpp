@@ -133,7 +133,7 @@ QueryResult Parser::parseWithDetails() {
 
 /// @brief register a parse error, position is specified as line / column
 void Parser::registerParseError(int errorCode, char const* format,
-                                char const* data, int line, int column) {
+                                std::string_view data, int line, int column) {
   char buffer[512];
   // make sure the buffer is always initialized
   buffer[0] = '\0';

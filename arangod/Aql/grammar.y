@@ -594,18 +594,18 @@ prune_and_options:
         // Options
         node->addMember($2);
       } else {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
     }
     | T_STRING expression T_STRING object {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($2 != nullptr);
       if (!TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($4 != nullptr);
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -795,7 +795,7 @@ let_element:
 count_into:
     T_WITH T_STRING T_INTO variable_name {
       if (!TRI_CaseEqualString($2.value, "COUNT")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", {$2.value, $2.length}, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $4;
@@ -994,7 +994,7 @@ collect_optional_into:
 variable_list:
     variable_name {
       if (! parser->ast()->scopes()->existsVariable($1.value, $1.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($1.value, $1.length);
@@ -1006,7 +1006,7 @@ variable_list:
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3.value, $3.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($3.value, $3.length);
@@ -1021,7 +1021,7 @@ variable_list:
 keep:
     T_STRING {
       if (!TRI_CaseEqualString($1.value, "KEEP")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeArray();
@@ -1613,7 +1613,7 @@ for_options:
       } else {
         // everything else must be OPTIONS
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
       
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1630,7 +1630,7 @@ for_options:
 
       if (!TRI_CaseEqualString($1.value, "SEARCH") ||
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -1650,7 +1650,7 @@ options:
       TRI_ASSERT($2 != nullptr);
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1692,7 +1692,7 @@ object_element:
 
       if (variable == nullptr) {
         // variable does not exist
-        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       // create a reference to the variable
