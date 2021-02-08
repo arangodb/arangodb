@@ -1,9 +1,28 @@
 devel
 -----
 
+* More improvements for logging:
+  
+  * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
+    in a more intuitve format, putting each log entry with all its properties
+    into an object. The API response is an array with all log message objects
+    that match the search criteria.
+    This is an extension to the already existing API endpoint GET `/_admin/log`,
+    which returned log messages fragmented into 5 separate arrays.
+
+    The already existing API endpoint GET `/_admin/log` for retrieving log 
+    messages is now deprecated, altough it will stay available for some time.
+
+  * Truncation of log messages now takes JSON format into account, so that
+    the truncation of oversized JSON log messages still keeps a valid JSON
+    structure even after the truncation.
+
+  * The maximum size of in-memory log messages was doubled from 256 to 512
+    chars, so that longer parts of each log message can be preserved now.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
-- `--log.max-entry-length`: controls the maximum line length for individual
+  - `--log.max-entry-length`: controls the maximum line length for individual
     log messages that are written into normal logfiles by arangod (note: this
     does not include audit log messages). 
     Any log messages longer than the specified value will be truncated and the 
