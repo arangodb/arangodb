@@ -7,7 +7,7 @@
 #include "Basics/voc-errors.h"
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<int, const char*, 364> ErrorMessages = {
+constexpr static frozen::unordered_map<int, const char*, 366> ErrorMessages = {
     {int(TRI_ERROR_NO_ERROR),  // 0
       "no error"},
     {int(TRI_ERROR_FAILED),  // 1
@@ -92,12 +92,16 @@ constexpr static frozen::unordered_map<int, const char*, 364> ErrorMessages = {
       "request not acceptable"},
     {int(TRI_ERROR_HTTP_REQUEST_TIMEOUT),  // 408
       "request timeout"},
+    {int(TRI_ERROR_HTTP_CONFLICT),  // 409
+      "conflict"},
     {int(TRI_ERROR_HTTP_GONE),  // 410
       "content permanently deleted"},
     {int(TRI_ERROR_HTTP_PRECONDITION_FAILED),  // 412
       "precondition failed"},
     {int(TRI_ERROR_HTTP_SERVER_ERROR),  // 500
       "internal server error"},
+    {int(TRI_ERROR_HTTP_NOT_IMPLEMENTED),  // 501
+      "not implemented"},
     {int(TRI_ERROR_HTTP_SERVICE_UNAVAILABLE),  // 503
       "service unavailable"},
     {int(TRI_ERROR_HTTP_GATEWAY_TIMEOUT),  // 504
