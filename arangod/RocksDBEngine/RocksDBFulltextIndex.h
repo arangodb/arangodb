@@ -24,12 +24,16 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
+#include "Basics/Result.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+
+#include <set>
+#include <string>
 
 namespace arangodb {
 class LocalDocumentId;
