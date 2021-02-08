@@ -105,6 +105,7 @@ class GraphProviderTest : public ::testing::Test {
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
       // Prepare the DBServerResponses
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
+      uint64_t engineId = 0;
       {
         arangodb::tests::mocks::MockDBServer server{};
         graph.prepareServer(server);
@@ -140,7 +141,7 @@ class GraphProviderTest : public ::testing::Test {
         opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
 
         std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
-        uint64_t engineId = 0;
+        
         std::tie(preparedResponses, engineId) = graph.simulateApi(server, verticesList, opts);
         LOG_DEVEL << "Debug, size is: " << preparedResponses.size();
         for (auto const& resp : preparedResponses) {
@@ -172,7 +173,7 @@ class GraphProviderTest : public ::testing::Test {
       }
 
       clusterEngines = std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
-      clusterEngines->emplace("PRMR_0001", 1);
+      clusterEngines->emplace("PRMR_0001", engineId);
 
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(clusterEngines.get(), resourceMonitor);
