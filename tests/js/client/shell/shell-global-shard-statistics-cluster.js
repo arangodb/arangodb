@@ -91,9 +91,11 @@ function shardStatisticsSuite() {
       let baseValues = fetchStats();
 
       try {
+        let expected = ["_system", cn];
         db._useDatabase("_system");
         for (let i = 0; i < 5; ++i) {
           db._createDatabase(cn + "test" + i);
+          expected.push(cn + "test" + i);
         }
 
         let newValues = fetchStats();
@@ -108,10 +110,6 @@ function shardStatisticsSuite() {
         newValues = fetchStats("?details=true");
         let keys = Object.keys(newValues);
 
-        let expected = ["_system", cn];
-        for (let i = 0; i < 5; ++i) {
-          expected.push(cn + "test" + i);
-        }
 
         expected.forEach((dbName) => {
           assertTrue(newValues.hasOwnProperty(dbName));
