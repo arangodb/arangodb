@@ -23,48 +23,65 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SharedPRNGFeature.h"
-#include "Basics/Thread.h"
-#include "Basics/debugging.h"
-#include "Basics/fasthash.h"
 #include "Basics/splitmix64.h"
+#include "Basics/xoroshiro128plus.h"
+
+#include <mutex>
 
 using namespace arangodb::basics;
+
+namespace {
+
+/// @brief helper class for thread-safe creation of PRNG seed value
+class PRNGSeeder {
+ public: 
+  PRNGSeeder()
+      : _seeder(0xdeadbeefdeadbeefULL) {}
+
+  uint64_t next() noexcept {
+    std::lock_guard<std::mutex> guard(_mutex);
+    return _seeder.next();
+  }
+ 
+ private:
+  std::mutex _mutex;
+  splitmix64 _seeder;
+};
+
+/// @brief global PRNG seeder, to seed thread-local PRNG objects
+PRNGSeeder globalSeeder;
+
+struct SeededPRNG {
+  SeededPRNG() noexcept {
+    uint64_t seed1 = globalSeeder.next();
+    uint64_t seed2 = globalSeeder.next();
+    prng.seed(seed1, seed2);
+  }
+
+  inline uint64_t next() noexcept { return prng.next(); }
+
+  arangodb::basics::xoroshiro128plus prng;
+};
+  
+static thread_local SeededPRNG threadLocalPRNG;
+
+} // namespace
+
 
 namespace arangodb {
 
 SharedPRNGFeature::SharedPRNGFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "SharedPRNG"),
-      _prngs(nullptr) {
+    : ApplicationFeature(server, "SharedPRNG") {
   setOptional(true);
 }
 
 SharedPRNGFeature::~SharedPRNGFeature() = default;
 
 void SharedPRNGFeature::prepare() {
-  // allocate memory for all stripes.
-  _prngs = std::make_unique<PaddedPRNG[]>(stripes);
+}
 
-  PaddedPRNG* prngs = _prngs.get();
-  TRI_ASSERT((reinterpret_cast<uintptr_t>(prngs) & (sizeof(xoroshiro128plus) - 1)) == 0);
-  
-  splitmix64 seeder(0xdeadbeefdeadbeefULL);
-
-  // initialize all stripes
-  for (std::size_t i = 0; i < stripes; ++i) {
-    uint64_t seed1 = seeder.next();
-    uint64_t seed2 = seeder.next();
-    TRI_ASSERT((reinterpret_cast<uintptr_t>(&prngs[i]) & (sizeof(xoroshiro128plus) - 1)) == 0);
-    prngs[i].seed(seed1, seed2);
-  }
+uint64_t SharedPRNGFeature::rand() noexcept {
+  return ::threadLocalPRNG.next();
 }
   
-uint64_t SharedPRNGFeature::id() const noexcept {
-  return fasthash64_uint64(Thread::currentThreadNumber(), 0xdeadbeefdeadbeefULL);
-}
-
-uint64_t SharedPRNGFeature::rand() noexcept { 
-  TRI_ASSERT(_prngs != nullptr);
-  return _prngs[id() & (stripes - 1)].next(); 
-}
-
 }  // namespace arangodb

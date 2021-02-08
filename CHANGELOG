@@ -1,6 +1,85 @@
 devel
 -----
 
+* Improvements for logging. This adds the following startup options to arangod:
+
+- `--log.max-entry-length`: controls the maximum line length for individual
+    log messages that are written into normal logfiles by arangod (note: this
+    does not include audit log messages). 
+    Any log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. The purpose of this parameter is to 
+    shorten long log messages in case there is not a lot of space for logfiles, 
+    and to keep rogue log messages from overusing resources. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+  
+  - `--audit.max-entry-length`: controls the maximum line length for individual
+    audit log messages that are written into audit logs by arangod. Any audit
+    log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+
+  - `--log.in-memory-level`: controls which log messages are preserved in 
+    memory (in case `--log.in-memory` is set to `true`). The default value is
+    `info`, meaning all log messages of types `info`, `warning`, `error` and
+    `fatal` will be stored by an instance in memory (this was also the behavior
+    in previous versions of ArangoDB). By setting this option to `warning`,
+    only `warning`, `error` and `fatal` log messages will be preserved in memory, 
+    and by setting the option to `error` only error and fatal messages will be kept.
+    This option is useful because the number of in-memory log messages is 
+    limited to the latest 2048 messages, and these slots are by default shared 
+    between informational, warning and error messages. 
+
+* Honor the value of startup option `--log.api-enabled` when set to `false`.
+  The desired behavior in this case is to turn off the REST API for logging,
+  but was not implemented. The default value for the option is `true`, so the
+  REST API is enabled. This behavior did not change, and neither did the 
+  behavior when setting the option to a value of `jwt` (meaning the REST API
+  for logging is only available for superusers with a valid JWT token).
+
+* Split the update operations for the _fishbowl system collection with Foxx
+  apps into separate insert/replace and remove operations. This makes the
+  overall update not atomic, but as removes are unlikely here, we can now get
+  away with a simple multi-document insert-replace operation instead of a
+  truncate and an exclusive transaction, which was used before.
+
+* Fix `/_admin/cluster/removeServer` API.
+  This often returned HTTP 500 with an error message "Need open Array" due to
+  an internal error when setting up agency preconditions.
+
+* Remove logging startup options `--log.api-enabled` and `--log.keep-logrotate` 
+  for all client tools (arangosh, arangodump, arangorestore etc.), as these 
+  options are only meaningful for arangod.
+
+* Fixed BTS-284: upgrading from 3.6 to 3.7 in cluster enviroment.
+  Moved upgrade ArangoSearch links task to later step as it needs cluster
+  connection. Removed misleading error log records for failed ArangoSearch index
+  creation during upgrade phase.
+
+* Extend the "move-calculations-up" optimizer rule so that it can move
+  calculations out of subqueries into the outer query.
+
+* Don't allocate ahead-of-time memory for striped PRNG array in arangod,
+  but instead use thread-local PRNG instances. Not only does this save a
+  few megabytes or memory, but it also avoids potential (but unlikely)
+  sharing of the same PRNG instance by multiple threads.
+
+* Remove undocumented CMake variable `USE_BACKTRACE`, and remove define
+  `ARANGODB_ENABLE_BACKTRACE`. Both were turned off by default before, and
+  when turned on allow to produce backtraces from within the executable in
+  case debug symbols were available, working and the build was also compiled
+  with `USE_MAINTAINER_MODE=On`. Some code in this context was obviously
+  unreachable, so now it has all been removed.
+  To log a backtrace from within arangod, it is now possible to call
+  `CrashHandler::logBacktrace()`, which will log a backtrace of the calling
+  thread to the arangod log. This is restricted to Linux builds only.
+
+* Fix warnings about suggest-override which can break builds when warnings
+  are treated as errors.
+
 * Turn off option `--server.export-read-write-metrics` for now, until there
   is certainty about the runtime overhead it introduces.
 
@@ -18,44 +97,44 @@ devel
   possible for a very small number of queries and even had adverse effects,
   so it is now removed entirely.
 
-* On Linux and MacOS, require at least 8192 usable file descriptors at startup. 
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup.
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
-  Even the chosen minimum value of 8192 will often not be high enough to 
-  store considerable amounts of data. However, no higher value was chosen 
+  Even the chosen minimum value of 8192 will often not be high enough to
+  store considerable amounts of data. However, no higher value was chosen
   in order to not make too many existing small installations fail at startup
   after upgrading.
 
   The required number of file descriptors can be configured using the startup
   option `--server.descriptors-minimum`. It defaults to 8192, but it can be
   increased to ensure that arangod can make use of a sufficiently high number
-  of files. Setting `--server.descriptors-minimum` to a value of `0` will 
-  make the startup require only an absolute minimum limit of 1024 file 
+  of files. Setting `--server.descriptors-minimum` to a value of `0` will
+  make the startup require only an absolute minimum limit of 1024 file
   descriptors, effectively disabling the change.
   Such low values should only be used to bypass the file descriptors check
   in case of an emergency, but this is not recommended for production.
-          
-* Added metric `arangodb_transactions_expired` to track the total number 
+
+* Added metric `arangodb_transactions_expired` to track the total number
   of expired and then garbage-collected transactions.
 
 * Allow toggling the document read/write counters and histograms via the
-  new startup option `--server.export-read-write-metrics false`. This 
+  new startup option `--server.export-read-write-metrics false`. This
   option defaults to `true`, so these metrics will be exposed by default.
 
 * Upgraded bundled version of libunwind to v1.5.
 
-* Added startup option `--javascript.tasks` to allow turning off JavaScript 
-  tasks if not needed. The default value for this option is `true`, meaning 
+* Added startup option `--javascript.tasks` to allow turning off JavaScript
+  tasks if not needed. The default value for this option is `true`, meaning
   JavaScript tasks are available as before.
-  However, with this option they can be turned off by admins to limit the 
+  However, with this option they can be turned off by admins to limit the
   amount of JavaScript user code that is executed.
 
-* Only instantiate a striped PRNG instance for the arangod server, but not 
-  for any of the client tools (e.g. arangosh, arangodump, arangorestore). 
-  The client tools do not use the striped PRNG, so we can save a few MBs of 
-  memory for allocating the striped PRNG instance there, plus some CPU time 
-  for initializing it. 
+* Only instantiate a striped PRNG instance for the arangod server, but not
+  for any of the client tools (e.g. arangosh, arangodump, arangorestore).
+  The client tools do not use the striped PRNG, so we can save a few MBs of
+  memory for allocating the striped PRNG instance there, plus some CPU time
+  for initializing it.
 
 * Improve shard synchronization protocol by only transferring the required
   parts of the inventory from leader to follower. Previously, for each shard
@@ -65,13 +144,13 @@ devel
   synchronization protocol by reusing already existing information in the
   different steps of the replication process.
 
-* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that 
-  provides the time (in millseconds) it took for the most recent low priority 
-  scheduler queue item to bubble up to the queue's head. This metric can be 
-  used to estimate the queuing time for incoming requests. 
-  The metric will be updated probabilistically when a request is pulled from 
-  the scheduler queue, and may remain at its previous value for a while if 
-  only few requests are coming in or remain permanently at its previous value 
+* Added metric `arangodb_scheduler_low_prio_queue_last_dequeue_time` that
+  provides the time (in millseconds) it took for the most recent low priority
+  scheduler queue item to bubble up to the queue's head. This metric can be
+  used to estimate the queuing time for incoming requests.
+  The metric will be updated probabilistically when a request is pulled from
+  the scheduler queue, and may remain at its previous value for a while if
+  only few requests are coming in or remain permanently at its previous value
   if no further requests are incoming at all.
 
 * Allow {USER} placeholder string also in `--ldap.search-filter`.
@@ -84,38 +163,41 @@ devel
     (successful and failed) not performed by synchronous replication.
   - `arangodb_document_writes_replication`: Total number of document write
     operations (successful and failed) by cluster synchronous replication.
-  - `arangodb_collection_truncates`: Total number of collection truncate 
-    operations (successful and failed) not performed by cluster synchronous 
+  - `arangodb_collection_truncates`: Total number of collection truncate
+    operations (successful and failed) not performed by cluster synchronous
     replication.
-  - `arangodb_collection_truncates_replication`: Total number of collection 
+  - `arangodb_collection_truncates_replication`: Total number of collection
     truncate operations (successful and failed) by synchronous replication.
-  - `arangodb_document_read_time`: Execution time histogram of all document 
-    primary key read operations (successful and failed) [s]. Note: this 
+  - `arangodb_document_read_time`: Execution time histogram of all document
+    primary key read operations (successful and failed) [s]. Note: this
     does not include secondary index lookups, range scans and full collection
     scans.
-  - `arangodb_document_insert_time`: Execution time histogram of all 
+  - `arangodb_document_insert_time`: Execution time histogram of all
     document insert operations (successful and failed) [s].
-  - `arangodb_document_replace_time`: Execution time histogram of all 
+  - `arangodb_document_replace_time`: Execution time histogram of all
     document replace operations (successful and failed) [s].
-  - `arangodb_document_remove_time`: Execution time histogram of all 
+  - `arangodb_document_remove_time`: Execution time histogram of all
     document remove operations (successful and failed) [s].
-  - `arangodb_document_update_time`: Execution time histogram of all 
+  - `arangodb_document_update_time`: Execution time histogram of all
     document update operations (successful and failed) [s].
-  - `arangodb_collection_truncate_time`: Execution time histogram of all 
+  - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+  
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
   but the _key was given in the URL path, then the rev was wrongly taken
   as 0, rather than using the one from the document body.
 
-* Make `padded` and `autoincrement` key generators export their `lastValue`
-  values, so that they are available in dumps and can be restored elsewhere
-  from a dump.
-
 * Improved logging for error 1489 ("a shard leader refuses to perform a
   replication operation"). The log message will now provide the database and
   shard name plus the differing information about the shard leader.
+
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
 
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
@@ -138,9 +220,9 @@ devel
   the same (shared) output file.
 
 * Add option `--envelope` for arangodump, to control if each dumped document
-  should be wrapped into a small JSON envelope (e.g. 
-  `{"type":2300,"data":{...}}`). This JSON envelope is not necessary anymore 
-  since ArangoDB 3.8, so omitting it can produce smaller (and slightly faster) 
+  should be wrapped into a small JSON envelope (e.g.
+  `{"type":2300,"data":{...}}`). This JSON envelope is not necessary anymore
+  since ArangoDB 3.8, so omitting it can produce smaller (and slightly faster)
   dumps.
   Restoring a dump without these JSON envelopers is handled automatically by
   ArangoDB 3.8 and higher. Restoring a dump without these JSON envelopes into
@@ -219,7 +301,7 @@ devel
   level of the query never decreased when going from one level to the
   next. Even though unused registers were recycled since 3.7, this did
   not lead to unused registers being completely dismantled.
- 
+
   Now there is an extra step at the end of the register planning that
   keeps track of the actually used registers on each depth, and that
   will shrink the number of registers for the depth to the id of the
@@ -297,7 +379,7 @@ devel
   run in parallel. The defaults are intentionally high in order to not stop any valid,
   previously working queries from succedding.
 
-* Added startup options `--audit.queue` to control audit logging queuing
+* Added startup option `--audit.queue` to control audit logging queuing
   behavior (Enterprise Edition only):
 
   The option controls whether audit log messages are submitted to a queue
@@ -455,7 +537,7 @@ devel
 
   Using the `all` parameter is only allowed when making the call inside the
   `_system` database and with superuser privileges.
- 
+
 * Improve performance and memory efficiency of agency restart from persisted
   database directory.
 
@@ -490,7 +572,7 @@ devel
 
 * Lowered the minimum allowed value for `--rocksdb.max-write-buffer-number` from
   9 to 4 to allow more fine-grained memory usage control.
- 
+
 * Fix for issue #772: Optimized document counting for ArangoSearch views.
   Added new ArangoSearch view option 'countApproximate' for customizing
   view count strategy.
@@ -662,16 +744,16 @@ devel
   grade of the scheduler's queue is below the configured value, or HTTP 503 if
   the fill grade is above it. This can be used to flag a server as unavailable
   in case it is already highly loaded.
- 
+
   The default value for this option is `0.75`, i.e. 75%. This is a change
   compared to previous versions of ArangoDB, where the default value was `1`.
- 
+
   To prevent sending more traffic to an already overloaded server, it can be
   sensible to reduce the default value to even `0.5`.
   This would mean that instances with a queue longer than 50% of their
   maximum queue capacity would return HTTP 503 instead of HTTP 200 when their
   availability API is probed.
- 
+
   nb: the default value for the scheduler queue length is 4096.
 
 * Added metrics for the system CPU usage:
