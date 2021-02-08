@@ -42,6 +42,12 @@ devel
 * Added metric `arangodb_aql_global_memory_limit` to expose the memory limit 
   from startup option `--query.global-memory-limit`.
 
+* Decrease the size of serialized index esimtates, by introducing a 
+  compressed serialization format. The compressed format uses the previous
+  uncompressed format internally, compresses it, and stores the compressed
+  data instead. This makes serialized index estimates a lot smaller, which
+  in turn decreases the size of I/O operations for index maintenance.
+
 * Do not create index estimator objects for proxy collection objects on 
   coordinators and DB servers. Proxy objects are created on coordinators and
   DB servers for all shards, and they also make index objects available. In

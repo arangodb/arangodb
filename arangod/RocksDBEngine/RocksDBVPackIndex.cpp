@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -378,7 +379,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
   if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
-    _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         RocksDBIndex::ESTIMATOR_SIZE);
   }
   
@@ -1298,11 +1299,11 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
+RocksDBCuckooIndexEstimatorType* RocksDBVPackIndex::estimator() {
   return _estimator.get();
 }
 
-void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType> est) {
   TRI_ASSERT(!_unique);
   TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
