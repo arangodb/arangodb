@@ -95,7 +95,7 @@ class Expression {
   bool canRunOnDBServer(bool isOneShard);
 
   /// @brief whether or not the expression is deterministic
-  bool isDeterministic() const;
+  bool isDeterministic();
 
   /// @brief whether or not the expression will use V8
   bool willUseV8();
@@ -131,10 +131,7 @@ class Expression {
 
   /// @brief check whether this is a constant node
   bool isConstant() const;
-  
-  /// @brief check whether this expression may be moved as part of the optimization
-  bool isMovable() const;
-  
+
   /// @brief stringify an expression
   /// note that currently stringification is only supported for certain node
   /// types

@@ -479,8 +479,8 @@ void AqlFunctionFeature::addMiscFunctions() {
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
        &Functions::MakeDistributeInput});
-  add({"MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS", ".,.,.",
-       Function::makeFlags(FF::Internal, FF::MovableNondeterministic), &Functions::MakeDistributeInputWithCreateKeys});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION", ".,.,.",
+       Function::makeFlags(FF::Internal), &Functions::MakeDistributeInputWithKeyCreation});
   add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
        Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
                            FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),

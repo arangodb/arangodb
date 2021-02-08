@@ -333,10 +333,9 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
-  // note: these may be the same variables
   vars.emplace(_variable);
 }
-  
+
 /// @brief estimateCost
 CostEstimate DistributeNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();

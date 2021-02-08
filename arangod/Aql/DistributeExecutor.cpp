@@ -35,10 +35,7 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
-#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -132,7 +129,7 @@ auto DistributeExecutor::getClient(SharedAqlItemBlockPtr block, size_t rowIndex)
    
   // check first input register
   AqlValue val = row.getValue(_infos.registerId());
-  
+
   VPackSlice input = val.slice();  // will throw when wrong type
   if (input.isNone()) {
     return {};

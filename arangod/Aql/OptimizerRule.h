@@ -249,14 +249,6 @@ struct OptimizerRule {
     // make operations on sharded collections use distribute
     distributeInClusterRule,
 
-    // move calculations up the dependency chain (to pull them out of
-    // inner loops and subqueries)
-    // In particular we want to move calculations potentially added by distribute-in-cluster
-    moveCalculationsUpRule3,
-
-    // remove redundant calculations
-    removeRedundantCalculationsRule2,
-
 #ifdef USE_ENTERPRISE
     smartJoinsRule,
 #endif
@@ -294,10 +286,10 @@ struct OptimizerRule {
     distributeSortToClusterRule,
 
     // remove calculations that are redundant
+    // this is hidden and disabled by default version
     // used to cleanup calculation nodes after conditionally
-    // removed nodes (e.g., used by OneShard rule to handle
-    // removals of sort nodes for arangosearch views), but also
-    // removes redundant MAKE_DISTRIBUTE_* function calls.
+    // removed nodes. Currently used by OneShard rule to handle
+    // removals of sort nodes for arangosearch views.
     removeUnnecessaryCalculationsRule3,
 
     // try to get rid of a RemoteNode->ScatterNode combination which has

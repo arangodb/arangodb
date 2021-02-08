@@ -307,12 +307,11 @@ function optimizerRuleTestSuite () {
 
       let nodes = plan.nodes;
       assertEqual("SingletonNode", nodes[0].type);
-      assertEqual("CalculationNode", nodes[1].type); // LET #5 = 1 .. 10000
-      assertEqual("CalculationNode", nodes[2].type); // LET #7 = 1 .. 100
+      assertEqual("CalculationNode", nodes[1].type);
 
       // ignore the entire subquery contents
-      assertEqual("SubqueryStartNode", nodes[3].type);
-      assertEqual("SubqueryEndNode", nodes[5].type);
+      assertEqual("SubqueryStartNode", nodes[2].type);
+      assertEqual("SubqueryEndNode", nodes[4].type);
 
       assertEqual("CalculationNode", nodes[6].type);
       assertEqual("function call", nodes[6].expression.type);

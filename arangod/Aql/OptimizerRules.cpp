@@ -509,33 +509,6 @@ class RestrictToSingleShardChecker final
   }
 };
 
-bool isMakeDistriuteInputWithCreateKeys(arangodb::aql::Expression* expr) {
-  auto* n = expr->node();
-  if (n && n->type == arangodb::aql::NODE_TYPE_FCALL) {
-    auto* func = static_cast<arangodb::aql::Function*>(n->getData());
-    if (func && func->implementation == &arangodb::aql::Functions::MakeDistributeInputWithCreateKeys) {
-      return true;
-    }
-  }
-  return false;
-}
-
-bool tryResolveArgumentFromMakeDistributeInput(arangodb::aql::CalculationNode const& calc,
-                                               arangodb::aql::AstNode const*& result) {
-  auto* n = calc.expression()->node();
-  if (n && n->type == arangodb::aql::NODE_TYPE_FCALL) {
-    auto* func = static_cast<arangodb::aql::Function*>(n->getData());
-    if (func && (func->implementation == &arangodb::aql::Functions::MakeDistributeInput ||
-                 func->implementation == &arangodb::aql::Functions::MakeDistributeInputWithCreateKeys)) {
-      auto args = n->getMember(0);
-      TRI_ASSERT(args->type == arangodb::aql::NODE_TYPE_ARRAY);
-      result = args->getMember(0);
-      return true;
-    }
-  }
-  return false;
-}
-
 void findShardKeyInComparison(arangodb::aql::AstNode const* root,
                               arangodb::aql::Variable const* inputVariable,
                               std::unordered_set<std::string>& toFind,
@@ -715,23 +688,10 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   VPackBuilder builder;
   builder.openObject();
 
-checkSetter:
   if (setter->getType() == EN::CALCULATION) {
-    arangodb::aql::CalculationNode const* cn =
+    arangodb::aql::CalculationNode const* c =
         ExecutionNode::castTo<arangodb::aql::CalculationNode const*>(setter);
-    auto n = cn->expression()->node();
-    if (tryResolveArgumentFromMakeDistributeInput(*cn, n)) {
-      // this calculation node is a call to MAKE_DISTRIBUTE_INPUT - now check its first argument
-      if (n->type == arangodb::aql::NODE_TYPE_REFERENCE) {
-        // the first argument is a variable, so let's get the setter of that variable and restart
-        setter = plan->getVarSetBy(
-            static_cast<arangodb::aql::Variable*>(n->getData())->id);
-        goto checkSetter;
-      }
-      // the first argument is some other expression, but n is now updated to point to that
-      // expresion, so we can just continue...
-    }
-    
+    auto n = c->expression()->node();
     if (n == nullptr) {
       return std::string();
     }
@@ -1664,21 +1624,17 @@ void arangodb::aql::moveCalculationsUpRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
-    if (!nn->expression()->isMovable()) {
+    if (!nn->expression()->isDeterministic()) {
       // we will only move expressions up that cannot throw and that are
-      // deterministic, or are explicitly marked as movable
+      // deterministic
       continue;
     }
 
-    auto current = n->getFirstDependency();
-    if (!nn->expression()->isDeterministic() && current->isLoop()) {
-      // our calculation is movable but non-deterministic - those must not be moved out of loops
-      continue;
-    }
-    
     neededVars.clear();
     n->getVariablesUsedHere(neededVars);
-     
+
+    auto current = n->getFirstDependency();
+
     while (current != nullptr) {
       if (current->setsVariable(neededVars)) {
         // shared variable, cannot move up any more
@@ -4011,121 +3967,59 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt, std::unique_ptr<Executi
 // Create a new DistributeNode for the ExecutionNode passed in node, and
 // register it with the plan
 auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node)
-    -> std::pair<CalculationNode*, DistributeNode*> {
+    -> DistributeNode* {
   auto collection = static_cast<Collection const *>(nullptr);
   auto inputVariable = static_cast<Variable const *>(nullptr);
-  auto alternativeVariable = static_cast<Variable const *>(nullptr);
-
-  auto createKeys = bool{false};
-  auto allowKeyConversionToObject = bool{false};
-  auto allowSpecifiedKeys = bool{false};
-
-  auto fixupGraphInput = bool{false};
-
-  std::function<void(Variable* variable)> setInVariable;
-  bool ignoreErrors = false;
-
+  
   // TODO: this seems a bit verbose, but is at least local & simple
   //       the modification nodes are all collectionaccessing, the graph nodes are
   //       currently assumed to be disjoint, and hence smart, so all collections
   //       are sharded the same way!
   switch (node->getType()) {
     case ExecutionNode::INSERT: {
-      auto* insertNode = ExecutionNode::castTo<InsertNode*>(node);
+      auto const* insertNode = ExecutionNode::castTo<InsertNode const*>(node);
       collection = insertNode->collection();
       inputVariable = insertNode->inVariable();
-      createKeys = true;
-      allowKeyConversionToObject = true;
-      setInVariable = [insertNode](Variable* var) {
-        insertNode->setInVariable(var);
-      };
     } break;
     case ExecutionNode::REMOVE: {
-      auto* removeNode = ExecutionNode::castTo<RemoveNode*>(node);
+      auto const* removeNode = ExecutionNode::castTo<RemoveNode const*>(node);
       collection = removeNode->collection();
       inputVariable = removeNode->inVariable();
-      createKeys = false;
-      allowKeyConversionToObject = true;
-      ignoreErrors = removeNode->getOptions().ignoreErrors;
-      setInVariable = [removeNode](Variable* var) {
-        removeNode->setInVariable(var);
-      };
     } break;
     case ExecutionNode::UPDATE:
     case ExecutionNode::REPLACE: {
-      auto* updateReplaceNode =
-          ExecutionNode::castTo<UpdateReplaceNode*>(node);
+      auto const* updateReplaceNode =
+          ExecutionNode::castTo<UpdateReplaceNode const*>(node);
       collection = updateReplaceNode->collection();
-      ignoreErrors = updateReplaceNode->getOptions().ignoreErrors;
       if (updateReplaceNode->inKeyVariable() != nullptr) {
         inputVariable = updateReplaceNode->inKeyVariable();
-        // This is the _inKeyVariable! This works, since we use default
-        // sharding!
-        allowKeyConversionToObject = true;
-        setInVariable = [updateReplaceNode](Variable* var) {
-          updateReplaceNode->setInKeyVariable(var);
-        };
       } else {
         inputVariable = updateReplaceNode->inDocVariable();
-        allowKeyConversionToObject = false;
-        setInVariable = [updateReplaceNode](Variable* var) {
-          updateReplaceNode->setInDocVariable(var);
-        };
       }
-      createKeys = false;
     } break;
     case ExecutionNode::UPSERT: {
-      // an UPSERT node has two input variables!
-      auto* upsertNode = ExecutionNode::castTo<UpsertNode*>(node);
+      auto upsertNode = ExecutionNode::castTo<UpsertNode const*>(node);
       collection = upsertNode->collection();
       inputVariable = upsertNode->inDocVariable();
-      alternativeVariable = upsertNode->insertVariable();
-      ignoreErrors = upsertNode->getOptions().ignoreErrors;
-      allowKeyConversionToObject = true;
-      createKeys = true;
-      allowSpecifiedKeys = true;
-      setInVariable = [upsertNode](Variable* var) {
-        upsertNode->setInsertVariable(var);
-      };
     } break;
     case ExecutionNode::TRAVERSAL: {
-      auto* traversalNode = ExecutionNode::castTo<TraversalNode*>(node);
+      auto traversalNode = ExecutionNode::castTo<TraversalNode const*>(node);
       TRI_ASSERT(traversalNode->isDisjoint());
       collection = traversalNode->collection();
       inputVariable = traversalNode->inVariable();
-      TRI_ASSERT(inputVariable);
-      allowKeyConversionToObject = true;
-      createKeys = false;
-      fixupGraphInput = true;
-      setInVariable = [traversalNode](Variable* var) {
-        traversalNode->setInVariable(var);
-      };
     } break;
     case ExecutionNode::K_SHORTEST_PATHS: {
-      auto* kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode*>(node);
+      auto kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode const*>(node);
       TRI_ASSERT(kShortestPathsNode->isDisjoint());
       collection = kShortestPathsNode->collection();
       // Subtle: KShortestPathsNode uses a reference when returning startInVariable
       inputVariable = &kShortestPathsNode->startInVariable();
-      allowKeyConversionToObject = true;
-      createKeys = false;
-      fixupGraphInput = true;
-      setInVariable = [kShortestPathsNode](Variable* var) {
-        kShortestPathsNode->setStartInVariable(var);
-      };
     } break;
     case ExecutionNode::SHORTEST_PATH: {
-      auto* shortestPathNode = ExecutionNode::castTo<ShortestPathNode*>(node);
+      auto shortestPathNode = ExecutionNode::castTo<ShortestPathNode const*>(node);
       TRI_ASSERT(shortestPathNode->isDisjoint());
       collection = shortestPathNode->collection();
       inputVariable = shortestPathNode->startInVariable();
-      TRI_ASSERT(inputVariable);
-      allowKeyConversionToObject = true;
-      createKeys = false;
-      fixupGraphInput = true;
-      setInVariable = [shortestPathNode](Variable* var) {
-        shortestPathNode->setStartInVariable(var);
-      };
     } break;
     default: {
       TRI_ASSERT(false);
@@ -4134,83 +4028,20 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
                                          node->getTypeString() + ".");
     } break;
   }
-
   TRI_ASSERT(collection != nullptr);
-  // allowSpecifiedKeys can only be true for UPSERT
-  TRI_ASSERT(node->getType() == ExecutionNode::UPSERT || !allowSpecifiedKeys);
-  // createKeys can only be true for INSERT/UPSERT
-  TRI_ASSERT((node->getType() == ExecutionNode::INSERT || node->getType() == ExecutionNode::UPSERT) || !createKeys);
-
-  CalculationNode* calcNode = nullptr;
-  auto setter = plan.getVarSetBy(inputVariable->id);
-  if (setter != nullptr && // this can happen for $smartHandOver
-      setter->getType() != EN::ENUMERATE_COLLECTION &&
-      setter->getType() != EN::INDEX) {
-    // If our input variable is set by a collection/index enumeration, it is guaranteed to be an object
-    // with a _key attribute, so we don't need to do anything. Otherwise, we insert an additional
-    // calculation node to create the input for our distribute node.
-
-    Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
-    setInVariable(variable);
-    
-    auto* ast = plan.getAst();
-    auto args = ast->createNodeArray();
-    char const* function;
-    args->addMember(ast->createNodeReference(inputVariable));
-    if (fixupGraphInput) {
-      function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
-    } else {
-      if (createKeys) {
-        function = "MAKE_DISTRIBUTE_INPUT_WITH_CREATE_KEYS";
-        if (alternativeVariable) {
-          args->addMember(ast->createNodeReference(alternativeVariable));
-        } else {
-          args->addMember(ast->createNodeValueNull());
-        }
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
-          ast->createNodeValueBool(allowSpecifiedKeys)));
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
-          ast->createNodeValueBool(ignoreErrors)));
-        auto const& collectionName = collection->name();
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("collection"),
-          ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
-        //args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
-        
-        args->addMember(flags);
-      } else {
-        function = "MAKE_DISTRIBUTE_INPUT";
-        auto flags = ast->createNodeObject();
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
-          ast->createNodeValueBool(allowKeyConversionToObject)));
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
-          ast->createNodeValueBool(ignoreErrors)));
-        bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() || allowSpecifiedKeys;  
-        flags->addMember(ast->createNodeObjectElement(
-          TRI_CHAR_LENGTH_PAIR("canUseCustomKey"),
-          ast->createNodeValueBool(canUseCustomKey)));
-        
-        args->addMember(flags);
-      }
-    }
-    plan.enableRule(OptimizerRule::RuleLevel::removeUnnecessaryCalculationsRule3);
-
-    auto expr = std::make_unique<Expression>(ast, ast->createNodeFunctionCall(function, args, true));
-    calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(), std::move(expr), variable);
-    inputVariable = variable;
-  }
-
+  TRI_ASSERT(inputVariable != nullptr);
+  
+  // The DistributeNode needs specially prepared input, but we do not want to insert the
+  // calculation for that just yet, because it would interfere with some optimizations,
+  // in particular those that might completely remove the DistributeNode (which would)
+  // also render the calculation pointless. So instead we insert this calculation in a
+  // post-processing step when finalizing the plan in the Optimizer.
   auto distNode = plan.createNode<DistributeNode>(&plan, plan.nextId(),
                                                   ScatterNode::ScatterType::SHARD,
                                                   collection, inputVariable, node->id());
 
   TRI_ASSERT(distNode != nullptr);
-  return {calcNode, distNode};
+  return distNode;
 }
 
 // Create a new GatherNode for the DistributeNode passed in node, and
@@ -4244,26 +4075,21 @@ auto arangodb::aql::createGatherNodeFor(ExecutionPlan& plan, DistributeNode* nod
 // Note that parents[0] might be `nullptr` if `node` is the root of the plan,
 // and we handle this case in here as well by resetting the root to the
 // inserted GATHER node.
+//
 auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
                                                   ExecutionNode* at, SubqueryNode* snode)
     -> DistributeNode* {
   auto const parents = at->getParents();
   auto const deps = at->getDependencies();
-  TRI_ASSERT(deps.size() == 1);
 
   // This transforms `parents[0] -> node -> deps[0]` into `parents[0] -> deps[0]`
   plan.unlinkNode(at, true);
 
   // create, and register a distribute node
-  auto [calcNode, distNode] = createDistributeNodeFor(plan, at);
+  DistributeNode* distNode = createDistributeNodeFor(plan, at);
   TRI_ASSERT(distNode != nullptr);
-
-  if (calcNode != nullptr) {
-    calcNode->addDependency(deps[0]);
-    distNode->addDependency(calcNode);
-  } else {
-    distNode->addDependency(deps[0]);
-  }
+  TRI_ASSERT(deps.size() == 1);
+  distNode->addDependency(deps[0]);
 
   // TODO: This dance is only needed to extract vocbase for
   //       creating the remote node. The vocbase parameter for
@@ -4290,7 +4116,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   auto* gatherNode = createGatherNodeFor(plan, distNode);
   gatherNode->addDependency(remoteNode);
 
-  TRI_ASSERT(parents.size() < 2);
+TRI_ASSERT(parents.size() < 2);
   // Song and dance to deal with at being the root of a plan or a subquery
   if (parents.empty()) {
     if (snode) {
@@ -5221,12 +5047,7 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
                 TRI_vocbase_t& vocbase = plan->getAst()->query().vocbase();
                 auto cn = ExecutionNode::castTo<CalculationNode const*>(c);
                 auto expr = cn->expression();
-                if (!expr->canRunOnDBServer(vocbase.isOneShard()) &&
-                    !isMakeDistriuteInputWithCreateKeys(expr)) {
-                  // The MakeDistributeInputWithCreateKeys function CANNOT run on a DB server, but if we are
-                  // able to completely remove the DistributeNode, we can also remove this function call, so
-                  // we don't bail out yet.
-                   
+                if (!expr->canRunOnDBServer(vocbase.isOneShard())) {
                   // found something that must not run on a DB server,
                   // but that must run on a coordinator. stop optimization here!
                   toRemove.clear();
@@ -5270,23 +5091,9 @@ void arangodb::aql::restrictToSingleShardRule(Optimizer* opt,
       current = current->getFirstDependency();
     }
   }
-  
-  for (auto node : toUnlink) {
-    if (node->getType() == ExecutionNode::DISTRIBUTE) {
-      // If we remove a DistributeNode that das a corresponding MakeDistributeInput call,
-      // we can completely avoid that function, so we update the expression of that
-      // CalculationNode to the first argument of the function instead.
-      auto* var = ExecutionNode::castTo<DistributeNode*>(node)->getVariable();
-      auto* setter = plan->getVarSetBy(var->id);
-      if (setter && setter->getType() == EN::CALCULATION) {
-        auto* cn = ExecutionNode::castTo<CalculationNode*>(setter);
-        AstNode const* arg;
-        if (tryResolveArgumentFromMakeDistributeInput(*cn, arg)) {
-          cn->setExpression(std::make_unique<Expression>(plan->getAst(), const_cast<AstNode*>(arg)));
-        }
-      }
-    }
-    plan->unlinkNode(node);
+
+  if (!toUnlink.empty()) {
+    plan->unlinkNodes(toUnlink);
   }
 
   opt->addPlan(std::move(plan), rule, wasModified);
@@ -5325,62 +5132,41 @@ class RemoveToEnumCollFinder final
           break;
         }
 
-        // find the variable we are modifying . . .
-        auto modificationNode = ExecutionNode::castTo<ModificationNode*>(en);
-        Variable const* inVar = nullptr;
+        // find the variable we are removing . . .
+        auto rn = ExecutionNode::castTo<ModificationNode*>(en);
+        Variable const* toRemove = nullptr;
 
         if (en->getType() == EN::REPLACE) {
-          inVar = ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
+          toRemove = ExecutionNode::castTo<ReplaceNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::UPDATE) {
-          inVar = ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
+          toRemove = ExecutionNode::castTo<UpdateNode const*>(en)->inKeyVariable();
         } else if (en->getType() == EN::REMOVE) {
-          inVar = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
+          toRemove = ExecutionNode::castTo<RemoveNode const*>(en)->inVariable();
         } else {
           TRI_ASSERT(false);
         }
 
-      checkInVar:
-        if (inVar == nullptr) {
+        if (toRemove == nullptr) {
           // abort
           break;
         }
 
-        _setter = _plan->getVarSetBy(inVar->id);
+        _setter = _plan->getVarSetBy(toRemove->id);
         TRI_ASSERT(_setter != nullptr);
         auto enumColl = _setter;
 
         if (_setter->getType() == EN::CALCULATION) {
+          // this should be an attribute access for _key
           auto cn = ExecutionNode::castTo<CalculationNode*>(_setter);
 
-          auto expr = cn->expression()->node();
-          {
-            AstNode const* node;
-            // if this is a call to MakeDistributeInput, we extract the first argument
-            // and continue with that one instead.
-            if (tryResolveArgumentFromMakeDistributeInput(*cn, node)) {
-              if (node->type == NODE_TYPE_REFERENCE) {
-                // the first argument is a simple variable, so use that as "inVar" and restart
-                inVar = static_cast<Variable const*>(node->getData());
-                goto checkInVar;
-              } else {
-                // we have some other expression as argument, so use the AstNode of that expression instead
-                expr = node;
-              }
-            }
-          }
-
-          if (expr == nullptr) {
-            break;
-          }
-
-          // this should be an attribute access for _key
-          if (expr->isAttributeAccessForVariable()) {
+          auto expr = cn->expression();
+          if (expr->isAttributeAccess()) {
             // check the variable is the same as the remove variable
-            if (cn->outVariable() != inVar) {
+            if (cn->outVariable() != toRemove) {
               break;  // abort . . .
             }
             // check that the modification node's collection is sharded over _key
-            std::vector<std::string> shardKeys = modificationNode->collection()->shardKeys(false);
+            std::vector<std::string> shardKeys = rn->collection()->shardKeys(false);
             if (shardKeys.size() != 1 || shardKeys[0] != StaticStrings::KeyString) {
               break;  // abort . . .
             }
@@ -5390,12 +5176,18 @@ class RemoveToEnumCollFinder final
             VarSet varsToRemove;
             cn->getVariablesUsedHere(varsToRemove);
             TRI_ASSERT(varsToRemove.size() == 1);
-            inVar = *(varsToRemove.begin());
-            enumColl = _plan->getVarSetBy(inVar->id);
+            toRemove = *(varsToRemove.begin());
+            enumColl = _plan->getVarSetBy(toRemove->id);
             TRI_ASSERT(_setter != nullptr);
-          } else if (expr->isObject()) {
+          } else if (expr->node() && expr->node()->isObject()) {
+            auto n = expr->node();
+
+            if (n == nullptr) {
+              break;
+            }
+
             // note for which shard keys we need to look for
-            auto shardKeys = modificationNode->collection()->shardKeys(false);
+            auto shardKeys = rn->collection()->shardKeys(false);
             std::unordered_set<std::string> toFind;
             for (auto const& it : shardKeys) {
               toFind.emplace(it);
@@ -5409,8 +5201,8 @@ class RemoveToEnumCollFinder final
             Variable const* lastVariable = nullptr;
             bool doOptimize = true;
 
-            for (size_t i = 0; i < expr->numMembers(); ++i) {
-              auto sub = expr->getMember(i);
+            for (size_t i = 0; i < n->numMembers(); ++i) {
+              auto sub = n->getMember(i);
 
               if (sub->type != NODE_TYPE_OBJECT_ELEMENT) {
                 continue;
@@ -5446,14 +5238,13 @@ class RemoveToEnumCollFinder final
             if (!toFind.empty() || !doOptimize || lastVariable == nullptr) {
               // not all shard keys covered, or different source variables in
               // use
-              //LOG_DEVEL << "not all shard keys covered, or different source variables in use " << toFind.empty() << " " << doOptimize << " " << (lastVariable == nullptr);
               break;
             }
 
             TRI_ASSERT(lastVariable != nullptr);
             enumColl = _plan->getVarSetBy(lastVariable->id);
           } else {
-            //LOG_DEVEL << "cannot optimize this type of input";
+            // cannot optimize this type of input
             break;
           }
         }
@@ -5472,11 +5263,11 @@ class RemoveToEnumCollFinder final
 
         _enumColl = enumColl;
 
-        if (::getCollection(_enumColl) != modificationNode->collection()) {
+        if (::getCollection(_enumColl) != rn->collection()) {
           break;  // abort . . .
         }
 
-        _variable = inVar;  // the variable we'll remove
+        _variable = toRemove;  // the variable we'll remove
         _foundModification = true;
         return false;  // continue . . .
       }
@@ -8465,4 +8256,212 @@ void arangodb::aql::decayUnnecessarySortedGather(Optimizer* opt,
     }
   }
   opt->addPlan(std::move(plan), rule, modified);
+}
+
+void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
+  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<ExecutionNode*> nodes{a};
+  plan.findNodesOfType(nodes, ExecutionNode::DISTRIBUTE, true);
+  
+  for (auto const& n : nodes) {
+    auto* distributeNode = ExecutionNode::castTo<DistributeNode*>(n);
+    auto* targetNode = plan.getNodesById().at(distributeNode->getTargetNodeId());
+    TRI_ASSERT(targetNode != nullptr);
+
+    auto collection = static_cast<Collection const*>(nullptr);
+    auto inputVariable = static_cast<Variable const *>(nullptr);
+    auto alternativeVariable = static_cast<Variable const *>(nullptr);
+
+    auto createKeys = bool{false};
+    auto allowKeyConversionToObject = bool{false};
+    auto allowSpecifiedKeys = bool{false};
+
+    auto fixupGraphInput = bool{false};
+
+    std::function<void(Variable* variable)> setInVariable;
+    bool ignoreErrors = false;
+
+    // TODO: this seems a bit verbose, but is at least local & simple
+    //       the modification nodes are all collectionaccessing, the graph nodes are
+    //       currently assumed to be disjoint, and hence smart, so all collections
+    //       are sharded the same way!
+    switch (targetNode->getType()) {
+      case ExecutionNode::INSERT: {
+        auto* insertNode = ExecutionNode::castTo<InsertNode*>(targetNode);
+        collection = insertNode->collection();
+        inputVariable = insertNode->inVariable();
+        createKeys = true;
+        allowKeyConversionToObject = true;
+        setInVariable = [insertNode](Variable* var) {
+          insertNode->setInVariable(var);
+        };
+      } break;
+      case ExecutionNode::REMOVE: {
+        auto* removeNode = ExecutionNode::castTo<RemoveNode*>(targetNode);
+        collection = removeNode->collection();
+        inputVariable = removeNode->inVariable();
+        createKeys = false;
+        allowKeyConversionToObject = true;
+        ignoreErrors = removeNode->getOptions().ignoreErrors;
+        setInVariable = [removeNode](Variable* var) {
+          removeNode->setInVariable(var);
+        };
+      } break;
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::REPLACE: {
+        auto* updateReplaceNode = ExecutionNode::castTo<UpdateReplaceNode*>(targetNode);
+        collection = updateReplaceNode->collection();
+        ignoreErrors = updateReplaceNode->getOptions().ignoreErrors;
+        if (updateReplaceNode->inKeyVariable() != nullptr) {
+          inputVariable = updateReplaceNode->inKeyVariable();
+          // This is the _inKeyVariable! This works, since we use default
+          // sharding!
+          allowKeyConversionToObject = true;
+          setInVariable = [updateReplaceNode](Variable* var) {
+            updateReplaceNode->setInKeyVariable(var);
+          };
+        } else {
+          inputVariable = updateReplaceNode->inDocVariable();
+          allowKeyConversionToObject = false;
+          setInVariable = [updateReplaceNode](Variable* var) {
+            updateReplaceNode->setInDocVariable(var);
+          };
+        }
+        createKeys = false;
+      } break;
+      case ExecutionNode::UPSERT: {
+        // an UPSERT node has two input variables!
+        auto* upsertNode = ExecutionNode::castTo<UpsertNode*>(targetNode);
+        collection = upsertNode->collection();
+        inputVariable = upsertNode->inDocVariable();
+        alternativeVariable = upsertNode->insertVariable();
+        ignoreErrors = upsertNode->getOptions().ignoreErrors;
+        allowKeyConversionToObject = true;
+        createKeys = true;
+        allowSpecifiedKeys = true;
+        setInVariable = [upsertNode](Variable* var) {
+          upsertNode->setInsertVariable(var);
+        };
+      } break;
+      case ExecutionNode::TRAVERSAL: {
+        auto* traversalNode = ExecutionNode::castTo<TraversalNode*>(targetNode);
+        TRI_ASSERT(traversalNode->isDisjoint());
+        collection = traversalNode->collection();
+        inputVariable = traversalNode->inVariable();
+        allowKeyConversionToObject = true;
+        createKeys = false;
+        fixupGraphInput = true;
+        setInVariable = [traversalNode](Variable* var) {
+          traversalNode->setInVariable(var);
+        };
+      } break;
+      case ExecutionNode::K_SHORTEST_PATHS: {
+        auto* kShortestPathsNode = ExecutionNode::castTo<KShortestPathsNode*>(targetNode);
+        TRI_ASSERT(kShortestPathsNode->isDisjoint());
+        collection = kShortestPathsNode->collection();
+        // Subtle: KShortestPathsNode uses a reference when returning startInVariable
+        inputVariable = &kShortestPathsNode->startInVariable();
+        allowKeyConversionToObject = true;
+        createKeys = false;
+        fixupGraphInput = true;
+        setInVariable = [kShortestPathsNode](Variable* var) {
+          kShortestPathsNode->setStartInVariable(var);
+        };
+      } break;
+      case ExecutionNode::SHORTEST_PATH: {
+        auto* shortestPathNode = ExecutionNode::castTo<ShortestPathNode*>(targetNode);
+        TRI_ASSERT(shortestPathNode->isDisjoint());
+        collection = shortestPathNode->collection();
+        inputVariable = shortestPathNode->startInVariable();
+        allowKeyConversionToObject = true;
+        createKeys = false;
+        fixupGraphInput = true;
+        setInVariable = [shortestPathNode](Variable* var) {
+          shortestPathNode->setStartInVariable(var);
+        };
+      } break;
+      default: {
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                      "Cannot distribute " +
+                                          targetNode->getTypeString() + ".");
+      } break;
+    }
+    TRI_ASSERT(inputVariable != nullptr);
+    TRI_ASSERT(collection != nullptr);
+    // allowSpecifiedKeys can only be true for UPSERT
+    TRI_ASSERT(targetNode->getType() == ExecutionNode::UPSERT || !allowSpecifiedKeys);
+    // createKeys can only be true for INSERT/UPSERT
+    TRI_ASSERT((targetNode->getType() == ExecutionNode::INSERT ||
+                targetNode->getType() == ExecutionNode::UPSERT) ||
+               !createKeys);
+
+    CalculationNode* calcNode = nullptr;
+    auto setter = plan.getVarSetBy(inputVariable->id);
+    if (setter == nullptr || // this can happen for $smartHandOver
+        setter->getType() == EN::ENUMERATE_COLLECTION ||
+        setter->getType() == EN::INDEX) {
+      // If our input variable is set by a collection/index enumeration, it is guaranteed to be an object
+      // with a _key attribute, so we don't need to do anything.
+      return;
+    }
+    
+    // We insert an additional calculation node to create the input for our distribute node.
+    Variable* variable = plan.getAst()->variables()->createTemporaryVariable();
+    
+    // update the targetNode so that it uses the same input variable as our distribute node
+    setInVariable(variable);
+    
+    auto* ast = plan.getAst();
+    auto args = ast->createNodeArray();
+    char const* function;
+    args->addMember(ast->createNodeReference(inputVariable));
+    if (fixupGraphInput) {
+      function = "MAKE_DISTRIBUTE_GRAPH_INPUT";
+    } else {
+      if (createKeys) {
+        function = "MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION";
+        if (alternativeVariable) {
+          args->addMember(ast->createNodeReference(alternativeVariable));
+        } else {
+          args->addMember(ast->createNodeValueNull());
+        }
+        auto flags = ast->createNodeObject();
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("allowSpecifiedKeys"),
+          ast->createNodeValueBool(allowSpecifiedKeys)));
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+          ast->createNodeValueBool(ignoreErrors)));
+        auto const& collectionName = collection->name();
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("collection"),
+          ast->createNodeValueString(collectionName.c_str(), collectionName.length())));
+        //args->addMember(ast->createNodeValueString(collectionName.c_str(), collectionName.length()));
+        
+        args->addMember(flags);
+      } else {
+        function = "MAKE_DISTRIBUTE_INPUT";
+        auto flags = ast->createNodeObject();
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("allowKeyConversionToObject"),
+          ast->createNodeValueBool(allowKeyConversionToObject)));
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("ignoreErrors"),
+          ast->createNodeValueBool(ignoreErrors)));
+        bool canUseCustomKey = collection->getCollection()->usesDefaultShardKeys() || allowSpecifiedKeys;  
+        flags->addMember(ast->createNodeObjectElement(
+          TRI_CHAR_LENGTH_PAIR("canUseCustomKey"),
+          ast->createNodeValueBool(canUseCustomKey)));
+        
+        args->addMember(flags);
+      }
+    }
+
+    auto expr = std::make_unique<Expression>(ast, ast->createNodeFunctionCall(function, args, true));
+    calcNode = plan.createNode<CalculationNode>(&plan, plan.nextId(), std::move(expr), variable);
+    distributeNode->setVariable(variable);
+    plan.insertBefore(distributeNode, calcNode);
+    plan.clearVarUsageComputed();
+  }
 }

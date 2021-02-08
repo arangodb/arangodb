@@ -1694,22 +1694,9 @@ bool Expression::canRunOnDBServer(bool isOneShard) {
   return (_type == JSON || _node->canRunOnDBServer(isOneShard));
 }
 
-bool Expression::isDeterministic() const {
+bool Expression::isDeterministic() {
   TRI_ASSERT(_type != UNPROCESSED);
   return (_type == JSON || _node->isDeterministic());
-}
-
-bool Expression::isMovable() const {
-  if (isDeterministic()) {
-    return true;
-  }
-  if (_node->type == NODE_TYPE_FCALL) {
-    auto func = static_cast<Function*>(_node->getData());
-    if (func->hasFlag(Function::Flags::MovableNondeterministic)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 bool Expression::willUseV8() {

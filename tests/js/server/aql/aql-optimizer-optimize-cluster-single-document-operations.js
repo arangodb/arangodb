@@ -307,7 +307,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ `INSERT {_key: '${yeOldeDoc}', insert1: true} IN   ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW }`, 1, 2, true, setupC2, 0 ],
         [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN [OLD, NEW, a]`, 2, 2, true, setupC2, 0 ],
         [ `LET a = { a: 123 } INSERT {_key: '${yeOldeDoc}',  insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN { old: OLD, new: NEW, a: a }`, 2, 2, true, setupC2, 0 ],
-        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0 ],
+        [ `LET a = { a: 123 } INSERT {_key: '${notHereDoc}', insert1: true} IN  ${cn2} OPTIONS {waitForSync: true, overwrite: true} RETURN a`, 3, 3, true, setupC2, 0 ],
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW`, 0, 1, true, setupC2, 0 ],
         [ `INSERT {_key: '${notHereDoc}', insert1: true} IN ${cn2} RETURN NEW._key`, 0, 2, true, setupC2, 0 ],
       ];
@@ -317,7 +317,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2", 
-          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "move-calculations-up-3" ]
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],

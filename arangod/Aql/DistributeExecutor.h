@@ -33,7 +33,6 @@
 namespace arangodb {
 namespace velocypack {
 class Slice;
-class StringRef;
 }
 
 namespace aql {

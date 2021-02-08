@@ -44,6 +44,8 @@ struct Collection;
 /// Helper
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
 
+void insertDistributeInputCalculation(ExecutionPlan& plan);
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
@@ -318,7 +320,7 @@ void findSubqueriesInPlan(ExecutionPlan& plan,
                           containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
 
 //// @brief create a DistributeNode for the given ExecutionNode
-auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> std::pair<CalculationNode*, DistributeNode*>;
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
 
 //// @brief create a gather node matching the given DistributeNode
 auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;

@@ -473,8 +473,6 @@ class ExecutionNode {
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
   [[nodiscard]] bool isIncreaseDepth() const;
-  [[nodiscard]] bool isLoop(NodeType type) const;
-  [[nodiscard]] bool isLoop() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
   
@@ -788,9 +786,6 @@ class CalculationNode : public ExecutionNode {
   /// @brief return the expression. never a nullptr!
   Expression* expression() const;
 
-  /// @brief set the expression
-  void setExpression(std::unique_ptr<Expression> expr);
-  
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
