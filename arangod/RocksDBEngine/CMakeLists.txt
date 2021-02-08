@@ -49,6 +49,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBColumnFamilyManager.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
+  RocksDBEngine/RocksDBCuckooIndexEstimator.cpp
   RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBFormat.cpp
