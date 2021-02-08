@@ -44,7 +44,7 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     return {TRI_ERROR_INTERNAL, "no response from server!"};
   }
 
-  int code = TRI_ERROR_NO_ERROR;
+  auto code = TRI_ERROR_NO_ERROR;
   // set base message
   std::string message("got error from server: HTTP " + itoa(result->getHttpReturnCode()) +
                       " (" + result->getHttpReturnMessage() + ")");
@@ -54,7 +54,8 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    int serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
+    auto serverCode =
+        ErrorCode{VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0)};
     std::string const& serverMessage =
         VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
@@ -96,7 +97,7 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   httpClient->params().setUserNamePassword("/", client.username(), client.password());
 
   // now connect by retrieving version
-  int errorCode;
+  ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string const versionString = httpClient->getServerVersion(&errorCode);
   if (TRI_ERROR_NO_ERROR != errorCode) {
     if (!quiet && (TRI_ERROR_ARANGO_DATABASE_NOT_FOUND != errorCode || logDatabaseNotFound)) {

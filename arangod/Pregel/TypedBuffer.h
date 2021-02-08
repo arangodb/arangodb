@@ -192,8 +192,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // try populating the mapping already
     flags |= MAP_POPULATE;
 #endif
-    int res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
-                         &_mmHandle, 0, &data);
+    auto res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
+                          &_mmHandle, 0, &data);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);

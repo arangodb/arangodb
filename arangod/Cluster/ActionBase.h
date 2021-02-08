@@ -223,8 +223,8 @@ class ActionBase {
 
 }  // namespace maintenance
 
-Result actionError(int errorCode, std::string const& errorMessage);
-Result actionWarn(int errorCode, std::string const& errorMessage);
+Result actionError(ErrorCode errorCode, std::string const& errorMessage);
+Result actionWarn(ErrorCode errorCode, std::string const& errorMessage);
 
 }  // namespace arangodb
 

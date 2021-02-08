@@ -63,30 +63,35 @@ RestStatus RestSupervisionStateHandler::execute() {
   auto self(shared_from_this());
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
-  return waitForFuture(AsyncAgencyComm().getValues(targetPath)
-    .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult&& result) {
-      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+  return waitForFuture(
+      AsyncAgencyComm()
+          .getValues(targetPath)
+          .thenValue([this, self, targetPath = std::move(targetPath)](AgencyReadResult&& result) {
+            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+              VPackBuffer<uint8_t> response;
+              {
+                VPackBuilder bodyBuilder(response);
+                VPackObjectBuilder ob(&bodyBuilder);
+                bodyBuilder.add("ToDo",
+                                result.slice().at(0).get(targetPath->toDo()->vec()));
+                bodyBuilder.add("Pending",
+                                result.slice().at(0).get(targetPath->pending()->vec()));
+                bodyBuilder.add("Finished", result.slice().at(0).get(
+                                                targetPath->finished()->vec()));
+                bodyBuilder.add("Failed",
+                                result.slice().at(0).get(targetPath->failed()->vec()));
+              }
 
-        VPackBuffer<uint8_t> response;
-        {
-          VPackBuilder bodyBuilder(response);
-          VPackObjectBuilder ob(&bodyBuilder);
-          bodyBuilder.add("ToDo", result.slice().at(0).get(targetPath->toDo()->vec()));
-          bodyBuilder.add("Pending", result.slice().at(0).get(targetPath->pending()->vec()));
-          bodyBuilder.add("Finished", result.slice().at(0).get(targetPath->finished()->vec()));
-          bodyBuilder.add("Failed", result.slice().at(0).get(targetPath->failed()->vec()));
-        }
-
-        resetResponse(rest::ResponseCode::OK);
-        _response->setPayload(std::move(response));
-      } else {
-        generateError(result.asResult());
-      }
-    })
-    .thenError<VPackException>([this, self](VPackException const& e) {
-      generateError(Result{e.errorCode(), e.what()});
-    })
-    .thenError<std::exception>([this, self](std::exception const&) {
-      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
-    }));
+              resetResponse(rest::ResponseCode::OK);
+              _response->setPayload(std::move(response));
+            } else {
+              generateError(result.asResult());
+            }
+          })
+          .thenError<VPackException>([this, self](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this, self](std::exception const&) {
+            generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR);
+          }));
 }

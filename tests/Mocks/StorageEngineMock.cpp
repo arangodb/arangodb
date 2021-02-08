@@ -1595,7 +1595,7 @@ void StorageEngineMock::getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::Data
   // nothing more required, assume info used for PhysicalCollectionMock
 }
 
-int StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+ErrorCode StorageEngineMock::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                                 arangodb::velocypack::Builder& result,
                                                 bool wasCleanShutdown, bool isUpgrade) {
   TRI_ASSERT(false);
@@ -1635,7 +1635,7 @@ arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfigurat
   return arangodb::velocypack::Builder();
 }
 
-int StorageEngineMock::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode StorageEngineMock::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
   result.openArray();
 
   for (auto& entry : views) {
@@ -1709,14 +1709,14 @@ arangodb::Result StorageEngineMock::renameCollection(TRI_vocbase_t& vocbase,
   return arangodb::Result(TRI_ERROR_INTERNAL);
 }
 
-int StorageEngineMock::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                            arangodb::velocypack::Slice slice,
                                                            bool doSync) {
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
-int StorageEngineMock::saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) {
+ErrorCode StorageEngineMock::saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) {
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }

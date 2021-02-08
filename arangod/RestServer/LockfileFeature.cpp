@@ -52,7 +52,7 @@ void LockfileFeature::start() {
 
   TRI_ASSERT(!_lockFilename.empty());
 
-  int res = TRI_VerifyLockFile(_lockFilename.c_str());
+  auto res = TRI_VerifyLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string otherPID;

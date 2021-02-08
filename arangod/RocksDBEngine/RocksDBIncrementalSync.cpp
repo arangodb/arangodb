@@ -525,8 +525,9 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             }
             // fall-through
           } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, basics::StringUtils::concatT(TRI_errno_string(errorNumber),
+            auto errorNumber = res.errorNumber();
+            res.reset(errorNumber,
+                      basics::StringUtils::concatT(TRI_errno_string(errorNumber),
                                                    ": ", res.errorMessage()));
             return res;
           }
@@ -557,7 +558,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
             }
             // fall-through
           } else {
-            int errorNumber = res.errorNumber();
+            auto errorNumber = res.errorNumber();
             res.reset(errorNumber,
                       basics::StringUtils::concatT(TRI_errno_string(errorNumber),
                                                    ": ", res.errorMessage()));
