@@ -334,7 +334,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::unordered_set<std::string> dirty(
     std::unordered_set<std::string> const& = std::unordered_set<std::string>());
   /// @brief get n random db names
-  std::unordered_set<std::string> pickRandomDirty (size_t n);
+  std::unordered_set<std::string> pickRandomDirty(size_t n);
 
 
  protected:
