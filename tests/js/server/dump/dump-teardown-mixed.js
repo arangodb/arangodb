@@ -1,7 +1,8 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/*jshint globalstrict:false, strict:false */
+/* global print */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief setup collections for dump/reload tests
+/// @brief teardown for dump/reload tests
 ///
 /// @file
 ///
@@ -21,30 +22,20 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
-const base = require("fs").join(
-  require('internal').pathForTesting('server'),
-  'dump',
-  'dump-setup-common.inc');
-const setup = require(base);
-
 (function () {
-  setup.cleanup();
-  setup.createEmpty();
-  setup.createUsers();
-  setup.createMany();
-  setup.createOrder();
-  
-  setup.createFoxx();
+  'use strict';
+
+  var db = require("@arangodb").db;
+  db._dropDatabase("UnitTestsDumpDst");
 })();
 
 return {
   status: true
 };
+

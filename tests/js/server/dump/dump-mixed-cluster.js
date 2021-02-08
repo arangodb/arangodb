@@ -1,4 +1,5 @@
-/*jshint globalstrict:false, strict:false, maxlen : 4000 */
+/*jshint globalstrict:false, strict:false, maxlen:4000 */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -28,7 +29,6 @@
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 var internal = require("internal");
 var jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
@@ -38,12 +38,28 @@ const base = require("fs").join(
   'dump-test.inc');
 const baseTests = require("internal").load(base);
 
-jsunity.run(function dump_cluster_testsuite() {
+
+jsunity.run(function dump_single_testsuite() {
 
   let suite = {};
-  let enterpriseTests = [];
-  if (!internal.isEnterprise()) {
-    enterpriseTests = [
+
+  deriveTestSuite(
+    baseTests(),
+    suite,
+    "_mixed_cluster",
+    [
+      "testUsers",
+      // tests not supported by mixed setups:
+      "testDatabaseProperties",
+      "testShards",
+      "testKeygenAutoInc",
+
+      // cluster tests:
+      "testDatabaseProperties",
+      "testShards",
+      "testReplicationFactor",
+      
+      // enterprise graph tests:
       "testVertices",
       "testVerticesAqlRead",
       "testVerticesAqlInsert",
@@ -62,19 +78,7 @@ jsunity.run(function dump_cluster_testsuite() {
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute"
-    ];
-  }
-  deriveTestSuite(
-    baseTests(),
-    suite,
-    "_cluster",
-    [
-      "testUsers",
-      "testKeygenAutoInc",
-      "testTransactionCommit",
-      "testTransactionUpdate",
-      "testTransactionAbort",
-    ].concat(enterpriseTests)
+    ]
   );
 
   return suite;

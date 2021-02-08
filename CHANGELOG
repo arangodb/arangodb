@@ -1,6 +1,55 @@
 devel
 -----
 
+* Improvements for logging. This adds the following startup options to arangod:
+
+- `--log.max-entry-length`: controls the maximum line length for individual
+    log messages that are written into normal logfiles by arangod (note: this
+    does not include audit log messages). 
+    Any log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. The purpose of this parameter is to 
+    shorten long log messages in case there is not a lot of space for logfiles, 
+    and to keep rogue log messages from overusing resources. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+  
+  - `--audit.max-entry-length`: controls the maximum line length for individual
+    audit log messages that are written into audit logs by arangod. Any audit
+    log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+
+  - `--log.in-memory-level`: controls which log messages are preserved in 
+    memory (in case `--log.in-memory` is set to `true`). The default value is
+    `info`, meaning all log messages of types `info`, `warning`, `error` and
+    `fatal` will be stored by an instance in memory (this was also the behavior
+    in previous versions of ArangoDB). By setting this option to `warning`,
+    only `warning`, `error` and `fatal` log messages will be preserved in memory, 
+    and by setting the option to `error` only error and fatal messages will be kept.
+    This option is useful because the number of in-memory log messages is 
+    limited to the latest 2048 messages, and these slots are by default shared 
+    between informational, warning and error messages. 
+
+* Honor the value of startup option `--log.api-enabled` when set to `false`.
+  The desired behavior in this case is to turn off the REST API for logging,
+  but was not implemented. The default value for the option is `true`, so the
+  REST API is enabled. This behavior did not change, and neither did the 
+  behavior when setting the option to a value of `jwt` (meaning the REST API
+  for logging is only available for superusers with a valid JWT token).
+
+* Split the update operations for the _fishbowl system collection with Foxx
+  apps into separate insert/replace and remove operations. This makes the
+  overall update not atomic, but as removes are unlikely here, we can now get
+  away with a simple multi-document insert-replace operation instead of a
+  truncate and an exclusive transaction, which was used before.
+
+* Fix `/_admin/cluster/removeServer` API.
+  This often returned HTTP 500 with an error message "Need open Array" due to
+  an internal error when setting up agency preconditions.
+
 * Remove logging startup options `--log.api-enabled` and `--log.keep-logrotate` 
   for all client tools (arangosh, arangodump, arangorestore etc.), as these 
   options are only meaningful for arangod.
@@ -133,19 +182,22 @@ devel
     document update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+  
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
   but the _key was given in the URL path, then the rev was wrongly taken
   as 0, rather than using the one from the document body.
 
-* Make `padded` and `autoincrement` key generators export their `lastValue`
-  values, so that they are available in dumps and can be restored elsewhere
-  from a dump.
-
 * Improved logging for error 1489 ("a shard leader refuses to perform a
   replication operation"). The log message will now provide the database and
   shard name plus the differing information about the shard leader.
+
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
 
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
@@ -327,7 +379,7 @@ devel
   run in parallel. The defaults are intentionally high in order to not stop any valid,
   previously working queries from succedding.
 
-* Added startup options `--audit.queue` to control audit logging queuing
+* Added startup option `--audit.queue` to control audit logging queuing
   behavior (Enterprise Edition only):
 
   The option controls whether audit log messages are submitted to a queue
