@@ -38,7 +38,7 @@ namespace arangodb {
 struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
+  WalAccessResult(ErrorCode code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : _result(code),
         _fromTickIncluded(ft),
@@ -56,7 +56,7 @@ struct WalAccessResult {
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
                          TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;

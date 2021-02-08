@@ -426,7 +426,7 @@ void ReplicationApplier::removeState() {
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("87a61", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -452,7 +452,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("2914f", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result{res, std::string("unable to remove replication state file '") + filename + "'"};

@@ -84,9 +84,8 @@ arangodb::Result HotBackup::executeRocksDB(
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(
-      operation->restResponseError(), operation->errorMessage());
-  } // if
+    return arangodb::Result(operation->restResponseError(), operation->errorMessage());
+  }
 #endif
 
   return arangodb::Result();

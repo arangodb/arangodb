@@ -1342,7 +1342,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     // We do never take any responsibility of the
     // value this pointer will point to.
     LogicalCollection* colPtr = nullptr;
-    int res = createCollection(parameters, &colPtr);
+    auto res = createCollection(parameters, &colPtr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res, std::string("unable to create collection: ") +
@@ -1705,7 +1705,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     if (error.isTrue()) {
       error = result.get(StaticStrings::ErrorNum);
       if (error.isNumber()) {
-        int code = error.getNumericValue<int>();
+        auto code = ErrorCode{error.getNumericValue<int>()};
         error = result.get(StaticStrings::ErrorMessage);
         if (error.isString()) {
           return { code, error.copyString() };
@@ -3193,8 +3193,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 /// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::createCollection(VPackSlice slice,
-                                             arangodb::LogicalCollection** dst) {
+ErrorCode RestReplicationHandler::createCollection(VPackSlice slice,
+                                                   arangodb::LogicalCollection** dst) {
   TRI_ASSERT(dst != nullptr);
 
   if (!slice.isObject()) {

@@ -2429,8 +2429,8 @@ Future<Result> Methods::replicateOperations(
 }
 
 #ifndef USE_ENTERPRISE
-/*static*/ int Methods::validateSmartJoinAttribute(LogicalCollection const&,
-                                                   arangodb::velocypack::Slice) {
+ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,
+                                              arangodb::velocypack::Slice) {
   return TRI_ERROR_NO_ERROR;
 }
 #endif

@@ -1287,7 +1287,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
               VPackSlice code = it.get("code");
               VPackSlice message = it.get("message");
               if (code.isNumber() && message.isString()) {
-                query.warnings().registerWarning(code.getNumericValue<int>(),
+                query.warnings().registerWarning(ErrorCode{code.getNumericValue<int>()},
                                                  message.copyString());
               }
             }
@@ -1296,7 +1296,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
         
         val = res.slice().get("code");
         if (val.isNumber()) {
-          return Result{val.getNumericValue<int>()};
+          return Result{ErrorCode{val.getNumericValue<int>()}};
         }
         return Result();
     }).thenError<std::exception>([](std::exception ptr) {
