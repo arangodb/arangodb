@@ -82,6 +82,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   /// @brief Drop an index with the given iid.
   bool dropIndex(IndexId iid) override;
+  Result dropIndexFast(IndexId iid) override;
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx) const override;
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx) const override;
 

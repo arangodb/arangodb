@@ -24,6 +24,7 @@
 
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H 1
+#include <rocksdb/write_batch.h>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -287,6 +288,9 @@ class RocksDBEngine final : public StorageEngine {
   Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
                                      velocypack::Slice const& slice,
                                      RocksDBLogValue&& logValue);
+  Result writeCreateCollectionMarkerBatch(TRI_voc_tick_t databaseId, DataSourceId cid,
+                                          VPackSlice const& slice, RocksDBLogValue&& logValue,
+                                          rocksdb::WriteBatch& batch);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
   std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings() const;

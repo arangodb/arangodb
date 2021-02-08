@@ -569,6 +569,83 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   return idx;
 }
 
+Result RocksDBCollection::dropIndexFast(IndexId iid) {
+  // usually always called when _exclusiveLock is held
+  if (iid.empty() || iid.isPrimary()) {
+    return {};
+  }
+
+  std::shared_ptr<arangodb::Index> toRemove;
+  {
+    WRITE_LOCKER(guard, _indexesLock);
+    for (auto& it : _indexes) {
+      if (iid == it->id()) {
+        toRemove = it;
+        _indexes.erase(it);
+        break;
+      }
+    }
+  }
+
+  if (!toRemove) {  // index not found
+    // We tried to remove an index that does not exist
+    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                      std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+  }
+
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+
+  RocksDBIndex* rocksdbIndex = static_cast<RocksDBIndex*>(toRemove.get());
+  TRI_ASSERT(rocksdbIndex != nullptr);
+
+  rocksdb::WriteBatch batch;
+  {
+    auto builder =  // RocksDB path
+        _logicalCollection.toVelocyPackIgnore({"path", "statusString"},
+                                              LogicalDataSource::Serialization::PersistenceWithInProgress);
+    // log this event in the WAL and in the collection meta-data
+    auto res = engine.writeCreateCollectionMarkerBatch(  // write marker
+        _logicalCollection.vocbase().id(),               // vocbase id
+        _logicalCollection.id(),                         // collection id
+        builder.slice(),                                 // RocksDB path
+        RocksDBLogValue::IndexDrop(                      // marker
+            _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
+            ),
+        batch);
+    if (res.fail()) {
+      return res;
+    }
+  }
+
+  if (Result res = rocksdbIndex->dropWithBatch(batch); !res.ok()) {
+    return res;
+  }
+
+  rocksdb::WriteOptions wo;
+  auto res = engine.db()->Write(wo, &batch);
+  if (!res.ok()) {
+    return rocksutils::convertStatus(res);
+  }
+
+  // TODO clear the cache
+
+  events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
+                    std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
+
+  rocksdbIndex->compact(); // trigger compaction before deleting the object
+
+/* TODO what is with recovery?
+  if (engine.inRecovery()) {
+    return true; // skip writing WAL marker if inRecovery()
+  }
+  */
+
+  return {};
+}
+
 /// @brief Drop an index with the given iid.
 bool RocksDBCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held

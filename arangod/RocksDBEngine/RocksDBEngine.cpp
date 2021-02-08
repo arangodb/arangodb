@@ -1298,6 +1298,22 @@ Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   return rocksutils::convertStatus(res);
 }
 
+Result RocksDBEngine::writeCreateCollectionMarkerBatch(TRI_voc_tick_t databaseId,
+                                                  DataSourceId cid, VPackSlice const& slice,
+                                                  RocksDBLogValue&& logValue, rocksdb::WriteBatch& batch) {
+  RocksDBKey key;
+  key.constructCollection(databaseId, cid);
+  auto value = RocksDBValue::Collection(slice);
+
+  if (logValue.slice().empty()) {
+    batch.PutLogData(logValue.slice());
+  }
+  batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+            key.string(), value.string());
+
+  return {};
+}
+
 Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
   VPackBuilder builder;
 
@@ -1354,14 +1370,12 @@ void RocksDBEngine::prepareDropCollection(TRI_vocbase_t& /*vocbase*/,
 arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
                                                    LogicalCollection& collection) {
 
-  auto* rocksdb_collection = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
-  bool const compactAfterDrop = rocksdb_collection->meta().numberDocuments() >= 32 * 1024;
+  auto* rocksdb = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
+  bool const compactAfterDrop = rocksdb->meta().numberDocuments() >= 32 * 1024;
 
   rocksdb::DB* db = _db->GetRootDB();
 
   TRI_ASSERT(collection.status() == TRI_VOC_COL_STATUS_DELETED);
-
-
 
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
@@ -1379,21 +1393,22 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
                  key.string());
   }
 
-  Result res =
-      RocksDBMetadata::deleteCollectionMetaBatch(db, rocksdb_collection->objectId(), batch);
-  if (res.fail()) {
-    LOG_TOPIC("2c890", ERR, Logger::ENGINES)
-        << "error removing collection meta-data: "
-        << res.errorMessage();  // continue regardless
+  {
+    Result res =
+        RocksDBMetadata::deleteCollectionMetaBatch(db, rocksdb->objectId(), batch);
+    if (res.fail()) {
+      LOG_TOPIC("2c890", ERR, Logger::ENGINES)
+          << "error removing collection meta-data: " << res.errorMessage();  // continue regardless
+    }
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = rocksdb_collection->getIndexes();
+  std::vector<std::shared_ptr<Index>> vecShardIndex = rocksdb->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
 
   for (auto& index : vecShardIndex) {
     auto* ridx = static_cast<RocksDBIndex*>(index.get());
-    res = RocksDBMetadata::deleteIndexEstimateBatch(db, ridx->objectId(), batch);
+    Result res = RocksDBMetadata::deleteIndexEstimateBatch(db, ridx->objectId(), batch);
     if (res.fail()) {
       LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
       << "could not delete index estimate: " << res.errorMessage();
@@ -1412,22 +1427,23 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
   }
 
   // delete documents
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(rocksdb_collection->objectId());
+  RocksDBKeyBounds bounds =
+      RocksDBKeyBounds::CollectionDocuments(rocksdb->objectId());
   batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
 
   // fire!
-  rocksdb::WriteOptions wo;
-  rocksdb::Status s = db->Write(wo, &batch);
-  if (!s.ok()) {
-    return rocksutils::convertStatus(s);
+  {
+    rocksdb::WriteOptions wo;
+    rocksdb::Status s = db->Write(wo, &batch);
+    if (!s.ok()) {
+      return rocksutils::convertStatus(s);
+    }
   }
-
-
 
   // remove from map
   {
     WRITE_LOCKER(guard, _mapLock);
-    _collectionMap.erase(rocksdb_collection->objectId());
+    _collectionMap.erase(rocksdb->objectId());
   }
 
   // run compaction for data only if collection contained a considerable
@@ -1435,7 +1451,7 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
   // slow things down a lot, especially during tests that create/drop LOTS
   // of collections
   if (compactAfterDrop) {
-    rocksdb_collection->compact();
+    rocksdb->compact();
   }
 
   // TODO compact indexes as well and drop the caches

@@ -307,6 +307,14 @@ bool ClusterCollection::dropIndex(IndexId iid) {
   return false;
 }
 
+Result ClusterCollection::dropIndexFast(IndexId iid) {
+  if (auto res = dropIndex(iid); res) {
+    return {};
+  }
+
+  return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+}
+
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
