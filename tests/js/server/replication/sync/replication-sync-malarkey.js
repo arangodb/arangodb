@@ -56,15 +56,24 @@ function ReplicationIncrementalMalarkey () {
     assertTrue(res);
   };
   
-  let checkCountConsistency = function(collection, expected) {
-    let figures = collection.figures(true).engine;
+  let checkCountConsistency = function(cn, expected) {
+    let check = function() {
+      db._flushCache();
+      let c = db[cn];
+      let figures = c.figures(true).engine;
 
-    assertEqual(expected, collection.count());
-    assertEqual(expected, collection.toArray().length);
-    assertEqual(expected, figures.documents);
-    figures.indexes.forEach((idx) => {
-      assertEqual(expected, idx.count);
-    });
+      assertEqual(expected, c.count());
+      assertEqual(expected, c.toArray().length);
+      assertEqual(expected, figures.documents);
+      figures.indexes.forEach((idx) => {
+        assertEqual(expected, idx.count);
+      });
+    };
+
+    connectToFollower();
+    check();
+    connectToLeader();
+    check();
   };
   
   let runRandomOps = function(cn, n) {
@@ -137,6 +146,40 @@ function ReplicationIncrementalMalarkey () {
       db._drop(cn);
     },
     
+    // create different state on follower
+    testMax: function () {
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 1 * 1000 * 1000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1 } IN " + cn);
+      
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+
+      checkCountConsistency(cn, 1 * 1000 * 1000);
+    },
+    
     testRevisionIdReuse: function () {
       let c = db._create(cn);
       let rev = c.insert({_key: "testi", value: 1 })._rev;
@@ -177,7 +220,7 @@ function ReplicationIncrementalMalarkey () {
       assertEqual(1, c.document("testi").value);
       assertEqual(rev, c.document("testi")._rev);
 
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
    
     // create different state on follower for the same key
@@ -218,7 +261,7 @@ function ReplicationIncrementalMalarkey () {
       assertEqual(3, c.document("testi").value);
       assertEqual(rev, c.document("testi")._rev);
 
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
     
     // create different state on follower for the same key, using replace
@@ -256,7 +299,7 @@ function ReplicationIncrementalMalarkey () {
       assertEqual(3, c.document("testi").value);
       assertEqual(rev, c.document("testi")._rev);
       
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
       
     // create large AQL operation on leader using AQL
@@ -298,7 +341,7 @@ function ReplicationIncrementalMalarkey () {
       assertEqual(3, c.document("testi").value);
       assertEqual(rev, c.document("testi")._rev);
 
-      checkCountConsistency(c, 10001);
+      checkCountConsistency(cn, 10001);
     },
     
     // create large AQL operation on follower using AQL
@@ -340,7 +383,7 @@ function ReplicationIncrementalMalarkey () {
       assertEqual(3, c.document("testi").value);
       assertEqual(rev, c.document("testi")._rev);
 
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
     
     // create random operations on leader, with many
@@ -386,7 +429,7 @@ function ReplicationIncrementalMalarkey () {
         assertEqual(state[s], c.document(s).value);
       }
       
-      checkCountConsistency(c, expected);
+      checkCountConsistency(cn, expected);
     },
     
     // create a transaction with random operations on leader, with many
@@ -432,7 +475,7 @@ function ReplicationIncrementalMalarkey () {
         assertEqual(state[s], c.document(s).value);
       }
       
-      checkCountConsistency(c, expected);
+      checkCountConsistency(cn, expected);
     },
     
     // create random operations on follower, with many
@@ -472,7 +515,7 @@ function ReplicationIncrementalMalarkey () {
       c = db._collection(cn);
       assertEqual(3, c.document("testi").value);
 
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
     
     // create a transaction with random operations on follower, with many
@@ -512,7 +555,7 @@ function ReplicationIncrementalMalarkey () {
       c = db._collection(cn);
       assertEqual(3, c.document("testi").value);
 
-      checkCountConsistency(c, 1);
+      checkCountConsistency(cn, 1);
     },
     
     // create random operations on leader and follower, with many
@@ -560,7 +603,7 @@ function ReplicationIncrementalMalarkey () {
         assertEqual(state[s], c.document(s).value);
       }
       
-      checkCountConsistency(c, expected);
+      checkCountConsistency(cn, expected);
     },
     
     // create a transaction with random operations on leader and follower, with many
@@ -608,7 +651,7 @@ function ReplicationIncrementalMalarkey () {
         assertEqual(state[s], c.document(s).value);
       }
       
-      checkCountConsistency(c, expected);
+      checkCountConsistency(cn, expected);
     },
   };
 }
