@@ -605,6 +605,26 @@ std::shared_ptr<LogicalCollection> MockClusterServer::createCollection(
     props.add(StaticStrings::DataSourceName, VPackValue(collectionName));
     props.add(StaticStrings::DataSourcePlanId, VPackValue(cid));
     props.add(StaticStrings::DataSourceId, VPackValue(cid));
+    props.add(VPackValue(StaticStrings::Indexes));
+    {
+      VPackArrayBuilder guard2(&props);
+      auto const primIndex = arangodb::velocypack::Parser::fromJson(
+      R"({"id":"0","type":"primary","name":
+"primary","fields":["_key"],"unique":true,"sparse":false
+})");
+props.add(primIndex->slice());
+if (type == TRI_COL_TYPE_EDGE) {
+  auto const fromIndex = arangodb::velocypack::Parser::fromJson(
+    R"({"id":"1","type":"edge","name":
+"edge_from","fields":["_from"],"unique":false,"sparse":false
+})");
+props.add(fromIndex->slice());
+auto const toIndex = arangodb::velocypack::Parser::fromJson(
+R"({"id":"2","type":"edge","name":
+"edge_to","fields":["_to"],"unique":false,"sparse":false})");
+props.add(toIndex->slice());
+}
+    }
   }
   LogicalCollection dummy(*vocbase, props.slice(), true);
   
@@ -746,6 +766,34 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
 
   // If this is false something above went wrong.
   TRI_ASSERT(dd.ok());
+
+  // Add Indexes:
+  // The Mock does not support generating INdexes from setup JSON.
+  // It only supports manual index creation,
+  if (clusterCollection.type() == TRI_COL_TYPE_EDGE) {
+    auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
+    auto vocbase = databaseFeature.lookupDatabase(dbName);
+    TRI_ASSERT(vocbase);
+    auto col = vocbase->lookupCollection(shardName);
+    // We just created it...
+    TRI_ASSERT(col);
+
+    {
+      bool created = false;
+      auto const idx = arangodb::velocypack::Parser::fromJson(
+          R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
+      col->createIndex(idx->slice(), created);
+      TRI_ASSERT(created);
+    }
+
+    {
+      bool created = false;
+      auto const idx = arangodb::velocypack::Parser::fromJson(
+          R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
+      col->createIndex(idx->slice(), created);
+      TRI_ASSERT(created);
+    }
+  }
 }
 
 MockCoordinator::MockCoordinator(bool useAgencyMock, bool start)

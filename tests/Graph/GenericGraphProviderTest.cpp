@@ -30,6 +30,7 @@
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/TraverserOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
@@ -107,8 +108,40 @@ class GraphProviderTest : public ::testing::Test {
       {
         arangodb::tests::mocks::MockDBServer server{};
         graph.prepareServer(server);
+
+        auto queryString = arangodb::aql::QueryString("RETURN 1");
+
+        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+            server.getSystemDatabase());
+        arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
+        try {
+        fakeQuery.collections().add("s9880", AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::Shard);
+        } catch(...) {
+
+        }
+        fakeQuery.prepareQuery(SerializationFormat::SHADOWROWS);
+        auto ast = fakeQuery.ast();
+        auto tmpVar = ast->variables()->createTemporaryVariable();
+        auto tmpVarRef = ast->createNodeReference(tmpVar);
+        auto tmpIdNode = ast->createNodeValueString("", 0);
+
+
+        traverser::TraverserOptions opts{fakeQuery};
+        opts.setVariable(tmpVar);
+
+        auto const* access =
+            ast->createNodeAttributeAccess(tmpVarRef,
+                                          StaticStrings::FromString.c_str(),
+                                          StaticStrings::FromString.length());
+        auto const* cond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
+        auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        fromCondition->addMember(cond);
+        opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
+
         std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
-        preparedResponses = graph.simulateApi(server, verticesList);
+        uint64_t engineId = 0;
+        std::tie(preparedResponses, engineId) = graph.simulateApi(server, verticesList, opts);
         LOG_DEVEL << "Debug, size is: " << preparedResponses.size();
         for (auto const& resp : preparedResponses) {
           LOG_DEVEL << resp.generateResponse()->copyPayload().get()->toString();

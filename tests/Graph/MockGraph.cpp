@@ -153,20 +153,24 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
                                         getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
 }
 
+
+
 template <>
 // Future: Also engineID's need to be returned here.
-std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
+std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockGraph::simulateApi(
     MockDBServer& server, std::unordered_set<VertexDef, hashVertexDef> verticesList,
-    arangodb::graph::BaseOptions& opts, aql::ExecutionPlan* queryPlan, aql::AstNode* condition) const {
+    arangodb::graph::BaseOptions& opts) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
   std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
 
   aql::QueryRegistry queryRegistry{120};
+  uint64_t engineId = 0;
 
   {
     // init restaqlhandler
     arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+    
     // generate and add body here
     VPackBuilder builder;
     builder.openObject();
@@ -206,22 +210,6 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
 
     builder.add(VPackValue("options"));
 
-    // create collectionToShardMap
-    std::map<std::string, std::string> collectionToShard {};
-    for (auto const& vertexTuple: getVertexShardNameServerPairs()) {
-      collectionToShard[vertexTuple.first] = vertexTuple.second;
-    }
-    for (auto const& edgeTuple: getEdgeShardNameServerPairs()) {
-      collectionToShard[edgeTuple.first] = edgeTuple.second;
-    }
-    LOG_DEVEL << "Collection list: " << collectionToShard.size();
-    LOG_DEVEL << "TODO: Info for Michael -> this was my last attempt to fix the creation of baseLookupInfos"
-                 << "as I've seen this correctly we need to set setCollectionToShard() and then addLookupInfo."
-                 << "addLookupInfo needs a ";
-    opts.setCollectionToShard(collectionToShard);
-    opts.addLookupInfo(queryPlan, "v", "attributeName", condition, false);
-    opts.addLookupInfo(queryPlan, "e", "attributeName", condition, false);
-
     opts.buildEngineInfo(builder);
 
     builder.add(VPackValue("shards"));
@@ -254,7 +242,6 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
      */
 
     builder.close();  // object (outer)
-    LOG_DEVEL << builder.toJson();
 
     prep.addBody(builder.slice());
     prep.addSuffix("setup");
@@ -267,8 +254,16 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
 
     aqlHandler.execute();
     auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
-    LOG_DEVEL << static_cast<GeneralResponseMock*>(response.get())->_payload.toJson();
-    // TODO: read resposnse (eid)
+    auto resBody = static_cast<GeneralResponseMock*>(response.get())->_payload.slice();
+    TRI_ASSERT(resBody.hasKey("result"));
+    resBody = resBody.get("result");
+    TRI_ASSERT(resBody.hasKey("traverserEngines"));
+    auto engines = resBody.get("traverserEngines");
+    TRI_ASSERT(engines.isArray());
+    TRI_ASSERT(engines.length() == 1)
+    auto eidSlice = engines.at(0);
+    TRI_ASSERT(eidSlice.isNumber());
+    engineId = eidSlice.getNumericValue<uint64_t>();
   }
 
   // merge given vertices with available graph vertices
@@ -294,7 +289,7 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
     // Request muss ins array: preparedResponses
     prep.setRequestType(arangodb::rest::RequestType::PUT);
     prep.addSuffix("vertex");
-    prep.addSuffix(basics::StringUtils::itoa(1));  // check test - Write: (EngineId eid) <- vermutlich
+    prep.addSuffix(basics::StringUtils::itoa(engineId));
     prep.addBody(leased.slice());
 
     auto fakeRequest = prep.generateRequest();
@@ -303,6 +298,7 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
 
     std::ignore = testee.execute(); // todo check if needed
     auto res = testee.stealResponse();
+    LOG_DEVEL << leased.toJson() << " -> " << static_cast<GeneralResponseMock*>(res.get())->_payload.toJson();
     prep.rememberResponse(std::move(res));
     preparedResponses.emplace_back(std::move(prep));
 
@@ -312,5 +308,5 @@ std::vector<arangodb::tests::PreparedRequestResponse> MockGraph::simulateApi(
   // Try without first, if not working:
   // 3.) Send a Delete to RestAqlHandler (? => End query execution)
 
-  return preparedResponses;
+  return std::make_pair(std::move(preparedResponses), engineId);
 }
