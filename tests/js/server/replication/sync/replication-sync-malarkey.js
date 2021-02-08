@@ -150,7 +150,7 @@ function ReplicationIncrementalMalarkey () {
     testMax: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 1 * 1000 * 1000; ++i) {
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
           c.insert(docs);
@@ -177,9 +177,10 @@ function ReplicationIncrementalMalarkey () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 1 * 1000 * 1000);
+      checkCountConsistency(cn, 1 * 100 * 1000);
     },
     
+    /*
     testRevisionIdReuse: function () {
       let c = db._create(cn);
       let rev = c.insert({_key: "testi", value: 1 })._rev;
@@ -652,7 +653,7 @@ function ReplicationIncrementalMalarkey () {
       }
       
       checkCountConsistency(cn, expected);
-    },
+    }, */
   };
 }
 
