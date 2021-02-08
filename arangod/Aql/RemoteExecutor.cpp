@@ -262,14 +262,14 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<RemoteExecutor>::initialize
     auto response = std::move(_lastResponse);
 
     // Result is the response which is an object containing the ErrorCode
-    int errorNumber = TRI_ERROR_INTERNAL;  // default error code
+    auto errorNumber = TRI_ERROR_INTERNAL;  // default error code
     VPackSlice slice = response->slice();
     VPackSlice errorSlice = slice.get(StaticStrings::ErrorNum);
     if (!errorSlice.isNumber()) {
       errorSlice = slice.get(StaticStrings::Code);
     }
     if (errorSlice.isNumber()) {
-      errorNumber = errorSlice.getNumericValue<int>();
+      errorNumber = ErrorCode{errorSlice.getNumericValue<int>()};
     }
 
     errorSlice = slice.get(StaticStrings::ErrorMessage);
@@ -452,7 +452,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
         .append("': ");
   }
 
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   if (err != fuerte::Error::NoError) {
     res = network::fuerteToArangoErrorCode(err);
     msg.append(TRI_errno_string(res));
@@ -461,7 +461,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
-        res = VelocyPackHelper::getNumericValue(slice, StaticStrings::ErrorNum, res);
+        res = ErrorCode{
+            VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::ErrorNum, res)};
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
                                            VPackStringRef(
@@ -487,7 +488,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
   }
 
   arangodb::network::EndpointSpec spec;
-  int res = network::resolveDestination(nf, _server, spec);
+  auto res = network::resolveDestination(nf, _server, spec);
   if (res != TRI_ERROR_NO_ERROR) { 
     return Result(res);
   }

@@ -235,8 +235,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                           bool waitForCollector);
+ErrorCode flushWalOnAllDBServers(ClusterFeature&, bool waitForSync, bool waitForCollector);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);

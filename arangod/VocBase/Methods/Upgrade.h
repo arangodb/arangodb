@@ -38,15 +38,16 @@ namespace methods {
 
 struct UpgradeResult {
   UpgradeResult() : type(VersionResult::INVALID), _result() {}
-  UpgradeResult(int err, VersionResult::StatusCode s) : type(s), _result(err) {}
-  UpgradeResult(int err, std::string_view msg, VersionResult::StatusCode s)
+  UpgradeResult(ErrorCode err, VersionResult::StatusCode s)
+      : type(s), _result(err) {}
+  UpgradeResult(ErrorCode err, std::string_view msg, VersionResult::StatusCode s)
       : type(s), _result(err, msg) {}
   VersionResult::StatusCode type;
 
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
   std::string_view errorMessage() const { return _result.errorMessage(); }
 
   // access methods
@@ -104,7 +105,7 @@ struct Upgrade {
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js
   static UpgradeResult startup(TRI_vocbase_t& vocbase, bool upgrade, bool ignoreFileErrors);
-  
+
   /// @brief executed on startup for coordinators
   /// @param upgrade  Perform an actual upgrade
   /// Corresponds to upgrade-database.js

@@ -31,11 +31,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-void QueryExpressionContext::registerWarning(int errorCode, char const* msg) {
+void QueryExpressionContext::registerWarning(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerWarning(errorCode, msg);
 }
 
-void QueryExpressionContext::registerError(int errorCode, char const* msg) {
+void QueryExpressionContext::registerError(ErrorCode errorCode, char const* msg) {
   _query.warnings().registerError(errorCode, msg);
 }
 

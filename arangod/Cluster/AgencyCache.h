@@ -174,7 +174,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief shut down code for futures that are unresolved.
   /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
   /// during testing
-  int const _shutdownCode;
+  ErrorCode const _shutdownCode;
 
   /// @brief Make sure, that we have seen in the beginning a snapshot
   std::atomic<bool> _initialized;
