@@ -71,9 +71,9 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                                  ShardID& shardID, bool& usesDefaultShardKeys,
-                                  arangodb::velocypack::StringRef const& key) = 0;
+  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                        ShardID& shardID, bool& usesDefaultShardKeys,
+                                        arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb

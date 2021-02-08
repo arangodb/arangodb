@@ -998,8 +998,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
     }
   }
 
-
-  int r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
+  auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
 
   if (r != TRI_ERROR_NO_ERROR) {
     res.reset(r);

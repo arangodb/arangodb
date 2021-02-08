@@ -102,13 +102,14 @@ class Parser {
   QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, char const*, int, int);
+  void registerParseError(ErrorCode errorCode, char const* format,
+                          char const* data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, int, int);
-  
+  void registerParseError(ErrorCode errorCode, char const* data, int line, int column);
+
   /// @brief register a warning
-  void registerWarning(int, char const*, int, int);
+  void registerWarning(ErrorCode errorCode, char const* data, int line, int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray

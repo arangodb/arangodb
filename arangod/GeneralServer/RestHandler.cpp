@@ -249,7 +249,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
                                      std::move(payload), options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
-    int res = network::fuerteToArangoErrorCode(response);
+    auto res = network::fuerteToArangoErrorCode(response);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(res);
       return Result(res);
@@ -563,7 +563,7 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
   char const* message = TRI_errno_string(errorNumber);
 
   if (message != nullptr) {

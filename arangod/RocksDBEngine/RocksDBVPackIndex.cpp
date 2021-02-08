@@ -376,15 +376,14 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
       _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
-  if (!_unique && !ServerState::instance()->isCoordinator()) {
+  if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         RocksDBIndex::ESTIMATOR_SIZE);
-    TRI_ASSERT(_estimator != nullptr);
   }
+  
   TRI_ASSERT(!_fields.empty());
-
   TRI_ASSERT(iid.isSet());
 
   fillPaths(_paths, _expanding);
@@ -392,11 +391,18 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
 
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() = default;
+  
+bool RocksDBVPackIndex::hasSelectivityEstimate() const {
+  return true;
+}
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
+  }
+  if (_estimator == nullptr) {
+    return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
@@ -414,10 +420,10 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
 /// @brief helper function to insert a document into any index type
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
-int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                   VPackSlice const& doc,
-                                   ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-                                   ::arangodb::containers::SmallVector<uint64_t>& hashes) {
+ErrorCode RocksDBVPackIndex::fillElement(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const& doc,
+    ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -678,7 +684,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -840,7 +846,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
+    auto r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -881,7 +887,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -1305,6 +1311,9 @@ void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator
 
 void RocksDBVPackIndex::recalculateEstimates() {
   if (unique()) {
+    return;
+  }
+  if (_estimator == nullptr) {
     return;
   }
 
