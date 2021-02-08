@@ -1,6 +1,15 @@
 devel
 -----
 
+* Simplify the DistributeExecutor and avoid implicit modification of its input
+  variable. Previously the DistributeExecutor could update the input variable
+  in-place, leading to unexpected results (see #13509).
+  The modification logic has now been moved into three new _internal_ AQL
+  functions (MAKE_DISTRIBUTE_INPUT, MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION,
+  and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
+  according function call will be introduced if we need to prepare the input
+  data for the distribute node.
+
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
