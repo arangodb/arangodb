@@ -180,7 +180,6 @@ function ReplicationIncrementalMalarkey () {
       checkCountConsistency(cn, 1 * 100 * 1000);
     },
     
-    /*
     testRevisionIdReuse: function () {
       let c = db._create(cn);
       let rev = c.insert({_key: "testi", value: 1 })._rev;
@@ -653,7 +652,7 @@ function ReplicationIncrementalMalarkey () {
       }
       
       checkCountConsistency(cn, expected);
-    }, */
+    },
   };
 }
 
