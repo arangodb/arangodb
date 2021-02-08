@@ -1931,7 +1931,8 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx) {
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -2023,13 +2024,13 @@ Result ClusterInfo::waitForDatabaseInCurrent(
         count = 0;
       }
 
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      auto tmpRes = dbServerResult->load(std::memory_order_acquire);
 
       // An error was detected on one of the DBServers
-      if (tmpRes >= 0) {
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb before accessing errMsg
 
-        return Result(tmpRes, *errMsg);
+        return Result(*tmpRes, *errMsg);
       }
 
       {
@@ -2237,7 +2238,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -2292,7 +2294,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // Now wait stuff in Current to disappear and thus be complete:
   {
     while (true) {
-      if (dbServerResult->load(std::memory_order_acquire) >= 0) {
+      if (dbServerResult->load(std::memory_order_acquire).has_value()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         AgencyOperation delCurrentCollection(where, AgencySimpleOperationType::DELETE_OP);
         AgencyOperation incrementCurrentVersion(
@@ -2416,7 +2418,8 @@ Result ClusterInfo::createCollectionsCoordinator(
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
@@ -2804,7 +2807,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   do {
-    int tmpRes = dbServerResult->load(std::memory_order_acquire);
+    auto tmpRes = dbServerResult->load(std::memory_order_acquire);
     if (TRI_microtime() > endTime) {
       for (auto const& info : infos) {
         LOG_TOPIC("f6b57", ERR, Logger::CLUSTER)
@@ -2816,7 +2819,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Get a full agency dump for debugging
       logAgencyDump();
 
-      if (tmpRes <= TRI_ERROR_NO_ERROR) {
+      if (!tmpRes.has_value() || *tmpRes == TRI_ERROR_NO_ERROR) {
         tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
       }
     }
@@ -2884,7 +2887,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       return res.asResult();
 
     }
-    if (tmpRes > TRI_ERROR_NO_ERROR) {
+    if (tmpRes.has_value() && tmpRes != TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
       // we are safe by using cacheMutex
       cbGuard.fire();
@@ -2896,15 +2899,14 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (info.state == ClusterCollectionCreationState::FAILED ||
             (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
              info.state == ClusterCollectionCreationState::INIT)) {
-          events::CreateCollection(databaseName, info.name, tmpRes);
+          events::CreateCollection(databaseName, info.name, *tmpRes);
         }
       }
       LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-          << " first collection name: " << infos[0].name
-          << " result: " << tmpRes;
-      return {tmpRes, *errMsg};
+          << " first collection name: " << infos[0].name << " result: " << *tmpRes;
+      return {*tmpRes, *errMsg};
     }
 
     // If we get here we have not tried anything.
@@ -3007,7 +3009,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -3109,15 +3112,16 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   {
     while (true) {
-      if (*dbServerResult >= 0) {
+      auto tmpRes = dbServerResult->load();
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
         AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
                                              AgencySimpleOperationType::DELETE_OP);
         AgencyWriteTransaction cx({delCurrentCollection});
         res = ac.sendTransactionWithFailover(cx);
-        events::DropCollection(dbName, collectionID, *dbServerResult);
-        return Result(*dbServerResult);
+        events::DropCollection(dbName, collectionID, *tmpRes);
+        return Result(*tmpRes);
       }
 
       if (TRI_microtime() > endTime) {
@@ -3878,8 +3882,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   }
 
   // will contain the error number and message
-  std::shared_ptr<std::atomic<int>> dbServerResult =
-      std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -3912,8 +3916,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            int errNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+            auto errNum = ErrorCode{arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED)};
             dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
@@ -4028,9 +4032,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   {
     while (!_server.isStopping()) {
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      auto tmpRes = dbServerResult->load(std::memory_order_acquire);
 
-      if (tmpRes < 0) {
+      if (!tmpRes.has_value()) {
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
@@ -4055,7 +4059,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         }
       }
 
-      if (tmpRes == 0) {
+      if (tmpRes.has_value() && tmpRes == TRI_ERROR_NO_ERROR) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
         // a precondition since the collection could have been deleted
@@ -4110,10 +4114,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         }
         CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-        return Result(tmpRes, *errMsg);
+        return Result(*tmpRes, *errMsg);
       }
 
-      if (tmpRes > 0 || TRI_microtime() > endTime) {
+      if ((tmpRes.has_value() && *tmpRes != TRI_ERROR_NO_ERROR) || TRI_microtime() > endTime) {
         // At this time the index creation has failed and we want to
         // roll back the plan entry, provided the collection still exists:
         AgencyWriteTransaction trx(
@@ -4137,9 +4141,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               }
             }
 
-            if (tmpRes < 0) {                 // timeout
-              return Result(                  // result
-                  TRI_ERROR_CLUSTER_TIMEOUT,  // code
+            if (!tmpRes.has_value()) {  // timeout
+              return Result(
+                  TRI_ERROR_CLUSTER_TIMEOUT,
                   "Index could not be created within timeout, giving up and "
                   "rolling back index creation.");
             }
@@ -4147,7 +4151,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             // The mutex in the condition variable protects the access to
             // *errMsg:
             CONDITION_LOCKER(locker, agencyCallback->_cv);
-            return Result(tmpRes, *errMsg);
+            return Result(*tmpRes, *errMsg);
           }
 
           if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -4160,16 +4164,16 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
                 << "Couldn't roll back index creation of " << idString
                 << ". Database: " << databaseName << ", Collection " << collectionID;
 
-            if (tmpRes < 0) {                 // timeout
-              return Result(                  // result
-                  TRI_ERROR_CLUSTER_TIMEOUT,  // code
+            if (!tmpRes.has_value()) {  // timeout
+              return Result(
+                  TRI_ERROR_CLUSTER_TIMEOUT,
                   "Timed out while trying to roll back index creation failure");
             }
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
             CONDITION_LOCKER(locker, agencyCallback->_cv);
-            return Result(tmpRes, *errMsg);
+            return Result(*tmpRes, *errMsg);
           }
 
           if (sleepFor <= 2500) {
@@ -4286,7 +4290,8 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
 
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& current) {
     if (numberOfShards == 0) {
       return false;
@@ -4373,11 +4378,12 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   {
     while (true) {
-      if (*dbServerResult >= 0) {
+      auto const tmpRes = dbServerResult->load();
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb
-        events::DropIndex(databaseName, collectionID, idString, *dbServerResult);
+        events::DropIndex(databaseName, collectionID, idString, *tmpRes);
 
-        return Result(*dbServerResult);
+        return Result(*tmpRes);
       }
 
       if (TRI_microtime() > endTime) {

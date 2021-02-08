@@ -311,7 +311,7 @@ class AgencyCommResult {
 
   [[nodiscard]] int httpCode() const;
 
-  [[nodiscard]] int errorCode() const;
+  [[nodiscard]] ErrorCode errorCode() const;
 
   [[nodiscard]] std::string errorMessage() const;
 
@@ -337,7 +337,7 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";

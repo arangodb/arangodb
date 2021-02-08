@@ -79,7 +79,7 @@ std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> T
 
 std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const& name,
                                        TRI_vocbase_t* vocbase, std::string const& command,
-                                       bool allowUseDatabase, int& ec) {
+                                       bool allowUseDatabase, ErrorCode& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -115,7 +115,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   return task;
 }
 
-int Task::unregisterTask(std::string const& id, bool cancel) {
+ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
