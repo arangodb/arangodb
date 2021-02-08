@@ -27,14 +27,14 @@ devel
     `info`, meaning all log messages of types `info`, `warning`, `error` and
     `fatal` will be stored by an instance in memory (this was also the behavior
     in previous versions of ArangoDB). By setting this option to `warning`,
-    only `warning` log messages will be preserved in memory, and by setting
-    the option to `error` only error messages will be kept.
+    only `warning`, `error` and `fatal` log messages will be preserved in memory, 
+    and by setting the option to `error` only error and fatal messages will be kept.
     This option is useful because the number of in-memory log messages is 
     limited to the latest 2048 messages, and these slots are by default shared 
     between informational, warning and error messages. 
 
 * Honor the value of startup option `--log.api-enabled` when set to `false`.
-  THe desired behavior in this case is to turn off the REST API for logging,
+  The desired behavior in this case is to turn off the REST API for logging,
   but was not implemented. The default value for the option is `true`, so the
   REST API is enabled. This behavior did not change, and neither did the 
   behavior when setting the option to a value of `jwt` (meaning the REST API
