@@ -225,6 +225,14 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
+
+  if (start.isLooseEnd()) {
+    std::vector<decltype(start)*> looseEnds{};
+    looseEnds.emplace_back(&start);
+    auto futures = testee.fetch(looseEnds);
+    auto steps = futures.get();
+  }
+
   std::vector<typename decltype(testee)::Step> result{};
   testee.expand(start, 0, [&result](typename decltype(testee)::Step n) -> void {
     result.emplace_back(std::move(n));

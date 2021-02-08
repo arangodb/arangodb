@@ -200,10 +200,6 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     builder.add("variables", VPackValue(VPackValueType::Array));
     builder.close();  // object variables
 
-    // TODO: traverserEngines need to be available and generated
-    /*
-     * Testing Start
-     */
     builder.add("traverserEngines", VPackValue(VPackValueType::Array));
 
     builder.openObject(); // main container
@@ -237,10 +233,6 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     builder.close(); // shards
     builder.close(); // main container
     builder.close(); // array traverserEngines
-    /*
-     * Testing End
-     */
-
     builder.close();  // object (outer)
 
     prep.addBody(builder.slice());
@@ -267,7 +259,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
   }
 
   // merge given vertices with available graph vertices
-  verticesList.insert(vertices().begin(), vertices().end());
+  // verticesList.insert(vertices().begin(), vertices().end());
 
   for (auto const& vertex : verticesList) {
     LOG_DEVEL << "  -> " << vertex._id;
@@ -288,6 +280,9 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
 
     // Request muss ins array: preparedResponses
     prep.setRequestType(arangodb::rest::RequestType::PUT);
+
+    prep.addRestSuffix("traverser");
+
     prep.addSuffix("vertex");
     prep.addSuffix(basics::StringUtils::itoa(engineId));
     prep.addBody(leased.slice());
@@ -296,7 +291,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
                                         fakeResponse.release(), &queryRegistry};
 
-    std::ignore = testee.execute(); // todo check if needed
+    std::ignore = testee.execute();
+
     auto res = testee.stealResponse();
     LOG_DEVEL << leased.toJson() << " -> " << static_cast<GeneralResponseMock*>(res.get())->_payload.toJson();
     prep.rememberResponse(std::move(res));

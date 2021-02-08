@@ -50,6 +50,7 @@ class PreparedRequestResponse {
 
   void setRequestType(arangodb::rest::RequestType type);
   void addSuffix(std::string suffix);
+  void addRestSuffix(std::string suffix);
   void addBody(VPackSlice slice);
 
   std::unique_ptr<GeneralRequestMock> generateRequest() const;
@@ -62,8 +63,10 @@ class PreparedRequestResponse {
 
  private:
   TRI_vocbase_t& _vocbase;
+  std::string _dbName;
   arangodb::rest::RequestType _type;
   std::vector<std::string> _suffixes;
+  std::vector<std::string> _fullSuffixes;
   VPackSlice _payload;
   std::unique_ptr<GeneralResponse> _response;
 };

@@ -35,7 +35,7 @@ using namespace arangodb::tests;
 using namespace arangodb::network;
 
 namespace {
-/*
+
 std::vector<std::string> SplitPath(std::string const& path) {
   std::vector<std::string> result;
   size_t start;
@@ -47,7 +47,6 @@ std::vector<std::string> SplitPath(std::string const& path) {
 	}
   return result;
 }
-*/
 
 class FakeConnection final : public fuerte::Connection {
  public:
@@ -88,14 +87,19 @@ bool IsAgencyEndpoint(fuerte::ConnectionBuilder const& builder) {
 }  // namespace
 
 PreparedRequestResponse::PreparedRequestResponse(TRI_vocbase_t& vocbase)
-    : _vocbase{vocbase}, _type(arangodb::rest::RequestType::GET), _suffixes{}, _payload{VPackSlice::nullSlice()}, _response{nullptr} {}
+    : _vocbase{vocbase}, _dbName(vocbase.name()), _type(arangodb::rest::RequestType::GET), _suffixes{}, _payload{VPackSlice::nullSlice()}, _response{nullptr} {}
 
 void PreparedRequestResponse::setRequestType(arangodb::rest::RequestType type) {
   _type = type;
 }
 
 void PreparedRequestResponse::addSuffix(std::string suffix) {
-  _suffixes.emplace_back(std::move(suffix));
+  _suffixes.emplace_back(suffix);
+  _fullSuffixes.emplace_back(std::move(suffix));
+}
+
+void PreparedRequestResponse::addRestSuffix(std::string suffix) {
+  _fullSuffixes.emplace_back(std::move(suffix));
 }
 
 void PreparedRequestResponse::addBody(VPackSlice slice) {
@@ -120,15 +124,16 @@ void PreparedRequestResponse::rememberResponse(std::unique_ptr<GeneralResponse> 
 }
 
   bool PreparedRequestResponse::operator==(fuerte::Request const& other) const {
-    return true;
-    /*
-        auto const& header = req->header;
+    auto const& header = other.header;
     auto const& db = header.database;
     auto const& path = header.path;
     auto suffixes = SplitPath(path);
-    suffixes.pop_front(); // "_db"
+    suffixes.erase(suffixes.begin());
     auto method = header.restVerb;
-    LOG_DEVEL << "Database: " << db << " Path: " << path << " method " << to_string(method);
+    LOG_DEVEL << "OTHER: Database: " << db << " Path: " << suffixes << " method " << to_string(method);
+    LOG_DEVEL << "ME: Database: " << _dbName << " Path: " << _fullSuffixes << " method: " << ((int)_type);
+    return true;
+    /*
     ###### Database: _system Path: /_api/document/s56/123 method 1
     */
   }
