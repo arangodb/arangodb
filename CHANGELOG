@@ -42,6 +42,14 @@ devel
 * Added metric `arangodb_aql_global_memory_limit` to expose the memory limit 
   from startup option `--query.global-memory-limit`.
 
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
+
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
@@ -60,7 +68,6 @@ devel
 
   * The maximum size of in-memory log messages was doubled from 256 to 512
     chars, so that longer parts of each log message can be preserved now.
->>>>>>> 0e41342ee8c823cb8952462134a6928e22c760ba
 
 * Improvements for logging. This adds the following startup options to arangod:
 
