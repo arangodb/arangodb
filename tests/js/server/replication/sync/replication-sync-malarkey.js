@@ -147,7 +147,7 @@ function ReplicationIncrementalMalarkey () {
     },
     
     // create different state on follower
-    testMax: function () {
+    testDowngradeManyRevisions: function () {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 1 * 100 * 1000; ++i) {
@@ -167,6 +167,89 @@ function ReplicationIncrementalMalarkey () {
       c = db._collection(cn);
      
       db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1 } IN " + cn);
+      
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+
+      checkCountConsistency(cn, 1 * 100 * 1000);
+    },
+    
+    testUniqueConstraints: function () {
+      let c = db._create(cn);
+      c.ensureIndex({type: "hash", unique: true, fields: ["x"]});
+      c.ensureIndex({type: "hash", unique: true, fields: ["y"]});
+      c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
+
+      let docs = [];
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      db._query("FOR doc IN " + cn + " SORT doc.value REPLACE doc WITH { value: doc.value - 1, x: doc.x + 1000000, y: doc.y + 1000000, z: doc.z + 1000000} IN " + cn);
+      
+      docs = [];
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        docs.push({ _key: "L" + i, value: i, x: i, y: i, z: i });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+
+      checkCountConsistency(cn, 1 * 100 * 1000);
+    },
+    
+    testManyUniqueConstraints: function () {
+      let c = db._create(cn);
+      c.ensureIndex({type: "hash", unique: true, fields: ["x"]});
+      c.ensureIndex({type: "hash", unique: true, fields: ["y"]});
+      c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
+
+      let docs = [];
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      db._query("FOR doc IN " + cn + " SORT doc.value REPLACE doc WITH { value: doc.value - 1, x: doc.x - 1, y: doc.y - 2, z: doc.z - 3 } IN " + cn);
       
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
