@@ -181,6 +181,7 @@ class Store {
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
+  /// @brief Run thread
  private:
   /// @brief underlying application server, needed for testing code
   application_features::ApplicationServer& _server;
