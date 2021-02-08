@@ -421,6 +421,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
+  TRI_IF_FAILURE("Insert::useRev") {
+    isRestore = true;
+  }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);

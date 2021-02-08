@@ -60,7 +60,15 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _registeredTransaction(false) {}
+      _registeredTransaction(false) {
+
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    _options.intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    _options.intermediateCommitCount = 1000;
+  }
+}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {

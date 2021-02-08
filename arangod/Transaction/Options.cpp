@@ -46,7 +46,15 @@ Options::Options()
       skipInaccessibleCollections(false),
 #endif
       waitForSync(false),
-      isFollowerTransaction(false) {}
+      isFollowerTransaction(false) {
+
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    intermediateCommitCount = 1000;
+  }
+}
   
 Options Options::replicationDefaults() {
   Options options;
@@ -104,6 +112,13 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    intermediateCommitCount = 1000;
+  }
 }
 
 /// @brief add the options to an opened vpack builder
