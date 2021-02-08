@@ -263,10 +263,11 @@ CostEstimate ScatterNode::estimateCost() const {
   
 DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                ScatterNode::ScatterType type, Collection const* collection,
-                               Variable const* variable)
+                               Variable const* variable, ExecutionNodeId targetNodeId)
     : ScatterNode(plan, id, type),
       CollectionAccessingNode(collection),
-      _variable(variable) {}
+      _variable(variable),
+      _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
@@ -278,7 +279,7 @@ DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice 
 ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
                                      bool withProperties) const {
   auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
-                                            collection(), _variable);
+                                            collection(), _variable, _targetNodeId);
   c->copyClients(clients());
   CollectionAccessingNode::cloneInto(*c);
 

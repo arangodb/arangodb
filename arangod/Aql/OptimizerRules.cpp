@@ -4205,7 +4205,9 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
     inputVariable = variable;
   }
 
-  auto distNode = plan.createNode<DistributeNode>(&plan, plan.nextId(), ScatterNode::ScatterType::SHARD, collection, inputVariable);
+  auto distNode = plan.createNode<DistributeNode>(&plan, plan.nextId(),
+                                                  ScatterNode::ScatterType::SHARD,
+                                                  collection, inputVariable, node->id());
 
   TRI_ASSERT(distNode != nullptr);
   return {calcNode, distNode};

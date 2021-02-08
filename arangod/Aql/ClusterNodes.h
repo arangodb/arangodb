@@ -200,7 +200,7 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
  public:
   DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
                  ScatterNode::ScatterType type, Collection const* collection,
-                 Variable const* variable);
+                 Variable const* variable, ExecutionNodeId targetNodeId);
 
   DistributeNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -227,10 +227,15 @@ class DistributeNode final : public ScatterNode, public CollectionAccessingNode 
   CostEstimate estimateCost() const override final;
 
   Variable const* getVariable() const noexcept { return _variable; }
+  
+  ExecutionNodeId getTargetNodeId() const noexcept { return _targetNodeId; }
 
  private:
   /// @brief the variable we must inspect to know where to distribute
   Variable const* _variable;
+  
+  /// @brief the id of the target ExecutionNode
+  ExecutionNodeId _targetNodeId;
 };
 
 /// @brief class GatherNode
