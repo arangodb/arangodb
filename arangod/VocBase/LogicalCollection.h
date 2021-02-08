@@ -180,13 +180,14 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
-  int getResponsibleShard(std::string_view key, std::string& shardID);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          std::string& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const& key =
-                          arangodb::velocypack::StringRef());
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                std::string& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key =
+                                    arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -234,6 +235,8 @@ class LogicalCollection : public LogicalDataSource {
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
                                          Serialization context) const;
+  
+  void toVelocyPackForInventory(velocypack::Builder&) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;

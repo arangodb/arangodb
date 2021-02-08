@@ -174,12 +174,12 @@ void ActionBase::endStats() {
 
 }  // ActionBase::endStats
 
-Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
+Result arangodb::actionError(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
-Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
+Result arangodb::actionWarn(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }

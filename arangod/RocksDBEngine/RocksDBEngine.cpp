@@ -1111,9 +1111,9 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
   builder.close();
 }
 
-int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                            arangodb::velocypack::Builder& result,
-                                            bool wasCleanShutdown, bool isUpgrade) {
+ErrorCode RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                                  arangodb::velocypack::Builder& result,
+                                                  bool wasCleanShutdown, bool isUpgrade) {
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
       _db->NewIterator(readOptions, RocksDBColumnFamilyManager::get(
@@ -1131,7 +1131,7 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(iter->value().data()));
 
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(slice, StaticStrings::DataSourceDeleted,
-                                                             false)) {
+                                                            false)) {
       continue;
     }
 
@@ -1143,7 +1143,8 @@ int RocksDBEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode RocksDBEngine::getViews(TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Builder& result) {
   auto bounds = RocksDBKeyBounds::DatabaseViews(vocbase.id());
   rocksdb::Slice upper = bounds.end();
   rocksdb::ColumnFamilyHandle* cf =
@@ -1242,8 +1243,9 @@ int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) 
   return TRI_ERROR_NO_ERROR;
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                       velocypack::Slice slice, bool doSync) {
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                             velocypack::Slice slice,
+                                                             bool doSync) {
   RocksDBKey key;
 
   key.constructReplicationApplierConfig(vocbase.id());
@@ -1251,16 +1253,16 @@ int RocksDBEngine::saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
-                                                       bool doSync) {
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                             bool doSync) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return saveReplicationApplierConfiguration(key, slice, doSync);
 }
 
-int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                                       arangodb::velocypack::Slice slice,
-                                                       bool doSync) {
+ErrorCode RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                             arangodb::velocypack::Slice slice,
+                                                             bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::convertStatus(
@@ -1309,9 +1311,9 @@ Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& s
   return rocksutils::convertStatus(res);
 }
 
-int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
-                                               DataSourceId cid, VPackSlice const& slice,
-                                               RocksDBLogValue&& logValue) {
+Result RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
+                                                  DataSourceId cid, VPackSlice const& slice,
+                                                  RocksDBLogValue&& logValue) {
   rocksdb::DB* db = _db->GetRootDB();
 
   RocksDBKey key;
@@ -1328,8 +1330,7 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
             key.string(), value.string());
   rocksdb::Status res = db->Write(wo, &batch);
 
-  auto result = rocksutils::convertStatus(res);
-  return result.errorNumber();
+  return rocksutils::convertStatus(res);
 }
 
 Result RocksDBEngine::prepareDropDatabase(TRI_vocbase_t& vocbase) {
@@ -1363,7 +1364,7 @@ TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
 
 void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection) {
-  const DataSourceId cid = collection.id();
+  DataSourceId const cid = collection.id();
   TRI_ASSERT(cid.isSet());
 
   auto builder = collection.toVelocyPackIgnore(
@@ -1371,11 +1372,11 @@ void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
       LogicalDataSource::Serialization::PersistenceWithInProgress);
   TRI_UpdateTickServer(cid.id());
 
-  int res =
+  Result res =
       writeCreateCollectionMarker(vocbase.id(), cid, builder.slice(),
                                   RocksDBLogValue::CollectionCreate(vocbase.id(), cid));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -1393,7 +1394,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
   bool const scheduleCompaction = useRangeDelete;
   
-  int resLock = rcoll->lockWrite(); // technically not necessary
+  auto resLock = rcoll->lockWrite();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }
@@ -1489,12 +1490,12 @@ void RocksDBEngine::changeCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
-  int res =
+  Result res =
       writeCreateCollectionMarker(vocbase.id(), collection.id(), builder.slice(),
                                   RocksDBLogValue::CollectionChange(vocbase.id(),
                                                                     collection.id()));
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
@@ -1505,12 +1506,12 @@ arangodb::Result RocksDBEngine::renameCollection(TRI_vocbase_t& vocbase,
   auto builder = collection.toVelocyPackIgnore(
       {"path", "statusString"},
       LogicalDataSource::Serialization::PersistenceWithInProgress);
-  int res = writeCreateCollectionMarker(
+  Result res = writeCreateCollectionMarker(
       vocbase.id(), collection.id(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase.id(), collection.id(),
                                         arangodb::velocypack::StringRef(oldName)));
 
-  return arangodb::Result(res);
+  return res;
 }
 
 Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
@@ -2149,7 +2150,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for views
   try {
     VPackBuilder builder;
-    int res = getViews(*vocbase, builder);
+    auto res = getViews(*vocbase, builder);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2194,7 +2195,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
   // scan the database path for collections
   try {
     VPackBuilder builder;
-    int res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown, isUpgrade);
+    auto res = getCollectionsAndIndexes(*vocbase, builder, wasCleanShutdown, isUpgrade);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2457,11 +2458,18 @@ Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& bu
 
   // "state" part
   builder.add("state", VPackValue(VPackValueType::Object));  // open
+
+  // always hard-coded to true
   builder.add("running", VPackValue(true));
+
   builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+
+  // not used anymore in 3.8:
   builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("totalEvents",
-              VPackValue(lastTick));  // s.numEvents + s.numEventsSync
+
+  // not used anymore in 3.8:
+  builder.add("totalEvents", VPackValue(lastTick));  
+
   builder.add("time", VPackValue(utilities::timeString()));
   builder.close();
 

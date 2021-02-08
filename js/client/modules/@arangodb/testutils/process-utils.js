@@ -135,6 +135,16 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
+  activateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = true;
+    }
+  }
+  deactivateEnvelopes() {
+    if (this.type === 'dump') {
+      this.config['--envelope'] = false;
+    }
+  }
   setRootDir(dir) { this.rootDir = dir; }
   restrictToCollection(collection) {
     if (this.type !== 'restore' && this.type !== 'dump') {
@@ -322,6 +332,15 @@ function setupBinaries (builddir, buildType, configDir) {
       isEnterpriseClient = true;
       checkFiles.push(ARANGOBACKUP_BIN);
     }
+    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+      let envName = san.toUpperCase() + "_OPTIONS";
+      let fileName = san + "_arangodb_suppressions.txt";
+      if (!process.env.hasOwnProperty(envName) &&
+          fs.exists(fileName)) {
+        // print('preparing ' + san + ' environment');
+        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+      }
+    });
   }
 
   for (let b = 0; b < checkFiles.length; ++b) {
@@ -634,6 +653,41 @@ function summarizeStats(deltaStats) {
     }
   }
   return sumStats;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+
+function getMemProfSnapshot(instanceInfo, options, counter) {
+  if (options.memprof) {
+    let opts = Object.assign(makeAuthorizationHeaders(options),
+                             { method: 'GET' });
+
+    instanceInfo.arangods.forEach((arangod) => {
+      let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+      let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
+      if (heapdumpReply.code === 200) {
+        fs.write(fn, heapdumpReply.body);
+        print(CYAN + Date() + ` Saved ${fn}` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
+        print(heapdumpReply);
+      }
+
+      let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
+      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      if (metricsReply.code === 200) {
+        fs.write(fnMetrics, metricsReply.body);
+        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+      } else if (metricsReply.code === 503) {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+        print(metricsReply);
+      }
+    });
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -985,6 +1039,7 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   };
   if (options.username) {
     args['server.username'] = options.username;
+    args['server.password'] = "";
   }
   if (options.password) {
     args['server.password'] = options.password;
@@ -992,8 +1047,12 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
 
   args = Object.assign(args, cmds);
 
+  args['log.level'] = 'info';
   if (!args.hasOwnProperty('verbose')) {
     args['log.level'] = 'warning';
+  }
+  if (options.extremeVerbosity) {
+    args['log.level'] = 'trace';
   }
 
   args['flatCommands'] = [which];
@@ -1760,7 +1819,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
       coordinatorArgs['cluster.my-address'] = endpoint;
       coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
       coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
-      // coordinatorArgs['cluster.default-replication-factor'] = '2'; // TODO: active later
+      coordinatorArgs['cluster.default-replication-factor'] = '2';
 
       startInstanceSingleServer(instanceInfo, protocol, options, ...makeArgs('coordinator' + i, 'coordinator', coordinatorArgs), 'coordinator');
     }
@@ -1842,6 +1901,9 @@ function launchFinalize(options, instanceInfo, startTime) {
           if (!checkArangoAlive(arangod, options)) {
             throw new Error('startup failed! bailing out!');
           }
+        }
+        if (count === 300) {
+          throw new Error('startup timed out! bailing out!');
         }
       }
     });
@@ -1951,6 +2013,10 @@ function startArango (protocol, options, addArgs, rootDir, role) {
   } else {
     endpoint = addArgs['server.endpoint'];
     port = endpoint.split(':').pop();
+  }
+
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = 'prof:true';
   }
 
   let instanceInfo = {
@@ -2282,6 +2348,7 @@ exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.summarizeStats = summarizeStats;
+exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;

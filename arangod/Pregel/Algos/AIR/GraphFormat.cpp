@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -175,7 +176,8 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
       VPackBuilder tmpBuilder;
       auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
       if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
+                                       res.error().toString());
       }
 
       if (tmpBuilder.slice().isObject()) {

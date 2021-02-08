@@ -64,6 +64,15 @@ function runJSUnityTests (tests, instanceinfo) {
 
     try {
       res = runTest(file, true, unitTestFilter);
+      if (res === undefined) {
+        allResults[file] =  {
+          timeout: true,
+          status: false,
+          message: "test didn't return any result at all!"
+        };
+        allResults.status = false;
+        return allResults;
+      }
       allResults[file] = res;
       allResults.duration += res.duration;
       allResults.total +=1;

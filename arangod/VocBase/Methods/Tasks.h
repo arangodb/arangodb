@@ -46,10 +46,10 @@ class ExecContext;
 class Task : public std::enable_shared_from_this<Task> {
  public:
   static std::shared_ptr<Task> createTask(std::string const& id, std::string const& name,
-                                          TRI_vocbase_t*, std::string const& command,
-                                          bool allowUseDatabase, int& ec);
+                                          TRI_vocbase_t* vocbase, std::string const& command,
+                                          bool allowUseDatabase, ErrorCode& ec);
 
-  static int unregisterTask(std::string const& id, bool cancel);
+  static ErrorCode unregisterTask(std::string const& id, bool cancel);
 
   static std::shared_ptr<velocypack::Builder> registeredTask(std::string const& id);
   static std::shared_ptr<velocypack::Builder> registeredTasks();

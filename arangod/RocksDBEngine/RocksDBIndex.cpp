@@ -234,10 +234,10 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
-                            velocypack::Slice const oldDoc,
+                            velocypack::Slice oldDoc,
                             LocalDocumentId const& newDocumentId,
-                            velocypack::Slice const newDoc,
-                            OperationOptions& options) {
+                            velocypack::Slice newDoc,
+                            OperationOptions const& options) {
   // It is illegal to call this method on the primary index
   // RocksDBPrimaryIndex must override this method accordingly
   TRI_ASSERT(type() != TRI_IDX_TYPE_PRIMARY_INDEX);

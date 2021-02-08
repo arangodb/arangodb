@@ -387,6 +387,15 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 #endif
 
 template <SocketType T>
+std::string const& HttpCommTask<T>::url() {
+  if (this->_url.empty() && _request != nullptr) {
+    this->_url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+      (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
+  }
+  return this->_url;
+}
+
+template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   DTraceHttpCommTaskProcessRequest((size_t)this);
 
@@ -416,15 +425,11 @@ void HttpCommTask<T>::processRequest() {
   // C functions like strchr that except a C string as input
   _request->body().push_back('\0');
   _request->body().resetTo(_request->body().size() - 1);
-
   {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
-        << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -441,6 +446,7 @@ void HttpCommTask<T>::processRequest() {
   // OPTIONS requests currently go unauthenticated
   if (_request->requestType() == rest::RequestType::OPTIONS) {
     this->processCorsOptions(std::move(_request), _origin);
+
     return;
   }
 
@@ -469,6 +475,7 @@ void HttpCommTask<T>::processRequest() {
   auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1, nullptr);
   resp->setContentType(_request->contentTypeResponse());
   this->executeRequest(std::move(_request), std::move(resp));
+
 }
 
 #ifdef USE_DTRACE
@@ -506,11 +513,11 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   _header.append("\r\n", 2);
 
   // if we return HTTP 401, we need to send a www-authenticate header back with
-  // the response. in this case we need to check if the header was already set 
+  // the response. in this case we need to check if the header was already set
   // or if we need to set it ourselves.
-  // note that clients can suppress sending the www-authenticate header by 
+  // note that clients can suppress sending the www-authenticate header by
   // sending us an x-omit-www-authenticate header.
-  bool needWwwAuthenticate = 
+  bool needWwwAuthenticate =
       (response.responseCode() == rest::ResponseCode::UNAUTHORIZED &&
       (!_request || _request->header("x-omit-www-authenticate").empty()));
 
@@ -601,15 +608,14 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
 
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
-      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+      << url() << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,

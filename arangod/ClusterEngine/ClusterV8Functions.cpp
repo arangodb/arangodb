@@ -81,7 +81,7 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   auto& feature = v8g->_server.getFeature<ClusterFeature>();
-  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
+  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }

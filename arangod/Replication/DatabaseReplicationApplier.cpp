@@ -149,7 +149,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
       << _databaseName;
 
   StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -157,13 +157,12 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
 }
 
 std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
-  return std::make_shared<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
+  return arangodb::DatabaseInitialSyncer::create(_vocbase, _configuration);
 }
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
-                                                           initialTick, useTick);
+  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration, initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {

@@ -103,11 +103,40 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
             << " collection count patching: " << res.errorMessage();
       }
     }
+    
+    std::string const snapTick = std::to_string(ctx->snapshotTick());
+    bool withState = _request->parsedValue("state", false);
 
     VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Object));
+    b.openObject();
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
-    b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
+    b.add("lastTick", VPackValue(snapTick));
+    if (withState) {
+      // we have been asked to also return the "state" attribute. 
+      // this is used from 3.8 onwards during shard synchronization, in order
+      // to combine the two requests for starting a batch and fetching the
+      // leader state into a single one.
+      
+      // get original logger state data
+      VPackBuilder tmp;
+      engine.createLoggerState(nullptr, tmp);
+      TRI_ASSERT(tmp.slice().isObject());
+      
+      // and now merge it into our response, while rewriting the "lastLogTick"
+      // and "lastUncommittedLogTick"
+      b.add("state", VPackValue(VPackValueType::Object));
+      for (auto it : VPackObjectIterator(tmp.slice())) {
+        if (it.key.stringRef() == "lastLogTick" ||
+            it.key.stringRef() == "lastUncommittedLogTick") {
+          // put into the tick from our own snapshot
+          b.add(it.key.stringRef(), VPackValue(snapTick));
+        } else {
+          // write our other attributes as they are
+          b.add(it.key.stringRef(), it.value);
+        }
+      }
+      b.close(); // state
+    }
     b.close();
 
     _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
@@ -157,7 +186,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (found) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      int res = TRI_ERROR_CURSOR_NOT_FOUND;
+      auto res = TRI_ERROR_CURSOR_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
     }
     return;
@@ -370,6 +399,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
+  
+  // "collection" is optional, and may in the DB server case contain the name of
+  // a single shard for shard synchronization
+  std::string collection;
+  if (!isGlobal) {
+    collection = _request->value("collection");
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -381,8 +417,15 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
-    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    if (collection.empty()) {
+      // all collections in database
+      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
+      TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    } else {
+      // single collection/shard in database
+      res = ctx->getInventory(_vocbase, collection, builder);
+      TRI_ASSERT(builder.hasKey("collections"));
+    }
   }
 
   if (res.fail()) {
@@ -391,7 +434,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  const std::string snapTick = std::to_string(ctx->snapshotTick());
+  std::string const snapTick = std::to_string(ctx->snapshotTick());
   // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));
@@ -729,12 +772,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "replication dump - " + res.errorMessage());
+                      StringUtils::concatT("replication dump - ", res.errorMessage()));
         return;
       }
 
       generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
-                    "replication dump - " + res.errorMessage());
+                    StringUtils::concatT("replication dump - ", res.errorMessage()));
       return;
     }
 

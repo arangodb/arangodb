@@ -26,16 +26,22 @@
 
 #include "Replication/InitialSyncer.h"
 
+#include <memory>
+
 namespace arangodb {
 
 /// Meta Syncer driving multiple initial syncer
-class GlobalInitialSyncer final : public InitialSyncer {
- public:
+class GlobalInitialSyncer : public InitialSyncer {
+ private:
+  // constructor is private, as GlobalInitialSyncer uses shared_from_this() and
+  // we must ensure that it is only created via make_shared.
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
+ 
+ public:
+  static std::shared_ptr<GlobalInitialSyncer> create(ReplicationApplierConfiguration const&);
 
   ~GlobalInitialSyncer();
 
- public:
   /// @brief run method, performs a full synchronization
   /// public method, catches exceptions
   arangodb::Result run(bool incremental, char const* context = nullptr) override;

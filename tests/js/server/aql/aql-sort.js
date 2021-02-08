@@ -137,10 +137,10 @@ function sortTestSuite () {
       assertEqual([
           'SingletonNode',
           'CalculationNode',
+          'CalculationNode',
+          'CalculationNode',
           'EnumerateListNode',
           'SubqueryStartNode',
-          'CalculationNode',
-          'CalculationNode',
           'EnumerateListNode',
           'SortNode',
           'SubqueryEndNode',

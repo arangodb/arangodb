@@ -1765,11 +1765,7 @@ function ahuacatlGeneratedSuite() {
     } catch (e) { }
   };
 
-  const activateSplice = { profile: 0, optimizer: { rules: ["+splice-subqueries"] } };
-  const deactivateSplice = { profile: 0, optimizer: { rules: ["-splice-subqueries"] } };
-
   return {
-
     setUp: function () {
       cleanup();
       let c = db._create(cn, { numberOfShards: 5 });
@@ -1799,10 +1795,9 @@ function ahuacatlGeneratedSuite() {
 	    RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
 	  LIMIT 3,2
 	  RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id",  "_key")}`;
-      const resSplice = db._query(q, {}, activateSplice);
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(100, res.getExtra().stats.writesExecuted);
+      assertEqual(2, res.toArray().length);
     },
 
     testNonSplicedViolatesPassthrough: function () {
@@ -1820,10 +1815,9 @@ function ahuacatlGeneratedSuite() {
         RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
         "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")}`;
 
-      const resSplice = db._query(q, {}, activateSplice);
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(100, res.getExtra().stats.writesExecuted);
+      assertEqual(2, 2, res.toArray().length);
     },
 
     testSubquerySkipReporting: function () {
@@ -1841,10 +1835,9 @@ function ahuacatlGeneratedSuite() {
           RETURN {counter: UNSET_RECURSIVE(counter,"_rev", "_id", "_key")}
       `;
 
-      const resSplice = db._query(q, {}, activateSplice);
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(1, res.toArray().length);
     },
 
     testSubqueryChaos4: function () {
@@ -1862,34 +1855,31 @@ function ahuacatlGeneratedSuite() {
         LIMIT 4,12
         RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", "_key")}
       `;
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      const resSplice = db._query(q, {}, activateSplice);
-      
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(6, res.toArray().length);
     },
 
     testSkipOverModifySubquery: function() {
       const cn = "UnitTestModifySubquery";
-      for (const opt of [deactivateSplice, activateSplice]) {
-        try {
-          db._create(cn);
-          const q = `
-            FOR i IN 1..2
-              LET noModSub = (
-                LET modSub = (
-                  FOR j IN 1..2
-                  INSERT {} INTO ${cn}
-                )
-                RETURN modSub
+      try {
+        db._create(cn);
+        const q = `
+          FOR i IN 1..2
+            LET noModSub = (
+              LET modSub = (
+                FOR j IN 1..2
+                INSERT {} INTO ${cn}
               )
-            LIMIT 1,0
-            RETURN noModSub`;
-          db._query(q, {}, opt);
-          //assertEqual(db[cn].count(), 4);
-        } finally {
-          db._drop(cn);
-        }
+              RETURN modSub
+            )
+          LIMIT 1,0
+          RETURN noModSub`;
+        let res = db._query(q);
+        assertEqual([], res.toArray());
+        assertEqual(db[cn].count(), 4);
+      } finally {
+        db._drop(cn);
       }
     },
     testChaosGenerated15: function() {
@@ -1903,11 +1893,9 @@ function ahuacatlGeneratedSuite() {
            RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3})
          RETURN sq1`;
 
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      const resSplice = db._query(q, {}, activateSplice);
-      
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(10, res.toArray().length);
     }
   };
 };

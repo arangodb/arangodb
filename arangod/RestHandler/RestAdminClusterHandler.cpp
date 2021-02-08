@@ -415,12 +415,21 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
                     resetResponse(rest::ResponseCode::OK);
                     return futures::makeFuture();
                   } else if (result.statusCode() == fuerte::StatusPreconditionFailed) {
+                    TRI_IF_FAILURE("removeServer::noRetry") {
+                      generateError(result.asResult());
+                      return futures::makeFuture();
+                    }
                     return retryTryDeleteServer(std::move(ctx));
                   }
                 }
                 generateError(result.asResult());
                 return futures::makeFuture();
               });
+        }
+                    
+        TRI_IF_FAILURE("removeServer::noRetry") {
+          generateError(Result(TRI_ERROR_HTTP_PRECONDITION_FAILED));
+          return futures::makeFuture();
         }
 
         return retryTryDeleteServer(std::move(ctx));
@@ -438,14 +447,15 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
 RestStatus RestAdminClusterHandler::handlePostRemoveServer(std::string const& server) {
   auto ctx = std::make_unique<RemoveServerContext>(server);
 
-  return waitForFuture(tryDeleteServer(std::move(ctx))
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      tryDeleteServer(std::move(ctx))
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handleRemoveServer() {
@@ -717,7 +727,7 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(std::unique_ptr<MoveShar
             return futures::makeFuture();
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -797,7 +807,7 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -880,7 +890,7 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(std::string cons
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -941,7 +951,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(std::string const& url
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1090,7 +1100,7 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1161,22 +1171,23 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActive) {
 
   auto self(shared_from_this());
 
-  return waitForFuture(sendTransaction()
-                           .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
-                             if (result.ok() && result.statusCode() == 200) {
-                               return waitForSupervisionState(wantToActive);
-                             } else {
-                               generateError(result.asResult());
-                             }
-                             return futures::makeFuture();
-                           })
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      sendTransaction()
+          .thenValue([this, wantToActive](AsyncAgencyCommResult&& result) {
+            if (result.ok() && result.statusCode() == 200) {
+              return waitForSupervisionState(wantToActive);
+            } else {
+              generateError(result.asResult());
+            }
+            return futures::makeFuture();
+          })
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }
 
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
@@ -1288,7 +1299,7 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1407,7 +1418,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1479,7 +1490,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
                             AsyncAgencyComm::RequestType::READ, VPackBuffer<uint8_t>())
           .thenValue([self](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on an
-            // exception and the RestHandle might be freed to early otherwise
+            // exception and the RestHandle might be freed too early otherwise
 
             if (result.fail() || result.statusCode() != fuerte::StatusOK) {
               THROW_ARANGO_EXCEPTION(result.asResult());
@@ -1548,7 +1559,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
             }
           })
           .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{e.errorCode(), e.what()});
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
           })
           .thenError<std::exception>([this](std::exception const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
@@ -1748,12 +1759,13 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(handlePostRebalanceShards(algorithm)
-                           .thenError<VPackException>([this](VPackException const& e) {
-                             generateError(Result{e.errorCode(), e.what()});
-                           })
-                           .thenError<std::exception>([this](std::exception const& e) {
-                             generateError(rest::ResponseCode::SERVER_ERROR,
-                                           TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                           }));
+  return waitForFuture(
+      handlePostRebalanceShards(algorithm)
+          .thenError<VPackException>([this](VPackException const& e) {
+            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+          })
+          .thenError<std::exception>([this](std::exception const& e) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+          }));
 }

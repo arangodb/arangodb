@@ -64,11 +64,16 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
-  if (_engineType != ClusterEngineType::RocksDBEngine &&
-      _engineType != ClusterEngineType::MockEngine) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return;
   }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return;
+  }
+#endif
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
 }
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
@@ -109,7 +114,11 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
     if (!validators.isNone()) {
       merge.add(StaticStrings::Schema, validators);
     }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -147,8 +156,11 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     result.add(StaticStrings::CacheEnabled,
                VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
-
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }

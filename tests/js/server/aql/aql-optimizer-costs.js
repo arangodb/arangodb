@@ -194,12 +194,12 @@ function optimizerCostsTestSuite () {
       assertEqual(4, node.estimatedNrItems);
       
       // find the subquery node of the plan
-      node = helper.findExecutionNodes(plan, "SubqueryNode")[0];
+      node = helper.findExecutionNodes(plan, "SubqueryEndNode")[0];
       // subquery always produces one result
       assertEqual(1, node.estimatedNrItems);
 
       // find the enumeratelistnode in the subquery
-      node = helper.findExecutionNodes(node.subquery, "EnumerateListNode")[0];
+      node = helper.findExecutionNodes(plan, "EnumerateListNode")[0];
       assertEqual(4, node.estimatedNrItems);
     },
 
@@ -224,7 +224,7 @@ function optimizerCostsTestSuite () {
 
       // Check the rough outline first for a better overview in case of a failure
       // of the plan.
-      assertEqual(["SingletonNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "SubqueryEndNode", "ReturnNode"],
+      assertEqual(["SingletonNode", "CalculationNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "CalculationNode", "SubqueryEndNode", "ReturnNode"],
 nodeTypes);
 
       let node, prevNode;
@@ -239,22 +239,22 @@ nodeTypes);
       assertEqual("CalculationNode", node.type);
       assertEqual(1, node.estimatedNrItems);
       assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
-      // EnumerateListNode
+      // CalculationNode
       prevNode = node;
       node = nodes[2];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(1, node.estimatedNrItems);
+      assertEqual(1 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[3];
       assertEqual("EnumerateListNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
       // SubqueryStartNode
       prevNode = node;
-      node = nodes[3];
-      assertEqual("SubqueryStartNode", node.type);
-      assertEqual(3, node.estimatedNrItems);
-      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
-      // CalculationNode
-      prevNode = node;
       node = nodes[4];
-      assertEqual("CalculationNode", node.type);
+      assertEqual("SubqueryStartNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
       // EnumerateListNode

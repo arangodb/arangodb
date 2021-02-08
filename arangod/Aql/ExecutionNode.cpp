@@ -2131,7 +2131,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
 
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
-      SubqueryExecutorInfos(*subquery, outReg, const_cast<SubqueryNode*>(this)->isConst());
+      SubqueryExecutorInfos(*subquery, engine.getQuery(), outReg, const_cast<SubqueryNode*>(this)->isConst());
   if (isModificationNode()) {
     return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -25,6 +25,7 @@
 #define ARANGOD_CLUSTER_AGENCY_CACHE 1
 
 #include "Agency/Store.h"
+#include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
@@ -90,13 +91,13 @@ class AgencyCache final : public arangodb::Thread {
   consensus::index_t index() const;
 
   /// @brief Register local callback
-  bool registerCallback(std::string const& key, uint64_t const& id);
+  Result registerCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Unregister local callback
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
-  futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
 
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
@@ -173,7 +174,7 @@ class AgencyCache final : public arangodb::Thread {
   /// @brief shut down code for futures that are unresolved.
   /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
   /// during testing
-  int const _shutdownCode;
+  ErrorCode const _shutdownCode;
 
   /// @brief Make sure, that we have seen in the beginning a snapshot
   std::atomic<bool> _initialized;

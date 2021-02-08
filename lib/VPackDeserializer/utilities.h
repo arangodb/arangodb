@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ struct constructor_factory {
   template <typename... S>
   T operator()(S&&... s) const {
     static_assert(detail::gadgets::is_braces_constructible_v<T, S...>,
-                  "the type is not constructible with the given types");
+                  "the type is not constructable with the given types");
     return T{std::forward<S>(s)...};
   }
 };

@@ -425,16 +425,16 @@ int AgencyCommResult::httpCode() const { return _statusCode; }
 
 bool AgencyCommResult::sent() const { return _sent; }
 
-int AgencyCommResult::errorCode() const {
+ErrorCode AgencyCommResult::errorCode() const {
   return asResult().errorNumber();
 }
 
 std::string AgencyCommResult::errorMessage() const {
-  return asResult().errorMessage();
+  return std::string{asResult().errorMessage()};
 }
 
-std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
-  auto result = std::pair<std::optional<int>, std::optional<std::string_view>>{};
+std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> AgencyCommResult::parseBodyError() const {
+  auto result = std::pair<std::optional<ErrorCode>, std::optional<std::string_view>>{};
 
   if (_vpack != nullptr) {
     auto const body = _vpack->slice();
@@ -443,7 +443,7 @@ std::pair<std::optional<int>, std::optional<std::string_view>> AgencyCommResult:
       try {
         auto const errorCode = body.get(StaticStrings::ErrorCode).getNumber<int>();
         // Save error code if possible, set default error message first
-        result.first = errorCode;
+        result.first = ErrorCode{errorCode};
       } catch (VPackException const&) {
       }
 
@@ -482,11 +482,11 @@ Result AgencyCommResult::asResult() const {
     return Result{};
   } else {
     auto const err = parseBodyError();
-    auto const errorCode = std::invoke([&]() -> int {
+    auto const errorCode = std::invoke([&]() -> ErrorCode {
       if (err.first) {
         return *err.first;
       } else if (_statusCode > 0) {
-        return _statusCode;
+        return ErrorCode{_statusCode};
       } else {
         return TRI_ERROR_INTERNAL;
       }
@@ -877,7 +877,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
 
     try {
       oldValue = oldSlice.getNumber<decltype(oldValue)>();
-    } catch (velocypack::Exception& e) {
+    } catch (velocypack::Exception const& e) {
       LOG_TOPIC("74f97", ERR, Logger::AGENCYCOMM)
           << "Sync/LatestID in agency could not be parsed: " << e.what()
           << "; If this error persists, contact the ArangoDB support.";

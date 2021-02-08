@@ -64,15 +64,15 @@ def genCFile(errors, filename):
 
   headerfile = os.path.splitext(filename)[0] + ".h"
 
-  impl = prologue\
-         + "#include \"Basics/Common.h\"\n"\
-         + "#include \"Basics/error.h\"\n"\
-         + "#include \"Basics/voc-errors.h\"\n"\
-         + "\n"\
-         + "/// helper macro to define an error string\n"\
-         + "#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);\n"\
-         + "\n"\
-         + "void TRI_InitializeErrorMessages() {\n"
+  impl = prologue + """
+#include "Basics/error.h"
+#include "Basics/voc-errors.h"
+
+/// helper macro to define an error string
+#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
+
+void TRI_InitializeErrorMessages() {
+"""
 
   # print individual errors
   for e in errors:
@@ -92,9 +92,13 @@ def genCHeaderFile(errors):
        + "/// The following errors might be raised when running ArangoDB:\n"\
        + "\n\n"
 
-  header =   "#ifndef ARANGODB_BASICS_VOC_ERRORS_H\n"\
-           + "#define ARANGODB_BASICS_VOC_ERRORS_H 1\n"\
-           + "\n"\
+  header = """
+#ifndef ARANGODB_BASICS_VOC_ERRORS_H
+#define ARANGODB_BASICS_VOC_ERRORS_H 1
+
+#include "Basics/ErrorCode.h"
+
+""" \
            + wiki
 
   # print individual errors
@@ -103,7 +107,7 @@ def genCHeaderFile(errors):
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr int TRI_" + e[0].ljust(61) + " = " + e[1] + ";\n"\
+           + "constexpr auto TRI_" + e[0].ljust(61) + " = ErrorCode{" + e[1] + "};\n"\
            + "\n"
 
   header = header + "\n"\

@@ -121,6 +121,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _maxContextInvocations(0),
       _allowAdminExecute(false),
       _allowJavaScriptTransactions(true),
+      _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
       _stopping(false),
@@ -260,6 +261,16 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.transactions",
       "enable JavaScript transactions",
       new BooleanParameter(&_allowJavaScriptTransactions),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
+  
+  options->addOption(
+      "--javascript.tasks",
+      "enable JavaScript tasks",
+      new BooleanParameter(&_allowJavaScriptTasks),
       arangodb::options::makeFlags(
       arangodb::options::Flags::DefaultNoComponents,
       arangodb::options::Flags::OnCoordinator,
@@ -570,14 +581,16 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8) << "Copying JS installation files from '"
-                                 << _startupDirectory << "' to '" << copyJSPath << "'";
-    int res = TRI_ERROR_NO_ERROR;
+    LOG_TOPIC("dd1c0", DEBUG, Logger::V8)
+        << "Copying JS installation files from '" << _startupDirectory
+        << "' to '" << copyJSPath << "'";
+    auto res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("1a20d", FATAL, Logger::V8) << "Error cleaning JS installation path '"
-                                     << copyJSPath << "': " << TRI_errno_string(res);
+        LOG_TOPIC("1a20d", FATAL, Logger::V8)
+            << "Error cleaning JS installation path '" << copyJSPath
+            << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }

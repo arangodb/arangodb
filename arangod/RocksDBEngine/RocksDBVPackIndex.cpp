@@ -413,10 +413,10 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
 /// @brief helper function to insert a document into any index type
 /// Should result in an elements vector filled with the new index entries
 /// uses the _unique field to determine the kind of key structure
-int RocksDBVPackIndex::fillElement(VPackBuilder& leased, LocalDocumentId const& documentId,
-                                   VPackSlice const& doc,
-                                   ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-                                   ::arangodb::containers::SmallVector<uint64_t>& hashes) {
+ErrorCode RocksDBVPackIndex::fillElement(
+    VPackBuilder& leased, LocalDocumentId const& documentId, VPackSlice const& doc,
+    ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+    ::arangodb::containers::SmallVector<uint64_t>& hashes) {
   if (doc.isNone()) {
     LOG_TOPIC("51c6c", ERR, arangodb::Logger::ENGINES)
         << "encountered invalid marker with slice of type None";
@@ -665,7 +665,7 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const doc, OperationOptions& options) {
+                                 velocypack::Slice const doc, OperationOptions const& options) {
   IndexOperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
@@ -677,7 +677,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -717,7 +717,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
-               res.resetErrorMessage(key.copyString());
+               res = Result{res.errorNumber(), key.copyString()};
              } else {
                addErrorMsg(res, key.copyString());
              }
@@ -811,10 +811,10 @@ namespace {
 
 Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& oldDocumentId,
-                                 velocypack::Slice const oldDoc,
+                                 velocypack::Slice oldDoc,
                                  LocalDocumentId const& newDocumentId,
-                                 velocypack::Slice const newDoc,
-                                 OperationOptions& options) {
+                                 velocypack::Slice newDoc,
+                                 OperationOptions const& options) {
   if (!_unique) {
     // only unique index supports in-place updates
     // lets also not handle the complex case of expanded arrays
@@ -839,7 +839,7 @@ Result RocksDBVPackIndex::update(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
+    auto r = fillElement(*(leased.get()), newDocumentId, newDoc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
@@ -880,7 +880,7 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
   {
     // rethrow all types of exceptions from here...
     transaction::BuilderLeaser leased(&trx);
-    int r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+    auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return addErrorMsg(res, r);
