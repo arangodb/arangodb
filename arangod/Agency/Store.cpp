@@ -185,7 +185,7 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
     }
 
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                    "Agency request syntax is [[<queries>]]");
   }
 

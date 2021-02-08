@@ -57,11 +57,10 @@ class RestGraphHandler : public arangodb::RestVocbaseBaseHandler {
   RequestLane lane() const override;
 
  private:
+  Result returnError(ErrorCode errorNumber);
 
-  Result returnError(int errorNumber);
+  Result returnError(ErrorCode errorNumber, std::string_view message);
 
-  Result returnError(int errorNumber, char const* message);
-  
   arangodb::Result executeGharial();
 
   // /_api/gharial

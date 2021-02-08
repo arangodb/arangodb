@@ -79,7 +79,7 @@ class KeyGenerator {
   virtual std::string generate() = 0;
 
   /// @brief validate a key
-  virtual int validate(char const* p, size_t length, bool isRestore);
+  virtual ErrorCode validate(char const* p, size_t length, bool isRestore);
 
   /// @brief track usage of a key
   virtual void track(char const* p, size_t length) = 0;
@@ -98,7 +98,7 @@ class KeyGenerator {
 
  protected:
   /// @brief check global key attributes
-  int globalCheck(char const* p, size_t length, bool isRestore);
+  ErrorCode globalCheck(char const* p, size_t length, bool isRestore);
 
  protected:
   /// @brief whether or not the users can specify their own keys

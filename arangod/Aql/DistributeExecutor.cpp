@@ -62,7 +62,7 @@ auto DistributeExecutorInfos::scatterType() const noexcept -> ScatterNode::Scatt
 auto DistributeExecutorInfos::getResponsibleClient(arangodb::velocypack::Slice value) const
     -> ResultT<std::string> {
   std::string shardId;
-  int res = _logCol->getResponsibleShard(value, true, shardId);
+  auto res = _logCol->getResponsibleShard(value, true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return Result{res};

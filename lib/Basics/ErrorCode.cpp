@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,33 +17,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ERROR_H
-#define ARANGODB_BASICS_ERROR_H 1
+#include "ErrorCode.h"
 
-#include "Basics/ErrorCode.h"
+#include <ostream>
 
-/// @brief returns the last error
-ErrorCode TRI_errno();
-
-/// @brief returns the last error as string
-char const* TRI_last_error();
-
-/// @brief sets the last error
-ErrorCode TRI_set_errno(ErrorCode);
-
-/// @brief defines an error string
-void TRI_set_errno_string(ErrorCode code, char const* msg);
-
-/// @brief defines an exit string
-void TRI_set_exitno_string(int code, char const* msg);
-
-/// @brief return an error message for an error code
-char const* TRI_errno_string(ErrorCode code) noexcept;
-
-/// @brief initializes the error messages
-void TRI_InitializeError();
-
-#endif
+auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream& {
+  return out << res.asInt();
+}

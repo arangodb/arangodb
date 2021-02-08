@@ -89,10 +89,10 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
                 arangodb::velocypack::Slice slice) override;
 
   /// @brief get index estimator, optional
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override {
+  RocksDBCuckooIndexEstimatorType* estimator() override {
     return _wrapped->estimator();
   }
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override {
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override {
     TRI_ASSERT(false);
   }
   void recalculateEstimates() override { _wrapped->recalculateEstimates(); }

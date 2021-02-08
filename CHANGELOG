@@ -9,6 +9,20 @@ devel
   and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
   according function call will be introduced if we need to prepare the input
   data for the distribute node.
+  
+* Decrease the size of serialized index esimtates, by introducing a 
+  compressed serialization format. The compressed format uses the previous
+  uncompressed format internally, compresses it, and stores the compressed
+  data instead. This makes serialized index estimates a lot smaller, which
+  in turn decreases the size of I/O operations for index maintenance.
+
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
 
 * More improvements for logging:
   
