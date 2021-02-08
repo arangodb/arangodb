@@ -6,6 +6,14 @@ devel
   provide a better progress indicator, especially if there is more than one
   follower for a shard.
 
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
+
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
