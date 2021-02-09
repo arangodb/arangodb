@@ -91,14 +91,14 @@ function BaseTestConfig () {
       if (state.hasOwnProperty(key)) {
         if (Math.random() >= 0.666) {
           // remove
-          c.remove(key);
+          c.remove(key, { silent: true });
           delete state[key];
         } else {
-          c.replace(key, { value: ++state[key] });
+          c.replace(key, { value: ++state[key] }, { silent: true });
         }
       } else {
         state[key] = Math.floor(Math.random() * 10000);
-        c.insert({ _key: key, value: state[key] });
+        c.insert({ _key: key, value: state[key] }, { silent: true });
       }
     };
 
@@ -117,14 +117,14 @@ function BaseTestConfig () {
           if (state.hasOwnProperty(key)) {
             if (Math.random() >= 0.666) {
               // remove
-              c.remove(key);
+              c.remove(key, { silent: true });
               delete state[key];
             } else {
-              c.replace(key, { value: ++state[key] });
+              c.replace(key, { value: ++state[key] }, { silent: true });
             }
           } else {
             state[key] = Math.floor(Math.random() * 10000);
-            c.insert({ _key: key, value: state[key] });
+            c.insert({ _key: key, value: state[key] }, { silent: true });
           }
         };
 
@@ -155,7 +155,7 @@ function BaseTestConfig () {
       for (let i = 0; i < 1 * 100 * 1000; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
-          c.insert(docs);
+          c.insert(docs, { silent: true });
           docs = [];
         }
       }
@@ -186,10 +186,10 @@ function BaseTestConfig () {
     testRewriteEntireFollowerSecondaryUniqueIndexes: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < 100000; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
-          c.insert(docs);
+          c.insert(docs, { silent: true });
           docs = [];
         }
       }
@@ -225,10 +225,10 @@ function BaseTestConfig () {
       c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
 
       let docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < 1 * 100000; ++i) {
         docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
-          c.insert(docs);
+          c.insert(docs, { silent: true });
           docs = [];
         }
       }
@@ -247,7 +247,7 @@ function BaseTestConfig () {
       for (let i = 0; i < 1 * 100 * 1000; ++i) {
         docs.push({ _key: "L" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
-          c.insert(docs);
+          c.insert(docs, { silent: true });
           docs = [];
         }
       }
@@ -307,20 +307,20 @@ function BaseTestConfig () {
       }
       // And use the index entries in a query:
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.x == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.y == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
     },
     
     testManyUniqueConstraints: function () {
@@ -333,7 +333,7 @@ function BaseTestConfig () {
       for (let i = 0; i < 100000; ++i) {
         docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
-          c.insert(docs);
+          c.insert(docs, { silent: true });
           docs = [];
         }
       }
@@ -406,20 +406,20 @@ function BaseTestConfig () {
 
       // And use the index entries in a query:
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.x == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.y == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
       assertEqual(100000, db._query(
-        `FOR i IN 0..99999
+        `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
-             RETURN doc._key`).toArray().length);
+             RETURN 1)`).toArray()[0]);
     },
     
     testRevisionIdReuse: function () {
