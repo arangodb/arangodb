@@ -296,7 +296,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
         if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
           // already have exactly this revision no need to insert
-          break;;
+          break;
         }
 
         // remove conflict and retry
