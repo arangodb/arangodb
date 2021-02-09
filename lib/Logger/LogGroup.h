@@ -32,6 +32,9 @@ namespace arangodb {
 class LogGroup {
  public:
   // @brief Number of log groups; must increase this when a new group is added
+  // we currently use the following log groups:
+  // - 0: default log group: normal logging
+  // - 1: audit log group: audit logging
   static constexpr std::size_t Count = 2;
 
   LogGroup() 

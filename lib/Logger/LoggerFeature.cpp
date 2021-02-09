@@ -371,7 +371,7 @@ void LoggerFeature::prepare() {
 #endif
   
   // set maximum length for each log entry
-  Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(128, _maxEntryLength));
+  Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(256, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
   Logger::setShowIds(_showIds);

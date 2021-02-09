@@ -1371,7 +1371,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string err;
-  int rc = TRI_ChMod(*name, mode, err);
+  auto rc = TRI_ChMod(*name, mode, err);
 
   if (rc != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
@@ -1621,9 +1621,11 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   FileResultString cwd = FileUtils::currentDirectory();
 
   if (!cwd.ok()) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(cwd.sysErrorNumber(),
-                                   "cannot get current working directory: " +
-                                       std::string{cwd.errorMessage()});
+    errno = cwd.sysErrorNumber();
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(
+        res, StringUtils::concatT("cannot get current working directory: ",
+                                  cwd.errorMessage()));
   }
 
   std::string abs = TRI_GetAbsolutePath(std::string(*name, name.length()), cwd.result());
@@ -1757,7 +1759,7 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   long systemError = 0;
   std::string systemErrorStr;
-  int res = TRI_CreateDirectory(*name, systemError, systemErrorStr);
+  auto res = TRI_CreateDirectory(*name, systemError, systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
@@ -1798,7 +1800,7 @@ static void JS_MakeDirectoryRecursive(v8::FunctionCallbackInfo<v8::Value> const&
 
   long systemError = 0;
   std::string systemErrorStr;
-  int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
+  auto res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
@@ -1857,7 +1859,7 @@ static void JS_UnzipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string errMsg;
-  int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p, errMsg);
+  auto res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p, errMsg);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
@@ -1890,7 +1892,7 @@ static void JS_ZipFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Array> files = v8::Handle<v8::Array>::Cast(args[2]);
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   std::vector<std::string> filenames;
 
   TRI_GET_GLOBALS();
@@ -1975,7 +1977,7 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   uint32_t chksum = 0;
-  int res = TRI_Adler32(*name, chksum);
+  auto res = TRI_Adler32(*name, chksum);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2453,7 +2455,7 @@ static void JS_MTime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   int64_t mtime;
-  int res = TRI_MTimeFile(filename.c_str(), &mtime);
+  auto res = TRI_MTimeFile(filename.c_str(), &mtime);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -2510,7 +2512,7 @@ static void JS_MoveFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string systemErrorStr;
   long errorNo;
 
-  int res = TRI_RenameFile(source.c_str(), destination.c_str(), &errorNo, &systemErrorStr);
+  auto res = TRI_RenameFile(source.c_str(), destination.c_str(), &errorNo, &systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string errMsg = "cannot move file [" + source + "] to [" + destination +
@@ -3416,7 +3418,7 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    std::string("not allowed to modify files in this path: ") + *name);
   }
 
-  int res = TRI_UnlinkFile(*name);
+  auto res = TRI_UnlinkFile(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove file");
@@ -3460,7 +3462,7 @@ static void JS_RemoveDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_EXCEPTION_PARAMETER(err);
   }
 
-  int res = TRI_RemoveEmptyDirectory(*name);
+  auto res = TRI_RemoveEmptyDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string err = std::string("cannot remove directory: ") + *name + "'";
@@ -3535,7 +3537,7 @@ static void JS_RemoveRecursiveDirectory(v8::FunctionCallbackInfo<v8::Value> cons
     }
   }
 
-  int res = TRI_RemoveDirectory(*name);
+  auto res = TRI_RemoveDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string err = std::string("cannot remove directory: ") + *name + "'";
@@ -5300,15 +5302,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates an error in a javascript object, based on error number only
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber) {
-  v8::HandleScope scope(isolate);
-  CreateErrorObject(isolate, errorNumber, TRI_errno_string(errorNumber));
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::result
 ////////////////////////////////////////////////////////////////////////////////
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
@@ -5319,7 +5312,7 @@ void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
 /// @brief creates an error in a javascript object
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+void TRI_CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
                            std::string_view message, bool autoPrepend) {
   v8::HandleScope scope(isolate);
 

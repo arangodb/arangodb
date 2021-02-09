@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -207,19 +208,22 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      
-      if (foreground) {
-        for (uint64_t hash : it->second.inserts) {
-          ridx.estimator()->insert(hash);
+
+      auto* estimator = ridx.estimator();
+      if (estimator != nullptr) {
+        if (foreground) {
+          for (uint64_t hash : it->second.inserts) {
+            estimator->insert(hash);
+          }
+          for (uint64_t hash : it->second.removals) {
+            estimator->remove(hash);
+          }
+        } else {
+          uint64_t seq = rootDB->GetLatestSequenceNumber();
+          // since cuckoo estimator uses a map with seq as key we need to 
+          estimator->bufferUpdates(seq, std::move(it->second.inserts),
+                                   std::move(it->second.removals));
         }
-        for (uint64_t hash : it->second.removals) {
-          ridx.estimator()->remove(hash);
-        }
-      } else {
-        uint64_t seq = rootDB->GetLatestSequenceNumber();
-        // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                             std::move(it->second.removals));
       }
     }
   };
@@ -486,8 +490,11 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                      std::move(it->second.removals));
+      auto* estimator = ridx.estimator();
+      if (estimator != nullptr) {
+        estimator->bufferUpdates(seq, std::move(it->second.inserts),
+                                 std::move(it->second.removals));
+      }
     }
   };
 
