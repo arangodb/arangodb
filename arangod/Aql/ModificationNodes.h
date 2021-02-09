@@ -276,6 +276,9 @@ class UpdateReplaceNode : public ModificationNode {
     }
   }
 
+  /// @brief set the input key variable
+  void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
+
   /// @brief set the input document variable
   void setInDocVariable(Variable const* var) { _inDocVariable = var; }
 

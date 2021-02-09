@@ -1,6 +1,15 @@
 devel
 -----
 
+* Simplify the DistributeExecutor and avoid implicit modification of its input
+  variable. Previously the DistributeExecutor could update the input variable
+  in-place, leading to unexpected results (see #13509).
+  The modification logic has now been moved into three new _internal_ AQL
+  functions (MAKE_DISTRIBUTE_INPUT, MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION,
+  and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
+  according function call will be introduced if we need to prepare the input
+  data for the distribute node.
+  
 * Added new REST APIs for retrieving the sharding distribution:
 
   - GET `/_api/database/shardDistribution` will return the number of 
@@ -21,7 +30,7 @@ devel
     This API can only be used in the `_system` database of coordinators, and
     requires admin user privileges.
 
-* Decrease the size of serialized index esimtates, by introducing a 
+* Decrease the size of serialized index estimates, by introducing a 
   compressed serialization format. The compressed format uses the previous
   uncompressed format internally, compresses it, and stores the compressed
   data instead. This makes serialized index estimates a lot smaller, which
