@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global arango, assertEqual, assertTrue, ARGUMENTS */
+/* global arango, assertEqual, assertTrue, ARGUMENTS, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test the sync method of the replication
@@ -34,6 +34,7 @@ const db = arangodb.db;
 const replication = require('@arangodb/replication');
 const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+const errors = require("internal").errors;
 
 const cn = 'UnitTestsReplication';
 
@@ -259,6 +260,52 @@ function ReplicationIncrementalMalarkey () {
       c = db._collection(cn);
 
       checkCountConsistency(cn, 1 * 100 * 1000);
+
+      // Now check that the unique index entries are all in place by
+      // provoking violations:
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", x: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", y: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", z: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      // And use the index entries in a query:
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.x == i 
+             RETURN doc._key`).toArray().length);
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.y == i 
+             RETURN doc._key`).toArray().length);
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.z == i 
+             RETURN doc._key`).toArray().length);
     },
     
     testManyUniqueConstraints: function () {
@@ -296,6 +343,52 @@ function ReplicationIncrementalMalarkey () {
       c = db._collection(cn);
 
       checkCountConsistency(cn, 1 * 100 * 1000);
+
+      // Now check that the unique index entries are all in place by
+      // provoking violations:
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", x: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", y: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        try {
+          c.insert({ _key: "N", z: i });
+          fail();
+        } catch(e) {
+          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                      e.errorNum);
+        }
+      }
+      // And use the index entries in a query:
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.x == i 
+             RETURN doc._key`).toArray().length);
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.y == i 
+             RETURN doc._key`).toArray().length);
+      assertEqual(100000, db._query(
+        `FOR i IN 1..100000
+           FOR doc IN collection 
+             FILTER doc.z == i 
+             RETURN doc._key`).toArray().length);
     },
     
     testRevisionIdReuse: function () {
