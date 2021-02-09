@@ -1867,7 +1867,7 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
+        return keyword('DISTRIBUTE') + ' ' + variableName(node.variable);
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
