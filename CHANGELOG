@@ -12,7 +12,7 @@ v3.7.7 (2020-02-05)
 -------------------
 
 * Added metrics for document read and write operations:
-  
+
   - `arangodb_document_writes: Total number of document write operations
     (successful and failed) not performed by synchronous replication.
   - `arangodb_document_writes_replication`: Total number of document write
