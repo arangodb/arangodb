@@ -22,6 +22,10 @@
 #include <cmath>
 #endif
 
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+#include <unordered_set>
+#endif
+
 namespace mellon {
 
 struct promise_abandoned_error : std::exception {
@@ -122,6 +126,10 @@ inline constexpr base_ptr_t base_ptr{};
 
 #ifdef MELLON_RECORD_BACKTRACE
 extern thread_local std::vector<std::string>* current_backtrace_ptr;
+auto generate_backtrace_string() noexcept -> std::vector<std::string>;
+#endif
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
 auto generate_backtrace_string() noexcept -> std::vector<std::string>;
 #endif
 
@@ -232,7 +240,7 @@ void abandon_promise(continuation_start<Tag, T>* base) noexcept {
                                            std::memory_order_release,
                                            std::memory_order_acquire)) {  // ask mpoeter
     if (expected == FUTURES_INVALID_POINTER_FUTURE_ABANDONED(T)) {
-      delete base;  // we all agreed on not having this promise-init_future-chain
+      delete base;  // we all agreed on not having this promise-future-chain
     } else {
       return fulfill_continuation<Tag>(base, detail::handler_helper<Tag, T>::abandon_promise(base->get_backtrace()));
     }
@@ -306,14 +314,73 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
   return future<R, Tag>{detail::base_ptr, step};
 }
 
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+struct continuation_object_recorder;
+
+struct continuation_rel_base {
+  virtual ~continuation_rel_base() = default;
+  virtual auto get_object_recorder_ptr() const ->  continuation_object_recorder const* = 0;
+};
+
+struct continuation_object_recorder {
+  virtual ~continuation_object_recorder() = default;
+  virtual auto get_tag_name() const -> std::string = 0;
+  virtual auto get_value_type_name() const -> std::string = 0;
+  virtual auto get_create_backtrace() const -> std::vector<std::string> const& = 0;
+  virtual auto get_next_pointer() const -> continuation_rel_base* = 0;
+};
+
+extern std::unordered_set<continuation_object_recorder*> pending_objects;
+extern std::mutex pending_objects_mutex;
+void dump_pending_objects();
+
+template <typename T, typename Tag>
+struct continuation_object_recorder_impl : continuation_object_recorder {
+  continuation_object_recorder_impl() {
+    create_backtrace = generate_backtrace_string();
+    std::unique_lock guard(pending_objects_mutex);
+    pending_objects.insert(this);
+  }
+
+  ~continuation_object_recorder_impl() {
+    std::unique_lock guard(pending_objects_mutex);
+    pending_objects.erase(this);
+  }
+
+  auto get_tag_name() const -> std::string override {
+    return typeid(Tag).name();
+  }
+  auto get_value_type_name() const -> std::string override {
+    return typeid(T).name();
+  }
+  auto get_create_backtrace() const -> std::vector<std::string> const& override {
+    return create_backtrace;
+  }
+
+ private:
+  std::vector<std::string> create_backtrace;
+};
+
+
+#else
+template<typename T, typename Tag>
+struct continuation_object_recorder_impl {};
+struct continuation_rel_base {};
+#endif
+
+
+
 template <typename T>
-struct continuation {
+struct continuation : continuation_rel_base {
   virtual ~continuation() = default;
   virtual void operator()(T&&) noexcept = 0;
 };
 
 template <typename T, typename F, typename Deleter>
-struct continuation_final final : continuation<T>, function_store<F> {
+struct continuation_final final : continuation<T>,
+                                  function_store<F>,
+                                  continuation_object_recorder_impl<T, default_tag> {
   static_assert(std::is_nothrow_invocable_r_v<void, F, T>);
   template <typename G = F>
   explicit continuation_final(std::in_place_t, G&& f) noexcept(
@@ -323,11 +390,18 @@ struct continuation_final final : continuation<T>, function_store<F> {
     std::invoke(function_store<F>::function_self(), std::move(t));
     Deleter{}(this);
   }
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+  auto get_object_recorder_ptr() const -> const continuation_object_recorder* override {
+    return static_cast<const continuation_object_recorder*>(this);
+  };
+
+  auto get_next_pointer() const -> continuation_rel_base* override { return nullptr; };
+#endif
 };
 
-
 template <typename Tag, typename T, std::size_t prealloc_size>
-struct continuation_base : memory_buffer<prealloc_size>, box<T> {
+struct continuation_base : memory_buffer<prealloc_size>, box<T>, continuation_object_recorder_impl<T, Tag> {
   template <typename... Args, std::enable_if_t<std::is_constructible_v<T, Args...>, int> = 0>
   explicit continuation_base(std::in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible_v<box<T>, std::in_place_t, Args...>)
@@ -349,6 +423,10 @@ struct continuation_base : memory_buffer<prealloc_size>, box<T> {
 #else
   std::vector<std::string>* get_backtrace() { return nullptr; }
 #endif
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+  auto get_next_pointer() const -> continuation_rel_base* override { return _next.load(std::memory_order_relaxed); };
+#endif
 };
 
 template <typename Tag, typename T>
@@ -369,6 +447,12 @@ struct continuation_step final : continuation_base<Tag, R>,
     detail::fulfill_continuation<Tag>(this, std::invoke(function_store<F>::function_self(),
                                                         std::move(t)));
   }
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+  auto get_object_recorder_ptr() const -> continuation_object_recorder const * override {
+    return static_cast<continuation_object_recorder const *>(this);
+  };
+#endif
 };
 
 template <typename Tag, typename T, typename F>

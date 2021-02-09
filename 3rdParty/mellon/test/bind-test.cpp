@@ -108,7 +108,6 @@ TEST_F(BindTests, then_bind_except_test_1) {
   std::move(p2).fulfill("hello world");
 }
 
-
 TEST_F(BindTests, then_bind_expected_test) {
   auto&& [f1, p1] = make_promise<expect::expected<int>>();
   auto&& [f2, p2] = make_promise<expect::expected<std::string>>();
@@ -120,7 +119,8 @@ TEST_F(BindTests, then_bind_expected_test) {
           return std::move(f2);
         }
         throw std::runtime_error("test exception");
-      }).then([](std::string&&) {
+      })
+      .then([](std::string&&) {
         ADD_FAILURE() << "This should never be executed";
         return 12;
       })
@@ -130,5 +130,5 @@ TEST_F(BindTests, then_bind_expected_test) {
       });
 
   std::move(p1).fulfill(14);
-  std::move(p2).abandon(); // f2 was abandoned in lambda destructor
+  std::move(p2).abandon();  // f2 was abandoned in lambda destructor
 }

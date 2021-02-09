@@ -297,12 +297,14 @@ velocypack::Options const& transaction::Methods::vpackOptions() const {
 /// @brief Find out if any of the given requests has ended in a refusal
 static bool findRefusal(std::vector<futures::Try<network::Response>> const& responses) {
   for (auto const& it : responses) {
-    if (it.has_value() && it.unwrap().ok() &&
-        it.unwrap().statusCode() == fuerte::StatusNotAcceptable) {
-      auto r = it.unwrap().combinedResult();
-      bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
-      if (followerRefused) {
-        return true;
+    if (it.has_value()) {
+      if (auto& res = it.unwrap(); res.ok() && res.statusCode() == fuerte::StatusNotAcceptable) {
+        auto r = it.unwrap().combinedResult();
+        bool followerRefused =
+            (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+        if (followerRefused) {
+          return true;
+        }
       }
     }
   }
@@ -806,7 +808,13 @@ namespace {
 template<typename F>
 Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 #ifdef USE_ENTERPRISE
-  return std::move(f).thenValue(std::forward<F>(func));
+  LOG_DEVEL << "addTracking: future has inline value = " << f.holds_inline_value();
+  return std::move(f)
+      .and_then([](futures::Try<OperationResult>&& r) noexcept {
+        LOG_DEVEL << "add tracking received a value";
+        return std::move(r);
+      })
+      .thenValue(std::forward<F>(func));
 #else
   return std::move(f);
 #endif
@@ -1903,8 +1911,8 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
     std::string const& collectionName, transaction::CountType type,
     OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
   if (_state->isCoordinator()) {
+    LOG_DEVEL << "transaction::Methods::countAsync on coordinator";
     return countCoordinator(collectionName, type, options);
   }
 
@@ -1913,6 +1921,7 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
     // so just downgrade the request to a normal request
     type = CountType::Normal;
   }
+  LOG_DEVEL << "transaction::Methods::countAsync on dbserver";
 
   return futures::makeFuture(countLocal(collectionName, type, options));
 }

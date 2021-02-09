@@ -64,6 +64,11 @@
 #include <elf.h>
 #endif
 
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+#include <mellon/futures.h>
+#include <iomanip>
+#endif
+
 namespace {
 
 #ifdef _WIN32
@@ -432,6 +437,88 @@ void logProcessInfo() {
   LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
 }
 
+
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+static void dump_pending_objects() {
+  using namespace mellon;
+  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "pending asynchronous objects: ";
+  ::std::unique_lock guard(detail::pending_objects_mutex);
+
+  std::unordered_set<detail::continuation_object_recorder const*> next_ptr;
+
+  for (auto* c : detail::pending_objects) {
+    detail::continuation_rel_base* next = c->get_next_pointer();
+    if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
+    } else if  (next == nullptr) {
+    } else {
+      auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
+      next_ptr.insert(rel_base->get_object_recorder_ptr());
+    }
+  }
+
+  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "pending head objects";
+  for (auto const* c : detail::pending_objects) {
+    if (next_ptr.find(c) != next_ptr.end()) {
+      continue;
+    }
+
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
+                                                       << " object " << c->get_value_type_name() << " tag "
+                                                       << c->get_tag_name();
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
+    detail::continuation_rel_base* next = c->get_next_pointer();
+    if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
+    } else if  (next == nullptr) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
+    } else {
+      auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
+    }
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "created at: ";
+    for (auto const& line : c->get_create_backtrace()) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << line;
+    }
+  }
+/*
+  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "other pending objects";
+  for (auto const* c : detail::pending_objects) {
+    if (next_ptr.find(c) == next_ptr.end()) {
+      continue;
+    }
+
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
+                                                       << " object " << c->get_value_type_name() << " tag "
+                                                       << c->get_tag_name();
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
+    detail::continuation_rel_base* next = c->get_next_pointer();
+    if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
+    } else if  (next == nullptr) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
+    } else {
+      auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
+    }
+    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "created at: ";
+    for (auto const& line : c->get_create_backtrace()) {
+      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << line;
+    }
+  }*/
+}
+#endif
+
 /// @brief Logs the reception of a signal to the logfile.
 /// this is the actual function that is invoked for a deadly signal
 /// (i.e. SIGSEGV, SIGBUS, SIGILL, SIGFPE...)
@@ -455,6 +542,9 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
     logCrashInfo("signal handler invoked", signal, info, ucontext);
     logBacktrace();
     logProcessInfo();
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+    dump_pending_objects();
+#endif
     arangodb::Logger::flush();
     arangodb::Logger::shutdown();
   } else {
@@ -472,7 +562,10 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 } // namespace
 
+
 namespace arangodb {
+
+
 
 void CrashHandler::logBacktrace() {
   ::logBacktrace();
@@ -484,8 +577,14 @@ void CrashHandler::crash(char const* context) {
   ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
   ::logBacktrace();
   ::logProcessInfo();
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+  dump_pending_objects();
+#endif
+
   Logger::flush();
   Logger::shutdown();
+
+
 
   // crash from here
   ::killProcess(SIGABRT);

@@ -245,7 +245,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // will be written *after* the call to "dropCollection" returns
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
                                           LogicalCollection& collection) = 0;
-  
+
   // asks the storage engine to change properties of the collection as specified
   // in the VPack Slice object and persist them. If this operation fails
   // somewhere in the middle, the storage engine is required to fully revert the

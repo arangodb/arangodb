@@ -11,7 +11,52 @@ const char* promise_abandoned_error::what() const noexcept {
   return "promise abandoned";
 }
 
+
+
 #ifdef MELLON_RECORD_BACKTRACE
+thread_local std::vector<std::string>* detail::current_backtrace_ptr;
+#endif
+
+#ifdef MELLON_RECORD_PENDING_OBJECTS
+#include <iostream>
+#include <iomanip>
+
+std::unordered_set<detail::continuation_object_recorder*> detail::pending_objects;
+std::mutex detail::pending_objects_mutex;
+
+
+void detail::dump_pending_objects() {
+  using namespace mellon;
+  std::unique_lock guard(detail::pending_objects_mutex);
+
+  for (auto* c : detail::pending_objects) {
+    std::cout << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
+              << " object " << c->get_value_type_name() << " tag "
+              << c->get_tag_name() << std::endl;
+    std::cout << "next-pointer: ";
+    detail::continuation_rel_base* next = c->get_next_pointer();
+    if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
+      std::cout << "(promise is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
+      std::cout << "(future is abandoned)";
+    } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
+      std::cout << "(promise is fulfilled)";
+    } else if  (next == nullptr) {
+      std::cout << "(nullptr)";
+    } else {
+      auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
+      std::cout << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
+    }
+    std::cout << std::endl;
+    std::cout << "created at: " << std::endl;
+    for (auto const& line : c->get_create_backtrace()) {
+      std::cout << line << std::endl;
+    }
+  }
+}
+#endif
+
+#if defined(MELLON_RECORD_BACKTRACE) || defined(MELLON_RECORD_PENDING_OBJECTS)
 #define UNW_LOCAL_ONLY
 #include <cxxabi.h>
 #include <libunwind.h>
@@ -23,7 +68,7 @@ const char* promise_abandoned_error::what() const noexcept {
 #include <sys/auxv.h>
 #endif
 
-thread_local std::vector<std::string>* detail::current_backtrace_ptr;
+
 
 auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> try {
   std::vector<std::string> bt;
@@ -50,7 +95,7 @@ auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> tr
 
     std::stringstream line;
     line << "[+0x" << std::setfill('0') << std::setw (16) << std::hex << (pc - base) << "] ";
-    auto res = unw_get_proc_name(&cursor, mangled, kMax, &offset);
+    /*auto res = unw_get_proc_name(&cursor, mangled, kMax, &offset);
     if (res == 0 || res == -UNW_ENOMEM) {
       int ok;
       size_t len = kMax;
@@ -62,7 +107,7 @@ auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> tr
       line << "<no information available>";
     } else {
       line << "<symbol lookup failed: "<< -res << ">";
-    }
+    }*/
     bt.emplace_back(line.str());
   }
 
