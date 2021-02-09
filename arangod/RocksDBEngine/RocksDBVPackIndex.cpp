@@ -1358,7 +1358,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
 
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
                                       arangodb::transaction::Methods* trx) {
-  if (unique()) {
+  if (unique() || _estimator == nullptr) {
     return;
   }
   TRI_ASSERT(_estimator != nullptr);
@@ -1377,13 +1377,9 @@ void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  if (unique()) {
+  if (unique() || _estimator == nullptr) {
     return;
   }
-  if (_estimator == nullptr) {
-    return;
-  }
-
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 

@@ -35,6 +35,7 @@ const replication = require('@arangodb/replication');
 const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
+const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
 const cn = 'UnitTestsReplication';
 
@@ -47,14 +48,20 @@ const connectToFollower = function () {
   reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
-
-function ReplicationIncrementalMalarkey () {
-  'use strict';
   
-  let setFailurePoint = function(which) {
-    let res = arango.PUT("/_admin/debug/failat/" + encodeURIComponent(which), {});
-    assertTrue(res);
-  };
+const setFailurePoint = function(which) {
+  let res = arango.PUT("/_admin/debug/failat/" + encodeURIComponent(which), {});
+  if (res !== true) {
+    throw "unable to set failure point '" + which + "'";
+  }
+};
+
+const clearFailurePoints = function() {
+  arango.DELETE("/_admin/debug/failat");
+};
+
+function BaseTestConfig () {
+  'use strict';
   
   let checkCountConsistency = function(cn, expected) {
     let check = function() {
@@ -128,24 +135,6 @@ function ReplicationIncrementalMalarkey () {
   };
 
   return {
-    setUp: function () {
-      connectToLeader();
-      // clear all failure points
-      arango.DELETE("/_admin/debug/failat");
-      db._drop(cn);
-    },
-
-    tearDown: function () {
-      connectToLeader();
-      // clear all failure points
-      arango.DELETE("/_admin/debug/failat");
-      db._drop(cn);
-
-      connectToFollower();
-      arango.DELETE("/_admin/debug/failat");
-      db._drop(cn);
-    },
-    
     // create different state on follower
     testDowngradeManyRevisions: function () {
       let c = db._create(cn);
@@ -867,10 +856,78 @@ function ReplicationIncrementalMalarkey () {
   };
 }
 
+function ReplicationIncrementalMalarkeyOldFormat () {
+  'use strict';
+
+  let suite = {
+    setUp: function () {
+      connectToFollower();
+      // clear all failure points, but enforce old-style collections
+      clearFailurePoints();
+      setFailurePoint("disableRevisionsAsDocumentIds");
+
+      connectToLeader();
+      // clear all failure points, but enforce old-style collections
+      arango.DELETE("/_admin/debug/failat");
+      clearFailurePoints();
+      setFailurePoint("disableRevisionsAsDocumentIds");
+    },
+
+    tearDown: function () {
+      connectToFollower();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_OldFormat');
+  return suite;
+}
+
+function ReplicationIncrementalMalarkeyNewFormat () {
+  'use strict';
+
+  let suite = {
+    setUp: function () {
+      connectToFollower();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+    },
+
+    tearDown: function () {
+      connectToFollower();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+      
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_NewFormat');
+  return suite;
+}
+
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
-  jsunity.run(ReplicationIncrementalMalarkey);
+  jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
+  jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
 }
 
 return jsunity.done();
