@@ -223,8 +223,7 @@ void ensureLink(arangodb::DatabaseFeature& db,
 
 }  // namespace
 
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 IResearchRocksDBRecoveryHelper::IResearchRocksDBRecoveryHelper(application_features::ApplicationServer& server)
     : _server(server) {}
@@ -388,7 +387,6 @@ void IResearchRocksDBRecoveryHelper::LogData(
   }
 }
 
-}  // namespace iresearch
 }  // namespace arangodb
 
 // -----------------------------------------------------------------------------

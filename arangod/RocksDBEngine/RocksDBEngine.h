@@ -24,7 +24,6 @@
 
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_ENGINE_H 1
-#include <rocksdb/write_batch.h>
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
@@ -44,7 +43,7 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-
+class WriteBatch;
 class TransactionDB;
 class EncryptionProvider;
 }

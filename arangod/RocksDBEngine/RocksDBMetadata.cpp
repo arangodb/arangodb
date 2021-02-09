@@ -669,7 +669,8 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
   return DocCount(0, 0, 0, RevisionId::none());
 }
 
-Result RocksDBMetadata::deleteCollectionMetaBatch(rocksdb::DB*, uint64_t objectId, rocksdb::WriteBatch &wb) {
+Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
+                                                  rocksdb::WriteBatch& wb) {
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
 
@@ -761,7 +762,8 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(rocksdb::DB*, uint64_t objectI
   return Result();
 }
 
-/*static*/ Result RocksDBMetadata::deleteIndexEstimateBatch(rocksdb::DB* db, uint64_t objectId, rocksdb::WriteBatch& wb) {
+/*static*/ Result RocksDBMetadata::deleteIndexEstimateBatch(uint64_t objectId,
+                                                            rocksdb::WriteBatch& wb) {
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   RocksDBKey key;

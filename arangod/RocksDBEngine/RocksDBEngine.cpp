@@ -1379,27 +1379,29 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
 
   // Prepare collection remove batch
   rocksdb::WriteBatch batch;
-  {
-    RocksDBLogValue logValue =
-        RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
-                                        arangodb::velocypack::StringRef(
-                                            collection.guid()));
-    batch.PutLogData(logValue.slice());
-  }
-  {
-    RocksDBKey key;
-    key.constructCollection(vocbase.id(), collection.id());
-    batch.Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
-                 key.string());
+
+  RocksDBLogValue logValue =
+      RocksDBLogValue::CollectionDrop(vocbase.id(), collection.id(),
+                                      arangodb::velocypack::StringRef(collection.guid()));
+  auto s = batch.PutLogData(logValue.slice());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
   }
 
-  {
-    Result res =
-        RocksDBMetadata::deleteCollectionMetaBatch(db, rocksdb->objectId(), batch);
-    if (res.fail()) {
-      LOG_TOPIC("2c890", ERR, Logger::ENGINES)
-          << "error removing collection meta-data: " << res.errorMessage();  // continue regardless
-    }
+  RocksDBKey key;
+  key.constructCollection(vocbase.id(), collection.id());
+  s = batch.Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
+               key.string());
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  Result res = RocksDBMetadata::deleteCollectionMetaBatch(rocksdb->objectId(), batch);
+  if (res.fail()) {
+    LOG_TOPIC("2c890", ERR, Logger::ENGINES)
+        << "error removing collection meta-data: "
+        << res.errorMessage();  // continue regardless
+    return res;
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
@@ -1408,20 +1410,18 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
 
   for (auto& index : vecShardIndex) {
     auto* ridx = static_cast<RocksDBIndex*>(index.get());
-    Result res = RocksDBMetadata::deleteIndexEstimateBatch(db, ridx->objectId(), batch);
+    res = RocksDBMetadata::deleteIndexEstimateBatch(ridx->objectId(), batch);
     if (res.fail()) {
       LOG_TOPIC("f2d51", WARN, Logger::ENGINES)
       << "could not delete index estimate: " << res.errorMessage();
+      return res;
     }
 
     auto dropRes = ridx->dropWithBatch(batch);
-
     if (dropRes.fail()) {
-      // We try to remove all indexed values.
-      // If it does not work they cannot be accessed any more and leaked.
-      // User View remains consistent.
       LOG_TOPIC("97176", ERR, Logger::ENGINES)
           << "unable to drop index: " << dropRes.errorMessage();
+      return dropRes;
     }
   }
 
@@ -1431,12 +1431,10 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
   batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
 
   // fire!
-  {
-    rocksdb::WriteOptions wo;
-    rocksdb::Status s = db->Write(wo, &batch);
-    if (!s.ok()) {
-      return rocksutils::convertStatus(s);
-    }
+  rocksdb::WriteOptions wo;
+  s = db->Write(wo, &batch);
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
   }
 
   // remove from map
@@ -1453,7 +1451,13 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
     rocksdb->compact();
   }
 
-  // TODO compact indexes as well and drop the caches
+  for (auto& index : vecShardIndex) {
+    auto* ridx = static_cast<RocksDBIndex*>(index.get());
+    if (compactAfterDrop) {
+      ridx->compact();
+    }
+    ridx->destroyCache();
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
