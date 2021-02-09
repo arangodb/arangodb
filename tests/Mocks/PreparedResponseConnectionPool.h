@@ -67,7 +67,7 @@ class PreparedRequestResponse {
   arangodb::rest::RequestType _type;
   std::vector<std::string> _suffixes;
   std::vector<std::string> _fullSuffixes;
-  VPackSlice _payload;
+  std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _payload;
   std::unique_ptr<GeneralResponse> _response;
 };
 
