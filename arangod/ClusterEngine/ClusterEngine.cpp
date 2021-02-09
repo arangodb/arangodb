@@ -237,11 +237,6 @@ arangodb::Result ClusterEngine::dropCollection(TRI_vocbase_t& vocbase,
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-arangodb::Result ClusterEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
-                                               LogicalCollection& collection) {
-  return TRI_ERROR_NOT_IMPLEMENTED;
-}
-
 void ClusterEngine::changeCollection(TRI_vocbase_t& vocbase,
                                      LogicalCollection const& collection, bool doSync) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

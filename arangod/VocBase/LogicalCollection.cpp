@@ -1051,7 +1051,7 @@ bool LogicalCollection::dropIndex(IndexId iid) {
 
   arangodb::aql::QueryCache::instance()->invalidate(&vocbase(), guid());
 
-  bool result = _physical->dropIndexFast(iid).ok();
+  bool result = _physical->dropIndex(iid).ok();
 
   if (result) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();

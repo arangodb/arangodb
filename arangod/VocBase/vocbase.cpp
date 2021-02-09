@@ -668,7 +668,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
       locker.unlock();
       writeLocker.unlock();
 
-      engine.dropCollectionFast(*this, *collection);
+      engine.dropCollection(*this, *collection);
 
       dropCollectionCallback(*collection);
       break;
@@ -696,7 +696,7 @@ ErrorCode TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* colle
       locker.unlock();
       writeLocker.unlock();
 
-      engine.dropCollectionFast(*this, *collection);
+      engine.dropCollection(*this, *collection);
       state = DROP_PERFORM;
       break;
     }

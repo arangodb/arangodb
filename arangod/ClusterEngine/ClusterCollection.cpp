@@ -285,10 +285,10 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 }
 
 /// @brief Drop an index with the given iid.
-bool ClusterCollection::dropIndex(IndexId iid) {
+Result ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
   if (iid.empty() || iid.isPrimary()) {
-    return true;
+    return {};
   }
 
   WRITE_LOCKER(guard, _indexesLock);
@@ -297,21 +297,13 @@ bool ClusterCollection::dropIndex(IndexId iid) {
       _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                         std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
-      return true;
+      return {};
     }
   }
 
   // We tried to remove an index that does not exist
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                     std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-  return false;
-}
-
-Result ClusterCollection::dropIndexFast(IndexId iid) {
-  if (auto res = dropIndex(iid); res) {
-    return {};
-  }
-
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 

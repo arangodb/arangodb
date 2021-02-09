@@ -676,7 +676,6 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
   rocksdb::ColumnFamilyHandle* const cf =
       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
 
-    // Step 1. delete the document count
   RocksDBKey key;
   key.constructCounterValue(objectId);
   rocksdb::Status s = wb.Delete(cf, key.string());
@@ -684,7 +683,7 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
     LOG_TOPIC("93718", ERR, Logger::ENGINES)
         << "could not delete counter value for collection with objectId '"
         << objectId << "': " << s.ToString();
-    // try to remove the key generator value regardless
+    return rocksutils::convertStatus(s);
   } else {
     LOG_TOPIC("93719", TRACE, Logger::ENGINES)
         << "deleted counter for collection with objectId '" << objectId << "'";
@@ -692,7 +691,7 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
 
   key.constructKeyGeneratorValue(objectId);
   s = wb.Delete(cf, key.string());
-  if (!s.ok() && !s.IsNotFound()) {
+  if (!s.ok()) {
     LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
         << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
@@ -700,7 +699,7 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
 
   key.constructRevisionTreeValue(objectId);
   s = wb.Delete(cf, key.string());
-  if (!s.ok() && !s.IsNotFound()) {
+  if (!s.ok()) {
     LOG_TOPIC("af3dd", ERR, Logger::ENGINES)
         << "could not delete revision tree value: " << s.ToString();
     return rocksutils::convertStatus(s);
@@ -771,7 +770,7 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
   RocksDBKey key;
   key.constructIndexEstimateValue(objectId);
   rocksdb::Status s = wb.Delete(cf, key.string());
-  if (!s.ok() && !s.IsNotFound()) {
+  if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
   return Result();

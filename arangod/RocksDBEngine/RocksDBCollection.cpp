@@ -571,7 +571,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
   return idx;
 }
 
-Result RocksDBCollection::dropIndexFast(IndexId iid) {
+Result RocksDBCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
   if (iid.empty() || iid.isPrimary()) {
     return {};
@@ -592,8 +592,6 @@ Result RocksDBCollection::dropIndexFast(IndexId iid) {
 
     if (!toRemove) {  // index not found
       // We tried to remove an index that does not exist
-      events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                        std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
       return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     }
 
@@ -646,73 +644,6 @@ Result RocksDBCollection::dropIndexFast(IndexId iid) {
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
                     std::to_string(iid.id()), res.errorNumber());
   return res;
-}
-
-/// @brief Drop an index with the given iid.
-bool RocksDBCollection::dropIndex(IndexId iid) {
-  // usually always called when _exclusiveLock is held
-  if (iid.empty() || iid.isPrimary()) {
-    return true;
-  }
-
-  std::shared_ptr<arangodb::Index> toRemove;
-  {
-    WRITE_LOCKER(guard, _indexesLock);
-    for (auto& it : _indexes) {
-      if (iid == it->id()) {
-        toRemove = it;
-        _indexes.erase(it);
-        break;
-      }
-    }
-  }
-
-  if (!toRemove) {  // index not found
-    // We tried to remove an index that does not exist
-    events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                      std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-    return false;
-  }
-
-  READ_LOCKER(guard, _indexesLock);
-
-  RocksDBIndex* cindex = static_cast<RocksDBIndex*>(toRemove.get());
-  TRI_ASSERT(cindex != nullptr);
-
-  Result res = cindex->drop();
-
-  if (!res.ok()) {
-    return false;
-  }
-
-  events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                    std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
-
-  cindex->compact(); // trigger compaction before deleting the object
-
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-
-  if (engine.inRecovery()) {
-    return true; // skip writing WAL marker if inRecovery()
-  }
-
-  auto builder =  // RocksDB path
-      _logicalCollection.toVelocyPackIgnore(
-          {"path", "statusString"},
-          LogicalDataSource::Serialization::PersistenceWithInProgress);
-
-  // log this event in the WAL and in the collection meta-data
-  res = engine.writeCreateCollectionMarker(  // write marker
-      _logicalCollection.vocbase().id(),     // vocbase id
-      _logicalCollection.id(),               // collection id
-      builder.slice(),                       // RocksDB path
-      RocksDBLogValue::IndexDrop(            // marker
-          _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
-          ));
-
-  return res.ok();
 }
 
 std::unique_ptr<IndexIterator> RocksDBCollection::getAllIterator(transaction::Methods* trx) const {
