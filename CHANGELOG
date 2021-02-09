@@ -1,6 +1,11 @@
 devel
 -----
 
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
 * Simplify the DistributeExecutor and avoid implicit modification of its input
   variable. Previously the DistributeExecutor could update the input variable
   in-place, leading to unexpected results (see #13509).
