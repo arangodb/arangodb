@@ -261,35 +261,48 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 1 * 100 * 1000);
+      checkCountConsistency(cn, 100000);
 
       // Now check that the unique index entries are all in place by
       // provoking violations:
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", x: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+      docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", x: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", y: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", y: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", z: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", z: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
       // And use the index entries in a query:
@@ -317,7 +330,7 @@ function BaseTestConfig () {
       c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
 
       let docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < 100000; ++i) {
         docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
           c.insert(docs);
@@ -344,37 +357,53 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 1 * 100 * 1000);
+      checkCountConsistency(cn, 100000);
 
       // Now check that the unique index entries are all in place by
       // provoking violations:
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", x: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+      docs = [];
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", x: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", y: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", y: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
-        try {
-          c.insert({ _key: "N", z: i });
-          fail();
-        } catch(e) {
-          assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
-                      e.errorNum);
+      
+      for (let i = 0; i < 100000; ++i) {
+        docs.push({ _key: "N", z: i });
+        if (docs.length === 10000) {
+          let res = c.insert(docs);
+          assertEqual(10000, res.length);
+          res.forEach((r) => {
+            assertTrue(r.error);
+            assertEqual(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code,
+                        r.errorNum);
+          });
+          docs = [];
         }
       }
+
       // And use the index entries in a query:
       assertEqual(100000, db._query(
         `FOR i IN 0..99999
