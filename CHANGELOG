@@ -1,6 +1,11 @@
 devel
 -----
 
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual
