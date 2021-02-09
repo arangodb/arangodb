@@ -44,6 +44,8 @@ struct Collection;
 /// Helper
 Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
 
+void insertDistributeInputCalculation(ExecutionPlan& plan);
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
