@@ -1162,8 +1162,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    concatT("unable to start transaction (", __FILE__, ":",
-                            __LINE__, "): ", res.errorMessage()));
+                    concatT("unable to start transaction: ", res.errorMessage()));
     }
 
     OperationOptions options;
@@ -1277,8 +1276,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (!res.ok()) {
         return Result(res.errorNumber(),
-                      concatT("unable to start transaction (", __FILE__, ":",
-                              __LINE__, "): ", res.errorMessage()));
+                      concatT("unable to start transaction: ", res.errorMessage()));
       }
 
       OperationOptions options;

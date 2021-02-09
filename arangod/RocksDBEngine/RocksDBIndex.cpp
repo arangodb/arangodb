@@ -268,6 +268,19 @@ Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/,
   return {};
 }
 
+/// performs a preflight check for an update/replace operation, not carrying out any
+/// modifications to the index.
+/// the default implementation does nothing. indexes can override this and
+/// perform useful checks (uniqueness checks etc.) here
+Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/, 
+                                  RocksDBMethods* /*methods*/,
+                                  LocalDocumentId const& /*documentId*/,
+                                  arangodb::velocypack::Slice /*doc*/,
+                                  OperationOptions const& /*options*/) {
+  // default implementation does nothing - derived indexes can override this!
+  return {};
+}
+
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
                             velocypack::Slice oldDoc,

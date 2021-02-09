@@ -167,7 +167,9 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                   arangodb::velocypack::Slice doc,
                                   OperationOptions const& options) const;
 
-  arangodb::Result updateDocument(transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+  arangodb::Result updateDocument(transaction::Methods* trx, 
+                                  RocksDBSavePoint& savepoint,
+                                  LocalDocumentId const& oldDocumentId,
                                   arangodb::velocypack::Slice const& oldDoc,
                                   LocalDocumentId const& newDocumentId,
                                   arangodb::velocypack::Slice const& newDoc,
