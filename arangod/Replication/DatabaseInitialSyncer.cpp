@@ -264,7 +264,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
 
       options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-      // we need a retry loop here for  unique indexes (we will always have at least
+      // we need a retry loop here for unique indexes (we will always have at least
       // one unique index, which is the primary index, but there can be more). as 
       // documents can be presented in any state on the follower, simply inserting
       // them in leader order may trigger a unique constraint violation on the follower.
@@ -296,7 +296,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
         arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
         if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
           // already have exactly this revision no need to insert
-          break;;
+          break;
         }
 
         // remove conflict and retry
