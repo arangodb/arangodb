@@ -376,7 +376,8 @@ bool DocumentProducingFunctionContext::checkUniqueness(LocalDocumentId const& to
 }
 
 bool DocumentProducingFunctionContext::checkFilter(velocypack::Slice slice) {
-  if (ADB_UNLIKELY(_numScanned % 1024 == 0 && _query->killed())) {
+  _killCheckCounter = (_killCheckCounter + 1) % 1024;
+  if (ADB_UNLIKELY(_killCheckCounter == 0 && _query->killed())) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 

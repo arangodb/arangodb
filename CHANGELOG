@@ -1,6 +1,11 @@
 v3.6.12 (XXXX-XX-XX)
 --------------------
 
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
 * Fixed some wrong behaviour in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body but
   the _key was given in the URL path, then the rev was wrongly taken as 0,
