@@ -28,6 +28,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <atomic>
@@ -180,39 +181,45 @@ TEST(ResourceUsageTest, testIncreaseInStepsUnrestricted) {
   monitor.decreaseMemoryUsage(monitor.current());
 }
 
-TEST(ResourceUsageTest, testConcurrencyRestricted) {
+TEST(ResourceUsageTest, testConcurrencyRestricted22) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
   
   monitor.memoryLimit(123456);
 
-  constexpr size_t amount = 123;
+  constexpr size_t amount = 12345;
   std::atomic<bool> go = false;
   std::atomic<size_t> globalRejections = 0;
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&]() {
+    threads.emplace_back([&](size_t tid) {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
       }
+          
+      LOG_DEVEL << "T" << tid << ": STARTING";
       size_t totalAdded = 0;
       size_t rejections = 0;
-      for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
+      for (uint64_t i = 0; i < 5000; ++i) { //::numOpsPerThread; ++i) {
         try {
           monitor.increaseMemoryUsage(amount);
           totalAdded += amount;
+          //LOG_TOPIC("12345", INFO, Logger::FIXME) << "T" << tid << ": ADDED AMOUNT:" << amount << "; TOTALADDED: " << totalAdded;
         } catch (basics::Exception const& ex) {
           ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
           ++rejections;
+          //LOG_TOPIC("98765", INFO, Logger::FIXME) << "T" << tid << ": COULD NOT ADDED; TOTALADDED: " << totalAdded;
         }
       }
 
+      LOG_DEVEL << "T" << tid << ": FINALIZING. TOTALADDED: " << totalAdded;
+
       monitor.decreaseMemoryUsage(totalAdded);
       globalRejections += rejections;
-    });
+    }, i);
   }
 
   go.store(true);
@@ -226,7 +233,7 @@ TEST(ResourceUsageTest, testConcurrencyRestricted) {
   ASSERT_LE(monitor.peak(), ::bucketize(monitor.memoryLimit()));
 
   // should be way above 0
-  ASSERT_TRUE(globalRejections > 0);
+  ASSERT_GT(globalRejections, 0);
 }
 
 TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
@@ -375,7 +382,7 @@ TEST(GlobalResourceMonitorTest, testConcurrencyRestricted) {
   ASSERT_EQ(0, monitor.current());
 
   // should be way above 0
-  ASSERT_TRUE(globalRejections > 0);
+  ASSERT_GT(globalRejections, 0);
 }
 
 TEST(GlobalResourceMonitorTest, testConcurrencyUnrestricted) {

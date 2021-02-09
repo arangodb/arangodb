@@ -24,6 +24,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
+#include "Logger/LogMacros.h"
 
 namespace {
 // a global shared instance for tracking all resources
@@ -57,20 +58,27 @@ void GlobalResourceMonitor::clear() noexcept {
 /// succeds, the global value is modified and true is returned
 bool GlobalResourceMonitor::increaseMemoryUsage(std::size_t value) noexcept {
   std::size_t previous = _current.fetch_add(value, std::memory_order_relaxed);
+  LOG_DEVEL << __func__ << ": previous: " << previous << ", value: " << value;
     
   if (_limit > 0 && ADB_UNLIKELY(previous + value > _limit)) {
     // the allocation would exceed the global maximum value, so we need to roll back.
     // revert the change to the global counter
+  LOG_DEVEL << __func__ << " - LIMIT REACHED. ROLLING BACK!!!";
     _current.fetch_sub(value, std::memory_order_relaxed);
     return false;
   }
 
   return true;
 }
+
+void GlobalResourceMonitor::forceIncreaseMemoryUsage(std::size_t value) noexcept {
+  _current.fetch_add(value, std::memory_order_relaxed);
+}
   
 /// @brief decrease current global memory usage by <value> bytes. will not throw
 void GlobalResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
   [[maybe_unused]] std::size_t previous = _current.fetch_sub(value, std::memory_order_relaxed);
+  LOG_DEVEL << __func__ << ": previous: " << previous << ", value: " << value;
   TRI_ASSERT(previous >= value);
 }
   

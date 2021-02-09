@@ -57,6 +57,8 @@ class alignas(64) GlobalResourceMonitor final {
   /// succeds, the global value is modified and true is returned
   [[nodiscard]] bool increaseMemoryUsage(std::size_t value) noexcept;
   
+  void forceIncreaseMemoryUsage(std::size_t value) noexcept;
+  
   /// @brief decrease current global memory usage by <value> bytes. will not throw
   void decreaseMemoryUsage(std::size_t value) noexcept;
 

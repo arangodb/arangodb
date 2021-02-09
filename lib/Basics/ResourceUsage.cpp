@@ -70,6 +70,7 @@ std::size_t ResourceMonitor::memoryLimit() const noexcept {
 void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   std::size_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
   std::size_t const current = previous + value;
+  TRI_ASSERT(current >= value);
   
   // now calculate if the number of buckets used by instance's allocations stays the 
   // same after the extra allocation. if yes, it was likely a very small allocation, and 
@@ -84,8 +85,10 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   // this idea is based on suggestions from @dothebart and @mpoeter for reducing the 
   // number of updates to the shared global memory usage counter, which very likely
   // would be a source of contention in case multiple queries execute in parallel.
+  std::size_t const previousBuckets = numBuckets(previous);
   std::size_t const currentBuckets = numBuckets(current);
-  std::size_t diff = currentBuckets - numBuckets(previous);
+  TRI_ASSERT(currentBuckets >= previousBuckets);
+  std::size_t diff = currentBuckets - previousBuckets;
   
   if (diff != 0) {
     // number of buckets has changed, so this is either a substantial allocation or
@@ -96,7 +99,17 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.
-      _current.fetch_sub(value, std::memory_order_relaxed);
+      std::size_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
+      std::size_t adjustedCurrent = adjustedPrevious - value;
+  
+      std::size_t adjustedDiff = numBuckets(adjustedPrevious) - numBuckets(adjustedCurrent);
+      if (adjustedDiff != diff) {
+        if (adjustedDiff > diff) {
+          _global.forceIncreaseMemoryUsage((adjustedDiff - diff) * bucketSize);
+        } else {
+          _global.decreaseMemoryUsage((diff - adjustedDiff) * bucketSize);
+        }
+      }
 
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
