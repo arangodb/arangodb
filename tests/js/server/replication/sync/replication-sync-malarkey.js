@@ -771,13 +771,13 @@ function ReplicationIncrementalMalarkeyOldFormat () {
       connectToFollower();
       // clear all failure points, but enforce old-style collections
       clearFailurePoints();
-      setFailurePoint("/_admin/debug/failat/disableRevisionsAsDocumentIds");
+      setFailurePoint("disableRevisionsAsDocumentIds");
 
       connectToLeader();
       // clear all failure points, but enforce old-style collections
       arango.DELETE("/_admin/debug/failat");
       clearFailurePoints();
-      setFailurePoint("/_admin/debug/failat/disableRevisionsAsDocumentIds");
+      setFailurePoint("disableRevisionsAsDocumentIds");
     },
 
     tearDown: function () {
