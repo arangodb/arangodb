@@ -1305,7 +1305,7 @@ Result RocksDBEngine::writeCreateCollectionMarkerBatch(TRI_voc_tick_t databaseId
   key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
 
-  if (logValue.slice().empty()) {
+  if (!logValue.slice().empty()) {
     batch.PutLogData(logValue.slice());
   }
   batch.Put(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
@@ -1414,15 +1414,14 @@ arangodb::Result RocksDBEngine::dropCollectionFast(TRI_vocbase_t& vocbase,
       << "could not delete index estimate: " << res.errorMessage();
     }
 
-    auto dropRes = ridx->dropWithBatch(batch).errorNumber();
+    auto dropRes = ridx->dropWithBatch(batch);
 
-    if (dropRes != TRI_ERROR_NO_ERROR) {
+    if (dropRes.fail()) {
       // We try to remove all indexed values.
       // If it does not work they cannot be accessed any more and leaked.
       // User View remains consistent.
       LOG_TOPIC("97176", ERR, Logger::ENGINES)
-      << "unable to drop index: " << TRI_errno_string(dropRes);
-      //      return TRI_ERROR_NO_ERROR;
+          << "unable to drop index: " << dropRes.errorMessage();
     }
   }
 

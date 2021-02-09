@@ -25,7 +25,9 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
 #include <rocksdb/status.h>
-#include <rocksdb/write_batch.h>
+namespace rocksdb {
+class WriteBatch;
+}
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
