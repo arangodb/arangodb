@@ -262,43 +262,73 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
   // verticesList.insert(vertices().begin(), vertices().end());
 
   for (auto const& vertex : verticesList) {
-    LOG_DEVEL << "  -> " << vertex._id;
+    {
+      // 1.) fetch the vertex itself
+      arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+      auto fakeResponse = std::make_unique<GeneralResponseMock>();
 
-    // 1.) fetch the vertex itself
-    arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
-    auto fakeResponse = std::make_unique<GeneralResponseMock>();
+      /*
+       *  Export to external method later (Create network request including options)
+       */
+      VPackBuilder leased;
+      leased.openObject();
+      leased.add("keys", VPackValue(VPackValueType::Array));
+      leased.add(VPackValue(vertex._id));
+      leased.close();  // 'keys' Array
+      leased.close();  // base object
 
-    /*
-     *  Export to external method later (Create network request including options)
-     */
-    VPackBuilder leased;
-    leased.openObject();
-    leased.add("keys", VPackValue(VPackValueType::Array));
-    leased.add(VPackValue(vertex._id));
-    leased.close();  // 'keys' Array
-    leased.close();  // base object
+      // Request muss ins array: preparedResponses
+      prep.setRequestType(arangodb::rest::RequestType::PUT);
 
-    // Request muss ins array: preparedResponses
-    prep.setRequestType(arangodb::rest::RequestType::PUT);
+      prep.addRestSuffix("traverser");
 
-    prep.addRestSuffix("traverser");
+      prep.addSuffix("vertex");
+      prep.addSuffix(basics::StringUtils::itoa(engineId));
+      prep.addBody(leased.slice());
 
-    prep.addSuffix("vertex");
-    prep.addSuffix(basics::StringUtils::itoa(engineId));
-    prep.addBody(leased.slice());
+      auto fakeRequest = prep.generateRequest();
+      InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
+                                          fakeResponse.release(), &queryRegistry};
 
-    auto fakeRequest = prep.generateRequest();
-    InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
-                                        fakeResponse.release(), &queryRegistry};
+      std::ignore = testee.execute();
 
-    std::ignore = testee.execute();
+      auto res = testee.stealResponse();
+      prep.rememberResponse(std::move(res));
+      preparedResponses.emplace_back(std::move(prep));
+    }
+    {
+      // 2.) fetch all connected edges requests
+      arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+      auto fakeResponse = std::make_unique<GeneralResponseMock>();
 
-    auto res = testee.stealResponse();
-    LOG_DEVEL << leased.toJson() << " -> " << static_cast<GeneralResponseMock*>(res.get())->_payload.toJson();
-    prep.rememberResponse(std::move(res));
-    preparedResponses.emplace_back(std::move(prep));
+      /*
+       *  Export to external method later (Create network request including options)
+       */
+      VPackBuilder leased;
+      leased.openObject();
+      leased.add("keys", VPackValue(vertex._id));
+      leased.add("backward", VPackValue(false));
+      leased.close();  // base object
 
-    // 2.) fetch all connected edges requests
+      // Request muss ins array: preparedResponses
+      prep.setRequestType(arangodb::rest::RequestType::PUT);
+
+      prep.addRestSuffix("traverser");
+
+      prep.addSuffix("edge");
+      prep.addSuffix(basics::StringUtils::itoa(engineId));
+      prep.addBody(leased.slice());
+
+      auto fakeRequest = prep.generateRequest();
+      InternalRestTraverserHandler testee{server.server(), fakeRequest.release(),
+                                          fakeResponse.release(), &queryRegistry};
+
+      std::ignore = testee.execute();
+
+      auto res = testee.stealResponse();
+      prep.rememberResponse(std::move(res));
+      preparedResponses.emplace_back(std::move(prep));
+    }
   }
 
   // Try without first, if not working:
