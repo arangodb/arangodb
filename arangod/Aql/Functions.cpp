@@ -8698,17 +8698,18 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
   }
 }
 
-static VPackBuilder buildKeyObject(VPackStringRef key, bool closeObject = true) {
-  VPackBuilder builder;
+static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
+  ;
   builder.openObject(true);
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
   if (closeObject) {
     builder.close();
   }
-  return builder;
 }
 
-static AqlValue ConvertToObject(VPackSlice input, bool allowKeyConversionToObject, bool canUseCustomKey, bool ignoreErrors) {
+static AqlValue ConvertToObject(transaction::Methods& trx, VPackSlice input,
+                                bool allowKeyConversionToObject,
+                                bool canUseCustomKey, bool ignoreErrors) {
   // input is not an object.
   // if this happens, it must be a string key
   if (!input.isString() || !allowKeyConversionToObject) {
@@ -8728,7 +8729,9 @@ static AqlValue ConvertToObject(VPackSlice input, bool allowKeyConversionToObjec
 
   // convert string key into object with { _key: "string" }
   TRI_ASSERT(allowKeyConversionToObject);
-  return AqlValue{buildKeyObject(input.stringRef()).slice()};
+  transaction::BuilderLeaser builder(&trx);
+  buildKeyObject(*builder.get(), input.stringRef());
+  return AqlValue{builder->slice()};
 }
 
 AqlValue Functions::MakeDistributeInput(arangodb::aql::ExpressionContext* expressionContext,
@@ -8738,28 +8741,29 @@ AqlValue Functions::MakeDistributeInput(arangodb::aql::ExpressionContext* expres
   VPackSlice const input = value.slice();  // will throw when wrong type
 
   if (!input.isObject()) {
+    transaction::Methods& trx = expressionContext->trx();
     VPackSlice flags = extractFunctionParameterValue(parameters, 1).slice();
     bool allowKeyConversionToObject = flags["allowKeyConversionToObject"].getBool();
     bool canUseCustomKey = flags["canUseCustomKey"].getBool();
     bool ignoreErrors = flags["ignoreErrors"].getBool();
-    return ConvertToObject(input, allowKeyConversionToObject, canUseCustomKey, ignoreErrors);
+    return ConvertToObject(trx, input, allowKeyConversionToObject, canUseCustomKey, ignoreErrors);
   }
   TRI_ASSERT(input.isObject());
 
   return AqlValue{input};
 }
 
-AqlValue Functions::MakeDistributeInputWithKeyCreation(arangodb::aql::ExpressionContext* expressionContext,
-                                                       AstNode const&,
-                                                       VPackFunctionParameters const& parameters) {
+AqlValue Functions::MakeDistributeInputWithKeyCreation(
+    arangodb::aql::ExpressionContext* expressionContext, AstNode const&,
+    VPackFunctionParameters const& parameters) {
   transaction::Methods& trx = expressionContext->trx();
   AqlValue value = extractFunctionParameterValue(parameters, 0);
-  
+
   VPackSlice opts = extractFunctionParameterValue(parameters, 2).slice();
   bool allowSpecifiedKeys = opts["allowSpecifiedKeys"].getBool();
   bool ignoreErrors = opts["ignoreErrors"].getBool();
   std::string const collectionName = opts["collection"].copyString();
-  
+
   // if empty, check alternative input register
   if (value.isNull(true)) {
     // value is set, but null
@@ -8769,10 +8773,11 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(arangodb::aql::Expression
     value = extractFunctionParameterValue(parameters, 1);
     allowSpecifiedKeys = false;
   }
-      
-  // TODO - use ignoreErrors in all error cases?
 
   if (collectionName.empty()) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_BAD_PARAMETER,
         "could not extract collection name from parameters");
@@ -8781,16 +8786,18 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(arangodb::aql::Expression
   std::shared_ptr<arangodb::LogicalCollection> logicalCollection;
   methods::Collections::lookup(trx.vocbase(), collectionName, logicalCollection);
   if (logicalCollection == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        "could not find collection " + collectionName);
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   "could not find collection " + collectionName);
   }
 
   bool canUseCustomKey = logicalCollection->usesDefaultShardKeys() || allowSpecifiedKeys;
 
   VPackSlice const input = value.slice();  // will throw when wrong type
   if (!input.isObject()) {
-    return ConvertToObject(input, true, canUseCustomKey, ignoreErrors);
+    return ConvertToObject(trx, input, true, canUseCustomKey, ignoreErrors);
   }
 
   TRI_ASSERT(input.isObject());
@@ -8799,44 +8806,53 @@ AqlValue Functions::MakeDistributeInputWithKeyCreation(arangodb::aql::Expression
   // we are responsible for creating keys if none present
 
   if (!buildNewObject && !canUseCustomKey) {
+    if (ignoreErrors) {
+      return AqlValue{};
+    }
     // the collection is not sharded by _key, but there is a _key present in
     // the data. a _key was given, but user is not allowed to specify _key
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
   }
 
   if (buildNewObject) {
-    VPackBuilder builder = buildKeyObject(VPackStringRef(logicalCollection->createKey(input)), false);
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(),
+                   VPackStringRef(logicalCollection->createKey(input)), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder.add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringRef(), cur.value);
     }
-    builder.close();
-    return AqlValue{builder.slice()};
+    builder->close();
+    return AqlValue{builder->slice()};
   }
-    
+
   return AqlValue{input};
 }
 
 AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* expressionContext,
                                              AstNode const&,
                                              VPackFunctionParameters const& parameters) {
+  transaction::Methods& trx = expressionContext->trx();
   AqlValue const& value = extractFunctionParameterValue(parameters, 0);
   VPackSlice input = value.slice();  // will throw when wrong type
   if (input.isString()) {
     // Need to fix this document.
     // We need id and key as input.
-    
+
     VPackStringRef s(input);
     size_t pos = s.find('/');
     if (pos == std::string::npos) {
-      return AqlValue{buildKeyObject(s).slice()};
+      transaction::BuilderLeaser builder(&trx);
+      buildKeyObject(*builder.get(), s);
+      return AqlValue{builder->slice()};
     }
     // s is an id string, so let's create an object with id + key
     auto key = s.substr(pos + 1);
-    VPackBuilder builder = buildKeyObject(key, false);
-    builder.add(StaticStrings::IdString, input);
-    builder.close();
-    
-    return AqlValue{builder.slice()};
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(), key, false);
+    builder->add(StaticStrings::IdString, input);
+    builder->close();
+
+    return AqlValue{builder->slice()};
   }
 
   // check input value
@@ -8850,28 +8866,29 @@ AqlValue Functions::MakeDistributeGraphInput(arangodb::aql::ExpressionContext* e
 
   if (!valid) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                    "invalid start vertex. Must either be "
-                                    "an _id string value or an object with _id. "
-                                    "Instead got: " + input.toJson());
+                                   "invalid start vertex. Must either be "
+                                   "an _id string value or an object with _id. "
+                                   "Instead got: " +
+                                       input.toJson());
   }
 
   if (!input.hasKey(StaticStrings::KeyString)) {
     // The input is an object, but only contains an _id, not a _key value that could be extracted.
     // We can work with _id value only however so let us do this.
     auto keyPart = transaction::helpers::extractKeyPart(idSlice);
-    VPackBuilder builder = buildKeyObject(VPackStringRef(keyPart), false);
+    transaction::BuilderLeaser builder(&trx);
+    buildKeyObject(*builder.get(), VPackStringRef(keyPart), false);
     for (auto cur : VPackObjectIterator(input)) {
-      builder.add(cur.key.stringRef(), cur.value);
+      builder->add(cur.key.stringRef(), cur.value);
     }
-    builder.close();
-    return AqlValue{builder.slice()};
+    builder->close();
+    return AqlValue{builder->slice()};
   }
 
   return AqlValue{input};
 }
 
-AqlValue Functions::NotImplemented(ExpressionContext* expressionContext,
-                                   AstNode const&,
+AqlValue Functions::NotImplemented(ExpressionContext* expressionContext, AstNode const&,
                                    VPackFunctionParameters const& params) {
   registerError(expressionContext, "UNKNOWN", TRI_ERROR_NOT_IMPLEMENTED);
   return AqlValue(AqlValueHintNull());
