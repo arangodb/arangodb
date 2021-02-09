@@ -721,6 +721,7 @@ Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods*
              return true; // return value does not matter here
            });
         TRI_ASSERT(success);
+        TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
         break;
       } else if (!s.IsNotFound()) {
         res.reset(rocksutils::convertStatus(s));
