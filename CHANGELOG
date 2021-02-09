@@ -1,3 +1,15 @@
+v3.7.8 (XXXX-XX-XX)
+-------------------
+
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
+
+
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
