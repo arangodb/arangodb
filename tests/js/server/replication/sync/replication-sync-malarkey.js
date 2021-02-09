@@ -282,17 +282,17 @@ function BaseTestConfig () {
       // And use the index entries in a query:
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn}
              FILTER doc.x == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn}
              FILTER doc.y == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn} 
              FILTER doc.z == i 
              RETURN doc._key`).toArray().length);
     },
@@ -365,17 +365,17 @@ function BaseTestConfig () {
       // And use the index entries in a query:
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn} 
              FILTER doc.x == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn} 
              FILTER doc.y == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
         `FOR i IN 1..100000
-           FOR doc IN collection 
+           FOR doc IN ${cn} 
              FILTER doc.z == i 
              RETURN doc._key`).toArray().length);
     },
