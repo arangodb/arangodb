@@ -619,7 +619,7 @@ Result RocksDBTransactionState::triggerIntermediateCommit(bool& hasPerformedInte
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  LOG_DEVEL << "INTERMEDIATE COMMIT!";
+  LOG_TOPIC("0fe63", DEBUG, Logger::ENGINES) << "INTERMEDIATE COMMIT!";
 #endif
 
   Result res = internalCommit();

@@ -254,6 +254,19 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*
     TRI_ASSERT(_cache.get() != nullptr);
   }
 }  
+  
+/// performs a preflight check for an insert operation, not carrying out any
+/// modifications to the index.
+/// the default implementation does nothing. indexes can override this and
+/// perform useful checks (uniqueness checks etc.) here
+Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/, 
+                                 RocksDBMethods* /*methods*/,
+                                 LocalDocumentId const& /*documentId*/,
+                                 arangodb::velocypack::Slice /*doc*/,
+                                 OperationOptions const& /*options*/) {
+  // default implementation does nothing - derived indexes can override this!
+  return {};
+}
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,

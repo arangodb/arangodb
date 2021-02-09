@@ -669,10 +669,73 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
   }
 }
 
+/// @brief returns whether the document can be inserted into the index
+/// (or if there will be a conflict)
+Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods* mthds,
+                                      LocalDocumentId const& documentId,
+                                      velocypack::Slice doc, OperationOptions const& options) {
+  Result res;
+    
+  // non-unique indexes will not cause any constraint violation
+  if (_unique) {
+    // unique indexes...
+
+    IndexOperationMode mode = options.indexOperationMode;
+    rocksdb::Status s;
+    ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+    ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+    ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
+
+    {
+      // rethrow all types of exceptions from here...
+      transaction::BuilderLeaser leased(&trx);
+      auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+
+      if (r != TRI_ERROR_NO_ERROR) {
+        return addErrorMsg(res, r);
+      }
+    }
+
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+
+    for (RocksDBKey const& key : elements) {
+      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+
+      if (s.ok()) {  // detected conflicting index entry
+        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        // find conflicting document's key
+        LocalDocumentId docId = RocksDBValue::documentId(existing);
+        auto success = _collection.getPhysical()->read(&trx, docId,
+           [&](LocalDocumentId const&, VPackSlice doc) {
+             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+             if (mode == IndexOperationMode::internal) {
+               // in this error mode, we return the conflicting document's key
+               // inside the error message string (and nothing else)!
+               res = Result{res.errorNumber(), key.copyString()};
+             } else {
+               // normal mode: build a proper error message
+               addErrorMsg(res, key.copyString());
+             }
+             return true; // return value does not matter here
+           });
+        TRI_ASSERT(success);
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
+        addErrorMsg(res);
+      }
+    }
+  }
+
+  return res;
+}
+
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
-                                 velocypack::Slice const doc, OperationOptions const& options) {
+                                 velocypack::Slice doc, OperationOptions const& options) {
   IndexOperationMode mode = options.indexOperationMode;
   Result res;
   rocksdb::Status s;
@@ -698,7 +761,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
-    for (RocksDBKey& key : elements) {
+    for (RocksDBKey const& key : elements) {
       if (!options.ignoreUniqueConstraints) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
@@ -718,14 +781,17 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
 
     if (res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-        // find conflicting document
+        // find conflicting document's key
         LocalDocumentId docId = RocksDBValue::documentId(existing);
         auto success = _collection.getPhysical()->read(&trx, docId,
            [&](LocalDocumentId const&, VPackSlice doc) {
              VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
              if (mode == IndexOperationMode::internal) {
+               // in this error mode, we return the conflicting document's key
+               // inside the error message string (and nothing else)!
                res = Result{res.errorNumber(), key.copyString()};
              } else {
+               // normal mode: build a proper error message
                addErrorMsg(res, key.copyString());
              }
              return true; // return value does not matter here

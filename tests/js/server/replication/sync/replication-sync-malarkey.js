@@ -147,7 +147,7 @@ function ReplicationIncrementalMalarkey () {
     },
     
     // create different state on follower
-    testMax: function () {
+    testRewriteEntireFollower: function () {
       let c = db._create(cn);
       let docs = [];
       for (let i = 0; i < 1 * 100 * 1000; ++i) {
@@ -177,10 +177,45 @@ function ReplicationIncrementalMalarkey () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 1 * 100 * 1000);
+      checkCountConsistency(cn, 100000);
     },
     
-    /*
+    // create different state on follower
+    testRewriteEntireFollowerSecondaryUniqueIndexes: function () {
+      let c = db._create(cn);
+      let docs = [];
+      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+        docs.push({ value: i });
+        if (docs.length === 10000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+     
+      db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1000000 } IN " + cn);
+      
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+
+      checkCountConsistency(cn, 100000);
+    },
+    
     testRevisionIdReuse: function () {
       let c = db._create(cn);
       let rev = c.insert({_key: "testi", value: 1 })._rev;
@@ -653,7 +688,7 @@ function ReplicationIncrementalMalarkey () {
       }
       
       checkCountConsistency(cn, expected);
-    }, */
+    }, 
   };
 }
 

@@ -259,8 +259,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       Result res = physical->insert(&trx, leaderDoc, mdr, options);
       
       if (res.fail()) {
-        if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-            res.errorMessage() > keySlice.stringView()) {
+        if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
           if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
             // already have exactly this revision no need to insert
@@ -1315,7 +1314,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
     return Result(ex.code());
   }
-  trx->addHint(Hints::Hint::NO_INDEXING);
+
+  // we must be able to read our own writes here - otherwise the end result
+  // can be wrong. do not enable NO_INDEXING here!
+  
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
   trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);
