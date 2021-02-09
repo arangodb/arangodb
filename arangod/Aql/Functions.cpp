@@ -8699,7 +8699,6 @@ AqlValue Functions::CallGreenspun(arangodb::aql::ExpressionContext* expressionCo
 }
 
 static void buildKeyObject(VPackBuilder& builder, VPackStringRef key, bool closeObject = true) {
-  ;
   builder.openObject(true);
   builder.add(StaticStrings::KeyString, VPackValuePair(key.data(), key.size(), VPackValueType::String));
   if (closeObject) {
