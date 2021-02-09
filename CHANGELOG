@@ -1,11 +1,15 @@
-v3.7.7 (XXXX-XX-XX)
+v3.7.8 (XXXX-XX-XX)
 -------------------
 
-* Split the update operations for the _fishbowl system collection with Foxx
-  apps into separate insert/replace and remove operations. This makes the
-  overall update not atomic, but as removes are unlikely here, we can now get
-  away with a simple multi-document insert-replace operation instead of a
-  truncate and an exclusive transaction, which was used before.
+* Split the update operations for the _fishbowl system collection with Foxx apps
+  into separate insert/replace and remove operations. This makes the overall
+  update not atomic, but as removes are unlikely here, we can now get away with
+  a simple multi-document insert-replace operation instead of a truncate and an
+  exclusive transaction, which was used before.
+
+
+v3.7.7 (XXXX-XX-XX)
+-------------------
 
 * Added metrics for document read and write operations:
   
