@@ -31,8 +31,8 @@ namespace arangodb {
 
 class RocksDBReplicationResult {
  public:
-  RocksDBReplicationResult(int errorNumber, uint64_t lastTick);
-  RocksDBReplicationResult(int errorNumber, char const* errorMessage, uint64_t lastTick);
+  RocksDBReplicationResult(ErrorCode errorNumber, uint64_t lastTick);
+  RocksDBReplicationResult(ErrorCode errorNumber, char const* errorMessage, uint64_t lastTick);
   void reset(Result const&);
   uint64_t maxTick() const;
   uint64_t lastScannedTick() const { return _lastScannedTick; }
@@ -45,7 +45,7 @@ class RocksDBReplicationResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
   std::string_view errorMessage() const { return _result.errorMessage(); }
 
   // access methods

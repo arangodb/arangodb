@@ -442,7 +442,7 @@ class Index {
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, int code,
+  arangodb::Result& addErrorMsg(Result& r, ErrorCode code,
                                 std::string const& key = "") {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);

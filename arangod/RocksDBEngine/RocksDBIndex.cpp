@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -322,6 +323,15 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
     }
   }
 }
+  
+/// @brief get index estimator, optional
+RocksDBCuckooIndexEstimatorType* RocksDBIndex::estimator() { 
+  return nullptr; 
+}
+
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) {}
+
+void RocksDBIndex::recalculateEstimates() {}
 
 RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectId, bool unique) {
   switch (type) {

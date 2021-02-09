@@ -40,7 +40,7 @@ class HandlerResult {
   explicit HandlerResult(arangodb::auth::Source const& source)
       : HandlerResult(TRI_ERROR_FAILED, source) {}
 
-  HandlerResult(int errorNumber, arangodb::auth::Source const& source)
+  HandlerResult(ErrorCode errorNumber, arangodb::auth::Source const& source)
       : _result(errorNumber), _authSource(source) {}
 
   HandlerResult(std::set<std::string> const& roles, auth::Source const& source)

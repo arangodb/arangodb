@@ -231,7 +231,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  ErrorCode res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, v8g->_vocbase, command, isSystem, res);
 
@@ -283,7 +283,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "registerTask() needs db RW permissions");
   }
 
-  int res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
+  auto res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
