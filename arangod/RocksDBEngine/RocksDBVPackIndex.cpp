@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
@@ -375,15 +376,14 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
       _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
 
-  if (!_unique && !ServerState::instance()->isCoordinator()) {
+  if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
-    _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         RocksDBIndex::ESTIMATOR_SIZE);
-    TRI_ASSERT(_estimator != nullptr);
   }
+  
   TRI_ASSERT(!_fields.empty());
-
   TRI_ASSERT(iid.isSet());
 
   fillPaths(_paths, _expanding);
@@ -391,11 +391,18 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
 
 /// @brief destroy the index
 RocksDBVPackIndex::~RocksDBVPackIndex() = default;
+  
+bool RocksDBVPackIndex::hasSelectivityEstimate() const {
+  return true;
+}
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
+  }
+  if (_estimator == nullptr) {
+    return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
@@ -1284,7 +1291,7 @@ std::unique_ptr<IndexIterator> RocksDBVPackIndex::iteratorForCondition(
 
 void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
                                       arangodb::transaction::Methods* trx) {
-  if (unique()) {
+  if (unique() || _estimator == nullptr) {
     return;
   }
   TRI_ASSERT(_estimator != nullptr);
@@ -1292,21 +1299,20 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   RocksDBIndex::afterTruncate(tick, trx);
 }
 
-RocksDBCuckooIndexEstimator<uint64_t>* RocksDBVPackIndex::estimator() {
+RocksDBCuckooIndexEstimatorType* RocksDBVPackIndex::estimator() {
   return _estimator.get();
 }
 
-void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> est) {
+void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType> est) {
   TRI_ASSERT(!_unique);
   TRI_ASSERT(_estimator == nullptr || _estimator->appliedSeq() <= est->appliedSeq());
   _estimator = std::move(est);
 }
 
 void RocksDBVPackIndex::recalculateEstimates() {
-  if (unique()) {
+  if (unique() || _estimator == nullptr) {
     return;
   }
-
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 

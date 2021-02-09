@@ -28,6 +28,7 @@
 #include "Basics/system-compiler.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"

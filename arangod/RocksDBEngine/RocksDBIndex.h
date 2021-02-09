@@ -125,9 +125,9 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
   /// @brief get index estimator, optional
-  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() { return nullptr; }
-  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
-  virtual void recalculateEstimates() {}
+  virtual RocksDBCuckooIndexEstimatorType* estimator();
+  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>);
+  virtual void recalculateEstimates();
 
   bool isPersistent() const override final { return true; }
 
