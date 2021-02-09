@@ -134,6 +134,19 @@ function BaseTestConfig () {
   };
 
   return {
+
+    tearDown: function () {
+      connectToFollower();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      db._drop(cn);
+    },
+
     // create different state on follower
     testDowngradeManyRevisions: function () {
       let c = db._create(cn);
@@ -775,21 +788,8 @@ function ReplicationIncrementalMalarkeyOldFormat () {
 
       connectToLeader();
       // clear all failure points, but enforce old-style collections
-      arango.DELETE("/_admin/debug/failat");
       clearFailurePoints();
       setFailurePoint("disableRevisionsAsDocumentIds");
-    },
-
-    tearDown: function () {
-      connectToFollower();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-
-      connectToLeader();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
     },
   };
 
@@ -807,18 +807,6 @@ function ReplicationIncrementalMalarkeyNewFormat () {
       clearFailurePoints();
       db._drop(cn);
 
-      connectToLeader();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-    },
-
-    tearDown: function () {
-      connectToFollower();
-      // clear all failure points
-      clearFailurePoints();
-      db._drop(cn);
-      
       connectToLeader();
       // clear all failure points
       clearFailurePoints();
