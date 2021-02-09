@@ -680,19 +680,19 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
   key.constructCounterValue(objectId);
   rocksdb::Status s = wb.Delete(cf, key.string());
   if (!s.ok()) {
-    LOG_TOPIC("93718", ERR, Logger::ENGINES)
+    LOG_TOPIC("93f18", ERR, Logger::ENGINES)
         << "could not delete counter value for collection with objectId '"
         << objectId << "': " << s.ToString();
     return rocksutils::convertStatus(s);
   } else {
-    LOG_TOPIC("93719", TRACE, Logger::ENGINES)
+    LOG_TOPIC("93f19", TRACE, Logger::ENGINES)
         << "deleted counter for collection with objectId '" << objectId << "'";
   }
 
   key.constructKeyGeneratorValue(objectId);
   s = wb.Delete(cf, key.string());
   if (!s.ok()) {
-    LOG_TOPIC("af3dc", ERR, Logger::ENGINES)
+    LOG_TOPIC("affdc", ERR, Logger::ENGINES)
         << "could not delete key generator value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }
@@ -700,7 +700,7 @@ Result RocksDBMetadata::deleteCollectionMetaBatch(uint64_t objectId,
   key.constructRevisionTreeValue(objectId);
   s = wb.Delete(cf, key.string());
   if (!s.ok()) {
-    LOG_TOPIC("af3dd", ERR, Logger::ENGINES)
+    LOG_TOPIC("affdd", ERR, Logger::ENGINES)
         << "could not delete revision tree value: " << s.ToString();
     return rocksutils::convertStatus(s);
   }
