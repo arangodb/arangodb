@@ -386,6 +386,15 @@ static void DTraceHttpCommTaskProcessRequest(size_t) {}
 #endif
 
 template <SocketType T>
+std::string const& HttpCommTask<T>::url() {
+  if (this->_url.empty() && _request != nullptr) {
+    this->_url = std::string((_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())) +
+      (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath());
+  }
+  return this->_url;
+}
+
+template <SocketType T>
 void HttpCommTask<T>::processRequest() {
   DTraceHttpCommTaskProcessRequest((size_t)this);
 
@@ -420,10 +429,7 @@ void HttpCommTask<T>::processRequest() {
     LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
         << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << (_request->databaseName().empty() ? "" : "/_db/" + _request->databaseName())
-        << (Logger::logRequestParameters() ? _request->fullUrl() : _request->requestPath())
-        << "\"";
+        << HttpRequest::translateMethod(_request->requestType()) << "\",\"" << url() << "\"";
 
     VPackStringRef body = _request->rawPayload();
     if (!body.empty() && Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
@@ -583,15 +589,15 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   TRI_ASSERT(_response == nullptr);
   _response = response.stealBody();
   // append write buffer and statistics
-  double const totalTime = stat.ELAPSED_SINCE_READ_START();
 
+  using namespace std::chrono;
   // and give some request information
   LOG_TOPIC("8f555", DEBUG, Logger::REQUESTS)
       << "\"http-request-end\",\"" << (void*)this << "\",\""
       << this->_connectionInfo.clientAddress << "\",\""
-      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser))
-      << "\",\"" << static_cast<int>(response.responseCode()) << "\","
-      << Logger::FIXED(totalTime, 6);
+      << GeneralRequest::translateMethod(::llhttpToRequestType(&_parser)) << "\",\""
+      << url() << "\",\"" << static_cast<int>(response.responseCode()) << "\","
+      << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << "," << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6) ;
 
   // sendResponse is always called from a scheduler thread
   boost::asio::post(this->_protocol->context.io_context,

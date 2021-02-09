@@ -103,6 +103,11 @@ bool AqlItemBlockInputMatrix::upstreamHasMore() const noexcept {
   return upstreamState() == ExecutorState::HASMORE;
 }
 
+bool AqlItemBlockInputMatrix::hasValidRow() const noexcept {
+  return _shadowRow.isInitialized() ||
+         (_aqlItemMatrix != nullptr && _aqlItemMatrix->size() != 0);
+}
+
 bool AqlItemBlockInputMatrix::hasDataRow() const noexcept {
   if (_aqlItemMatrix == nullptr) {
     return false;
@@ -173,6 +178,33 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() noexcept {
   // Else we did already skip once.
   // nothing to do
   return 0;
+}
+
+size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
+  if (_aqlItemMatrix == nullptr) {
+    // Have not been initialized.
+    // Needs to be initialized before.
+    TRI_ASSERT(!hasShadowRow());
+    TRI_ASSERT(!hasDataRow());
+    return 0;
+  }
+  size_t skipped = 0;
+  std::tie(skipped, _shadowRow) = _aqlItemMatrix->skipAllShadowRowsOfDepth(depth);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Long assert block
+  if (_shadowRow.isInitialized()) {
+    // This Row is the first that we are not allowed to skip
+    // We have now set this range to produce this row next
+    TRI_ASSERT(!_shadowRow.isRelevant());
+    TRI_ASSERT(_shadowRow.getDepth() > depth);
+  } else {
+    // We have not found a shadowRow that is not to skip.
+    // Simply erased the Matrix
+    TRI_ASSERT(_aqlItemMatrix->numberOfBlocks() == 0);
+  }
+#endif
+  resetBlockIndex();
+  return skipped;
 }
 
 ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {

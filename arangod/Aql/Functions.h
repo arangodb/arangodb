@@ -413,6 +413,30 @@ struct Functions {
                      VPackFunctionParameters const&);
   static AqlValue Rand(arangodb::aql::ExpressionContext*, transaction::Methods*,
                        VPackFunctionParameters const&);
+  static AqlValue BitAnd(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+  static AqlValue BitOr(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                        VPackFunctionParameters const&);
+  static AqlValue BitXOr(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                         VPackFunctionParameters const&);
+  static AqlValue BitNegate(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                            VPackFunctionParameters const&);
+  static AqlValue BitTest(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                          VPackFunctionParameters const&);
+  static AqlValue BitPopcount(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                              VPackFunctionParameters const&);
+  static AqlValue BitShiftLeft(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+  static AqlValue BitShiftRight(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+  static AqlValue BitConstruct(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                               VPackFunctionParameters const&);
+  static AqlValue BitDeconstruct(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                 VPackFunctionParameters const&);
+  static AqlValue BitFromString(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                                VPackFunctionParameters const&);
+  static AqlValue BitToString(arangodb::aql::ExpressionContext*, transaction::Methods*,
+                              VPackFunctionParameters const&);
   static AqlValue FirstDocument(arangodb::aql::ExpressionContext*,
                                 transaction::Methods*, VPackFunctionParameters const&);
   static AqlValue FirstList(arangodb::aql::ExpressionContext*,
@@ -489,6 +513,10 @@ struct Functions {
   /// @brief dummy function that will only throw an error when called
   static AqlValue NotImplemented(arangodb::aql::ExpressionContext*,
                                  transaction::Methods*, VPackFunctionParameters const&);
+
+  /// @brief maximum precision for bit operations
+  static constexpr uint64_t bitFunctionsMaxSupportedBits = 32;
+  static constexpr uint64_t bitFunctionsMaxSupportedValue = ((uint64_t(1) << bitFunctionsMaxSupportedBits) - uint64_t(1));
 };
 
 }  // namespace aql

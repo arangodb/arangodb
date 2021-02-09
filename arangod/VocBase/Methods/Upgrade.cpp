@@ -140,7 +140,12 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   switch (vinfo.status) {
     case VersionResult::INVALID:
       TRI_ASSERT(false);  // never returned by Version::check
+      break;
     case VersionResult::VERSION_MATCH:
+      if (isUpgrade) {
+        dbflag = Flags::DATABASE_UPGRADE; // forcing the upgrade as server is in 
+                                          // upgrade state with some features disabled
+      }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
@@ -305,8 +310,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     // check that the database occurs in the database list
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
-      // an upgrade-only task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
+      // an one-shot task can be viewed as executed.
+      if (isLocal && dbFlag == DATABASE_INIT && (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)

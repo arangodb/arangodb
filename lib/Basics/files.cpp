@@ -155,7 +155,7 @@ static constexpr bool IsDirSeparatorChar(char c) {
 /// @note path will be modified in-place
 ////////////////////////////////////////////////////////////////////////////////
 
-static void NormalizePath(std::string& path) {
+void TRI_NormalizePath(std::string& path) {
   for (auto& it : path) {
     if (IsDirSeparatorChar(it)) {
       it = TRI_DIR_SEPARATOR_CHAR;
@@ -209,7 +209,7 @@ static std::string LocateConfigDirectoryEnv() {
   if (!TRI_GETENV("ARANGODB_CONFIG_PATH", r)) {
     return std::string();
   }
-  NormalizePath(r);
+  TRI_NormalizePath(r);
   while (!r.empty() && IsDirSeparatorChar(r[r.size() - 1])) {
     r.pop_back();
   }

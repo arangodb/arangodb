@@ -74,6 +74,8 @@ class HttpCommTask final : public GeneralCommTask<T> {
   void writeResponse(RequestStatistics::Item stat);
 
  private:
+  std::string const& url();
+
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;

@@ -168,6 +168,14 @@ class RequestStatistics {
       }
     }
 
+    double ELAPSED_WHILE_QUEUED() const {
+      if (_stat != nullptr) {
+        return  _stat->_queueEnd - _stat->_queueStart;
+      } else {
+        return 0.0;
+      }
+    }
+
     void SET_SUPERUSER() const {
       if (_stat != nullptr) {
         _stat->_superuser = true;

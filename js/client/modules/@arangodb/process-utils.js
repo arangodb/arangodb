@@ -609,6 +609,41 @@ function summarizeStats(deltaStats) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief aggregates information from /proc about the SUT
+// //////////////////////////////////////////////////////////////////////////////
+
+function getMemProfSnapshot(instanceInfo, options, counter) {
+  if (options.memprof) {
+    let opts = Object.assign(makeAuthorizationHeaders(options),
+                             { method: 'GET' });
+
+    instanceInfo.arangods.forEach((arangod) => {
+      let fn = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.heap`);
+      let heapdumpReply = download(arangod.url + '/_admin/status?memory=true', opts);
+      if (heapdumpReply.code === 200) {
+        fs.write(fn, heapdumpReply.body);
+        print(CYAN + Date() + ` Saved ${fn}` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring Heapdump for ${fn} failed!` + RESET);
+        print(heapdumpReply);
+      }
+
+      let fnMetrics = fs.join(arangod.rootDir, `${arangod.role}_${arangod.pid}_${counter}_.metrics`);
+      let metricsReply = download(arangod.url + '/_admin/metrics', opts);
+      if (metricsReply.code === 200) {
+        fs.write(fnMetrics, metricsReply.body);
+        print(CYAN + Date() + ` Saved ${fnMetrics}` + RESET);
+      } else if (metricsReply.code === 503) {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} not possible!` + RESET);
+      } else {
+        print(RED + Date() + ` Acquiring metrics for ${fnMetrics} failed!` + RESET);
+        print(metricsReply);
+      }
+    });
+  }
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief if we forgot about processes, this safe guard will clean up and mark failed
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -956,6 +991,7 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   };
   if (options.username) {
     args['server.username'] = options.username;
+    args['server.password'] = "";
   }
   if (options.password) {
     args['server.password'] = options.password;
@@ -963,10 +999,14 @@ function runArangoBackup (options, instanceInfo, which, cmds, rootDir, coreCheck
   
   args = Object.assign(args, cmds);
 
+  args['log.level'] = 'info';
   if (!args.hasOwnProperty('verbose')) {
     args['log.level'] = 'warning';
   }
-  
+  if (options.extremeVerbosity) {
+    args['log.level'] = 'trace';
+  }
+
   args['flatCommands'] = [which];
 
   return executeAndWait(ARANGOBACKUP_BIN, toArgv(args), options, 'arangobackup', instanceInfo.rootDir, coreCheck);
@@ -1912,6 +1952,10 @@ function startArango (protocol, options, addArgs, rootDir, role) {
     port = endpoint.split(':').pop();
   }
 
+  if (options.memprof) {
+    process.env['MALLOC_CONF'] = 'prof:true';
+  }
+
   let instanceInfo = {
     role,
     port,
@@ -2226,6 +2270,7 @@ exports.shutdownInstance = shutdownInstance;
 exports.getProcessStats = getProcessStats;
 exports.getDeltaProcessStats = getDeltaProcessStats;
 exports.summarizeStats = summarizeStats;
+exports.getMemProfSnapshot = getMemProfSnapshot;
 exports.startArango = startArango;
 exports.startInstance = startInstance;
 exports.reStartInstance = reStartInstance;
