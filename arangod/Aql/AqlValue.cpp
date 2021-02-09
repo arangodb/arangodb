@@ -33,6 +33,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-vpack.h"
+#include <utils/math_utils.hpp>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -55,7 +56,7 @@ namespace {
 static inline uint64_t toUInt64(int64_t v) noexcept {
   // If v is negative, we need to add 2^63 to make it positive,
   // before we can cast it to an uint64_t:
-  uint64_t shift2 = 1ULL << 63;
+  constexpr uint64_t shift2 = 1ULL << 63;
   int64_t shift = static_cast<int64_t>(shift2 - 1);
   return v >= 0 ? static_cast<uint64_t>(v) : static_cast<uint64_t>((v + shift) + 1) + shift2;
   // Note that g++ and clang++ with -O3 compile this away to
@@ -65,18 +66,11 @@ static inline uint64_t toUInt64(int64_t v) noexcept {
 
 // returns number of bytes required to store the value in 2s-complement
 static inline uint8_t intLength(int64_t value) noexcept {
-  if (value >= -0x80 && value <= 0x7f) {
-    // shortcut for the common case
-    return 1;
-  }
   uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
                           : static_cast<uint64_t>(-(value + 1));
-  uint8_t xSize = 0;
-  do {
-    xSize++;
-    x >>= 8;
-  } while (x >= 0x80);
-  return xSize + 1;
+  // OR 0x1 since log2_floor_64 does not accept 0
+  // we calculate 1 + floor(log2(value)) / 8 where log2 gives us most significant 1 index
+  return static_cast<uint8_t>((irs::math::log2_floor_64(x | 0x1) >> 3) + 1);
 }
 }  // namespace
 
@@ -1074,8 +1068,8 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
 /// @brief comparison for AqlValue objects
 int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
-  AqlValue::AqlValueType const leftType = left.type();
-  AqlValue::AqlValueType const rightType = right.type();
+  AqlValue::AqlValueType const leftType = static_cast<AqlValueType>(left._data.internal[sizeof(left._data.internal) - 1]);
+  AqlValue::AqlValueType const rightType = static_cast<AqlValueType>(right._data.internal[sizeof(right._data.internal) - 1]);
 
   if (leftType != rightType) {
     // TODO implement this case more efficiently
@@ -1188,12 +1182,8 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
     uint64_t dv;
     memcpy(&dv, &value, sizeof(double));
     VPackValueLength vSize = sizeof(double);
-    int i = 1;
-    for (uint64_t x = dv; vSize > 0; vSize--) {
-      _data.internal[i] = x & 0xff;
-      x >>= 8;
-      ++i;
-    }
+    dv = arangodb::basics::hostToLittle(dv);
+    memcpy(&_data.internal[1], &dv, sizeof(dv));
   }
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1217,12 +1207,8 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
                      : static_cast<uint64_t>(value + shift) + shift;
     }
     _data.internal[0] = 0x1fU + vSize;
-    int i = 1;
-    while (vSize-- > 0 && i < 16) {
-      _data.internal[i] = x & 0xffU;  // GCC-10: complains about possible out of bounds access (i = 16)
-      ++i;
-      x >>= 8;
-    }
+    x = arangodb::basics::hostToLittle(x);
+    memcpy(&_data.internal[1], &x, sizeof(x));
   }
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1235,14 +1221,10 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   } else {
     // UInt, 0x28 - 0x2f
     int i = 1;
-    uint8_t vSize = 0;
-    do {
-      vSize++;
-      _data.internal[i] = static_cast<uint8_t>(value & 0xffU);
-      ++i;
-      value >>= 8;
-    } while (value != 0);
+    uint8_t vSize = intLength(value);
     _data.internal[0] = 0x27U + vSize;
+    value = arangodb::basics::hostToLittle(value);
+    memcpy(&_data.internal[1], &value, sizeof(value));
   }
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1272,11 +1254,8 @@ AqlValue::AqlValue(char const* value, size_t length) {
     setManagedSliceData(MemoryOriginType::New, byteSize);
     _data.slice = new uint8_t[byteSize];
     _data.slice[0] = static_cast<uint8_t>(0xbfU);
-    uint64_t v = length;
-    for (uint64_t i = 0; i < 8; ++i) {
-      _data.slice[i + 1] = v & 0xffU;
-      v >>= 8;
-    }
+    uint64_t v = arangodb::basics::hostToLittle(length);
+    memcpy(&_data.slice[1], &v, sizeof(v));
     memcpy(&_data.slice[9], value, length);
   }
 }

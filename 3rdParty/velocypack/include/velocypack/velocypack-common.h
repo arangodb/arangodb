@@ -213,13 +213,17 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
-  }
+  //uint64_t x = 8;
+  //uint8_t const* end = start + length;
+
+  T value{0};
+  memcpy(&value, start, length); //FIXME: add endianesss conversion!
+
+  //T value = static_cast<T>(*start++);
+  //while (start < end) {
+  //  value += static_cast<T>(*start++) << x;
+  //  x += 8;
+  //}
   return value;
 }
 
@@ -230,13 +234,8 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   VELOCYPACK_ASSERT(length > 0);
   VELOCYPACK_ASSERT(length <= sizeof(T));
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
-  }
+  T value{0}; //FIXME: add endianesss conversion!
+  memcpy(&value, start, length);
   return value;
 }
 
