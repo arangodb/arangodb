@@ -170,9 +170,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       "&batchId=" + std::to_string(config.batch.id);
   auto headers = arangodb::replutils::createHeaders();
 
-  std::string msg = "fetching documents by revision for collection '" +
-                    collection.name() + "' from " + url;
-  config.progress.set(msg);
+  config.progress.set("fetching documents by revision for collection '" +
+                      collection.name() + "' from " + url);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
     keyBuilder->clear();
@@ -238,6 +237,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                             config.leader.endpoint, url,
                             ": response is not an array"));
     }
+  
+    config.progress.set("applying documents by revision for collection '" + collection.name() + "'");
 
     for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
       if (!leaderDoc.isObject()) {

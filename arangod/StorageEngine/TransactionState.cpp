@@ -62,12 +62,10 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _id(tid),
       _registeredTransaction(false) {
 
-  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
-    _options.intermediateCommitCount = 100;
-  }
-  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
-    _options.intermediateCommitCount = 1000;
-  }
+  // patch intermediateCommitCount for testing
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  transaction::Options::adjustIntermediateCommitCount(_options);
+#endif
 }
 
 /// @brief free a transaction container

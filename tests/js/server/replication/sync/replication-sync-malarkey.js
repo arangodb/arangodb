@@ -294,17 +294,17 @@ function BaseTestConfig () {
       }
       // And use the index entries in a query:
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.x == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.y == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
              RETURN doc._key`).toArray().length);
@@ -377,17 +377,17 @@ function BaseTestConfig () {
       }
       // And use the index entries in a query:
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.x == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.y == i 
              RETURN doc._key`).toArray().length);
       assertEqual(100000, db._query(
-        `FOR i IN 1..100000
+        `FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
              RETURN doc._key`).toArray().length);
@@ -869,7 +869,7 @@ function BaseTestConfig () {
   };
 }
 
-function ReplicationIncrementalMalarkeyOldFormat () {
+function ReplicationIncrementalMalarkeyOldFormat() {
   'use strict';
 
   let suite = {
@@ -890,7 +890,7 @@ function ReplicationIncrementalMalarkeyOldFormat () {
   return suite;
 }
 
-function ReplicationIncrementalMalarkeyNewFormat () {
+function ReplicationIncrementalMalarkeyNewFormat() {
   'use strict';
 
   let suite = {
@@ -911,11 +911,35 @@ function ReplicationIncrementalMalarkeyNewFormat () {
   return suite;
 }
 
+function ReplicationIncrementalMalarkeyNewFormatIntermediateCommits() {
+  'use strict';
+
+  let suite = {
+    setUp: function () {
+      connectToFollower();
+      // clear all failure points
+      clearFailurePoints();
+      setFailurePoint("TransactionState::intermediateCommitCount10000");
+      db._drop(cn);
+
+      connectToLeader();
+      // clear all failure points
+      clearFailurePoints();
+      setFailurePoint("TransactionState::intermediateCommitCount10000");
+      db._drop(cn);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_NewFormatIntermediateCommit');
+  return suite;
+}
+
 let res = arango.GET("/_admin/debug/failat");
 if (res === true) {
   // tests only work when compiled with -DUSE_FAILURE_TESTS
   jsunity.run(ReplicationIncrementalMalarkeyOldFormat);
   jsunity.run(ReplicationIncrementalMalarkeyNewFormat);
+  jsunity.run(ReplicationIncrementalMalarkeyNewFormatIntermediateCommits);
 }
 
 return jsunity.done();

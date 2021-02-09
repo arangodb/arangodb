@@ -542,7 +542,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
         options.indexOperationMode = arangodb::IndexOperationMode::internal;
         
         if (res.ok()) {
-          // all good, we can exist the try loop now!
+          // all good, we can exit the retry loop now!
           break;
         }
        
