@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include <atomic>
-#include <cstddef>
+#include <cstdint>
 
 namespace arangodb {
 class GlobalResourceMonitor;
@@ -75,19 +75,19 @@ struct alignas(64) ResourceMonitor final {
   /// for this, we simply divide the size by a constant value, which is large
   /// enough so that many subsequent small allocations mostly fall into the
   /// same bucket.
-  static constexpr std::size_t numBuckets(std::size_t value) noexcept {
+  static constexpr std::int64_t numBuckets(std::uint64_t value) noexcept {
     // this is intentionally an integer division, which truncates any remainders.
     // we want this to be fast, so bucketSize should be a power of 2 and the div
     // operation can be substituted by a bit shift operation.
     static_assert(bucketSize != 0);
-    static_assert((bucketSize % 256) == 0);
-    return value / bucketSize;
+    static_assert((bucketSize & (bucketSize - 1)) == 0);
+    return static_cast<std::int64_t>(value / bucketSize);
   }
 
  private:
-  std::atomic<std::size_t> _current;
-  std::atomic<std::size_t> _peak;
-  std::size_t _limit;
+  std::atomic<std::uint64_t> _current;
+  std::atomic<std::uint64_t> _peak;
+  std::uint64_t _limit;
   GlobalResourceMonitor& _global;
 };
 

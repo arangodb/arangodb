@@ -68,8 +68,8 @@ std::size_t ResourceMonitor::memoryLimit() const noexcept {
 /// the peak memory usage value is updated with a CAS operation, so again
 /// there will no be lost updates.
 void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
-  std::size_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
-  std::size_t const current = previous + value;
+  std::uint64_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
+  std::uint64_t const current = previous + value;
   TRI_ASSERT(current >= value);
   
   // now calculate if the number of buckets used by instance's allocations stays the 
@@ -85,12 +85,40 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   // this idea is based on suggestions from @dothebart and @mpoeter for reducing the 
   // number of updates to the shared global memory usage counter, which very likely
   // would be a source of contention in case multiple queries execute in parallel.
-  std::size_t const previousBuckets = numBuckets(previous);
-  std::size_t const currentBuckets = numBuckets(current);
+  std::uint64_t const previousBuckets = numBuckets(previous);
+  std::uint64_t const currentBuckets = numBuckets(current);
   TRI_ASSERT(currentBuckets >= previousBuckets);
-  std::size_t diff = currentBuckets - previousBuckets;
+  auto diff = currentBuckets - previousBuckets;
   
   if (diff != 0) {
+    auto rollback = [this, value, diff]() {
+      // When rolling back, we have to consider that our change to the local memory usage
+      // might have affected other threads.
+      // Suppose we have a blocksize of 3 and a global memory limit of 9 (=3*3).
+      //   - Thread A increments local memory by 5 (=5) and global memory by 1*3
+      //   - Thread B increments local memory by 8 (=13) and attempts to update global memory by 3*3,
+      //     which would exceed the limit, but before we can rollback the update to the local memory,
+      //     Thread A already decreases by 5 again (=8), so Thread A would decrease global memory by 2*3!
+      // Thread A first increases by 1*3, but later decreases by 2*3 - this can cause the global memory
+      // to underflow! The reason for this difference is due to the change to local memory by Thread B,
+      // so any such difference has to be considered during rollback.
+      // 
+      // When Thread B now performs its rollback - decreasing by 8 (=0) - we would decrease global
+      // memory by 2*3, but our initial attempt to increase was 3*3 - this is exactly the difference
+      // of 1*3 that Thread A has decreased more, so we have to take this into account and increase
+      // global memory by 1*3 to balance this out.
+      std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
+      std::uint64_t adjustedCurrent = adjustedPrevious - value;
+  
+      auto adjustedDiff = diff - (numBuckets(adjustedPrevious) - numBuckets(adjustedCurrent));
+      if (adjustedDiff != 0) {
+        TRI_ASSERT(adjustedDiff == 1 || adjustedDiff == -1);
+        // adjustment can be off by at most 1.
+        // forceIncreaseMemoryUsage takes a signed int64, so we can increase/decrease
+        _global.forceUpdateMemoryUsage(adjustedDiff * bucketSize);
+      }
+    };
+    
     // number of buckets has changed, so this is either a substantial allocation or
     // we have piled up changes by lots of small allocations so far.
     // time for some memory expensive checks now...
@@ -99,17 +127,7 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.
-      std::size_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
-      std::size_t adjustedCurrent = adjustedPrevious - value;
-  
-      std::size_t adjustedDiff = numBuckets(adjustedPrevious) - numBuckets(adjustedCurrent);
-      if (adjustedDiff != diff) {
-        if (adjustedDiff > diff) {
-          _global.forceIncreaseMemoryUsage((adjustedDiff - diff) * bucketSize);
-        } else {
-          _global.decreaseMemoryUsage((diff - adjustedDiff) * bucketSize);
-        }
-      }
+      rollback();
 
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
@@ -120,7 +138,7 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // now modify the global counter value, too.
     if (!_global.increaseMemoryUsage(diff * bucketSize)) {
       // the allocation would exceed the global maximum value, so we need to roll back.
-      _current.fetch_sub(value, std::memory_order_relaxed);
+      rollback();
 
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "global memory limit exceeded");

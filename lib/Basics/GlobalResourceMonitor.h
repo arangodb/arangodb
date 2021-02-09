@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 
 #include <atomic>
-#include <cstddef>
+#include <cstdint>
 
 namespace arangodb {
 
@@ -41,13 +41,13 @@ class alignas(64) GlobalResourceMonitor final {
         _limit(0) {}
 
   /// @brief set the global memory limit
-  void memoryLimit(std::size_t value) noexcept;
+  void memoryLimit(std::int64_t value) noexcept;
 
   /// @brief return the global memory limit
-  std::size_t memoryLimit() const noexcept;
+  std::int64_t memoryLimit() const noexcept;
 
   /// @brief return the current global memory usage
-  std::size_t current() const noexcept;
+  std::int64_t current() const noexcept;
   
   /// @brief the current memory usage to zero
   void clear() noexcept;
@@ -55,12 +55,16 @@ class alignas(64) GlobalResourceMonitor final {
   /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
   /// memory limit, does not perform the increase and returns false. if increasing
   /// succeds, the global value is modified and true is returned
-  [[nodiscard]] bool increaseMemoryUsage(std::size_t value) noexcept;
-  
-  void forceIncreaseMemoryUsage(std::size_t value) noexcept;
+  /// Note: value must be >= 0
+  [[nodiscard]] bool increaseMemoryUsage(std::int64_t value) noexcept;
   
   /// @brief decrease current global memory usage by <value> bytes. will not throw
-  void decreaseMemoryUsage(std::size_t value) noexcept;
+  /// Note: value must be >= 0
+  void decreaseMemoryUsage(std::int64_t value) noexcept;
+
+  /// @brief Unconditionally updates the current memory usage with the given value.
+  /// Since the parameter is signed, this method can increase or decrease!
+  void forceUpdateMemoryUsage(std::int64_t value) noexcept;
 
   /// @brief returns a reference to a global shared instance
   static GlobalResourceMonitor& instance() noexcept;
@@ -74,11 +78,11 @@ class alignas(64) GlobalResourceMonitor final {
   /// allocation/deallocation. it is intentionally _not_ updated on every
   /// small allocation/deallocation. the granularity for the values in this
   /// counter is bucketSize.
-  std::atomic<std::size_t> _current;
+  std::atomic<std::int64_t> _current;
 
   /// @brief maximum allowed global memory limit for all tracked operations combined.
   /// a value of 0 means that there will be no global limit enforced.
-  std::size_t _limit;
+  std::int64_t _limit;
 };
 
 }  // namespace arangodb

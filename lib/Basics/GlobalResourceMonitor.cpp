@@ -34,17 +34,18 @@ arangodb::GlobalResourceMonitor instance;
 namespace arangodb {
 
 /// @brief set the global memory limit
-void GlobalResourceMonitor::memoryLimit(std::size_t value) noexcept {
+void GlobalResourceMonitor::memoryLimit(std::int64_t value) noexcept {
+  TRI_ASSERT(value > 0);
   _limit = value;
 }
   
 /// @brief return the global memory limit
-std::size_t GlobalResourceMonitor::memoryLimit() const noexcept {
+std::int64_t GlobalResourceMonitor::memoryLimit() const noexcept {
   return _limit;
 }
   
 /// @brief return the current global memory usage
-std::size_t GlobalResourceMonitor::current() const noexcept {
+std::int64_t GlobalResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }
 
@@ -56,32 +57,29 @@ void GlobalResourceMonitor::clear() noexcept {
 /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
 /// memory limit, does not perform the increase and returns false. if increasing
 /// succeds, the global value is modified and true is returned
-bool GlobalResourceMonitor::increaseMemoryUsage(std::size_t value) noexcept {
-  std::size_t previous = _current.fetch_add(value, std::memory_order_relaxed);
-  LOG_DEVEL << __func__ << ": previous: " << previous << ", value: " << value;
-    
+bool GlobalResourceMonitor::increaseMemoryUsage(std::int64_t value) noexcept {
+  TRI_ASSERT(value >= 0);
+  auto previous = _current.fetch_add(value, std::memory_order_relaxed);
   if (_limit > 0 && ADB_UNLIKELY(previous + value > _limit)) {
     // the allocation would exceed the global maximum value, so we need to roll back.
     // revert the change to the global counter
-  LOG_DEVEL << __func__ << " - LIMIT REACHED. ROLLING BACK!!!";
     _current.fetch_sub(value, std::memory_order_relaxed);
     return false;
   }
 
   return true;
 }
-
-void GlobalResourceMonitor::forceIncreaseMemoryUsage(std::size_t value) noexcept {
-  _current.fetch_add(value, std::memory_order_relaxed);
-}
   
 /// @brief decrease current global memory usage by <value> bytes. will not throw
-void GlobalResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
-  [[maybe_unused]] std::size_t previous = _current.fetch_sub(value, std::memory_order_relaxed);
-  LOG_DEVEL << __func__ << ": previous: " << previous << ", value: " << value;
-  TRI_ASSERT(previous >= value);
+void GlobalResourceMonitor::decreaseMemoryUsage(std::int64_t value) noexcept {
+  TRI_ASSERT(value >= 0);
+  _current.fetch_sub(value, std::memory_order_relaxed);
 }
-  
+ 
+void GlobalResourceMonitor::forceUpdateMemoryUsage(std::int64_t value) noexcept {
+  _current.fetch_add(value, std::memory_order_relaxed);
+}
+
 /// @brief returns a reference to a global shared instance
 /*static*/ GlobalResourceMonitor& GlobalResourceMonitor::instance() noexcept {
   return ::instance;

@@ -200,22 +200,17 @@ TEST(ResourceUsageTest, testConcurrencyRestricted22) {
         // start at the approximate same time
       }
           
-      LOG_DEVEL << "T" << tid << ": STARTING";
       size_t totalAdded = 0;
       size_t rejections = 0;
       for (uint64_t i = 0; i < 5000; ++i) { //::numOpsPerThread; ++i) {
         try {
           monitor.increaseMemoryUsage(amount);
           totalAdded += amount;
-          //LOG_TOPIC("12345", INFO, Logger::FIXME) << "T" << tid << ": ADDED AMOUNT:" << amount << "; TOTALADDED: " << totalAdded;
         } catch (basics::Exception const& ex) {
           ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
           ++rejections;
-          //LOG_TOPIC("98765", INFO, Logger::FIXME) << "T" << tid << ": COULD NOT ADDED; TOTALADDED: " << totalAdded;
         }
       }
-
-      LOG_DEVEL << "T" << tid << ": FINALIZING. TOTALADDED: " << totalAdded;
 
       monitor.decreaseMemoryUsage(totalAdded);
       globalRejections += rejections;
@@ -229,11 +224,12 @@ TEST(ResourceUsageTest, testConcurrencyRestricted22) {
   }
 
   // should be down to 0 now
-  ASSERT_EQ(0, monitor.current());
-  ASSERT_LE(monitor.peak(), ::bucketize(monitor.memoryLimit()));
+  EXPECT_EQ(0, monitor.current());
+  EXPECT_LE(monitor.peak(), ::bucketize(monitor.memoryLimit()));
 
   // should be way above 0
-  ASSERT_GT(globalRejections, 0);
+  EXPECT_GT(globalRejections, 0);
+  EXPECT_EQ(0, global.current());
 }
 
 TEST(ResourceUsageTest, testConcurrencyUnrestricted) {
