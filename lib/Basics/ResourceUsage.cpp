@@ -43,12 +43,12 @@ ResourceMonitor::~ResourceMonitor() {
 }
   
 /// @brief sets a memory limit
-void ResourceMonitor::memoryLimit(std::size_t value) noexcept { 
+void ResourceMonitor::memoryLimit(std::uint64_t value) noexcept { 
   _limit = value; 
 }
 
 /// @brief returns the current memory limit
-std::size_t ResourceMonitor::memoryLimit() const noexcept { 
+std::uint64_t ResourceMonitor::memoryLimit() const noexcept { 
   return _limit; 
 }
   
@@ -67,12 +67,12 @@ std::size_t ResourceMonitor::memoryLimit() const noexcept {
 /// with other threads.
 /// the peak memory usage value is updated with a CAS operation, so again
 /// there will no be lost updates.
-void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
+void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
   std::uint64_t const previous = _current.fetch_add(value, std::memory_order_relaxed);
   std::uint64_t const current = previous + value;
   TRI_ASSERT(current >= value);
   
-  // now calculate if the number of buckets used by instance's allocations stays the 
+  // now calculate if the number of chunks used by instance's allocations stays the 
   // same after the extra allocation. if yes, it was likely a very small allocation, and 
   // we don't bother with updating the global counter for it. not updating the global
   // counter on each (small) allocation is an optimization that saves updating a
@@ -80,15 +80,15 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   // only doing this when there are substantial allocations/deallocations simply
   // makes many cases of small allocations and deallocations more efficient.
   // as a consequence, the granularity of allocations tracked in the global counter
-  // is `bucketSize`.
+  // is `chunkSize`.
   //
   // this idea is based on suggestions from @dothebart and @mpoeter for reducing the 
   // number of updates to the shared global memory usage counter, which very likely
   // would be a source of contention in case multiple queries execute in parallel.
-  std::uint64_t const previousBuckets = numBuckets(previous);
-  std::uint64_t const currentBuckets = numBuckets(current);
-  TRI_ASSERT(currentBuckets >= previousBuckets);
-  auto diff = currentBuckets - previousBuckets;
+  std::uint64_t const previousChunks = numChunks(previous);
+  std::uint64_t const currentChunks = numChunks(current);
+  TRI_ASSERT(currentChunks >= previousChunks);
+  auto diff = currentChunks - previousChunks;
   
   if (diff != 0) {
     auto rollback = [this, value, diff]() {
@@ -110,16 +110,16 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
       std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
       std::uint64_t adjustedCurrent = adjustedPrevious - value;
   
-      auto adjustedDiff = diff - (numBuckets(adjustedPrevious) - numBuckets(adjustedCurrent));
+      auto adjustedDiff = diff - (numChunks(adjustedPrevious) - numChunks(adjustedCurrent));
       if (adjustedDiff != 0) {
         TRI_ASSERT(adjustedDiff == 1 || adjustedDiff == -1);
         // adjustment can be off by at most 1.
         // forceIncreaseMemoryUsage takes a signed int64, so we can increase/decrease
-        _global.forceUpdateMemoryUsage(adjustedDiff * bucketSize);
+        _global.forceUpdateMemoryUsage(adjustedDiff * chunkSize);
       }
     };
     
-    // number of buckets has changed, so this is either a substantial allocation or
+    // number of chunks has changed, so this is either a substantial allocation or
     // we have piled up changes by lots of small allocations so far.
     // time for some memory expensive checks now...
 
@@ -136,7 +136,7 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // instance's own memory usage counter has been updated successfully once we got here.
 
     // now modify the global counter value, too.
-    if (!_global.increaseMemoryUsage(diff * bucketSize)) {
+    if (!_global.increaseMemoryUsage(diff * chunkSize)) {
       // the allocation would exceed the global maximum value, so we need to roll back.
       rollback();
 
@@ -146,9 +146,9 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
     // increasing the global counter has succeeded!
  
     // update the peak memory usage counter for the local instance. we do this
-    // only when there was a change in the number of buckets.
-    std::size_t peak = _peak.load(std::memory_order_relaxed);
-    std::size_t const newPeak = currentBuckets * bucketSize;
+    // only when there was a change in the number of chunks.
+    std::uint64_t peak = _peak.load(std::memory_order_relaxed);
+    std::uint64_t const newPeak = currentChunks * chunkSize;
     // do a CAS here, as concurrent threads may work on the peak memory usage at the
     // very same time.
     while (peak < newPeak) {
@@ -159,31 +159,31 @@ void ResourceMonitor::increaseMemoryUsage(std::size_t value) {
   }
 }
   
-void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
+void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   // this function will always decrease the current local memory usage value,
   // and may in addition lead to a decrease of the global memory usage value.
   // as it only subtracts from these counters, it will not lead to any lost
   // updates even if there are concurrent threads working on the same counters.
   // note that peak memory usage is not changed here, as this is only relevant
   // when we are _increasing_ memory usage.
-  std::size_t const previous = _current.fetch_sub(value, std::memory_order_relaxed);
+  std::uint64_t const previous = _current.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
-  std::size_t const current = previous - value;
+  std::uint64_t const current = previous - value;
   
-  std::size_t diff = numBuckets(previous) - numBuckets(current);
+  std::int64_t diff = numChunks(previous) - numChunks(current);
 
   if (diff != 0) {
-    // number of buckets has changed. now we will update the global counter!
-    _global.decreaseMemoryUsage(diff * bucketSize);
+    // number of chunks has changed. now we will update the global counter!
+    _global.decreaseMemoryUsage(diff * chunkSize);
     // no need to update the peak memory usage counter here
   }
 }
   
-size_t ResourceMonitor::current() const noexcept {
+std::uint64_t ResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }
 
-std::size_t ResourceMonitor::peak() const noexcept {
+std::uint64_t ResourceMonitor::peak() const noexcept {
   return _peak.load(std::memory_order_relaxed);
 }
 
@@ -192,7 +192,7 @@ void ResourceMonitor::clear() noexcept {
   _peak = 0;
 }
   
-ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value)
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value)
     : _resourceMonitor(resourceMonitor), _value(value) {
   // may throw
   increase(_value);
@@ -206,14 +206,14 @@ void ResourceUsageScope::steal() noexcept {
   _value = 0;
 }
   
-void ResourceUsageScope::increase(std::size_t value) {
+void ResourceUsageScope::increase(std::uint64_t value) {
   if (value > 0) {
     // may throw
     _resourceMonitor.increaseMemoryUsage(value);
   }
 }
   
-void ResourceUsageScope::decrease(std::size_t value) noexcept {
+void ResourceUsageScope::decrease(std::uint64_t value) noexcept {
   if (value > 0) {
     _resourceMonitor.decreaseMemoryUsage(value);
   }

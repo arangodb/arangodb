@@ -141,7 +141,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _globalQueryMemoryUsage(
         server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_aql_global_memory_usage", 0, std::string("Total memory usage of all AQL queries executing [bytes]"
-          ", granulariy: ") + std::to_string(ResourceMonitor::bucketSize) + " bytes steps")),
+          ", granulariy: ") + std::to_string(ResourceMonitor::chunkSize) + " bytes steps")),
       _globalQueryMemoryLimit(
         server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           "arangodb_aql_global_memory_limit", 0, "Total memory limit for all AQL queries combined [bytes]")) {

@@ -41,7 +41,7 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 15 * 1000 * 1000;
 
 constexpr size_t bucketize(size_t value) {
-  return value / arangodb::ResourceMonitor::bucketSize * arangodb::ResourceMonitor::bucketSize;
+  return value / arangodb::ResourceMonitor::chunkSize * arangodb::ResourceMonitor::chunkSize;
 }
 } // namespace
 
@@ -70,72 +70,72 @@ TEST(ResourceUsageTest, testBasicRestrictions) {
   ASSERT_EQ(0, monitor.peak());
 
   // note: the memoryLimit has a granularity of 32kb right now!
-  monitor.memoryLimit(10 * ResourceMonitor::bucketSize);
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.memoryLimit());
+  monitor.memoryLimit(10 * ResourceMonitor::chunkSize);
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.memoryLimit());
   ASSERT_EQ(0, monitor.current());
   ASSERT_EQ(0, monitor.peak());
   
-  monitor.increaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.peak());
+  monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.decreaseMemoryUsage(ResourceMonitor::bucketSize);
+  monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
   ASSERT_EQ(0, monitor.current());
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.peak());
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.increaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.peak());
+  monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.increaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(2 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(2 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.decreaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(2 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(2 * ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.increaseMemoryUsage(5 * ResourceMonitor::bucketSize);
-  ASSERT_EQ(6 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(6 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.increaseMemoryUsage(5 * ResourceMonitor::chunkSize);
+  ASSERT_EQ(6 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(6 * ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.increaseMemoryUsage(4 * ResourceMonitor::bucketSize);
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.increaseMemoryUsage(4 * ResourceMonitor::chunkSize);
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
   
   ASSERT_THROW({
     try {
-      monitor.increaseMemoryUsage(ResourceMonitor::bucketSize);
+      monitor.increaseMemoryUsage(ResourceMonitor::chunkSize);
     } catch (basics::Exception const& ex) {
       ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
       throw;
     }
   }, basics::Exception);
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
-  monitor.decreaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(9 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(9 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
   ASSERT_THROW({
     try {
-      monitor.increaseMemoryUsage(2 * ResourceMonitor::bucketSize);
+      monitor.increaseMemoryUsage(2 * ResourceMonitor::chunkSize);
     } catch (basics::Exception const& ex) {
       ASSERT_EQ(TRI_ERROR_RESOURCE_LIMIT, ex.code());
       throw;
     }
   }, basics::Exception);
-  ASSERT_EQ(9 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  ASSERT_EQ(9 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 
-  monitor.decreaseMemoryUsage(ResourceMonitor::bucketSize);
-  ASSERT_EQ(8 * ResourceMonitor::bucketSize, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  monitor.decreaseMemoryUsage(ResourceMonitor::chunkSize);
+  ASSERT_EQ(8 * ResourceMonitor::chunkSize, monitor.current());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
   
-  monitor.decreaseMemoryUsage(8 * ResourceMonitor::bucketSize);
+  monitor.decreaseMemoryUsage(8 * ResourceMonitor::chunkSize);
   ASSERT_EQ(0, monitor.current());
-  ASSERT_EQ(10 * ResourceMonitor::bucketSize, monitor.peak());
+  ASSERT_EQ(10 * ResourceMonitor::chunkSize, monitor.peak());
 }
 
 TEST(ResourceUsageTest, testIncreaseInStepsRestricted) {
@@ -145,7 +145,7 @@ TEST(ResourceUsageTest, testIncreaseInStepsRestricted) {
   monitor.memoryLimit(100000);
 
   for (size_t i = 0; i < 1000; ++i) {
-    if ((i + 1) * 1000 < ::bucketize(100000) + ResourceMonitor::bucketSize) {
+    if ((i + 1) * 1000 < ::bucketize(100000) + ResourceMonitor::chunkSize) {
       monitor.increaseMemoryUsage(1000);
       ASSERT_EQ((i + 1) * 1000, monitor.current());
       ASSERT_EQ(::bucketize((i + 1) * 1000), monitor.peak());

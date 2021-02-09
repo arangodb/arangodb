@@ -77,7 +77,7 @@ class alignas(64) GlobalResourceMonitor final {
   /// this counter is updated by local instances only if there is a substantial
   /// allocation/deallocation. it is intentionally _not_ updated on every
   /// small allocation/deallocation. the granularity for the values in this
-  /// counter is bucketSize.
+  /// counter is chunkSize.
   std::atomic<std::int64_t> _current;
 
   /// @brief maximum allowed global memory limit for all tracked operations combined.
