@@ -2130,6 +2130,8 @@ function profileQuery(data, shouldPrint) {
   let options = data.options || {};
   options.silent = true;
   options.allPlans = false; // always turn this off, as it will not work with profiling
+  options.batchSize = 99999999999999999; // must set a super-high batchSize so everything gets executed
+  options.stream = false;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
