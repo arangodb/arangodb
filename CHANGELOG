@@ -1,6 +1,18 @@
 devel
 -----
 
+* Fixed replication bug in MerkleTree sync protocol, which could lead to
+  data corruption. The visible effect was that shards could no longer get
+  in sync since the counts would not match after sync, even after a recount.
+  This corruption only happened if there were large amounts of differences
+  (at least 65537) and the destination side had newer revisions for some
+  keys than the source side.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
 * Added new REST APIs for retrieving the sharding distribution:
 
   - GET `/_api/database/shardDistribution` will return the number of 
