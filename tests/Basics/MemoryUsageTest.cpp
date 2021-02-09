@@ -28,7 +28,6 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/voc-errors.h"
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <atomic>
@@ -181,28 +180,27 @@ TEST(ResourceUsageTest, testIncreaseInStepsUnrestricted) {
   monitor.decreaseMemoryUsage(monitor.current());
 }
 
-TEST(ResourceUsageTest, testConcurrencyRestricted22) {
+TEST(ResourceUsageTest, testConcurrencyRestricted) {
   GlobalResourceMonitor global;
   ResourceMonitor monitor(global);
   
   monitor.memoryLimit(123456);
 
-  constexpr size_t amount = 12345;
+  constexpr size_t amount = 123;
   std::atomic<bool> go = false;
   std::atomic<size_t> globalRejections = 0;
 
   std::vector<std::thread> threads;
   threads.reserve(::numThreads);
   for (size_t i = 0; i < ::numThreads; ++i) {
-    threads.emplace_back([&](size_t tid) {
+    threads.emplace_back([&]() {
       while (!go.load()) {
         // wait until all threads are created, so they can
         // start at the approximate same time
       }
-          
       size_t totalAdded = 0;
       size_t rejections = 0;
-      for (uint64_t i = 0; i < 5000; ++i) { //::numOpsPerThread; ++i) {
+      for (uint64_t i = 0; i < ::numOpsPerThread; ++i) {
         try {
           monitor.increaseMemoryUsage(amount);
           totalAdded += amount;
@@ -214,7 +212,7 @@ TEST(ResourceUsageTest, testConcurrencyRestricted22) {
 
       monitor.decreaseMemoryUsage(totalAdded);
       globalRejections += rejections;
-    }, i);
+    });
   }
 
   go.store(true);
