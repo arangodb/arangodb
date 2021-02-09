@@ -656,7 +656,7 @@ function optimizerRuleTestSuite () {
         const output = explainer.explain(query[0], {...thisRuleEnabled, colors: false}, false);
         const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT\(k, { "allowKeyConversionToObject" : true, "ignoreErrors" : false, "canUseCustomKey" : true }\)/);
         assertTrue(variable);
-        assertTrue(output.includes(`DISTRIBUTE  /* variable: #${variable[1]} */`));
+        assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
         assertTrue(output.includes(`${query[1]} #${variable[1]}`));
       });
     },
@@ -668,7 +668,7 @@ function optimizerRuleTestSuite () {
       const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
       assertTrue(variable);
       assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION(k, null, { "allowSpecifiedKeys" : false, "ignoreErrors" : false, "collection" : "${cn1}" })`));
-      assertTrue(output.includes(`DISTRIBUTE  /* variable: #${variable[1]} */`));
+      assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
       assertTrue(output.includes(`INSERT #${variable[1]}`));
     },
     
@@ -681,7 +681,7 @@ function optimizerRuleTestSuite () {
       assertTrue(distributeVar);
       assertTrue(inputVar);
       assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION($OLD, #${inputVar[1]}, { "allowSpecifiedKeys" : true, "ignoreErrors" : false, "collection" : "${cn1}" })`));
-      assertTrue(output.includes(`DISTRIBUTE  /* variable: #${distributeVar[1]} */`));
+      assertTrue(output.includes(`DISTRIBUTE #${distributeVar[1]}`));
       assertTrue(output.includes(`UPSERT $OLD INSERT #${distributeVar[1]} UPDATE`));
     },
   };
