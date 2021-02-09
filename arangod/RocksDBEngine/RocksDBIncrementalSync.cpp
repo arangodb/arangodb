@@ -801,8 +801,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
-              char ridBuffer[21];
-              tempBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+              char ridBuffer[arangodb::basics::maxUInt64StringSize];
+              tempBuilder.add(docRev.toValuePair(ridBuffer));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 
               if (cmp2 == 0) {  // found highKey
