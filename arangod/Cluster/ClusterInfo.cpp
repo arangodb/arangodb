@@ -83,7 +83,83 @@
 
 #include <chrono>
 
+namespace arangodb {
+/// @brief internal helper struct for counting the number of shards etc.
+struct ShardStatistics {
+  uint64_t databases{0};
+  uint64_t collections{0};
+  uint64_t shards{0};
+  uint64_t leaders{0};
+  uint64_t realLeaders{0};
+  uint64_t followers{0};
+  uint64_t servers{0};
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const {
+    builder.openObject();
+    builder.add("databases", VPackValue(databases));
+    builder.add("collections", VPackValue(collections));
+    builder.add("shards", VPackValue(shards));
+    builder.add("leaders", VPackValue(leaders));
+    builder.add("realLeaders", VPackValue(realLeaders));
+    builder.add("followers", VPackValue(followers));
+    builder.add("servers", VPackValue(servers));
+    builder.close();
+  }
+};
+
+} // namespace
+
 namespace {
+void addToShardStatistics(arangodb::ShardStatistics& stats, 
+                          std::unordered_set<std::string>& servers, 
+                          arangodb::velocypack::Slice databaseSlice,
+                          std::string const& restrictServer) {
+  bool foundCollection = false;
+
+  for (auto it : VPackObjectIterator(databaseSlice)) {
+    VPackSlice collection = it.value;
+
+    bool hasDistributeShardsLike = false;
+    if (VPackSlice dsl = collection.get(arangodb::StaticStrings::DistributeShardsLike); dsl.isString()) {
+      hasDistributeShardsLike = dsl.getStringLength() > 0;
+    }
+
+    bool foundShard = false;
+    VPackSlice shards = collection.get("shards");
+    for (auto pair : VPackObjectIterator(shards)) {
+      int i = 0;
+      for (auto const& serv : VPackArrayIterator(pair.value)) {
+        if (!restrictServer.empty() && serv.stringRef() != restrictServer) {
+          // different server
+          i++;
+          continue;
+        }
+
+        foundShard = true;
+        servers.emplace(serv.copyString());
+
+        ++stats.shards;
+        if (i++ == 0) {
+          ++stats.leaders;
+          if (!hasDistributeShardsLike) {
+            ++stats.realLeaders;
+          }
+        } else {
+          ++stats.followers;
+        }
+      }
+    }
+    
+    if (foundShard) {
+      foundCollection = true;
+      ++stats.collections;
+    }
+  }
+
+  if (foundCollection) {
+    ++stats.databases;
+  }
+}
 
 static inline arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{"Plan/Version",
@@ -1903,6 +1979,95 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
   }
 
   return QueryAnalyzerRevisions(currentDbRevision, systemDbRevision);
+}
+
+/// @brief get shard statistics for the specified database
+Result ClusterInfo::getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                                  std::string const& restrictServer,
+                                                  VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections/" + dbName)});
+
+  velocypack::Slice databaseSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections", dbName}));
+
+  if (!databaseSlice.isObject()) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  std::unordered_set<std::string> servers;
+  ShardStatistics stats;
+  addToShardStatistics(stats, servers, databaseSlice, restrictServer);
+  stats.servers = servers.size();
+
+  stats.toVelocyPack(builder);
+  return {};
+}
+
+/// @brief get shard statistics for all databases, totals,
+/// optionally restricted to the specified server
+Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
+                                             VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections"}));
+  
+  if (!databasesSlice.isObject()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid Plan structure");
+  }
+
+  std::unordered_set<std::string> servers;
+  ShardStatistics stats;
+  
+  for (auto db : VPackObjectIterator(databasesSlice)) {
+    addToShardStatistics(stats, servers, db.value, restrictServer);
+  }
+  stats.servers = servers.size();
+    
+  stats.toVelocyPack(builder);
+  return {};
+}
+
+/// @brief get shard statistics for all databases, separate for each database,
+/// optionally restricted to the specified server
+Result ClusterInfo::getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                                     VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections"}));
+  
+  if (!databasesSlice.isObject()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid Plan structure");
+  }
+
+  std::unordered_set<std::string> servers;
+ 
+  builder.openObject();
+  for (auto db : VPackObjectIterator(databasesSlice)) {
+    servers.clear();
+    ShardStatistics stats;
+    addToShardStatistics(stats, servers, db.value, restrictServer);
+    stats.servers = servers.size();
+
+    builder.add(VPackValue(db.key.copyString()));
+    stats.toVelocyPack(builder);
+  }
+  builder.close();
+    
+  return {};
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
@@ -5119,7 +5284,7 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID const& shortId) {
 
   return result;
 }
-
+  
 //////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current coordinators
 //////////////////////////////////////////////////////////////////////////////
