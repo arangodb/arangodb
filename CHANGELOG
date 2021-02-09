@@ -23,22 +23,21 @@ v3.7.7 (2020-02-05)
   - `arangodb_collection_truncates_replication`: Total number of collection
     truncate operations (successful and failed) by synchronous replication.
   - `arangodb_document_read_time`: Execution time histogram of all document
-    primary key read operations (successful and failed) [s]. Note: this
-    does not include secondary index lookups, range scans and full collection
-    scans.
-  - `arangodb_document_insert_time`: Execution time histogram of all
-    document insert operations (successful and failed) [s].
-  - `arangodb_document_replace_time`: Execution time histogram of all
-    document replace operations (successful and failed) [s].
-  - `arangodb_document_remove_time`: Execution time histogram of all
-    document remove operations (successful and failed) [s].
-  - `arangodb_document_update_time`: Execution time histogram of all
-    document update operations (successful and failed) [s].
+    primary key read operations (successful and failed) [s]. Note: this does not
+    include secondary index lookups, range scans and full collection scans.
+  - `arangodb_document_insert_time`: Execution time histogram of all document
+    insert operations (successful and failed) [s].
+  - `arangodb_document_replace_time`: Execution time histogram of all document
+    replace operations (successful and failed) [s].
+  - `arangodb_document_remove_time`: Execution time histogram of all document
+    remove operations (successful and failed) [s].
+  - `arangodb_document_update_time`: Execution time histogram of all document
+    update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
 
-  The timer metrics are turned off by default, and can be enabled by setting
-  the startup option `--server.export-read-write-metrics true`.
+  The timer metrics are turned off by default, and can be enabled by setting the
+  startup option `--server.export-read-write-metrics true`.
 
 * Fixed issue #12543: Unused Foxx service config can not be discarded.
 
