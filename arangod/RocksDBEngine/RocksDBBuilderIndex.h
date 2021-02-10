@@ -67,6 +67,7 @@ class RocksDBBuilderIndex final : public arangodb::RocksDBIndex {
   size_t memory() const override { return _wrapped->memory(); }
 
   Result drop() override { return _wrapped->drop(); }
+  Result dropWithBatch(rocksdb::WriteBatch& wb) override { return _wrapped->dropWithBatch(wb); }
 
   void afterTruncate(TRI_voc_tick_t tick,
                      arangodb::transaction::Methods* trx) override {
