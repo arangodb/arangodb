@@ -4199,7 +4199,7 @@ Result ClusterInfo::dropIndexCoordinator(
 
   Result res(TRI_ERROR_CLUSTER_TIMEOUT);
   do {
-    Result res = dropIndexCoordinatorInner(databaseName, collectionID, iid, endTime);
+    res = dropIndexCoordinatorInner(databaseName, collectionID, iid, endTime);
 
     if (res.ok()) {
       // success!
