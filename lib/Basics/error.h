@@ -41,11 +41,7 @@ ErrorCode TRI_set_errno(ErrorCode);
 void TRI_set_errno_string(ErrorCode code, char const* msg);
 
 /// @brief return an error message for an error code
-<<<<<<< HEAD
-std::string_view TRI_errno_string(int code) noexcept;
-=======
-char const* TRI_errno_string(ErrorCode code) noexcept;
->>>>>>> 2fcec28799eec22959cd24855b891bb929539f39
+std::string_view TRI_errno_string(ErrorCode code) noexcept;
 
 /// @brief initializes the error messages
 void TRI_InitializeError();
