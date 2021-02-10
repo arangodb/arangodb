@@ -669,10 +669,28 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
     return true;
   }
 
-  // Now the children in their natural order:
-  for (auto const& it : _dependencies) {
-    if (it->walk(worker)) {
-      return true;
+  if (!_dependencies.empty()) {
+    // intentionally copy the dependencies from before you we iterate
+    // over them.
+    // we keep this copy to check that no worker function modifies the
+    // dependencies while we are working over them. this would be
+    // inherently unsafe, e.g. adding to _dependencies while walking 
+    // over them could lead to vector storage reallocation, and
+    // removing dependencies while walking over them can invalidate
+    // iterators.
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<ExecutionNode*> dependencies{arena};
+
+    // we normally should have 1, at most 2 dependencies here!
+    dependencies.assign(_dependencies.begin(), _dependencies.end());
+
+    // Now the children in their natural order:
+    for (auto const& it : dependencies) {
+      bool stopWalking = it->walk(worker);
+
+      if (stopWalking) {
+        return true;
+      }
     }
   }
 
