@@ -594,7 +594,7 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto readableInputRegisters = RegIdSet{};
-  if (in < RegisterPlan::MaxRegisterId) {
+  if (in.isValid()) {
     readableInputRegisters.emplace(in);
   }
   auto writableOutputRegisters = RegIdSet{};

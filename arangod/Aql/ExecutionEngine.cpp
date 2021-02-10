@@ -645,35 +645,23 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   
   AqlItemBlockManager& mgr = query.itemBlockManager();
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  {
-    // check that all const variables in the AST are also part of the
-    // plan's constVariables and vice versa
-    auto constVars = plan.constVariables(); // we intentionally copy here!
-    plan.getAst()->variables()->visit([&constVars](Variable* var) {
-      if (var->type() == Variable::Type::Const) {
-        auto it = constVars.find(var->id);
-        TRI_ASSERT(it != constVars.end());
-        constVars.erase(it);
-      }
-    });
-    TRI_ASSERT(constVars.empty());
-  }
-#endif
-
   auto registerPlan = plan.root()->getRegisterPlan();
   auto nrConstRegs = registerPlan->nrConstRegs;
   if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
     mgr.initializeConstValueBlock(nrConstRegs);
-    auto constValueBlock = mgr.getConstValueBlock();
-
-    for (auto& [id, value] : plan.constVariables()) {
-      RegisterId reg = findVariableRegister(*registerPlan, id);
-      TRI_ASSERT(reg.isValid() && reg.isConstRegister());
-      constValueBlock->emplaceValue(0, reg, std::move(value));
-      // the constValueBlock takes ownership, so we have to clear out the value in the plan
-      value = AqlValue{};
-    }
+    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
+                                       block = mgr.getConstValueBlock()](Variable* var) {
+      if (var->type() == Variable::Type::Const) {
+        RegisterId reg = findVariableRegister(*plan, var->id);
+        if (reg.value() != RegisterId::maxRegisterId) {
+          TRI_ASSERT(reg.isConstRegister());
+          AqlValue value = var->constantValue();
+          TRI_ASSERT(!value.isNone());
+          // the constValueBlock takes ownership, so we have to create a copy here.
+          block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+        }
+      }
+    });
   }
   TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 

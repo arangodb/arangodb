@@ -70,10 +70,6 @@ void removeCollectVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void propagateConstantAttributesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
 
-/// @brief mark variables with const values so they can be evaluated only once
-/// and stored in a special AqlItemBlock.
-void keepConstValuesInConstRegisters(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
-
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to

@@ -254,7 +254,6 @@ void Query::prepareQuery(SerializationFormat format) {
     std::unique_ptr<ExecutionPlan> plan = preparePlan();
     TRI_ASSERT(plan != nullptr);
     plan->findVarUsage();
-    plan->populateVariableTypes();
 
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);

@@ -111,6 +111,7 @@ template <class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType& value) {
   TRI_ASSERT(isOutputRegister(registerId));
   // This is already implicitly asserted by isOutputRegister:
+  TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
@@ -120,7 +121,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
     value.steal();
   } else {
     static_assert(std::is_same_v<std::decay_t<ValueType>, VPackSlice>);
-    block().emplaceValue(_baseIndex, registerId, value);
+    block().emplaceValue(_baseIndex, registerId.value(), value);
   }
   _numValuesWritten++;
 }
@@ -270,10 +271,9 @@ size_t OutputAqlItemRow::numRowsWritten() const noexcept {
 }
 
 void OutputAqlItemRow::advanceRow() {
-  // TODO - reactivate asserts once we have ensured that they hold!
-  //TRI_ASSERT(produced());
+  TRI_ASSERT(produced());
   TRI_ASSERT(allValuesWritten());
-  //TRI_ASSERT(_inputRowCopied);
+  TRI_ASSERT(_inputRowCopied);
   if (!_block->isShadowRow(_baseIndex)) {
     // We have written a data row into the output.
     // Need to count it.

@@ -85,9 +85,11 @@ struct Variable {
 
   bool isEqualTo(Variable const& other) const;
   
-  Type type() const noexcept { return _type; }
+  Type type() const noexcept;
 
-  void setType(Type value) noexcept { _type = value; }
+  AqlValue constantValue() const noexcept { return _constantValue; }
+
+  void setConstantValue(AqlValue value) noexcept;
 
   /// @brief variable id
   VariableId const id;
@@ -103,11 +105,6 @@ struct Variable {
   /// (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
  
-  // TODO - naming (we already have constValue member function)
-  /// @brief for const variables, this stores the constant value determine while
-  /// initializing the plan.
-  //AqlValue constantValue;
-
   /// @brief name of $OLD variable
   static char const* const NAME_OLD;
 
@@ -118,7 +115,11 @@ struct Variable {
   static char const* const NAME_CURRENT;
 
 private:
-  Type _type = Type::Regular;
+  // TODO - naming (we already have constValue member function)
+  /// @brief for const variables, this stores the constant value determined while
+  /// initializing the plan.
+  /// Note: the variable takes ownership of this value and destroys it
+  AqlValue _constantValue;
 };
 }  // namespace aql
 }  // namespace arangodb

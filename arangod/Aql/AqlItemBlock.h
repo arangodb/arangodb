@@ -122,9 +122,15 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   AqlValue getValue(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register
+  AqlValue getValue(size_t index, RegisterId::value_t column) const;
+  
   /// @brief getValue, get the value of a register by reference
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register by reference
+  AqlValue const& getValueReference(size_t index, RegisterId::value_t column) const;
+  
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value);
 
@@ -132,9 +138,8 @@ class AqlItemBlock {
   /// it in place
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    TRI_ASSERT(varNr.isValid());
-    auto address = getAddress(index, varNr.value());
+  void emplaceValue(size_t index, RegisterId::value_t column, Args&&... args) {
+    auto address = getAddress(index, column);
     AqlValue* p = &_data[address];
     TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place

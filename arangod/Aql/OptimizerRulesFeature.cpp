@@ -242,12 +242,6 @@ void OptimizerRulesFeature::addRules() {
                OptimizerRule::propagateConstantAttributesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
 
-  // mark variables with const values so they can be evaluated only once
-  // and stored in a special AqlItemBlock.
-  registerRule("use-const-registers", keepConstValuesInConstRegisters,
-               OptimizerRule::keepConstValuesInConstRegisters,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled));
-
   // remove unused out variables for data-modification queries
   registerRule("remove-data-modification-out-variables", removeDataModificationOutVariablesRule,
                OptimizerRule::removeDataModificationOutVariablesRule,

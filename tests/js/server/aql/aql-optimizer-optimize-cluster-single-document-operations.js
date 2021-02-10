@@ -261,8 +261,7 @@ function optimizerClusterSingleDocumentTestSuite () {
                              "use-indexes",
                              "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
-                             "optimize-cluster-single-document-operations",
-                             "use-const-registers" ],
+                             "optimize-cluster-single-document-operations" ],
                            [ "use-indexes", "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
                              "scatter-in-cluster", "remove-unnecessary-remote-scatter",
@@ -314,11 +313,11 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2",
-          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ]
+          "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
         [ "SingletonNode", "CalculationNode", "SingleRemoteOperationNode" ],
@@ -361,16 +360,16 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [
@@ -416,17 +415,17 @@ function optimizerClusterSingleDocumentTestSuite () {
       ];
 
       var expectedRules = [
-        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "optimize-cluster-single-document-operations" ],
+        [ "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
-        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "move-calculations-up", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
+        [ "move-calculations-up", "move-calculations-up-2", "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
       ];
       
       var expectedNodes = [
@@ -461,7 +460,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations", "use-const-registers" ],
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
       ];
 

@@ -1589,57 +1589,6 @@ void arangodb::aql::propagateConstantAttributesRule(Optimizer* opt,
   opt->addPlan(std::move(plan), rule, helper.modified());
 }
 
-void arangodb::aql::keepConstValuesInConstRegisters(Optimizer* opt,
-                                                    std::unique_ptr<ExecutionPlan> plan,
-                                                    OptimizerRule const& rule) {
-  ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<ExecutionNode*> distributeNodes{a};
-  plan->findNodesOfType(distributeNodes, EN::DISTRIBUTE, true);
-
-  // In some cases the DistributeNode needs to write into the inputVariable's
-  // register, so in these cases we cannot use a ConstRegister.
-  VarSet vars;
-  for (auto const& n : distributeNodes) {
-    auto nn = ExecutionNode::castTo<DistributeNode*>(n);
-    vars.insert(nn->variable());
-    // it doesn't matter that alternativeVariable() can be null here
-    vars.insert(nn->alternativeVariable());
-  }
-
-  bool modified = false;
-  AqlFunctionsInternalCache cache;
-  FixedVarExpressionContext exprContext(plan->getAst()->query().trxForOptimization(),
-                                        plan->getAst()->query(), cache);
-
-  ::arangodb::containers::SmallVector<ExecutionNode*> calculationNodes{a};
-  plan->findNodesOfType(calculationNodes, EN::CALCULATION, true);
-  for (auto const n : calculationNodes) {
-    auto nn = ExecutionNode::castTo<CalculationNode*>(n);
-    auto var = nn->outVariable();
-    auto& constVariables = plan->constVariables();
-    if (nn->expression()->isConstant() && !vars.contains(var) &&
-        constVariables.find(var->id) == constVariables.end()) {
-      // this calculation node produces a const value, so we already evaluate
-      // the expression and store it in the variable.
-      
-      bool mustDestroy;  // can be ignored here
-      // We need to create a new AqlValue that copies the data here, otherwise
-      // the data might be owned by the expression which might be destroyed to
-      // soon, leaving us with an AqlValue with a dangling pointer!
-      auto value = AqlValue(nn->expression()->execute(&exprContext, mustDestroy).slice());
-      constVariables.emplace(var->id, std::move(value));
-
-      // TODO - theoretically we could completely remove the CalculationNode from the plan.
-      // But then we would have to add a separate step to register the const variables in the
-      // RegisterPlan, and we would have to adapt a lot of tests. But this is something we
-      // should consider for the future.
-      modified = true;
-    }
-  }
-
-  opt->addPlan(std::move(plan), rule, modified);
-}
-
 /// @brief move calculations up in the plan
 /// this rule modifies the plan in place
 /// it aims to move up calculations as far up in the plan as possible, to
@@ -2558,8 +2507,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
-    if (!nn->expression()->isDeterministic()) {
-      // If this node is non-deterministic, we must not touch it!
+    if (!nn->expression()->isDeterministic() || nn->outVariable()->type() == Variable::Type::Const) {
+      // If this node is non-deterministic or has a constant expression, we must not touch it!
       continue;
     }
 
@@ -4169,7 +4118,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   auto* gatherNode = createGatherNodeFor(plan, distNode);
   gatherNode->addDependency(remoteNode);
 
-TRI_ASSERT(parents.size() < 2);
+  TRI_ASSERT(parents.size() < 2);
   // Song and dance to deal with at being the root of a plan or a subquery
   if (parents.empty()) {
     if (snode) {
