@@ -58,11 +58,16 @@ def genJsFile(errors):
 
   return out
 
+def quotedErrorMessage(error):
+    msg  = error[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
+    return "\"" + msg + "\""
+
+def errorName(error):
+    return "TRI_" + error[0]
+
 
 # generate C implementation file from errors
-def genCFile(errors, filename):
-
-  headerfile = os.path.splitext(filename)[0] + ".h"
+def genCFile(errors):
 
   impl = prologue + """
 #include "Basics/error.h"
@@ -76,9 +81,8 @@ void TRI_InitializeErrorMessages() {
 
   # print individual errors
   for e in errors:
-    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
     impl = impl\
-           + "  REG_ERROR(" + e[0] + ", \"" + msg + "\");\n"
+           + "  REG_ERROR(" + e[0] + ", " + quotedErrorMessage(e) + ");\n"
 
   impl = impl\
        + "}\n"
@@ -107,18 +111,38 @@ def genCHeaderFile(errors):
            + "/// " + e[1] + ": " + e[0] + "\n"\
            + wrap(e[2], 80, 0, 0, "/// \"") + "\"\n"\
            + wrap(e[3], 80, 0, 0, "/// ") + "\n"\
-           + "constexpr auto TRI_" + e[0].ljust(61) + " = ErrorCode{" + e[1] + "};\n"\
-           + "\n"
-
-  header = header + "\n"\
-           + "/// register all errors for ArangoDB\n"\
-           + "void TRI_InitializeErrorMessages();\n"\
+           + "constexpr auto " + errorName(e).ljust(65) + " = ErrorCode{" + e[1] + "};\n"\
            + "\n"
 
   header = header\
          + "#endif\n"
 
   return header
+
+def genErrorRegistryHeaderFile(errors):
+    template = """
+#ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
+#define ARANGODB_BASICS_ERROR_REGISTRY_H
+
+#include <frozen/unordered_map.h>
+
+#include "Basics/voc-errors.h"
+
+namespace arangodb::error {{
+constexpr static frozen::unordered_map<int, const char*, {numErrorMessages}> ErrorMessages = {{
+{initializerList}
+}};
+}}
+
+#endif  // ARANGODB_BASICS_ERROR_REGISTRY_H
+"""
+    initializerList = '\n'.join([
+        "    {int(" + errorName(e) + "),  // " + e[1] + "\n" + \
+        "      " + quotedErrorMessage(e) + "},"
+        for e in errors
+    ])
+
+    return template.format(numErrorMessages = len(errors), initializerList = initializerList)
 
 
 # define some globals
@@ -156,18 +180,18 @@ with io.open(source, encoding="utf-8", newline=None) as source_fh:
 
 outfile = sys.argv[2]
 extension = os.path.splitext(outfile)[1]
-filename = outfile
 
-if extension == ".tmp":
-  filename = os.path.splitext(outfile)[0]
-  extension = os.path.splitext(filename)[1]
+basename = os.path.basename(outfile)
+filename = basename if extension != ".tmp" else os.path.splitext(basename)[0]
 
-if extension == ".js":
+if filename == "errors.js":
   out = genJsFile(errorsList)
-elif extension == ".h":
+elif filename == "voc-errors.h":
   out = genCHeaderFile(errorsList)
-elif extension == ".cpp":
-  out = genCFile(errorsList, filename)
+elif filename == "voc-errors.cpp":
+  out = genCFile(errorsList)
+elif filename == "error-registry.h":
+  out = genErrorRegistryHeaderFile(errorsList)
 else:
   print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
