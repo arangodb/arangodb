@@ -313,7 +313,6 @@ Variable const* TraversalNode::inVariable() const { return _inVariable; }
 std::string const TraversalNode::getStartVertex() const { return _vertexId; }
 
 void TraversalNode::setInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inVariable == nullptr);
   _inVariable = inVariable;
   _vertexId = "";
 }

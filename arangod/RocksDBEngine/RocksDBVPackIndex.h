@@ -71,12 +71,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   ~RocksDBVPackIndex();
 
-  bool hasSelectivityEstimate() const override { return true; }
+  bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
   void recalculateEstimates() override;
 
   void toVelocyPack(velocypack::Builder&,
@@ -121,7 +121,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
+                LocalDocumentId const& documentId, velocypack::Slice doc,
                 OperationOptions const& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
@@ -135,6 +135,18 @@ class RocksDBVPackIndex : public RocksDBIndex {
                 OperationOptions const& options) override;
 
  private:
+  /// @brief returns whether the document can be inserted into the index
+  /// (or if there will be a conflict)
+  Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                     LocalDocumentId const& documentId, velocypack::Slice doc,
+                     OperationOptions const& options) override;
+  
+  /// @brief returns whether the document can be updated/replaced in the index
+  /// (or if there will be a conflict)
+  Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      OperationOptions const& options) override;
+
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
@@ -183,7 +195,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 }  // namespace arangodb
 

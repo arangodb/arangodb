@@ -126,6 +126,7 @@ struct DocumentProducingFunctionContext {
   arangodb::aql::Projections const& _projections;
   size_t _numScanned;
   size_t _numFiltered;
+  uint_fast16_t _killCheckCounter = 0;
 
   /// @brief Builder that is reused to generate projection results 
   arangodb::velocypack::Builder _objectBuilder;

@@ -1,6 +1,66 @@
 devel
 -----
 
+* Fixed replication bug in MerkleTree sync protocol, which could lead to
+  data corruption. The visible effect was that shards could no longer get
+  in sync since the counts would not match after sync, even after a recount.
+  This corruption only happened if there were large amounts of differences
+  (at least 65537) and the destination side had newer revisions for some
+  keys than the source side.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Simplify the DistributeExecutor and avoid implicit modification of its input
+  variable. Previously the DistributeExecutor could update the input variable
+  in-place, leading to unexpected results (see #13509).
+  The modification logic has now been moved into three new _internal_ AQL
+  functions (MAKE_DISTRIBUTE_INPUT, MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION,
+  and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
+  according function call will be introduced if we need to prepare the input
+  data for the distribute node.
+  
+* Added new REST APIs for retrieving the sharding distribution:
+
+  - GET `/_api/database/shardDistribution` will return the number of 
+    collections, shards, leaders and followers for the database it is run
+    inside. The request can optionally be restricted to include data from 
+    only a single DB server, by passing the `DBserver` URL parameter.
+
+    This API can only be used on coordinators.
+
+  - GET `/_admin/cluster/shardDistribution` will return global statistics
+    on the current shard distribution, showing the total number of databases,
+    collections, shards, leaders and followers for the entire cluster. 
+    The results can optionally be restricted to include data from only a
+    single DB server, by passing the `DBserver` URL parameter.
+    By setting the `details` URL parameter, the response will not contain
+    aggregates, but instead one entry per available database will be returned.
+
+    This API can only be used in the `_system` database of coordinators, and
+    requires admin user privileges.
+
+* Decrease the size of serialized index estimates, by introducing a 
+  compressed serialization format. The compressed format uses the previous
+  uncompressed format internally, compresses it, and stores the compressed
+  data instead. This makes serialized index estimates a lot smaller, which
+  in turn decreases the size of I/O operations for index maintenance.
+
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
+
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
