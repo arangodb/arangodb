@@ -980,6 +980,12 @@ public:
   application_features::ApplicationServer& server() const;
 
  private:
+  /// @brief worker function for dropIndexCoordinator
+  Result dropIndexCoordinatorInner(
+      std::string const& databaseName, 
+      std::string const& collectionID,
+      IndexId iid,                   
+      double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
