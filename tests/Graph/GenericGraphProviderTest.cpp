@@ -127,8 +127,7 @@ class GraphProviderTest : public ::testing::Test {
         auto tmpVarRef = ast->createNodeReference(tmpVar);
         auto tmpIdNode = ast->createNodeValueString("", 0);
 
-
-        traverser::TraverserOptions opts{fakeQuery};
+        ShortestPathOptions opts{fakeQuery};
         opts.setVariable(tmpVar);
 
         auto const* access =
@@ -139,6 +138,16 @@ class GraphProviderTest : public ::testing::Test {
         auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
         fromCondition->addMember(cond);
         opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
+
+        auto const* revAccess =
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString.c_str(),
+                                           StaticStrings::ToString.length());
+        auto const* revCond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                            revAccess, tmpIdNode);
+        auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        toCondition->addMember(revCond);
+        opts.addReverseLookupInfo(fakeQuery.plan(), "s9880",
+                                  StaticStrings::FromString, toCondition);
 
         std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
         
