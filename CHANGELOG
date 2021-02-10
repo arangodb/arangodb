@@ -6,7 +6,6 @@ v3.7.8 (XXXX-XX-XX)
 
 * Fixed a rare internal buffer overflow around ridBuffers.
 
-
 * Split the update operations for the _fishbowl system collection with Foxx apps
   into separate insert/replace and remove operations. This makes the overall
   update not atomic, but as removes are unlikely here, we can now get away with
