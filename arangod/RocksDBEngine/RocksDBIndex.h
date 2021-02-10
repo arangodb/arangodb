@@ -79,7 +79,7 @@ class RocksDBIndex : public Index {
   size_t memory() const override;
 
   Result drop() override;
-  Result dropWithBatch(rocksdb::WriteBatch& wb);
+  virtual Result dropWithBatch(rocksdb::WriteBatch& wb);
 
   virtual void afterTruncate(TRI_voc_tick_t tick,
                              transaction::Methods* trx) override;

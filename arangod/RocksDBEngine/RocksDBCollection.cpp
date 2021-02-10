@@ -594,6 +594,11 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
     rocksdb::WriteBatch batch;
     Result res;
 
+    res = rocksdbIndex->dropWithBatch(batch);
+    if (res.fail()) {
+      return res;
+    }
+
     if (!engine.inRecovery()) {  // skip writing WAL marker if inRecovery()
       auto builder =             // RocksDB path
           _logicalCollection.toVelocyPackIgnore({"path", "statusString"},
@@ -605,16 +610,11 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
           builder.slice(),                            // RocksDB path
           RocksDBLogValue::IndexDrop(                 // marker
               _logicalCollection.vocbase().id(), _logicalCollection.id(), iid  // args
-              ),
+          ),
           batch);
       if (res.fail()) {
         return res;
       }
-    }
-
-    res = rocksdbIndex->dropWithBatch(batch);
-    if (res.fail()) {
-      return res;
     }
 
     TRI_IF_FAILURE("RocksDBCollectionDropIndex::beforeWriteException") {

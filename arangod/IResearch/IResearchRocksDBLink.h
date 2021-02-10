@@ -53,6 +53,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   }
 
   Result drop() override { return IResearchLink::drop(); }
+  Result dropWithBatch(rocksdb::WriteBatch& wb) override { return drop(); }
 
   bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
