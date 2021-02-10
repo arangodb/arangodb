@@ -1,44 +1,48 @@
-v3.7.7 (XXXX-XX-XX)
+v3.7.8 (XXXX-XX-XX)
 -------------------
 
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual
     log messages that are written into normal logfiles by arangod (note: this
-    does not include audit log messages). 
-    Any log messages longer than the specified value will be truncated and the 
-    suffix '...' will be added to them. The purpose of this parameter is to 
-    shorten long log messages in case there is not a lot of space for logfiles, 
-    and to keep rogue log messages from overusing resources. 
-    The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    does not include audit log messages).
+    Any log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them. The purpose of this parameter is to
+    shorten long log messages in case there is not a lot of space for logfiles,
+    and to keep rogue log messages from overusing resources.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
     restrict the maximum size of log messages.
   
   - `--audit.max-entry-length`: controls the maximum line length for individual
     audit log messages that are written into audit logs by arangod. Any audit
-    log messages longer than the specified value will be truncated and the 
-    suffix '...' will be added to them. 
-    The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
     restrict the maximum size of log messages.
 
-  - `--log.in-memory-level`: controls which log messages are preserved in 
-    memory. The default value is `info`, meaning all log messages of types 
-    `info`, `warning`, `error` and `fatal` will be stored by an instance in 
-    memory (this was also the behavior in previous versions of ArangoDB). 
-    By setting this option to `warning`, only `warning` log messages will be 
-    preserved in memory, and by setting the option to `error` only error 
+  - `--log.in-memory-level`: controls which log messages are preserved in
+    memory. The default value is `info`, meaning all log messages of types
+    `info`, `warning`, `error` and `fatal` will be stored by an instance in
+    memory (this was also the behavior in previous versions of ArangoDB).
+    By setting this option to `warning`, only `warning` log messages will be
+    preserved in memory, and by setting the option to `error` only error
     messages will be kept.
-    This option is useful because the number of in-memory log messages is 
-    limited to the latest 2048 messages, and these slots are by default shared 
-    between informational, warning and error messages. 
+    This option is useful because the number of in-memory log messages is
+    limited to the latest 2048 messages, and these slots are by default shared
+    between informational, warning and error messages.
 
 * Honor the value of startup option `--log.api-enabled` when set to `false`.
-  The desired behavior in this case is to turn off the REST API for logging,
-  but was not implemented. The default value for the option is `true`, so the
-  REST API is enabled. This behavior did not change, and neither did the 
-  behavior when setting the option to a value of `jwt` (meaning the REST API
-  for logging is only available for superusers with a valid JWT token).
+  The desired behavior in this case is to turn off the REST API for logging, but
+  was not implemented. The default value for the option is `true`, so the REST
+  API is enabled. This behavior did not change, and neither did the behavior
+  when setting the option to a value of `jwt` (meaning the REST API for logging
+  is only available for superusers with a valid JWT token).
+
+
+v3.7.7 (XXXX-XX-XX)
+-------------------
 
 * Added metrics for document read and write operations:
 
