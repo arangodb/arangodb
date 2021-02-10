@@ -30,6 +30,7 @@
 #include "Mocks/PreparedResponseConnectionPool.h"
 #include "Mocks/Servers.h"
 
+#include "Aql/QueryContext.h"
 #include "Aql/RestAqlHandler.h"
 #include "Network/NetworkFeature.h"
 #include "Transaction/Helpers.h"
@@ -41,6 +42,17 @@ using namespace arangodb;
 using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 using namespace arangodb::tests::mocks;
+
+namespace {
+
+void FixCustomTypesResponse(GeneralResponse* res, aql::QueryContext const& query) {
+  auto genRes = static_cast<GeneralResponseMock*>(res);
+  auto translatedString = genRes->_payload.slice().toJson(&query.vpackOptions());
+  genRes->_payload.clear();
+  VPackParser parser(genRes->_payload);
+  parser.parse(translatedString);
+}
+}  // namespace
 
 void MockGraph::EdgeDef::addToBuilder(arangodb::velocypack::Builder& builder) const {
   std::string fromId = _from;
@@ -293,6 +305,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       std::ignore = testee.execute();
 
       auto res = testee.stealResponse();
+      FixCustomTypesResponse(res.get(), opts.query());
+
       prep.rememberResponse(std::move(res));
       preparedResponses.emplace_back(std::move(prep));
     }
@@ -326,6 +340,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       std::ignore = testee.execute();
 
       auto res = testee.stealResponse();
+      FixCustomTypesResponse(res.get(), opts.query());
       prep.rememberResponse(std::move(res));
       preparedResponses.emplace_back(std::move(prep));
     }
