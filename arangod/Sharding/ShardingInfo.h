@@ -100,9 +100,9 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          ShardID& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const&);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                ShardID& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key);
 
   static void sortShardNamesNumerically(std::vector<ShardID>& list);
 

@@ -260,30 +260,30 @@ CostEstimate ScatterNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
+  
+DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
+                               ScatterNode::ScatterType type, Collection const* collection,
+                               Variable const* variable, ExecutionNodeId targetNodeId)
+    : ScatterNode(plan, id, type),
+      CollectionAccessingNode(collection),
+      _variable(variable),
+      _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _variable(nullptr),
-      _alternativeVariable(nullptr),
-      _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false),
-      _fixupGraphInput(false) {
-  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
-    _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
-    _alternativeVariable =
-        Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
-  } else {
-    _variable = plan->getAst()->variables()->getVariable(
-        base.get("varId").getNumericValue<VariableId>());
-    _alternativeVariable = plan->getAst()->variables()->getVariable(
-        base.get("alternativeVarId").getNumericValue<VariableId>());
-  }
-  _fixupGraphInput = VelocyPackHelper::getBooleanValue(base, "fixupGraphInput", false);
-  // if we fixupGraphInput, we are disallowed to create keys: _fixupGraphInput -> !_createKeys
-  TRI_ASSERT(!_fixupGraphInput || !_createKeys);
+      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {}
+  
+/// @brief clone ExecutionNode recursively
+ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                     bool withProperties) const {
+  auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                            collection(), _variable, _targetNodeId);
+  c->copyClients(clients());
+  CollectionAccessingNode::cloneInto(*c);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -292,41 +292,20 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId regId;
-  RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
+  // get the variable to inspect . . .
+  VariableId varId = _variable->id;
 
-  {  // set regId and alternativeRegId:
+  // get the register id of the variable to inspect . . .
+  auto it = getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId regId = (*it).second.registerId;
 
-    // get the variable to inspect . . .
-    VariableId varId = _variable->id;
+  TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
 
-    // get the register id of the variable to inspect . . .
-    auto it = getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    regId = (*it).second.registerId;
-
-    TRI_ASSERT(regId.isValid());
-    TRI_ASSERT(regId.isConstRegister() == (_variable->type() == Variable::Type::Const));
-
-    if (_alternativeVariable != _variable) {
-      // use second variable
-      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      alternativeRegId = (*it).second.registerId;
-
-      TRI_ASSERT(alternativeRegId.isValid());
-    } else {
-      TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
-    }
-  }
-  auto inAndOutRegs = RegIdSet{regId};
-  if (alternativeRegId != RegisterPlan::MaxRegisterId) {
-    inAndOutRegs.emplace(alternativeRegId);
-  }
-  auto registerInfos = createRegisterInfos(inAndOutRegs, inAndOutRegs);
-  auto infos = DistributeExecutorInfos(clients(), collection(), regId, alternativeRegId,
-                                       _allowSpecifiedKeys, _allowKeyConversionToObject,
-                                       _createKeys, _fixupGraphInput, getScatterType());
+  auto inRegs = RegIdSet{regId};
+  auto registerInfos = createRegisterInfos(inRegs, {});
+  auto infos = DistributeExecutorInfos(clients(), collection(), 
+                                       regId, getScatterType());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
                                                                   std::move(registerInfos),
@@ -345,13 +324,8 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   // serialize clients
   writeClientsToVelocyPack(builder);
 
-  builder.add("createKeys", VPackValue(_createKeys));
-  builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
-  builder.add("fixupGraphInput", VPackValue(_fixupGraphInput));
   builder.add(VPackValue("variable"));
-  _variable->toVelocyPack(builder);
-  builder.add(VPackValue("alternativeVariable"));
-  _alternativeVariable->toVelocyPack(builder);
+  _variable->toVelocyPack(builder);;
 
   // And close it:
   builder.close();
@@ -360,7 +334,6 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
 /// @brief getVariablesUsedHere, modifying the set in-place
 void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_variable);
-  vars.emplace(_alternativeVariable);
 }
 
 /// @brief estimateCost
@@ -621,17 +594,17 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
   auto readableInputRegisters = RegIdSet{};
-  if (in.value() < RegisterId::maxRegisterId) {
+  if (in < RegisterPlan::MaxRegisterId) {
     readableInputRegisters.emplace(in);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (out.value() < RegisterId::maxRegisterId) {
+  if (out < RegisterPlan::MaxRegisterId) {
     writableOutputRegisters.emplace(out);
   }
-  if (outputNew.value() < RegisterId::maxRegisterId) {
+  if (outputNew < RegisterPlan::MaxRegisterId) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld.value() < RegisterId::maxRegisterId) {
+  if (outputOld < RegisterPlan::MaxRegisterId) {
     writableOutputRegisters.emplace(outputOld);
   }
 

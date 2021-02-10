@@ -151,10 +151,6 @@ class ExecutionPlan {
   /// plan is temporarily in an invalid state
   inline void setValidity(bool value) { _planValid = value; }
 
-  /// @brief returns true if a plan is so simple that optimizations would
-  /// probably cost more than simply executing the plan
-  bool isDeadSimple() const;
-
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void show() const;

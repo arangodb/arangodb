@@ -320,7 +320,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 
@@ -354,6 +354,7 @@ void ImportFeature::start() {
       std::cout << "separator:              " << _separator << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
+    std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
     std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
     std::cout << "request timeout:        " << client.requestTimeout() << std::endl;

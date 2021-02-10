@@ -12,6 +12,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 #generate inside the source tree
 
 if (USE_MAINTAINER_MODE AND NOT MSVC)
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -878,6 +880,11 @@ add_library(arango_rocksdb STATIC
   ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
+
+add_dependencies(arango_rocksdb snappy-static)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
 
 if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
   target_compile_options(arango_rocksdb PUBLIC "-maes")

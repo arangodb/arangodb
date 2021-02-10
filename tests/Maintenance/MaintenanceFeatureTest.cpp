@@ -62,7 +62,7 @@ class TestActionBasic : public ActionBase {
     }
 
     if (description.get("result_code", value).ok()) {
-      _resultCode = std::atol(value.c_str());
+      _resultCode = ErrorCode{std::atoi(value.c_str())};
     }  // if
 
     if (description.get("preaction_result_code", value).ok()) {
@@ -98,7 +98,7 @@ class TestActionBasic : public ActionBase {
 
     // verify first() called once
     if (0 != getProgress()) {
-      _result.reset(2);
+      _result.reset(TRI_ERROR_INTERNAL);
     }  // if
 
     return (iteratorEndTest());
@@ -112,7 +112,7 @@ class TestActionBasic : public ActionBase {
 
     // verify next() called properly
     if (0 == getProgress()) {
-      _result.reset(2);
+      _result.reset(TRI_ERROR_INTERNAL);
     }  // if
 
     return (iteratorEndTest());
@@ -139,7 +139,7 @@ class TestActionBasic : public ActionBase {
 
  public:
   int _iteration;
-  int _resultCode;
+  ErrorCode _resultCode;
   std::shared_ptr<ActionDescription> _preDesc;
   std::shared_ptr<ActionDescription> _postDesc;
 

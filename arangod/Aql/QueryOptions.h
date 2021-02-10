@@ -89,7 +89,6 @@ struct QueryOptions {
   bool fullCount;
   bool count;
   bool verboseErrors;
-  bool inspectSimplePlans;
   bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 

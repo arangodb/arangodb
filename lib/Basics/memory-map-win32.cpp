@@ -38,9 +38,9 @@ using namespace arangodb;
 /// @brief maps a file on disk onto memory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
-               int memoryProtection, int flags, int fileDescriptor,
-               void** mmHandle, int64_t offset, void** result) {
+ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+                     int memoryProtection, int flags, int fileDescriptor,
+                     void** mmHandle, int64_t offset, void** result) {
   DWORD objectProtection = PAGE_READONLY;
   DWORD viewProtection = FILE_MAP_READ;
   LARGE_INTEGER mmLength;

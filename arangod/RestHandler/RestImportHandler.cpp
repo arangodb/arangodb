@@ -171,11 +171,11 @@ std::string RestImportHandler::buildParseError(size_t i, char const* lineStart) 
 /// @brief process a single VelocyPack document of Object Type
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
-                                            VPackBuilder& tempBuilder,
-                                            RestImportResult& result,
-                                            VPackBuilder& babies, VPackSlice slice,
-                                            bool isEdgeCollection, size_t i) {
+ErrorCode RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
+                                                  VPackBuilder& tempBuilder,
+                                                  RestImportResult& result,
+                                                  VPackBuilder& babies, VPackSlice slice,
+                                                  bool isEdgeCollection, size_t i) {
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -454,9 +454,6 @@ bool RestImportHandler::createFromJson(std::string const& type) {
                         ex.what());
       return false;
     }
-
-    // VPackSlice const documents = _request->payload();  //yields different
-    // error from what is expected in the server test
 
     if (!documents.isArray()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -844,7 +841,8 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
                                         std::string const& collectionName,
                                         VPackBuilder const& babies, bool complete,
                                         OperationOptions const& opOptions) {
-  auto makeError = [&](size_t i, int res, VPackSlice const& slice, RestImportResult& result) {
+  auto makeError = [&](size_t i, ErrorCode res, VPackSlice const& slice,
+                       RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = false;
     std::string part = VPackDumper::toString(slice, &options);
@@ -872,8 +870,9 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
       for (VPackSlice it : VPackArrayIterator(resultSlice)) {
         VPackSlice s = it.get(StaticStrings::Error);
         if (!s.isBool() || !s.getBool()) {
+          // no error
           if ((_onDuplicateAction == DUPLICATE_UPDATE || _onDuplicateAction == DUPLICATE_REPLACE) &&
-              it.hasKey(StaticStrings::Old)) {
+              it.hasKey("_oldRev")) {
             // updated/replaced a previous version
             ++result._numUpdated;
           } else {
@@ -882,7 +881,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           }
         } else {
           // got an error, now handle it
-          int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
+          auto errorCode = ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
           VPackSlice const which = babies.slice().at(pos);
           // special behavior in case of unique constraint violation . . .
           if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
@@ -1035,14 +1034,10 @@ OperationOptions RestImportHandler::buildOperationOptions() const {
   opOptions.validate = !_request->parsedValue(StaticStrings::SkipDocumentValidation, false);
   if (_onDuplicateAction == DUPLICATE_UPDATE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Update;
-    // we need to return the old document so that we can distinguish an original
-    // INSERT from an UPDATE
-    opOptions.returnOld = true;
+    opOptions.returnOld = false; 
   } else if (_onDuplicateAction == DUPLICATE_REPLACE) {
     opOptions.overwriteMode = OperationOptions::OverwriteMode::Replace;
-    // we need to return the old document so that we can distinguish an original
-    // INSERT from a REPLACE
-    opOptions.returnOld = true;
+    opOptions.returnOld = false; 
   }
 
   return opOptions;

@@ -451,10 +451,9 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
 }
 
 /// @brief send response including error response body
-void CommTask::sendErrorResponse(rest::ResponseCode code,
-                                 rest::ContentType respType, uint64_t messageId,
-                                 int errorNum, char const* errorMessage /* = nullptr */) {
-
+void CommTask::sendErrorResponse(rest::ResponseCode code, rest::ContentType respType,
+                                 uint64_t messageId, ErrorCode errorNum,
+                                 char const* errorMessage /* = nullptr */) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();

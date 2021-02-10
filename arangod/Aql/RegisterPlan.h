@@ -88,8 +88,8 @@ struct RegisterPlanWalkerT final : public WalkerWorker<T, WalkerUniqueness::NonU
         explain(explainRegisterPlan == ExplainRegisterPlan::Yes) {}
   virtual ~RegisterPlanWalkerT() noexcept = default;
 
-  void after(T* eb) final;
-  bool enterSubquery(T*, T*) final {
+  void after(T* eb) override final;
+  bool enterSubquery(T*, T*) override final {
     return false;  // do not walk into subquery
   }
 

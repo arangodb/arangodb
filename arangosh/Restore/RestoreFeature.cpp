@@ -176,10 +176,11 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
       errorNum = error.get(arangodb::StaticStrings::ErrorNum).getNumericValue<int>();
       errorMsg = error.get(arangodb::StaticStrings::ErrorMessage).copyString();
     }
-    return {errorNum, "got invalid response from server: HTTP " +
-                          itoa(response->getHttpReturnCode()) + ": '" +
-                          errorMsg + "' while executing " + requestAction +
-                          (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
+    auto err = ErrorCode{errorNum};
+    return {err, "got invalid response from server: HTTP " +
+                     itoa(response->getHttpReturnCode()) + ": '" + errorMsg +
+                     "' while executing " + requestAction +
+                     (originalRequest.empty() ? "" : "' with this payload: '" + originalRequest + "'")};
   }
   return {TRI_ERROR_NO_ERROR};
 }
@@ -528,7 +529,7 @@ arangodb::Result sendRestoreData(arangodb::httpclient::SimpleHttpClient& httpCli
   arangodb::basics::StringBuffer cleaned;
 
   if (options.cleanupDuplicateAttributes) {
-    int res = cleaned.reserve(bufferSize);
+    auto res = cleaned.reserve(bufferSize);
 
     if (res != TRI_ERROR_NO_ERROR) {
       // out of memory

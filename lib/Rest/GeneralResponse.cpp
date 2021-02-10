@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -422,6 +422,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED:
       return ResponseCode::CONFLICT;
     
+    case TRI_ERROR_HTTP_PRECONDITION_FAILED:
     case TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED:
       return ResponseCode::PRECONDITION_FAILED;
 
@@ -445,6 +446,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_CONNECTION_LOST:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
+    case TRI_ERROR_HTTP_NOT_IMPLEMENTED:
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
     case TRI_ERROR_ONLY_ENTERPRISE:

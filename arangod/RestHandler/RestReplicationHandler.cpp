@@ -1342,7 +1342,7 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     // We do never take any responsibility of the
     // value this pointer will point to.
     LogicalCollection* colPtr = nullptr;
-    int res = createCollection(parameters, &colPtr);
+    auto res = createCollection(parameters, &colPtr);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res, std::string("unable to create collection: ") +
@@ -1480,7 +1480,9 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
         if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
           using namespace std::literals::string_literals;
           auto data = std::string(ptr, pos);
-          res.appendErrorMessage(" in message '"s + data + "'");
+          res.withError([&](result::Error& err) {
+            err.appendErrorMessage(" in message '"s + data + "'");
+          });
         }
         return res;
       }
@@ -1522,7 +1524,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
           if (generateNewRevisionIds && 
               !isKey && 
               arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
-            char ridBuffer[11];
+            char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = physical->newRevisionId();
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
           } else {
@@ -1703,7 +1705,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
     if (error.isTrue()) {
       error = result.get(StaticStrings::ErrorNum);
       if (error.isNumber()) {
-        int code = error.getNumericValue<int>();
+        auto code = ErrorCode{error.getNumericValue<int>()};
         error = result.get(StaticStrings::ErrorMessage);
         if (error.isString()) {
           return { code, error.copyString() };
@@ -3057,7 +3059,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     };
     setRange(current);
 
-    char ridBuffer[11];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     {
       TRI_ASSERT(response.isOpenObject());
       VPackArrayBuilder rangesGuard(&response, StaticStrings::RevisionTreeRanges);
@@ -3191,8 +3193,8 @@ void RestReplicationHandler::handleCommandRevisionDocuments() {
 /// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestReplicationHandler::createCollection(VPackSlice slice,
-                                             arangodb::LogicalCollection** dst) {
+ErrorCode RestReplicationHandler::createCollection(VPackSlice slice,
+                                                   arangodb::LogicalCollection** dst) {
   TRI_ASSERT(dst != nullptr);
 
   if (!slice.isObject()) {

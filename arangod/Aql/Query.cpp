@@ -1094,13 +1094,6 @@ uint64_t Query::calculateHash() const {
     hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("count:false"), hashval);
   }
 
-  // handle "optimizer.inspectSimplePlans" option
-  if (_queryOptions.inspectSimplePlans) {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("inspect:true"), hashval);
-  } else {
-    hashval = fasthash64(TRI_CHAR_LENGTH_PAIR("inspect:false"), hashval);
-  }
-  
   // also hash "optimizer.rules" options
   for (auto const& rule : _queryOptions.optimizerRules) {
     hashval = VELOCYPACK_HASH(rule.data(), rule.size(), hashval);
@@ -1295,7 +1288,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
               VPackSlice code = it.get("code");
               VPackSlice message = it.get("message");
               if (code.isNumber() && message.isString()) {
-                query.warnings().registerWarning(code.getNumericValue<int>(),
+                query.warnings().registerWarning(ErrorCode{code.getNumericValue<int>()},
                                                  message.copyString());
               }
             }
@@ -1304,7 +1297,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
         
         val = res.slice().get("code");
         if (val.isNumber()) {
-          return Result{val.getNumericValue<int>()};
+          return Result{ErrorCode{val.getNumericValue<int>()}};
         }
         return Result();
     }).thenError<std::exception>([](std::exception ptr) {
