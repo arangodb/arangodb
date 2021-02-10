@@ -22,6 +22,8 @@ v3.7.8 (XXXX-XX-XX)
   change to the collection indexes, we can just retry our own operation and
   check if it succeeds then. This is what `dropIndex()` will do now.
 
+* Fix error reporting in the reloadTLS route.
+
 * Split the update operations for the _fishbowl system collection with Foxx apps
   into separate insert/replace and remove operations. This makes the overall
   update not atomic, but as removes are unlikely here, we can now get away with
