@@ -24,7 +24,9 @@
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
+#include <atomic>
 #include <set>
+#include <thread>
 
 #include <velocypack/Builder.h>
 
@@ -254,6 +256,7 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'
   IndexContainerType _indexes;
 };
 

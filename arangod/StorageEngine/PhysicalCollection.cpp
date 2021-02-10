@@ -25,6 +25,7 @@
 
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -78,7 +79,7 @@ void PhysicalCollection::flushClusterIndexEstimates() {
 
 void PhysicalCollection::drop() {
   {
-    WRITE_LOCKER(guard, _indexesLock);
+    RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
     _indexes.clear();
   }
   try {
@@ -109,7 +110,7 @@ bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
 }
 
 bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->type() == type) {
       return true;
@@ -153,12 +154,12 @@ bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
 
 /// @brief Find index by definition
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(VPackSlice const& info) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return findIndex(info, _indexes);
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->id() == idxId) {
       return idx;
@@ -168,7 +169,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(TRI_idx_iid_t idxId) cons
 }
 
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(std::string const& idxName) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto const& idx : _indexes) {
     if (idx->name() == idxName) {
       return idx;
@@ -536,13 +537,13 @@ int PhysicalCollection::checkRevision(transaction::Methods*, TRI_voc_rid_t expec
 
 /// @brief hands out a list of indexes
 std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return { _indexes.begin(), _indexes.end() };
 }
 
 void PhysicalCollection::getIndexesVPack(VPackBuilder& result,
                                          std::function<bool(Index const*, std::underlying_type<Index::Serialize>::type&)> const& filter) const {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   result.openArray();
   for (std::shared_ptr<Index> const& idx : _indexes) {
     std::underlying_type<Index::Serialize>::type flags = Index::makeFlags();
@@ -569,7 +570,7 @@ futures::Future<OperationResult> PhysicalCollection::figures(bool details) {
 
   {
     bool seenEdgeIndex = false;
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto const& idx : _indexes) {
       // only count an edge index instance
       if (idx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || !seenEdgeIndex) {

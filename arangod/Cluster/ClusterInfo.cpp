@@ -3018,13 +3018,13 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
     // Keep trying for 2 minutes, if it's preconditions, which are stopping us
     do {
       resultBuilder.clear();
-      res = ensureIndexCoordinatorInner(  // creat index
+      res = ensureIndexCoordinatorInner(  // create index
           collection, idString, slice, create, resultBuilder, timeout);
 
       // Note that this function sets the errorMsg unless it is precondition
       // failed, in which case we retry, if this times out, we need to set
       // it ourselves, otherwise all is done!
-      if (TRI_ERROR_HTTP_PRECONDITION_FAILED == res.errorNumber()) {
+      if (res.is(TRI_ERROR_HTTP_PRECONDITION_FAILED)) {
         auto diff = std::chrono::steady_clock::now() - start;
 
         if (diff < std::chrono::seconds(120)) {
@@ -3440,21 +3440,56 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   return Result(TRI_ERROR_SHUTTING_DOWN);
 }
 
+Result ClusterInfo::dropIndexCoordinator( 
+    std::string const& databaseName,      
+    std::string const& collectionID, TRI_idx_iid_t iid,
+    double timeout) {
+  double const endTime = TRI_microtime() + getTimeout(timeout);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid);
+
+  Result res(TRI_ERROR_CLUSTER_TIMEOUT);
+  do {
+    Result res = dropIndexCoordinatorInner(databaseName, collectionID, iid, endTime);
+
+    if (res.ok()) {
+      // success!
+      break;
+    }
+
+    // check if we got a precondition failed error
+    if (!res.is(TRI_ERROR_HTTP_PRECONDITION_FAILED)) {
+      // no, different error. report it!
+      break;
+    }
+      
+    if (_server.isStopping()) {
+      // do not audit-log the error
+      return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    // precondition failed
+
+    // apply a random wait time
+    uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(1000));
+    std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
+  } while (TRI_microtime() < endTime);
+      
+  events::DropIndex(databaseName, collectionID, idString, res.errorNumber());
+  return res;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::dropIndexCoordinator(  // drop index
-    std::string const& databaseName,       // database name
+Result ClusterInfo::dropIndexCoordinatorInner( 
+    std::string const& databaseName,   
     std::string const& collectionID, TRI_idx_iid_t iid,
-    double timeout  // request timeout
-) {
+    double endTime) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac;
 
-  double const realTimeout = getTimeout(timeout);
-  double const endTime = TRI_microtime() + realTimeout;
-  double const interval = getPollInterval();
   std::string const idString = arangodb::basics::StringUtils::itoa(iid);
+  double const interval = getPollInterval();
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
@@ -3462,17 +3497,12 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyCommResult previous = ac.getValues(planCollKey);
 
   if (!previous.successful()) {
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-
     return Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   }
 
   velocypack::Slice collection = previous.slice()[0].get(std::vector<std::string>(
       {AgencyCommManager::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
-    events::DropIndex(databaseName, collectionID, idString,
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
@@ -3485,7 +3515,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexes.isArray()) {
     LOG_TOPIC("63178", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                                << "/" << collectionID << "/" << iid;
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
@@ -3503,7 +3532,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       Index::IndexType type = Index::type(typeSlice.copyString());
 
       if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_FORBIDDEN);
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -3516,8 +3544,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   if (!indexToRemove.isObject()) {
     LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER) << "Failed to find index " << databaseName
                                                << "/" << collectionID << "/" << iid;
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
@@ -3583,8 +3609,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    events::DropIndex(databaseName, collectionID, idString,
-                      TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
+    if (result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      // Retry loop is outside!
+      return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
+    }
 
     return Result(                                       // result
         TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // code
@@ -3608,14 +3636,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       if (*dbServerResult >= 0) {
         cbGuard.fire();  // unregister cb
         loadCurrent();
-        events::DropIndex(databaseName, collectionID, idString, *dbServerResult);
-
         return Result(*dbServerResult);
       }
 
       if (TRI_microtime() > endTime) {
-        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_TIMEOUT);
-
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
