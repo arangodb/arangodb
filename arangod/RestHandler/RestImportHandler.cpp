@@ -171,11 +171,11 @@ std::string RestImportHandler::buildParseError(size_t i, char const* lineStart) 
 /// @brief process a single VelocyPack document of Object Type
 ////////////////////////////////////////////////////////////////////////////////
 
-int RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
-                                            VPackBuilder& tempBuilder,
-                                            RestImportResult& result,
-                                            VPackBuilder& babies, VPackSlice slice,
-                                            bool isEdgeCollection, size_t i) {
+ErrorCode RestImportHandler::handleSingleDocument(SingleCollectionTransaction& trx,
+                                                  VPackBuilder& tempBuilder,
+                                                  RestImportResult& result,
+                                                  VPackBuilder& babies, VPackSlice slice,
+                                                  bool isEdgeCollection, size_t i) {
   if (!slice.isObject()) {
     std::string part = VPackDumper::toString(slice);
     if (part.size() > 255) {
@@ -841,7 +841,8 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
                                         std::string const& collectionName,
                                         VPackBuilder const& babies, bool complete,
                                         OperationOptions const& opOptions) {
-  auto makeError = [&](size_t i, int res, VPackSlice const& slice, RestImportResult& result) {
+  auto makeError = [&](size_t i, ErrorCode res, VPackSlice const& slice,
+                       RestImportResult& result) {
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = false;
     std::string part = VPackDumper::toString(slice, &options);
@@ -881,7 +882,7 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
           }
         } else {
           // got an error, now handle it
-          int errorCode = it.get(StaticStrings::ErrorNum).getNumber<int>();
+          auto errorCode = ErrorCode{it.get(StaticStrings::ErrorNum).getNumber<int>()};
           VPackSlice const which = babies.slice().at(pos);
           // special behavior in case of unique constraint violation . . .
           if (errorCode == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&

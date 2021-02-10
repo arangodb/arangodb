@@ -848,7 +848,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
 
   // merge results from DBServers
   outBuilder.openArray();
-  int res = _sendToAllDBServers(Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+  auto res = _sendToAllDBServers(Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
     if (payload.isArray()) {
       outBuilder.add(VPackArrayIterator(payload));
     }
@@ -888,12 +888,12 @@ VPackBuilder Conductor::toVelocyPack() const {
   return result;
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
+ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message,
-                                   std::function<void(VPackSlice)> handle) {
+ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message,
+                                         std::function<void(VPackSlice)> handle) {
   _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
 

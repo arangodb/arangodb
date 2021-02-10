@@ -132,7 +132,7 @@ QueryResult Parser::parseWithDetails() {
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, char const* format,
+void Parser::registerParseError(ErrorCode errorCode, char const* format,
                                 std::string_view data, int line, int column) {
   char buffer[512];
   // make sure the buffer is always initialized
@@ -145,7 +145,7 @@ void Parser::registerParseError(int errorCode, char const* format,
 }
 
 /// @brief register a parse error, position is specified as line / column
-void Parser::registerParseError(int errorCode, std::string_view data, int line, int column) {
+void Parser::registerParseError(ErrorCode errorCode, std::string_view data, int line, int column) {
   TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   TRI_ASSERT(data.data() != nullptr);
 
@@ -176,7 +176,7 @@ void Parser::registerParseError(int errorCode, std::string_view data, int line, 
 }
 
 /// @brief register a warning
-void Parser::registerWarning(int errorCode, std::string_view data,
+void Parser::registerWarning(ErrorCode errorCode, std::string_view data,
                              [[maybe_unused]] int line, [[maybe_unused]] int column) {
   // ignore line and column for now
   _query.warnings().registerWarning(errorCode, data);

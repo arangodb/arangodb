@@ -1,6 +1,6 @@
 /// auto-generated file generated from errors.dat
 
-#include "Basics/Common.h"
+
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 
@@ -42,13 +42,16 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CANNOT_READ_FILE, "cannot read file");
   REG_ERROR(ERROR_INCOMPATIBLE_VERSION, "incompatible server version");
   REG_ERROR(ERROR_DISABLED, "disabled");
+  REG_ERROR(ERROR_MALFORMED_JSON, "malformed json");
   REG_ERROR(ERROR_HTTP_BAD_PARAMETER, "bad parameter");
   REG_ERROR(ERROR_HTTP_UNAUTHORIZED, "unauthorized");
   REG_ERROR(ERROR_HTTP_FORBIDDEN, "forbidden");
   REG_ERROR(ERROR_HTTP_NOT_FOUND, "not found");
   REG_ERROR(ERROR_HTTP_METHOD_NOT_ALLOWED, "method not supported");
   REG_ERROR(ERROR_HTTP_NOT_ACCEPTABLE, "request not acceptable");
+  REG_ERROR(ERROR_HTTP_REQUEST_TIMEOUT, "request timeout");
   REG_ERROR(ERROR_HTTP_CONFLICT, "conflict");
+  REG_ERROR(ERROR_HTTP_GONE, "content permanently deleted");
   REG_ERROR(ERROR_HTTP_PRECONDITION_FAILED, "precondition failed");
   REG_ERROR(ERROR_HTTP_SERVER_ERROR, "internal server error");
   REG_ERROR(ERROR_HTTP_NOT_IMPLEMENTED, "not implemented");
@@ -340,6 +343,8 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_FAILED, "move shard job failed during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED, "move shard job disappeared during cluster repairs");
   REG_ERROR(ERROR_CLUSTER_REPAIRS_OPERATION_FAILED, "agency transaction failed during cluster repairs");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE, "malformed gossip message");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST, "malformed inquire request");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_BE_OBJECT, "Inform message must be an object.");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM, "Inform message must contain uint parameter 'term'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_ID, "Inform message must contain string parameter 'id'");
@@ -349,6 +354,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING, "Inform message must contain object 'max ping'");
   REG_ERROR(ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT, "Inform message must contain object 'timeoutMult'");
   REG_ERROR(ERROR_AGENCY_CANNOT_REBUILD_DBS, "Cannot rebuild readDB and spearHead");
+  REG_ERROR(ERROR_AGENCY_MALFORMED_TRANSACTION, "malformed agency transaction");
   REG_ERROR(ERROR_SUPERVISION_GENERAL_FAILURE, "general supervision failure");
   REG_ERROR(ERROR_QUEUE_FULL, "named queue is full");
   REG_ERROR(ERROR_ACTION_OPERATION_UNABORTABLE, "this maintenance action cannot be stopped");

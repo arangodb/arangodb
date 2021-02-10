@@ -92,39 +92,39 @@ bool TRI_ExistsFile(char const* path);
 /// @brief sets the desired mode on a file, returns errno on error.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ChMod(char const* path, long mode, std::string& err);
+ErrorCode TRI_ChMod(char const* path, long mode, std::string& err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MTimeFile(char const* path, int64_t* mtime);
+ErrorCode TRI_MTimeFile(char const* path, int64_t* mtime);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+ErrorCode TRI_CreateRecursiveDirectory(char const* path, long& systemError,
                                  std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
+ErrorCode TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveEmptyDirectory(char const* filename);
+ErrorCode TRI_RemoveEmptyDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using file order provided by
 /// the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectory(char const* filename);
+ErrorCode TRI_RemoveDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using a deterministic order of files
@@ -172,14 +172,14 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
+ErrorCode TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
                    std::string* systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnlinkFile(char const* filename);
+ErrorCode TRI_UnlinkFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads into a buffer from a file
@@ -248,7 +248,7 @@ char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char 
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile(char const* filename);
+ErrorCode TRI_CreateLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
@@ -266,7 +266,7 @@ int TRI_CreateLockFile(char const* filename);
 /// TRI_ERROR_NO_ERROR than the file is locked and the lock is valid.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile(char const* filename);
+ErrorCode TRI_VerifyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
@@ -321,7 +321,7 @@ std::string TRI_HomeDirectory();
 /// @brief calculate the crc32 checksum of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Crc32File(char const*, uint32_t*);
+ErrorCode TRI_Crc32File(char const* path, uint32_t* crc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the application's name

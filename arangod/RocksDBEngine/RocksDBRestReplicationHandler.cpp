@@ -186,7 +186,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (found) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      int res = TRI_ERROR_CURSOR_NOT_FOUND;
+      auto res = TRI_ERROR_CURSOR_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
     }
     return;

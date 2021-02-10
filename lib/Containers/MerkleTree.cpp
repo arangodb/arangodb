@@ -47,6 +47,7 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/hashes.h"
 
@@ -616,7 +617,7 @@ void MerkleTree<Hasher, BranchingBits, LockStripes>::serialize(velocypack::Build
                                                                std::uint64_t maxDepth) const {
   std::unique_lock<std::shared_mutex> guard(_bufferLock);
   TRI_ASSERT(output.isEmpty());
-  char ridBuffer[11];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::uint64_t depth = std::min(maxDepth, meta().maxDepth);
 
   velocypack::ObjectBuilder topLevelGuard(&output);

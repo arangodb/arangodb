@@ -560,7 +560,7 @@ bool ServerState::hasPersistedId() {
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
   // try to create underlying directory
-  int error;
+  auto error = TRI_ERROR_NO_ERROR;
   FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
 
   try {

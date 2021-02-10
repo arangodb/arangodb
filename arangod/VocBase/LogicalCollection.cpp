@@ -380,22 +380,22 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _sharding->setShardMap(map);
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
-int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
                              VPackStringRef(key.data(), key.size()));
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID,
-                                           bool& usesDefaultShardKeys,
-                                           VPackStringRef const& key) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID,
+                                                 bool& usesDefaultShardKeys,
+                                                 VPackStringRef const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);

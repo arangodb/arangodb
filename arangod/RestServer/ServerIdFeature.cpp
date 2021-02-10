@@ -64,7 +64,7 @@ void ServerIdFeature::start() {
 
   // read the server id or create a new one
   bool const checkVersion = database.checkVersion();
-  int res = determineId(checkVersion);
+  auto res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     if (checkVersion) {
@@ -98,7 +98,7 @@ void ServerIdFeature::generateId() {
 }
 
 /// @brief reads server id from file
-int ServerIdFeature::readId() {
+ErrorCode ServerIdFeature::readId() {
   if (!TRI_ExistsFile(_idFilename.c_str())) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
@@ -133,7 +133,7 @@ int ServerIdFeature::readId() {
 }
 
 /// @brief writes server id to file
-int ServerIdFeature::writeId() {
+ErrorCode ServerIdFeature::writeId() {
   // create a VelocyPack Object
   VPackBuilder builder;
   try {
@@ -175,8 +175,8 @@ int ServerIdFeature::writeId() {
 }
 
 /// @brief read / create the server id on startup
-int ServerIdFeature::determineId(bool checkVersion) {
-  int res = readId();
+ErrorCode ServerIdFeature::determineId(bool checkVersion) {
+  auto res = readId();
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     if (checkVersion) {

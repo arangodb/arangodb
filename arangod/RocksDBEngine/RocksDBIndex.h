@@ -37,11 +37,13 @@
 namespace rocksdb {
 class Comparator;
 class ColumnFamilyHandle;
-}  // namespace rocksdb
+}
+
 namespace arangodb {
 namespace cache {
 class Cache;
 }
+
 class LogicalCollection;
 class RocksDBMethods;
 struct OperationOptions;
@@ -52,7 +54,8 @@ class RocksDBIndex : public Index {
   // This is the number of distinct elements the index estimator can reliably
   // store
   // This correlates directly with the memory of the estimator:
-  // memory == ESTIMATOR_SIZE * 6 bytes
+  // memory == ESTIMATOR_SIZE * 6 bytes. 
+  // note: if this is ever adjusted, it will break the stored estimator data!
   static constexpr uint64_t ESTIMATOR_SIZE = 4096;
 
  public:
@@ -87,8 +90,27 @@ class RocksDBIndex : public Index {
     // allow disabling and enabling of caches for the primary index
     _cacheEnabled = enable;
   }
+
   void createCache();
   void destroyCache();
+
+  /// performs a preflight check for an insert operation, not carrying out any
+  /// modifications to the index.
+  /// the default implementation does nothing. indexes can override this and
+  /// perform useful checks (uniqueness checks etc.) here
+  virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                             LocalDocumentId const& documentId,
+                             arangodb::velocypack::Slice doc,
+                             OperationOptions const& options);
+  
+  /// performs a preflight check for an update/replace operation, not carrying out any
+  /// modifications to the index.
+  /// the default implementation does nothing. indexes can override this and
+  /// perform useful checks (uniqueness checks etc.) here
+  virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                              LocalDocumentId const& documentId,
+                              arangodb::velocypack::Slice doc,
+                              OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -121,9 +143,9 @@ class RocksDBIndex : public Index {
   static RocksDBKeyBounds getBounds(Index::IndexType type, uint64_t objectId, bool unique);
 
   /// @brief get index estimator, optional
-  virtual RocksDBCuckooIndexEstimator<uint64_t>* estimator() { return nullptr; }
-  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
-  virtual void recalculateEstimates() {}
+  virtual RocksDBCuckooIndexEstimatorType* estimator();
+  virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>);
+  virtual void recalculateEstimates();
 
   bool isPersistent() const override final { return true; }
 
@@ -138,7 +160,9 @@ class RocksDBIndex : public Index {
                rocksdb::ColumnFamilyHandle* cf, bool useCache);
 
   inline bool useCache() const { return (_cacheEnabled && _cache); }
+  
   void invalidateCacheEntry(char const* data, std::size_t len);
+  
   void invalidateCacheEntry(arangodb::velocypack::StringRef& ref) {
     invalidateCacheEntry(ref.data(), ref.size());
   }

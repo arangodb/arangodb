@@ -24,6 +24,7 @@
 #ifndef ARANGOD_AQL_QUERY_WARNINGS_H
 #define ARANGOD_AQL_QUERY_WARNINGS_H 1
 
+#include <Basics/ErrorCode.h>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -48,10 +49,9 @@ public:
 
   /// @brief register an error
   /// this also makes the query abort
-  [[noreturn]] void registerError(int, std::string_view = {});
-
+  [[noreturn]] void registerError(ErrorCode code, std::string_view details = nullptr);
   /// @brief register a warning
-  void registerWarning(int code, std::string_view details = {});
+  void registerWarning(ErrorCode code, std::string_view details = nullptr);
 
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
   
@@ -61,8 +61,8 @@ public:
   
   std::vector<std::pair<int, std::string>> all() const;
 
-  static std::string buildFormattedString(int code, char const* details);
-  
+  static std::string buildFormattedString(ErrorCode code, char const* details);
+
  private:
   
   mutable std::mutex _mutex;

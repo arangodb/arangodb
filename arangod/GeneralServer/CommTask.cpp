@@ -452,7 +452,7 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
 
 /// @brief send response including error response body
 void CommTask::sendErrorResponse(rest::ResponseCode code, rest::ContentType respType,
-                                 uint64_t messageId, int errorNum,
+                                 uint64_t messageId, ErrorCode errorNum,
                                  std::string_view errorMessage /* = {} */) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);

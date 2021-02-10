@@ -593,9 +593,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
-
-  if (res < 0) {
+  if (int res = TRI_CLOSE(fd); res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
@@ -603,9 +601,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (auto res = TRI_RenameFile(tmp.c_str(), filename.c_str()); res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
@@ -630,7 +626,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
             << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
-      res = TRI_CLOSE(fd);
+      int res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)

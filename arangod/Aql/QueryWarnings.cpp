@@ -39,7 +39,7 @@ QueryWarnings::QueryWarnings()
 
 /// @brief register an error
 /// this also makes the query abort
-void QueryWarnings::registerError(int code, std::string_view details) {
+void QueryWarnings::registerError(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   if (details.data() == nullptr) {
@@ -50,7 +50,7 @@ void QueryWarnings::registerError(int code, std::string_view details) {
 }
 
 /// @brief register a warning
-void QueryWarnings::registerWarning(int code, std::string_view details) {
+void QueryWarnings::registerWarning(ErrorCode code, std::string_view details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   
   std::lock_guard<std::mutex> guard(_mutex);
@@ -105,6 +105,6 @@ std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
   return _list;
 }
 
-std::string QueryWarnings::buildFormattedString(int code, char const* details) {
+std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
   return arangodb::basics::Exception::FillExceptionString(code, details);
 }

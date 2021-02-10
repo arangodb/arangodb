@@ -102,13 +102,14 @@ class Parser {
   QueryResult parseWithDetails();
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, char const*, std::string_view, int, int);
+  void registerParseError(ErrorCode errorCode, char const* format,
+                          std::string_view data, int line, int column);
 
   /// @brief register a parse error, position is specified as line / column
-  void registerParseError(int, std::string_view, int, int);
-  
+  void registerParseError(ErrorCode errorCode, std::string_view data, int line, int column);
+
   /// @brief register a warning
-  void registerWarning(int, std::string_view, int, int);
+  void registerWarning(ErrorCode errorCode, std::string_view data, int line, int column);
 
   /// @brief push an AstNode array element on top of the stack
   /// the array must be removed from the stack via popArray

@@ -31,7 +31,7 @@
 
 /// @brief error number and system error
 struct ErrorContainer {
-  int _number = TRI_ERROR_NO_ERROR;
+  ErrorCode _number = TRI_ERROR_NO_ERROR;
   int _sys = TRI_ERROR_NO_ERROR;
 };
 
@@ -42,11 +42,11 @@ thread_local ErrorContainer LastError;
 static std::unordered_map<int, std::string_view const> ErrorMessages;
 
 /// @brief returns the last error
-int TRI_errno() { return LastError._number; }
+ErrorCode TRI_errno() { return LastError._number; }
 
 /// @brief returns the last error as string
 std::string_view TRI_last_error() {
-  int err = LastError._number;
+  ErrorCode err = LastError._number;
 
   if (err == TRI_ERROR_SYS_ERROR) {
     return strerror(LastError._sys);
@@ -56,7 +56,7 @@ std::string_view TRI_last_error() {
 }
 
 /// @brief sets the last error
-int TRI_set_errno(int error) {
+ErrorCode TRI_set_errno(ErrorCode error) {
   LastError._number = error;
 
   if (error == TRI_ERROR_SYS_ERROR) {
@@ -69,20 +69,20 @@ int TRI_set_errno(int error) {
 }
 
 /// @brief defines an error string
-void TRI_set_errno_string(int code, char const* msg) {
+void TRI_set_errno_string(ErrorCode code, char const* msg) {
   TRI_ASSERT(msg != nullptr);
 
-  if (!ErrorMessages.try_emplace(code, msg).second) {
+  if (!ErrorMessages.try_emplace(code.asInt(), msg).second) {
     // logic error, error number is redeclared
-    printf("Error: duplicate declaration of error code %i in %s:%i\n", code,
-           __FILE__, __LINE__);
+    printf("Error: duplicate declaration of error code %i in %s:%i\n",
+           code.asInt(), __FILE__, __LINE__);
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 }
 
 /// @brief return an error message for an error code
-std::string_view TRI_errno_string(int code) noexcept {
-  auto it = ErrorMessages.find(code);
+std::string_view TRI_errno_string(ErrorCode code) noexcept {
+  auto it = ErrorMessages.find(code.asInt());
 
   if (it == ErrorMessages.end()) {
     // return a hard-coded string as not all callers check for nullptr

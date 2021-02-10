@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
@@ -528,7 +529,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = _engine.db();
@@ -582,7 +583,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
-      tmpHashBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+      tmpHashBuilder.add(docRev.toValuePair(ridBuffer));
       hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
@@ -694,7 +695,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
@@ -733,7 +734,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(docRev.toValuePair(&ridBuffer[0]));
+    b.add(docRev.toValuePair(ridBuffer));
     b.close();
   }
   b.close();
