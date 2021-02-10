@@ -30,6 +30,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"

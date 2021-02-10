@@ -1,6 +1,13 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Improve incremental sync replication for single server and cluster to cope
+  with multiple secondary index unique constraint violations (before this
+  was limited to a failure in a single unique secondary index). this allows
+  replicating the leader state to the follower in basically any order, as
+  any *other* conflicting documents in unique secondary indexes will be 
+  detected and removed on the follower.
+
 * Split the update operations for the _fishbowl system collection with Foxx apps
   into separate insert/replace and remove operations. This makes the overall
   update not atomic, but as removes are unlikely here, we can now get away with
