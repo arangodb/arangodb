@@ -40,7 +40,7 @@ OperationOptions::OperationOptions()
   returnOld(false),
   returnNew(false),
   isRestore(false),
-  ignoreUniqueConstraints(false),
+  checkUniqueConstraintsInPreflight(false),
   truncateCompact(true),
   _context(nullptr) {}
 

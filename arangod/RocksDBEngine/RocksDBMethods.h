@@ -24,7 +24,6 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_METHODS_H
 #define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
 
-#include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 namespace rocksdb {
@@ -38,10 +37,6 @@ struct ReadOptions;
 }  // namespace rocksdb
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
 class RocksDBKey;
 class RocksDBMethods;
 class RocksDBTransactionState;
