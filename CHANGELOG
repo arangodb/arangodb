@@ -8,6 +8,19 @@ v3.7.8 (XXXX-XX-XX)
   any *other* conflicting documents in unique secondary indexes will be 
   detected and removed on the follower.
 
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Do not create index estimator objects for proxy collection objects on
+  coordinators and DB servers. Proxy objects are created on coordinators and DB
+  servers for all shards, and they also make index objects available. In order
+  to reduce the memory usage by these objects, we don't create any index
+  estimator objects for indexes in those proxy objects. Index estimators usually
+  take several KB of memory each, so not creating them will pay out for higher
+  numbers of collections/shards.
+
 * Improvements for logging. This adds the following startup options to arangod:
 
 - `--log.max-entry-length`: controls the maximum line length for individual

@@ -435,11 +435,10 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, arangodb::LogicalCollection& col
                                      false)}}) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::edge());
 
-  if (!ServerState::instance()->isCoordinator()) {
+  if (!ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
         RocksDBIndex::ESTIMATOR_SIZE);
-    TRI_ASSERT(_estimator != nullptr);
   }
   // edge indexes are always created with ID 1 or 2
   TRI_ASSERT(iid.isEdge());
@@ -460,6 +459,9 @@ double RocksDBEdgeIndex::selectivityEstimate(arangodb::velocypack::StringRef con
     return 1.0;
   }
   if (!attribute.empty() && attribute.compare(_directionAttr)) {
+    return 0.0;
+  }
+  if (_estimator == nullptr) {
     return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
@@ -922,6 +924,9 @@ void RocksDBEdgeIndex::handleValNode(VPackBuilder* keys,
 
 void RocksDBEdgeIndex::afterTruncate(TRI_voc_tick_t tick,
                                      arangodb::transaction::Methods* trx) {
+  if (_estimator == nullptr) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
@@ -937,6 +942,9 @@ void RocksDBEdgeIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<
 }
 
 void RocksDBEdgeIndex::recalculateEstimates() {
+  if (_estimator == nullptr) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
