@@ -1821,6 +1821,10 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
+        if (!node.hasOwnProperty('createKeys')) {
+          // this must be a 3.8 or higher!
+          return keyword('DISTRIBUTE') + ' ' + variableName(node.variable);
+        }
         return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
       case 'ScatterNode':
         return keyword('SCATTER');
