@@ -2130,16 +2130,16 @@ function profileQuery(data, shouldPrint) {
   let options = data.options || {};
   options.silent = true;
   options.allPlans = false; // always turn this off, as it will not work with profiling
-  options.batchSize = 99999999999999999; // must set a super-high batchSize so everything gets executed
-  if (options.hasOwnProperty('stream') && options.stream) {
-    stringBuilder.appendLine("streaming queries aren't supported. Reverting to non-stream!");
-  }
-  options.stream = false;
   setColors(options.colors === undefined ? true : options.colors);
 
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
+  if (options.stream) {
+    while(cursor.hasNext()) {
+      cursor.next();
+    }
+  }
   let extra = cursor.getExtra();
   processQuery(data.query, extra, undefined);
 
