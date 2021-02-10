@@ -1,7 +1,7 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
-* Fix error reporting in the reloadTLS route
+* Fix error reporting in the reloadTLS route.
 
 * Split the update operations for the _fishbowl system collection with Foxx apps
   into separate insert/replace and remove operations. This makes the overall
