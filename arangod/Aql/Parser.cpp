@@ -139,7 +139,7 @@ void Parser::registerParseError(ErrorCode errorCode, char const* format,
   buffer[0] = '\0';
   buffer[sizeof(buffer) - 1] = '\0';
 
-  snprintf(buffer, sizeof(buffer) - 1, format, data);
+  snprintf(buffer, sizeof(buffer) - 1, format, data.data());
 
   return registerParseError(errorCode, buffer, line, column);
 }
