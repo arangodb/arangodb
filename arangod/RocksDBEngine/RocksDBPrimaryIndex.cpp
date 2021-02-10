@@ -640,7 +640,7 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
   Result res;
 
-  if (!options.ignoreUniqueConstraints) {
+  if (!options.checkUniqueConstraintsInPreflight) {
     res = probeKey(trx, mthd, key, keySlice, options, /*lock*/ true);
     
     if (res.fail()) {
