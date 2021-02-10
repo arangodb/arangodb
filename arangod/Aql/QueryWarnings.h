@@ -49,9 +49,9 @@ public:
 
   /// @brief register an error
   /// this also makes the query abort
-  [[noreturn]] void registerError(ErrorCode code, std::string_view details = nullptr);
+  [[noreturn]] void registerError(ErrorCode code, std::string_view details = {});
   /// @brief register a warning
-  void registerWarning(ErrorCode code, std::string_view details = nullptr);
+  void registerWarning(ErrorCode code, std::string_view details = {});
 
   void toVelocyPack(arangodb::velocypack::Builder& b) const;
   
