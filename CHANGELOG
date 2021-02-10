@@ -1,3 +1,12 @@
+v3.7.8 (XXXX-XX-XX)
+-------------------
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+
 v3.7.7 (XXXX-XX-XX)
 -------------------
 
