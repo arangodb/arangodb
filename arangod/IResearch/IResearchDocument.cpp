@@ -518,10 +518,12 @@ setAnalyzers:
       // reset name to previous size
       _nameBuffer.resize(level.nameLength);
 
-      // check if we're in object scope
-      if (auto const parent = _stack.end() - 2;
-          parent >= _stack.begin() && parent->it.value().value.isObject()) {
-        _nameBuffer += NESTING_LEVEL_DELIMITER;
+      if (_stack.size() >= 2) {
+        // check if we're in object scope
+        if (auto const parent = _stack.end() - 2;
+            parent >= _stack.begin() && parent->it.value().value.isObject()) {
+          _nameBuffer += NESTING_LEVEL_DELIMITER;
+        }
       }
 
       if (!level.filter(_nameBuffer, context, value)) {
