@@ -249,6 +249,10 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
+set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+
+target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
+
 add_dependencies(arango snappy-static)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
