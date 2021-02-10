@@ -229,8 +229,11 @@ class RocksDBKeyLeaser {
   ~RocksDBKeyLeaser();
   inline RocksDBKey* builder() { return &_key; }
   inline RocksDBKey* operator->() { return &_key; }
+  inline RocksDBKey const* operator->() const { return &_key; }
   inline RocksDBKey* get() { return &_key; }
+  inline RocksDBKey const* get() const { return &_key; }
   inline RocksDBKey& ref() { return _key; }
+  inline RocksDBKey const& ref() const { return _key; }
 
  private:
   transaction::Context* _ctx;
