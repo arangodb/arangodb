@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
@@ -231,7 +232,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   auto bounds = RocksDBKeyBounds::Empty();
   bool set = false;
   {
-    READ_LOCKER(guard, _indexesLock);
+    RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
     for (auto it : _indexes) {
       if (it->type() == Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
@@ -296,7 +297,7 @@ Result RocksDBMetaCollection::compact() {
   rocksdb::Slice b = bounds.start(), e = bounds.end();
   db->CompactRange(opts, bounds.columnFamily(), &b, &e);
   
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     index->compact();
@@ -322,7 +323,7 @@ void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
   builder.add("documents", VPackValue(out));
   builder.add("indexes", VPackValue(VPackValueType::Object));
   
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     out = index->memory();
