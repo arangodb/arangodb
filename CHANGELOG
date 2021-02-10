@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix error reporting in the reloadTLS route
+
 * Fix potential undefined behavior when iterating over connected nodes in an
   execution plan and calling callbacks for each of the nodes: if the callbacks
   modified the list of connected nodes of the current that they were called
