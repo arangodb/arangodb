@@ -374,8 +374,7 @@ ErrorCode TRI_ZipFile(char const* filename, char const* dir,
       }
 
       if (sizeRead > 0) {
-        int res2 = zipWriteInFileInZip(zf, buffer, sizeRead);
-        if (res2 != 0) {
+        if (0 != zipWriteInFileInZip(zf, buffer, sizeRead)) {
           break;
         }
       } else /* if (sizeRead <= 0) */ {

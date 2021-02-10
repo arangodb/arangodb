@@ -223,6 +223,11 @@ constexpr auto TRI_ERROR_HTTP_NOT_ACCEPTABLE                                    
 /// Will be raised when a timeout occured.
 constexpr auto TRI_ERROR_HTTP_REQUEST_TIMEOUT                                    = ErrorCode{408};
 
+/// 409: ERROR_HTTP_CONFLICT
+/// "conflict"
+/// Will be raised when a conflict occurs in an HTTP operation.
+constexpr auto TRI_ERROR_HTTP_CONFLICT                                           = ErrorCode{409};
+
 /// 410: ERROR_HTTP_GONE
 /// "content permanently deleted"
 /// Will be raised when the requested content has been permanently deleted.
@@ -237,6 +242,12 @@ constexpr auto TRI_ERROR_HTTP_PRECONDITION_FAILED                               
 /// "internal server error"
 /// Will be raised when an internal server is encountered.
 constexpr auto TRI_ERROR_HTTP_SERVER_ERROR                                       = ErrorCode{500};
+
+/// 501: ERROR_HTTP_NOT_IMPLEMENTED
+/// "not implemented"
+/// Will be raised when an API is called this is not implemented in general, or
+/// not implemented for the current setup.
+constexpr auto TRI_ERROR_HTTP_NOT_IMPLEMENTED                                    = ErrorCode{501};
 
 /// 503: ERROR_HTTP_SERVICE_UNAVAILABLE
 /// "service unavailable"

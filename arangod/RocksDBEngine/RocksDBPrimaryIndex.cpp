@@ -581,7 +581,7 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
                                    velocypack::Slice const slice,
-                                   OperationOptions& options) {
+                                   OperationOptions const& options) {
   IndexOperationMode mode = options.indexOperationMode;
   VPackSlice keySlice;
   RevisionId revision;
@@ -628,10 +628,10 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& oldDocumentId,
-                                   velocypack::Slice const oldDoc,
+                                   velocypack::Slice oldDoc,
                                    LocalDocumentId const& newDocumentId,
-                                   velocypack::Slice const newDoc,
-                                   OperationOptions& options) {
+                                   velocypack::Slice newDoc,
+                                   OperationOptions const& /*options*/) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
@@ -655,7 +655,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   velocypack::Slice const slice) {
+                                   velocypack::Slice slice) {
   Result res;
 
   // TODO: deal with matching revisions?

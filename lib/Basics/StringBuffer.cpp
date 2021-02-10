@@ -900,8 +900,7 @@ ErrorCode arangodb::basics::StringBuffer::inflate(arangodb::basics::StringBuffer
         case Z_MEM_ERROR: {
           return TRI_ERROR_INTERNAL;
         }
-        default:
-          ;
+        default:;
       }
 
       out.appendText(buffer.get(), bufferSize - strm.avail_out);

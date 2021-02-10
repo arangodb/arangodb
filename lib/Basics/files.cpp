@@ -453,9 +453,10 @@ ErrorCode TRI_ChMod(char const* path, long mode, std::string& err) {
 #endif
 
   if (res != 0) {
+    auto res2 = TRI_set_errno(TRI_ERROR_SYS_ERROR);
     err = "error setting desired mode " + std::to_string(mode) + " for file " +
-          path + ": " + strerror(errno);
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
+          path + ": " + TRI_last_error();
+    return res2;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -1465,9 +1466,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
   // file was not yet locked; could be locked
   if (canLock == 0) {
     // lock.l_type = F_UNLCK;
-    int res2 = fcntl(fd, F_GETLK, &lock);
-
-    if (res2 != 0) {
+    if (0 != fcntl(fd, F_GETLK, &lock)) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c960a", WARN, arangodb::Logger::FIXME)
           << "fcntl on lockfile '" << filename << "' failed: " << TRI_last_error();
@@ -2066,7 +2065,6 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
   auto res = TRI_ERROR_NO_ERROR;
-  int res2;
 
   *crc = TRI_InitialCrc32();
 
@@ -2092,11 +2090,7 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
 
     if (sizeRead < bufferSize) {
       if (feof(fin) == 0) {
-        if (errno != 0) {
-          res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-        } else {
-          res = TRI_ERROR_NO_ERROR;
-        }
+        res = TRI_ERROR_FAILED;
         break;
       }
     }
@@ -2110,16 +2104,8 @@ ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
 
   TRI_Free(buffer);
 
-  res2 = fclose(fin);
-  // According to fclose(3):
-  // > Upon  successful  completion,  0  is returned.  Otherwise, EOF is
-  // > returned and errno is set to indicate the error.
-  // That seems to indicate the condition can never be true. I don't want to
-  // delete it in this PR, but I think it should just be removed.
-  if (res2 != 0 && res2 != EOF) {
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = ErrorCode{res2};
-    }
+  if (0 != fclose(fin)) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
     // otherwise keep original error
   }
 
@@ -2556,7 +2542,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 #endif
 
   // cppcheck-suppress knownConditionTrueFalse
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     // either fallocate failed or it is not there...
     
     // create a buffer filled with zeros
@@ -2745,4 +2731,3 @@ std::string TRI_SHA256Functor::finalize() {
   }
   return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
 }
-

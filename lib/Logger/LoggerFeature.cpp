@@ -21,8 +21,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <unordered_set>
-
 #include "Basics/operating-system.h"
 
 #ifdef ARANGODB_HAVE_GETGRGID
@@ -70,11 +68,16 @@ void LogHackWriter(char const* p) {
 
 namespace arangodb {
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
+LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, 
+                             bool threaded)
     : ApplicationFeature(server, "Logger"),
       _timeFormatString(LogTimeFormats::defaultFormatName()),
       _threaded(threaded) {
 
+  // note: we use the _threaded option to determine whether we are arangod
+  // (_threaded = true) or one of the client tools (_threaded = false). in
+  // the latter case we disable some options for the Logger, which only make
+  // sense when we are running in server mode
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -117,6 +120,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
+  
+  options
+      ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
+                  new UInt32Parameter(&_maxEntryLength))
+      .setIntroducedIn(30800).setIntroducedIn(30708);
 
   options
       ->addOption("--log.use-local-time", "use local timezone instead of UTC",
@@ -149,12 +157,15 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setIntroducedIn(30405)
       .setIntroducedIn(30500);
 
-  options->addOption("--log.api-enabled",
-                     "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
-                     new StringParameter(&_apiSwitch))
-      .setIntroducedIn(30411)
-      .setIntroducedIn(30506)
-      .setIntroducedIn(30605);
+  if (_threaded) {
+    // this option only makes sense for arangod, not for arangosh etc.
+    options->addOption("--log.api-enabled",
+                       "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                       new StringParameter(&_apiSwitch))
+        .setIntroducedIn(30411)
+        .setIntroducedIn(30506)
+        .setIntroducedIn(30605);
+  }
 
   options
       ->addOption("--log.use-json-format", "use json output format",
@@ -210,10 +221,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
       .setDeprecatedIn(30500);
 
-  options->addOption("--log.keep-logrotate",
-                     "keep the old log file after receiving a sighup",
-                     new BooleanParameter(&_keepLogRotate),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  if (_threaded) {
+    // this option only makes sense for arangod, not for arangosh etc.
+    options->addOption("--log.keep-logrotate",
+                       "keep the old log file after receiving a sighup",
+                       new BooleanParameter(&_keepLogRotate),
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  }
 
   options->addOption("--log.foreground-tty", "also log to tty if backgrounded",
                      new BooleanParameter(&_foregroundTty),
@@ -355,6 +369,9 @@ void LoggerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 #endif
+  
+  // set maximum length for each log entry
+  Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(256, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
   Logger::setShowIds(_showIds);
