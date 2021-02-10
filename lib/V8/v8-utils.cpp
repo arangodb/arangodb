@@ -2185,48 +2185,50 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ls = splitted[1];
   }
 
-  std::string prefix;
-
   StringUtils::tolowerInPlace(ls);
   StringUtils::tolowerInPlace(ts);
+  
+  std::string prefix;
+  if (ls == "fatal") {
+    prefix = "FATAL! ";
+  } else if (ls != "error" && ls != "warning" && ls != "warn" && ls != "info" && ls != "debug" && ls != "trace") {
+    // invalid log level
+    prefix = ls + "!";
+  }
 
   LogTopic const* topicPtr = ts.empty() ? nullptr : LogTopic::lookup(ts);
   LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
+
+  auto logMessage = [&](auto const& message) {
+    if (ls == "fatal") {
+      LOG_TOPIC("ecbc6", FATAL, topic) << prefix << message;
+    } else if (ls == "error") {
+      LOG_TOPIC("24213", ERR, topic) << prefix << message;
+    } else if (ls == "warning" || ls == "warn") {
+      LOG_TOPIC("514da", WARN, topic) << prefix << message;
+    } else if (ls == "info") {
+      LOG_TOPIC("99d80", INFO, topic) << prefix << message;
+    } else if (ls == "debug") {
+      LOG_TOPIC("f3533", DEBUG, topic) << prefix << message;
+    } else if (ls == "trace") {
+      LOG_TOPIC("74c21", TRACE, topic) << prefix << message;
+    } else {
+      LOG_TOPIC("6b817", WARN, topic) << prefix << message;
+    }
+  };
+
   auto context = TRI_IGETC;
 
   if (args[1]->IsArray()) {
     auto loglines = v8::Handle<v8::Array>::Cast(args[1]);
-    std::vector<std::string> logLineVec;
-
-    logLineVec.reserve(loglines->Length());
 
     for (uint32_t i = 0; i < loglines->Length(); ++i) {
       v8::Handle<v8::Value> line = loglines->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
       TRI_Utf8ValueNFC message(isolate, line);
       if (line->IsString()) {
-        logLineVec.push_back(*message);
+        logMessage(*message);
       }
     }
-
-    for (auto& message : logLineVec) {
-      if (ls == "fatal") {
-        prefix = "FATAL! ";
-        LOG_TOPIC("ecbc6", ERR, topic) << prefix << message;
-      } else if (ls == "error") {
-        LOG_TOPIC("24213", ERR, topic) << prefix << message;
-      } else if (ls == "warning" || ls == "warn") {
-        LOG_TOPIC("514da", WARN, topic) << prefix << message;
-      } else if (ls == "info") {
-        LOG_TOPIC("99d80", INFO, topic) << prefix << message;
-      } else if (ls == "debug") {
-        LOG_TOPIC("f3533", DEBUG, topic) << prefix << message;
-      } else if (ls == "trace") {
-        LOG_TOPIC("74c21", TRACE, topic) << prefix << message;
-      } else {
-        prefix = ls + "!";
-        LOG_TOPIC("6b817", WARN, topic) << prefix << message;
-      }
-    }  // for
   } else {
     TRI_Utf8ValueNFC message(isolate, args[1]);
 
@@ -2234,25 +2236,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_TYPE_ERROR("<message> must be a string or an array");
     }
 
-    std::string msg = *message;
-
-    if (ls == "fatal") {
-      prefix = "FATAL! ";
-      LOG_TOPIC("d1117", ERR, topic) << prefix << msg;
-    } else if (ls == "error") {
-      LOG_TOPIC("10407", ERR, topic) << prefix << msg;
-    } else if (ls == "warning" || ls == "warn") {
-      LOG_TOPIC("ebe22", WARN, topic) << prefix << msg;
-    } else if (ls == "info") {
-      LOG_TOPIC("365ec", INFO, topic) << prefix << msg;
-    } else if (ls == "debug") {
-      LOG_TOPIC("599b7", DEBUG, topic) << prefix << msg;
-    } else if (ls == "trace") {
-      LOG_TOPIC("42416", TRACE, topic) << prefix << msg;
-    } else {
-      prefix = ls + "!";
-      LOG_TOPIC("0c009", WARN, topic) << prefix << msg;
-    }
+    logMessage(*message);
   }
 
   TRI_V8_RETURN_UNDEFINED();
