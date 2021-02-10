@@ -37,7 +37,7 @@ v3.7.8 (XXXX-XX-XX)
 
 * Improvements for logging. This adds the following startup options to arangod:
 
-- `--log.max-entry-length`: controls the maximum line length for individual
+  - `--log.max-entry-length`: controls the maximum line length for individual
     log messages that are written into normal logfiles by arangod (note: this
     does not include audit log messages).
     Any log messages longer than the specified value will be truncated and the
