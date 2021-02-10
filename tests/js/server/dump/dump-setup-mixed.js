@@ -23,7 +23,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
 /// @author Wilfried Goesgens
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,16 +32,25 @@ const base = require("fs").join(
   require('internal').pathForTesting('server'),
   'dump',
   'dump-setup-common.inc');
+
 const setup = require(base);
 
 (function () {
   setup.cleanup();
   setup.createEmpty();
-  setup.createUsers();
   setup.createMany();
   setup.createOrder();
-  
+  setup.createModifyCollection();
+  // will not be supported in cluster: setup.createAutoIncKeyGen();
+  setup.createPaddedKeyGen();
+  setup.createUUIDKeyGen();
+  setup.createStrings();
+  setup.createTransactional();
+  setup.createPersistent();
+  setup.createView();
+  setup.createJobs();
   setup.createFoxx();
+  setup.createAnalyzers();
 })();
 
 return {
