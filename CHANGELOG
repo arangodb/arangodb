@@ -7,6 +7,18 @@ devel
   from, this could lead to potentially undefined behavior due to iterator
   invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
 
+* Fixed replication bug in MerkleTree sync protocol, which could lead to
+  data corruption. The visible effect was that shards could no longer get
+  in sync since the counts would not match after sync, even after a recount.
+  This corruption only happened if there were large amounts of differences
+  (at least 65537) and the destination side had newer revisions for some
+  keys than the source side.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
 * Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
   an EnumerateCollectionNode (i.e. full collection scan), did not do regular
   checks for the query being killed during the filtering of documents, resulting
