@@ -37,7 +37,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme' }, true);
 
-  internal.debugSetFailAt('RocksDBCollectionDropIndex::beforeWrite');
+  internal.debugSetFailAt('RocksDBCollectionDropIndex::beforeWriteException');
 
   c.dropIndex(idx);
 }

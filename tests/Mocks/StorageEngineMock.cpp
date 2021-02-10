@@ -1036,19 +1036,19 @@ void PhysicalCollectionMock::deferDropCollection(
   callback(_logicalCollection);  // assume noone is using this collection (drop immediately)
 }
 
-bool PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
+arangodb::Result PhysicalCollectionMock::dropIndex(arangodb::IndexId iid) {
   before();
 
   for (auto itr = _indexes.begin(), end = _indexes.end(); itr != end; ++itr) {
     if ((*itr)->id() == iid) {
       if ((*itr)->drop().ok()) {
         _indexes.erase(itr);
-        return true;
+        return {};
       }
     }
   }
 
-  return false;
+  return arangodb::Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
 void PhysicalCollectionMock::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder&) {

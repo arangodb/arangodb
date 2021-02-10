@@ -37,7 +37,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme' }, true);
 
-  internal.debugSetFailAt('RocksDBCollectionDropIndex::beforeWrite');
+  internal.debugSetFailAt('RocksDBCollectionDropIndex::afterWrite');
 
   c.dropIndex(idx);
 }
@@ -60,12 +60,11 @@ function recoverySuite () {
     // / @brief test whether the data are correct after a restart
     // //////////////////////////////////////////////////////////////////////////////
 
-    testDropIndexCrashBefore: function () {
+    testDropIndexCrashAfter: function () {
       var c = db._collection('UnitTestsRecovery');
       var idx = c.getIndexes();
-      assertEqual(2, idx.length);
+      assertEqual(1, idx.length);
       assertEqual('primary', idx[0].type);
-      assertEqual('hash', idx[1].type);
     }
 
   };
