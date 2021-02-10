@@ -1,6 +1,38 @@
 devel
 -----
 
+* Fix potential undefined behavior when iterating over connected nodes in an
+  execution plan and calling callbacks for each of the nodes: if the callbacks
+  modified the list of connected nodes of the current that they were called
+  from, this could lead to potentially undefined behavior due to iterator
+  invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
+
+* Fixed replication bug in MerkleTree sync protocol, which could lead to
+  data corruption. The visible effect was that shards could no longer get
+  in sync since the counts would not match after sync, even after a recount.
+  This corruption only happened if there were large amounts of differences
+  (at least 65537) and the destination side had newer revisions for some
+  keys than the source side.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Simplify the DistributeExecutor and avoid implicit modification of its input
+  variable. Previously the DistributeExecutor could update the input variable
+  in-place, leading to unexpected results (see #13509).
+  The modification logic has now been moved into three new _internal_ AQL
+  functions (MAKE_DISTRIBUTE_INPUT, MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION,
+  and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
+  according function call will be introduced if we need to prepare the input
+  data for the distribute node.
+  
 * Added new REST APIs for retrieving the sharding distribution:
 
   - GET `/_api/database/shardDistribution` will return the number of 
@@ -21,7 +53,7 @@ devel
     This API can only be used in the `_system` database of coordinators, and
     requires admin user privileges.
 
-* Decrease the size of serialized index esimtates, by introducing a 
+* Decrease the size of serialized index estimates, by introducing a 
   compressed serialization format. The compressed format uses the previous
   uncompressed format internally, compresses it, and stores the compressed
   data instead. This makes serialized index estimates a lot smaller, which
