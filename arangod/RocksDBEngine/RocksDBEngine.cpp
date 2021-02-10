@@ -1411,7 +1411,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     return res;
   }
 
-  // delete indexes, RocksDBIndex::drop() has its own check
   std::vector<std::shared_ptr<Index>> vecShardIndex = rocksdb->getIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
 
@@ -1440,7 +1439,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     return rocksutils::convertStatus(s);
   }
 
-  // fire!
   rocksdb::WriteOptions wo;
   s = db->Write(wo, &batch);
   if (!s.ok()) {
@@ -1457,7 +1455,6 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     auto* ridx = static_cast<RocksDBIndex*>(index.get());
     ridx->destroyCache();
   }
-
 
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will
