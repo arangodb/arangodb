@@ -74,6 +74,7 @@ Mutex Logger::_initializeMutex;
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 
+uint32_t Logger::_maxEntryLength = 128U * 1048576U;
 LogTimeFormats::TimeFormat Logger::_timeFormat(LogTimeFormats::TimeFormat::UTCDateString);
 bool Logger::_showIds(false);
 bool Logger::_showLineNumber(false);
@@ -127,22 +128,9 @@ void Logger::setLogLevel(std::string const& levelName) {
   }
 
   LogLevel level;
+  bool isValid = translateLogLevel(l, isGeneral, level);
 
-  if (l == "fatal") {
-    level = LogLevel::FATAL;
-  } else if (l == "error" || l == "err") {
-    level = LogLevel::ERR;
-  } else if (l == "warning" || l == "warn") {
-    level = LogLevel::WARN;
-  } else if (l == "info") {
-    level = LogLevel::INFO;
-  } else if (l == "debug") {
-    level = LogLevel::DEBUG;
-  } else if (l == "trace") {
-    level = LogLevel::TRACE;
-  } else if (!isGeneral && (l.empty() || l == "default")) {
-    level = LogLevel::DEFAULT;
-  } else {
+  if (!isValid) {
     if (!isGeneral) {
       LOG_TOPIC("05367", WARN, arangodb::Logger::FIXME) << "strange log level '" << levelName << "'";
       return;
@@ -167,6 +155,8 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
     setLogLevel(level);
   }
 }
+
+void Logger::setMaxEntryLength(uint32_t value) { _maxEntryLength = value; }
 
 void Logger::setRole(char role) { _role = role; }
 
@@ -280,6 +270,28 @@ void Logger::setLogRequestParameters(bool log) {
   _logRequestParameters = log;
 }
 
+bool Logger::translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept {
+  if (l == "fatal") {
+    level = LogLevel::FATAL;
+  } else if (l == "error" || l == "err") {
+    level = LogLevel::ERR;
+  } else if (l == "warning" || l == "warn") {
+   level = LogLevel::WARN;
+  } else if (l == "info") {
+    level = LogLevel::INFO;
+  } else if (l == "debug") {
+    level = LogLevel::DEBUG;
+  } else if (l == "trace") {
+    level = LogLevel::TRACE;
+  } else if (!isGeneral && (l.empty() || l == "default")) {
+    level = LogLevel::DEFAULT;
+  } else {
+    return false;
+  }
+
+  return true;
+}
+
 std::string const& Logger::translateLogLevel(LogLevel level) {
   switch (level) {
     case LogLevel::ERR:
@@ -378,6 +390,13 @@ void Logger::log(char const* function, char const* file, int line,
 
   // generate the complete message
   out.append(message);
+
+  uint32_t maxLength = _maxEntryLength;
+  // truncate message to maximum size
+  if (out.size() > maxLength) {
+    out.resize(maxLength);
+    out.append("...", 3);
+  }
  
   size_t offset = out.size() - message.size();
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
@@ -427,7 +446,7 @@ void Logger::initialize(application_features::ApplicationServer& server, bool th
   if (threaded) {
     _loggingThread = std::make_unique<LogThread>(server, ::LogThreadName);
     if (!_loggingThread->start()) {
-      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::STATISTICS)
+      LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
       FATAL_ERROR_EXIT();
     }

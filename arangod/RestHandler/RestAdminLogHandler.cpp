@@ -25,6 +25,7 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -45,6 +46,11 @@ RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::Applica
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
   auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
+  
+  if (!loggerFeature.isAPIEnabled()) {
+      return arangodb::Result(
+          TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
+  }
 
   // do we have admin rights (if rights are active)
   if (loggerFeature.onlySuperUser()) {
@@ -70,14 +76,23 @@ RestStatus RestAdminLogHandler::execute() {
     return RestStatus::DONE;
   }
 
+  auto const type = _request->requestType();
   size_t const len = _request->suffixes().size();
-  if (len == 0) {
+
+  if (type == rest::RequestType::DELETE_REQ) {
+    clearLogs();
+  } else if (len == 0) {
     reportLogs();
   } else {
     setLogLevel();
   }
 
   return RestStatus::DONE;
+}
+
+void RestAdminLogHandler::clearLogs() {
+  server().getFeature<LogBufferFeature>().clear();
+  generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
 void RestAdminLogHandler::reportLogs() {
@@ -235,31 +250,13 @@ void RestAdminLogHandler::reportLogs() {
     for (size_t i = 0; i < length; ++i) {
       try {
         auto& buf = clean.at(i + static_cast<size_t>(offset));
-        uint32_t l = 0;
 
-        switch (buf._level) {
-          case LogLevel::FATAL:
-            l = 0;
-            break;
-          case LogLevel::ERR:
-            l = 1;
-            break;
-          case LogLevel::WARN:
-            l = 2;
-            break;
-          case LogLevel::DEFAULT:
-          case LogLevel::INFO:
-            l = 3;
-            break;
-          case LogLevel::DEBUG:
-            l = 4;
-            break;
-          case LogLevel::TRACE:
-            l = 5;
-            break;
+        if (buf._level == LogLevel::DEFAULT) {
+          result.add(VPackValue(3)); // INFO
+        } else {
+          TRI_ASSERT(static_cast<uint32_t>(buf._level) > 0);
+          result.add(VPackValue(static_cast<uint32_t>(buf._level) - 1)); 
         }
-
-        result.add(VPackValue(l));
       } catch (...) {
       }
     }
