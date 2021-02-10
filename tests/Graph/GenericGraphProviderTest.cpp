@@ -30,6 +30,7 @@
 
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/TraverserOptions.h"
 
 #include <velocypack/velocypack-aliases.h>
 #include <unordered_set>
@@ -104,11 +105,53 @@ class GraphProviderTest : public ::testing::Test {
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {
       // Prepare the DBServerResponses
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
+      uint64_t engineId = 0;
       {
         arangodb::tests::mocks::MockDBServer server{};
         graph.prepareServer(server);
+
+        auto queryString = arangodb::aql::QueryString("RETURN 1");
+
+        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
+            server.getSystemDatabase());
+        arangodb::aql::Query fakeQuery(ctx, queryString, nullptr);
+        try {
+        fakeQuery.collections().add("s9880", AccessMode::Type::READ,
+                          arangodb::aql::Collection::Hint::Shard);
+        } catch(...) {
+
+        }
+        fakeQuery.prepareQuery(SerializationFormat::SHADOWROWS);
+        auto ast = fakeQuery.ast();
+        auto tmpVar = ast->variables()->createTemporaryVariable();
+        auto tmpVarRef = ast->createNodeReference(tmpVar);
+        auto tmpIdNode = ast->createNodeValueString("", 0);
+
+        ShortestPathOptions opts{fakeQuery};
+        opts.setVariable(tmpVar);
+
+        auto const* access =
+            ast->createNodeAttributeAccess(tmpVarRef,
+                                          StaticStrings::FromString.c_str(),
+                                          StaticStrings::FromString.length());
+        auto const* cond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, tmpIdNode);
+        auto fromCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        fromCondition->addMember(cond);
+        opts.addLookupInfo(fakeQuery.plan(), "s9880", StaticStrings::FromString, fromCondition);
+
+        auto const* revAccess =
+            ast->createNodeAttributeAccess(tmpVarRef, StaticStrings::ToString.c_str(),
+                                           StaticStrings::ToString.length());
+        auto const* revCond = ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ,
+                                                            revAccess, tmpIdNode);
+        auto toCondition = ast->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+        toCondition->addMember(revCond);
+        opts.addReverseLookupInfo(fakeQuery.plan(), "s9880",
+                                  StaticStrings::FromString, toCondition);
+
         std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
-        preparedResponses = graph.simulateApi(server, verticesList);
+        
+        std::tie(preparedResponses, engineId) = graph.simulateApi(server, verticesList, opts);
         LOG_DEVEL << "Debug, size is: " << preparedResponses.size();
         for (auto const& resp : preparedResponses) {
           LOG_DEVEL << resp.generateResponse()->copyPayload().get()->toString();
@@ -139,7 +182,7 @@ class GraphProviderTest : public ::testing::Test {
       }
 
       clusterEngines = std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
-      clusterEngines->emplace("PRMR_0001", 1);
+      clusterEngines->emplace("PRMR_0001", engineId);
 
       auto clusterCache =
           std::make_shared<RefactoredClusterTraverserCache>(clusterEngines.get(), resourceMonitor);
@@ -191,6 +234,14 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
+
+  if (start.isLooseEnd()) {
+    std::vector<decltype(start)*> looseEnds{};
+    looseEnds.emplace_back(&start);
+    auto futures = testee.fetch(looseEnds);
+    auto steps = futures.get();
+  }
+
   std::vector<typename decltype(testee)::Step> result{};
   testee.expand(start, 0, [&result](typename decltype(testee)::Step n) -> void {
     result.emplace_back(std::move(n));
