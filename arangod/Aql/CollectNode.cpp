@@ -179,7 +179,7 @@ void CollectNode::calcCollectRegister(arangodb::aql::RegisterId& collectRegister
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     collectRegister = (*it).second.registerId;
-    TRI_ASSERT(collectRegister.value() < RegisterId::maxRegisterId);
+    TRI_ASSERT(collectRegister.isValid());
     writeableOutputRegisters.insert((*it).second.registerId);
   }
 }
@@ -198,8 +198,8 @@ void CollectNode::calcGroupRegisters(
 
     RegisterId inReg = itIn->second.registerId;
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(inReg.value() < RegisterId::maxRegisterId);
-    TRI_ASSERT(outReg.value() < RegisterId::maxRegisterId);
+    TRI_ASSERT(inReg.isValid());
+    TRI_ASSERT(outReg.isValid());
     groupRegisters.emplace_back(outReg, inReg);
     writeableOutputRegisters.insert(outReg);
     readableInputRegisters.insert(inReg);
@@ -215,7 +215,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
     auto itOut = getRegisterPlan()->varInfo.find(p.outVar->id);
     TRI_ASSERT(itOut != getRegisterPlan()->varInfo.end());
     RegisterId outReg = itOut->second.registerId;
-    TRI_ASSERT(outReg.value() < RegisterId::maxRegisterId);
+    TRI_ASSERT(outReg.isValid());
 
     RegisterId inReg = RegisterPlan::MaxRegisterId;
     if (Aggregator::requiresInput(p.type)) {

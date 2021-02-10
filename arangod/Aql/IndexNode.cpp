@@ -299,7 +299,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.cend());
-      TRI_ASSERT(it->second.registerId.value() < RegisterId::maxRegisterId);
+      TRI_ASSERT(it->second.registerId.isValid());
       inRegs.emplace_back(it->second.registerId);
     }
   };

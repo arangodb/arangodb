@@ -683,7 +683,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
     AqlFunctionsInternalCache cache;
     FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
     // We need to create a new AqlValue that copies the data here, otherwise
-    // the data might be owned by the expression which might be destroyed to
+    // the data might be owned by the expression which might be destroyed too
     // soon, leaving us with an AqlValue with a dangling pointer!
     bool mustDestroy;  // can be ignored here; the variable takes ownership of the value.
     out->setConstantValue(AqlValue(expr->execute(&exprContext, mustDestroy).slice()));

@@ -90,7 +90,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     }
   }
 #endif
-
+  
   // will remain constant for the node throughout this function
   std::vector<Variable const*> const varsSetHere = en->getVariablesSetHere();
   VarSet const varsUsedLater = en->getVarsUsedLater();
@@ -102,7 +102,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(mayReuseRegisterImmediately);
     plan->increaseDepth();
   }
-
+  
   if (explain) {
     plan->unusedRegsByNode.emplace(en->id(), unusedRegisters);
   }
@@ -312,7 +312,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
   }
 
 #endif
-
+  
   // We need to delete those variables that have been used here but are
   // not used any more later:
   en->setRegsToClear(std::move(regsToClear));
@@ -385,7 +385,7 @@ RegisterPlanT<T>::RegisterPlanT(VPackSlice slice, unsigned int depth)
 
   nrRegs.reserve(nrRegsList.length());
   for (VPackSlice it : VPackArrayIterator(nrRegsList)) {
-    nrRegs.emplace_back(it.getNumericValue<RegisterId::value_t>());
+    nrRegs.emplace_back(it.getNumericValue<RegisterCount>());
   }
 }
 
@@ -501,7 +501,7 @@ void RegisterPlanT<T>::shrink(T* start) {
 
 template <typename T>
 RegisterId RegisterPlanT<T>::addRegister() {
-  return RegisterId((unsigned)(nrRegs[depth]++));
+  return RegisterId(nrRegs[depth]++);
 }
 
 template <typename T>
@@ -614,7 +614,7 @@ auto RegisterPlanT<T>::variableToRegisterId(Variable const* variable) const -> R
   auto it = varInfo.find(variable->id);
   TRI_ASSERT(it != varInfo.end());
   RegisterId rv = it->second.registerId;
-  TRI_ASSERT(rv.value() < RegisterId::maxRegisterId);
+  TRI_ASSERT(rv.isValid());
   return rv;
 }
 

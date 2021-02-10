@@ -54,7 +54,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
     std::unordered_set<AqlValue> cache;
     TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
-    for (RegisterId col(0); col < getNumRegisters(); col++) {
+    for (RegisterId::value_t col = 0; col < getNumRegisters(); col++) {
       if (registers.find(col) == registers.end()) {
         continue;
       }

@@ -232,7 +232,7 @@ namespace std {
   struct equal_to<arangodb::aql::RegisterId> {
     bool operator()(arangodb::aql::RegisterId const& lhs,
                     arangodb::aql::RegisterId const& rhs) const noexcept {
-      return lhs.value() == rhs.value();
+      return lhs == rhs;
     }
   };
 }

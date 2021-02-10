@@ -55,8 +55,9 @@ bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
-  return block().getValueReference(_baseIndex, registerId);
+  return block().getValueReference(_baseIndex, registerId.value());
 }
 
 AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {

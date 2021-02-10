@@ -85,10 +85,16 @@ struct Variable {
 
   bool isEqualTo(Variable const& other) const;
   
+  /// @brief returns the type of the variable. The type is determined based
+  // on the constantValue. If constantValue.isNone, the type is Type::Regulor,
+  // otherwise it is Type::Const
   Type type() const noexcept;
 
+  /// @brief returns the constant value of the variable.
   AqlValue constantValue() const noexcept { return _constantValue; }
 
+  /// @brief set the constant value of the variable.
+  /// This implicitly changes the type -> see type()
   void setConstantValue(AqlValue value) noexcept;
 
   /// @brief variable id

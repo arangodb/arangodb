@@ -134,6 +134,9 @@ void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
   }
 }
 
+// we have to ensure that all const variables are available in the
+// register plans of all subqueries. this can be removed once the
+// old-subqueries are fully removed in 3.9.
 void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
   for (auto& s : plan.subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
@@ -911,7 +914,6 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
             using std::to_string;
-            // TODO - need to handle const registers here?
             nodes.add(VPackValue(to_string(reg.first.value())));
             reg.second->toVelocyPack(nodes);
           }

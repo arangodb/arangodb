@@ -7043,7 +7043,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
 
   bool first = true;
   uint32_t result = 0;
-
+  
   transaction::Methods* trx = &expressionContext->trx();
   auto* vopts = &trx->vpackOptions();
   AqlValueMaterializer materializer(vopts);
@@ -7070,7 +7070,7 @@ AqlValue handleBitOperation(ExpressionContext* expressionContext, AstNode const&
   if (first) {
     return AqlValue(AqlValueHintNull());
   }
-
+  
   return AqlValue(AqlValueHintUInt(result));
 }
 
@@ -7127,7 +7127,7 @@ AqlValue Functions::BitNegate(ExpressionContext* expressionContext, AstNode cons
     uint64_t value = (~testee) & ((uint64_t(1) << width) - 1);
     return AqlValue(AqlValueHintUInt(value));
   }
-
+      
   static char const* AFN = "BIT_NEGATE";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7144,7 +7144,7 @@ AqlValue Functions::BitTest(ExpressionContext* expressionContext, AstNode const&
       return AqlValue(AqlValueHintBool((testee & (uint64_t(1) << index)) != 0));
     }
   }
-
+      
   static char const* AFN = "BIT_TEST";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7165,7 +7165,7 @@ AqlValue Functions::BitShiftLeft(ExpressionContext* expressionContext, AstNode c
       }
     }
   }
-
+  
   static char const* AFN = "BIT_SHIFT_LEFT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7186,7 +7186,7 @@ AqlValue Functions::BitShiftRight(ExpressionContext* expressionContext, AstNode 
       }
     }
   }
-
+  
   static char const* AFN = "BIT_SHIFT_RIGHT";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7222,7 +7222,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
     auto* vopts = &trx->vpackOptions();
     AqlValueMaterializer materializer(vopts);
     VPackSlice s = materializer.slice(value, false);
-
+  
     uint64_t result = 0;
     for (VPackSlice v : VPackArrayIterator(s)) {
       auto currentValue = bitOperationValue<uint64_t>(v);
@@ -7239,7 +7239,7 @@ AqlValue Functions::BitConstruct(ExpressionContext* expressionContext, AstNode c
 
       result |= uint64_t(1) << currentValue.value();
     }
-
+  
     return AqlValue(AqlValueHintUInt(result));
   }
 
@@ -7298,7 +7298,7 @@ AqlValue Functions::BitToString(ExpressionContext* expressionContext, AstNode co
 
     return AqlValue(&buffer[0], static_cast<size_t>(p - &buffer[0]));
   }
-
+  
   static char const* AFN = "BIT_TO_STRING";
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
@@ -7332,7 +7332,7 @@ AqlValue Functions::BitFromString(ExpressionContext* expressionContext, AstNode 
       return AqlValue(AqlValueHintUInt(result));
     }
   }
-
+  
   registerInvalidArgumentWarning(expressionContext, AFN);
   return AqlValue(AqlValueHintNull());
 }

@@ -257,10 +257,10 @@ function optimizerClusterSingleDocumentTestSuite () {
                            [ "scatter-in-cluster",
                              "distribute-filtercalc-to-cluster",
                              "remove-unnecessary-remote-scatter" ],
-                           [ "move-calculations-up",
-                             "use-indexes",
-                             "remove-filter-covered-by-index",
-                             "remove-unnecessary-calculations-2",
+                           [ "move-calculations-up", 
+                             "use-indexes", 
+                             "remove-filter-covered-by-index", 
+                             "remove-unnecessary-calculations-2", 
                              "optimize-cluster-single-document-operations" ],
                            [ "use-indexes", "remove-filter-covered-by-index",
                              "remove-unnecessary-calculations-2",
@@ -316,7 +316,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ],
         [ "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-unnecessary-calculations", "optimize-cluster-single-document-operations" ],
-        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2",
+        [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "move-calculations-up-2", 
           "remove-data-modification-out-variables", "optimize-cluster-single-document-operations" ]
       ];
       var expectedNodes = [
@@ -461,7 +461,7 @@ function optimizerClusterSingleDocumentTestSuite () {
         [ "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
         [ "move-calculations-up", "remove-redundant-calculations", "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
-        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations"],
+        [ "remove-unnecessary-calculations", "remove-data-modification-out-variables", "use-indexes", "remove-filter-covered-by-index", "remove-unnecessary-calculations-2", "optimize-cluster-single-document-operations" ],
       ];
 
       var expectedNodes = [

@@ -53,7 +53,7 @@ namespace {
 inline void copyValueOver(arangodb::containers::HashSet<void*>& cache, 
                           AqlValue const& a,
                           size_t rowNumber, 
-                          RegisterId col, 
+                          RegisterId::value_t col, 
                           SharedAqlItemBlockPtr& res) {
   if (a.requiresDestruction()) {
     auto it = cache.find(a.data());
@@ -127,18 +127,17 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
 
   VPackArrayIterator dataIterator(data);
 
-  auto storeSingleValue = [this](size_t row, RegisterId column, VPackArrayIterator& it,
+  auto storeSingleValue = [this](size_t row, RegisterId::value_t column, VPackArrayIterator& it,
                                  std::vector<AqlValue>& madeHere) {
-    TRI_ASSERT(column.isRegularRegister());
     AqlValue a(it.value());
     it.next();
     try {
-      if (column.value() == 0) {
+      if (column == 0) {
         if (!a.isEmpty()) {
           makeShadowRow(row, static_cast<size_t>(a.toInt64()));
         }
       } else {
-        setValue(row, RegisterId::makeRegular(column.value() - 1), a);  // if this throws, a is destroyed again
+        setValue(row, column - 1, a);  // if this throws, a is destroyed again
       }
     } catch (...) {
       a.destroy();
@@ -158,7 +157,7 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
     // skip the first two records
     rawIterator.next();
     rawIterator.next();
-    RegisterId::value_t startColumn(0);
+    RegisterId::value_t startColumn = 0;
     if (getFormatType() == SerializationFormat::CLASSIC) {
       startColumn = 1;
     }
@@ -276,7 +275,7 @@ void AqlItemBlock::initFromSlice(VPackSlice const slice) {
               makeShadowRow(i, static_cast<size_t>(madeHere[static_cast<size_t>(n)].toInt64()));
             }
           } else {
-            setValue(i, RegisterId(column - 1), madeHere[static_cast<size_t>(n)]);
+            setValue(i, column - 1, madeHere[static_cast<size_t>(n)]);
           }
 
           // If this throws, all is OK, because it was already put into
@@ -506,7 +505,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
     for (size_t row = 0; row < numModifiedRows; row++) {
       if (checkShadowRows && isShadowRow(row)) {
         // this is a shadow row. needs special handling
-        for (RegisterId col(0); col < numRegs; col++) {
+        for (RegisterId::value_t col = 0; col < numRegs; col++) {
           AqlValue a = stealAndEraseValue(row, col);
           if (a.requiresDestruction()) {
             AqlValueGuard guard{a, true};
@@ -526,7 +525,7 @@ SharedAqlItemBlockPtr AqlItemBlock::cloneDataAndMoveShadow() {
       } else {
         // this is a normal row. 
         for (RegisterId::value_t col = 0; col < numRegs; col++) {
-          ::copyValueOver(cache, _data[getAddress(row, col)], row, RegisterId(col), res);
+          ::copyValueOver(cache, _data[getAddress(row, col)], row, col, res);
         }
       }
     }
@@ -598,8 +597,8 @@ auto AqlItemBlock::slice(arangodb::containers::SmallVector<std::pair<size_t, siz
     size_t const modifiedTo = std::min<size_t>(to, _maxModifiedRowIndex);
 
     for (size_t row = from; row < modifiedTo; row++, targetRow++) {
-      for (RegisterId col(0); col < _numRegisters; col++) {
-        ::copyValueOver(cache, _data[getAddress(row, col.value())], targetRow, col, res);
+      for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
+        ::copyValueOver(cache, _data[getAddress(row, col)], targetRow, col, res);
       }
       res->copySubqueryDepthFromOtherBlock(targetRow, *this, row, false);
     }
@@ -619,8 +618,8 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(size_t row,
   arangodb::containers::HashSet<void*> cache;
   SharedAqlItemBlockPtr res{_manager.requestBlock(1, newNumRegisters)};
   for (auto const& col : registers) {
-    TRI_ASSERT(col < _numRegisters);
-    ::copyValueOver(cache, _data[getAddress(row, col.value())], 0, col, res);
+    TRI_ASSERT(col.isRegularRegister() && col < _numRegisters);
+    ::copyValueOver(cache, _data[getAddress(row, col.value())], 0, col.value(), res);
   }
   res->copySubqueryDepthFromOtherBlock(0, *this, row, false);
 
@@ -644,8 +643,8 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
   for (size_t chosenIdx = from; chosenIdx < modifiedTo; ++chosenIdx, ++resultRow) {
     size_t const row = chosen[chosenIdx];
 
-    for (RegisterId col(0); col < _numRegisters; col++) {
-      ::copyValueOver(cache, _data[getAddress(row, col.value())], resultRow, col, res);
+    for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
+      ::copyValueOver(cache, _data[getAddress(row, col)], resultRow, col, res);
     }
     res->copySubqueryDepthFromOtherBlock(resultRow, *this, row, false);
   }
@@ -669,8 +668,8 @@ SharedAqlItemBlockPtr AqlItemBlock::steal(std::vector<size_t> const& chosen,
   to = std::min<size_t>(to, _maxModifiedRowIndex);
 
   for (size_t row = from; row < to; row++) {
-    for (RegisterId col(0); col < _numRegisters; col++) {
-      AqlValue& a(_data[getAddress(chosen[row], col.value())]);
+    for (RegisterId::value_t col = 0; col < _numRegisters; col++) {
+      AqlValue& a(_data[getAddress(chosen[row], col)]);
 
       if (!a.isEmpty()) {
         steal(a);
@@ -989,7 +988,6 @@ void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
 }
 
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
-  // TODO - avoid check for internal calls where we know the type of the register
   if (varNr.isConstRegister()) {
     return _manager.getConstValueBlock()->getValue(0, varNr.value());
   }
@@ -1001,7 +999,6 @@ AqlValue AqlItemBlock::getValue(size_t index, RegisterId::value_t column) const 
 }
 
 AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
-  // TODO - avoid check for internal calls where we know the type of the register
   if (varNr.isConstRegister()) {
     return _manager.getConstValueBlock()->getValueReference(0, varNr.value());
   }
@@ -1014,7 +1011,11 @@ AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId::value_
 
 void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& value) {
   TRI_ASSERT(varNr.isRegularRegister());
-  TRI_ASSERT(_data[getAddress(index, varNr.value())].isEmpty());
+  setValue(index, varNr.value(), value);
+}
+
+void AqlItemBlock::setValue(size_t index, RegisterId::value_t column, AqlValue const& value) {
+  TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
@@ -1028,7 +1029,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr, AqlValue const& valu
     }
   }
 
-  _data[getAddress(index, varNr.value())] = value;
+  _data[getAddress(index, column)] = value;
   _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);
 }
 
@@ -1212,7 +1213,7 @@ size_t AqlItemBlock::decrRefCount() const noexcept {
   return --_refCount;
 }
 
-size_t AqlItemBlock::getAddress(size_t index, unsigned reg) const noexcept {
+size_t AqlItemBlock::getAddress(size_t index, RegisterId::value_t reg) const noexcept {
   TRI_ASSERT(index < _numRows);
   TRI_ASSERT(reg < _numRegisters);
   return index * _numRegisters + reg;

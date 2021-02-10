@@ -133,6 +133,9 @@ class AqlItemBlock {
   
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  
+  /// @brief setValue, set the current value of a register
+  void setValue(size_t index, RegisterId::value_t column, AqlValue const& value);
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
@@ -347,7 +350,7 @@ class AqlItemBlock {
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, unsigned reg) const noexcept;
+  size_t getAddress(size_t index, RegisterId::value_t reg) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 

@@ -475,7 +475,7 @@ class ExecutionNode {
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
-
+  
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
