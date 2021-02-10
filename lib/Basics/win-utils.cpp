@@ -63,12 +63,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-#include "dbghelp.h"
-#endif
-#endif
-
 using namespace arangodb::basics;
 
 // .............................................................................
@@ -100,16 +94,11 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
 #endif
 
   LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      << buf;
-
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter Invoked from: " << bt
+      << "Invalid handle parameter passed: " << buf;
+#else
+      << "Invalid handle parameter passed";
 #endif
-      ;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
@@ -129,8 +118,9 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
       // ...........................................................................
 
     case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
+#if 0
+      // currently disabled. TODO: make this code work properly
+
       DWORD error;
       HANDLE hProcess;
 
@@ -144,7 +134,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
         LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
             << "SymInitialize returned error :" << error;
       }
-#endif
 #endif
       newInvalidHandleHandler = InvalidParameterHandler;
       oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
@@ -348,7 +337,9 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Result translateWindowsError(DWORD error) {
-  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+  errno = TRI_MapSystemError(error);
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  return {res, windowsErrorToUTF8(error)};
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {

@@ -24,23 +24,25 @@
 #ifndef ARANGODB_BASICS_ERROR_H
 #define ARANGODB_BASICS_ERROR_H 1
 
+#include "Basics/ErrorCode.h"
+
 /// @brief returns the last error
-int TRI_errno();
+ErrorCode TRI_errno();
 
 /// @brief returns the last error as string
 char const* TRI_last_error();
 
 /// @brief sets the last error
-int TRI_set_errno(int);
+ErrorCode TRI_set_errno(ErrorCode);
 
 /// @brief defines an error string
-void TRI_set_errno_string(int code, char const* msg);
+void TRI_set_errno_string(ErrorCode code, char const* msg);
 
 /// @brief defines an exit string
 void TRI_set_exitno_string(int code, char const* msg);
 
 /// @brief return an error message for an error code
-char const* TRI_errno_string(int code) noexcept;
+char const* TRI_errno_string(ErrorCode code) noexcept;
 
 /// @brief initializes the error messages
 void TRI_InitializeError();

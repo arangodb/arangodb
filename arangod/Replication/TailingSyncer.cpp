@@ -464,7 +464,8 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     }
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(), AccessMode::Type::EXCLUSIVE);
-    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice);
+    std::string conflictingDocumentKey;
+    Result r = applyCollectionDumpMarker(*trx, coll, type, applySlice, conflictingDocumentKey);
     TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
@@ -523,15 +524,15 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                         "unable to create replication transaction: ", res.errorMessage()));
     }
 
-    res = applyCollectionDumpMarker(trx, coll, type, applySlice);
+    res = applyCollectionDumpMarker(trx, coll, type, applySlice, conflictDocumentKey);
+
+    TRI_ASSERT(res.is(TRI_ERROR_ARANGO_TRY_AGAIN) == !conflictDocumentKey.empty());
 
     if (res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
       // TRY_AGAIN we will only be getting when there is a conflicting document.
       // the key of the conflicting document can be found in the errorMessage
       // of the result :-|
       TRI_ASSERT(type != REPLICATION_MARKER_REMOVE);
-      TRI_ASSERT(!res.errorMessage().empty());
-      conflictDocumentKey = std::move(res).errorMessage();
       // restart the while loop above
       continue;
     }

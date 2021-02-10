@@ -266,7 +266,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode c
 }
 
 void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inStartVariable == nullptr);
   _inStartVariable = inVariable;
   _startVertexId = "";
 }

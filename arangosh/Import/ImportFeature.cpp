@@ -320,7 +320,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 

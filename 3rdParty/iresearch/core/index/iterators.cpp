@@ -68,15 +68,15 @@ empty_doc_iterator EMPTY_DOC_ITERATOR;
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_iterator : irs::term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept final {
+  virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept final { }
-  virtual bool next() noexcept final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  virtual void read() noexcept override final { }
+  virtual bool next() noexcept override final { return false; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
 }; // empty_term_iterator
@@ -88,15 +88,15 @@ empty_term_iterator EMPTY_TERM_ITERATOR;
 /// @brief represents an iterator without terms
 //////////////////////////////////////////////////////////////////////////////
 struct empty_seek_term_iterator final : irs::seek_term_iterator {
-  virtual const irs::bytes_ref& value() const noexcept final {
+  virtual const irs::bytes_ref& value() const noexcept override final {
     return irs::bytes_ref::NIL;
   }
-  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept final {
+  virtual irs::doc_iterator::ptr postings(const irs::flags&) const noexcept override final {
     return irs::doc_iterator::empty();
   }
-  virtual void read() noexcept final { }
-  virtual bool next() noexcept final { return false; }
-  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept final {
+  virtual void read() noexcept override final { }
+  virtual bool next() noexcept override final { return false; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override final {
     return nullptr;
   }
   virtual irs::SeekResult seek_ge(const irs::bytes_ref&) noexcept override {

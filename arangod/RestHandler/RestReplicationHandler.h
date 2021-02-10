@@ -417,7 +417,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief creates a collection, based on the VelocyPack provided
   //////////////////////////////////////////////////////////////////////////////
 
-  int createCollection(VPackSlice, arangodb::LogicalCollection**);
+  ErrorCode createCollection(VPackSlice slice, arangodb::LogicalCollection** dst);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

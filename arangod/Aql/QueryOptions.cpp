@@ -60,7 +60,6 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       verboseErrors(false),
-      inspectSimplePlans(true),
       skipAudit(false),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
@@ -203,10 +202,6 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
 
   VPackSlice optimizer = slice.get("optimizer");
   if (optimizer.isObject()) {
-    value = optimizer.get("inspectSimplePlans");
-    if (value.isBool()) {
-      inspectSimplePlans = value.getBool();
-    }
     value = optimizer.get("rules");
     if (value.isArray()) {
       for (auto const& rule : VPackArrayIterator(value)) {
@@ -276,7 +271,8 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
-  builder.add("inspectSimplePlans", VPackValue(inspectSimplePlans));
+  // hard-coded since 3.8, option will be removed in the future
+  builder.add("inspectSimplePlans", VPackValue(true));
   if (!optimizerRules.empty() || disableOptimizerRules) {
     builder.add("rules", VPackValue(VPackValueType::Array));
     if (disableOptimizerRules) {

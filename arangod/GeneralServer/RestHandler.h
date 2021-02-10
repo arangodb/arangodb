@@ -149,7 +149,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void generateError(rest::ResponseCode, int errorNumber, std::string_view errorMessage);
 
   // generates an error
-  void generateError(rest::ResponseCode, int errorCode);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber);
 
   // generates an error
   void generateError(arangodb::Result const&);

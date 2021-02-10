@@ -452,8 +452,8 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  char ridBuffer[21];
-  builder.add(StaticStrings::RevString, rid.toValuePair(&ridBuffer[0]));
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
+  builder.add(StaticStrings::RevString, rid.toValuePair(ridBuffer));
 
   if (oldRid.isSet()) {
     builder.add("_oldRev", VPackValue(oldRid.toString()));
@@ -2429,8 +2429,8 @@ Future<Result> Methods::replicateOperations(
 }
 
 #ifndef USE_ENTERPRISE
-/*static*/ int Methods::validateSmartJoinAttribute(LogicalCollection const&,
-                                                   arangodb::velocypack::Slice) {
+ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,
+                                              arangodb::velocypack::Slice) {
   return TRI_ERROR_NO_ERROR;
 }
 #endif

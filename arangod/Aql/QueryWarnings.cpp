@@ -39,7 +39,7 @@ QueryWarnings::QueryWarnings()
 
 /// @brief register an error
 /// this also makes the query abort
-void QueryWarnings::registerError(int code, char const* details) {
+void QueryWarnings::registerError(ErrorCode code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   if (details == nullptr) {
@@ -49,12 +49,12 @@ void QueryWarnings::registerError(int code, char const* details) {
   THROW_ARANGO_EXCEPTION_MESSAGE(code, details);
 }
 
-void QueryWarnings::registerWarning(int code, std::string const& details) {
+void QueryWarnings::registerWarning(ErrorCode code, std::string const& details) {
   registerWarning(code, details.c_str());
 }
 
 /// @brief register a warning
-void QueryWarnings::registerWarning(int code, char const* details) {
+void QueryWarnings::registerWarning(ErrorCode code, char const* details) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   
   std::lock_guard<std::mutex> guard(_mutex);
@@ -109,6 +109,6 @@ std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
   return _list;
 }
 
-std::string QueryWarnings::buildFormattedString(int code, char const* details) {
+std::string QueryWarnings::buildFormattedString(ErrorCode code, char const* details) {
   return arangodb::basics::Exception::FillExceptionString(code, details);
 }

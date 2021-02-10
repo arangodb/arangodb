@@ -992,8 +992,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
 
   bool usesDefaultShardingAttributes;
 
-  int res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                          shardId, usesDefaultShardingAttributes);
+  auto res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
+                                           shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);

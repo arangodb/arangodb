@@ -172,6 +172,11 @@ class Optimizer {
   Stats _stats;
 
  private:
+ 
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+  void finalizePlans();
+  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+ 
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 
