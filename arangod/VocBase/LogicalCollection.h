@@ -165,7 +165,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const;
   size_t replicationFactor() const;
   size_t writeConcern() const;
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
   bool usesDefaultShardKeys() const;

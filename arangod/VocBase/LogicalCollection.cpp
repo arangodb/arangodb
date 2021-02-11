@@ -324,7 +324,7 @@ size_t LogicalCollection::writeConcern() const {
   return _sharding->writeConcern();
 }
 
-std::string LogicalCollection::distributeShardsLike() const {
+std::string const& LogicalCollection::distributeShardsLike() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->distributeShardsLike();
 }
