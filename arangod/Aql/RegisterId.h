@@ -109,4 +109,4 @@ static_assert(sizeof(RegisterId) == sizeof(uint32_t));
 
 }
 
-#endif ARANGOD_AQL_REGISTER_ID_H
+#endif

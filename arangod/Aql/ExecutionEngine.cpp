@@ -643,27 +643,8 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   bool const pushToSingleServer = false;
 #endif
   
-  AqlItemBlockManager& mgr = query.itemBlockManager();
-
-  auto registerPlan = plan.root()->getRegisterPlan();
-  auto nrConstRegs = registerPlan->nrConstRegs;
-  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
-    mgr.initializeConstValueBlock(nrConstRegs);
-    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
-                                       block = mgr.getConstValueBlock()](Variable* var) {
-      if (var->type() == Variable::Type::Const) {
-        RegisterId reg = findVariableRegister(*plan, var->id);
-        if (reg.value() != RegisterId::maxRegisterId) {
-          TRI_ASSERT(reg.isConstRegister());
-          AqlValue value = var->constantValue();
-          TRI_ASSERT(!value.isNone());
-          // the constValueBlock takes ownership, so we have to create a copy here.
-          block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
-        }
-      }
-    });
-  }
-  TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
+  auto& mgr = query.itemBlockManager();
+  initializeConstValueBlock(plan, mgr);
 
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
@@ -748,11 +729,34 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
 void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(ExecutionPlan& plan) {
   plan.findVarUsage();
   plan.planRegisters(ExplainRegisterPlan::No);
+  initializeConstValueBlock(plan, _itemBlockManager);
   //plan.findCollectionAccessVariables();
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
   TRI_ASSERT(inst.root)
   setupEngineRoot(*inst.root);
+}
+
+void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr) {
+  auto registerPlan = plan.root()->getRegisterPlan();
+  auto nrConstRegs = registerPlan->nrConstRegs;
+  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
+    mgr.initializeConstValueBlock(nrConstRegs);
+    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
+                                       block = mgr.getConstValueBlock()](Variable* var) {
+      if (var->type() == Variable::Type::Const) {
+        RegisterId reg = findVariableRegister(*plan, var->id);
+        if (reg.value() != RegisterId::maxRegisterId) {
+          TRI_ASSERT(reg.isConstRegister());
+          AqlValue value = var->constantValue();
+          TRI_ASSERT(!value.isNone());
+          // the constValueBlock takes ownership, so we have to create a copy here.
+          block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+        }
+      }
+    });
+  }
+  TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 }
 
 /// @brief add a block to the engine
