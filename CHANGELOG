@@ -1,6 +1,38 @@
 devel
 -----
 
+* Fix profiling of AQL queries with the `silent` and `stream` options sets in
+  combination. Using the `silent` option makes a query execute, but discard all
+  its results instantly. This led to some confusion in streaming queries, which
+  can return the first query results once they are available, but don't 
+  necessarily execute the full query.
+  Now, `silent` correctly discards all results even in streaming queries, but
+  this has the effect that a streaming query will likely be executed completely
+  when the `silent` option is set. This is not the default however, and the
+  `silent` option is normally not set. There is no change for streaming queries
+  if the `silent` option is not set.
+
+  As a side-effect of this change, this makes profiling (i.e. using 
+  `db._profileQuery(...)` work for streaming queries as well. Previously, 
+  profiling a streaming query could have led to some internal errors, and even
+  query results being returned, even though profiling a query should not return 
+  any query results.
+
+* Make dropping of indexes in cluster retry in case of precondition failed.
+
+  When dropping an indexes of a collection in the cluster, the operation could
+  fail with a "precondition failed" error in case there were simultaneous
+  index creation or drop actions running for the same collection. The error
+  was returned properly internally, but got lost at the point when 
+  `<collection>.dropIndex()` simply converted any error to just `false`.
+  We can't make `dropIndex()` throw an exception for any error, because that
+  would affect downwards-compatibility. But in case there is a simultaneous
+  change to the collection indexes, we can just retry our own operation and
+  check if it succeeds then. This is what `dropIndex()` will do now.
+
+* Try to raise file descriptors limit in local start scripts (in `scripts/`
+  directory - used for development only).
+
 * Fix error reporting in the reloadTLS route.
 
 * Fix potential undefined behavior when iterating over connected nodes in an

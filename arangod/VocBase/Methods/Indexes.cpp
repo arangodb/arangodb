@@ -672,8 +672,6 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
         collection->vocbase().name(), std::to_string(collection->id().id()), iid, 0.0  // args
     );
 #endif
-    events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid.id()), res.errorNumber());
     return res;
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
