@@ -113,7 +113,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                      arangodb::transaction::Methods* trx) override;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
+                LocalDocumentId const& documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,

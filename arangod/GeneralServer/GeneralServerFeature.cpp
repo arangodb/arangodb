@@ -295,7 +295,7 @@ Result GeneralServerFeature::reloadTLS() {  // reload TLS data from disk
   Result res;
   for (auto& up : _servers) {
     Result res2 = up->reloadTLS();
-    if (!res2.fail()) {
+    if (res2.fail()) {
       res = res2;  // yes, we only report the last error if there is one
     }
   }

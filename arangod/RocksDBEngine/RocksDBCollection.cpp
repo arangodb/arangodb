@@ -53,6 +53,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
+#include "RocksDBEngine/RocksDBSavePoint.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -826,7 +827,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid.isSet());
 
-    RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     state->prepareOperation(_logicalCollection.id(),
                             rid,  // actual revision ID!!
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
@@ -846,7 +847,8 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     if (res.fail()) {  // This should never happen...
       return res;
     }
-    guard.finish(hasPerformedIntermediateCommit);
+
+    savepoint.finish(hasPerformedIntermediateCommit);
 
     trackWaitForSync(&trx, options);
   }
@@ -1006,13 +1008,13 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   }
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
-
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+  
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   auto* state = RocksDBTransactionState::toState(trx);
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  res = insertDocument(trx, documentId, newSlice, options);
+  res = insertDocument(trx, savepoint, documentId, newSlice, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1035,7 +1037,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               TRI_VOC_DOCUMENT_OPERATION_INSERT,
                               hasPerformedIntermediateCommit);
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1127,13 +1129,14 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     }
   }
 
-  VPackSlice const newDoc(builder->slice());
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  VPackSlice newDoc(builder->slice());
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   auto* state = RocksDBTransactionState::toState(trx);
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+
+  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1162,7 +1165,7 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
     
   return res;
@@ -1246,12 +1249,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   auto* state = RocksDBTransactionState::toState(trx);
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+
+  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1280,7 +1284,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1362,7 +1366,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   }
 
   auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), previousMdr.revisionId(),
@@ -1386,7 +1390,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
   
   return res;
@@ -1506,24 +1510,55 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
 }
 
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
+                                         RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationOptions& options) const {
+                                         VPackSlice doc,
+                                         OperationOptions const& options) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   Result res;
 
+  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+  RocksDBMethods* mthds = state->rocksdbMethods();
+
+  if (options.checkUniqueConstraintsInPreflight) {
+    // we can only afford the separation of checking and inserting in a
+    // transaction that disallows concurrency, i.e. we need to have the
+    // exclusive lock on the collection.
+    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+
+    // do a round of checks for all indexes, to verify that the insertion
+    // will work (i.e. that there will be no unique constraint violations
+    // later - we can't guard against disk full etc. later).
+    // if this check already fails, there is no need to carry out the
+    // actual index insertion, which will fail anyway, and in addition
+    // spoil the current WriteBatch, which on a RollbackToSavePoint will
+    // need to be completely reconstructed. the reconstruction of write
+    // batches is super expensive, so we try to avoid it here.
+    READ_LOCKER(guard, _indexesLock);
+
+    for (auto const& idx : _indexes) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+      res = rIdx->checkInsert(*trx, mthds, documentId, doc, options);
+      if (res.fail()) {
+        // no operations happened yet in this savepoint. if we don't
+        // cancel it, the WriteBatch will need to be reconstructed from
+        // scratch. this is so expensive that we want to avoid it.
+        savepoint.cancel();
+        return res;
+      }
+    }
+  }
+
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
 
-  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
 
-  RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
@@ -1536,12 +1571,14 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
+  bool needReversal = false;
+  
   READ_LOCKER(guard, _indexesLock);
 
-  bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options);
+    // currently only IResearchLink indexes need a reversal
     needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
@@ -1563,8 +1600,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
 Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationOptions& options) const {
+                                         VPackSlice doc,
+                                         OperationOptions const& options) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1621,6 +1658,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::updateDocument(transaction::Methods* trx,
+                                         RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& oldDocumentId,
                                          VPackSlice const& oldDoc,
                                          LocalDocumentId const& newDocumentId,
@@ -1634,6 +1672,36 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
+
+  if (options.checkUniqueConstraintsInPreflight) {
+    // we can only afford the separation of checking and inserting in a
+    // transaction that disallows concurrency, i.e. we need to have the
+    // exclusive lock on the collection.
+    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+
+    // do a round of checks for all indexes, to verify that the insertion
+    // will work (i.e. that there will be no unique constraint violations
+    // later - we can't guard against disk full etc. later).
+    // if this check already fails, there is no need to carry out the
+    // actual index insertion, which will fail anyway, and in addition
+    // spoil the current WriteBatch, which on a RollbackToSavePoint will
+    // need to be completely reconstructed. the reconstruction of write
+    // batches is super expensive, so we try to avoid it here.
+    READ_LOCKER(guard, _indexesLock);
+
+    for (auto const& idx : _indexes) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+      res = rIdx->checkReplace(*trx, mthds, oldDocumentId, newDoc, options);
+      if (res.fail()) {
+        // no operations happened yet in this savepoint. if we don't
+        // cancel it, the WriteBatch will need to be reconstructed from
+        // scratch. this is so expensive that we want to avoid it.
+        savepoint.cancel();
+        return res;
+      }
+    }
+  }
+
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
