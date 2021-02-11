@@ -154,7 +154,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.isRestore = true;
   options.validate = false; // no validation during replication
   options.indexOperationMode = arangodb::IndexOperationMode::internal;
-  options.ignoreUniqueConstraints = true;
+  options.checkUniqueConstraintsInPreflight = true;
   options.waitForSync = false; // no waitForSync during replication
   if (!state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = state.leaderId;

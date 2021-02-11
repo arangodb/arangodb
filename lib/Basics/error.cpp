@@ -24,8 +24,11 @@
 #include <cstring>
 #include <unordered_map>
 
+#include <frozen/unordered_map.h>
+
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/error-registry.h"
 #include "Basics/exitcodes.h"
 #include "Basics/voc-errors.h"
 
@@ -37,9 +40,6 @@ struct ErrorContainer {
 
 /// @brief holds the last error that occurred in the current thread
 thread_local ErrorContainer LastError;
-
-/// @brief the error messages, will be read-only after initialization
-static std::unordered_map<int, std::string_view const> ErrorMessages;
 
 /// @brief returns the last error
 ErrorCode TRI_errno() { return LastError._number; }
@@ -68,21 +68,11 @@ ErrorCode TRI_set_errno(ErrorCode error) {
   return error;
 }
 
-/// @brief defines an error string
-void TRI_set_errno_string(ErrorCode code, char const* msg) {
-  TRI_ASSERT(msg != nullptr);
-
-  if (!ErrorMessages.try_emplace(code.asInt(), msg).second) {
-    // logic error, error number is redeclared
-    printf("Error: duplicate declaration of error code %i in %s:%i\n",
-           code.asInt(), __FILE__, __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-}
 
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept {
-  auto it = ErrorMessages.find(code.asInt());
+  using arangodb::error::ErrorMessages;
+  auto it = ErrorMessages.find(int(code));
 
   if (it == ErrorMessages.end()) {
     // return a hard-coded string as not all callers check for nullptr
@@ -90,9 +80,4 @@ std::string_view TRI_errno_string(ErrorCode code) noexcept {
   }
 
   return (*it).second;
-}
-
-/// @brief initializes the error messages
-void TRI_InitializeError() {
-  TRI_InitializeErrorMessages();
 }
