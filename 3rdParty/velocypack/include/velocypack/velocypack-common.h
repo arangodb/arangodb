@@ -244,11 +244,8 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 }
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
-  uint8_t const* end = start + 8;
-  do {
-    *start++ = static_cast<uint8_t>(value & 0xffU);
-    value >>= 8;
-  } while (start < end);
+  // FIXME: endianess!!!
+  memcpy(start, &value, sizeof(value));
 }
 
 }  // namespace arangodb::velocypack

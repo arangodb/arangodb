@@ -1232,12 +1232,6 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
     _data.internal[0] = 0x1fU + vSize;
     x = arangodb::basics::hostToLittle(x);
     memcpy(&_data.internal[1], &x, sizeof(x));
-    //int i = 1;
-    //while (vSize-- > 0 && i < 16) {
-    //  _data.internal[i] = x & 0xffU;  // GCC-10: complains about possible out of bounds access (i = 16)
-    //  ++i;
-    //  x >>= 8;
-    //}
   }
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1249,14 +1243,6 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
     _data.internal[0] = static_cast<uint8_t>(0x30U + value);
   } else {
     // UInt, 0x28 - 0x2f
-    //int i = 1;
-    //uint8_t vSize = 0;
-    //do {
-    //  vSize++;
-    //  _data.internal[i] = static_cast<uint8_t>(value & 0xffU);
-    //  ++i;
-    //  value >>= 8;
-    //} while (value != 0);
     uint8_t vSize = intLength(value);
     _data.internal[0] = 0x27U + vSize;
     value = arangodb::basics::hostToLittle(value);
@@ -1292,11 +1278,6 @@ AqlValue::AqlValue(char const* value, size_t length) {
     _data.slice[0] = static_cast<uint8_t>(0xbfU);
     uint64_t v = arangodb::basics::hostToLittle(length);
     memcpy(&_data.slice[1], &v, sizeof(v));
-    //uint64_t v = length;
-    //for (uint64_t i = 0; i < 8; ++i) {
-    //  _data.slice[i + 1] = v & 0xffU;
-    //  v >>= 8;
-    //}
     memcpy(&_data.slice[9], value, length);
   }
 }
