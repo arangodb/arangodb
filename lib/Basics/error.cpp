@@ -26,7 +26,6 @@
 
 #include <frozen/unordered_map.h>
 
-#include "Basics/Common.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/error-registry.h"
@@ -42,14 +41,11 @@ struct ErrorContainer {
 /// @brief holds the last error that occurred in the current thread
 thread_local ErrorContainer LastError;
 
-/// @brief the exit messages, will be read-only after initialization
-static std::unordered_map<int, char const*> ExitMessages;
-
 /// @brief returns the last error
 ErrorCode TRI_errno() { return LastError._number; }
 
 /// @brief returns the last error as string
-char const* TRI_last_error() {
+std::string_view TRI_last_error() {
   ErrorCode err = LastError._number;
 
   if (err == TRI_ERROR_SYS_ERROR) {
@@ -72,19 +68,9 @@ ErrorCode TRI_set_errno(ErrorCode error) {
   return error;
 }
 
-/// @brief defines an exit code string
-void TRI_set_exitno_string(int code, char const* msg) {
-  TRI_ASSERT(msg != nullptr);
-
-  if (!ExitMessages.try_emplace(code, msg).second) {
-    // logic error, error number is redeclared
-    printf("Error: duplicate declaration of exit code %i in %s:%i\n", code, __FILE__, __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-}
 
 /// @brief return an error message for an error code
-char const* TRI_errno_string(ErrorCode code) noexcept {
+std::string_view TRI_errno_string(ErrorCode code) noexcept {
   using arangodb::error::ErrorMessages;
   auto it = ErrorMessages.find(int(code));
 
@@ -94,9 +80,4 @@ char const* TRI_errno_string(ErrorCode code) noexcept {
   }
 
   return (*it).second;
-}
-
-/// @brief initializes the error messages
-void TRI_InitializeError() {
-  TRI_InitializeExitMessages();
 }

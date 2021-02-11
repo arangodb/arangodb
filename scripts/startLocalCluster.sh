@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 params=("$@")
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
@@ -154,6 +157,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
+          --server.descriptors-minimum 0 \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -180,6 +184,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -236,6 +241,7 @@ start() {
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
+          --server.descriptors-minimum 0 \
           --javascript.allow-admin-execute true \
           $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
@@ -262,6 +268,7 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --server.descriptors-minimum 0 \
         --javascript.allow-admin-execute true \
         $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \

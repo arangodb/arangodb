@@ -13,6 +13,9 @@ devel
   change to the collection indexes, we can just retry our own operation and
   check if it succeeds then. This is what `dropIndex()` will do now.
 
+* Try to raise file descriptors limit in local start scripts (in `scripts/`
+  directory - used for development only).
+
 * Fix error reporting in the reloadTLS route.
 
 * Fix potential undefined behavior when iterating over connected nodes in an

@@ -96,8 +96,5 @@ constexpr int TRI_EXIT_ICU_INITIALIZATION_FAILED                                
 constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                             = 27;
 
 
-/// register all exit codes for ArangoDB
-void TRI_InitializeExitMessages();
-
 #endif
 
