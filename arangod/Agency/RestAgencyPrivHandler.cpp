@@ -103,7 +103,8 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
   LOG_TOPIC("558e5", DEBUG, Logger::AGENCY) << error.toJson();
   rest::ResponseCode code;
   try {
-    code = GeneralResponse::responseCode(error.get(StaticStrings::Code).getNumber<int>());
+    code = GeneralResponse::responseCode(
+        ErrorCode{error.get(StaticStrings::Code).getNumber<int>()});
     generateResult(code, error);
   } catch (std::exception const& e) {
     std::string errstr("Failure reporting error ");

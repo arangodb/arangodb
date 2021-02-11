@@ -196,7 +196,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       arangodb::LogicalView const& view, bool doSync) override;
   virtual void createCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                        int& status) override;
+                                                        ErrorCode& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
@@ -231,9 +231,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                        bool wasCleanShutdown, bool isUpgrade) override;
   virtual void getDatabases(arangodb::velocypack::Builder& result) override;
   virtual void cleanupReplicationContexts() override;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                                           int& result) override;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase, ErrorCode& result) override;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(ErrorCode& result) override;
   virtual ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
   virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                           arangodb::LogicalCollection& col,
@@ -251,8 +250,8 @@ class StorageEngineMock : public arangodb::StorageEngine {
   using StorageEngine::registerView;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
-  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
-  virtual int removeReplicationApplierConfiguration() override;
+  virtual ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
+  virtual ErrorCode removeReplicationApplierConfiguration() override;
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                             arangodb::LogicalCollection const& collection,
                                             std::string const& oldName) override;

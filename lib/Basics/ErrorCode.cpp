@@ -24,6 +24,10 @@
 
 #include <ostream>
 
+auto to_string(::ErrorCode value) -> std::string {
+  return std::to_string(int(value));
+}
+
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream& {
-  return out << res.asInt();
+  return out << int(res);
 }

@@ -638,7 +638,7 @@ ErrorCode TRI_RemoveDirectory(char const* filename) {
 /// @brief removes a directory recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectoryDeterministic(char const* filename) {
+ErrorCode TRI_RemoveDirectoryDeterministic(char const* filename) {
   std::vector<std::string> files = TRI_FullTreeDirectory(filename);
   // start removing files from long names to short names
   std::sort(files.begin(), files.end(),
@@ -968,7 +968,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(char const* filename, char const* data, size_t length) {
+ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length) {
   int fd;
   bool result;
 
@@ -1517,7 +1517,7 @@ int TRI_DestroyLockFile(char const* filename) {
 
 #else
 
-int TRI_DestroyLockFile(char const* filename) {
+ErrorCode TRI_DestroyLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1534,10 +1534,13 @@ int TRI_DestroyLockFile(char const* filename) {
       lock.l_type = F_UNLCK;
       lock.l_whence = SEEK_SET;
       // release the lock
-      int res = fcntl(fd, F_SETLK, &lock);
+      auto res = TRI_ERROR_NO_ERROR;
+      if (0 != fcntl(fd, F_SETLK, &lock)) {
+        res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      }
       TRI_CLOSE(fd);
 
-      if (res == 0) {
+      if (res == TRI_ERROR_NO_ERROR) {
         TRI_UnlinkFile(filename);
       }
 
@@ -2228,7 +2231,7 @@ static std::string getTempPath() {
 
 static int mkDTemp(char* s, size_t /*bufferSize*/) {
   if (mkdtemp(s) != nullptr) {
-    return TRI_ERROR_NO_ERROR;
+    return 0;
   }
   return errno;
 }
@@ -2331,7 +2334,7 @@ std::string TRI_GetTempPath() {
         res = mkDTemp(SystemTempPath.get(), system.size() + 1);
       }
 
-      if (res == TRI_ERROR_NO_ERROR) {
+      if (res == 0) {
         break;
       }
 
@@ -2365,8 +2368,8 @@ std::string TRI_GetTempPath() {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
-                    long& systemError, std::string& errorMessage) {
+ErrorCode TRI_GetTempName(char const* directory, std::string& result, bool createFile,
+                          long& systemError, std::string& errorMessage) {
   std::string temp = TRI_GetTempPath();
 
   std::string dir;

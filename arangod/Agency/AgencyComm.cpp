@@ -1373,7 +1373,7 @@ bool AgencyComm::tryInitializeStructure() {
         AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
-    if (result.httpCode() == TRI_ERROR_HTTP_UNAUTHORIZED) {
+    if (result.httpCode() == int(ResponseCode::UNAUTHORIZED)) {
       LOG_TOPIC("a695d", ERR, Logger::AUTHENTICATION)
           << "Cannot authenticate with agency,"
           << " check value of --server.jwt-secret";

@@ -253,7 +253,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
       reinterpret_cast<T*>(p)->~T();
     }
 
-    int res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
+    auto res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
       LOG_TOPIC("ab7be", ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;

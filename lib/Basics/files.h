@@ -130,7 +130,7 @@ ErrorCode TRI_RemoveDirectory(char const* filename);
 /// @brief removes a directory recursively, using a deterministic order of files
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectoryDeterministic(char const* filename);
+ErrorCode TRI_RemoveDirectoryDeterministic(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes path to only use the default directory separator
@@ -197,7 +197,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length);
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(char const*, char const*, size_t);
+ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fsyncs a file
@@ -272,7 +272,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename);
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DestroyLockFile(char const* filename);
+ErrorCode TRI_DestroyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the filename component of a file (without path)
@@ -345,8 +345,8 @@ void TRI_SetTempPath(std::string const& path);
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
-                    long& systemError, std::string& errorMessage);
+ErrorCode TRI_GetTempName(char const* directory, std::string& result, bool createFile,
+                          long& systemError, std::string& errorMessage);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a file from source to dest.

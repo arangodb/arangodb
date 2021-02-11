@@ -1475,7 +1475,7 @@ void StorageEngineMock::createCollection(TRI_vocbase_t& vocbase,
                                          arangodb::LogicalCollection const& collection) {}
 
 std::unique_ptr<TRI_vocbase_t> StorageEngineMock::createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                                 int& status) {
+                                                                 ErrorCode& status) {
   if (arangodb::ServerState::instance()->isCoordinator()) {
     return std::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_COORDINATOR,
                                            std::move(info));
@@ -1621,16 +1621,16 @@ void StorageEngineMock::cleanupReplicationContexts() {
 }
 
 arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(
-    TRI_vocbase_t& vocbase, int& result) {
+    TRI_vocbase_t& vocbase, ErrorCode& result) {
   before();
   result = TRI_ERROR_FILE_NOT_FOUND;  // assume no ReplicationApplierConfiguration for vocbase
 
   return arangodb::velocypack::Builder();
 }
 
-arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(int& result) {
+arangodb::velocypack::Builder StorageEngineMock::getReplicationApplierConfiguration(ErrorCode& status) {
   before();
-  result = TRI_ERROR_FILE_NOT_FOUND;
+  status = TRI_ERROR_FILE_NOT_FOUND;
 
   return arangodb::velocypack::Builder();
 }
@@ -1692,12 +1692,12 @@ void StorageEngineMock::releaseTick(TRI_voc_tick_t tick) {
   _releasedTick = tick;
 }
 
-int StorageEngineMock::removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) {
+ErrorCode StorageEngineMock::removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) {
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }
 
-int StorageEngineMock::removeReplicationApplierConfiguration() {
+ErrorCode StorageEngineMock::removeReplicationApplierConfiguration() {
   TRI_ASSERT(false);
   return TRI_ERROR_NO_ERROR;
 }

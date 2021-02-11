@@ -38,7 +38,7 @@ class Rebalancer {
   explicit Rebalancer(Manager* manager);
 
   // Rebalance the manager.
-  int rebalance();
+  ErrorCode rebalance();
 
  private:
   Manager* _manager;

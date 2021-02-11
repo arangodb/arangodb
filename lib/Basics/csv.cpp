@@ -196,7 +196,7 @@ ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t 
           if (ptr == parser->_stop) {
             parser->_written = ptr;
             parser->_current = ptr;
-            return false;
+            return TRI_ERROR_NO_ERROR;
           }
 
           parser->begin(parser, parser->_row);
@@ -210,7 +210,7 @@ ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t 
           if (ptr == parser->_stop) {
             parser->_written = ptr;
             parser->_current = ptr;
-            return false;
+            return TRI_ERROR_NO_ERROR;
           }
 
           if (*ptr == '\n') {
@@ -399,7 +399,7 @@ ErrorCode TRI_ParseCsvString(TRI_csv_parser_t* parser, char const* line, size_t 
           else {
             parser->_written = qtr;
             parser->_current = ptr;
-            return true;
+            return TRI_ERROR_NO_ERROR;
           }
 
           break;

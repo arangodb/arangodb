@@ -168,7 +168,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
                 originalRequest + "'")};
   }
   if (response->wasHttpError()) {
-    int errorNum = TRI_ERROR_INTERNAL;
+    auto errorNum = int(TRI_ERROR_INTERNAL);
     std::string errorMsg = response->getHttpReturnMessage();
     std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
     arangodb::velocypack::Slice error = bodyBuilder->slice();
@@ -1626,8 +1626,8 @@ void RestoreFeature::start() {
   _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
                                                   false, false, true);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_NOT_FOUND:
+    switch (int(_directory->status().errorNumber())) {
+      case int(TRI_ERROR_FILE_NOT_FOUND):
         LOG_TOPIC("3246c", FATAL, arangodb::Logger::RESTORE)
             << "input directory '" << _options.inputPath << "' does not exist";
         break;

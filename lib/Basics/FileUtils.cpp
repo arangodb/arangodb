@@ -52,6 +52,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -552,12 +553,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   DIR* d = opendir(directory.c_str());
 
   if (d == nullptr) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    std::string message("failed to enumerate files in directory '" + directory +
-                        "': " + strerror(res));
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
 
   dirent* de = readdir(d);
@@ -702,13 +703,12 @@ void makePathAbsolute(std::string& path) {
 }
 
 static void throwProgramError(std::string const& filename) {
-  TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  auto res = TRI_errno();
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("open failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("open failed for file '", filename, "': ", TRI_last_error());
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+  THROW_ARANGO_EXCEPTION(res);
 }
 
 std::string slurpProgram(std::string const& program) {

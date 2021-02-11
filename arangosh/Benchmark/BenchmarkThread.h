@@ -284,7 +284,7 @@ class BenchmarkThread : public arangodb::Thread {
     size_t blen = strlen(boundary);
 
     basics::StringBuffer batchPayload(true);
-    int ret = batchPayload.reserve(numOperations * 1024);
+    auto ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("bd98d", FATAL, arangodb::Logger::FIXME)
           << "Failed to reserve " << numOperations * 1024 << " bytes for "

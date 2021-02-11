@@ -81,10 +81,10 @@ struct OperationResult final {
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
   ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
-  bool is(int errorNumber) const noexcept {
+  bool is(ErrorCode errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }
-  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
+  bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }

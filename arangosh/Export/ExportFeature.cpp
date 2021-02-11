@@ -193,12 +193,12 @@ void ExportFeature::prepare() {
   _directory = std::make_unique<ManagedDirectory>(server(), _outputDirectory,
                                                   !_overwrite, true, _useGzip);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_EXISTS:
+    switch (int(_directory->status().errorNumber())) {
+      case int(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("72723",FATAL, Logger::FIXME) << "cannot write to output directory '"
                                         << _outputDirectory << "'";
         break;
-      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+      case int(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("81812",FATAL, Logger::FIXME)
             << "output directory '" << _outputDirectory
             << "' already exists. use \"--overwrite true\" to "

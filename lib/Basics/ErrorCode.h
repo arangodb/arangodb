@@ -49,6 +49,8 @@ class ErrorCode {
 
   [[nodiscard]] constexpr auto asInt() const noexcept -> int { return _value; }
 
+  friend auto to_string(::ErrorCode value) -> std::string;
+
  private:
   int _value;
 };

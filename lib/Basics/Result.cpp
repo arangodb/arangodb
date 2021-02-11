@@ -154,7 +154,7 @@ auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostre
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);
-    dump.add(StaticStrings::ErrorNum, VPackValue(result.errorNumber().asInt()));
+    dump.add(StaticStrings::ErrorNum, VPackValue(int(result.errorNumber())));
     dump.add(StaticStrings::ErrorMessage, VPackValue(result.errorMessage()));
   }
   out << dump.slice().toJson();

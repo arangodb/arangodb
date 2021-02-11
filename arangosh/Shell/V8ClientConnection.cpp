@@ -2022,7 +2022,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
                 TRI_V8_ASCII_STRING(isolate, "code"),
                 v8::Integer::New(isolate, static_cast<int>(rest::ResponseCode::SERVER_ERROR))).FromMaybe(false);
 
-    int errorNumber = 0;
+    auto errorNumber = TRI_ERROR_NO_ERROR;
     switch (ec) {
       case fu::Error::CouldNotConnect:
       case fu::Error::ConnectionClosed:
@@ -2044,7 +2044,7 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
 
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, errorNumber)).FromMaybe(false);
+                v8::Integer::New(isolate, int(errorNumber))).FromMaybe(false);
     result->Set(context,
                 TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
                 TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);

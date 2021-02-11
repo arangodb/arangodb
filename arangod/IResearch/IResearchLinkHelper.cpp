@@ -535,7 +535,7 @@ arangodb::Result modifyLinks(                              // modify links
     if (!state._result.ok()) {
       error.append(error.empty() ? "" : ", ") // separator
         .append(collectionsToLock[state._collectionsToLockOffset]) // collection name
-        .append(": ").append(std::to_string(state._result.errorNumber())) // error code
+        .append(": ").append(std::to_string(int(state._result.errorNumber()))) // error code
         .append(" ").append(state._result.errorMessage()); // error message
     }
   }

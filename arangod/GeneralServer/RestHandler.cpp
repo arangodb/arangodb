@@ -517,7 +517,7 @@ void RestHandler::executeEngine(bool isContinue) {
   _state = HandlerState::FAILED;
 }
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
                                 std::string_view const errorMessage) {
   resetResponse(code);
 
@@ -529,7 +529,7 @@ void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
       builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       builder.add(StaticStrings::Error, VPackValue(true));
       builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-      builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
+      builder.add(StaticStrings::ErrorNum, VPackValue(int(errorNumber)));
       builder.close();
 
       if (_request != nullptr) {
