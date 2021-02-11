@@ -52,7 +52,7 @@ class Cursor {
 
   Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
       : _id(id),
-        _batchSize(batchSize),
+        _batchSize(batchSize == 0 ? 1 : batchSize),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),

@@ -852,9 +852,10 @@ Result RestImportHandler::performImport(SingleCollectionTransaction& trx,
       part = part.substr(0, 255) + "...";
     }
 
-    std::string errorMsg =
-        positionize(i) + "creating document failed with error '" +
-        TRI_errno_string(res) + "', offending document: " + part;
+    auto errorMsg =
+        StringUtils::concatT(positionize(i),
+                             "creating document failed with error '",
+                             TRI_errno_string(res), "', offending document: ", part);
     registerError(result, errorMsg);
   };
 
