@@ -454,8 +454,8 @@ ErrorCode TRI_ChMod(char const* path, long mode, std::string& err) {
 
   if (res != 0) {
     auto res2 = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    err = "error setting desired mode " + std::to_string(mode) + " for file " +
-          path + ": " + TRI_last_error();
+    err = StringUtils::concatT("error setting desired mode ", std::to_string(mode),
+                               " for file ", path, ": ", TRI_last_error());
     return res2;
   }
 

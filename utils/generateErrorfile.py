@@ -65,31 +65,6 @@ def quotedErrorMessage(error):
 def errorName(error):
     return "TRI_" + error[0]
 
-
-# generate C implementation file from errors
-def genCFile(errors):
-
-  impl = prologue + """
-#include "Basics/error.h"
-#include "Basics/voc-errors.h"
-
-/// helper macro to define an error string
-#define REG_ERROR(id, label) TRI_set_errno_string(TRI_ ## id, label);
-
-void TRI_InitializeErrorMessages() {
-"""
-
-  # print individual errors
-  for e in errors:
-    impl = impl\
-           + "  REG_ERROR(" + e[0] + ", " + quotedErrorMessage(e) + ");\n"
-
-  impl = impl\
-       + "}\n"
-
-  return impl
-
-
 # generate C header file from errors
 def genCHeaderFile(errors):
   wiki = "/// Error codes and meanings\n"\
@@ -188,8 +163,6 @@ if filename == "errors.js":
   out = genJsFile(errorsList)
 elif filename == "voc-errors.h":
   out = genCHeaderFile(errorsList)
-elif filename == "voc-errors.cpp":
-  out = genCFile(errorsList)
 elif filename == "error-registry.h":
   out = genErrorRegistryHeaderFile(errorsList)
 else:

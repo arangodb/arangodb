@@ -181,7 +181,6 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
   Containers/MerkleTree.cpp
