@@ -1,6 +1,9 @@
 devel
 -----
 
+* Try to raise file descriptors limit in local start scripts (in `scripts/`
+  directory - used for development only).
+
 * Fix error reporting in the reloadTLS route.
 
 * Fix potential undefined behavior when iterating over connected nodes in an
