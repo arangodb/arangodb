@@ -151,8 +151,6 @@ ArangoGlobalContext::ArangoGlobalContext(int /*argc*/, char* argv[], char const*
 #endif
 
   // global initialization
-  TRI_InitializeError();
-
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
 
   arangodb::rest::Version::initialize();

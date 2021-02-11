@@ -30,6 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
@@ -46,6 +47,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase, aql::QueryResult&& result,
                                      size_t batchSize, double ttl, bool hasCount)
@@ -233,8 +235,9 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_OUT_OF_MEMORY,
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                       QueryExecutionState::toStringWithPrefix(_query->state()))};
+                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                        QueryExecutionState::toStringWithPrefix(
+                                            _query->state())))};
   } catch (std::exception const& ex) {
     this->setDeleted();
     return {ExecutionState::DONE,
@@ -244,8 +247,8 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
     this->setDeleted();
     return {ExecutionState::DONE,
             Result(TRI_ERROR_INTERNAL,
-                   TRI_errno_string(TRI_ERROR_INTERNAL) +
-                       QueryExecutionState::toStringWithPrefix(_query->state()))};
+                   StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                        QueryExecutionState::toStringWithPrefix(_query->state())))};
   }
 }
 
@@ -287,8 +290,9 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   } catch (std::bad_alloc const&) {
     this->setDeleted();
     return Result(TRI_ERROR_OUT_OF_MEMORY,
-                  TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                      QueryExecutionState::toStringWithPrefix(_query->state()));
+                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _query->state())));
   } catch (std::exception const& ex) {
     this->setDeleted();
     return Result(TRI_ERROR_INTERNAL,
@@ -296,10 +300,11 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   } catch (...) {
     this->setDeleted();
     return Result(TRI_ERROR_INTERNAL,
-                  TRI_errno_string(TRI_ERROR_INTERNAL) +
-                      QueryExecutionState::toStringWithPrefix(_query->state()));
+                  StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _query->state())));
   }
-  
+
   return Result();
 }
 

@@ -564,12 +564,12 @@ void RestHandler::compressResponse() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
-  char const* message = TRI_errno_string(errorNumber);
+  auto const message = TRI_errno_string(errorNumber);
 
-  if (message != nullptr) {
-    generateError(code, errorNumber, std::string_view(message));
+  if (message.data() != nullptr) {
+    generateError(code, errorNumber, message);
   } else {
-    generateError(code, errorNumber, std::string_view("unknown error"));
+    generateError(code, errorNumber, "unknown error");
   }
 }
 

@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
@@ -35,6 +36,7 @@
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -158,11 +160,11 @@ Result FollowerInfo::add(ServerID const& sid) {
   if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
       !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // "Real error", report and log
-    std::string errorMessage =
+    auto errorMessage = StringUtils::concatT(
         "unable to add follower in agency, timeout in agency CAS operation for "
-        "key " +
-        _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-        ": " + TRI_errno_string(agencyRes.errorNumber());
+        "key ",
+        _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+        TRI_errno_string(agencyRes.errorNumber()));
     LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
     agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
   }
@@ -259,11 +261,11 @@ Result FollowerInfo::remove(ServerID const& sid) {
   // rollback:
   _followers = oldFollowers;
   _failoverCandidates = oldFailovers;
-  std::string errorMessage =
+  auto errorMessage = StringUtils::concatT(
       "unable to remove follower from agency, timeout in agency CAS operation "
-      "for key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-      ": " + TRI_errno_string(agencyRes.errorNumber());
+      "for key ",
+      _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+      TRI_errno_string(agencyRes.errorNumber()));
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
   return Result{agencyRes.errorNumber(), std::move(errorMessage)};
 }
