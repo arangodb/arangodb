@@ -323,7 +323,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
          break;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-      } while(--tryCount);
+      } while (--tryCount);
     } else {
       clusterCollectionName = collection->name();
     }
@@ -351,7 +351,7 @@ bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
                 auto builder =
                   collection->toVelocyPackIgnore({"path", "statusString"},
                                                  arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
-                auto res =
+                [[maybe_unused]] arangodb::Result res =
                     engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
                                                        builder.slice(),
                                                        arangodb::RocksDBLogValue::Empty());

@@ -1685,7 +1685,7 @@ Result RestReplicationHandler::processRestoreDataBatch(transaction::Methods& trx
   if (!physical) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
   }
-  char ridBuffer[11];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
 
   if (collection->hasClusterWideUniqueRevs()) {
     generateNewRevisionIds = true;
@@ -3196,7 +3196,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     };
     setRange(current);
 
-    char ridBuffer[11];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     {
       TRI_ASSERT(response.isOpenObject());
       VPackArrayBuilder rangesGuard(&response, StaticStrings::RevisionTreeRanges);

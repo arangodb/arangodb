@@ -435,6 +435,10 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
                         ": response is no array");
     }
 
+    syncer.setProgress(std::string("applying documents chunk ") +
+                       std::to_string(chunkId) + " (" + std::to_string(toFetch.size()) +
+                       " keys) for collection '" + collectionName + "'");
+
     size_t foundLength = slice.length();
 
     double t = TRI_microtime();
@@ -773,7 +777,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
 
               tempBuilder.clear();
               // use a temporary char buffer for building to rid string
-              char ridBuffer[21];
+              char ridBuffer[arangodb::basics::maxUInt64StringSize];
               tempBuilder.add(TRI_RidToValuePair(docRev, &ridBuffer[0]));
               localHash ^= tempBuilder.slice().hashString();  // revision as string
 

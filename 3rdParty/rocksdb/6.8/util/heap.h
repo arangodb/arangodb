@@ -66,7 +66,9 @@ class BinaryHeap {
 
   void replace_top(T&& value) {
     assert(!empty());
-    data_.front() = std::move(value);
+    if (data_.size() > 1) {
+      data_.front() = std::move(data_.back());
+    }
     downheap(get_root());
   }
 
