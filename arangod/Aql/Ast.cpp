@@ -57,6 +57,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
@@ -3686,10 +3687,10 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-            std::string(" as operand to FOR loop; you specified type '") +
-            expression->getValueTypeString() + std::string("' with content '") +
-            expression->toString() + std::string("'"));
+        StringUtils::concatT("collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                             " as operand to FOR loop; you specified type '",
+                             expression->getValueTypeString(),
+                             "' with content '", expression->toString(), "'"));
   }
 
   // no real optimizations will be done here

@@ -134,7 +134,7 @@ struct OperationOptions {
   // get associated execution context
   ExecContext const& context() const;
 
-private:
+ private:
   ExecContext const* _context;
 };
 
