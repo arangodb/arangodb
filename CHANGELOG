@@ -53,6 +53,30 @@ devel
 
 * Fixed a rare internal buffer overflow around ridBuffers.
 
+* EE only bugfix: On DisjointSmartGraphs that are used in anonymous way,
+  there was a chance that the query could fail, if non-disjoint collections
+  were part of the query. Named DisjointSmartGraphs have been save to this bug.
+  Example:
+  DisjointSmartGraph (graph) on vertices -edges-> vertices
+  Query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" edges
+    FOR u IN unrelated
+    RETURN [out, u]
+  
+  The "unrelated" collection was pulled into the DisjointSmartGraph, causing
+  the AQL setup to create erroneous state.
+  This is now fixed and the above query works.
+  This query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" GRAPH "graph"
+    FOR u IN unrelated
+    RETURN [out, u]
+
+  was not effected by this bug.
+
 * Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
   an EnumerateCollectionNode (i.e. full collection scan), did not do regular
   checks for the query being killed during the filtering of documents, resulting
