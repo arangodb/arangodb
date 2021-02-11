@@ -622,6 +622,53 @@ function StatementSuite () {
       assertEqual(10, docs.length);
     },
     
+    testProfilingSilentStreamingQuery: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1, silent: true },
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+    },
+
+    testProfilingSilentStreamingQueryWithBatchSize: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1, silent: true },
+        batchSize: 1,
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+    },
+    
+    testProfilingStreamingQuery: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1 },
+        stream: true,
+      });
+      let result = st.execute();
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+    },
+
+    testProfilingStreamingQueryWithBatchSize: function () {
+      let st = db._createStatement({
+        query : "FOR i IN 1..10 RETURN i",
+        options: { profile: 2, batchSize: 1 },
+        batchSize: 1,
+        stream: true
+      });
+      let result = st.execute();
+      assertFalse(result.getExtra().hasOwnProperty("stats"));
+      assertTrue(result.hasNext());
+      while (result.hasNext()) {
+        result.next();
+      }
+      assertTrue(result.getExtra().hasOwnProperty("stats"));
+    },
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test execute method with profiling
 ////////////////////////////////////////////////////////////////////////////////

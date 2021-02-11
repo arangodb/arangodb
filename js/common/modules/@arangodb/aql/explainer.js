@@ -2135,11 +2135,6 @@ function profileQuery(data, shouldPrint) {
   stringBuilder.clearOutput();
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
-  if (options.stream) {
-    while(cursor.hasNext()) {
-      cursor.next();
-    }
-  }
   let extra = cursor.getExtra();
   processQuery(data.query, extra, undefined);
 
