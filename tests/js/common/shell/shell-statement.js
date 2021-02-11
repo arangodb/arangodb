@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, fail */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined, assertMatch, fail, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -28,12 +28,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-var aql = arangodb.aql;
-var ERRORS = arangodb.errors;
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const aql = arangodb.aql;
+const ERRORS = arangodb.errors;
+const isServer = typeof arango === 'undefined';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: statements
@@ -661,7 +661,8 @@ function StatementSuite () {
         stream: true
       });
       let result = st.execute();
-      assertFalse(result.getExtra().hasOwnProperty("stats"));
+      // batchSize is ignored in arangod
+      assertEqual(isServer, result.getExtra().hasOwnProperty("stats"));
       assertTrue(result.hasNext());
       while (result.hasNext()) {
         result.next();
