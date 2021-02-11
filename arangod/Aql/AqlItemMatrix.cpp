@@ -47,13 +47,13 @@ std::pair<SharedAqlItemBlockPtr, size_t> AqlItemMatrix::getBlock(size_t index) c
   return  {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
 }
 
-std::pair<SharedAqlItemBlockPtr const&, size_t> AqlItemMatrix::getBlockRef(size_t index) const noexcept {
+std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(size_t index) const noexcept {
   TRI_ASSERT(index < numberOfBlocks());
   // The first block could contain a shadowRow
   // and the first unused data row, could be after the
   // shadowRow.
   // All other blocks start with the first row as data row
-  return  {_blocks[index], index == 0 ? _startIndexInFirstBlock : 0};
+  return  {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
 }
 
 InputAqlItemRow AqlItemMatrix::getRow(AqlItemMatrix::RowIndex index) const noexcept {
