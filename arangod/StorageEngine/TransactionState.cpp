@@ -131,7 +131,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {

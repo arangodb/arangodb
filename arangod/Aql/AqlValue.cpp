@@ -1198,7 +1198,6 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
     _data.internal[0] = 0x1b;
     uint64_t dv;
     memcpy(&dv, &value, sizeof(double));
-    VPackValueLength vSize = sizeof(double);
     dv = arangodb::basics::hostToLittle(dv);
     memcpy(&_data.internal[1], &dv, sizeof(dv));
     //int i = 1;
