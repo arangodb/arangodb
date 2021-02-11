@@ -1612,7 +1612,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     }
 
     TRI_ASSERT(writableOutputRegisters.size() ==
-               numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+               static_cast<std::size_t>(numDocumentRegs) + numScoreRegisters + numViewVarsRegisters);
 
     aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));

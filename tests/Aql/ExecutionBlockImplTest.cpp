@@ -162,13 +162,13 @@ class SharedExecutionBlockImplTest {
     return stack;
   }
 
-  RegisterInfos makeRegisterInfos(RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                  RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+  RegisterInfos makeRegisterInfos(RegisterCount inputRegisters = RegisterId::maxRegisterId,
+                                  RegisterCount outputRegisters = RegisterId::maxRegisterId) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
       // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LT(outputRegisters, RegisterId::maxRegisterId);
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
       // Special case: we do not have input registers, but need an output register.
       // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
@@ -176,23 +176,23 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = RegIdSet{};
     auto writeAble = RegIdSet{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId::value_t i = 0; i <= inputRegisters.value(); ++i) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= inputRegisters; ++i) {
         readAble.emplace(i);
       }
-      for (RegisterId::value_t i = inputRegisters.value() + 1; i <= outputRegisters.value(); ++i) {
+      for (RegisterId::value_t i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId::value_t i = 0; i <= outputRegisters.value(); ++i) {
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
     }
     RegIdSetStack registersToKeep = {readAble, readAble, readAble};
     RegisterCount regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters.value() + 1;
+        (inputRegisters == RegisterId::maxRegisterId) ? 0 : inputRegisters + 1;
     RegisterCount regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters.value() + 1;
+        (outputRegisters == RegisterId::maxRegisterId) ? 0 : outputRegisters + 1;
     return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
   }
 
@@ -433,8 +433,8 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   auto onceLinesProducer(ExecutionBlock* dependency, size_t numberLines)
       -> std::unique_ptr<ExecutionBlock> {
-    RegisterId outReg = 0;
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
+    RegisterCount outReg = 0;
+    RegisterCount inReg = RegisterId::maxRegisterId;
     SkipCall skipCall = generateNeverSkipCall();
     auto didProduce = std::make_shared<bool>(false);
     auto builder = std::make_shared<VPackBuilder>();
@@ -1221,8 +1221,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg.value() - 1;
-    auto registerInfos = makeRegisterInfos(inReg, outReg);
+    auto const inReg = outReg == 0 ? RegisterId::maxRegisterId : outReg.value() - 1;
+    auto registerInfos = makeRegisterInfos(inReg, outReg.value());
     auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
@@ -1258,7 +1258,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
@@ -1318,7 +1318,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
@@ -1694,7 +1694,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg, outReg),
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg.value(), outReg.value()),
       makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 

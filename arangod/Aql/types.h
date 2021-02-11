@@ -25,9 +25,9 @@
 #define ARANGOD_AQL_TYPES_H 1
 
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
 
-#include <Basics/debugging.h>
 #include <Containers/HashSetFwd.h>
 
 #include <map>
@@ -60,121 +60,6 @@ struct Collection;
 /// @brief type for variable ids
 typedef uint32_t VariableId;
 
-typedef uint16_t RegisterCount;
-
-/// @brief type for register numbers/ids
-struct RegisterId {
-  enum class Type : uint16_t {
-    Regular = 0,
-    Const = 1
-  };
-
-  using value_t = uint16_t;
-  static_assert(std::is_same_v<value_t, RegisterCount>);
-
-  constexpr RegisterId() = default;
-
-  static constexpr value_t maxRegisterId = 1000;
-  
-  // TODO - make constructor explicit (requires a lot of changes in test code)
-  constexpr RegisterId(value_t v, Type type = Type::Regular)
-      : _value(v), _type(type) {
-    TRI_ASSERT(v <= maxRegisterId);
-  }
-
-  constexpr static RegisterId makeConst(value_t value) noexcept {
-    return RegisterId(value, Type::Const);
-  }
-
-  constexpr static RegisterId makeRegular(value_t value) noexcept {
-    return RegisterId(value, Type::Regular);
-  }
-
-  constexpr static RegisterId fromUInt32(uint32_t value) noexcept {
-    auto v = static_cast<value_t>(value);
-    auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
-    RegisterId result (v, type);
-    TRI_ASSERT(result.isValid());
-    return result;
-  }
-
-  uint32_t toUInt32() const noexcept {
-    uint32_t result = _value;
-    result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
-    return result;
-  }
-
-  constexpr value_t value() const noexcept {
-    TRI_ASSERT(type() <= Type::Const);
-    return _value;
-  }
-
-  constexpr Type type() const noexcept { return _type; }
-
-  constexpr bool isConstRegister() const noexcept { return _type == Type::Const; }
-  constexpr bool isRegularRegister() const noexcept { return _type == Type::Regular; }
-
-  constexpr bool isValid() const noexcept { return _value < maxRegisterId && _type <= Type::Const; }
-
-  constexpr RegisterId& operator++() noexcept { 
-    ++_value;
-    TRI_ASSERT(isValid());
-    return *this;
-  }
-
-  constexpr RegisterId& operator++(int) noexcept {
-    ++_value;
-    TRI_ASSERT(isValid());
-    return *this;
-  }
-
-  constexpr RegisterId operator+(int16_t v) noexcept {
-    return RegisterId(_value + v, _type);
-  }
-
-  constexpr RegisterId operator-(int16_t v) noexcept {
-    return RegisterId(_value - v, _type);
-  }
-
-  constexpr bool operator<(const RegisterId& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
-    return _value < rhs._value;
-  }
-
-  constexpr bool operator>(const RegisterId& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
-    return _value > rhs._value;
-  }
-
-  constexpr bool operator<(const RegisterCount& rhs) const noexcept {
-    return _value < rhs;
-  }
-
-  constexpr bool operator<=(const RegisterId& rhs) const noexcept {
-    TRI_ASSERT(type() == rhs.type())
-    return _value <= rhs._value;
-  }
-
-  constexpr bool operator==(const RegisterId& rhs) const noexcept {
-    return type() == rhs.type() && _value == rhs._value;
-  }
-
-  constexpr bool operator==(const value_t& rhs) const noexcept {
-    return _value == rhs;
-  }
-
-  constexpr bool operator!=(const RegisterId& rhs) const noexcept {
-    return type() != rhs.type() || _value != rhs._value;
-  }
-
-  constexpr bool operator!=(const value_t& rhs) const noexcept {
-    return _value != rhs;
-  }
- private:
-  uint16_t _value = 0;
-  Type _type = Type::Regular;
-};
-static_assert(sizeof(RegisterId) == sizeof(uint32_t));
 
 /// @brief type of a query id
 typedef uint64_t QueryId;

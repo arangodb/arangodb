@@ -458,7 +458,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = RegIdSet{};
   auto& varInfo = getRegisterPlan()->varInfo;
-  RegisterId inputRegister = RegisterPlan::MaxRegisterId;
+  RegisterId inputRegister{RegisterId::maxRegisterId};
   if (usesInVariable()) {
     auto it = varInfo.find(inVariable()->id);
     TRI_ASSERT(it != varInfo.end());

@@ -38,7 +38,7 @@ namespace {
   static auto RowHasNonEmptyValue(ShadowAqlItemRow const& row) -> bool {
     if (row.isInitialized()) {
       RegisterCount const numRegisters = static_cast<RegisterCount>(row.getNumRegisters());
-      for (RegisterId registerId(0); registerId < numRegisters; ++registerId) {
+      for (RegisterId::value_t registerId = 0; registerId < numRegisters; ++registerId) {
         if (!row.getValue(registerId).isEmpty()) {
           return true;
         }

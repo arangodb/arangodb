@@ -300,7 +300,7 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   RegisterId regId = (*it).second.registerId;
 
-  TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(regId.isValid());
 
   auto inRegs = RegIdSet{regId};
   auto registerInfos = createRegisterInfos(inRegs, {});
@@ -598,13 +598,13 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
     readableInputRegisters.emplace(in);
   }
   auto writableOutputRegisters = RegIdSet{};
-  if (out < RegisterPlan::MaxRegisterId) {
+  if (out.isValid()) {
     writableOutputRegisters.emplace(out);
   }
-  if (outputNew < RegisterPlan::MaxRegisterId) {
+  if (outputNew.isValid()) {
     writableOutputRegisters.emplace(outputNew);
   }
-  if (outputOld < RegisterPlan::MaxRegisterId) {
+  if (outputOld.isValid()) {
     writableOutputRegisters.emplace(outputOld);
   }
 

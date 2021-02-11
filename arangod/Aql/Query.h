@@ -193,6 +193,7 @@ class Query : public QueryContext {
     return nullptr;
   }
   void initForTests();
+  void initTrxForTests();
 #endif
   
   AqlItemBlockManager& itemBlockManager() {

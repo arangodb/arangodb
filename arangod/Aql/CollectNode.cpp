@@ -217,7 +217,7 @@ void CollectNode::calcAggregateRegisters(std::vector<std::pair<RegisterId, Regis
     RegisterId outReg = itOut->second.registerId;
     TRI_ASSERT(outReg.isValid());
 
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
+    RegisterId inReg{RegisterId::maxRegisterId};
     if (Aggregator::requiresInput(p.type)) {
       auto itIn = getRegisterPlan()->varInfo.find(p.inVar->id);
       TRI_ASSERT(itIn != getRegisterPlan()->varInfo.end());
@@ -271,7 +271,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
       // calculate the group registers
@@ -311,10 +311,10 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
       RegIdSet readableInputRegisters;
       RegIdSet writeableOutputRegisters;
 
-      RegisterId collectRegister = RegisterPlan::MaxRegisterId;
+      RegisterId collectRegister{RegisterId::maxRegisterId};
       calcCollectRegister(collectRegister, writeableOutputRegisters);
 
-      RegisterId expressionRegister = RegisterPlan::MaxRegisterId;
+      RegisterId expressionRegister{RegisterId::maxRegisterId};
       calcExpressionRegister(expressionRegister, readableInputRegisters);
 
       // calculate the group registers

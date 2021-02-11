@@ -209,7 +209,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
                        : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
-      _resultRegister(RegisterPlan::MaxRegisterId),
+      _resultRegister(RegisterId::maxRegisterId),
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
@@ -767,7 +767,7 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
 void arangodb::aql::ExecutionEngine::reset() {
   _root = nullptr;
   _blocks.clear();
-  _resultRegister = RegisterPlan::MaxRegisterId;
+  _resultRegister = RegisterId{RegisterId::maxRegisterId};
   _initializeCursorCalled = false;
   _sharedState.reset();
 }

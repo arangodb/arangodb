@@ -989,6 +989,7 @@ void AqlItemBlock::decreaseMemoryUsage(size_t value) noexcept {
 
 AqlValue AqlItemBlock::getValue(size_t index, RegisterId varNr) const {
   if (varNr.isConstRegister()) {
+    TRI_ASSERT(_manager.getConstValueBlock() != nullptr);
     return _manager.getConstValueBlock()->getValue(0, varNr.value());
   }
   return getValue(index, varNr.value());
@@ -1000,6 +1001,7 @@ AqlValue AqlItemBlock::getValue(size_t index, RegisterId::value_t column) const 
 
 AqlValue const& AqlItemBlock::getValueReference(size_t index, RegisterId varNr) const {
   if (varNr.isConstRegister()) {
+    TRI_ASSERT(_manager.getConstValueBlock() != nullptr);
     return _manager.getConstValueBlock()->getValueReference(0, varNr.value());
   }
   return getValueReference(index, varNr.value());
@@ -1035,7 +1037,11 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column, AqlValue c
 
 void AqlItemBlock::destroyValue(size_t index, RegisterId varNr) {
   TRI_ASSERT(varNr.isRegularRegister());
-  auto& element = _data[getAddress(index, varNr.value())];
+  destroyValue(index, varNr.value());
+}
+
+void AqlItemBlock::destroyValue(size_t index, RegisterId::value_t column) {
+  auto& element = _data[getAddress(index, column)];
 
   if (element.requiresDestruction()) {
     auto it = _valueCount.find(element.data());

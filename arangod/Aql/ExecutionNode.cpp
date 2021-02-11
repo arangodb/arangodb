@@ -1190,7 +1190,7 @@ void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
     std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
-      TRI_ASSERT(regId <= maxRegister);
+      TRI_ASSERT(regId.value() <= maxRegister.value());
     });
   };
   assertNotContained(maxRegister, _regsToClear);
@@ -1398,7 +1398,7 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   if (var) {
     return variableToRegisterId(var);
   }
-  return RegisterPlan::MaxRegisterId;
+  return RegisterId{RegisterId::maxRegisterId};
 }
 
 bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }

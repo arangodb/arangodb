@@ -624,7 +624,7 @@ auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId) const -> R
   if (it != varInfo.end()) {
     return it->second.registerId;
   }
-  return RegisterPlan::MaxRegisterId;
+  return RegisterId{RegisterId::maxRegisterId};
 }
 
 template <typename T>
