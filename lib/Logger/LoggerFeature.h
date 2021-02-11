@@ -23,6 +23,7 @@
 #ifndef ARANGODB_LOGGER_LOGGER_FEATURE_H
 #define ARANGODB_LOGGER_LOGGER_FEATURE_H 1
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -64,6 +65,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   std::string _fileMode;
   std::string _fileGroup;
   std::string _timeFormatString;
+  uint32_t _maxEntryLength = 128U * 1048576U;
   bool _useLocalTime = false;
   bool _useColor = true;
   bool _useEscaped = true;

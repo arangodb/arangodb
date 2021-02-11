@@ -134,7 +134,7 @@ var updateFishbowlFromZip = function (filename) {
   }
 
   if (toSave.length > 0) {
-    var fishbowl = getFishbowlStorage();
+    let fishbowl = getFishbowlStorage();
     if (!fishbowl) {
       // collection is not present. now create it
       try {
@@ -143,29 +143,31 @@ var updateFishbowlFromZip = function (filename) {
         try {
           fishbowl = db._create('_fishbowl', { isSystem: true, distributeShardsLike: '_users' });
         } catch (err) {
-          arangodb.printf("Unable to create _fishbowl collection for application results: %s\n", String(err));
+          require('console').warn('Unable to create _fishbowl collection for application results:' + String(err));
         }
       }
     }
 
     if (fishbowl) {
-      db._executeTransaction({
-        collections: {
-          exclusive: fishbowl.name()
-        },
-        action: function (params) {
-          var c = require('internal').db._collection(params.collection);
-          c.truncate();
-
-          params.services.forEach(function (service) {
-            c.insert(service);
-          });
-        },
-        params: {
-          services: toSave,
-          collection: fishbowl.name()
-        }
+      let toRemove = {};
+      fishbowl.toArray().forEach((doc) => {
+        toRemove[doc._key] = { _key: doc._key };
       });
+      toSave.forEach((doc) => {
+        delete toRemove[doc._key];
+      });
+     
+      // first insert/replace all apps that are new or remain
+      fishbowl.insert(toSave, { overwriteMode: "replace" });
+
+      // second remove all apps that are not present anymore
+      // (very unlikely)
+      toRemove = Object.values(toRemove);
+      // execute remove and insert in 2 separate steps. this is not transactional
+      // but cheaper
+      if (toRemove.length > 0) {
+        fishbowl.remove(toRemove);
+      }
 
       require('console').debug('Updated local Foxx repository with ' + toSave.length + ' service(s)');
     }
@@ -336,7 +338,7 @@ var update = function () {
     }
 
     throw Object.assign(
-      new Error('Failed to update Foxx store'),
+      new Error('Failed to update Foxx store: ' + String(e.message)),
       {cause: e}
     );
   }
