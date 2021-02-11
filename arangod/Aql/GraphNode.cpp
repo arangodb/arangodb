@@ -783,9 +783,11 @@ void GraphNode::addVertexCollection(Collections const& collections, std::string 
   }
 }
 
+#ifndef USE_ENTERPRISE
 void GraphNode::addVertexCollection(aql::Collection& collection) {
   _vertexColls.emplace_back(&collection);
 }
+#endif
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;
