@@ -169,7 +169,7 @@ bool parameterToTimePoint(AqlValue const& value, QueryWarnings& warnings,
     }
     return true;
   }*/
-  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE, nullptr);
+  warnings.registerWarning(TRI_ERROR_QUERY_INVALID_DATE_VALUE);
   return false;
 }
 
@@ -232,7 +232,7 @@ WindowBounds::Row WindowBounds::calcRow(AqlValue const& input, QueryWarnings& w)
   bool failed;
   double val = input.toDouble(failed);
   if (failed) {
-    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, nullptr);
+    w.registerWarning(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     return {0, 0, 0, /*valid*/ false};
   }
 
