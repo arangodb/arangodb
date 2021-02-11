@@ -6,6 +6,21 @@ devel
   provide a better progress indicator, especially if there is more than one
   follower for a shard.
 
+* Make dropping of indexes in cluster retry in case of precondition failed.
+
+  When dropping an indexes of a collection in the cluster, the operation could
+  fail with a "precondition failed" error in case there were simultaneous
+  index creation or drop actions running for the same collection. The error
+  was returned properly internally, but got lost at the point when 
+  `<collection>.dropIndex()` simply converted any error to just `false`.
+  We can't make `dropIndex()` throw an exception for any error, because that
+  would affect downwards-compatibility. But in case there is a simultaneous
+  change to the collection indexes, we can just retry our own operation and
+  check if it succeeds then. This is what `dropIndex()` will do now.
+
+* Try to raise file descriptors limit in local start scripts (in `scripts/`
+  directory - used for development only).
+
 * Fix error reporting in the reloadTLS route.
 
 * Fix potential undefined behavior when iterating over connected nodes in an
