@@ -154,7 +154,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   options.isRestore = true;
   options.validate = false; // no validation during replication
   options.indexOperationMode = arangodb::IndexOperationMode::internal;
-  options.ignoreUniqueConstraints = true;
+  options.checkUniqueConstraintsInPreflight = true;
   options.waitForSync = false; // no waitForSync during replication
   if (!state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = state.leaderId;
@@ -170,9 +170,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       "&batchId=" + std::to_string(config.batch.id);
   auto headers = arangodb::replutils::createHeaders();
 
-  std::string msg = "fetching documents by revision for collection '" +
-                    collection.name() + "' from " + url;
-  config.progress.set(msg);
+  config.progress.set("fetching documents by revision for collection '" +
+                      collection.name() + "' from " + url);
 
   auto removeConflict = [&](auto const& conflictingKey) -> Result {
     keyBuilder->clear();
@@ -187,10 +186,18 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
     return res;
   };
 
+  std::size_t numUniqueIndexes = [&]() {
+    std::size_t numUnique = 0;
+    for (auto const& idx : collection.getIndexes()) {
+      numUnique += idx->unique() ? 1 : 0;
+    }
+    return numUnique;
+  }();
+
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() -> void { stats.numDocsRequested += current; });
-  char ridBuffer[11];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (current < toFetch.size()) {
     arangodb::transaction::BuilderLeaser requestBuilder(&trx);
@@ -230,6 +237,8 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                             config.leader.endpoint, url,
                             ": response is not an array"));
     }
+  
+    config.progress.set("applying documents by revision for collection '" + collection.name() + "'");
 
     for (VPackSlice leaderDoc : VPackArrayIterator(docs)) {
       if (!leaderDoc.isObject()) {
@@ -254,41 +263,50 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
-      TRI_ASSERT(options.indexOperationMode == arangodb::IndexOperationMode::internal);
+      options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-      Result res = physical->insert(&trx, leaderDoc, mdr, options);
-      
-      if (res.fail()) {
-        if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-            res.errorMessage() > keySlice.stringView()) {
-          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
-            // already have exactly this revision no need to insert
-            continue;
-          }
-          // remove conflict and retry
-          // errorMessage() is this case contains the conflicting key
-          auto inner = removeConflict(res.errorMessage());
-          if (inner.fail()) {
-            return res;
-          }
+      // we need a retry loop here for unique indexes (we will always have at least
+      // one unique index, which is the primary index, but there can be more). as 
+      // documents can be presented in any state on the follower, simply inserting
+      // them in leader order may trigger a unique constraint violation on the follower.
+      // in this case we may need to remove the conflicting document. this can 
+      // happen multiple times if there are multiple unique indexes! we can only
+      // stop trying once we have tried often enough, or if inserting succeeds.
+      std::size_t tries = 1 + numUniqueIndexes;
+      while (tries-- > 0) {
+        if (tries == 0) {
           options.indexOperationMode = arangodb::IndexOperationMode::normal;
-          res = physical->insert(&trx, leaderDoc, mdr, options);
+        }
+
+        Result res = physical->insert(&trx, leaderDoc, mdr, options);
           
-          options.indexOperationMode = arangodb::IndexOperationMode::internal;
-          if (res.fail()) {
-            return res;
-          }
-          // fall-through
-        } else {
+        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+
+        if (res.ok()) {
+          ++stats.numDocsInserted;
+          break;
+        }
+
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           auto errorNumber = res.errorNumber();
           res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
                                          res.errorMessage()));
           return res;
         }
-      }
 
-      ++stats.numDocsInserted;
+        arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
+        if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
+          // already have exactly this revision no need to insert
+          break;
+        }
+
+        // remove conflict and retry
+        // errorMessage() is this case contains the conflicting key
+        auto inner = removeConflict(res.errorMessage());
+        if (inner.fail()) {
+          return res;
+        }
+      }
     }
     current += docs.length();
   }
@@ -1145,8 +1163,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 
     if (!res.ok()) {
       return Result(res.errorNumber(),
-                    concatT("unable to start transaction (", __FILE__, ":",
-                            __LINE__, "): ", res.errorMessage()));
+                    concatT("unable to start transaction: ", res.errorMessage()));
     }
 
     OperationOptions options;
@@ -1260,8 +1277,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
       if (!res.ok()) {
         return Result(res.errorNumber(),
-                      concatT("unable to start transaction (", __FILE__, ":",
-                              __LINE__, "): ", res.errorMessage()));
+                      concatT("unable to start transaction: ", res.errorMessage()));
       }
 
       OperationOptions options;
@@ -1315,7 +1331,10 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
     }
     return Result(ex.code());
   }
-  trx->addHint(Hints::Hint::NO_INDEXING);
+
+  // we must be able to read our own writes here - otherwise the end result
+  // can be wrong. do not enable NO_INDEXING here!
+  
   // turn on intermediate commits as the number of keys to delete can be huge
   // here
   trx->addHint(Hints::Hint::INTERMEDIATE_COMMITS);
@@ -1355,7 +1374,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   {
     VPackBuilder requestBuilder;
     {
-      char ridBuffer[11];
+      char ridBuffer[arangodb::basics::maxUInt64StringSize];
       VPackArrayBuilder list(&requestBuilder);
       for (auto& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);
