@@ -45,13 +45,13 @@ char const* const Variable::NAME_CURRENT = "$CURRENT";
 Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
     : id(id), 
       name(std::move(name)), 
-      value(nullptr), 
+      _constAstNode(nullptr), 
       isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
     : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id")),
       name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
-      value(),
+      _constAstNode(),
       isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
       _constantValue(slice.get("constantValue")) {}
 

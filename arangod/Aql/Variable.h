@@ -38,6 +38,7 @@ class Slice;
 
 namespace aql {
 class Ast;
+struct AstNode;
 
 struct Variable {
   /// @brief indicates the type of the variable
@@ -59,11 +60,11 @@ struct Variable {
   Variable* clone() const;
 
   /// @brief registers a constant value for the variable
-  /// this constant value is used for constant propagation in optimizations
-  void constValue(void* node) { value = node; }
+  /// this constant value is used for constant propagation while creating the AST
+  void setConstAstNode(AstNode* node) { _constAstNode = node; }
 
   /// @brief returns a constant value registered for this variable
-  inline void* constValue() const { return value; }
+  AstNode* getConstAstNode() const { return _constAstNode; }
 
   /// @brief whether or not the variable is user-defined
   bool isUserDefined() const;
@@ -104,9 +105,6 @@ struct Variable {
   /// note: this cannot be const as variables can be renamed by the optimizer
   std::string name;
 
-  /// @brief constant variable value (points to another AstNode)
-  void* value;
-
   /// @brief whether or not the source data for this variable is from a collection 
   /// (i.e. is a document). this is only used for optimizations
   bool isDataFromCollection;
@@ -121,7 +119,11 @@ struct Variable {
   static char const* const NAME_CURRENT;
 
 private:
-  // TODO - naming (we already have constValue member function)
+  /// @brief constant variable value (points to another AstNode)
+  /// Used for constant propagation while creating the AST.
+  AstNode* _constAstNode;
+  
+  // TODO - we have two kinds of const values here; this should be cleaned up!
   /// @brief for const variables, this stores the constant value determined while
   /// initializing the plan.
   /// Note: the variable takes ownership of this value and destroys it
