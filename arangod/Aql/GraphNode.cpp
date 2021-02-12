@@ -509,9 +509,8 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
 
   auto found = _collectionToShard.find(collName);
   if (found == _collectionToShard.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find shard '" + collName + "' in query shard map");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
   }
-  TRI_ASSERT(found != _collectionToShard.cend());
   return found->second;
 }
 

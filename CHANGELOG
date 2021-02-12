@@ -23,7 +23,7 @@ devel
     FOR u IN unrelated
     RETURN [out, u]
 
-  was not effected by this bug.
+  was not affected by this bug.
 
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
