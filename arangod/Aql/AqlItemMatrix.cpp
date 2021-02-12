@@ -53,6 +53,7 @@ std::pair<AqlItemBlock const*, size_t> AqlItemMatrix::getBlockRef(size_t index) 
   // and the first unused data row, could be after the
   // shadowRow.
   // All other blocks start with the first row as data row
+  TRI_ASSERT(_blocks[index].get());
   return  {_blocks[index].get(), index == 0 ? _startIndexInFirstBlock : 0};
 }
 
