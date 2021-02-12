@@ -23,7 +23,7 @@ v3.7.8 (XXXX-XX-XX)
     FOR u IN unrelated
     RETURN [out, u]
 
-  was not effected by this bug.
+  was not affected by this bug.
 
 * Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
   an EnumerateCollectionNode (i.e. full collection scan), did not do regular
