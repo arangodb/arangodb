@@ -322,9 +322,12 @@ void QueryStreamCursor::resetWakeupHandler() {
 }
 
 ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
+  bool const silent = _query->queryOptions().silent;
 
   // reserve some space in Builder to avoid frequent reallocs
-  builder.reserve(16 * 1024);
+  if (!silent) {
+    builder.reserve(16 * 1024);
+  }
   
   builder.add("result", VPackValue(VPackValueType::Array, true));
 
@@ -340,11 +343,13 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     TRI_ASSERT(_queryResultPos < block->numRows());
 
     while (rowsWritten < batchSize() && _queryResultPos < block->numRows()) {
-      AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
-      if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-        value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,
-                           /*allowUnindexed*/true);
-        ++rowsWritten;
+      if (!silent) {
+        AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
+        if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
+          value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,
+                             /*allowUnindexed*/true);
+          ++rowsWritten;
+        }
       }
       ++_queryResultPos;
     }
@@ -356,7 +361,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
       _queryResultPos = 0;
     }
   }
-
+  
   TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->numRows());
 
   builder.close();  // result
@@ -364,7 +369,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   // If there is a block left, there's at least one row left in it. On the
   // other hand, we rely on the caller to have fetched more than batchSize()
   // result rows if possible!
-  const bool hasMore = !_queryResults.empty();
+  bool const hasMore = !_queryResults.empty();
 
   builder.add("hasMore", VPackValue(hasMore));
   if (hasMore) {
@@ -414,7 +419,9 @@ ExecutionState QueryStreamCursor::prepareDump() {
     }
   });
   
-  while (state != ExecutionState::DONE && numRows <= batchSize()) {
+  bool const silent = _query->queryOptions().silent;
+  
+  while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {
     SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
     if (state == ExecutionState::WAITING) {
