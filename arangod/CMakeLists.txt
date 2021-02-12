@@ -1104,6 +1104,11 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(arangod jemalloc_build)
 endif ()
+   
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL 
+  target_compile_options(arangod PRIVATE -D_GLIBCXX_DEBUG)
+endif ()
 
 foreach(TARGET
   arango_agency

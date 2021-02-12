@@ -1,6 +1,9 @@
 devel
 -----
 
+* Enable a debug STL build via setting `_GLIBCXX_DEBUG` when compiling with gcc
+  in maintainer mode.
+
 * Improved the wording for sharding options displayed in the web interface.
 
   Instead of offering `flexible` and `single`, now use the more intuitive
