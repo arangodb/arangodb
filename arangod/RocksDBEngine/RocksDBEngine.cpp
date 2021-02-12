@@ -1456,6 +1456,19 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     ridx->destroyCache();
   }
 
+  auto const dropFilesInRange = [&](RocksDBKeyBounds const& bounds) {
+    auto start = bounds.start();
+    auto end = bounds.end();
+    std::ignore = rocksdb::DeleteFilesInRange(db, bounds.columnFamily(), &start, &end);
+  };
+
+  // delete all files in the given ranges
+  dropFilesInRange(bounds);
+  for (auto& index : vecShardIndex) {
+    auto* ridx = static_cast<RocksDBIndex*>(index.get());
+    dropFilesInRange(ridx->getBounds());
+  }
+
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will
   // slow things down a lot, especially during tests that create/drop LOTS

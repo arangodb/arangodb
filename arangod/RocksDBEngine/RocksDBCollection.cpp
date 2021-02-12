@@ -78,6 +78,7 @@
 
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/convenience.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -583,10 +584,11 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
     return {};
   }
 
+  auto& selector =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+
   auto const deleteIndex = [&](std::shared_ptr<arangodb::Index> const& toRemove) -> Result {
-    auto& selector =
-        _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
 
     auto* rocksdbIndex = static_cast<RocksDBIndex*>(toRemove.get());
     TRI_ASSERT(rocksdbIndex != nullptr);
@@ -641,9 +643,20 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
     return {};
   };
 
-  auto const cleanupIndex = [](std::shared_ptr<arangodb::Index> const& toRemove) -> Result {
+  auto const cleanupIndex = [&](std::shared_ptr<arangodb::Index> const& toRemove) -> Result {
     return basics::catchVoidToResult([&]{
       auto* rocksdbIndex = static_cast<RocksDBIndex*>(toRemove.get());
+
+      {
+        // try to delete all files in the range of the index
+        auto bounds = rocksdbIndex->getBounds();
+        auto start = bounds.start();
+        auto end = bounds.end();
+        // best efford
+        std::ignore = rocksdb::DeleteFilesInRange(engine.db(), bounds.columnFamily(),
+                                                  &start, &end);
+      }
+
       rocksdbIndex->compact();  // trigger compaction before deleting the object
       rocksdbIndex->destroyCache();
     });
