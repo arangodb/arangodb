@@ -120,8 +120,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   RequestStatistics::Item stealStatistics(uint64_t);
   
   /// @brief send response including error response body
-  void sendErrorResponse(rest::ResponseCode code, rest::ContentType respType, uint64_t messageId,
-                         ErrorCode errorNum, char const* errorMessage = nullptr);
+  void sendErrorResponse(rest::ResponseCode, rest::ContentType,
+                         uint64_t messageId, ErrorCode errorNum,
+                         std::string_view errorMessage = {});
 
   /// @brief send simple response including response body
   void sendSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
