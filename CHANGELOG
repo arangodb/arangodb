@@ -7,6 +7,65 @@ v3.7.8 (XXXX-XX-XX)
   from, this could lead to potentially undefined behavior due to iterator
   invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
 
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Do not create index estimator objects for proxy collection objects on
+  coordinators and DB servers. Proxy objects are created on coordinators and DB
+  servers for all shards, and they also make index objects available. In order
+  to reduce the memory usage by these objects, we don't create any index
+  estimator objects for indexes in those proxy objects. Index estimators usually
+  take several KB of memory each, so not creating them will pay out for higher
+  numbers of collections/shards.
+
+* Improvements for logging. This adds the following startup options to arangod:
+
+- `--log.max-entry-length`: controls the maximum line length for individual
+    log messages that are written into normal logfiles by arangod (note: this
+    does not include audit log messages).
+    Any log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them. The purpose of this parameter is to
+    shorten long log messages in case there is not a lot of space for logfiles,
+    and to keep rogue log messages from overusing resources.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+  
+  - `--audit.max-entry-length`: controls the maximum line length for individual
+    audit log messages that are written into audit logs by arangod. Any audit
+    log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+
+  - `--log.in-memory-level`: controls which log messages are preserved in
+    memory. The default value is `info`, meaning all log messages of types
+    `info`, `warning`, `error` and `fatal` will be stored by an instance in
+    memory (this was also the behavior in previous versions of ArangoDB).
+    By setting this option to `warning`, only `warning` log messages will be
+    preserved in memory, and by setting the option to `error` only error
+    messages will be kept.
+    This option is useful because the number of in-memory log messages is
+    limited to the latest 2048 messages, and these slots are by default shared
+    between informational, warning and error messages.
+
+* Honor the value of startup option `--log.api-enabled` when set to `false`.
+  The desired behavior in this case is to turn off the REST API for logging, but
+  was not implemented. The default value for the option is `true`, so the REST
+  API is enabled. This behavior did not change, and neither did the behavior
+  when setting the option to a value of `jwt` (meaning the REST API for logging
+  is only available for superusers with a valid JWT token).
+
+* Fix error reporting in the reloadTLS route.
+
 * Split the update operations for the _fishbowl system collection with Foxx apps
   into separate insert/replace and remove operations. This makes the overall
   update not atomic, but as removes are unlikely here, we can now get away with
