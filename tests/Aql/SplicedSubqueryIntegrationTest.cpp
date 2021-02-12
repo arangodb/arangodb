@@ -99,7 +99,7 @@ class SplicedSubqueryIntegrationTest
 
   auto makeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
     auto inputRegisterSet = RegIdSet{inputRegister};
-    auto const outputRegister = RegisterId{inputRegister.value() + static_cast<RegisterId::value_t>(1)};
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
     for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
     }
@@ -115,7 +115,7 @@ class SplicedSubqueryIntegrationTest
   }
 
   auto makeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto const outputRegister = RegisterId{inputRegister.value() + static_cast<RegisterId::value_t>(1)};
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
     return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }
