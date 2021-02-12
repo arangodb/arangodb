@@ -45,6 +45,8 @@
 namespace arangodb {
 namespace basics {
 
+static constexpr size_t maxUInt64StringSize = 21;
+
 /// @brief collection of string utility functions
 ///
 /// This namespace holds function used for string manipulation.

@@ -189,7 +189,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
   std::size_t current = 0;
   auto guard = arangodb::scopeGuard(
       [&current, &stats]() -> void { stats.numDocsRequested += current; });
-  char ridBuffer[11];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response;
   while (current < toFetch.size()) {
     arangodb::transaction::BuilderLeaser requestBuilder(&trx);
@@ -1415,7 +1415,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
   {
     VPackBuilder requestBuilder;
     {
-      char ridBuffer[11];
+      char ridBuffer[arangodb::basics::maxUInt64StringSize];
       VPackArrayBuilder list(&requestBuilder);
       for (auto& pair : ranges) {
         VPackArrayBuilder range(&requestBuilder);

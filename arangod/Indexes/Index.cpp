@@ -979,7 +979,7 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 
 /// @brief generate error message
 /// @param key the conflicting key
-Result& Index::addErrorMsg(Result& r, std::string const& key) {
+Result& Index::addErrorMsg(Result& r, std::string const& key) const {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());
