@@ -329,7 +329,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     builder.reserve(16 * 1024);
   }
   
-  builder.add("result", VPackValue(VPackValueType::Array, true));
+  builder.add("result", VPackValue(VPackValueType::Array));
 
   aql::ExecutionEngine* engine = _query->rootEngine();
   TRI_ASSERT(engine != nullptr);
