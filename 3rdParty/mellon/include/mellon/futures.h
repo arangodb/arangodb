@@ -557,6 +557,7 @@ struct promise : promise_type_based_extension<T, Tag>,
    */
   template <typename... Args, std::enable_if_t<std::is_constructible_v<T, Args...>, int> = 0>
   void fulfill(Args&&... args) && noexcept(std::is_nothrow_constructible_v<T, Args...>) {
+    detail::tag_trait_helper<Tag>::debug_assert_true(!empty(), "fulfill called on empty promise");
     detail::fulfill_continuation<Tag>(_base.get(), std::forward<Args>(args)...);
     _base.reset();  // we can not use _base.release() because the constructor of T could
     // throw an exception. In that case the promise has to stay active.
@@ -936,6 +937,7 @@ struct future_temporary
   }
 
   auto finalize() && noexcept -> future<R, Tag> {
+    detail::tag_trait_helper<Tag>::debug_assert_true(!empty(), "finalize called on empty temporary");
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
 #ifdef FUTURES_COUNT_ALLOC
@@ -1109,6 +1111,7 @@ struct future
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
   auto and_then(F&& f) && noexcept {
+    detail::tag_trait_helper<Tag>::debug_assert_true(!empty(), "and_then called on empty future");
     if constexpr (detail::tag_trait_helper<Tag>::is_disable_temporaries()) {
       return std::move(*this).and_then_direct(std::forward<F>(f));
     } else {
@@ -1139,6 +1142,7 @@ struct future
   template <typename F, std::enable_if_t<std::is_nothrow_invocable_v<F, T&&>, int> = 0,
             typename R = std::invoke_result_t<F, T&&>>
   auto and_then_direct(F&& f) && noexcept -> future<R, Tag> {
+    detail::tag_trait_helper<Tag>::debug_assert_true(!empty(), "and_then called on empty future");
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
 #ifdef FUTURES_COUNT_ALLOC
@@ -1168,6 +1172,7 @@ struct future
                   "should be nothrow move constructible. If it's passed as "
                   "lvalue reference it has to be nothrow copyable.");
 
+    detail::tag_trait_helper<Tag>::debug_assert_true(!empty(), "finally called on empty future");
     if constexpr (is_value_inlined) {
       if (holds_inline_value()) {
 #ifdef FUTURES_COUNT_ALLOC
@@ -1339,16 +1344,17 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
     move_self().finally([g = std::forward<G>(g),
                          p = std::move(p)](expect::expected<T>&& t) mutable noexcept {
       if (t.has_error()) {
-        std::move(p).fulfill(t.error());
-      }
-      expect::expected<ReturnType> result =
-          expect::captured_invoke(g, std::move(t).unwrap());
-      if (result.has_value()) {
-        std::move(result).unwrap().finally([p = std::move(p)](ValueType&& v) mutable noexcept {
-          std::move(p).fulfill(std::move(v));
-        });
+        return std::move(p).fulfill(t.error());
       } else {
-        std::move(p).fulfill(result.error());
+        expect::expected<ReturnType> result =
+            expect::captured_invoke(g, std::move(t).unwrap());
+        if (result.has_value()) {
+          std::move(result).unwrap().finally([p = std::move(p)](ValueType&& v) mutable noexcept {
+            std::move(p).fulfill(std::move(v));
+          });
+        } else {
+          std::move(p).fulfill(result.error());
+        }
       }
     });
     return std::move(f);
