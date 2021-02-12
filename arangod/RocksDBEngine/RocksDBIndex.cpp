@@ -239,7 +239,7 @@ Result RocksDBIndex::drop() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
-  size_t numDocs =
+  /*size_t numDocs =
       rocksutils::countKeyRange(engine.db(), this->getBounds(), prefixSameAsStart);
   if (numDocs > 0) {
     std::string errorMsg(
@@ -247,7 +247,7 @@ Result RocksDBIndex::drop() {
         "have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
-  }
+  }*/
 #endif
 
   return r;
