@@ -30,7 +30,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/build.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
