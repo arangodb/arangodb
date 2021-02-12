@@ -667,7 +667,6 @@ auto QuerySnippet::prepareFirstBranch(
 
           numShards++;
         }
-        
         if (myExp.size() > 0) {
           localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
           if (myExp.size() > 1) {
