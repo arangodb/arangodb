@@ -1,6 +1,13 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Improve incremental sync replication for single server and cluster to cope
+  with multiple secondary index unique constraint violations (before this was
+  limited to a failure in a single unique secondary index). This allows
+  replicating the leader state to the follower in basically any order, as any
+  *other* conflicting documents in unique secondary indexes will be  detected
+  and removed on the follower.
+
 * Fix potential undefined behavior when iterating over connected nodes in an
   execution plan and calling callbacks for each of the nodes: if the callbacks
   modified the list of connected nodes of the current that they were called

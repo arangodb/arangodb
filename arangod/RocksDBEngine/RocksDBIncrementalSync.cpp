@@ -184,6 +184,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
   options.indexOperationMode = Index::OperationMode::internal;
   options.waitForSync = false;
   options.validate = false;
+  options.checkUniqueConstraintsInPreflight = true;
 
   if (!syncer._state.leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._state.leaderId;
@@ -370,6 +371,15 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
     syncer._state.barrier.extend(syncer._state.connection);
   }
 
+  // determine number of unique indexes. we may need it later
+  std::size_t numUniqueIndexes = [&]() {
+    std::size_t numUnique = 0;
+    for (auto const& idx : coll->getIndexes()) {
+      numUnique += idx->unique() ? 1 : 0;
+    }
+    return numUnique;
+  }();
+
   LOG_TOPIC("48f94", TRACE, Logger::REPLICATION)
       << "will refetch " << toFetch.size() << " documents for this chunk";
 
@@ -486,67 +496,51 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransacti
       };
 
       std::pair<LocalDocumentId, TRI_voc_rid_t> lookupResult;
-      if (physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // key does not yet exist
-        // INSERT
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+      bool mustInsert = physical->lookupKey(trx, keySlice.stringRef(), lookupResult).is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 
-        Result res = physical->insert(trx, it, mdr, options);
-        
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
+      TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
 
-            options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->insert(trx, it, mdr, options);
-            
-            options.indexOperationMode = Index::OperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
-            return res;
+      // there exists the problem of secondary unique index violations when we insert
+      // documents here.
+      // we may need as many retries as there are unique indexes here.
+      std::size_t tries = 1 + numUniqueIndexes;
+      while (tries-- > 0) {
+        if (tries == 0) {
+          options.indexOperationMode = Index::OperationMode::normal;
+        }
+        Result res;
+        if (mustInsert) {
+          res = physical->insert(trx, it, mdr, options);
+          if (res.ok()) {
+            ++stats.numDocsInserted;
           }
+        } else {
+          res = physical->replace(trx, it, mdr, options, previous);
+          // do NOT count up stats.numDocsInserted, as this will influence the 
+          // persisted document count later!!
+        }
+        options.indexOperationMode = Index::OperationMode::internal;
+
+        if (res.ok()) {
+          // all good, we can exit the retry loop now!
+          break;
         }
 
-        ++stats.numDocsInserted;
-      } else {
-        // REPLACE
-        TRI_ASSERT(options.indexOperationMode == Index::OperationMode::internal);
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) ||
+          res.errorMessage() <= keySlice.stringView()) {
 
-        Result res = physical->replace(trx, it, mdr, options, previous);
+          int errorNumber = res.errorNumber();
+          res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
+          return res;
+        }
         
-        if (res.fail()) {
-          if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-              res.errorMessage() > keySlice.copyString()) {
-            // remove conflict and retry
-            // errorMessage() is this case contains the conflicting key
-            auto inner = removeConflict(res.errorMessage());
-            if (inner.fail()) {
-              return res;
-            }
-            options.indexOperationMode = Index::OperationMode::normal;
-            res = physical->replace(trx, it, mdr, options, previous);
-            
-            options.indexOperationMode = Index::OperationMode::internal;
-            if (res.fail()) {
-              return res;
-            }
-            // fall-through
-          } else {
-            int errorNumber = res.errorNumber();
-            res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) + ": " + res.errorMessage());
-            return res;
-          }
+        // unique constraint violation!
+        //
+        // remove conflict and retry
+        // errorMessage() is this case contains the conflicting key
+        auto inner = removeConflict(res.errorMessage());
+        if (inner.fail()) {
+          return res;
         }
       }
     }
