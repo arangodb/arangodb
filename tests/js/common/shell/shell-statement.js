@@ -630,6 +630,9 @@ function StatementSuite () {
       });
       let result = st.execute();
       assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
     },
 
     testProfilingSilentStreamingQueryWithBatchSize: function () {
@@ -641,6 +644,9 @@ function StatementSuite () {
       });
       let result = st.execute();
       assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
     },
     
     testProfilingStreamingQuery: function () {
@@ -651,6 +657,9 @@ function StatementSuite () {
       });
       let result = st.execute();
       assertTrue(result.getExtra().hasOwnProperty("stats"));
+      while (result.hasNext()) {
+        result.next();
+      }
     },
 
     testProfilingStreamingQueryWithBatchSize: function () {
