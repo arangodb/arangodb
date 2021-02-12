@@ -1455,7 +1455,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
     auto* ridx = static_cast<RocksDBIndex*>(index.get());
     ridx->destroyCache();
   }
-
+/*
   auto const dropFilesInRange = [&](RocksDBKeyBounds const& bounds) {
     auto start = bounds.start();
     auto end = bounds.end();
@@ -1467,7 +1467,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   for (auto& index : vecShardIndex) {
     auto* ridx = static_cast<RocksDBIndex*>(index.get());
     dropFilesInRange(ridx->getBounds());
-  }
+  }*/
 
   // run compaction for data only if collection contained a considerable
   // amount of documents. otherwise don't run compaction, because it will

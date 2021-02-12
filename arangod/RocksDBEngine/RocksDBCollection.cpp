@@ -647,7 +647,7 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
     return basics::catchVoidToResult([&]{
       auto* rocksdbIndex = static_cast<RocksDBIndex*>(toRemove.get());
 
-      {
+      /*{
         // try to delete all files in the range of the index
         auto bounds = rocksdbIndex->getBounds();
         auto start = bounds.start();
@@ -655,7 +655,7 @@ Result RocksDBCollection::dropIndex(IndexId iid) {
         // best efford
         std::ignore = rocksdb::DeleteFilesInRange(engine.db(), bounds.columnFamily(),
                                                   &start, &end);
-      }
+      }*/
 
       rocksdbIndex->compact();  // trigger compaction before deleting the object
       rocksdbIndex->destroyCache();
