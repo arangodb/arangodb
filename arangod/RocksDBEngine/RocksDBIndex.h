@@ -90,6 +90,24 @@ class RocksDBIndex : public Index {
   }
   void createCache();
   void destroyCache();
+  
+  /// performs a preflight check for an insert operation, not carrying out any
+  /// modifications to the index.
+  /// the default implementation does nothing. indexes can override this and
+  /// perform useful checks (uniqueness checks etc.) here
+  virtual Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                             LocalDocumentId const& documentId,
+                             arangodb::velocypack::Slice doc,
+                             OperationOptions const& options);
+  
+  /// performs a preflight check for an update/replace operation, not carrying out any
+  /// modifications to the index.
+  /// the default implementation does nothing. indexes can override this and
+  /// perform useful checks (uniqueness checks etc.) here
+  virtual Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                              LocalDocumentId const& documentId,
+                              arangodb::velocypack::Slice doc,
+                              OperationOptions const& options);
 
   /// insert index elements into the specified write batch.
   virtual Result insert(transaction::Methods& trx, RocksDBMethods* methods,
