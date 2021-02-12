@@ -132,7 +132,9 @@ struct AqlValue final {
                            // not managed!
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
                            // slice, allocated by new[] or malloc()
-    RANGE    // a pointer to a range remembering lower and upper bound, managed
+    RANGE,    // a pointer to a range remembering lower and upper bound, managed
+    VPACK_32BIT_INLINE_INT,    // contains vpack data, inline and unpacked 32bit int number value
+    VPACK_32BIT_INLINE_UINT    // contains vpack data, inline and unpacked 32bit uint number value
   };
 
   /// @brief Holds the actual data for this AqlValue
@@ -153,6 +155,16 @@ struct AqlValue final {
   /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd
   /// RANGE: a managed range object. The memory is managed by the AqlValue
  private:
+
+  struct unpacked_value_t {
+    uint8_t padding[8];
+    union {
+     uint32_t uintVal;
+     int32_t  intVal;
+     int32_t  sortedFloatVal;
+    } _number;
+  };
+
   union {
     uint64_t words[2];
     uint8_t internal[16];
@@ -160,6 +172,7 @@ struct AqlValue final {
     uint8_t* slice;
     void* data;
     Range const* range;
+    unpacked_value_t unpacked;
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type
