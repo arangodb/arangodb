@@ -442,7 +442,7 @@ class Index {
   /// @param code the error key
   /// @param key the conflicting key
   arangodb::Result& addErrorMsg(Result& r, int code,
-                                std::string const& key = "") {
+                                std::string const& key = "") const {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);
       return addErrorMsg(r, key);
@@ -452,7 +452,7 @@ class Index {
 
   /// @brief generate error result
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "") const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified

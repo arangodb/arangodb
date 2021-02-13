@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
@@ -38,6 +39,7 @@
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -480,7 +482,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = globalRocksDB();
@@ -642,7 +644,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = globalRocksDB();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();

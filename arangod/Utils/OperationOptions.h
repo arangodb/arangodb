@@ -59,7 +59,7 @@ struct OperationOptions {
         returnOld(false),
         returnNew(false),
         isRestore(false),
-        ignoreUniqueConstraints(false),
+        checkUniqueConstraintsInPreflight(false),
         truncateCompact(true) {}
 
 // The following code does not work with VisualStudi 2019's `cl`
@@ -137,7 +137,7 @@ struct OperationOptions {
 
   // for replication; only set true if you an guarantee that any conflicts have
   // already been removed, and are simply not reflected in the transaction read
-  bool ignoreUniqueConstraints;
+  bool checkUniqueConstraintsInPreflight;
 
   // when truncating - should we also run the compaction?
   // defaults to true.

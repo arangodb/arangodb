@@ -437,7 +437,7 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  char ridBuffer[21];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   builder.add(StaticStrings::RevString, TRI_RidToValuePair(rid, &ridBuffer[0]));
 
   if (oldRid != 0) {

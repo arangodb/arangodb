@@ -24,7 +24,6 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_METHODS_H 1
 
 #include "Basics/Result.h"
-#include "RocksDBColumnFamily.h"
 #include "RocksDBCommon.h"
 
 namespace rocksdb {
@@ -39,33 +38,10 @@ struct ReadOptions;
 }  // namespace rocksdb
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 
 class RocksDBKey;
 class RocksDBMethods;
 class RocksDBTransactionState;
-
-class RocksDBSavePoint {
- public:
-  RocksDBSavePoint(transaction::Methods* trx, TRI_voc_document_operation_e operationType);
-  ~RocksDBSavePoint();
-
-  /// @brief acknowledges the current savepoint, so there
-  /// will be no rollback when the destructor is called
-  /// if an intermediate commit was performed, pass a value of
-  /// true, false otherwise
-  void finish(bool hasPerformedIntermediateCommit);
-
- private:
-  void rollback();
-
- private:
-  transaction::Methods* _trx;
-  TRI_voc_document_operation_e const _operationType;
-  bool _handled;
-};
 
 class RocksDBMethods {
  public:

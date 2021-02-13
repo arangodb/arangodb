@@ -62,7 +62,13 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _registeredTransaction(false) {}
+      _registeredTransaction(false) {
+
+  // patch intermediateCommitCount for testing
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  transaction::Options::adjustIntermediateCommitCount(_options);
+#endif
+}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
