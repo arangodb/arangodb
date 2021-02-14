@@ -508,7 +508,9 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   }
 
   auto found = _collectionToShard.find(collName);
-  TRI_ASSERT(found != _collectionToShard.cend());
+  if (found == _collectionToShard.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
+  }
   return found->second;
 }
 
@@ -549,7 +551,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(collectionToShardName(e->name())));
+      auto const& shard = collectionToShardName(e->name());
+      // if the mapped shard for a collection is empty, it means that
+      // we have an edge collection that is only relevant on some of the
+      // target servers
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -557,7 +565,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(collectionToShardName(v->name())));
+      // if the mapped shard for a collection is empty, it means that
+      // we have a vertex collection that is only relevant on some of the
+      // target servers
+      auto const& shard = collectionToShardName(v->name());
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -768,9 +782,11 @@ void GraphNode::addVertexCollection(Collections const& collections, std::string 
   }
 }
 
+#ifndef USE_ENTERPRISE
 void GraphNode::addVertexCollection(aql::Collection& collection) {
   _vertexColls.emplace_back(&collection);
 }
+#endif
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;
