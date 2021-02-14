@@ -349,8 +349,13 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
       _config{_state.applier,    _state.barrier, _batch,
               _state.connection, false,          _state.master,
               _progress,         _state,         vocbase},
-      _isClusterRole(ServerState::instance()->isClusterRole()) {
+      _isClusterRole(ServerState::instance()->isClusterRole()), _quickKeysNumDocsLimit(1000000) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustquickKeysNumDocsLimit(*this);
+#endif
 
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -1195,18 +1200,29 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (!ck.ok()) {
     return ck;
   }
+  VPackSlice const c = slice.get("count");
+  uint64_t ndocs = 0;
+  if (c.isNumber()) {
+    ndocs = c.getNumber<uint64_t>();
+  } else {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("got invalid response from master at ") +
+                  _config.master.endpoint + url + ": response count not a number");
+  }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
+    LOG_TOPIC("6e1b3", ERR, Logger::REPLICATION)
+        << "client: DatabaseInitialSyncer::run - expected ony document count for quick call";
+    TRI_ASSERT(false);
+  }
+#endif
+
   if (!slice.hasKey("id")) { // we only have count
-    VPackSlice const c = slice.get("count");
-    if (c.isNumber()) {
-      maxWaitTime = c.getNumber<uint64_t>() * 8 / 100000;
-      ck = keysCall(false);
-      if (!ck.ok()) {
-        return ck;
-      }
-    } else {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from master at ") +
-                    _config.master.endpoint + url + ": response count not a number");
+    maxWaitTime = ndocs * 8 / 100000;
+    ck = keysCall(false);
+    if (!ck.ok()) {
+      return ck;
     }
   }
 
@@ -2188,5 +2204,14 @@ Result DatabaseInitialSyncer::batchFinish() {
   return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch quickKeysNumDocsLimit for testing
+/*static*/ void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit(
+  DatabaseInitialSyncer& syncer) {
+  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+    syncer._quickKeysNumDocsLimit = 100;
+  }
+}
+#endif
 
 }  // namespace arangodb
