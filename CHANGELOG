@@ -1,3 +1,10 @@
+v3.7.8 (XXXX-XX-XX)
+-------------------
+
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
+
+
 v3.7.7 (2020-02-05)
 -------------------
 

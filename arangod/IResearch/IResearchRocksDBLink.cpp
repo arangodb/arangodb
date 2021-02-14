@@ -211,3 +211,11 @@ std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::create
 
 }  // namespace iresearch
 }  // namespace arangodb
+
+namespace iresearch {
+
+// use base irs::encryption type for ancestors
+template<>
+struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<irs::encryption> { };
+
+}
