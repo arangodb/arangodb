@@ -1,6 +1,11 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Improved the wording for sharding options displayed in the web interface.
+
+  Instead of offering `flexible` and `single`, now use the more intuitive
+  `Sharded` and `OneShard` options, and update the help text for them.
+
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
 
