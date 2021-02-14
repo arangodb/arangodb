@@ -291,7 +291,7 @@ v3.7.7 (2020-02-05)
 v3.7.6 (2021-01-04)
 -------------------
 
-* Fix too early stop of replication, when waiting for keys
+* Fix too early stop of replication, when waiting for keys in large collections/shards.
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
