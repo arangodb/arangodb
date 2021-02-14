@@ -424,7 +424,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& quick = _request->value("quick");
   if (!quick.empty() && !(quick == "true" || quick == "false")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::string("invalid quick parameter: must be booleaan got ") + quick);
+                  std::string("invalid quick parameter: must be boolean, got ") + quick);
     return;
   }
 
