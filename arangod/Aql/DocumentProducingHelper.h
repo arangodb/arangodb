@@ -121,6 +121,7 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;
+  uint_fast16_t _killCheckCounter = 0;
 
   /// @brief set of already returned documents. Used to make the result distinct
   std::unordered_set<TRI_voc_rid_t> _alreadyReturned;
