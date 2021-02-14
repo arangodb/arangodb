@@ -1,6 +1,30 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* EE only bugfix: On DisjointSmartGraphs that are used in anonymous way, there
+  was a chance that the query could fail, if non-disjoint collections were part
+  of the query. Named DisjointSmartGraphs have been save to this bug.
+  Example:
+  DisjointSmartGraph (graph) on vertices -edges-> vertices
+  Query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" edges
+    FOR u IN unrelated
+    RETURN [out, u]
+  
+  The "unrelated" collection was pulled into the DisjointSmartGraph, causing the
+  AQL setup to create erroneous state.
+  This is now fixed and the above query works.
+  This query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" GRAPH "graph"
+    FOR u IN unrelated
+    RETURN [out, u]
+
+  was not affected by this bug.
+
 * Avoid a potential deadlock when dropping indexes.
 
   A deadlock could theoretically happen for a thread that is attempting to drop
