@@ -1,7 +1,13 @@
 v3.6.12 (XXXX-XX-XX)
 --------------------
 
-* Fixed some wrong behaviour in single document updates. If the option
+* Fix potential undefined behavior when iterating over connected nodes in an
+  execution plan and calling callbacks for each of the nodes: if the callbacks
+  modified the list of connected nodes of the current that they were called
+  from, this could lead to potentially undefined behavior due to iterator
+  invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
+
+* Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body but
   the _key was given in the URL path, then the rev was wrongly taken as 0,
   rather than using the one from the document body.
