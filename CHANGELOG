@@ -1,6 +1,72 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
+
+* EE only bugfix: On DisjointSmartGraphs that are used in anonymous way, there
+  was a chance that the query could fail, if non-disjoint collections were part
+  of the query. Named DisjointSmartGraphs have been save to this bug.
+  Example:
+  DisjointSmartGraph (graph) on vertices -edges-> vertices
+  Query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" edges
+    FOR u IN unrelated
+    RETURN [out, u]
+  
+  The "unrelated" collection was pulled into the DisjointSmartGraph, causing the
+  AQL setup to create erroneous state.
+  This is now fixed and the above query works.
+  This query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" GRAPH "graph"
+    FOR u IN unrelated
+    RETURN [out, u]
+
+  was not affected by this bug.
+
+* Avoid a potential deadlock when dropping indexes.
+
+  A deadlock could theoretically happen for a thread that is attempting to drop
+  an index in case there was another thread that tried to create or drop an
+  index in the very same collection at the very same time. We haven't managed to
+  trigger the deadlock with concurrency tests, so it may have been a theoretical
+  issue only. The underlying code was changed anyway to make sure this will not
+  cause problems in reality.
+
+* Make dropping of indexes in cluster retry in case of precondition failed.
+
+  When dropping an indexes of a collection in the cluster, the operation could
+  fail with a "precondition failed" error in case there were simultaneous index
+  creation or drop actions running for the same collection. The error was
+  returned properly internally, but got lost at the point when
+  `<collection>.dropIndex()` simply converted any error to just `false`.
+  We can't make `dropIndex()` throw an exception for any error, because that
+  would affect downwards-compatibility. But in case there is a simultaneous
+  change to the collection indexes, we can just retry our own operation and
+  check if it succeeds then. This is what `dropIndex()` will do now.
+
+* Improve incremental sync replication for single server and cluster to cope
+  with multiple secondary index unique constraint violations (before this was
+  limited to a failure in a single unique secondary index). This allows
+  replicating the leader state to the follower in basically any order, as any
+  *other* conflicting documents in unique secondary indexes will be  detected
+  and removed on the follower.
+
+* Fix potential undefined behavior when iterating over connected nodes in an
+  execution plan and calling callbacks for each of the nodes: if the callbacks
+  modified the list of connected nodes of the current that they were called
+  from, this could lead to potentially undefined behavior due to iterator
+  invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
 * Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
   an EnumerateCollectionNode (i.e. full collection scan), did not do regular
   checks for the query being killed during the filtering of documents, resulting
@@ -16,7 +82,7 @@ v3.7.8 (XXXX-XX-XX)
 
 * Improvements for logging. This adds the following startup options to arangod:
 
-- `--log.max-entry-length`: controls the maximum line length for individual
+  - `--log.max-entry-length`: controls the maximum line length for individual
     log messages that are written into normal logfiles by arangod (note: this
     does not include audit log messages).
     Any log messages longer than the specified value will be truncated and the

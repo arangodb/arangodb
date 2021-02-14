@@ -33,6 +33,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -572,37 +573,79 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   return true;
 }
 
-Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
-                                   velocypack::Slice const& slice,
-                                   OperationOptions& options) {
+Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx, 
+                                     RocksDBMethods* mthd,
+                                     RocksDBKeyLeaser const& key,
+                                     arangodb::velocypack::Slice keySlice,
+                                     OperationOptions const& options, 
+                                     bool lock) {
   Index::OperationMode mode = options.indexOperationMode;
+  transaction::StringLeaser leased(&trx);
+  rocksdb::PinnableSlice ps(leased.get());
+  Result res;
+  rocksdb::Status s;
+  if (lock) {
+    s = mthd->GetForUpdate(_cf, key->string(), &ps);
+  } else {
+    s = mthd->Get(_cf, key->string(), &ps);
+  }
+
+  if (s.ok()) {  // detected conflicting primary key
+    if (mode == Index::OperationMode::internal) {
+    // in this error mode, we return the conflicting document's key
+    // inside the error message string (and nothing else)!
+      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
+    }
+    // build a proper error message
+    res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    return addErrorMsg(res, keySlice.copyString());
+  } else if (!s.IsNotFound()) {
+    // IsBusy(), IsTimedOut() etc... this indicates a conflict
+    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+  }
+
+  ps.Reset();  // clear used memory
+
+  return res;
+}
+
+Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx, 
+                                        RocksDBMethods* mthd,
+                                        LocalDocumentId const& documentId,
+                                        velocypack::Slice slice,
+                                        OperationOptions const& options) {
   VPackSlice keySlice;
   TRI_voc_rid_t revision;
   transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
 
   TRI_ASSERT(keySlice.isString());
+
   RocksDBKeyLeaser key(&trx);
   key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
 
-  transaction::StringLeaser leased(&trx);
-  rocksdb::PinnableSlice ps(leased.get());
+  return probeKey(trx, mthd, key, keySlice, options, /*lock*/ false);
+}
+
+Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice const& slice,
+                                   OperationOptions& options) {
+  VPackSlice keySlice;
+  TRI_voc_rid_t revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  TRI_ASSERT(keySlice.isString());
+  
+  RocksDBKeyLeaser key(&trx);
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+
   Result res;
-  if (!options.ignoreUniqueConstraints) {
-    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
 
-    if (s.ok()) {  // detected conflicting primary key
-      if (mode == OperationMode::internal) {
-        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
-      }
-      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-      return addErrorMsg(res, keySlice.copyString());
-    } else if (!s.IsNotFound()) {
-      // IsBusy(), IsTimedOut() etc... this indicates a conflict
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+  if (!options.checkUniqueConstraintsInPreflight) {
+    res = probeKey(trx, mthd, key, keySlice, options, /*lock*/ true);
+    
+    if (res.fail()) {
+      return res;
     }
-
-    ps.Reset();  // clear used memory
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
