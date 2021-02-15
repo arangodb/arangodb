@@ -140,7 +140,9 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
   options->addOption("--replication.quick-keys-limit",
                      "Limit at which quick calls to replication keys return only a count for second run",
-                     new BooleanParameter(&_quickKeysLimit));
+                     new UInt64Parameter(&_quickKeysLimit),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30708);
 
   options
       ->addOption(

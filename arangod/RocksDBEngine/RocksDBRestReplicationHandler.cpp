@@ -62,7 +62,12 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(
-          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
+      _quickKeysNumDocsLimit(1000000)  {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  adjustquickKeysNumDocsLimit(*this);
+#endif
+
 }
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -498,7 +503,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
 
-  if (numDocs > 1000000 && quick == "true") {
+  if (numDocs > _quickKeysNumDocsLimit && quick == "true") {
     VPackBuilder result;
     result.add(VPackValue(VPackValueType::Object));
     result.add("count", VPackValue(numDocs));
@@ -832,3 +837,13 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     }
   }
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch quickKeysNumDocsLimit for testing
+void RocksDBRestReplicationHandler::adjustquickKeysNumDocsLimit(
+  RocksDBRestReplicationHandler& handler) {
+  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+    handler._quickKeysNumDocsLimit = 100;
+  }
+}
+#endif

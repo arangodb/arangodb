@@ -263,36 +263,34 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
                           ": document revision is invalid");
       }
 
-      TRI_ASSERT(options.indexOperationMode == arangodb::IndexOperationMode::internal);
+      options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
-      Result res = physical->insert(&trx, leaderDoc, mdr, options);
-
-      if (res.fail()) {
-        if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
-            res.errorMessage() > keySlice.copyString()) {
-          arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(leaderDoc);
-          if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()), mdr)) {
-            // already have exactly this revision no need to insert
-            continue;
-          }
-          // remove conflict and retry
-          // errorMessage() is this case contains the conflicting key
-          auto inner = removeConflict(res.errorMessage());
-          if (inner.fail()) {
-            return res;
-          }
+      // we need a retry loop here for unique indexes (we will always have at least
+      // one unique index, which is the primary index, but there can be more). as 
+      // documents can be presented in any state on the follower, simply inserting
+      // them in leader order may trigger a unique constraint violation on the follower.
+      // in this case we may need to remove the conflicting document. this can 
+      // happen multiple times if there are multiple unique indexes! we can only
+      // stop trying once we have tried often enough, or if inserting succeeds.
+      std::size_t tries = 1 + numUniqueIndexes;
+      while (tries-- > 0) {
+        if (tries == 0) {
           options.indexOperationMode = arangodb::IndexOperationMode::normal;
-          res = physical->insert(&trx, leaderDoc, mdr, options);
+        }
 
-          options.indexOperationMode = arangodb::IndexOperationMode::internal;
-          if (res.fail()) {
-            return res;
-          }
-          // fall-through
-        } else {
-          int errorNumber = res.errorNumber();
-          res.reset(errorNumber, std::string(TRI_errno_string(errorNumber)) +
-                                     ": " + res.errorMessage());
+        Result res = physical->insert(&trx, leaderDoc, mdr, options);
+          
+        options.indexOperationMode = arangodb::IndexOperationMode::internal;
+
+        if (res.ok()) {
+          ++stats.numDocsInserted;
+          break;
+        }
+
+        if (!res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
+          auto errorNumber = res.errorNumber();
+          res.reset(errorNumber, concatT(TRI_errno_string(errorNumber), ": ",
+                                         res.errorMessage()));
           return res;
         }
 
@@ -404,7 +402,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
   try {
     bool const preventMultiStart = !_isClusterRole;
     MultiStartPreventer p(vocbase(), preventMultiStart);
-
+      
     setAborted(false);
 
     _config.progress.set("fetching leader state");
@@ -572,9 +570,9 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
   }
-
+  
   TRI_ASSERT(hint == FormatHint::Envelope || hint == FormatHint::NoEnvelope);
-
+  
   VPackSlice doc;
   TRI_replication_operation_e type = REPLICATION_INVALID;
 
@@ -592,8 +590,8 @@ Result DatabaseInitialSyncer::parseCollectionDumpMarker(transaction::Methods& tr
     // input is just a document, without any {"type":2300,"data":{...}} envelope
     type = REPLICATION_MARKER_DOCUMENT;
     doc = marker;
-  }
-
+  } 
+  
   if (!ADB_LIKELY(doc.isObject())) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -620,7 +618,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && cType == StaticStrings::MimeTypeVPack) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
-
+    
     VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
@@ -631,7 +629,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker, hint);
-
+        
         TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
@@ -834,7 +832,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
 
     // block until we either got a response or were shut down
     Result res = sharedStatus->waitForResponse(dumpResponse);
-
+    
     // update our statistics
     ++stats.numDumpRequests;
     stats.waitedForDump += sharedStatus->time();
@@ -899,7 +897,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       // request to the scheduler, which can run it asynchronously
       sharedStatus->request([this, self, &baseUrl, sharedStatus, coll,
                              leaderColl, batch, fromTick, chunkSize]() {
-        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl,
+        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, 
                        batch + 1, fromTick, chunkSize);
       });
     }
@@ -936,7 +934,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
     _config.progress.set(
         std::string("fetched leader collection dump for collection '") +
         coll->name() + "', type: " + typeString + ", id: " + leaderColl +
-        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) +
+        ", batch " + itoa(batch) + ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) + 
         ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
         ", apply time: " + std::to_string(applyTime) + " s");
 
@@ -949,7 +947,7 @@ Result DatabaseInitialSyncer::fetchCollectionDump(arangodb::LogicalCollection* c
       _config.progress.set(
           std::string("finished initial dump for collection '") + coll->name() +
           "', type: " + typeString + ", id: " + leaderColl +
-          ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) +
+          ", markers processed: " + itoa(cumulativeStats.numDumpDocuments) + 
           ", bytes received: " + itoa(cumulativeStats.numDumpBytesReceived) +
           ", dump requests: " + std::to_string(cumulativeStats.numDumpRequests) +
           ", waited for dump: " + std::to_string(cumulativeStats.waitedForDump) + " s" +
@@ -998,13 +996,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   if (!_config.isChild()) {
     batchExtend();
   }
-
+  
   ReplicationMetricsFeature::InitialSyncStats stats(coll->vocbase().server().getFeature<ReplicationMetricsFeature>(), true);
 
-  // We'll do one quick attempt at getting the keys on the leader.
-  // We might receive the keys or a count of the keys. In the first case we continue
-  // with the sync. If we get a document count, we'll estimate a pessimistic wait
-  // of roughly 1e9/day and repeat the call without a quick option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
   std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
@@ -1015,122 +1009,97 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
       "fetching collection keys for collection '" + coll->name() + "' from " + url;
   _config.progress.set(msg);
 
-  VPackBuilder builder;
-  VPackSlice slice;
-  auto maxWaitTime = _config.applier._initialSyncMaxWaitTime;
-
-  auto keysCall = [&](bool quick) {
-
   // send an initial async request to collect the collection keys on the other
   // side
   // sending this request in a blocking fashion may require very long to
   // complete,
   // so we're sending the x-arango-async header here
-    auto headers = replutils::createHeaders();
-    headers[StaticStrings::Async] = "store";
+  auto headers = replutils::createHeaders();
+  headers[StaticStrings::Async] = "store";
 
-    std::unique_ptr<httpclient::SimpleHttpResult> response;
+  std::unique_ptr<httpclient::SimpleHttpResult> response;
+  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+    response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
+  });
+  ++stats.numKeysRequests;
 
+  if (replutils::hasFailed(response.get())) {
+    ++stats.numFailedConnects;
+    return replutils::buildHttpError(response.get(), url, _config.connection);
+  }
+
+  bool found = false;
+  std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
+
+  if (!found) {
+    ++stats.numFailedConnects;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                  std::string("got invalid response from leader at ") +
+                      _config.leader.endpoint + url +
+                      ": could not find 'X-Arango-Async' header");
+  }
+
+  double const startTime = TRI_microtime();
+    
+  headers = replutils::createHeaders();
+
+  while (true) {
+    if (!_config.isChild()) {
+      batchExtend();
+    }
+
+    std::string const jobUrl = "/_api/job/" + jobId;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->retryRequest(rest::RequestType::POST, ((quick) ? url + "&quick=true" : url), nullptr, 0, headers));
+      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0, headers));
     });
-    ++stats.numKeysRequests;
+    
+    double waitTime = TRI_microtime() - startTime;
 
-    if (replutils::hasFailed(response.get())) {
-      ++stats.numFailedConnects;
-      return replutils::buildHttpError(response.get(), url, _config.connection);
-    }
-
-    bool found = false;
-    std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
-
-    if (!found) {
-      ++stats.numFailedConnects;
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                    _config.leader.endpoint + url +
-                    ": could not find 'X-Arango-Async' header");
-    }
-
-    double const startTime = TRI_microtime();
-
-    headers = replutils::createHeaders();
-
-    while (true) {
-      if (!_config.isChild()) {
-        batchExtend();
+    if (response != nullptr && response->isComplete()) {
+      if (response->hasContentLength()) {
+        stats.numSyncBytesReceived += response->getContentLength();
       }
-
-      std::string const jobUrl = "/_api/job/" + jobId;
-      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-        response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0, headers));
-      });
-
-      double waitTime = TRI_microtime() - startTime;
-
-      if (response != nullptr && response->isComplete()) {
-        if (response->hasContentLength()) {
-          stats.numSyncBytesReceived += response->getContentLength();
-        }
-        if (response->hasHeaderField(StaticStrings::AsyncId)) {
-          // job is done, got the actual response
-          break;
-        }
-        if (response->getHttpReturnCode() == 404) {
-          // unknown job, we can abort
-          ++stats.numFailedConnects;
-          stats.waitedForInitial += waitTime;
-          return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                        std::string("job not found on leader at ") +
-                        _config.leader.endpoint);
-        }
+      if (response->hasHeaderField(StaticStrings::AsyncId)) {
+        // job is done, got the actual response
+        break;
       }
-
-      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= maxWaitTime) {
+      if (response->getHttpReturnCode() == 404) {
+        // unknown job, we can abort
         ++stats.numFailedConnects;
         stats.waitedForInitial += waitTime;
         return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                      std::string(
+                      std::string("job not found on leader at ") +
+                          _config.leader.endpoint);
+      }
+    }
+
+    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier._initialSyncMaxWaitTime) {
+      ++stats.numFailedConnects;
+      stats.waitedForInitial += waitTime;
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                    std::string(
                         "timed out waiting for response from leader at ") +
-                      _config.leader.endpoint);
-      }
-
-      if (isAborted()) {
-        stats.waitedForInitial += waitTime;
-        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
-      }
-
-      std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
-      std::this_thread::sleep_for(sleepTime);
+                        _config.leader.endpoint);
     }
 
-    stats.waitedForInitial += TRI_microtime() - startTime;
-
-    if (replutils::hasFailed(response.get())) {
-      ++stats.numFailedConnects;
-      return replutils::buildHttpError(response.get(), url, _config.connection);
+    if (isAborted()) {
+      stats.waitedForInitial += waitTime;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
-    Result r = replutils::parseResponse(builder, response.get());
+    std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
+    std::this_thread::sleep_for(sleepTime);
+  }
+  
+  stats.waitedForInitial += TRI_microtime() - startTime;
 
-    if (r.fail()) {
-      ++stats.numFailedConnects;
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                    _config.leader.endpoint + url + ": " + r.errorMessage());
-    }
+  if (replutils::hasFailed(response.get())) {
+    ++stats.numFailedConnects;
+    return replutils::buildHttpError(response.get(), url, _config.connection);
+  }
 
-    slice = builder.slice();
-    if (!slice.isObject()) {
-      ++stats.numFailedConnects;
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                    _config.leader.endpoint + url + ": response is no object");
-    }
-
-    return Result();
-
-  };
+  VPackBuilder builder;
+  Result r = replutils::parseResponse(builder, response.get());
 
   if (r.fail()) {
     ++stats.numFailedConnects;
@@ -1139,34 +1108,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                           _config.leader.endpoint, url, ": ", r.errorMessage()));
   }
 
-  auto ck = keysCall(true);
-  if (!ck.ok()) {
-    return ck;
-  }
-  VPackSlice const c = slice.get("count");
-  uint64_t ndocs = 0;
-  if (c.isNumber()) {
-    ndocs = c.getNumber<uint64_t>();
-  } else {
+  VPackSlice const slice = builder.slice();
+  if (!slice.isObject()) {
+    ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                  _config.master.endpoint + url + ": response count not a number");
-  }
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
-    LOG_TOPIC("6e1b3", ERR, Logger::REPLICATION)
-        << "client: DatabaseInitialSyncer::run - expected ony document count for quick call";
-    TRI_ASSERT(false);
-  }
-#endif
-
-  if (!slice.hasKey("id")) { // we only have count
-    maxWaitTime = ndocs * 8 / 100000;
-    ck = keysCall(false);
-    if (!ck.ok()) {
-      return ck;
-    }
+                  std::string("got invalid response from leader at ") +
+                      _config.leader.endpoint + url + ": response is no object");
   }
 
   VPackSlice const keysId = slice.get("id");
@@ -1175,23 +1122,23 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from leader at ") +
-                  _config.leader.endpoint + url +
-                  ": response does not contain valid 'id' attribute");
+                      _config.leader.endpoint + url +
+                      ": response does not contain valid 'id' attribute");
   }
 
   auto shutdown = [&]() -> void {
     url = baseUrl + "/" + keysId.copyString();
     std::string msg =
-      "deleting remote collection keys object for collection '" +
-      coll->name() + "' from " + url;
-     _config.progress.set(msg);
-
-     // now delete the keys we ordered
-     std::unique_ptr<httpclient::SimpleHttpResult> response;
-     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-       auto headers = replutils::createHeaders();
-       response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
-     });
+        "deleting remote collection keys object for collection '" +
+        coll->name() + "' from " + url;
+    _config.progress.set(msg);
+    
+    // now delete the keys we ordered
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
+    _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+      auto headers = replutils::createHeaders();
+      response.reset(client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0, headers));
+    });
   };
 
   TRI_DEFER(shutdown());
@@ -1397,7 +1344,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   concatT("unable to start transaction: ", res.errorMessage()));
   }
   auto guard = scopeGuard(
-      [trx = trx.get()]() -> void {
+      [trx = trx.get()]() -> void { 
         if (trx->status() == transaction::Status::RUNNING) {
           trx->abort();
         }
@@ -1487,7 +1434,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
         ++stats.numFailedConnects;
         return replutils::buildHttpError(response.get(), batchUrl, _config.connection);
       }
-
+    
       if (response->hasContentLength()) {
         stats.numSyncBytesReceived += response->getContentLength();
       }
@@ -1656,8 +1603,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
 
   setProgress(
       std::string("incremental tree sync statistics for collection '") + coll->name() +
-      "': keys requests: " + std::to_string(stats.numKeysRequests) +
-      ", docs requests: " + std::to_string(stats.numDocsRequests) +
+      "': keys requests: " + std::to_string(stats.numKeysRequests) + 
+      ", docs requests: " + std::to_string(stats.numDocsRequests) + 
       ", bytes received: " + std::to_string(stats.numSyncBytesReceived) +
       ", number of documents requested: " + std::to_string(stats.numDocsRequested) +
       ", number of documents inserted: " + std::to_string(stats.numDocsInserted) +
