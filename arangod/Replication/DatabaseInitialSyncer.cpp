@@ -353,7 +353,6 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // patch intermediateCommitCount for testing
   adjustquickKeysNumDocsLimit(*this);
 #endif
 

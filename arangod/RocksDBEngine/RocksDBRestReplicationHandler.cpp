@@ -64,7 +64,6 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
       _quickKeysNumDocsLimit(1000000) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  // patch intermediateCommitCount for testing
   adjustquickKeysNumDocsLimit(*this);
 #endif
 
