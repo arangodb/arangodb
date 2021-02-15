@@ -37,6 +37,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
 #include "RestHandler/RestReplicationHandler.h"
@@ -344,18 +345,15 @@ bool DatabaseInitialSyncer::Configuration::isChild() const {
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration,
-                    [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier,    _state.barrier, _batch,
-              _state.connection, false,          _state.master,
-              _progress,         _state,         vocbase},
-      _isClusterRole(ServerState::instance()->isClusterRole()), _quickKeysNumDocsLimit(1000000) {
+    : InitialSyncer(configuration, [this](std::string const& msg) -> void { setProgress(msg); }),
+      _config{_state.applier, _state.barrier, _batch, _state.connection, false, _state.master, _progress, _state, vocbase},
+      _isClusterRole(ServerState::instance()->isClusterRole()),
+      _quickKeysNumDocsLimit(vocbase.server().getFeature<arangodb::ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustquickKeysNumDocsLimit(*this);
 #endif
-
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
   }

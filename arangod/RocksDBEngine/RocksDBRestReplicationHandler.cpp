@@ -24,12 +24,14 @@
 
 #include "RocksDBRestReplicationHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -61,7 +63,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(globalRocksEngine()->replicationManager()),
-      _quickKeysNumDocsLimit(1000000) {
+      _quickKeysNumDocsLimit(server.getFeature<arangodb::ReplicationFeature>().quickKeysLimit()) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustquickKeysNumDocsLimit(*this);
@@ -796,9 +798,8 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief patch quickKeysNumDocsLimit for testing
-/*static*/ void RocksDBRestReplicationHandler::adjustquickKeysNumDocsLimit(
+void RocksDBRestReplicationHandler::adjustquickKeysNumDocsLimit(
   RocksDBRestReplicationHandler& handler) {
-
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
     handler._quickKeysNumDocsLimit = 100;
   }
