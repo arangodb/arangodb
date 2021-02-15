@@ -1,6 +1,10 @@
 v3.6.12 (XXXX-XX-XX)
 --------------------
 
+* Fixed issue #DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with
+  an index which has been created with an array index attribute.
+
 * Fixed some wrong behaviour in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body but
   the _key was given in the URL path, then the rev was wrongly taken as 0,
