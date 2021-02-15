@@ -30,6 +30,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -63,7 +64,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     : RestReplicationHandler(server, request, response),
       _manager(
           server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
-      _quickKeysNumDocsLimit(1000000)  {
+      _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   adjustquickKeysNumDocsLimit(*this);
 #endif
