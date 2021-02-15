@@ -1977,8 +1977,4 @@ constexpr auto TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN             
 /// During the execution of an AIR program an error occurred
 constexpr auto TRI_ERROR_AIR_EXECUTION_ERROR                                     = ErrorCode{8001};
 
-
-/// register all errors for ArangoDB
-void TRI_InitializeErrorMessages();
-
 #endif

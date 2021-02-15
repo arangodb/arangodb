@@ -1245,7 +1245,7 @@ if (USE_MAINTAINER_MODE)
 
   set(ERROR_FILES
     lib/Basics/voc-errors.h
-    lib/Basics/voc-errors.cpp
+    lib/Basics/error-registry.h
     js/common/bootstrap/errors.js
   )
 
