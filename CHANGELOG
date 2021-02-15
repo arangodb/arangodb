@@ -420,13 +420,8 @@ devel
 
   This is a performance optimization that may positively affect some AQL
   queries that use a lot of variables that are only needed in certain
-<<<<<<< HEAD
-  parts of the query. 
-  The positive effect will come from saving registers, which directly 
-=======
   parts of the query.
   The positive effect will come from saving registers, which directly
->>>>>>> 295c046cfc763c874715a544170cd7ecd06761b6
   translates to saving columns in AqlItemBlocks.
 
   Previously, the number of registers that were planned for each depth
