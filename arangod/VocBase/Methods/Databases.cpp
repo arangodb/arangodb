@@ -340,7 +340,7 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
 }
 
 namespace {
-int dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
+ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
   TRI_vocbase_t* vocbase = df.useDatabase(dbName);
 

@@ -352,7 +352,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->insert(hashval);
@@ -407,7 +407,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->remove(hashval);
@@ -476,7 +476,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
       for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        RocksDBCuckooIndexEstimatorType* est = ridx->estimator();
         TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
         if (est) {
           est->clearInRecovery(_currentSequence);
@@ -552,7 +552,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
-          std::string msg = "error during WAL scan: " + rv.errorMessage();
+          std::string msg = basics::StringUtils::concatT("error during WAL scan: ", rv.errorMessage());
           LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
           break;
@@ -571,7 +571,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     res = std::move(shutdownRv);
   } else {
     if (shutdownRv.fail()) {
-      res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
+      res.reset(res.errorNumber(),
+                basics::StringUtils::concatT(res.errorMessage(), " - ",
+                                             shutdownRv.errorMessage()));
     }
   }
 

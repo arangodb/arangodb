@@ -25,10 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/PlanCache.h"
+#include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/Common.h"
@@ -38,6 +40,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RocksDBEngine/RocksDBBuilderIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -50,6 +53,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBReplicationIterator.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
+#include "RocksDBEngine/RocksDBSavePoint.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -103,6 +107,81 @@ void reverseIdxOps(arangodb::PhysicalCollection::IndexContainerType const& index
   }
 }
 
+/// @brief helper RAII base class to count and time-track a CRUD operation
+struct TimeTracker {
+  TimeTracker(TimeTracker const&) = delete;
+  TimeTracker& operator=(TimeTracker const&) = delete;
+
+  explicit TimeTracker(arangodb::TransactionStatistics const& statistics, 
+                       std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram) noexcept
+      : statistics(statistics),
+        histogram(histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // time measurement is not free. only do it if metrics are enabled
+      start = getTime();
+    }
+  }
+
+  ~TimeTracker() {
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only do it if metrics are enabled
+      // unit is seconds here
+      TRI_ASSERT(histogram.has_value());
+      histogram->get().count(std::chrono::duration<float>(getTime() - start).count());
+    }
+  }
+
+  std::chrono::time_point<std::chrono::steady_clock> getTime() const noexcept {
+    TRI_ASSERT(statistics._exportReadWriteMetrics);
+    return std::chrono::steady_clock::now();
+  }
+  
+  arangodb::TransactionStatistics const& statistics;
+  std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram;
+  std::chrono::time_point<std::chrono::steady_clock> start;
+};
+
+/// @brief helper RAII class to count and time-track a CRUD read operation
+struct ReadTimeTracker : public TimeTracker {
+  ReadTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+                  arangodb::TransactionStatistics& statistics) noexcept
+      : TimeTracker(statistics, histogram) {}
+};
+
+/// @brief helper RAII class to count and time-track CRUD write operations
+struct WriteTimeTracker : public TimeTracker {
+  WriteTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+                   arangodb::TransactionStatistics& statistics,
+                   arangodb::OperationOptions const& options) noexcept
+      : TimeTracker(statistics, histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track writes if metrics are enabled
+      if (options.isSynchronousReplicationFrom.empty()) {
+        ++(statistics._numWrites->get());
+      } else {
+        ++(statistics._numWritesReplication->get());
+      }
+    }
+  }
+};
+
+/// @brief helper RAII class to count and time-track truncate operations
+struct TruncateTimeTracker : public TimeTracker {
+  TruncateTimeTracker(std::optional<std::reference_wrapper<Histogram<log_scale_t<float>>>>& histogram, 
+                      arangodb::TransactionStatistics& statistics,
+                      arangodb::OperationOptions const& options) noexcept
+      : TimeTracker(statistics, histogram) {
+    if (statistics._exportReadWriteMetrics) {
+      // metrics collection is not free. only track truncates if metrics are enabled
+      if (options.isSynchronousReplicationFrom.empty()) {
+        ++(statistics._numTruncates->get());
+      } else {
+        ++(statistics._numTruncatesReplication->get());
+      }
+    }
+  }
+};
+
 }  // namespace
 
 namespace arangodb {
@@ -115,7 +194,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
           !collection.system() &&
           basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::CacheEnabled, false) &&
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
-      _numIndexCreations(0) {
+      _numIndexCreations(0),
+      _statistics(
+        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled) {
     createCache();
@@ -129,7 +210,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
       _cacheEnabled(
           static_cast<RocksDBCollection const*>(physical)->_cacheEnabled &&
           collection.vocbase().server().getFeature<CacheManagerFeature>().manager() != nullptr),
-      _numIndexCreations(0) {
+      _numIndexCreations(0),
+      _statistics(
+        collection.vocbase().server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics) {
   if (_cacheEnabled) {
     createCache();
   }
@@ -467,7 +550,7 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice const& info,
           RocksDBLogValue::IndexCreate(_logicalCollection.vocbase().id(),
                                        _logicalCollection.id(), indexInfo.slice()));
     }
-  } while(false);
+  } while (false);
 
   // cleanup routine
   if (res.fail()) { // We could not create the index. Better abort
@@ -601,6 +684,9 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
 ///////////////////////////////////
 
 Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+
+  ::TruncateTimeTracker timeTracker(_statistics._rocksdb_truncate_sec, _statistics, options);
+
   TRI_ASSERT(objectId() != 0);
   auto state = RocksDBTransactionState::toState(&trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
@@ -717,6 +803,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   state->options().intermediateCommitCount = std::min<uint64_t>(prvICC, 10000);
 
   uint64_t found = 0;
+
   VPackBuilder docBuffer;
   auto iter = mthds->NewIterator(ro, documentBounds.columnFamily());
   for (iter->Seek(documentBounds.start());
@@ -740,7 +827,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     TRI_ASSERT(key.isString());
     TRI_ASSERT(rid.isSet());
 
-    RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+    RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
     state->prepareOperation(_logicalCollection.id(),
                             rid,  // actual revision ID!!
                             TRI_VOC_DOCUMENT_OPERATION_REMOVE);
@@ -760,10 +847,10 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
     if (res.fail()) {  // This should never happen...
       return res;
     }
-    guard.finish(hasPerformedIntermediateCommit);
+
+    savepoint.finish(hasPerformedIntermediateCommit);
 
     trackWaitForSync(&trx, options);
-
   }
 
   // reset to previous value after truncate is finished
@@ -785,7 +872,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx, OperationOptions& 
   TRI_IF_FAILURE("SegfaultAfterAllCommits") {
     TRI_TerminateDebugging("SegfaultAfterAllCommits");
   }
-  return Result{};
+  return {};
 }
 
 Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef key,
@@ -805,7 +892,7 @@ Result RocksDBCollection::lookupKey(transaction::Methods* trx, VPackStringRef ke
   // index. this can happen for "older" collections
   TRI_ASSERT(result.first.isSet());
   TRI_ASSERT(result.second.isSet());
-  return Result();
+  return {};
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx, VPackSlice const& key,
@@ -831,7 +918,9 @@ Result RocksDBCollection::read(transaction::Methods* trx,
                                arangodb::velocypack::StringRef const& key,
                                IndexIterator::DocumentCallback const& cb) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
-  
+
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+
   rocksdb::PinnableSlice ps;
   Result res;
   do {
@@ -854,6 +943,8 @@ Result RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::read(transaction::Methods* trx,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb) const {
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+  
   return (documentId.isSet() && lookupDocumentVPack(trx, documentId, cb, /*withCache*/true));
 }
 
@@ -861,6 +952,10 @@ bool RocksDBCollection::read(transaction::Methods* trx,
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result) const {
+  ::ReadTimeTracker timeTracker(_statistics._rocksdb_read_sec, _statistics);
+
+  bool ret = false;
+
   if (documentId.isSet()) {
     std::string* buffer = result.setManaged();
     rocksdb::PinnableSlice ps(buffer);
@@ -869,18 +964,21 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
       } // else value is already assigned
-      return true;
+      ret = true;;
     }
   }
-  return false;
+
+  return ret;
 }
 
 Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::velocypack::Slice const slice,
                                  arangodb::ManagedDocumentResult& resultMdr,
                                  OperationOptions& options) {
-  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
 
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_insert_sec, _statistics, options);
+
+  bool const isEdgeCollection = (TRI_COL_TYPE_EDGE == _logicalCollection.type());
   transaction::BuilderLeaser builder(trx);
   RevisionId revisionId;
   Result res(newObjectForInsert(trx, slice, isEdgeCollection, *builder.get(),
@@ -891,8 +989,8 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
 
   VPackSlice newSlice = builder->slice();
 
-  if (options.validate && 
-      !options.isRestore && 
+  if (options.validate &&
+      !options.isRestore &&
       options.isSynchronousReplicationFrom.empty()) {
     // only do schema validation when we are not restoring/replicating
     res = _logicalCollection.validate(newSlice, trx->transactionContextPtr()->getVPackOptions());
@@ -901,24 +999,22 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
       return res;
     }
   }
-    
-  
-  int r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
+
+  auto r = transaction::Methods::validateSmartJoinAttribute(_logicalCollection, newSlice);
 
   if (r != TRI_ERROR_NO_ERROR) {
     res.reset(r);
     return res;
   }
-        
 
   LocalDocumentId const documentId = ::generateDocumentId(_logicalCollection, revisionId);
-
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
+  
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
   auto* state = RocksDBTransactionState::toState(trx);
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  res = insertDocument(trx, documentId, newSlice, options);
+  res = insertDocument(trx, savepoint, documentId, newSlice, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -941,7 +1037,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                               TRI_VOC_DOCUMENT_OPERATION_INSERT,
                               hasPerformedIntermediateCommit);
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -951,6 +1047,9 @@ Result RocksDBCollection::update(transaction::Methods* trx,
                                  velocypack::Slice newSlice,
                                  ManagedDocumentResult& resultMdr, OperationOptions& options,
                                  ManagedDocumentResult& previousMdr) {
+
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_update_sec, _statistics, options);
+
   Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
@@ -1030,13 +1129,14 @@ Result RocksDBCollection::update(transaction::Methods* trx,
     }
   }
 
-  VPackSlice const newDoc(builder->slice());
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
+  VPackSlice newDoc(builder->slice());
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
 
   auto* state = RocksDBTransactionState::toState(trx);
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_UPDATE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+
+  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1065,9 +1165,9 @@ Result RocksDBCollection::update(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
-
+    
   return res;
 }
 
@@ -1075,6 +1175,9 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
                                   velocypack::Slice newSlice,
                                   ManagedDocumentResult& resultMdr, OperationOptions& options,
                                   ManagedDocumentResult& previousMdr) {
+
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_replace_sec, _statistics, options);
+  
   Result res;
 
   VPackSlice keySlice = newSlice.get(StaticStrings::KeyString);
@@ -1146,12 +1249,13 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
     }
   }
 
-  RocksDBSavePoint guard(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
+  RocksDBSavePoint savepoint(trx, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   auto* state = RocksDBTransactionState::toState(trx);
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), revisionId, TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-  res = updateDocument(trx, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
+
+  res = updateDocument(trx, savepoint, oldDocumentId, oldDoc, newDocumentId, newDoc, options);
 
   if (res.ok()) {
     trackWaitForSync(trx, options);
@@ -1180,7 +1284,7 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
       THROW_ARANGO_EXCEPTION(result);
     }
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
 
   return res;
@@ -1189,7 +1293,11 @@ Result RocksDBCollection::replace(transaction::Methods* trx,
 Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
+
   VPackSlice keySlice;
+
   if (slice.isString()) {
     keySlice = slice;
   } else {
@@ -1221,14 +1329,18 @@ Result RocksDBCollection::remove(transaction::Methods& trx, velocypack::Slice sl
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  ::WriteTimeTracker timeTracker(_statistics._rocksdb_remove_sec, _statistics, options);
+
   return remove(trx, documentId, /*expectedRev*/ RevisionId::none(), previousMdr, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId documentId,
                                  RevisionId expectedRev, ManagedDocumentResult& previousMdr,
                                  OperationOptions& options) {
+  // all callers that get here must make sure that this operation is properly
+  // counted and time-tracked, metrics-wise!
+
   Result res;
-  
   if (!documentId.isSet()) {
     return res.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   }
@@ -1254,7 +1366,7 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
   }
 
   auto state = RocksDBTransactionState::toState(&trx);
-  RocksDBSavePoint guard(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  RocksDBSavePoint savepoint(&trx, TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection.id(), previousMdr.revisionId(),
@@ -1278,9 +1390,9 @@ Result RocksDBCollection::remove(transaction::Methods& trx, LocalDocumentId docu
                               TRI_VOC_DOCUMENT_OPERATION_REMOVE,
                               hasPerformedIntermediateCommit);
 
-    guard.finish(hasPerformedIntermediateCommit);
+    savepoint.finish(hasPerformedIntermediateCommit);
   }
-
+  
   return res;
 }
 
@@ -1351,11 +1463,11 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
             type == Index::TRI_IDX_TYPE_NO_ACCESS_INDEX) {
           continue;
         }
-        
+
         builder.openObject();
         builder.add("type", VPackValue(it->typeName()));
         builder.add("id", VPackValue(it->id().id()));
-        
+
         RocksDBIndex const* rix = static_cast<RocksDBIndex const*>(it.get());
         size_t count = 0;
         switch (type) {
@@ -1364,26 +1476,26 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
             break;
           case Index::TRI_IDX_TYPE_GEO_INDEX:
           case Index::TRI_IDX_TYPE_GEO1_INDEX:
-          case Index::TRI_IDX_TYPE_GEO2_INDEX: 
+          case Index::TRI_IDX_TYPE_GEO2_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::GeoIndex(rix->objectId()), true);
             break;
           case Index::TRI_IDX_TYPE_HASH_INDEX:
           case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
           case Index::TRI_IDX_TYPE_TTL_INDEX:
-          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: 
+          case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
             if (it->unique()) {
               count = rocksutils::countKeyRange(db, RocksDBKeyBounds::UniqueVPackIndex(rix->objectId(), false), true);
             } else {
               count = rocksutils::countKeyRange(db, RocksDBKeyBounds::VPackIndex(rix->objectId(), false), true);
             }
             break;
-          case Index::TRI_IDX_TYPE_EDGE_INDEX: 
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::EdgeIndex(rix->objectId()), false);
             break;
-          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX: 
+          case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
             count = rocksutils::countKeyRange(db, RocksDBKeyBounds::FulltextIndex(rix->objectId()), true);
             break;
-          default: 
+          default:
             // we should not get here
             TRI_ASSERT(false);
         }
@@ -1398,24 +1510,55 @@ void RocksDBCollection::figuresSpecific(bool details, arangodb::velocypack::Buil
 }
 
 Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
+                                         RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationOptions& options) const {
+                                         VPackSlice doc,
+                                         OperationOptions const& options) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
   Result res;
 
+  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+  RocksDBMethods* mthds = state->rocksdbMethods();
+
+  if (options.checkUniqueConstraintsInPreflight) {
+    // we can only afford the separation of checking and inserting in a
+    // transaction that disallows concurrency, i.e. we need to have the
+    // exclusive lock on the collection.
+    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+
+    // do a round of checks for all indexes, to verify that the insertion
+    // will work (i.e. that there will be no unique constraint violations
+    // later - we can't guard against disk full etc. later).
+    // if this check already fails, there is no need to carry out the
+    // actual index insertion, which will fail anyway, and in addition
+    // spoil the current WriteBatch, which on a RollbackToSavePoint will
+    // need to be completely reconstructed. the reconstruction of write
+    // batches is super expensive, so we try to avoid it here.
+    READ_LOCKER(guard, _indexesLock);
+
+    for (auto const& idx : _indexes) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+      res = rIdx->checkInsert(*trx, mthds, documentId, doc, options);
+      if (res.fail()) {
+        // no operations happened yet in this savepoint. if we don't
+        // cancel it, the WriteBatch will need to be reconstructed from
+        // scratch. this is so expensive that we want to avoid it.
+        savepoint.cancel();
+        return res;
+      }
+    }
+  }
+
   RocksDBKeyLeaser key(trx);
   key->constructDocument(objectId(), documentId);
 
-  RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   if (state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
 
-  RocksDBMethods* mthds = state->rocksdbMethods();
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
@@ -1428,12 +1571,14 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
 
+  bool needReversal = false;
+  
   READ_LOCKER(guard, _indexesLock);
 
-  bool needReversal = false;
   for (auto it = _indexes.begin(); it != _indexes.end(); it++) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(it->get());
     res = rIdx->insert(*trx, mthds, documentId, doc, options);
+    // currently only IResearchLink indexes need a reversal
     needReversal = needReversal || rIdx->needsReversal();
     if (res.fail()) {
       if (needReversal && !state->isSingleOperation()) {
@@ -1455,8 +1600,8 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
 
 Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
-                                         VPackSlice const& doc,
-                                         OperationOptions& options) const {
+                                         VPackSlice doc,
+                                         OperationOptions const& options) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1513,6 +1658,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
 }
 
 Result RocksDBCollection::updateDocument(transaction::Methods* trx,
+                                         RocksDBSavePoint& savepoint,
                                          LocalDocumentId const& oldDocumentId,
                                          VPackSlice const& oldDoc,
                                          LocalDocumentId const& newDocumentId,
@@ -1526,6 +1672,36 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
 
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
+
+  if (options.checkUniqueConstraintsInPreflight) {
+    // we can only afford the separation of checking and inserting in a
+    // transaction that disallows concurrency, i.e. we need to have the
+    // exclusive lock on the collection.
+    TRI_ASSERT(state->isOnlyExclusiveTransaction());
+
+    // do a round of checks for all indexes, to verify that the insertion
+    // will work (i.e. that there will be no unique constraint violations
+    // later - we can't guard against disk full etc. later).
+    // if this check already fails, there is no need to carry out the
+    // actual index insertion, which will fail anyway, and in addition
+    // spoil the current WriteBatch, which on a RollbackToSavePoint will
+    // need to be completely reconstructed. the reconstruction of write
+    // batches is super expensive, so we try to avoid it here.
+    READ_LOCKER(guard, _indexesLock);
+
+    for (auto const& idx : _indexes) {
+      RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
+      res = rIdx->checkReplace(*trx, mthds, oldDocumentId, newDoc, options);
+      if (res.fail()) {
+        // no operations happened yet in this savepoint. if we don't
+        // cancel it, the WriteBatch will need to be reconstructed from
+        // scratch. this is so expensive that we want to avoid it.
+        savepoint.cancel();
+        return res;
+      }
+    }
+  }
+
   // disable indexing in this transaction if we are allowed to
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 

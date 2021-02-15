@@ -174,7 +174,7 @@ describe ArangoDB do
 
         id = doc.parsed_response['_id']
         # replace collection id with collection name
-        translated = URI.escape(id.gsub /^\d+\//, 'UnitTestsCollectionVertex/')
+        translated = id.gsub /^\d+\//, 'UnitTestsCollectionVertex/'
   
         # create edge, using collection id
         cmd = "/_api/document?collection=#{@ce}"
@@ -236,11 +236,11 @@ describe ArangoDB do
 
         id = doc.parsed_response['_id']
         # replace collection name with collection id
-        translated = URI.escape(id.gsub /UnitTestsCollectionVertex/, @vid)
+        translated = id.gsub /UnitTestsCollectionVertex/, @vid
   
         # create edge, using collection id
         cmd = "/_api/document?collection=#{@eid}"
-        body = "{ \"_from\" : \"#{id}\", \"_to\" : \"#{id}\" }"
+        body = "{ \"_from\" : \"#{translated}\", \"_to\" : \"#{translated}\" }"
         doc = ArangoDB.log_post("#{prefix}-create-edge-named", cmd, :body => body)
 
         doc.code.should eq(201)

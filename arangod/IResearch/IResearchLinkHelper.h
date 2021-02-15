@@ -61,7 +61,7 @@ struct IResearchLinkHelper {
   /// @brief return a reference to a static VPackSlice of an empty index
   ///        definition
   //////////////////////////////////////////////////////////////////////////////
-  static velocypack::Slice const& emptyIndexSlice();
+  static arangodb::velocypack::Builder emptyIndexSlice(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two link definitions for equivalience if used to create a
@@ -105,7 +105,8 @@ struct IResearchLinkHelper {
     IResearchViewSort const* primarySort = nullptr,
     irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
-    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(), // id for normalized
+    irs::string_ref collectionName = irs::string_ref::NIL
   );
 
   ////////////////////////////////////////////////////////////////////////////////

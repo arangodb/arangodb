@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -366,4 +366,28 @@ bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
       ->Global()
       ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
       .FromMaybe(false);
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string_view>(v8::Isolate* isolate,
+                                                             std::string_view const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string>(v8::Isolate* isolate,
+                                                        std::string const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<char const*>(v8::Isolate* isolate,
+                                                        char const* const& arg) {
+  return v8Utf8StringFactory(isolate, arg, strlen(arg));
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<arangodb::basics::StringBuffer>(
+    v8::Isolate* isolate, arangodb::basics::StringBuffer const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
 }

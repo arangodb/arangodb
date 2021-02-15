@@ -103,9 +103,11 @@ function restart (options) {
   clonedOpts.skipLogAnalysis = true;
   clonedOpts.skipReconnect = true;
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  return tu.performTests(clonedOpts, testCases, 'restart', runTest, {
+  let rc = tu.performTests(clonedOpts, testCases, 'restart', runTest, {
     'server.jwt-secret': 'haxxmann',
   });
+  options.cleanup = options.cleanup && clonedOpts.cleanup;
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

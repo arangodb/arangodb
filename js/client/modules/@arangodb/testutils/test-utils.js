@@ -100,6 +100,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     serverOptions = {};
   }
 
+  let memProfCounter = 0;
   let env = {};
   let customInstanceInfos = {};
   let healthCheck = function () {return true;};
@@ -232,6 +233,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           break;
         }
 
+        pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
         print('\n' + (new Date()).toISOString() + GREEN + " [============] " + runFn.info + ': Trying', te, '...', RESET);
         let reply = runFn(options, instanceInfo, te, env);
 
@@ -412,10 +414,16 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
     results.status = true;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
+
   if (options.sleepBeforeShutdown !== 0) {
     print("Sleeping for " + options.sleepBeforeShutdown + " seconds");
     sleep(options.sleepBeforeShutdown);
   }
+
+  if (continueTesting) {
+    pu.getMemProfSnapshot(instanceInfo, options, memProfCounter++);
+  }
+
   let shutDownStart = time();
   results['testDuration'] = shutDownStart - testrunStart;
   print(Date() + ' Shutting down...');
@@ -888,7 +896,6 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
   }
 
   let testCode = getTestCode(file, options, instanceInfo);
-  print(testCode);
   require('internal').env.INSTANCEINFO = JSON.stringify(instanceInfo);
   let testFunc;
   try {
@@ -914,6 +921,13 @@ function runInLocalArangosh (options, instanceInfo, file, addArgs) {
         forceTerminate: true,
         status: false,
         message: "test ran into timeout. Original test status: " + JSON.stringify(result),
+      };
+    }
+    if (result === undefined) {
+      return {
+        timeout: true,
+        status: false,
+        message: "test didn't return any result at all!"
       };
     }
     return result;
@@ -1107,3 +1121,4 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
+exports.findEndpoint = findEndpoint;

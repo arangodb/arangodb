@@ -169,10 +169,11 @@ class RocksDBEngine final : public StorageEngine {
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                     arangodb::velocypack::Builder& result,
+                                     bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
   std::string dataPath() const override {
@@ -188,9 +189,10 @@ class RocksDBEngine final : public StorageEngine {
   velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
   int removeReplicationApplierConfiguration() override;
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice slice, bool doSync) override;
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override;
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice slice, bool doSync) override;
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                bool doSync) override;
   // TODO worker-safety
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
                         std::string const& keysId) override;
@@ -280,9 +282,9 @@ class RocksDBEngine final : public StorageEngine {
 
   Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
                              RocksDBLogValue&& logValue);
-  int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
-                                  velocypack::Slice const& slice,
-                                  RocksDBLogValue&& logValue);
+  Result writeCreateCollectionMarker(TRI_voc_tick_t databaseId, DataSourceId id,
+                                     velocypack::Slice const& slice,
+                                     RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, DataSourceId);
   std::vector<std::pair<TRI_voc_tick_t, DataSourceId>> collectionMappings() const;
@@ -369,8 +371,9 @@ class RocksDBEngine final : public StorageEngine {
   void shutdownRocksDBInstance() noexcept;
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
   int removeReplicationApplierConfiguration(RocksDBKey const& key);
-  int saveReplicationApplierConfiguration(RocksDBKey const& key,
-                                          arangodb::velocypack::Slice slice, bool doSync);
+  ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
+                                                arangodb::velocypack::Slice slice,
+                                                bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();

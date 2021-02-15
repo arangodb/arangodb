@@ -451,20 +451,19 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
 }
 
 /// @brief send response including error response body
-void CommTask::sendErrorResponse(rest::ResponseCode code,
-                                 rest::ContentType respType, uint64_t messageId,
-                                 int errorNum, char const* errorMessage /* = nullptr */) {
-
+void CommTask::sendErrorResponse(rest::ResponseCode code, rest::ContentType respType,
+                                 uint64_t messageId, ErrorCode errorNum,
+                                 std::string_view errorMessage /* = {} */) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
   if (errorNum != TRI_ERROR_NO_ERROR) {
-    if (errorMessage == nullptr) {
+    if (errorMessage.data() == nullptr) {
       errorMessage = TRI_errno_string(errorNum);
     }
-    TRI_ASSERT(errorMessage != nullptr);
+    TRI_ASSERT(errorMessage.data() != nullptr);
     builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
   }
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
@@ -481,26 +480,20 @@ void CommTask::sendErrorResponse(rest::ResponseCode code,
 // a scheduler worker thread eventually.
 bool CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   DTRACE_PROBE2(arangod, CommTaskHandleRequestSync, this, handler.get());
-  handler->statistics().SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 
-  RequestLane lane = handler->getRequestLane();
-  RequestPriority prio = PriorityRequestLane(lane);
+  RequestLane lane = handler->determineRequestLane();
+  handler->trackQueueStart();
 
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
 
-  // queue the operation in the scheduler, and make it eligible for direct execution
-  // only if the current CommTask type allows it (HttpCommTask: yes, CommTask: no)
-  // and there is currently only a single client handled by the IoContext
-  auto cb = [self = shared_from_this(), handler = std::move(handler), prio]() mutable {
-    if (prio == RequestPriority::LOW) {
-      SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
-    }
-    handler->statistics().SET_QUEUE_END();
-    handler->runHandler([self = std::move(self), prio](rest::RestHandler* handler) {
-      if (prio == RequestPriority::LOW) {
-        SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
-      }
+  // queue the operation for execution in the scheduler
+  auto cb = [self = shared_from_this(), handler = std::move(handler)]() mutable {
+    handler->trackQueueEnd();
+    handler->trackTaskStart();
+
+    handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      handler->trackTaskEnd();
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(), handler->stealStatistics());
@@ -527,8 +520,9 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   if (_server.server().isStopping()) {
     return false;
   }
-
-  auto const lane = handler->getRequestLane();
+ 
+  RequestLane lane = handler->determineRequestLane();
+  handler->trackQueueStart();
 
   if (jobId != nullptr) {
     auto& jobManager = _server.server().getFeature<GeneralServerFeature>().jobManager();
@@ -536,15 +530,24 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
     *jobId = handler->handlerId();
 
     // callback will persist the response with the AsyncJobManager
-    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler),
-                                                     manager(&jobManager)] {
-      handler->runHandler(
-          [manager](RestHandler* h) { manager->finishAsyncJob(h); });
+    return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler), manager(&jobManager)] {
+      handler->trackQueueEnd();
+      handler->trackTaskStart();
+
+      handler->runHandler([manager](RestHandler* h) { 
+        h->trackTaskEnd();
+        manager->finishAsyncJob(h); 
+      });
     });
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->queue(lane, [handler = std::move(handler)] {
-      handler->runHandler([](RestHandler*) {});
+      handler->trackQueueEnd();
+      handler->trackTaskStart();
+      
+      handler->runHandler([](RestHandler* h) {
+        h->trackTaskEnd();
+      });
     });
   }
 }

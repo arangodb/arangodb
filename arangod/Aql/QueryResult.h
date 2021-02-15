@@ -85,7 +85,7 @@ struct QueryResult {
   int errorNumber() const { return result.errorNumber(); }
   bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
   bool isNot(int errorNumber) const { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
  public:
   Result result;

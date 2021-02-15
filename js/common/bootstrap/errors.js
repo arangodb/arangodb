@@ -42,14 +42,19 @@
     "ERROR_CANNOT_READ_FILE"       : { "code" : 34, "message" : "cannot read file" },
     "ERROR_INCOMPATIBLE_VERSION"   : { "code" : 35, "message" : "incompatible server version" },
     "ERROR_DISABLED"               : { "code" : 36, "message" : "disabled" },
+    "ERROR_MALFORMED_JSON"         : { "code" : 37, "message" : "malformed json" },
     "ERROR_HTTP_BAD_PARAMETER"     : { "code" : 400, "message" : "bad parameter" },
     "ERROR_HTTP_UNAUTHORIZED"      : { "code" : 401, "message" : "unauthorized" },
     "ERROR_HTTP_FORBIDDEN"         : { "code" : 403, "message" : "forbidden" },
     "ERROR_HTTP_NOT_FOUND"         : { "code" : 404, "message" : "not found" },
     "ERROR_HTTP_METHOD_NOT_ALLOWED" : { "code" : 405, "message" : "method not supported" },
     "ERROR_HTTP_NOT_ACCEPTABLE"    : { "code" : 406, "message" : "request not acceptable" },
+    "ERROR_HTTP_REQUEST_TIMEOUT"   : { "code" : 408, "message" : "request timeout" },
+    "ERROR_HTTP_CONFLICT"          : { "code" : 409, "message" : "conflict" },
+    "ERROR_HTTP_GONE"              : { "code" : 410, "message" : "content permanently deleted" },
     "ERROR_HTTP_PRECONDITION_FAILED" : { "code" : 412, "message" : "precondition failed" },
     "ERROR_HTTP_SERVER_ERROR"      : { "code" : 500, "message" : "internal server error" },
+    "ERROR_HTTP_NOT_IMPLEMENTED"   : { "code" : 501, "message" : "not implemented" },
     "ERROR_HTTP_SERVICE_UNAVAILABLE" : { "code" : 503, "message" : "service unavailable" },
     "ERROR_HTTP_GATEWAY_TIMEOUT"   : { "code" : 504, "message" : "gateway timeout" },
     "ERROR_HTTP_CORRUPTED_JSON"    : { "code" : 600, "message" : "invalid JSON object" },
@@ -338,6 +343,8 @@
     "ERROR_CLUSTER_REPAIRS_JOB_FAILED" : { "code" : 5008, "message" : "move shard job failed during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED" : { "code" : 5009, "message" : "move shard job disappeared during cluster repairs" },
     "ERROR_CLUSTER_REPAIRS_OPERATION_FAILED" : { "code" : 5010, "message" : "agency transaction failed during cluster repairs" },
+    "ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE" : { "code" : 20001, "message" : "malformed gossip message" },
+    "ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST" : { "code" : 20002, "message" : "malformed inquire request" },
     "ERROR_AGENCY_INFORM_MUST_BE_OBJECT" : { "code" : 20011, "message" : "Inform message must be an object." },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM" : { "code" : 20012, "message" : "Inform message must contain uint parameter 'term'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_ID" : { "code" : 20013, "message" : "Inform message must contain string parameter 'id'" },
@@ -347,6 +354,7 @@
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING" : { "code" : 20017, "message" : "Inform message must contain object 'max ping'" },
     "ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT" : { "code" : 20018, "message" : "Inform message must contain object 'timeoutMult'" },
     "ERROR_AGENCY_CANNOT_REBUILD_DBS" : { "code" : 20021, "message" : "Cannot rebuild readDB and spearHead" },
+    "ERROR_AGENCY_MALFORMED_TRANSACTION" : { "code" : 20030, "message" : "malformed agency transaction" },
     "ERROR_SUPERVISION_GENERAL_FAILURE" : { "code" : 20501, "message" : "general supervision failure" },
     "ERROR_QUEUE_FULL"             : { "code" : 21003, "message" : "named queue is full" },
     "ERROR_ACTION_OPERATION_UNABORTABLE" : { "code" : 6002, "message" : "this maintenance action cannot be stopped" },
@@ -364,7 +372,8 @@
     "ERROR_LOCAL_LOCK_RETRY"       : { "code" : 7010, "message" : "some db servers cannot be reached for transaction locks" },
     "ERROR_HOT_BACKUP_CONFLICT"    : { "code" : 7011, "message" : "hot backup conflict" },
     "ERROR_HOT_BACKUP_DBSERVERS_AWOL" : { "code" : 7012, "message" : "hot backup not all db servers reachable" },
-    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" }
+    "ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN" : { "code" : 7021, "message" : "analyzers in plan could not be modified" },
+    "ERROR_AIR_EXECUTION_ERROR"    : { "code" : 8001, "message" : "error during AIR execution" }
   };
 
   // For compatibility with <= 3.3

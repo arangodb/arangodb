@@ -58,13 +58,16 @@ class RevisionId : public arangodb::basics::Identifier {
   std::string toString() const;
 
   /// @brief Convert a revision ID to a string
-  /// the buffer must be at least 11 chars long
+  /// the buffer should be at least arangodb::basics::maxUInt64StringSize
+  /// bytes long
   /// the length of the encoded value and the start position into
   /// the result buffer are returned
   std::pair<size_t, size_t> toString(char* buffer) const;
 
   /// @brief Convert revision ID to a string using the provided buffer,
   /// returning the result as a value pair for convenience
+  /// the buffer should be at least arangodb::basics::maxUInt64StringSize
+  /// bytes long
   arangodb::velocypack::ValuePair toValuePair(char* buffer) const;
 
   /// @brief Write revision ID to string for storage with correct endianness

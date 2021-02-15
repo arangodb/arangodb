@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -275,9 +276,9 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    b.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -421,6 +422,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
+  TRI_IF_FAILURE("Insert::useRev") {
+    isRestore = true;
+  }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);
@@ -434,9 +438,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -461,7 +465,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice co
   }
 
   // temporary buffer for stringifying revision ids
-  char ridBuffer[21];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   revisionId = newRevisionId();
   builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   builder.close();
@@ -522,7 +526,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }

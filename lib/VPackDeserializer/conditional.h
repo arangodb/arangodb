@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,11 +85,43 @@ struct conditional_deserializer {
   using factory = utilities::identity_factory<constructed_type>;
 };
 
+template <typename F, typename... VSs>
+struct conditional_deserializer_with_factory {
+  using plan = conditional<VSs...>;
+  using factory = F;
+  using constructed_type = typename factory::constructed_type;
+};
+
 struct is_object_condition {
   using forward_hints = hints::hint_list<hints::is_object>;
 
   static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
     return s.isObject();
+  }
+};
+
+struct is_array_condition {
+  using forward_hints = hints::hint_list<hints::is_array>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isArray();
+  }
+};
+
+struct is_string_condition {
+  using forward_hints = hints::hint_list<hints::is_string>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.isString();
+  }
+};
+
+template<const char K[]>
+struct has_key_condition {
+  using forward_hints = hints::hint_list<hints::has_field<K>>;
+
+  static bool test(::arangodb::velocypack::deserializer::slice_type s) noexcept {
+    return s.hasKey(K);
   }
 };
 

@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
@@ -279,6 +280,43 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
 
   return Result();
 }
+
+// returns a stripped down version of the inventory, used for shard synchronization only
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
+                                               std::string const& collectionName,
+                                               VPackBuilder& result) {
+  {
+    MUTEX_LOCKER(locker, _contextLock);
+    lazyCreateSnapshot();
+  }
+
+  TRI_ASSERT(_snapshot != nullptr);
+
+  // add a "collections" array with just our collection
+  result.add("collections", VPackValue(VPackValueType::Array));
+      
+  ExecContext const& exec = ExecContext::current();
+  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+    auto collection = vocbase.lookupCollection(collectionName);
+    if (collection != nullptr) {
+      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
+          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
+        // dump inventory data for collection/shard into result
+        collection->toVelocyPackForInventory(result);
+      }
+    }
+  }
+
+  result.close(); // collections
+  
+  // fake an empty "views" array here
+  result.add("views", VPackValue(VPackValueType::Array));
+  result.close(); // views
+
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
+
+  return Result();
+}
   
 void RocksDBReplicationContext::setPatchCount(std::string const& patchCount) {
   // _patchCount can only be set once in a context, and if it is set, it should be non-empty.
@@ -491,7 +529,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = _engine.db();
@@ -545,7 +583,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
-      tmpHashBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+      tmpHashBuilder.add(docRev.toValuePair(ridBuffer));
       hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
@@ -657,7 +695,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
@@ -696,7 +734,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(docRev.toValuePair(&ridBuffer[0]));
+    b.add(docRev.toValuePair(ridBuffer));
     b.close();
   }
   b.close();

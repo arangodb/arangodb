@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -42,6 +43,8 @@
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Scheduler/SupervisedScheduler.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -63,6 +66,7 @@ RestHandler::RestHandler(application_features::ApplicationServer& server,
       _statistics(),
       _handlerId(0),
       _state(HandlerState::PREPARE),
+      _lane(RequestLane::UNDEFINED),
       _canceled(false) {}
 
 RestHandler::~RestHandler() = default;
@@ -89,6 +93,50 @@ uint64_t RestHandler::messageId() const {
   }
 
   return messageId;
+}
+  
+RequestLane RestHandler::determineRequestLane() {
+  if (_lane == RequestLane::UNDEFINED) {
+    bool found;
+    _request->header(StaticStrings::XArangoFrontend, found);
+
+    if (found) {
+      _lane = RequestLane::CLIENT_UI;
+    } else {
+      _lane = lane();
+    }
+  }
+  TRI_ASSERT(_lane != RequestLane::UNDEFINED);
+  return _lane;
+}
+
+void RestHandler::trackQueueStart() noexcept {
+  TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  _statistics.SET_QUEUE_START(SchedulerFeature::SCHEDULER->queueStatistics()._queued);
+}
+
+void RestHandler::trackQueueEnd() noexcept {
+  _statistics.SET_QUEUE_END();
+}
+
+void RestHandler::trackTaskStart() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackBeginOngoingLowPriorityTask();
+  }
+}
+
+void RestHandler::trackTaskEnd() noexcept {
+  if (PriorityRequestLane(determineRequestLane()) == RequestPriority::LOW) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    SchedulerFeature::SCHEDULER->trackEndOngoingLowPriorityTask();
+    
+    // update the time the last low priority item spent waiting in the queue.
+    
+    // the queueing time is in ms
+    uint64_t queueTimeMs = static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+  }
 }
 
 RequestStatistics::Item&& RestHandler::stealStatistics() {
@@ -201,7 +249,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
                                      std::move(payload), options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
-    int res = network::fuerteToArangoErrorCode(response);
+    auto res = network::fuerteToArangoErrorCode(response);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(res);
       return Result(res);
@@ -515,13 +563,13 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
-  char const* message = TRI_errno_string(errorNumber);
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
+  auto const message = TRI_errno_string(errorNumber);
 
-  if (message != nullptr) {
-    generateError(code, errorNumber, std::string_view(message));
+  if (message.data() != nullptr) {
+    generateError(code, errorNumber, message);
   } else {
-    generateError(code, errorNumber, std::string_view("unknown error"));
+    generateError(code, errorNumber, "unknown error");
   }
 }
 

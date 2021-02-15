@@ -44,7 +44,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -91,7 +90,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
-    };
+    }
 
     void returnError(fuerte::Error err) {
       error = err;

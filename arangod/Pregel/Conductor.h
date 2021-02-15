@@ -33,6 +33,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
+#include "Pregel/Reports.h"
 #include "Scheduler/Scheduler.h"
 #include "Utils/DatabaseGuard.h"
 
@@ -46,14 +47,19 @@ enum ExecutionState {
   DONE,         // after everyting is done
   CANCELED,     // after an terminal error or manual canceling
   IN_ERROR,     // after an error which should allow recovery
-  RECOVERING    // during recovery
+  RECOVERING,   // during recovery
+  FATAL_ERROR,  // execution can not continue because of errors
 };
-extern const char* ExecutionStateNames[7];
+extern const char* ExecutionStateNames[8];
 
 class PregelFeature;
 class MasterContext;
 class AggregatorHandler;
 struct IAlgorithm;
+
+struct Error {
+  std::string message;
+};
 
 class Conductor {
   friend class PregelFeature;
@@ -89,9 +95,11 @@ class Conductor {
   bool _asyncMode = false;
   bool _useMemoryMaps = false;
   bool _storeResults = false;
+  bool _inErrorAbort = false;
 
   /// persistent tracking of active vertices, send messages, runtimes
   StatsManager _statistics;
+  ReportManager _reports;
   /// Current number of vertices
   uint64_t _totalVerticesCount = 0;
   uint64_t _totalEdgesCount = 0;
@@ -107,9 +115,9 @@ class Conductor {
   bool _startGlobalStep();
   int _initializeWorkers(std::string const& path, VPackSlice additional);
   int _finalizeWorkers();
-  int _sendToAllDBServers(std::string const& path, VPackBuilder const& message);
-  int _sendToAllDBServers(std::string const& path, VPackBuilder const& message,
-                          std::function<void(VPackSlice)> handle);
+  ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message);
+  ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message,
+                                std::function<void(VPackSlice)> handle);
   void _ensureUniqueResponse(VPackSlice body);
 
   // === REST callbacks ===

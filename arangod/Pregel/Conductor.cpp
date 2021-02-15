@@ -41,8 +41,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
-#include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -56,8 +56,9 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::basics;
 
-const char* arangodb::pregel::ExecutionStateNames[7] = {
-    "none", "running", "storing", "done", "canceled", "in error", "recovering"};
+const char* arangodb::pregel::ExecutionStateNames[8] = {
+    "none",     "running",  "storing",    "done",
+    "canceled", "in error", "recovering", "fatal error"};
 
 Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
                      std::vector<CollectionID> const& vertexCollections,
@@ -106,8 +107,8 @@ Conductor::Conductor(uint64_t executionNumber, TRI_vocbase_t& vocbase,
   if (_asyncMode) {
     LOG_TOPIC("1b1c2", DEBUG, Logger::PREGEL) << "Running in async mode";
   }
-  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(),
-                                                      Utils::useMemoryMapsKey, _useMemoryMaps);
+  _useMemoryMaps = VelocyPackHelper::getBooleanValue(_userParams.slice(), Utils::useMemoryMapsKey,
+                                                     _useMemoryMaps);
   VPackSlice storeSlice = config.get("store");
   _storeResults = !storeSlice.isBool() || storeSlice.getBool();
   if (!_storeResults) {
@@ -165,56 +166,94 @@ bool Conductor::_startGlobalStep() {
   _statistics.resetActiveCount();
   _totalVerticesCount = 0;  // might change during execution
   _totalEdgesCount = 0;
-  // we are explicitly expecting an response containing the aggregated
-  // values as well as the count of active vertices
-  int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
-    _aggregators->aggregateValues(payload);
-    _statistics.accumulateActiveCounts(payload);
-    _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
-    _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
-  });
-  if (res != TRI_ERROR_NO_ERROR) {
-    _state = ExecutionState::IN_ERROR;
-    LOG_TOPIC("04189", ERR, Logger::PREGEL)
-        << "Seems there is at least one worker out of order";
-    // the recovery mechanisms should take care of this
-    return false;
+
+  VPackBuilder messagesFromWorkers;
+
+  {
+    VPackArrayBuilder guard(&messagesFromWorkers);
+    // we are explicitly expecting an response containing the aggregated
+    // values as well as the count of active vertices
+    int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+      _aggregators->aggregateValues(payload);
+
+      messagesFromWorkers.add(payload.get(Utils::workerToMasterMessagesKey));
+      _statistics.accumulateActiveCounts(payload);
+      _totalVerticesCount += payload.get(Utils::vertexCountKey).getUInt();
+      _totalEdgesCount += payload.get(Utils::edgeCountKey).getUInt();
+    });
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      _state = ExecutionState::IN_ERROR;
+      LOG_TOPIC("04189", ERR, Logger::PREGEL)
+          << "Seems there is at least one worker out of order";
+      // the recovery mechanisms should take care of this
+      return false;
+    }
   }
 
   // workers are done if all messages were processed and no active vertices
   // are left to process
+  bool activateAll = false;
+  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
+              _statistics.allMessagesProcessed();
   bool proceed = true;
   if (_masterContext && _globalSuperstep > 0) {  // ask algorithm to evaluate aggregated values
     _masterContext->_globalSuperstep = _globalSuperstep - 1;
     _masterContext->_enterNextGSS = false;
+    _masterContext->_reports = &_reports;
+    _masterContext->postGlobalSuperstepMessage(messagesFromWorkers.slice());
     proceed = _masterContext->postGlobalSuperstep();
     if (!proceed) {
       LOG_TOPIC("0aa8e", DEBUG, Logger::PREGEL)
           << "Master context ended execution";
     }
+    if (proceed) {
+      switch (_masterContext->postGlobalSuperstep(done)) {
+        case MasterContext::ContinuationResult::ACTIVATE_ALL:
+          activateAll = true;
+          [[fallthrough]];
+        case MasterContext::ContinuationResult::CONTINUE:
+          done = false;
+          break;
+        case MasterContext::ContinuationResult::ERROR_ABORT:
+          _inErrorAbort = true;
+          [[fallthrough]];
+        case MasterContext::ContinuationResult::ABORT:
+          proceed = false;
+          break;
+        case MasterContext::ContinuationResult::DONT_CARE:
+          break;
+      }
+    }
   }
 
   // TODO make maximum configurable
-  bool done = _globalSuperstep > 0 && _statistics.noActiveVertices() &&
-              _statistics.allMessagesProcessed();
   if (!proceed || done || _globalSuperstep >= _maxSuperstep) {
     // tells workers to store / discard results
     if (_storeResults) {
       _state = ExecutionState::STORING;
       _finalizeWorkers();
     } else {  // just stop the timer
-      _state = ExecutionState::DONE;
+      _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
-          << "Done execution took" << totalRuntimeSecs() << " s";
+          << "Done, execution took: " << totalRuntimeSecs() << " s";
     }
     return false;
   }
+
+  VPackBuilder toWorkerMessages;
   if (_masterContext) {
     _masterContext->_globalSuperstep = _globalSuperstep;
     _masterContext->_vertexCount = _totalVerticesCount;
     _masterContext->_edgeCount = _totalEdgesCount;
-    _masterContext->preGlobalSuperstep();
+    _masterContext->_reports = &_reports;
+    if (!_masterContext->preGlobalSuperstepWithResult()) {
+      _state = ExecutionState::FATAL_ERROR;
+      _endTimeSecs = TRI_microtime();
+      return false;
+    }
+    _masterContext->preGlobalSuperstepMessage(toWorkerMessages);
   }
 
   b.clear();
@@ -223,14 +262,18 @@ bool Conductor::_startGlobalStep() {
   b.add(Utils::globalSuperstepKey, VPackValue(_globalSuperstep));
   b.add(Utils::vertexCountKey, VPackValue(_totalVerticesCount));
   b.add(Utils::edgeCountKey, VPackValue(_totalEdgesCount));
+  b.add(Utils::activateAllKey, VPackValue(activateAll));
+
+  b.add(Utils::masterToWorkerMessagesKey, toWorkerMessages.slice());
   _aggregators->serializeValues(b);
+
   b.close();
   LOG_TOPIC("d98de", DEBUG, Logger::PREGEL) << b.toString();
 
   _stepStartTimeSecs = TRI_microtime();
 
   // start vertex level operations, does not get a response
-  res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  int res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC("f34bb", ERR, Logger::PREGEL)
@@ -259,8 +302,8 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
   }
 
   LOG_TOPIC("76631", INFO, Logger::PREGEL)
-      << "Running pregel with " << _totalVerticesCount << " vertices, "
-      << _totalEdgesCount << " edges";
+      << "Running Pregel " << _algorithm->name() << " with "
+      << _totalVerticesCount << " vertices, " << _totalEdgesCount << " edges";
   if (_masterContext) {
     _masterContext->_globalSuperstep = 0;
     _masterContext->_vertexCount = _totalVerticesCount;
@@ -286,6 +329,10 @@ VPackBuilder Conductor::finishedWorkerStep(VPackSlice const& data) {
     LOG_TOPIC("dc904", WARN, Logger::PREGEL)
         << "Conductor did received a callback from the wrong superstep";
     return VPackBuilder();
+  }
+
+  if (auto reports = data.get("reports"); reports.isArray()) {
+    _reports.appendFromSlice(reports);
   }
 
   // track message counts to decide when to halt or add global barriers.
@@ -414,9 +461,8 @@ void Conductor::cancelNoLock() {
   _callbackMutex.assertLockedByCurrentThread();
   _state = ExecutionState::CANCELED;
   bool ok = basics::function_utils::retryUntilTimeout(
-      [this]() -> bool { 
-        return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); 
-      }, Logger::PREGEL, "cancel worker execution");
+      [this]() -> bool { return (_finalizeWorkers() != TRI_ERROR_QUEUE_FULL); },
+      Logger::PREGEL, "cancel worker execution");
   if (!ok) {
     LOG_TOPIC("f8b3c", ERR, Logger::PREGEL)
         << "Failed to cancel worker execution for five minutes, giving up.";
@@ -595,12 +641,12 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
         b.add(pair.key.copyString(), pair.value);
       }
     }
-    
+
     // edge collection restrictions
     b.add(Utils::edgeCollectionRestrictionsKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : _edgeCollectionRestrictions) {
       b.add(pair.first, VPackValue(VPackValueType::Array));
-      for (ShardID const& shard: pair.second) {
+      for (ShardID const& shard : pair.second) {
         b.add(VPackValue(shard));
       }
       b.close();
@@ -624,7 +670,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
       }
       b.close();
     }
-    
+
     b.close();
     b.add(Utils::collectionPlanIdMapKey, VPackValue(VPackValueType::Object));
     for (auto const& pair : collectionPlanIdMap) {
@@ -637,7 +683,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
     }
     b.close();
     b.close();
-  
+
     // hack for single server
     if (ServerState::instance()->getRole() == ServerState::ROLE_SINGLE) {
       TRI_ASSERT(vertexMap.size() == 1);
@@ -663,31 +709,34 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
 
       return TRI_ERROR_NO_ERROR;
     } else {
-      
       network::RequestOptions reqOpts;
       reqOpts.timeout = network::Timeout(5.0 * 60.0);
       reqOpts.database = _vocbaseGuard.database().name();
-      
-      responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
-                                                  path, std::move(buffer), reqOpts));
-      
+
+      responses.emplace_back(network::sendRequest(pool, "server:" + server,
+                                                  fuerte::RestVerb::Post, path,
+                                                  std::move(buffer), reqOpts));
+
       LOG_TOPIC("6ae66", DEBUG, Logger::PREGEL) << "Initializing Server " << server;
     }
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&nrGood](auto const& results) {
-    for (auto const& tryRes : results) {
-      network::Response const& r = tryRes.get();  // throws exceptions upwards
-      if (r.ok() && r.statusCode() < 400) {
-        nrGood++;
-      } else {
-        LOG_TOPIC("6ae67", ERR, Logger::PREGEL) << "received error from worker: '"
-          << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
-      }
-    }
-  }).wait();
-  
+  futures::collectAll(responses)
+      .thenValue([&nrGood](auto const& results) {
+        for (auto const& tryRes : results) {
+          network::Response const& r = tryRes.get();  // throws exceptions upwards
+          if (r.ok() && r.statusCode() < 400) {
+            nrGood++;
+          } else {
+            LOG_TOPIC("6ae67", ERR, Logger::PREGEL)
+                << "received error from worker: '"
+                << (r.ok() ? r.slice().toJson() : fuerte::to_string(r.error)) << "'";
+          }
+        }
+      })
+      .wait();
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -722,6 +771,13 @@ int Conductor::_finalizeWorkers() {
 
 void Conductor::finishedWorkerFinalize(VPackSlice data) {
   MUTEX_LOCKER(guard, _callbackMutex);
+  {
+    auto reports = data.get(Utils::reportsKey);
+    if (reports.isArray()) {
+      _reports.appendFromSlice(reports);
+    }
+  }
+
   _ensureUniqueResponse(data);
   if (_respondedServers.size() != _dbServers.size()) {
     return;
@@ -730,7 +786,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
   // do not swap an error state to done
   bool didStore = false;
   if (_state == ExecutionState::STORING) {
-    _state = ExecutionState::DONE;
+    _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
     didStore = true;
   }
   _endTimeSecs = TRI_microtime();  // offically done
@@ -780,7 +836,7 @@ void Conductor::finishedWorkerFinalize(VPackSlice data) {
 void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
   MUTEX_LOCKER(guard, _callbackMutex);
 
-  if (_state != ExecutionState::DONE) {
+  if (_state != ExecutionState::DONE && _state != ExecutionState::FATAL_ERROR) {
     return;
   }
 
@@ -792,7 +848,7 @@ void Conductor::collectAQLResults(VPackBuilder& outBuilder, bool withId) {
 
   // merge results from DBServers
   outBuilder.openArray();
-  int res = _sendToAllDBServers(Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
+  auto res = _sendToAllDBServers(Utils::aqlResultsPath, b, [&](VPackSlice const& payload) {
     if (payload.isArray()) {
       outBuilder.add(VPackArrayIterator(payload));
     }
@@ -818,20 +874,26 @@ VPackBuilder Conductor::toVelocyPack() const {
   }
   _aggregators->serializeValues(result);
   _statistics.serializeValues(result);
+  result.add(VPackValue("reports"));
+  _reports.intoBuilder(result);
   if (_state != ExecutionState::RUNNING) {
     result.add("vertexCount", VPackValue(_totalVerticesCount));
     result.add("edgeCount", VPackValue(_totalEdgesCount));
+  }
+  if (_masterContext) {
+    VPackObjectBuilder ob(&result, "masterContext");
+    _masterContext->serializeValues(result);
   }
   result.close();
   return result;
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
+ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
 }
 
-int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message,
-                                   std::function<void(VPackSlice)> handle) {
+ErrorCode Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& message,
+                                         std::function<void(VPackSlice)> handle) {
   _callbackMutex.assertLockedByCurrentThread();
   _respondedServers.clear();
 
@@ -865,14 +927,14 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
     }
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (_dbServers.size() == 0) {
     LOG_TOPIC("a14fa", WARN, Logger::PREGEL) << "No servers registered";
     return TRI_ERROR_FAILED;
   }
 
   std::string base = Utils::baseUrl(Utils::workerPrefix);
-  
+
   VPackBuffer<uint8_t> buffer;
   buffer.append(message.slice().begin(), message.slice().byteSize());
 
@@ -880,29 +942,32 @@ int Conductor::_sendToAllDBServers(std::string const& path, VPackBuilder const& 
   reqOpts.database = _vocbaseGuard.database().name();
   reqOpts.timeout = network::Timeout(5.0 * 60.0);
   reqOpts.skipScheduler = true;
-  
+
   auto const& nf = _vocbaseGuard.database().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   std::vector<futures::Future<network::Response>> responses;
-  
+
   for (auto const& server : _dbServers) {
     responses.emplace_back(network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Post,
                                                 base + path, buffer, reqOpts));
   }
-  
+
   size_t nrGood = 0;
-  futures::collectAll(responses).thenValue([&](auto results) {
-    for (auto const& tryRes : results) {
-       network::Response const& res = tryRes.get();  // throws exceptions upwards
-      if (res.ok() && res.statusCode() < 400) {
-        nrGood++;
-        if (handle) {
-          handle(res.slice());
+
+  futures::collectAll(responses)
+      .thenValue([&](auto results) {
+        for (auto const& tryRes : results) {
+          network::Response const& res = tryRes.get();  // throws exceptions upwards
+          if (res.ok() && res.statusCode() < 400) {
+            nrGood++;
+            if (handle) {
+              handle(res.slice());
+            }
+          }
         }
-      }
-    }
-  }).wait();
-  
+      })
+      .wait();
+
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
@@ -925,7 +990,8 @@ std::vector<ShardID> Conductor::getShardIds(ShardID const& collection) const {
   std::vector<ShardID> result;
   try {
     std::shared_ptr<LogicalCollection> lc = ci.getCollection(vocbase.name(), collection);
-    std::shared_ptr<std::vector<ShardID>> shardIDs = ci.getShardList(std::to_string(lc->id().id()));
+    std::shared_ptr<std::vector<ShardID>> shardIDs =
+        ci.getShardList(std::to_string(lc->id().id()));
     result.reserve(shardIDs->size());
     for (auto const& it : *shardIDs) {
       result.emplace_back(it);

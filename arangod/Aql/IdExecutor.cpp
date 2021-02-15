@@ -80,7 +80,6 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, CountStats, AqlCall> {
   CountStats stats;
-  TRI_ASSERT(output.numRowsWritten() == 0);
   if (inputRange.hasDataRow()) {
     TRI_ASSERT(!output.isFull());
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
@@ -88,9 +87,9 @@ auto IdExecutor<UsedFetcher>::produceRows(AqlItemBlockInputRange& inputRange,
     }
     auto const& [state, inputRow] = inputRange.peekDataRow();
 
-    output.fastForwardAllRows(inputRow, inputRange.countDataRows());
+    size_t rows = inputRange.countAndSkipAllRemainingDataRows();
 
-    std::ignore = inputRange.skipAllRemainingDataRows();
+    output.fastForwardAllRows(inputRow, rows);
 
     TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

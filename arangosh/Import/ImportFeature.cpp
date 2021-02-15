@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -319,7 +320,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 
@@ -353,6 +354,7 @@ void ImportFeature::start() {
       std::cout << "separator:              " << _separator << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
+    std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
     std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
     std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
@@ -492,6 +494,7 @@ void ImportFeature::start() {
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
 
+    TRI_NormalizePath(_filename);
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;

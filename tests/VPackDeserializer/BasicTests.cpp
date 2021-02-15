@@ -198,7 +198,7 @@ struct graph_options_validator {
 /* clang-format off */
 
 using graph_options_deserializer = utilities::constructing_deserializer<graph_options, parameter_list<
-    factory_optional_parameter<str_smart_graph_attribute, std::string_view>,
+    factory_optional_value_parameter<str_smart_graph_attribute, std::string_view>,
     factory_simple_parameter<str_number_of_shards, uint32_t, false, values::numeric_value<uint32_t, 1>>,
     factory_simple_parameter<str_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>,
     factory_simple_parameter<str_min_replication_factor, uint32_t, false, values::numeric_value<uint32_t, 1>>

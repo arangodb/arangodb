@@ -150,6 +150,7 @@ uint64_t Manager::getActiveTransactionCount() {
 Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st)
     : type(t),
       intermediateCommits(false),
+      wasExpired(false),
       finalStatus(Status::UNDEFINED),
       timeToLive(ttl),
       expiryTime(TRI_microtime() + Manager::ttlForType(t)),
@@ -158,15 +159,15 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<Transact
       db(state ? state->vocbase().name() : ""),
       rwlock() {}
 
-bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const {
+bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const noexcept {
   return this->intermediateCommits;
 }
 
-bool Manager::ManagedTrx::expired() const {
+bool Manager::ManagedTrx::expired() const noexcept {
   return this->expiryTime < TRI_microtime();
 }
 
-void Manager::ManagedTrx::updateExpiry() {
+void Manager::ManagedTrx::updateExpiry() noexcept {
   this->expiryTime = TRI_microtime() + this->timeToLive;
 }
 
@@ -228,8 +229,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   auto& buck = _transactions[bucket];
   auto it = buck._managed.find(tid);
   if (it == buck._managed.end()) {
-    LOG_TOPIC("92a49", ERR, Logger::TRANSACTIONS)
-        << "a registered transaction was not found";
+    LOG_TOPIC("92a49", WARN, Logger::TRANSACTIONS)
+        << "registered transaction " << tid << " not found";
     TRI_ASSERT(false);
     return;
   }
@@ -237,8 +238,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 
   /// we need to make sure no-one else is still using the TransactionState
   if (!it->second.rwlock.lockWrite(/*maxAttempts*/ 256)) {
-    LOG_TOPIC("9f7d7", ERR, Logger::TRANSACTIONS)
-        << "a transaction is still in use";
+    LOG_TOPIC("9f7d7", WARN, Logger::TRANSACTIONS)
+        << "transaction " << tid << " is still in use";
     TRI_ASSERT(false);
     return;
   }
@@ -355,7 +356,13 @@ Result Manager::beginTransaction(transaction::Hints hints,
   return res;
 }
 
-void Manager::prepareOptions(transaction::Options& options) {
+Result Manager::prepareOptions(transaction::Options& options) {
+  Result res;
+
+  if (options.lockTimeout < 0.0) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "lockTimeout needs to be greater than zero");
+  }
   // enforce size limit per DBServer
   if (isFollowerTransactionOnDBServer(options)) {
     // if we are a follower, we reuse the leader's max transaction size and
@@ -400,6 +407,8 @@ void Manager::prepareOptions(transaction::Options& options) {
     options.maxTransactionSize =
         std::min<size_t>(options.maxTransactionSize, Manager::maxTransactionSize);
   }
+
+  return res;
 }
 
 Result Manager::lockCollections(TRI_vocbase_t& vocbase,
@@ -502,7 +511,10 @@ ResultT<TransactionId> Manager::createManagedTrx(
   }
 
   // no transaction with ID exists yet, so start a new transaction
-  prepareOptions(options);
+  res = prepareOptions(options);
+  if (res.fail()) {
+    return res;
+  }
   std::shared_ptr<TransactionState> state;
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -596,7 +608,10 @@ Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
   }
 
   // no transaction with ID exists yet, so start a new transaction
-  prepareOptions(options);
+  res = prepareOptions(options);
+  if (res.fail()) {
+    return res;
+  }
 
   std::shared_ptr<TransactionState> state;
   try {
@@ -753,7 +768,7 @@ void Manager::returnManagedTrx(TransactionId tid) noexcept {
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end() || !::authorized(it->second.user)) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-          << "managed transaction was not found";
+          << "managed transaction " << tid << " not found";
       TRI_ASSERT(false);
       return;
     }
@@ -814,9 +829,10 @@ Result Manager::statusChangeWithTimeout(TransactionId tid, std::string const& da
     if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
       break;
     }
+    double const now = TRI_microtime();
     if (startTime <= 0.0001) {  // fp tolerance
-      startTime = TRI_microtime();
-    } else if (TRI_microtime() - startTime > maxWaitTime) {
+      startTime = now;
+    } else if (now - startTime > maxWaitTime) {
       // timeout
       break;
     }
@@ -854,9 +870,18 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end() || !::authorized(it->second.user) ||
         (!database.empty() && it->second.db != database)) {
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
-                       std::string("transaction '") + std::to_string(tid.id()) +
-                           "' not found");
+      std::string msg = "transaction " + std::to_string(tid.id());
+      if (it == buck._managed.end()) {
+        msg += " not found";
+      } else {
+        msg += " inaccessible";
+      }
+      if (status == transaction::Status::COMMITTED) {
+        msg += " on commit operation";
+      } else {
+        msg += " on abort operation";
+      }
+      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND, std::move(msg));
     }
 
     ManagedTrx& mtrx = it->second;
@@ -887,27 +912,34 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
         return res;  // all good
       } else {
         std::string msg("transaction was already ");
-        msg.append(statusString(mtrx.finalStatus));
+        if (mtrx.wasExpired) {
+          msg.append("expired");
+        } else {
+          msg.append(statusString(mtrx.finalStatus));
+        }
         return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION, std::move(msg));
       }
     }
     TRI_ASSERT(mtrx.type == MetaType::Managed);
 
-    if (mtrx.expired() && status != transaction::Status::ABORTED) {
-      status = transaction::Status::ABORTED;
+    if (mtrx.expired()) {
+      // we will update the expire time of the tombstone shortly afterwards, 
+      // so we need to store the fact that this transaction originally expired
       wasExpired = true;
+      status = transaction::Status::ABORTED;
     }
 
     std::swap(state, mtrx.state);
     TRI_ASSERT(mtrx.state == nullptr);
     mtrx.type = MetaType::Tombstone;
-    mtrx.updateExpiry();
-    mtrx.finalStatus = status;
     if (state->numCommits() > 0) {
       // note that we have performed a commit or an intermediate commit.
       // this is necessary for follower transactions
       mtrx.intermediateCommits = true;
     }
+    mtrx.wasExpired = wasExpired;
+    mtrx.finalStatus = status;
+    mtrx.updateExpiry();
     // it is sufficient to pretend that the operation already succeeded
   }
 
@@ -988,6 +1020,8 @@ bool Manager::garbageCollect(bool abortAll) {
   ::arangodb::containers::SmallVector<TransactionId, 64>::allocator_type::arena_type a2;
   ::arangodb::containers::SmallVector<TransactionId, 64> toErase{a2};
 
+  uint64_t numAborted = 0;
+
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
     if (abortAll) {
       _transactions[bucket]._lock.lockWrite();
@@ -1002,6 +1036,8 @@ bool Manager::garbageCollect(bool abortAll) {
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         if (abortAll || mtrx.expired()) {
+          ++numAborted;
+
           TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
 
           if (tryGuard.isLocked()) {
@@ -1009,17 +1045,19 @@ bool Manager::garbageCollect(bool abortAll) {
             TRI_ASSERT(it.first == mtrx.state->id());
             toAbort.emplace_back(mtrx.state->id());
             LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
-                << "aborting expired transaction '" << it.first << "'";
+                << "aborting expired transaction " << it.first;
           } else if (abortAll) {  // transaction is in use but we want to abort
+            LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS) 
+                << "soft-aborting expired transaction " << it.first;
             mtrx.expiryTime = 0;  // soft-abort transaction
             didWork = true;
             LOG_TOPIC("7ad4f", INFO, Logger::TRANSACTIONS)
-                << "soft aborting transaction '" << it.first << "'";
+                << "soft aborting transaction " << it.first;
           }
         }
       } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
         LOG_TOPIC("7ad5f", INFO, Logger::TRANSACTIONS)
-            << "expired AQL query transaction '" << it.first << "'";
+            << "expired AQL query transaction " << it.first;
       } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
         TRI_ASSERT(mtrx.state == nullptr);
         TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
@@ -1031,22 +1069,32 @@ bool Manager::garbageCollect(bool abortAll) {
   for (TransactionId tid : toAbort) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
-    // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
-    // successfully aborts, so ignore this error.
-    // we can also get the TRI_ERROR_LOCKED error in case we cannot
-    // immediately acquire the lock on the transaction. this _can_ happen
-    // infrequently, but is not an error
-    if (res.fail() && !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
-        !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED) &&
-        !res.is(TRI_ERROR_LOCKED)) {
-      LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
-                                                        "transaction: "
-                                                     << res.errorMessage();
+    LOG_TOPIC("1df7f", DEBUG, Logger::TRANSACTIONS) << "garbage-collecting expired transaction " << tid;
+    try {
+      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+      // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
+      // successfully aborts, so ignore this error.
+      // we can also get the TRI_ERROR_LOCKED error in case we cannot
+      // immediately acquire the lock on the transaction. this _can_ happen
+      // infrequently, but is not an error
+      if (res.fail() && !res.is(TRI_ERROR_TRANSACTION_ABORTED) &&
+          !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED) &&
+          !res.is(TRI_ERROR_LOCKED)) {
+        LOG_TOPIC("0a07f", INFO, Logger::TRANSACTIONS) << "error while aborting "
+                                                          "transaction: "
+                                                       << res.errorMessage();
+      }
+      didWork = true;
+    } catch (...) {
+      // if this fails, this is no problem. we will simply try again in the
+      // next round
     }
-    didWork = true;
   }
 
+  // track the number of hard-/soft-aborted transactions
+  _feature.trackExpired(numAborted);
+
+  // remove all expired tombstones
   for (TransactionId tid : toErase) {
     size_t const bucket = getBucket(tid);
     WRITE_LOCKER(locker, _transactions[bucket]._lock);

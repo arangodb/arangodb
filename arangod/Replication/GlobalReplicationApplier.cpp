@@ -73,7 +73,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -100,13 +100,12 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 }
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
-  return std::make_shared<arangodb::GlobalInitialSyncer>(_configuration);
+  return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick,
-                                                         useTick);
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick, useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

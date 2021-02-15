@@ -55,6 +55,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -68,24 +69,7 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id().id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -435,6 +419,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -609,6 +596,22 @@ public:
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
+  /// @brief return shard statistics for the specified database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                       std::string const& restrictServer,
+                                       arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics for all databases, totals,
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobal(std::string const& restrictServer,
+                                  arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics, separate for each database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                          arangodb::velocypack::Builder& builder) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
@@ -652,7 +655,7 @@ public:
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -874,19 +877,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate planned
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidatePlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrent();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
@@ -989,6 +980,12 @@ public:
   application_features::ApplicationServer& server() const;
 
  private:
+  /// @brief worker function for dropIndexCoordinator
+  Result dropIndexCoordinatorInner(
+      std::string const& databaseName, 
+      std::string const& collectionID,
+      IndexId iid,                   
+      double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
@@ -1098,7 +1095,7 @@ public:
 
   /// @brief error code sent to all remaining promises of the syncers at shutdown. 
   /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
-  int const _syncerShutdownCode;
+  ErrorCode const _syncerShutdownCode;
 
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered

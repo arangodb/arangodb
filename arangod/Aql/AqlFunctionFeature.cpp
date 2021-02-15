@@ -47,12 +47,6 @@ AqlFunctionFeature::AqlFunctionFeature(application_features::ApplicationServer& 
   startsAfter<AqlFeature>();
 }
 
-// This feature does not have any options
-void AqlFunctionFeature::collectOptions(std::shared_ptr<options::ProgramOptions>) {}
-
-// This feature does not have any options
-void AqlFunctionFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {}
-
 void AqlFunctionFeature::prepare() {
   /// @brief Add all AQL functions to the FunctionDefintions map
   addTypeCheckFunctions();
@@ -88,6 +82,10 @@ void AqlFunctionFeature::addAlias(std::string const& alias, std::string const& o
 void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
   builder.openArray();
   for (auto const& it : _functionNames) {
+    if (it.second.hasFlag(FF::Internal)) {
+      // don't serialize internal functions
+      continue;
+    }
     it.second.toVelocyPack(builder);
   }
   builder.close();
@@ -122,7 +120,7 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 
 void AqlFunctionFeature::addTypeCheckFunctions() {
   // common flags for all these functions
-  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable, 
+  auto flags = Function::makeFlags(FF::Deterministic, FF::Cacheable,
                                    FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
 
   // type check functions
@@ -202,11 +200,11 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &Functions::NgramSimilarity}); // (attribute, target, ngram size)
   add({"NGRAM_POSITIONAL_SIMILARITY", ".,.,.", flags, &Functions::NgramPositionalSimilarity}); // (attribute, target, ngram size)
   add({"IN_RANGE", ".,.,.,.,.", flags, &Functions::InRange }); // (attribute, lower, upper, include lower, include upper)
-  
+
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});  
+  add({"RANDOM_TOKEN", ".", nonDeterministicFlags, &Functions::RandomToken});
   add({"UUID", "", nonDeterministicFlags, &Functions::Uuid});
 }
 
@@ -237,7 +235,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
-  
+
   add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
   add({"BIT_OR", ".|.", flags, &Functions::BitOr});
   add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
@@ -254,7 +252,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   // special flags:
   // not deterministic and not cacheable
   auto nonDeterministicFlags = Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard);
-  add({"RAND", "", nonDeterministicFlags, &Functions::Rand}); 
+  add({"RAND", "", nonDeterministicFlags, &Functions::Rand});
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -350,7 +348,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   // special flags:
   // not deterministic and non-cacheable, can only run on DB servers in OneShard mode
   auto documentFlags = Function::makeFlags(FF::CanRunOnDBServerOneShard, FF::CanReadDocuments);
-  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});  
+  add({"DOCUMENT", "h.|.", documentFlags, &Functions::Document});
 }
 
 void AqlFunctionFeature::addGeoFunctions() {
@@ -412,8 +410,8 @@ void AqlFunctionFeature::addDateFunctions() {
   add({"DATE_COMPARE", ".,.,.|.", flags, &Functions::DateCompare});
   add({"DATE_FORMAT", ".,.", flags, &Functions::DateFormat});
   add({"DATE_TRUNC", ".,.", flags, &Functions::DateTrunc});
-  add({"DATE_UTCTOLOCAL", ".,.", flags, &Functions::DateUtcToLocal});
-  add({"DATE_LOCALTOUTC", ".,.", flags, &Functions::DateLocalToUtc});
+  add({"DATE_UTCTOLOCAL", ".,.|.", flags, &Functions::DateUtcToLocal});
+  add({"DATE_LOCALTOUTC", ".,.|.", flags, &Functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &Functions::DateTimeZone});
   add({"DATE_TIMEZONES", "", flags, &Functions::DateTimeZones});
   add({"DATE_ROUND", ".,.,.", flags, &Functions::DateRound});
@@ -436,18 +434,21 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"PARSE_IDENTIFIER", ".", flags, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &Functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &Functions::DecodeRev});
-  
+
   // only function without a C++ implementation
-  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});  
-  
+  add({"V8", ".", Function::makeFlags(FF::Deterministic, FF::Cacheable), nullptr});
+
   // the following functions are not eligible to run on DB servers
   auto validationFlags = Function::makeFlags(FF::None);
   add({"SCHEMA_GET", ".", validationFlags, &Functions::SchemaGet});
   add({"SCHEMA_VALIDATE", ".,.", validationFlags, &Functions::SchemaValidate});
 
+  // Call AIR
+  add({"CALL_GREENSPUN", ".|+", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::CallGreenspun});
+
   // special flags:
   // deterministic, not cacheable. only on coordinator
-  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});  
+  add({"VERSION", "", Function::makeFlags(FF::Deterministic), &Functions::Version});
   add({"FAIL", "|.", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard), &Functions::Fail});  // not deterministic and not cacheable
   add({"NOOPT", ".", Function::makeFlags(FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
   add({"NOEVAL", ".", Function::makeFlags(FF::Deterministic, FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard, FF::NoEval), &Functions::Passthru});  // prevents all optimizations!
@@ -473,6 +474,22 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+
+  add({"MAKE_DISTRIBUTE_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeInput});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION", ".,.,.",
+       Function::makeFlags(FF::Internal), &Functions::MakeDistributeInputWithKeyCreation});
+  add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeGraphInput});
+  
+  // this is an internal function that is only here for testing. it cannot
+  // be invoked by end users, because refering to internal functions from user
+  // queries will pretend these functions do not exist.
+  add({"INTERNAL", "", Function::makeFlags(FF::Internal), &Functions::NotImplemented});
 }
 
 }  // namespace aql

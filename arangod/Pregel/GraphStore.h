@@ -29,6 +29,7 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/TypedBuffer.h"
+#include "Pregel/Reports.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -57,7 +58,7 @@ struct TypedBuffer;
 class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +90,7 @@ class GraphStore final {
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
 
+  ReportManager *_reports;
  private:
   void loadVertices(ShardID const& vertexShard,
                     std::vector<ShardID> const& edgeShards);
@@ -98,12 +100,12 @@ class GraphStore final {
                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
                  std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
                  uint64_t numVertices, traverser::EdgeCollectionInfo& info);
-  
+
   void storeVertices(std::vector<ShardID> const& globalShards,
                      RangeIterator<Vertex<V,E>>& it);
 
   uint64_t determineVertexIdRangeStart(uint64_t numVertices);
-  
+
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
   }
@@ -111,7 +113,7 @@ class GraphStore final {
   constexpr size_t edgeSegmentSize() const {
     return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
-  
+
  private:
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
@@ -129,7 +131,7 @@ class GraphStore final {
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-  
+
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;

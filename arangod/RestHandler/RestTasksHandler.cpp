@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -141,6 +142,20 @@ void RestTasksHandler::registerTask(bool byId) {
     return;
   }
 
+  bool allowTasks;
+  if (!server().isEnabled<V8DealerFeature>()) {
+    allowTasks = false;
+  } else {
+    V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();
+    allowTasks = v8Dealer.allowJavaScriptTasks();
+  }
+
+  if (!allowTasks) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "JavaScript tasks are disabled");
+    return;
+  }
+
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // job id
@@ -248,7 +263,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, &_vocbase, command, isSystem, res);
 
@@ -300,7 +315,7 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  int res = Task::unregisterTask(suffixes[0], true);
+  auto res = Task::unregisterTask(suffixes[0], true);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;

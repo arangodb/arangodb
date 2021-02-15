@@ -258,6 +258,27 @@ class StaticStrings {
   static std::string const GraphName;
   static std::string const GraphTraversalProfileLevel;
 
+  // Pregel Section Start
+
+  // Pregel Accumulator Attributes
+  static std::string const AccumulatorHot;
+  static std::string const AccumulatorCold;
+  static std::string const AccumulatorValue;
+  static std::string const AccumulatorSender;
+  static std::string const AccumulatorName;
+
+  // Pregel VertexComputation Attributes
+  static std::string const VertexComputationPregelId;
+  static std::string const VertexComputationVertexId;
+  static std::string const VertexComputationPhase;
+  static std::string const VertexComputationGlobalSuperstep;
+  static std::string const VertexComputationPhaseStep;
+  static std::string const VertexComputationMessage;
+  static std::string const VertexComputationVoteActive;
+  static std::string const VertexComputationVoteHalt;
+
+  // Pregel Section End
+
   // Query Strings
   static std::string const QuerySortASC;
   static std::string const QuerySortDESC;

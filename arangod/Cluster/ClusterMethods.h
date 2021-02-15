@@ -235,8 +235,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                           bool waitForCollector);
+ErrorCode flushWalOnAllDBServers(ClusterFeature&, bool waitForSync, bool waitForCollector);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
@@ -350,6 +349,11 @@ class ClusterMethods {
   ///        that should not be included in links
   ////////////////////////////////////////////////////////////////////////////////
   static bool includeHiddenCollectionInLink(std::string const& name);
+
+  /// @brief removes smart name suffixes from collection names.
+  /// @param possiblySmartName  collection name with possible smart suffixes.
+  /// Will be modified inplace 
+  static void realNameFromSmartName(std::string& possiblySmartName);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

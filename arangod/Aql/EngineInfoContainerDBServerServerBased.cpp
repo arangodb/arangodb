@@ -23,20 +23,11 @@
 
 #include "EngineInfoContainerDBServerServerBased.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/Ast.h"
-#include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Query.h"
-#include "Aql/QuerySnippet.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
-#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -47,6 +38,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 namespace {
 const double SETUP_TIMEOUT = 15.0;
@@ -390,7 +382,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
-    return TRI_ERROR_NO_ERROR;
+    return {};
   }
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
@@ -519,7 +511,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   }
 
   cleanupGuard.cancel();
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
@@ -528,11 +520,13 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
     QueryId& globalQueryId) const {
   if (!response.isObject() || !response.get("result").isObject()) {
     LOG_TOPIC("0c3f2", WARN, Logger::AQL) << "Received error information from "
-                                         << server << " : " << response.toJson();
-    if (response.hasKey(StaticStrings::ErrorNum) && response.hasKey(StaticStrings::ErrorMessage)) {
-      auto res = network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION);
-      res.appendErrorMessage(std::string(". Please check: ") + server);
-      return res;
+                                          << server << " : " << response.toJson();
+    if (response.hasKey(StaticStrings::ErrorNum) &&
+        response.hasKey(StaticStrings::ErrorMessage)) {
+      return network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
+          .withError([&](result::Error& err) {
+            err.appendErrorMessage(StringUtils::concatT(". Please check: ", server));
+          });
     }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
             "Unable to deploy query on all required "

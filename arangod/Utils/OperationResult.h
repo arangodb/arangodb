@@ -80,12 +80,12 @@ struct OperationResult final {
   // Result-like interface
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
-  int errorNumber() const noexcept { return result.errorNumber(); }
+  ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
   bool is(int errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }
   bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {

@@ -380,22 +380,22 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _sharding->setShardMap(map);
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
-int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
                              VPackStringRef(key.data(), key.size()));
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID,
-                                           bool& usesDefaultShardKeys,
-                                           VPackStringRef const& key) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID,
+                                                 bool& usesDefaultShardKeys,
+                                                 VPackStringRef const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);
@@ -649,6 +649,28 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
   if (status == TRI_VOC_COL_STATUS_LOADED) {
     increaseV8Version();
   }
+}
+
+void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
+  result.openObject();
+  result.add(VPackValue("indexes"));
+  getIndexesVPack(result, [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+    // we have to exclude the primary and edge index for dump / restore
+    switch (idx->type()) {
+      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+      case Index::TRI_IDX_TYPE_EDGE_INDEX:
+        return false;
+      default:
+        flags = Index::makeFlags(Index::Serialize::Basics);
+        return !idx->isHidden();
+    }
+  });
+  result.add("parameters", VPackValue(VPackValueType::Object));
+  toVelocyPackIgnore(
+     result, {"objectId", "path", "statusString", "indexes"},
+     LogicalDataSource::Serialization::Inventory);
+  result.close(); // parameters
+  result.close(); // collection
 }
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
