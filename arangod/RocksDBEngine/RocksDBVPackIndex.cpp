@@ -831,7 +831,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey const& key : elements) {
-      if (!options.ignoreUniqueConstraints) {
+      if (!options.checkUniqueConstraintsInPreflight) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
           res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);

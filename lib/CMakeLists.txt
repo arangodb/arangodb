@@ -181,7 +181,6 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
   Containers/MerkleTree.cpp
@@ -248,6 +247,10 @@ target_link_libraries(arango
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
+
+set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+
+target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
 
 add_dependencies(arango snappy-static)
 

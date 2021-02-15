@@ -110,7 +110,10 @@ void Exception::appendLocation() noexcept try {
 
 /// @brief construct an error message from a template string
 std::string Exception::FillExceptionString(ErrorCode code, ...) {
-  char const* format = TRI_errno_string(code);
+  // Note that we rely upon the string being null-terminated.
+  // The string_view doesn't guarantee that, but we know that all error messages
+  // are null-terminated.
+  char const* format = TRI_errno_string(code).data();
   TRI_ASSERT(format != nullptr);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
