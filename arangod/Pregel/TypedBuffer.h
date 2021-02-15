@@ -28,6 +28,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/PageSize.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
@@ -182,7 +183,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
     
     _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, std::string("pregel cannot create mmap file '") + _filename + "': " + TRI_last_error());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_SYS_ERROR,
+          basics::StringUtils::concatT("pregel cannot create mmap file '",
+                                       _filename, "': ", TRI_last_error()));
     }
 
     // memory map the data
@@ -192,8 +196,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // try populating the mapping already
     flags |= MAP_POPULATE;
 #endif
-    int res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
-                         &_mmHandle, 0, &data);
+    auto res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
+                          &_mmHandle, 0, &data);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);
@@ -210,8 +214,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
           << "The database directory might reside on a shared folder "
              "(VirtualBox, VMWare) or an NFS-mounted volume which does not "
              "allow memory mapped files.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot memory map file '") +
-                                     _filename + "': '" + TRI_errno_string(res) + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          basics::StringUtils::concatT("cannot memory map file '", _filename, "': '",
+                               TRI_errno_string(res), "'"));
     }
 
     this->_begin = static_cast<T*>(data);

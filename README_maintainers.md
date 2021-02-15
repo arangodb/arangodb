@@ -261,7 +261,7 @@ installed, symbol names and offsets cannot be shown for the stack frames.
 
 ### Memory profiling
 
-Starting in 3.6 we have support for heap profiling when using jemalloc.
+Starting in 3.6 we have support for heap profiling when using jemalloc on Linux.
 Here is how it is used:
 
 Use this `cmake` option in addition to the normal options:
@@ -309,9 +309,23 @@ The tool isn't perfect, but can often point towards the place which
 produces for example a memory leak or a lot of memory usage.
 
 This is known to work under Linux and the `jeprof` tool comes with the
-`libjemalloc-dev` package on Ubuntu. On Mac or Windows your mileage may
-vary... In other words: Did not even try it out.
+`libjemalloc-dev` package on Ubuntu.
 
+Using it with the integration tests is possible; snapshots will be taken before
+the first and after each subsequent testcase executed.
+
+The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
+specified amount of time:
+
+    export SLEEP_FOR=$((5*60))
+    ./scripts/unittest shell_client \
+       --memprof true \
+       --test shell-sleep-grey.js \
+       --oneTestTimeout ((6*60)) \
+       --cleanup false
+    ...
+    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
+    ...
 
 ### Core Dumps
 

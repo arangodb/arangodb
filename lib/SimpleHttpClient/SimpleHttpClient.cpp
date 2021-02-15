@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -953,7 +953,7 @@ void SimpleHttpClient::processChunkedBody() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result,
-                                                  int* errorCode) {
+                                                  ErrorCode* errorCode) {
   if (errorCode != nullptr) {
     *errorCode = TRI_ERROR_NO_ERROR;
   }
@@ -972,7 +972,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 
       if (msg.isString() && msg.getStringLength() > 0 && errorNum > 0) {
         if (errorCode != nullptr) {
-          *errorCode = errorNum;
+          *errorCode = ErrorCode{errorNum};
         }
         details = ": ArangoError " + std::to_string(errorNum) + ": " + msg.copyString();
       }
@@ -989,7 +989,7 @@ std::string SimpleHttpClient::getHttpErrorMessage(SimpleHttpResult const* result
 /// @brief fetch the version from the server
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string SimpleHttpClient::getServerVersion(int* errorCode) {
+std::string SimpleHttpClient::getServerVersion(ErrorCode* errorCode) {
   if (errorCode != nullptr) {
     *errorCode = TRI_ERROR_INTERNAL;
   }

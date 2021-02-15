@@ -58,7 +58,7 @@ std::string fixEndpointProto(std::string const& endpoint) {
   return endpoint;
 }
 
-void writeError(int code, arangodb::GeneralResponse* response) {
+void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
   response->setResponseCode(arangodb::GeneralResponse::responseCode(code));
 
   VPackBuffer<uint8_t> buffer;

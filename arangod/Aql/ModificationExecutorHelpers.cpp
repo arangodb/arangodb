@@ -170,7 +170,7 @@ void ModificationExecutorHelpers::throwOperationResultException(
   // Find the first error with a message and throw that
   // This mirrors previous behaviour and might not be entirely ideal.
   for (auto const& p : errorCounter) {
-    auto const errorCode = p.first;
+    auto const errorCode = ErrorCode{p.first};
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
       for (auto doc : VPackArrayIterator(operationResult.slice())) {

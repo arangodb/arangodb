@@ -73,7 +73,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);

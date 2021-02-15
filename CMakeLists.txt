@@ -703,28 +703,13 @@ set(ARCHITECTURE_OPTIMIZATIONS "\"${Vc_ARCHITECTURE_FLAGS}\"")
 ## BACKTRACE
 ################################################################################
 
-option(USE_BACKTRACE
-  "whether we should try to generate c-level stacktraces"
-  OFF
-)
-
-# iresearch uses backtrace anyway, so we need to find and link libexecinfo
+# iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
 if (NOT MSVC)
   find_package(Backtrace)
 endif()
 
-if (USE_BACKTRACE)
-  if (MSVC)
-    set(BT_LIBS "Dbghelp" CACHE PATH "Debug Helper libraries")
-  else ()
-    set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
-  endif ()
-
-  add_definitions("-DARANGODB_ENABLE_BACKTRACE=1")
-else ()
-  set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
-endif ()
+set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
 
 ################################################################################
 ## ASSEMBLER OPTIMIZATIONS
@@ -1260,7 +1245,7 @@ if (USE_MAINTAINER_MODE)
 
   set(ERROR_FILES
     lib/Basics/voc-errors.h
-    lib/Basics/voc-errors.cpp
+    lib/Basics/error-registry.h
     js/common/bootstrap/errors.js
   )
 
@@ -1273,7 +1258,7 @@ if (USE_MAINTAINER_MODE)
       COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
       COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
       COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
-      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
+      DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT} ./utils/generateErrorfile.py
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building errors files ${m}"
       VERBATIM

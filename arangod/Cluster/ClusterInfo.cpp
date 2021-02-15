@@ -83,7 +83,83 @@
 
 #include <chrono>
 
+namespace arangodb {
+/// @brief internal helper struct for counting the number of shards etc.
+struct ShardStatistics {
+  uint64_t databases{0};
+  uint64_t collections{0};
+  uint64_t shards{0};
+  uint64_t leaders{0};
+  uint64_t realLeaders{0};
+  uint64_t followers{0};
+  uint64_t servers{0};
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const {
+    builder.openObject();
+    builder.add("databases", VPackValue(databases));
+    builder.add("collections", VPackValue(collections));
+    builder.add("shards", VPackValue(shards));
+    builder.add("leaders", VPackValue(leaders));
+    builder.add("realLeaders", VPackValue(realLeaders));
+    builder.add("followers", VPackValue(followers));
+    builder.add("servers", VPackValue(servers));
+    builder.close();
+  }
+};
+
+} // namespace
+
 namespace {
+void addToShardStatistics(arangodb::ShardStatistics& stats, 
+                          std::unordered_set<std::string>& servers, 
+                          arangodb::velocypack::Slice databaseSlice,
+                          std::string const& restrictServer) {
+  bool foundCollection = false;
+
+  for (auto it : VPackObjectIterator(databaseSlice)) {
+    VPackSlice collection = it.value;
+
+    bool hasDistributeShardsLike = false;
+    if (VPackSlice dsl = collection.get(arangodb::StaticStrings::DistributeShardsLike); dsl.isString()) {
+      hasDistributeShardsLike = dsl.getStringLength() > 0;
+    }
+
+    bool foundShard = false;
+    VPackSlice shards = collection.get("shards");
+    for (auto pair : VPackObjectIterator(shards)) {
+      int i = 0;
+      for (auto const& serv : VPackArrayIterator(pair.value)) {
+        if (!restrictServer.empty() && serv.stringRef() != restrictServer) {
+          // different server
+          i++;
+          continue;
+        }
+
+        foundShard = true;
+        servers.emplace(serv.copyString());
+
+        ++stats.shards;
+        if (i++ == 0) {
+          ++stats.leaders;
+          if (!hasDistributeShardsLike) {
+            ++stats.realLeaders;
+          }
+        } else {
+          ++stats.followers;
+        }
+      }
+    }
+    
+    if (foundShard) {
+      foundCollection = true;
+      ++stats.collections;
+    }
+  }
+
+  if (foundCollection) {
+    ++stats.databases;
+  }
+}
 
 static inline arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{"Plan/Version",
@@ -141,6 +217,8 @@ static inline arangodb::AgencyOperation CreateCollectionSuccess(
 using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::methods;
+
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 // Read the collection from Plan; this is an object to have a valid VPack
@@ -1941,6 +2019,95 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
   return QueryAnalyzerRevisions(currentDbRevision, systemDbRevision);
 }
 
+/// @brief get shard statistics for the specified database
+Result ClusterInfo::getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                                  std::string const& restrictServer,
+                                                  VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections/" + dbName)});
+
+  velocypack::Slice databaseSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections", dbName}));
+
+  if (!databaseSlice.isObject()) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+
+  std::unordered_set<std::string> servers;
+  ShardStatistics stats;
+  addToShardStatistics(stats, servers, databaseSlice, restrictServer);
+  stats.servers = servers.size();
+
+  stats.toVelocyPack(builder);
+  return {};
+}
+
+/// @brief get shard statistics for all databases, totals,
+/// optionally restricted to the specified server
+Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
+                                             VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections"}));
+  
+  if (!databasesSlice.isObject()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid Plan structure");
+  }
+
+  std::unordered_set<std::string> servers;
+  ShardStatistics stats;
+  
+  for (auto db : VPackObjectIterator(databasesSlice)) {
+    addToShardStatistics(stats, servers, db.value, restrictServer);
+  }
+  stats.servers = servers.size();
+    
+  stats.toVelocyPack(builder);
+  return {};
+}
+
+/// @brief get shard statistics for all databases, separate for each database,
+/// optionally restricted to the specified server
+Result ClusterInfo::getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                                     VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections"}));
+  
+  if (!databasesSlice.isObject()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid Plan structure");
+  }
+
+  std::unordered_set<std::string> servers;
+ 
+  builder.openObject();
+  for (auto db : VPackObjectIterator(databasesSlice)) {
+    servers.clear();
+    ShardStatistics stats;
+    addToShardStatistics(stats, servers, db.value, restrictServer);
+    stats.servers = servers.size();
+
+    builder.add(VPackValue(db.key.copyString()));
+    stats.toVelocyPack(builder);
+  }
+  builder.close();
+    
+  return {};
+}
+
 // Build the VPackSlice that contains the `isBuilding` entry
 void ClusterInfo::buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                        VPackBuilder& builder) {
@@ -1967,7 +2134,8 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   CreateDatabaseInfo const& database, AgencyWriteTransaction const& trx) {
 
   auto DBServers = std::make_shared<std::vector<ServerID>>(getCurrentDBServers());
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -2059,13 +2227,13 @@ Result ClusterInfo::waitForDatabaseInCurrent(
         count = 0;
       }
 
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      auto tmpRes = dbServerResult->load(std::memory_order_acquire);
 
       // An error was detected on one of the DBServers
-      if (tmpRes >= 0) {
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb before accessing errMsg
 
-        return Result(tmpRes, *errMsg);
+        return Result(*tmpRes, *errMsg);
       }
 
       {
@@ -2273,7 +2441,8 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
 
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -2328,7 +2497,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   // Now wait stuff in Current to disappear and thus be complete:
   {
     while (true) {
-      if (dbServerResult->load(std::memory_order_acquire) >= 0) {
+      if (dbServerResult->load(std::memory_order_acquire).has_value()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         AgencyOperation delCurrentCollection(where, AgencySimpleOperationType::DELETE_OP);
         AgencyOperation incrementCurrentVersion(
@@ -2452,7 +2621,8 @@ Result ClusterInfo::createCollectionsCoordinator(
   // closure and the main thread executing this function. Note that it can
   // happen that the callback is called only after we return from this
   // function!
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   auto nrDone = std::make_shared<std::atomic<size_t>>(0);
   auto errMsg = std::make_shared<std::string>();
   auto cacheMutex = std::make_shared<Mutex>();
@@ -2840,7 +3010,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       << "createCollectionCoordinator, Plan changed, waiting for success...";
 
   do {
-    int tmpRes = dbServerResult->load(std::memory_order_acquire);
+    auto tmpRes = dbServerResult->load(std::memory_order_acquire);
     if (TRI_microtime() > endTime) {
       for (auto const& info : infos) {
         LOG_TOPIC("f6b57", ERR, Logger::CLUSTER)
@@ -2852,7 +3022,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       // Get a full agency dump for debugging
       logAgencyDump();
 
-      if (tmpRes <= TRI_ERROR_NO_ERROR) {
+      if (!tmpRes.has_value() || *tmpRes == TRI_ERROR_NO_ERROR) {
         tmpRes = TRI_ERROR_CLUSTER_TIMEOUT;
       }
     }
@@ -2920,7 +3090,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       return res.asResult();
 
     }
-    if (tmpRes > TRI_ERROR_NO_ERROR) {
+    if (tmpRes.has_value() && tmpRes != TRI_ERROR_NO_ERROR) {
       // We do not need to lock all condition variables
       // we are safe by using cacheMutex
       cbGuard.fire();
@@ -2932,15 +3102,14 @@ Result ClusterInfo::createCollectionsCoordinator(
         if (info.state == ClusterCollectionCreationState::FAILED ||
             (tmpRes == TRI_ERROR_CLUSTER_TIMEOUT &&
              info.state == ClusterCollectionCreationState::INIT)) {
-          events::CreateCollection(databaseName, info.name, tmpRes);
+          events::CreateCollection(databaseName, info.name, *tmpRes);
         }
       }
       LOG_TOPIC("98765", DEBUG, Logger::CLUSTER)
           << "Failed createCollectionsCoordinator for " << infos.size()
           << " collections in database " << databaseName << " isNewDatabase: " << isNewDatabase
-          << " first collection name: " << infos[0].name
-          << " result: " << tmpRes;
-      return {tmpRes, *errMsg};
+          << " first collection name: " << infos[0].name << " result: " << *tmpRes;
+      return {*tmpRes, *errMsg};
     }
 
     // If we get here we have not tried anything.
@@ -3043,7 +3212,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   double const realTimeout = getTimeout(timeout);
   double const endTime = TRI_microtime() + realTimeout;
   double const interval = getPollInterval();
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
     if (result.isNone() || result.isEmptyObject()) {
       dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
@@ -3145,15 +3315,16 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   {
     while (true) {
-      if (*dbServerResult >= 0) {
+      auto tmpRes = dbServerResult->load();
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb before calling ac.removeValues(...)
         // ...remove the entire directory for the collection
         AgencyOperation delCurrentCollection("Current/Collections/" + dbName + "/" + collectionID,
                                              AgencySimpleOperationType::DELETE_OP);
         AgencyWriteTransaction cx({delCurrentCollection});
         res = ac.sendTransactionWithFailover(cx);
-        events::DropCollection(dbName, collectionID, *dbServerResult);
-        return Result(*dbServerResult);
+        events::DropCollection(dbName, collectionID, *tmpRes);
+        return Result(*tmpRes);
       }
 
       if (TRI_microtime() > endTime) {
@@ -3809,7 +3980,7 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
       // Note that this function sets the errorMsg unless it is precondition
       // failed, in which case we retry, if this times out, we need to set
       // it ourselves, otherwise all is done!
-      if (TRI_ERROR_HTTP_PRECONDITION_FAILED == res.errorNumber()) {
+      if (res.is(TRI_ERROR_HTTP_PRECONDITION_FAILED)) {
         auto diff = std::chrono::steady_clock::now() - start;
 
         if (diff < std::chrono::seconds(120)) {
@@ -3827,9 +3998,8 @@ Result ClusterInfo::ensureIndexCoordinator(LogicalCollection const& collection,
       break;
     } while (true);
   } catch (basics::Exception const& ex) {
-    res = Result(   // result
-        ex.code(),  // code
-        TRI_errno_string(ex.code()) + std::string(", exception: ") + ex.what());
+    res = Result(ex.code(), StringUtils::concatT(TRI_errno_string(ex.code()),
+                                                 ", exception: ", ex.what()));
   } catch (...) {
     res = Result(TRI_ERROR_INTERNAL);
   }
@@ -3914,8 +4084,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   }
 
   // will contain the error number and message
-  std::shared_ptr<std::atomic<int>> dbServerResult =
-      std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::shared_ptr<std::string> errMsg = std::make_shared<std::string>();
 
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& result) {
@@ -3948,8 +4118,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            int errNum = arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
+            auto errNum = ErrorCode{arangodb::basics::VelocyPackHelper::getNumericValue<int>(
+                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED)};
             dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
@@ -4064,9 +4234,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 
   {
     while (!_server.isStopping()) {
-      int tmpRes = dbServerResult->load(std::memory_order_acquire);
+      auto tmpRes = dbServerResult->load(std::memory_order_acquire);
 
-      if (tmpRes < 0) {
+      if (!tmpRes.has_value()) {
         // index has not shown up in Current yet,  follow up check to
         // ensure it is still in plan (not dropped between iterations)
         auto& cache = _server.getFeature<ClusterFeature>().agencyCache();
@@ -4091,7 +4261,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         }
       }
 
-      if (tmpRes == 0) {
+      if (tmpRes.has_value() && tmpRes == TRI_ERROR_NO_ERROR) {
         // Finally, in case all is good, remove the `isBuilding` flag
         // check that the index has appeared. Note that we have to have
         // a precondition since the collection could have been deleted
@@ -4146,10 +4316,10 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
         }
         CONDITION_LOCKER(locker, agencyCallback->_cv);
 
-        return Result(tmpRes, *errMsg);
+        return Result(*tmpRes, *errMsg);
       }
 
-      if (tmpRes > 0 || TRI_microtime() > endTime) {
+      if ((tmpRes.has_value() && *tmpRes != TRI_ERROR_NO_ERROR) || TRI_microtime() > endTime) {
         // At this time the index creation has failed and we want to
         // roll back the plan entry, provided the collection still exists:
         AgencyWriteTransaction trx(
@@ -4173,9 +4343,9 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
               }
             }
 
-            if (tmpRes < 0) {                 // timeout
-              return Result(                  // result
-                  TRI_ERROR_CLUSTER_TIMEOUT,  // code
+            if (!tmpRes.has_value()) {  // timeout
+              return Result(
+                  TRI_ERROR_CLUSTER_TIMEOUT,
                   "Index could not be created within timeout, giving up and "
                   "rolling back index creation.");
             }
@@ -4183,7 +4353,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             // The mutex in the condition variable protects the access to
             // *errMsg:
             CONDITION_LOCKER(locker, agencyCallback->_cv);
-            return Result(tmpRes, *errMsg);
+            return Result(*tmpRes, *errMsg);
           }
 
           if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -4196,16 +4366,16 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
                 << "Couldn't roll back index creation of " << idString
                 << ". Database: " << databaseName << ", Collection " << collectionID;
 
-            if (tmpRes < 0) {                 // timeout
-              return Result(                  // result
-                  TRI_ERROR_CLUSTER_TIMEOUT,  // code
+            if (!tmpRes.has_value()) {  // timeout
+              return Result(
+                  TRI_ERROR_CLUSTER_TIMEOUT,
                   "Timed out while trying to roll back index creation failure");
             }
 
             // The mutex in the condition variable protects the access to
             // *errMsg:
             CONDITION_LOCKER(locker, agencyCallback->_cv);
-            return Result(tmpRes, *errMsg);
+            return Result(*tmpRes, *errMsg);
           }
 
           if (sleepFor <= 2500) {
@@ -4238,18 +4408,53 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drop an index in coordinator.
 ////////////////////////////////////////////////////////////////////////////////
-Result ClusterInfo::dropIndexCoordinator(  // drop index
-    std::string const& databaseName,       // database name
+Result ClusterInfo::dropIndexCoordinator( 
+    std::string const& databaseName,      
     std::string const& collectionID, IndexId iid,
-    double timeout  // request timeout
-) {
+    double timeout) {
+  double const endTime = TRI_microtime() + getTimeout(timeout);
+  std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+
+  Result res(TRI_ERROR_CLUSTER_TIMEOUT);
+  do {
+    res = dropIndexCoordinatorInner(databaseName, collectionID, iid, endTime);
+
+    if (res.ok()) {
+      // success!
+      break;
+    }
+
+    // check if we got a precondition failed error
+    if (!res.is(TRI_ERROR_HTTP_PRECONDITION_FAILED)) {
+      // no, different error. report it!
+      break;
+    }
+      
+    if (_server.isStopping()) {
+      // do not audit-log the error
+      return Result(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    // precondition failed
+
+    // apply a random wait time
+    uint32_t wt = RandomGenerator::interval(static_cast<uint32_t>(1000));
+    std::this_thread::sleep_for(std::chrono::steady_clock::duration(wt));
+  } while (TRI_microtime() < endTime);
+      
+  events::DropIndex(databaseName, collectionID, idString, res.errorNumber());
+  return res;
+}
+
+Result ClusterInfo::dropIndexCoordinatorInner(
+    std::string const& databaseName,      
+    std::string const& collectionID, IndexId iid,
+    double endTime) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   AgencyComm ac(_server);
 
-  double const realTimeout = getTimeout(timeout);
-  double const endTime = TRI_microtime() + realTimeout;
-  double const interval = getPollInterval();
   std::string const idString = arangodb::basics::StringUtils::itoa(iid.id());
+  double const interval = getPollInterval();
 
   std::string const planCollKey = "Plan/Collections/" + databaseName + "/" + collectionID;
   std::string const planIndexesKey = planCollKey + "/indexes";
@@ -4260,16 +4465,11 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   auto previous = acb->slice();
 
   if (!previous.isArray() || previous.length() == 0) {
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
-
     return Result(TRI_ERROR_CLUSTER_READING_PLAN_AGENCY);
   }
   velocypack::Slice collection = previous[0].get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Plan", "Collections", databaseName, collectionID}));
   if (!collection.isObject()) {
-    events::DropIndex(databaseName, collectionID, idString,
-                      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
@@ -4283,7 +4483,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     LOG_TOPIC("63178", DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID << "/"
         << iid.id();
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
@@ -4301,7 +4500,6 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
       Index::IndexType type = Index::type(typeSlice.copyString());
 
       if (type == Index::TRI_IDX_TYPE_PRIMARY_INDEX || type == Index::TRI_IDX_TYPE_EDGE_INDEX) {
-        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_FORBIDDEN);
         return Result(TRI_ERROR_FORBIDDEN);
       }
 
@@ -4315,14 +4513,13 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     LOG_TOPIC("95fe6", DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID << "/"
         << iid.id();
-    events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-
     return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
   std::string where = "Current/Collections/" + databaseName + "/" + collectionID;
 
-  auto dbServerResult = std::make_shared<std::atomic<int>>(-1);
+  auto dbServerResult =
+      std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   std::function<bool(VPackSlice const& result)> dbServerChanged = [=](VPackSlice const& current) {
     if (numberOfShards == 0) {
       return false;
@@ -4386,8 +4583,10 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
   AgencyCommResult result = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!result.successful()) {
-    events::DropIndex(databaseName, collectionID, idString,
-                      TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
+    if (result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      // Retry loop is outside!
+      return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
+    }
 
     return Result(                                       // result
         TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // code
@@ -4409,16 +4608,15 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
 
   {
     while (true) {
-      if (*dbServerResult >= 0) {
+      auto const tmpRes = dbServerResult->load();
+      if (tmpRes.has_value()) {
         cbGuard.fire();  // unregister cb
-        events::DropIndex(databaseName, collectionID, idString, *dbServerResult);
+        events::DropIndex(databaseName, collectionID, idString, *tmpRes);
 
-        return Result(*dbServerResult);
+        return Result(*tmpRes);
       }
 
       if (TRI_microtime() > endTime) {
-        events::DropIndex(databaseName, collectionID, idString, TRI_ERROR_CLUSTER_TIMEOUT);
-
         return Result(TRI_ERROR_CLUSTER_TIMEOUT);
       }
 
@@ -5149,7 +5347,7 @@ ServerID ClusterInfo::getCoordinatorByShortID(ServerShortID const& shortId) {
 
   return result;
 }
-
+  
 //////////////////////////////////////////////////////////////////////////////
 /// @brief invalidate current coordinators
 //////////////////////////////////////////////////////////////////////////////

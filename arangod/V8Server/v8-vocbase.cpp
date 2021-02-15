@@ -217,24 +217,6 @@ static void JS_NormalizeString(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enables or disables native backtrace
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EnableNativeBacktraces(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("ENABLE_NATIVE_BACKTRACES(<value>)");
-  }
-
-  arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(isolate, args[0]));
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
 static void JS_Compact(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -585,11 +567,12 @@ static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // only register the error if we have a query...
     // note: we may not have a query if the AQL functions are called without
     // a query, e.g. during tests
-    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
+    auto code = ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, args[0]))};
     std::string const message = TRI_ObjectToString(isolate, args[1]);
 
-    auto expressionContext = static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
-    expressionContext->registerWarning( code, message.c_str());
+    auto expressionContext =
+        static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
+    expressionContext->registerWarning(code, message.c_str());
   } else {
     TRI_V8_THROW_TYPE_ERROR("must only be invoked from AQL user defined functions");
   }
@@ -2152,11 +2135,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRANSACTIONS"),
                                JS_Transactions, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ENABLE_NATIVE_BACKTRACES"),
-                               JS_EnableNativeBacktraces, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,

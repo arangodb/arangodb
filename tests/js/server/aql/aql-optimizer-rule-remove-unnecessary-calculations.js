@@ -42,7 +42,7 @@ function optimizerRuleTestSuite () {
 
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] }, inspectSimplePlans: true };
+  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] } };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2" ] } };
 
   return {

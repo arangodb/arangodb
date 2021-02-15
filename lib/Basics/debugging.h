@@ -95,15 +95,6 @@ inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
 #endif
 
-/// @brief appends a backtrace to the string provided
-void TRI_GetBacktrace(std::string& btstr);
-
-/// @brief prints a backtrace on stderr
-void TRI_PrintBacktrace();
-
-/// @brief logs a backtrace in log level warning
-void TRI_LogBacktrace();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,17 +149,6 @@ template <typename T>
 struct is_associative
     : std::conditional<container_traits::is_container<T>::value && container_traits::is_associative<T>::value,
                        std::true_type, std::false_type>::type {};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief no std::enable_if_t in c++11
-////////////////////////////////////////////////////////////////////////////////
-
-#if __cplusplus <= 201103L
-namespace std {
-template <bool B, class T = void>
-using enable_if_t = typename std::enable_if<B, T>::type;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward declaration for pair output below
