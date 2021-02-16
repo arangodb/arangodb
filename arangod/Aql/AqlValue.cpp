@@ -848,7 +848,9 @@ double AqlValue::toDouble(bool& failed) const {
     case VPACK_64BIT_INLINE_UINT:
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
     case VPACK_64BIT_INLINE_DOUBLE: {
-     basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+     DoubleEndianessConverter tmp;
+     tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+     return tmp.dbl;
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -1427,7 +1429,7 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
       arangodb::basics::hostToLittle(tmp.uint);
     valueType = AqlValueType::VPACK_64BIT_INLINE_DOUBLE;
   }
-  setType(AqlValueType::VPACK_INLINE);
+  setType(valueType);
 }
 
 AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
