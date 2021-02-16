@@ -47,7 +47,7 @@ namespace arangodb {
 
 struct FileDescriptors {
   static constexpr rlim_t requiredMinimum = 1024;
-  static constexpr rlim_t recommendedMinimum = 65536;
+  static constexpr rlim_t recommendedMinimum = 8192;
 
   rlim_t hard;
   rlim_t soft;
