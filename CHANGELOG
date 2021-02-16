@@ -1,4 +1,4 @@
-v3.7.8 (XXXX-XX-XX)
+v3.7.8 (2020-02-16)
 -------------------
 
 * Fixed ES-784 regression related to encryption cipher propagation to
