@@ -27,6 +27,7 @@
 
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
+#include "Basics/Endian.h"
 
 #include <velocypack/velocypack-common.h>
 #include <vector>
@@ -168,9 +169,10 @@ struct AqlValue final {
   /// PD - pointer data
   /// MO - memory origin
   /// ML - managed slice length
+  /// ID - isDocument flag
   /// XX - unused
   /// | 0  | 1  | 2  | 3  | 4  | 5  | 6  | 7  | 8  | 9  | 10 | 11 | 12 | 13 | 14 | 15 |   Bytes
-  /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_SLICE_POINTER
+  /// | AT | ID | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_SLICE_POINTER
   /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   RANGE
   /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_INLINE
@@ -180,11 +182,7 @@ struct AqlValue final {
 
   union {
     uint8_t aqlValueType;
-    //uint64_t words[2];
-    uint8_t internal[16];
-    //uint8_t const* pointer;
-    //uint8_t* slice;
-    //void* data;
+    uint64_t words[2]; // keep this for fast zeroing AqlValue
 
     // RANGE
     struct {
@@ -197,16 +195,34 @@ struct AqlValue final {
 
     // VPACK_MANAGED_SLICE
     struct {
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+
+      uint64_t getOrigin() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0x000000000000ff00ULL) >> 8;
+        } else {
+          return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+
       uint64_t lengthOrigin; // First byte is AqlValue type. Second -  Memory origin. Other 6 bytes  - length
-      uint64_t managedPointer;
+      uint8_t* managedPointer;
     } managedSliceMeta;
     static_assert(sizeof(managedSliceMeta) == 16, "VPACK_MANAGED_SLICE layout is not 16 bytes!");
-    static_assert(alignof(decltype(managedSliceMeta)::managedPointer) == alignof(uint64_t const*),
+    static_assert(alignof(decltype(managedSliceMeta)::managedPointer) == alignof(uint8_t*),
       "Invalid alignment for managed pointer");
 
     // VPACK_SLICE_POINTER
     struct {
-      uint8_t padding[8];
+      uint8_t padding;
+      uint8_t isManagedDoc;
+      uint8_t padding2[6];
       uint8_t const* pointer; 
     } pointerMeta;
     static_assert(sizeof(pointerMeta) == 16, "VPACK_SLICE_POINTER layout is not 16 bytes!");
@@ -242,6 +258,7 @@ struct AqlValue final {
       "Invalid alignment for unpacked int val");
     static_assert(alignof(decltype(decltype(decltype(shortNumberMeta)::data)::uint48)::val) == alignof(uint64_t),
       "Invalid alignment for unpacked uint val");
+    
     // VPACK_64BIT_INLINE_INT
     // VPACK_64BIT_INLINE_UINT
     // VPACK_64BIT_INLINE_DOUBLE
@@ -468,7 +485,9 @@ struct AqlValue final {
 
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure
-  AqlValueType type() const noexcept;
+  AqlValueType type() const noexcept {
+    return static_cast<AqlValueType>(_data.aqlValueType);
+  }
 
  private:
   /// @brief initializes value from a slice

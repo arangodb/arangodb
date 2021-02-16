@@ -83,8 +83,11 @@ static inline uint8_t intLength(int64_t value) noexcept {
 uint64_t AqlValue::hash(uint64_t seed) const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -93,7 +96,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       return slice(t).normalizedHash(seed);
     }
     case RANGE: {
-      uint64_t const n = _data.range->size();
+      uint64_t const n = _data.rangeMeta.range->size();
       
       // simon: copied from VPackSlice::normalizedHash()
       // normalize arrays by hashing array length and iterating
@@ -103,7 +106,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 
       for (uint64_t i = 0; i < n; ++i) {
         // upcast integer values to double
-        double v = static_cast<double>(_data.range->at(i));
+        double v = static_cast<double>(_data.rangeMeta.range->at(i));
         value ^= VELOCYPACK_HASH(&v, sizeof(v), value);
       }
       
@@ -117,18 +120,21 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isNone();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNone();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isNone();
+      return VPackSlice(_data.pointerMeta.pointer).isNone();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isNone();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isNone();
     }
     case RANGE: {
       break;
@@ -141,21 +147,24 @@ bool AqlValue::isNone() const noexcept {
 /// @brief whether or not the value is a null value
 bool AqlValue::isNull(bool emptyIsNull) const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      VPackSlice s(&_data.internal[0]);
+      VPackSlice s(_data.inlineSliceMeta.slice);
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      VPackSlice s(_data.pointer);
+      VPackSlice s(_data.pointerMeta.pointer);
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_MANAGED_SLICE: {
-      VPackSlice s(_data.slice);
+      VPackSlice s(_data.managedSliceMeta.managedPointer);
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
@@ -170,18 +179,21 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
 /// @brief whether or not the value is a boolean value
 bool AqlValue::isBoolean() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isBoolean();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isBoolean();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isBoolean();
+      return VPackSlice(_data.pointerMeta.pointer).isBoolean();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isBoolean();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isBoolean();
     }
     case RANGE: {
       break;
@@ -194,18 +206,21 @@ bool AqlValue::isBoolean() const noexcept {
 /// @brief whether or not the value is a number
 bool AqlValue::isNumber() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return true;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isNumber();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNumber();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isNumber();
+      return VPackSlice(_data.pointerMeta.pointer).isNumber();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isNumber();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isNumber();
     }
     case RANGE: {
       break;
@@ -218,18 +233,21 @@ bool AqlValue::isNumber() const noexcept {
 /// @brief whether or not the value is a string
 bool AqlValue::isString() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isString();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isString();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isString();
+      return VPackSlice(_data.pointerMeta.pointer).isString();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isString();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isString();
     }
     case RANGE: {
       break;
@@ -242,18 +260,21 @@ bool AqlValue::isString() const noexcept {
 /// @brief whether or not the value is an object
 bool AqlValue::isObject() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isObject();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isObject();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isObject();
+      return VPackSlice(_data.pointerMeta.pointer).isObject();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isObject();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isObject();
     }
     case RANGE: {
       break;
@@ -267,18 +288,21 @@ bool AqlValue::isObject() const noexcept {
 /// as arrays, too!)
 bool AqlValue::isArray() const noexcept {
   switch (type()) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isArray();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isArray();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isArray();
+      return VPackSlice(_data.pointerMeta.pointer).isArray();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isArray();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isArray();
     }
     case RANGE: {
       break;
@@ -311,9 +335,13 @@ char const* AqlValue::getTypeString() const noexcept {
 size_t AqlValue::length() const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      // FIXME: values above will immediately throw in Slice::length. Maybe throw directly or return 1?
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return static_cast<size_t>(slice(t).length());
@@ -335,11 +363,6 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isArray()) {
@@ -357,7 +380,6 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -369,11 +391,16 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
+        return AqlValue(AqlValueHintInt(_data.rangeMeta.range->at(static_cast<size_t>(position))));
       }
-      // intentionally falls through
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -389,10 +416,6 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
     [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
@@ -410,7 +433,6 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -421,11 +443,17 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
+        return AqlValue(AqlValueHintInt(_data.rangeMeta.range->at(static_cast<size_t>(position))));
       }
       // intentionally falls through
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -442,10 +470,6 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
     [[fallthrough]];
     case VPACK_INLINE:
     [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isObject()) {
@@ -459,13 +483,18 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -482,10 +511,6 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
     [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
@@ -505,13 +530,18 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -528,10 +558,6 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
     [[fallthrough]];
     case VPACK_INLINE:
     [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isObject()) {
@@ -545,13 +571,18 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -568,10 +599,6 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
     [[fallthrough]];
     case VPACK_INLINE:
     [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isObject()) {
@@ -585,13 +612,18 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -608,10 +640,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
     [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
@@ -631,13 +659,18 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -656,10 +689,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
     [[fallthrough]];
     case VPACK_INLINE:
     [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isObject()) {
@@ -678,13 +707,18 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -706,10 +740,6 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
     [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
@@ -749,13 +779,18 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(s.begin());
         }
       }
-      // intentionally falls through
       break;
     }
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -766,9 +801,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 bool AqlValue::hasKey(std::string const& name) const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_INT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -795,10 +832,16 @@ double AqlValue::toDouble(bool& failed) const {
   failed = false;
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_UINT:
-      return static_cast<double>(_data.unpacked._number.uintVal);
-    case VPACK_32BIT_INLINE_INT: // int could be a sorted-float so direct cast will not work
-    [[fallthrough]];
+    case VPACK_48BIT_INLINE_INT:
+      return static_cast<double>(_data.shortNumberMeta.data.int48.val);
+    case VPACK_48BIT_INLINE_UINT:
+      return static_cast<double>(_data.shortNumberMeta.data.uint48.val);
+    case VPACK_64BIT_INLINE_INT:
+      return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val));
+    case VPACK_64BIT_INLINE_UINT:
+      return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
+    case VPACK_64BIT_INLINE_DOUBLE:
+      return basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val);
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -846,10 +889,16 @@ double AqlValue::toDouble(bool& failed) const {
 int64_t AqlValue::toInt64() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_UINT:
-      return static_cast<uint64_t>(_data.unpacked._number.uintVal);
-    case VPACK_32BIT_INLINE_INT: // int could be a sorted-float so direct cast will not work 
-      return static_cast<int64_t>(_data.unpacked._number.intVal);
+    case VPACK_48BIT_INLINE_INT:
+      return static_cast<int64_t>(_data.shortNumberMeta.data.int48.val);
+    case VPACK_48BIT_INLINE_UINT:
+      return static_cast<uint64_t>(_data.shortNumberMeta.data.uint48.val);
+    case VPACK_64BIT_INLINE_INT:
+      return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
+    case VPACK_64BIT_INLINE_UINT:
+      return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+    case VPACK_64BIT_INLINE_DOUBLE:
+      return static_cast<int64_t>(basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val));
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -901,10 +950,16 @@ int64_t AqlValue::toInt64() const {
 bool AqlValue::toBoolean() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_UINT:
-    [[fallthrough]];
-    case VPACK_32BIT_INLINE_INT:
-      return _data.unpacked._number.intVal != 0;
+    case VPACK_48BIT_INLINE_INT:
+      return _data.shortNumberMeta.data.int48.val != 0;
+    case VPACK_48BIT_INLINE_UINT:
+      return _data.shortNumberMeta.data.uint48.val != 0;
+    case VPACK_64BIT_INLINE_INT: // intentinally ignore endianess. 0 is always 0
+      return _data.longNumberMeta.data.intLittleEndian.val != 0;
+    case VPACK_64BIT_INLINE_UINT: // intentinally ignore endianess. 0 is always 0
+      return _data.longNumberMeta.data.uintLittleEndian.val != 0;
+    case VPACK_64BIT_INLINE_DOUBLE:
+      return basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val) != 0.0;
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -935,7 +990,7 @@ bool AqlValue::toBoolean() const {
 /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
 AqlValue::MemoryOriginType AqlValue::memoryOriginType() const noexcept {
   TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
-  MemoryOriginType mot = static_cast<MemoryOriginType>(_data.internal[sizeof(_data.internal) - 2]);
+  MemoryOriginType mot = static_cast<MemoryOriginType>(_data.managedSliceMeta.getOrigin());
   TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
   return mot;
 }
@@ -951,11 +1006,15 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::V
   // the first 6 bytes contain the byteSize
   // the next byte contains the memoryOriginType (0 = new[], 1 = malloc)
   // the last byte contains the AqlValueType (always VPACK_MANAGED_SLICE)
-  _data.words[1] = basics::hostToBig<uint64_t>(
-      ((length & 0x0000ffffffffffffULL) << 16U) | 
-      (static_cast<uint8_t>(mot) << 8) |
-      static_cast<uint8_t>(AqlValueType::VPACK_MANAGED_SLICE)
-  );
+  _data.managedSliceMeta.lengthOrigin = length;
+  if constexpr (basics::isLittleEndian()) {
+    _data.managedSliceMeta.lengthOrigin >>= 16;
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(mot) << 8);
+    _data.managedSliceMeta.lengthOrigin |= AqlValueType::VPACK_MANAGED_SLICE;
+  } else {
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(mot) << 48);
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(AqlValueType::VPACK_MANAGED_SLICE) << 56);
+  }
   TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
   TRI_ASSERT(memoryOriginType() == mot);
   TRI_ASSERT(memoryUsage() == length);
@@ -967,14 +1026,17 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
   AqlValueType t = type();
   switch (t) {
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return TRI_VPackToV8(isolate, slice(t), options);
     }
     case RANGE: {
-      size_t const n = _data.range->size();
+      size_t const n = _data.rangeMeta.range->size();
       Range::throwIfTooBigForMaterialization(n);
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
@@ -983,7 +1045,7 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
         result->Set(context,
                     i,
                     v8::Number::New(isolate,
-                                    static_cast<double>(_data.range->at(static_cast<size_t>(i)))
+                                    static_cast<double>(_data.rangeMeta.range->at(static_cast<size_t>(i)))
                                     )
                     ).FromMaybe(true);
 
@@ -1008,13 +1070,16 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   switch (t) {
     case VPACK_SLICE_POINTER:
       if (!resolveExternals && isManagedDocument()) {
-        builder.addExternal(_data.pointer);
+        builder.addExternal(_data.pointerMeta.pointer);
         break;
       }  
-      [[fallthrough]];
+    [[fallthrough]];
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE: {
       if (resolveExternals) {
         bool const sanitizeExternals = true;
@@ -1030,10 +1095,10 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
     }
     case RANGE: {
       builder.openArray(/*unindexed*/allowUnindexed);
-      size_t const n = _data.range->size();
+      size_t const n = _data.rangeMeta.range->size();
       Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {
-        builder.add(VPackValue(_data.range->at(i)));
+        builder.add(VPackValue(_data.rangeMeta.range->at(i)));
       }
       builder.close();
       break;
@@ -1046,8 +1111,11 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       hasCopied = false;
@@ -1071,12 +1139,15 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return AqlValue(*this);
     case VPACK_INLINE: {
       // copy internal data
-      VPackSlice s(&_data.internal[0]);
+      VPackSlice s(_data.inlineSliceMeta.slice);
       if (!s.isExternal()) {
         return AqlValue(*this);
       }
@@ -1085,15 +1156,15 @@ AqlValue AqlValue::clone() const {
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
-        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointer));
+        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointerMeta.pointer));
       }
       // copy from regular pointer. this may copy the data
-      return AqlValue(_data.pointer);
+      return AqlValue(_data.pointerMeta.pointer);
     }
     case VPACK_MANAGED_SLICE: {
       // byte size is stored in the first 6 bytes of the second uint64_t value
-      VPackValueLength length = static_cast<VPackValueLength>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
-      return AqlValue(VPackSlice(_data.slice), length);
+      VPackValueLength length = _data.managedSliceMeta.getLength();
+      return AqlValue(VPackSlice(_data.managedSliceMeta.managedPointer), length);
     }
     case RANGE: {
       // create a new value with a new range
@@ -1109,8 +1180,11 @@ AqlValue AqlValue::clone() const {
 void AqlValue::destroy() noexcept {
   switch (type()) {
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER: {
       // nothing to do
       return;
@@ -1118,15 +1192,15 @@ void AqlValue::destroy() noexcept {
     case VPACK_MANAGED_SLICE: {
       MemoryOriginType const memoryType = memoryOriginType();
       if (memoryType == MemoryOriginType::New) {
-        delete[] _data.slice;
+        delete[] _data.managedSliceMeta.managedPointer;
       } else {
         TRI_ASSERT(memoryType == MemoryOriginType::Malloc);
-        free(_data.slice);
+        free(_data.managedSliceMeta.managedPointer);
       }
       break;
     }
     case RANGE: {
-      delete _data.range;
+      delete _data.rangeMeta.range;
       break;
     }
   }
@@ -1142,16 +1216,21 @@ VPackSlice AqlValue::slice() const {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice(AqlValueType type) const {
   switch (type) {
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+     return VPackSlice(_data.shortNumberMeta.data.slice.slice).resolveExternal();
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+     return VPackSlice(_data.longNumberMeta.data.slice.slice).resolveExternal();
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
     }
     case VPACK_SLICE_POINTER: {
-      return VPackSlice(_data.pointer);
+      return VPackSlice(_data.pointerMeta.pointer);
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal();
     }
     case RANGE: {
     }
@@ -1163,8 +1242,8 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
 /// @brief comparison for AqlValue objects
 int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
-  AqlValue::AqlValueType const leftType = static_cast<AqlValueType>(left._data.internal[sizeof(left._data.internal) - 1]);
-  AqlValue::AqlValueType const rightType = static_cast<AqlValueType>(right._data.internal[sizeof(right._data.internal) - 1]);
+  AqlValue::AqlValueType const leftType = left.type();
+  AqlValue::AqlValueType const rightType = right.type();
 
   if (leftType != rightType) {
     // TODO implement this case more efficiently
@@ -1181,21 +1260,48 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                                                          compareUtf8, options);
     }
     // fall-through to other types intentional
-  } else if (leftType == VPACK_32BIT_INLINE_INT || leftType == VPACK_32BIT_INLINE_UINT) {
-    int64_t l = left.toInt64();
-    int64_t r = right.toInt64();
-    if (l == r) {
-      return 0;
+  } else {
+    switch(leftType) {
+      case VPACK_48BIT_INLINE_INT:
+      case VPACK_48BIT_INLINE_UINT:
+      case VPACK_64BIT_INLINE_INT: {
+        int64_t l = left.toInt64();
+        int64_t r = right.toInt64();
+        if (l == r) {
+          return 0;
+        }
+        return (l < r ? -1 : 1);
+      }
+      case VPACK_64BIT_INLINE_UINT: {
+        uint64_t l = static_cast<uint64_t>(left.toInt64());
+        uint64_t r = static_cast<uint64_t>(right.toInt64());
+        if (l == r) {
+          return 0;
+        }
+        return (l < r ? -1 : 1);
+      }
+      case VPACK_64BIT_INLINE_DOUBLE: {
+        double l = left.toDouble();
+        double r = right.toDouble();
+        if (l == r) {
+          return 0;
+        }
+        return (l < r ? -1 : 1);
+      }
+      default:
+        break; // do VPack comparison
     }
-    return (l < r ? -1 : 1);
   }
   
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return arangodb::basics::VelocyPackHelper::compare(left.slice(leftType), right.slice(rightType),
@@ -1217,7 +1323,6 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
       return 0;
     }
   }
-
   return 0;
 }
 
@@ -1244,55 +1349,66 @@ AqlValue::AqlValue(uint8_t const* pointer) {
   } else {
     setPointer<false>(pointer);
   }
-  TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
 }
 
 AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(other.type() != VPACK_INLINE);
-  _data.data = data;
-  // copy meta data
-  _data.words[1] = other._data.words[1];
+  setType(other.type());
+  switch (other.type()) {
+    case VPACK_INLINE:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      TRI_ASSERT(false);
+      break;
+    case VPACK_MANAGED_SLICE:
+      _data.managedSliceMeta.lengthOrigin = other._data.managedSliceMeta.lengthOrigin;
+      _data.managedSliceMeta.managedPointer = static_cast<uint8_t*>(data);
+      break;
+    case VPACK_SLICE_POINTER:
+      _data.pointerMeta.isManagedDoc = other._data.pointerMeta.isManagedDoc;
+      _data.pointerMeta.pointer = static_cast<uint8_t*>(data);
+      break;
+    case RANGE:
+      _data.rangeMeta.range = static_cast<Range*>(data);
+      break;
+  };
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
-  _data.internal[0] = 0x00;  // none in VPack
+  _data.inlineSliceMeta.slice[0] = 0x00;  // none in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintNull const&) noexcept {
-  _data.internal[0] = 0x18;  // null in VPack
+  _data.inlineSliceMeta.slice[0] = 0x18;  // null in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintBool const& v) noexcept {
-  _data.internal[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
+  _data.inlineSliceMeta.slice[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintZero const&) noexcept {
-  _data.internal[0] = 0x30;  // 0 in VPack
+  _data.inlineSliceMeta.slice[0] = 0x30;  // 0 in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   double value = v.value;
+  auto valueType = AqlValueType::VPACK_INLINE;
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     // null
-    _data.internal[0] = 0x18;
+    _data.inlineSliceMeta.slice[0] = 0x18;
   } else {
     // a "real" double
-    _data.internal[0] = 0x1b;
-    uint64_t dv;
-    memcpy(&dv, &value, sizeof(double));
-    dv = arangodb::basics::hostToLittle(dv);
-    memcpy(&_data.internal[1], &dv, sizeof(dv));
-    //int i = 1;
-    //for (uint64_t x = dv; vSize > 0; vSize--) {
-    //  _data.internal[i] = x & 0xff;
-    //  x >>= 8;
-    //  ++i;
-    //}
+    _data.longNumberMeta.data.slice.slice[0] = 0x1b;
+    _data.longNumberMeta.data.doubleLittleEndian.val = arangodb::basics::hostToLittle(value);
+    valueType = AqlValueType::VPACK_64BIT_INLINE_DOUBLE;
   }
   setType(AqlValueType::VPACK_INLINE);
 }
@@ -1302,26 +1418,32 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
   auto aqlValueType {AqlValueType::VPACK_INLINE};
   if (value >= 0 && value <= 9) {
     // a smallint
-    _data.internal[0] = static_cast<uint8_t>(0x30U + value);
+    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+    _data.shortNumberMeta.data.int48.val = value;
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
   } else if (value < 0 && value >= -6) {
     // a negative smallint
-    _data.internal[0] = static_cast<uint8_t>(0x40U + value);
+    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+    _data.shortNumberMeta.data.int48.val = value;
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x40U + value);
   } else {
-    uint8_t vSize = intLength(value);
+    uint8_t const vSize = intLength(value);
     uint64_t x;
-    if (vSize == 8) {
+    if (vSize > 6) {
       x = toUInt64(value);
+      _data.longNumberMeta.data.intLittleEndian.val = arangodb::basics::hostToLittle(x); // FIXME: use just value ???
+      aqlValueType = AqlValueType::VPACK_64BIT_INLINE_INT;
+      // always store  as 8 byte Slice as we need full alignet value in binary representation
+      _data.longNumberMeta.data.slice.slice[0] = 0x1fU + 8;
     } else {
       int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
       x = value >= 0 ? static_cast<uint64_t>(value)
                      : static_cast<uint64_t>(value + shift) + shift;
-    }
-    _data.internal[0] = 0x1fU + vSize;
-    x = arangodb::basics::hostToLittle(x);
-    memcpy(&_data.internal[1], &x, sizeof(x));
-    if (vSize <= 4) {
-      aqlValueType = AqlValueType::VPACK_32BIT_INLINE_INT;
-      _data.unpacked._number.intVal = static_cast<int32_t>(v.value);
+      aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+      _data.shortNumberMeta.data.int48.val = value;
+      _data.shortNumberMeta.data.slice.slice[0] = 0x1fU + vSize;
+      x = arangodb::basics::hostToLittle(x);
+      memcpy(&_data.shortNumberMeta.data.slice.slice[1], &x, vSize);
     }
   }
   setType(aqlValueType);
@@ -1332,16 +1454,23 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   auto aqlValueType {AqlValueType::VPACK_INLINE};
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
-    _data.internal[0] = static_cast<uint8_t>(0x30U + value);
+    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_UINT;
+    _data.shortNumberMeta.data.uint48.val = value;
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
   } else {
     // UInt, 0x28 - 0x2f
-    uint8_t vSize = intLength(value);
-    _data.internal[0] = 0x27U + vSize;
-    value = arangodb::basics::hostToLittle(value);
-    memcpy(&_data.internal[1], &value, sizeof(value));
-    if (vSize <= 4) {
-      aqlValueType = AqlValueType::VPACK_32BIT_INLINE_UINT;
-      _data.unpacked._number.uintVal = static_cast<uint32_t>(v.value);
+    uint8_t const vSize = intLength(value);
+    if (vSize > 6) {
+      _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
+      aqlValueType = AqlValueType::VPACK_64BIT_INLINE_UINT;
+      // always store  as 8 byte Slice as we need full alignet value in binary representation
+      _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
+    } else {
+      _data.shortNumberMeta.data.slice.slice[0] = 0x27U + vSize;
+      value = arangodb::basics::hostToLittle(value);
+      memcpy(&_data.shortNumberMeta.data.slice.slice[1], &value, vSize);
+      _data.shortNumberMeta.data.uint48.val = value;
+      aqlValueType = AqlValueType::VPACK_48BIT_INLINE_UINT;
     }
   }
   setType(aqlValueType);
@@ -1351,30 +1480,30 @@ AqlValue::AqlValue(char const* value, size_t length) {
   TRI_ASSERT(value != nullptr);
   if (length == 0) {
     // empty string
-    _data.internal[0] = 0x40;
+    _data.inlineSliceMeta.slice[0] = 0x40;
     setType(AqlValueType::VPACK_INLINE);
-  } else if (length < sizeof(_data.internal) - 1) {
+  } else if (length < sizeof(AqlValue) - 1) {
     // short string... can store it inline
-    _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-    memcpy(_data.internal + 1, value, length);
+    _data.inlineSliceMeta.slice[0] = static_cast<uint8_t>(0x40 + length);
+    memcpy(_data.inlineSliceMeta.slice + 1, value, length);
     setType(AqlValueType::VPACK_INLINE);
   } else if (length <= 126) {
     // short string... cannot store inline, but we don't need to
     // create a full-featured Builder object here
     setManagedSliceData(MemoryOriginType::New, length + 1);
-    _data.slice = new uint8_t[length + 1];
-    _data.slice[0] = static_cast<uint8_t>(0x40U + length);
-    memcpy(&_data.slice[1], value, length);
+    _data.managedSliceMeta.managedPointer = new uint8_t[length + 1];
+    _data.managedSliceMeta.managedPointer[0] = static_cast<uint8_t>(0x40U + length);
+    memcpy(&_data.managedSliceMeta.managedPointer + 1, value, length);
   } else {
     // long string
     // create a big enough uint8_t buffer
     size_t byteSize = length + 9;
     setManagedSliceData(MemoryOriginType::New, byteSize);
-    _data.slice = new uint8_t[byteSize];
-    _data.slice[0] = static_cast<uint8_t>(0xbfU);
+    _data.managedSliceMeta.managedPointer = new uint8_t[byteSize];
+    _data.managedSliceMeta.managedPointer[0] = static_cast<uint8_t>(0xbfU);
     uint64_t v = arangodb::basics::hostToLittle(length);
-    memcpy(&_data.slice[1], &v, sizeof(v));
-    memcpy(&_data.slice[9], value, length);
+    memcpy(&_data.managedSliceMeta.managedPointer[1], &v, sizeof(v));
+    memcpy(&_data.managedSliceMeta.managedPointer[9], value, length);
   }
 }
 
@@ -1382,41 +1511,42 @@ AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.data(), value.size()) {}
 
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
-  _data.internal[0] = 0x01;  // empty array in VPack
+  _data.inlineSliceMeta.slice[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintEmptyObject const&) noexcept {
-  _data.internal[0] = 0x0a;  // empty object in VPack
+  _data.inlineSliceMeta.slice[0] = 0x0a;  // empty object in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
   // intentionally do not resolve externals here
   VPackValueLength length = buffer.length();
-  if (length < sizeof(_data.internal)) {
+  if (length < sizeof(AqlValue)) {
     // Use inline value
-    memcpy(_data.internal, buffer.data(), static_cast<size_t>(length));
+    memcpy(_data.inlineSliceMeta.slice, buffer.data(), static_cast<size_t>(length));
     setType(AqlValueType::VPACK_INLINE);
     buffer.clear(); // for move semantics
+    // FIXME: produce optimized values here!
   } else {
     // Use managed slice
     if (buffer.usesLocalMemory()) {
       setManagedSliceData(MemoryOriginType::New, length);
-      _data.slice = new uint8_t[length];
-      memcpy(&_data.slice[0], buffer.data(), length);
+      _data.managedSliceMeta.managedPointer = new uint8_t[length];
+      memcpy(_data.managedSliceMeta.managedPointer, buffer.data(), length);
       buffer.clear(); // for move semantics
     } else {
       // steal dynamic memory from the Buffer
       setManagedSliceData(MemoryOriginType::Malloc, length);
-      _data.slice = buffer.steal();
+      _data.managedSliceMeta.managedPointer = buffer.steal();
     }
   }
 }
 
 AqlValue::AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
   setPointer<true>(v.ptr);
-  TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
 }
 
 AqlValue::AqlValue(AqlValueHintCopy const& v) {
@@ -1434,7 +1564,7 @@ AqlValue::AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::Valu
 }
 
 AqlValue::AqlValue(int64_t low, int64_t high) {
-  _data.range = new Range(low, high);
+  _data.rangeMeta.range = new Range(low, high);
   setType(AqlValueType::RANGE);
 }
 
@@ -1443,8 +1573,11 @@ bool AqlValue::requiresDestruction() const noexcept {
   switch (t) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
       return false;
     default:
       return true;
@@ -1452,8 +1585,8 @@ bool AqlValue::requiresDestruction() const noexcept {
 }
 
 bool AqlValue::isEmpty() const noexcept {
-  return (_data.internal[0] == '\x00' &&
-          _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
+  return (_data.inlineSliceMeta.slice[0] == '\x00' &&
+          _data.aqlValueType == VPACK_INLINE);
 }
 
 bool AqlValue::isPointer() const noexcept {
@@ -1461,14 +1594,14 @@ bool AqlValue::isPointer() const noexcept {
 }
 
 bool AqlValue::isManagedDocument() const noexcept {
-  return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
+  return isPointer() && (_data.pointerMeta.isManagedDoc == 1);
 }
 
 bool AqlValue::isRange() const noexcept { return type() == RANGE; }
 
 Range const* AqlValue::range() const {
   TRI_ASSERT(isRange());
-  return _data.range;
+  return _data.rangeMeta.range;
 }
 
 void AqlValue::erase() noexcept {
@@ -1481,21 +1614,19 @@ size_t AqlValue::memoryUsage() const noexcept {
   auto const t = type();
   switch (t) {
     case VPACK_INLINE:
-    case VPACK_32BIT_INLINE_INT:
-    case VPACK_32BIT_INLINE_UINT:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
       return 0;
     case VPACK_MANAGED_SLICE:
-      // byte size is stored in the first 6 bytes of the second uint64_t value
-      return static_cast<size_t>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
+      return _data.managedSliceMeta.getLength();
     case RANGE:
       return sizeof(Range);
   }
   return 0;
-}
-
-AqlValue::AqlValueType AqlValue::type() const noexcept {
-  return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
 }
 
 void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length) {
@@ -1506,38 +1637,50 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
   // }
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
-  if (length < sizeof(_data.internal)) {
+  if (length <= sizeof(_data.inlineSliceMeta.slice)) {
     // Use inline value
-    memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
+    memcpy(_data.inlineSliceMeta.slice, slice.begin(), static_cast<size_t>(length));
     setType(AqlValueType::VPACK_INLINE);
-    // FIXME maybe 32BIT inline ?
+    // FIXME check optimization values inline?
   } else {
     // Use managed slice
     setManagedSliceData(MemoryOriginType::New, length);
-    _data.slice = new uint8_t[length];
-    memcpy(&_data.slice[0], slice.begin(), length);
+    _data.managedSliceMeta.managedPointer = new uint8_t[length];
+    memcpy(_data.managedSliceMeta.managedPointer, slice.begin(), length);
   }
 }
 
 void AqlValue::setType(AqlValue::AqlValueType type) noexcept {
-  _data.internal[sizeof(_data.internal) - 1] = type;
+  _data.aqlValueType = type;
 }
 
 void* AqlValue::data() const noexcept {
-  TRI_ASSERT(type() != VPACK_INLINE);
-  TRI_ASSERT(type() != VPACK_32BIT_INLINE_INT);
-  TRI_ASSERT(type() != VPACK_32BIT_INLINE_UINT);
-  TRI_ASSERT(_data.data != nullptr);
-  return _data.data;
+  switch (type()) {
+    case VPACK_INLINE:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+      TRI_ASSERT(FALSE);
+      return nullptr;
+    case VPACK_SLICE_POINTER:
+      return const_cast<uint8_t*>(_data.pointerMeta.pointer);
+    case VPACK_MANAGED_SLICE:
+      // byte size is stored in the first 6 bytes of the second uint64_t value
+      return  _data.managedSliceMeta.managedPointer;
+    case RANGE:
+      return const_cast<Range*>(_data.rangeMeta.range);
+  }
 }
 
 template <bool isManagedDoc>
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
-  _data.pointer = pointer;
-  // we use the byte at (size - 2) to distinguish between data pointing to
-  // database documents (size[-2] == 1) and other data(size[-2] == 0)
-  _data.internal[sizeof(_data.internal) - 2] = isManagedDoc ? 1 : 0;
-  _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
+  _data.pointerMeta.pointer = pointer;
+  // we use isManagedDoc flag to distinguish between data pointing to
+  // database documents (1) and other data(0)
+  _data.pointerMeta.isManagedDoc = isManagedDoc ? 1 : 0;
+  setType(AqlValueType::VPACK_SLICE_POINTER);
 }
 
 template void AqlValue::setPointer<true>(uint8_t const* pointer) noexcept;
@@ -1571,13 +1714,20 @@ size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue co
   auto const type = x.type();
   switch (type) {
     case arangodb::aql::AqlValue::VPACK_INLINE:
-    case arangodb::aql::AqlValue::VPACK_32BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_32BIT_INLINE_UINT:
-      return static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
-    default:
-      // treat all other pointer types the same, because they will
-      // have the same bit representations
-      return std::hash<void const*>()(x._data.pointer);
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.inlineSliceMeta.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_INT:
+    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_UINT:
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.shortNumberMeta.data.slice.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_INT:
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_UINT:
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_DOUBLE:
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.longNumberMeta.data.slice.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
+      return std::hash<void const*>()(x._data.pointerMeta.pointer);
+    case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:
+      return std::hash<void const*>()(x._data.managedSliceMeta.managedPointer);
+    case arangodb::aql::AqlValue::RANGE:
+      return std::hash<void const*>()(x._data.rangeMeta.range);
   }
 }
 
@@ -1590,13 +1740,23 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
   }
   switch (type) {
     case arangodb::aql::AqlValue::VPACK_INLINE:
-    case arangodb::aql::AqlValue::VPACK_32BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_32BIT_INLINE_UINT:
-      return arangodb::velocypack::Slice(&a._data.internal[0])
-           .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
-    default:
-      // treat all other pointer types the same, because they will
-      // have the same bit representations
-      return a._data.pointer == b._data.pointer;
+      return arangodb::velocypack::Slice(a._data.inlineSliceMeta.slice)
+           .binaryEquals(arangodb::velocypack::Slice(b._data.inlineSliceMeta.slice));
+    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_INT:
+    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_UINT:
+      // equal is equal. sign does not matters. So compare unsigned
+      return a._data.shortNumberMeta.data.uint48.val == b._data.shortNumberMeta.data.uint48.val;
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_INT:
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_UINT:
+      // equal is equal. sign/endianess does not matter
+      return a._data.longNumberMeta.data.intLittleEndian.val == b._data.longNumberMeta.data.intLittleEndian.val;
+      return arangodb::velocypack::Slice(a._data.longNumberMeta.data.slice.slice)
+           .binaryEquals(arangodb::velocypack::Slice(b._data.longNumberMeta.data.slice.slice));
+    case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
+      return a._data.pointerMeta.pointer == b._data.pointerMeta.pointer;
+    case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:
+      return a._data.managedSliceMeta.managedPointer ==  a._data.managedSliceMeta.managedPointer;
+    case arangodb::aql::AqlValue::RANGE:
+      return a._data.rangeMeta.range == b._data.rangeMeta.range;
   }
 }
