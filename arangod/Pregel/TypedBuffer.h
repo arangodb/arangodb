@@ -253,19 +253,18 @@ class MappedFileBuffer : public TypedBuffer<T> {
       reinterpret_cast<T*>(p)->~T();
     }
 
-    auto res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (auto res = TRI_UNMMFile(this->_begin, _mappedSize, _fd, &_mmHandle);
+        res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped
       LOG_TOPIC("ab7be", ERR, arangodb::Logger::FIXME) << "munmap failed with: " << res;
     }
     if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
-      res = TRI_CLOSE(_fd);
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (auto res = TRI_CLOSE(_fd); res != 0) {
         LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;
       }
-      
+
       // remove file
       TRI_UnlinkFile(this->_filename.c_str());
     }

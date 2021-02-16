@@ -204,14 +204,16 @@ ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout)
 /// @brief detaches a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_DetachThread(TRI_thread_t* thread) {
+bool TRI_DetachThread(TRI_thread_t* thread) {
   int res = pthread_detach(*thread);
 
   if (res != 0) {
     LOG_TOPIC("e880a", WARN, arangodb::Logger::THREADS)
         << "cannot detach thread: " << strerror(res);
+    return false;
+  } else {
+    return true;
   }
-  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

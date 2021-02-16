@@ -24,6 +24,7 @@
 #define LIB_BASICS_ERRORCODE_H
 
 #include <iosfwd>
+#include <string>
 
 // TODO We probably want to put this into a namespace, but this is easy to
 //      refactor automatically later.

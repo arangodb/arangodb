@@ -302,18 +302,14 @@ void spit(std::string const& filename, StringBuffer const& content, bool sync) {
   spit(filename, content.data(), content.length(), sync);
 }
 
-bool remove(std::string const& fileName, int* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = 0;
+bool remove(std::string const& fileName) {
+  auto const success = 0 == std::remove(fileName.c_str());
+
+  if (!success) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  int result = std::remove(fileName.c_str());
-
-  if (errorNumber != nullptr) {
-    *errorNumber = errno;
-  }
-
-  return (result != 0) ? false : true;
+  return success;
 }
 
 bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
@@ -525,12 +521,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    std::string message("failed to enumerate files in directory '" + directory +
-                        "': " + strerror(res));
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
 
   do {

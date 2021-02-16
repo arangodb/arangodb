@@ -72,7 +72,7 @@ void spit(std::string const& filename, std::string const& content, bool sync = f
 void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
 
 // returns true if a file could be removed
-bool remove(std::string const& fileName, int* errorNumber = nullptr);
+bool remove(std::string const& fileName);
 
 // creates a new directory
 bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
