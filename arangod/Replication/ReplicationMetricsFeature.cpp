@@ -31,201 +31,61 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-static char const* arangodb_replication_dump_requests = R"RRR(
-**Metric**
-- `arangodb_replication_dump_requests`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_dump_requests);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_dump_bytes_received);
 
-static char const* arangodb_replication_dump_bytes_received = R"RRR(
-**Metric**
-- `arangodb_replication_dump_bytes_received`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_dump_documents);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_dump_request_time);
 
-static char const* arangodb_replication_dump_documents = R"RRR(
-**Metric**
-- `arangodb_replication_dump_documents`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_dump_apply_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_keys_requests);
 
-static char const* arangodb_replication_dump_request_time = R"RRR(
-**Metric**
-- `arangodb_replication_dump_request_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_docs_requests);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_docs_requested);
 
-static char const* arangodb_replication_dump_apply_time = R"RRR(
-**Metric**
-- `arangodb_replication_dump_apply_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_docs_inserted);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_docs_removed);
 
-static char const* arangodb_replication_initial_sync_keys_requests = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_keys_requests`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_sync_bytes_received);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_chunks_requests_time);
 
-static char const* arangodb_replication_initial_sync_docs_requests = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_docs_requests`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_keys_requests_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_docs_requests_time);
 
-static char const* arangodb_replication_initial_sync_docs_requested = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_docs_requested`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_insert_apply_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_remove_apply_time);
 
-static char const* arangodb_replication_initial_sync_docs_inserted = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_docs_inserted`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_initial_lookup_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_requests);
 
-static char const* arangodb_replication_initial_sync_docs_removed = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_docs_removed`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_follow_tick_failures);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_markers);
 
-static char const* arangodb_replication_initial_sync_bytes_received = R"RRR(
-**Metric**
-- `arangodb_replication_initial_sync_bytes_received`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_documents);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_removals);
 
-static char const* arangodb_replication_initial_chunks_requests_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_chunks_requests_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_bytes_received);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_failed_connects);
 
-static char const* arangodb_replication_initial_keys_requests_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_keys_requests_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_request_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_tailing_apply_time);
 
-static char const* arangodb_replication_initial_docs_requests_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_docs_requests_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_synchronous_requests_total_time);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_initial_insert_apply_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_insert_apply_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_initial_remove_apply_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_remove_apply_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_initial_lookup_time = R"RRR(
-**Metric**
-- `arangodb_replication_initial_lookup_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_requests = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_requests`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_follow_tick_failures = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_follow_tick_failures`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_markers = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_markers`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_documents = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_documents`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_removals = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_removals`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_bytes_received = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_bytes_received`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_failed_connects = R"RRR(
-**Metric**
-- `arangodb_replication_failed_connects`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_request_time = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_request_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_tailing_apply_time = R"RRR(
-**Metric**
-- `arangodb_replication_tailing_apply_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_synchronous_requests_total_time = R"RRR(
-**Metric**
-- `arangodb_replication_synchronous_requests_total_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_replication_synchronous_requests_total_number = R"RRR(
-**Metric**
-- `arangodb_replication_synchronous_requests_total_number`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_synchronous_requests_total_number);
 
 ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ReplicationMetrics"),

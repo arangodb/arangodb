@@ -326,33 +326,13 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 /// @brief Documentation for metrics used in ClusterInfo
 ////////////////////////////////////////////////////////////////////////////////
 
-static char const* arangodb_load_plan_runtime = R"RRR(
-**Metric**
-- `arangodb_load_plan_runtime`:
+CHECK_METRIC_DOCUMENTATION(arangodb_load_plan_runtime);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_load_plan_accum_runtime_msec);
 
-static char const* arangodb_load_plan_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_load_plan_accum_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_load_current_runtime);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_load_current_runtime = R"RRR(
-**Metric**
-- `arangodb_load_current_runtime`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_load_current_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_load_current_accum_runtime_msec`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_load_current_accum_runtime_msec);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a cluster info object

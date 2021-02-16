@@ -78,33 +78,13 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
   this->_numIOThreads = 2; // override default
 }
 
-static char const* arangodb_network_forwarded_requests = R"RRR(
-**Metric**
-- `arangodb_network_forwarded_requests`:
+CHECK_METRIC_DOCUMENTATION(arangodb_network_forwarded_requests);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_network_requests_in_flight);
 
-static char const* arangodb_network_requests_in_flight = R"RRR(
-**Metric**
-- `arangodb_network_requests_in_flight`:
+CHECK_METRIC_DOCUMENTATION(arangodb_network_request_timeouts);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_network_request_timeouts = R"RRR(
-**Metric**
-- `arangodb_network_request_timeouts`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_network_request_duration_as_percentage_of_timeout = R"RRR(
-**Metric**
-- `arangodb_network_request_duration_as_percentage_of_timeout`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_network_request_duration_as_percentage_of_timeout);
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)

@@ -188,14 +188,9 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
-DOCUMENT_METRIC(heartbeat_send_time_ms_docs);
+CHECK_METRIC_DOCUMENTATION(heartbeat_send_time_ms_docs);
 
-static char const* arangodb_heartbeat_failures = R"RRR(
-**Metric**
-- `arangodb_heartbeat_failures`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_heartbeat_failures);
 
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,

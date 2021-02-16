@@ -90,7 +90,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
+void MetricsFeature::toPrometheus(std::string& result) const {
 
   // minimize reallocs
   result.reserve(32768);
@@ -98,7 +98,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
   {
     std::lock_guard<std::recursive_mutex> guard(_lock);
     for (auto const& i : _registry) {
-      i.second->toPrometheus(result, withDocs);
+      i.second->toPrometheus(result);
     }
   }
 
@@ -117,13 +117,13 @@ void MetricsFeature::toPrometheus(std::string& result, bool withDocs) const {
 
 Counter& MetricsFeature::counter(
   std::initializer_list<std::string> const& key, uint64_t const& val,
-  std::string const& help, std::string_view const& docs) {
+  std::string const& help, MetricsDocumentation const& docs) {
   return counter(metrics_key(key), val, help, docs);
 }
 
 Counter& MetricsFeature::counter(
   metrics_key const& mk, uint64_t const& val,
-  std::string const& help, std::string_view const& docs) {
+  std::string const& help, MetricsDocumentation const& docs) {
 
   std::string labels = mk.labels;
   if (ServerState::instance() != nullptr &&
@@ -149,7 +149,7 @@ Counter& MetricsFeature::counter(
 
 Counter& MetricsFeature::counter(
   std::string const& name, uint64_t const& val, std::string const& help,
-  std::string_view const& docs) {
+  MetricsDocumentation const& docs) {
   return counter(metrics_key(name), val, help, docs);
 }
 

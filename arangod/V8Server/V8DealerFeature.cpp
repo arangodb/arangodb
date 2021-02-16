@@ -109,47 +109,17 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
-static char const* arangodb_v8_context_creation_time_msec = R"RRR(
-**Metric**
-- `arangodb_v8_context_creation_time_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_creation_time_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_created);
 
-static char const* arangodb_v8_context_created = R"RRR(
-**Metric**
-- `arangodb_v8_context_created`:
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_destroyed);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_entered);
 
-static char const* arangodb_v8_context_destroyed = R"RRR(
-**Metric**
-- `arangodb_v8_context_destroyed`:
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_exited);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_v8_context_entered = R"RRR(
-**Metric**
-- `arangodb_v8_context_entered`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_v8_context_exited = R"RRR(
-**Metric**
-- `arangodb_v8_context_exited`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_v8_context_enter_failures = R"RRR(
-**Metric**
-- `arangodb_v8_context_enter_failures`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_v8_context_enter_failures);
 
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),

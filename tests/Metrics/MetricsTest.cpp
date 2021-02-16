@@ -42,26 +42,11 @@ constexpr size_t numThreads = 4;
 constexpr uint64_t numOpsPerThread = 25 * 1000 * 1000;
 }
 
-static char const* counterDocs = R"RRR(
-**Metric**
-- `counterDocs`:
+static MetricsDocumentation const counterDocs("");
 
-This is just an example.
-)RRR";
+static MetricsDocumentation const gaugeDocs("");
 
-static char const* histogramDocs = R"RRR(
-**Metric**
-- `histogramDocs`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* gaugeDocs = R"RRR(
-**Metric**
-- `gaugeDocs`:
-
-TO_BE_WRITTEN
-)RRR";
+static MetricsDocumentation const histogramDocs("");
 
 TEST(MetricsTest, test_counter_concurrency) {
   Counter c(0, "counter", "Counter", counterDocs);

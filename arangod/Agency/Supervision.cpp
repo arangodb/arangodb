@@ -164,40 +164,15 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-static char const* arangodb_agency_supervision_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_agency_supervision_accum_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_supervision_accum_runtime_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec);
 
-static char const* arangodb_agency_supervision_accum_runtime_wait_for_replication_msec = R"RRR(
-**Metric**
-- `arangodb_agency_supervision_accum_runtime_wait_for_replication_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_supervision_failed_server_count);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_supervision_runtime_msec);
 
-static char const* arangodb_agency_supervision_failed_server_count = R"RRR(
-**Metric**
-- `arangodb_agency_supervision_failed_server_count`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_supervision_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_agency_supervision_runtime_msec`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_supervision_runtime_wait_for_replication_msec = R"RRR(
-**Metric**
-- `arangodb_agency_supervision_runtime_wait_for_replication_msec`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_supervision_runtime_wait_for_replication_msec);
 
 Supervision::Supervision(application_features::ApplicationServer& server)
     : arangodb::Thread(server, "Supervision"),

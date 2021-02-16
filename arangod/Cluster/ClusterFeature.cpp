@@ -515,26 +515,11 @@ void ClusterFeature::prepare() {
 
 }
 
-static char const* arangodb_dropped_followers_count = R"RRR(
-**Metric**
-- `arangodb_dropped_followers_count`:
+CHECK_METRIC_DOCUMENTATION(arangodb_dropped_followers_count);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_refused_followers_count);
 
-static char const* arangodb_refused_followers_count = R"RRR(
-**Metric**
-- `arangodb_refused_followers_count`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_sync_wrong_checksum = R"RRR(
-**Metric**
-- `arangodb_sync_wrong_checksum`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_sync_wrong_checksum);
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -817,12 +802,7 @@ AgencyCache& ClusterFeature::agencyCache() {
   return *_agencyCache;
 }
 
-static char const* arangodb_agencycomm_request_time_msec = R"RRR(
-**Metric**
-- `arangodb_agencycomm_request_time_msec`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agencycomm_request_time_msec);
 
 void ClusterFeature::allocateMembers() {
   try {

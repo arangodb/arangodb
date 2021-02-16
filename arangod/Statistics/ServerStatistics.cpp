@@ -28,138 +28,43 @@
 
 using namespace arangodb;
 
-static char const* arangodb_transactions_started = R"RRR(
-**Metric**
-- `arangodb_transactions_started`:
+CHECK_METRIC_DOCUMENTATION(arangodb_transactions_started);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_transactions_aborted);
 
-static char const* arangodb_transactions_aborted = R"RRR(
-**Metric**
-- `arangodb_transactions_aborted`:
+CHECK_METRIC_DOCUMENTATION(arangodb_transactions_committed);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_intermediate_commits);
 
-static char const* arangodb_transactions_committed = R"RRR(
-**Metric**
-- `arangodb_transactions_committed`:
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_lock_timeouts_exclusive);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_lock_timeouts_write);
 
-static char const* arangodb_intermediate_commits = R"RRR(
-**Metric**
-- `arangodb_intermediate_commits`:
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_lock_acquisition_micros);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_lock_acquisition_time);
 
-static char const* arangodb_collection_lock_timeouts_exclusive = R"RRR(
-**Metric**
-- `arangodb_collection_lock_timeouts_exclusive`:
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_lock_sequential_mode);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_document_writes);
 
-static char const* arangodb_collection_lock_timeouts_write = R"RRR(
-**Metric**
-- `arangodb_collection_lock_timeouts_write`:
+CHECK_METRIC_DOCUMENTATION(arangodb_document_writes_replication);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_truncates);
 
-static char const* arangodb_collection_lock_acquisition_micros = R"RRR(
-**Metric**
-- `arangodb_collection_lock_acquisition_micros`:
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_truncates_replication);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_document_read_time);
 
-static char const* arangodb_collection_lock_acquisition_time = R"RRR(
-**Metric**
-- `arangodb_collection_lock_acquisition_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_document_insert_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_document_replace_time);
 
-static char const* arangodb_collection_lock_sequential_mode = R"RRR(
-**Metric**
-- `arangodb_collection_lock_sequential_mode`:
+CHECK_METRIC_DOCUMENTATION(arangodb_document_remove_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_document_update_time);
 
-static char const* arangodb_document_writes = R"RRR(
-**Metric**
-- `arangodb_document_writes`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_writes_replication = R"RRR(
-**Metric**
-- `arangodb_document_writes_replication`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_collection_truncates = R"RRR(
-**Metric**
-- `arangodb_collection_truncates`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_collection_truncates_replication = R"RRR(
-**Metric**
-- `arangodb_collection_truncates_replication`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_read_time = R"RRR(
-**Metric**
-- `arangodb_document_read_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_insert_time = R"RRR(
-**Metric**
-- `arangodb_document_insert_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_replace_time = R"RRR(
-**Metric**
-- `arangodb_document_replace_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_remove_time = R"RRR(
-**Metric**
-- `arangodb_document_remove_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_document_update_time = R"RRR(
-**Metric**
-- `arangodb_document_update_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_collection_truncate_time = R"RRR(
-**Metric**
-- `arangodb_collection_truncate_time`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_collection_truncate_time);
 
 TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
     : _metrics(metrics),

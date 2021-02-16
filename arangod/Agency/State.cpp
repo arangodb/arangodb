@@ -57,19 +57,9 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
 
-static char const* arangodb_agency_log_size_bytes = R"RRR(
-**Metric**
-- `arangodb_agency_log_size_bytes`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_log_size_bytes);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_client_lookup_table_size = R"RRR(
-**Metric**
-- `arangodb_agency_client_lookup_table_size`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_client_lookup_table_size);
 
 /// Constructor:
 State::State(application_features::ApplicationServer& server)

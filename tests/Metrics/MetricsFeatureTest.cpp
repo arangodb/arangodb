@@ -42,26 +42,11 @@ protected:
 Metric* thisMetric;
 Metric* thatMetric;
 
-static char const* counterDocs = R"RRR(
-**Metric**
-- `counter`:
+static MetricsDocumentation const counterDocs("");
 
-This is just an example.
-)RRR";
+static MetricsDocumentation const gaugeDocs("");
 
-static char const* histogramDocs = R"RRR(
-**Metric**
-- `histogramDocs`:
-
-This is just an example.
-)RRR";
-
-static char const* gaugeDocs = R"RRR(
-**Metric**
-- `gaugeDocs`:
-
-This is just an example.
-)RRR";
+static MetricsDocumentation const histogramDocs("");
 
 TEST_F(MetricsFeatureTest, test_counter) {
 

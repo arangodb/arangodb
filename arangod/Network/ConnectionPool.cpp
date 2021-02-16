@@ -37,40 +37,15 @@ namespace network {
 
 using namespace arangodb::fuerte::v1;
 
-static char const* arangodb_connection_connections_current = R"RRR(
-**Metric**
-- `arangodb_connection_connections_current`:
+CHECK_METRIC_DOCUMENTATION(arangodb_connection_connections_current);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_connection_leases_successful);
 
-static char const* arangodb_connection_leases_successful = R"RRR(
-**Metric**
-- `arangodb_connection_leases_successful`:
+CHECK_METRIC_DOCUMENTATION(arangodb_connection_pool_leases_failed);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_connection_pool_connections_created);
 
-static char const* arangodb_connection_pool_leases_failed = R"RRR(
-**Metric**
-- `arangodb_connection_pool_leases_failed`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_connection_pool_connections_created = R"RRR(
-**Metric**
-- `arangodb_connection_pool_connections_created`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_connection_pool_lease_time_hist = R"RRR(
-**Metric**
-- `arangodb_connection_pool_lease_time_hist`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_connection_pool_lease_time_hist);
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config), 

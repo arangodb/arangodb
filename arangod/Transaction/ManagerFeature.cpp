@@ -74,12 +74,7 @@ namespace transaction {
 
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
-static char const* arangodb_transactions_expired = R"RRR(
-**Metric**
-- `arangodb_transactions_expired`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_transactions_expired);
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"),

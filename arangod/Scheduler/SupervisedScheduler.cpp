@@ -144,117 +144,37 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 }  // namespace arangodb
 
-static char const* arangodb_scheduler_queue_length = R"RRR(
-**Metric**
-- `arangodb_scheduler_queue_length`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_queue_length);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_jobs_done);
 
-static char const* arangodb_scheduler_jobs_done = R"RRR(
-**Metric**
-- `arangodb_scheduler_jobs_done`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_jobs_submitted);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_jobs_dequeued);
 
-static char const* arangodb_scheduler_jobs_submitted = R"RRR(
-**Metric**
-- `arangodb_scheduler_jobs_submitted`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_awake_threads);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_num_working_threads);
 
-static char const* arangodb_scheduler_jobs_dequeued = R"RRR(
-**Metric**
-- `arangodb_scheduler_jobs_dequeued`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_num_worker_threads);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_threads_started);
 
-static char const* arangodb_scheduler_awake_threads = R"RRR(
-**Metric**
-- `arangodb_scheduler_awake_threads`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_threads_stopped);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_queue_full_failures);
 
-static char const* arangodb_scheduler_num_working_threads = R"RRR(
-**Metric**
-- `arangodb_scheduler_num_working_threads`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_ongoing_low_prio);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_low_prio_queue_last_dequeue_time);
 
-static char const* arangodb_scheduler_num_worker_threads = R"RRR(
-**Metric**
-- `arangodb_scheduler_num_worker_threads`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_maintenance_prio_queue_length);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_high_prio_queue_length);
 
-static char const* arangodb_scheduler_threads_started = R"RRR(
-**Metric**
-- `arangodb_scheduler_threads_started`:
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_medium_prio_queue_length);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_threads_stopped = R"RRR(
-**Metric**
-- `arangodb_scheduler_threads_stopped`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_queue_full_failures = R"RRR(
-**Metric**
-- `arangodb_scheduler_queue_full_failures`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_ongoing_low_prio = R"RRR(
-**Metric**
-- `arangodb_scheduler_ongoing_low_prio`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_low_prio_queue_last_dequeue_time = R"RRR(
-**Metric**
-- `arangodb_scheduler_low_prio_queue_last_dequeue_time`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_maintenance_prio_queue_length = R"RRR(
-**Metric**
-- `arangodb_scheduler_maintenance_prio_queue_length`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_high_prio_queue_length = R"RRR(
-**Metric**
-- `arangodb_scheduler_high_prio_queue_length`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_medium_prio_queue_length = R"RRR(
-**Metric**
-- `arangodb_scheduler_medium_prio_queue_length`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_scheduler_low_prio_queue_length = R"RRR(
-**Metric**
-- `arangodb_scheduler_low_prio_queue_length`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_scheduler_low_prio_queue_length);
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,

@@ -140,131 +140,41 @@ void MaintenanceFeature::validateOptions(std::shared_ptr<ProgramOptions> options
   }
 }
 
-static char const* arangodb_maintenance_phase1_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_phase1_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_phase1_runtime_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_phase2_runtime_msec);
 
-static char const* arangodb_maintenance_phase2_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_phase2_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_agency_sync_runtime_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_phase1_accum_runtime_msec);
 
-static char const* arangodb_maintenance_agency_sync_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_agency_sync_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_phase2_accum_runtime_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_agency_sync_accum_runtime_msec);
 
-static char const* arangodb_maintenance_phase1_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_phase1_accum_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_shards_out_of_sync);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_shards_total_count);
 
-static char const* arangodb_maintenance_phase2_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_phase2_accum_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_shards_leader_count);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_shards_not_replicated);
 
-static char const* arangodb_maintenance_agency_sync_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_agency_sync_accum_runtime_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_duplicate_counter);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_registered_counter);
 
-static char const* arangodb_shards_out_of_sync = R"RRR(
-**Metric**
-- `arangodb_shards_out_of_sync`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_done_counter);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_runtime_msec);
 
-static char const* arangodb_shards_total_count = R"RRR(
-**Metric**
-- `arangodb_shards_total_count`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_queue_time_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_accum_runtime_msec);
 
-static char const* arangodb_shards_leader_count = R"RRR(
-**Metric**
-- `arangodb_shards_leader_count`:
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_accum_queue_time_msec);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_shards_not_replicated = R"RRR(
-**Metric**
-- `arangodb_shards_not_replicated`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_duplicate_counter = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_duplicate_counter`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_registered_counter = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_registered_counter`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_done_counter = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_done_counter`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_runtime_msec`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_queue_time_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_queue_time_msec`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_accum_runtime_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_accum_runtime_msec`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_accum_queue_time_msec = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_accum_queue_time_msec`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_maintenance_action_failure_counter = R"RRR(
-**Metric**
-- `arangodb_maintenance_action_failure_counter`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_maintenance_action_failure_counter);
 
 void MaintenanceFeature::initializeMetrics() {
   TRI_ASSERT(ServerState::instance()->isDBServer() || _forceActivation);

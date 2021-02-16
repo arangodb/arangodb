@@ -28,19 +28,9 @@
 
 namespace arangodb {
 
-static char const* rocksdb_write_stalls = R"RRR(
-**Metric**
-- `rocksdb_write_stalls`:
+CHECK_METRIC_DOCUMENTATION(rocksdb_write_stalls);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* rocksdb_write_stops = R"RRR(
-**Metric**
-- `rocksdb_write_stops`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(rocksdb_write_stops);
 
 /// @brief Setup the object, clearing variables, but do no real work
 RocksDBMetricsListener::RocksDBMetricsListener(application_features::ApplicationServer& server)

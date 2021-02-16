@@ -75,7 +75,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   template <typename Scale>
   Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
                               std::string const& help,
-                              std::string_view const& docs) {
+                              MetricsDocumentation const& docs) {
     return histogram<Scale>(metrics_key(name), scale, help, docs);
   }
 
@@ -83,14 +83,14 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& il,
                               Scale const& scale,
                               std::string const& help,
-                              std::string_view const& docs) {
+                              MetricsDocumentation const& docs) {
     return histogram<Scale>(metrics_key(il), scale, help, docs);
   }
 
   template <typename Scale>
   Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
                               std::string const& help,
-                              std::string_view const& docs) {
+                              MetricsDocumentation const& docs) {
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -164,29 +164,29 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help, std::string_view const& docs);
+  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help, MetricsDocumentation const& docs);
   Counter& counter(std::initializer_list<std::string> const& key,
                    uint64_t const& val, std::string const& help,
-                   std::string_view const& docs);
-  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help, std::string_view const& docs);
+                   MetricsDocumentation const& docs);
+  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help, MetricsDocumentation const& docs);
   Counter& counter(std::string const& name);
   Counter& counter(std::initializer_list<std::string> const& key);
 
   template <typename T>
-  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help, std::string_view const& docs) {
+  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help, MetricsDocumentation const& docs) {
     return gauge(metrics_key(name), t, help, docs);
   }
 
   template <typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& il, T const& t,
-                  std::string const& help, std::string_view const& docs) {
+                  std::string const& help, MetricsDocumentation const& docs) {
     return gauge(metrics_key(il), t, help, docs);
   }
 
   template <typename T>
   Gauge<T>& gauge(metrics_key const& key, T const& t,
                   std::string const& help,
-                  std::string_view const& docs) {
+                  MetricsDocumentation const& docs) {
     metrics_key mk(key);
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
@@ -263,7 +263,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  void toPrometheus(std::string& result, bool withDocs) const;
+  void toPrometheus(std::string& result) const;
 
   ServerStatistics& serverStatistics();
 

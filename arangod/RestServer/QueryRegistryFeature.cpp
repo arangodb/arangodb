@@ -91,47 +91,17 @@ namespace arangodb {
 
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
-static char const* arangodb_aql_query_time = R"RRR(
-**Metric**
-- `arangodb_aql_query_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_query_time);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_slow_query_time);
 
-static char const* arangodb_aql_slow_query_time = R"RRR(
-**Metric**
-- `arangodb_aql_slow_query_time`:
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_total_query_time_msec);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_all_query);
 
-static char const* arangodb_aql_total_query_time_msec = R"RRR(
-**Metric**
-- `arangodb_aql_total_query_time_msec`:
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_slow_query);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_aql_all_query = R"RRR(
-**Metric**
-- `arangodb_aql_all_query`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_aql_slow_query = R"RRR(
-**Metric**
-- `arangodb_aql_slow_query`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_aql_current_query = R"RRR(
-**Metric**
-- `arangodb_aql_current_query`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_aql_current_query);
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),

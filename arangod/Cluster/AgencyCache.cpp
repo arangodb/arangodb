@@ -35,12 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-static char const* arangodb_agency_cache_callback_count = R"RRR(
-**Metric**
-- `arangodb_agency_cache_callback_count`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_cache_callback_count);
 
 AgencyCache::AgencyCache(
   application_features::ApplicationServer& server,

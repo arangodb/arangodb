@@ -40,25 +40,39 @@
 
 #include "counter.h"
 
-#define DOCUMENT_METRIC(name) static char const* name = R"RRR(\
-#include "MetricsDocu/name.yaml"\
-)RRR"
+// The following has the purpose to ensure that every metric is documented.
+// We need that for every metrics there is a file 
+// `arangod/MetricsDocu/<name>.yaml` which is a YAML file of a certain
+// format (see utils/assembleMetricsDocs.py) and which contains the
+// description of the metric for the manual. One basically declares
+// this file like this (on a line by itself):
+//   METRIC_DOCUMENTATION(name);
+// There will then be external tools to verify that the documentation is
+// there.
+
+class MetricsDocumentation {
+  std::string const _text;
+ public:
+  MetricsDocumentation(char const* text) : _text(text) {}
+};
+
+#define CHECK_METRIC_DOCUMENTATION(name) \
+  static MetricsDocumentation name{#name}
 
 class Metric {
  public:
-  Metric(std::string const& name, std::string const& help, std::string_view const& docs,  std::string const& labels);
+  Metric(std::string const& name, std::string const& help, MetricsDocumentation const&,  std::string const& labels);
   virtual ~Metric();
   std::string const& help() const;
+  MetricsDocumentation const& docs() const;
   std::string const& name() const;
   std::string const& labels() const;
-  std::string_view const& docs() const;
-  std::string cleanedDocs() const;
-  virtual void toPrometheus(std::string& result, bool withDocs = false) const = 0;
+  virtual void toPrometheus(std::string& result) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
   std::string const _help;
-  std::string_view const _docs;
+  MetricsDocumentation const _docs;
   std::string const _labels;
 };
 
@@ -76,7 +90,7 @@ class Counter : public Metric {
  public:
   Counter(uint64_t const& val, std::string const& name,
           std::string const& help,
-          std::string_view const& docs,
+          MetricsDocumentation const&,
           std::string const& labels = std::string());
   Counter(Counter const&) = delete;
   ~Counter();
@@ -90,7 +104,7 @@ class Counter : public Metric {
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&, bool withDocs = false) const override;
+  virtual void toPrometheus(std::string&) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -101,7 +115,7 @@ template<typename T> class Gauge : public Metric {
  public:
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
-        std::string_view const& docs,
+        MetricsDocumentation const& docs,
         std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _g(val) {
   }
@@ -182,9 +196,9 @@ template<typename T> class Gauge : public Metric {
   
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
-  void toPrometheus(std::string& result, bool withDocs = false) const override {
+  void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n" + name();
+    result += "#HELP " + name() + " " + help() + "\n" + name();
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
@@ -458,7 +472,7 @@ template<typename Scale> class Histogram : public Metric {
   Histogram() = delete;
 
   Histogram(Scale&& scale, std::string const& name, std::string const& help,
-            std::string_view const& docs,
+            MetricsDocumentation const& docs,
             std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
@@ -466,7 +480,7 @@ template<typename Scale> class Histogram : public Metric {
       _n(_scale.n() - 1) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
-            std::string_view const& docs,
+            MetricsDocumentation const& docs,
             std::string const& labels = std::string())
     : Metric(name, help, docs, labels), _c(Metrics::hist_type(scale.n())), _scale(scale),
       _lowr(std::numeric_limits<value_type>::max()),
@@ -519,9 +533,9 @@ template<typename Scale> class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result, bool withDocs = false) const override {
+  virtual void toPrometheus(std::string& result) const override {
     result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + (withDocs ? cleanedDocs() : help()) + "\n";
+    result += "#HELP " + name() + " " + help() + "\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';

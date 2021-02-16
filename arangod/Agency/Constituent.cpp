@@ -69,12 +69,7 @@ void Constituent::configure(Agent* agent) {
   }
 }
 
-static char const* arangodb_agency_term = R"RRR(
-**Metric**
-- `arangodb_agency_term`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_term);
 
 // Default ctor
 Constituent::Constituent(application_features::ApplicationServer& server)

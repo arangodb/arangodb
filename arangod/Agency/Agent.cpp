@@ -59,68 +59,23 @@ std::string const pubApiPrefix("/_api/agency/");
 std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
-static char const* arangodb_agency_write_ok = R"RRR(
-**Metric**
-- `arangodb_agency_write_ok`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_write_ok);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_write_no_leader);
 
-static char const* arangodb_agency_write_no_leader = R"RRR(
-**Metric**
-- `arangodb_agency_write_no_leader`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_read_ok);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_read_no_leader);
 
-static char const* arangodb_agency_read_ok = R"RRR(
-**Metric**
-- `arangodb_agency_read_ok`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_write_hist);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_commit_hist);
 
-static char const* arangodb_agency_read_no_leader = R"RRR(
-**Metric**
-- `arangodb_agency_read_no_leader`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_append_hist);
 
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_compaction_hist);
 
-static char const* arangodb_agency_write_hist = R"RRR(
-**Metric**
-- `arangodb_agency_write_hist`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_commit_hist = R"RRR(
-**Metric**
-- `arangodb_agency_commit_hist`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_append_hist = R"RRR(
-**Metric**
-- `arangodb_agency_append_hist`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_compaction_hist = R"RRR(
-**Metric**
-- `arangodb_agency_compaction_hist`:
-
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_local_commit_index = R"RRR(
-**Metric**
-- `arangodb_agency_local_commit_index`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_local_commit_index);
 
 /// Agent configuration
 Agent::Agent(application_features::ApplicationServer& server, config_t const& config)

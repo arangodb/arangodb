@@ -29,12 +29,7 @@
 
 using namespace arangodb;
 
-static char const* counterDocs = R"RRR(
-**Metric**
-- `counterDocs`:
-
-This is just an example.
-)RRR";
+static MetricsDocumentation const counterDocs("");
 
 TEST(MetricsServerTest, test_setup) {
   tests::mocks::MockMetricsServer server;

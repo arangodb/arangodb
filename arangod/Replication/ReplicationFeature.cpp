@@ -77,12 +77,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 
 namespace arangodb {
 
-static char const* arangodb_replication_cluster_inventory_requests = R"RRR(
-**Metric**
-- `arangodb_replication_cluster_inventory_requests`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_replication_cluster_inventory_requests);
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),

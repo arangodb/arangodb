@@ -45,19 +45,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-static char const* arangodb_agency_callback_registered = R"RRR(
-**Metric**
-- `arangodb_agency_callback_registered`:
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_callback_registered);
 
-TO_BE_WRITTEN
-)RRR";
-
-static char const* arangodb_agency_callback_count = R"RRR(
-**Metric**
-- `arangodb_agency_callback_count`:
-
-TO_BE_WRITTEN
-)RRR";
+CHECK_METRIC_DOCUMENTATION(arangodb_agency_callback_count);
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
