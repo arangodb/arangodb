@@ -215,12 +215,10 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
 /// @brief parse document or document handle from a v8 value (string | object)
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
-                                         CollectionNameResolver const* resolver,
-                                         std::shared_ptr<arangodb::LogicalCollection>& collection,
-                                         std::string& collectionName,
-                                         VPackBuilder& builder, bool includeRev,
-                                         v8::Handle<v8::Value> const val) {
+static ErrorCode ParseDocumentOrDocumentHandle(
+    v8::Isolate* isolate, CollectionNameResolver const* resolver,
+    std::shared_ptr<arangodb::LogicalCollection>& collection, std::string& collectionName,
+    VPackBuilder& builder, bool includeRev, v8::Handle<v8::Value> const val) {
   v8::HandleScope scope(isolate);
 
   // try to extract the collection name, key, and revision from the object
@@ -269,8 +267,8 @@ static int ParseDocumentOrDocumentHandle(v8::Isolate* isolate,
 /// object and is left open at the end
 ////////////////////////////////////////////////////////////////////////////////
 
-static int V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
-                               v8::Local<v8::Value> const obj) {
+static ErrorCode V8ToVPackNoKeyRevId(v8::Isolate* isolate, VPackBuilder& builder,
+                                     v8::Local<v8::Value> const obj) {
   auto context = TRI_IGETC;
   TRI_ASSERT(obj->IsObject() && !obj->IsArray());
   auto o = v8::Local<v8::Object>::Cast(obj);
@@ -525,7 +523,7 @@ static void DocumentVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   {
     VPackObjectBuilder guard(&builder);
-    int res =
+    auto res =
         ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()), collection,
                                       collectionName, builder, true, args[0]);
 
@@ -715,9 +713,9 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   {
     VPackObjectBuilder guard(&builder);
-    int res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()),
-                                            collection, collectionName, builder,
-                                            !options.ignoreRevs, args[0]);
+    auto res = ParseDocumentOrDocumentHandle(isolate, &(transactionContext->resolver()),
+                                             collection, collectionName, builder,
+                                             !options.ignoreRevs, args[0]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1023,7 +1021,7 @@ static void JS_GetResponsibleShardVocbaseCol(v8::FunctionCallbackInfo<v8::Value>
 
   std::string shardId;
   TRI_ASSERT(builder.slice().isObject());
-  int res = collection->getResponsibleShard(builder.slice(), false, shardId);
+  auto res = collection->getResponsibleShard(builder.slice(), false, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1356,7 +1354,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
     }
 
-    int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
+    auto res = V8ToVPackNoKeyRevId(isolate, updateBuilder, newVal);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -1512,7 +1510,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
 
   {
     VPackObjectBuilder guard(&updateBuilder);
-    int res = V8ToVPackNoKeyRevId(isolate, updateBuilder, args[1]);
+    auto res = V8ToVPackNoKeyRevId(isolate, updateBuilder, args[1]);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);

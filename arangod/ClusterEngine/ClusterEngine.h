@@ -87,10 +87,11 @@ class ClusterEngine final : public StorageEngine {
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                     arangodb::velocypack::Builder& result,
+                                     bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
@@ -116,11 +117,12 @@ class ClusterEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,

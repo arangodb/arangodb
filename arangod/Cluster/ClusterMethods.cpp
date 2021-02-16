@@ -219,7 +219,7 @@ OperationResult handleResponsesFromAllShards(
     for (Try<arangodb::network::Response> const& tryRes : responses) {
       network::Response const& res = tryRes.unwrap();  // throws exceptions upwards
       ShardID sId = res.destinationShard();
-      int commError = network::fuerteToArangoErrorCode(res);
+      auto commError = network::fuerteToArangoErrorCode(res);
       if (commError != TRI_ERROR_NO_ERROR) {
         result.reset(commError);
       } else {
@@ -362,7 +362,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
           arr.get(StaticStrings::Error).isBoolean() &&
           arr.get(StaticStrings::Error).getBoolean()) {
         // an error occurred, now rethrow the error
-        int res = arr.get(StaticStrings::ErrorNum).getNumericValue<int>();
+        auto res = ::ErrorCode{arr.get(StaticStrings::ErrorNum).getNumericValue<int>()};
         VPackSlice msg = arr.get(StaticStrings::ErrorMessage);
         if (msg.isString()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(res, msg.copyString());
@@ -388,7 +388,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen,
     std::shared_ptr<VPackBuffer<uint8_t>> buffer;
 
     int nrok = 0;
-    int commError = TRI_ERROR_NO_ERROR;
+    auto commError = TRI_ERROR_NO_ERROR;
     fuerte::StatusCode code;
     for (size_t i = 0; i < responses.size(); i++) {
       network::Response const& res = responses[i].unwrap();
@@ -453,8 +453,8 @@ struct CrudOperationCtx {
 ///        it returns sth. else this document is NOT contained in the shardMap
 ////////////////////////////////////////////////////////////////////////////////
 
-int distributeBabyOnShards(CrudOperationCtx& opCtx, LogicalCollection& collinfo,
-                           VPackSlice const value) {
+::ErrorCode distributeBabyOnShards(CrudOperationCtx& opCtx, LogicalCollection& collinfo,
+                                   VPackSlice const value) {
   TRI_ASSERT(!collinfo.isSmart() || collinfo.type() == TRI_COL_TYPE_DOCUMENT);
 
   ShardID shardID;
@@ -467,9 +467,8 @@ int distributeBabyOnShards(CrudOperationCtx& opCtx, LogicalCollection& collinfo,
   } else {
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
-    int res = collinfo.getResponsibleShard(value, /*docComplete*/ false, shardID,
-                                           usesDefaultShardingAttributes);
-
+    auto res = collinfo.getResponsibleShard(value, /*docComplete*/ false, shardID,
+                                            usesDefaultShardingAttributes);
     if (res == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
       return TRI_ERROR_CLUSTER_SHARD_GONE;
     }
@@ -503,9 +502,8 @@ struct CreateOperationCtx {
 ///        it returns sth. else this document is NOT contained in the shardMap.
 ///        Also generates a key if necessary.
 ////////////////////////////////////////////////////////////////////////////////
-
-int distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinfo,
-                           VPackSlice const value, bool isRestore) {
+::ErrorCode distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinfo,
+                                   VPackSlice const value, bool isRestore) {
   ShardID shardID;
   std::string _key;
 
@@ -516,7 +514,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinf
     // We just assign it to any shard and pretend the user has given a key
     shardID = collinfo.shardingInfo()->shardListAsShardID()->at(0);
   } else {
-    int r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
+    auto r = transaction::Methods::validateSmartJoinAttribute(collinfo, value);
 
     if (r != TRI_ERROR_NO_ERROR) {
       return r;
@@ -541,7 +539,7 @@ int distributeBabyOnShards(CreateOperationCtx& opCtx, LogicalCollection& collinf
       if (keySlice.isString()) {
         VPackValueLength l;
         char const* p = keySlice.getString(l);
-        int res = collinfo.keyGenerator()->validate(p, l, isRestore);
+        auto res = collinfo.keyGenerator()->validate(p, l, isRestore);
         if (res != TRI_ERROR_NO_ERROR) {
           return res;
         }
@@ -1440,13 +1438,13 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
   // create shard map
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
+      auto res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return makeFuture(OperationResult(res, options));
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
+    auto res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
@@ -2326,7 +2324,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) {  // shard keys cannot be changed, error out early
           return makeFuture(OperationResult(res, options));
@@ -2336,7 +2334,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) {  // shard keys cannot be changed, error out early
         return makeFuture(OperationResult(res, options));
@@ -2507,7 +2505,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync, bool waitForCollector) {
+::ErrorCode flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
+                                   bool waitForCollector) {
   ClusterInfo& ci = feature.clusterInfo();
 
   std::vector<ServerID> DBservers = ci.getCurrentDBServers();
@@ -2538,7 +2537,7 @@ int flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync, bool waitF
       return network::fuerteToArangoErrorCode(r);
     }
     if (r.statusCode() != fuerte::StatusOK) {
-      int code = network::errorCodeFromBody(r.slice());
+      auto code = network::errorCodeFromBody(r.slice());
       if (code != TRI_ERROR_NO_ERROR) {
         return code;
       }
@@ -2875,9 +2874,8 @@ arangodb::Result hotBackupList(network::ConnectionPool* pool,
     }
 
     if (resSlice.get(StaticStrings::Error).getBoolean()) {
-      return arangodb::Result(
-          static_cast<int>(resSlice.get(StaticStrings::ErrorNum).getNumber<uint64_t>()),
-          resSlice.get(StaticStrings::ErrorMessage).copyString());
+      auto res = ::ErrorCode{resSlice.get(StaticStrings::ErrorNum).getNumber<int>()};
+      return arangodb::Result(res, resSlice.get(StaticStrings::ErrorMessage).copyString());
     }
 
     if (!resSlice.hasKey("result") || !resSlice.get("result").isObject()) {
@@ -3433,7 +3431,7 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
 
   // Now listen to the results and report the aggregated final result:
   arangodb::Result finalRes(TRI_ERROR_NO_ERROR);
-  auto reportError = [&](int c, std::string const& m) {
+  auto reportError = [&](::ErrorCode c, std::string const& m) {
     if (finalRes.ok()) {
       finalRes = arangodb::Result(c, m);
     } else {
@@ -3469,8 +3467,9 @@ arangodb::Result lockDBServerTransactions(network::ConnectionPool* pool,
       LOG_TOPIC("f4b8f", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << r.destination << ": " << slc.toJson();
       auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
-      if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
-        reportError(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
+      auto err = ::ErrorCode{errorNum};
+      if (err == TRI_ERROR_LOCK_TIMEOUT) {
+        reportError(err, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
       reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
@@ -3717,9 +3716,10 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool, std::string c
     if (!resSlice.hasKey(StaticStrings::Error) ||
         !resSlice.get(StaticStrings::Error).isBoolean() ||
         resSlice.get(StaticStrings::Error).getBoolean()) {
-      int64_t errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int64_t>();
+      auto errorNum = resSlice.get(StaticStrings::ErrorNum).getNumber<int>();
+      auto res = ::ErrorCode{errorNum};
 
-      if (errorNum == TRI_ERROR_FILE_NOT_FOUND) {
+      if (res == TRI_ERROR_FILE_NOT_FOUND) {
         notFoundCount += 1;
         continue;
       }
@@ -3730,7 +3730,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool, std::string c
                              " (" + std::to_string(errorNum) + ")";
 
       LOG_TOPIC("9b94f", ERR, Logger::BACKUP) << errorMsg;
-      return arangodb::Result(static_cast<int>(errorNum), errorMsg);
+      return arangodb::Result(res, errorMsg);
     }
   }
 
@@ -3866,7 +3866,7 @@ arangodb::Result hotbackupWaitForLockDBServersTransactions(
     if (slc.get(StaticStrings::Error).getBoolean()) {
       LOG_TOPIC("d7a8a", DEBUG, Logger::BACKUP)
           << "failed to acquire lock from " << r.destination << ": " << slc.toJson();
-      auto errorNum = slc.get(StaticStrings::ErrorNum).getNumber<int>();
+      auto errorNum = ::ErrorCode{slc.get(StaticStrings::ErrorNum).getNumber<int>()};
       if (errorNum == TRI_ERROR_LOCK_TIMEOUT) {
         return arangodb::Result(errorNum, slc.get(StaticStrings::ErrorMessage).copyString());
       }

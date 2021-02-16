@@ -747,8 +747,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
-                                  std::string const& newName) {
+static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
+                                        std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
   graph::GraphManager gmngr{vocbase};

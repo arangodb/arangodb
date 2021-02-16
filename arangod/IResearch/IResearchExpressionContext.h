@@ -56,10 +56,10 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                                      aql::QueryContext* query,
                                      aql::AqlFunctionsInternalCache* cache)
   : ExpressionContext(), _trx(trx), _query(query), _aqlFunctionsInternalCache(cache)  {}
-  
-  void registerWarning(int errorCode, char const* msg) override final;
-  void registerError(int errorCode, char const* msg) override final;
-  
+
+  void registerWarning(ErrorCode errorCode, char const* msg) override final;
+  void registerError(ErrorCode errorCode, char const* msg) override final;
+
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
                                        bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,

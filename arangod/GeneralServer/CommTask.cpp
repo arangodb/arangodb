@@ -453,20 +453,19 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
 }
 
 /// @brief send response including error response body
-void CommTask::sendErrorResponse(rest::ResponseCode code,
-                                 rest::ContentType respType, uint64_t messageId,
-                                 int errorNum, char const* errorMessage /* = nullptr */) {
-
+void CommTask::sendErrorResponse(rest::ResponseCode code, rest::ContentType respType,
+                                 uint64_t messageId, ErrorCode errorNum,
+                                 std::string_view errorMessage /* = {} */) {
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
   if (errorNum != TRI_ERROR_NO_ERROR) {
-    if (errorMessage == nullptr) {
+    if (errorMessage.data() == nullptr) {
       errorMessage = TRI_errno_string(errorNum);
     }
-    TRI_ASSERT(errorMessage != nullptr);
+    TRI_ASSERT(errorMessage.data() != nullptr);
     builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
   }
   builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));

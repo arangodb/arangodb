@@ -224,7 +224,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     }
 
     arangodb::network::EndpointSpec spec;
-    int res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+    auto res = resolveDestination(*pool->config().clusterInfo, dest, spec);
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -351,7 +351,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     }
 
     arangodb::network::EndpointSpec spec;
-    int res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
+    auto res = resolveDestination(*_pool->config().clusterInfo, _destination, spec);
     if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:

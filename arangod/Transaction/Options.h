@@ -52,6 +52,11 @@ struct Options {
   /// @brief add the options to an opened vpack builder
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief patch intermediateCommitCount for testing
+  static void adjustIntermediateCommitCount(Options& options);
+#endif
+
   static constexpr double defaultLockTimeout = 900.0;
   static uint64_t defaultMaxTransactionSize;
   static uint64_t defaultIntermediateCommitSize;

@@ -1025,7 +1025,7 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   v8::Handle<v8::Value> args[2] = {req, res};
 
   // handle C++ exceptions that happen during dynamic script execution
-  int errorCode;
+  ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string errorMessage;
 
   try {
@@ -1514,14 +1514,15 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
-                                   std::string const& path,  // Note: Has to be properly encoded!
-                                   arangodb::rest::RequestType const& method,
-                                   std::string const& body) {
+static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
+                                         std::string const& path,  // Note: Has to be properly encoded!
+                                         arangodb::rest::RequestType const& method,
+                                         std::string const& body) {
   TRI_GET_GLOBALS();
   network::ConnectionPool* pool = v8g->_server.getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION)
+        << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
   ClusterInfo& ci = *pool->config().clusterInfo;
@@ -1550,7 +1551,7 @@ static int clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbna
 
   for (auto& f : futures) {
     network::Response const& res = std::move(f).await_unwrap();  // throws exceptions upwards
-    int commError = network::fuerteToArangoErrorCode(res);
+    auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
@@ -1618,9 +1619,9 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(isolate, dbname,
-                                      "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::RequestType::PUT, "");
+    auto res = clusterSendToAllServers(isolate, dbname,
+                                       "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                       arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1693,7 +1694,7 @@ static void JS_DebugRemoveFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res =
+    auto res =
         clusterSendToAllServers(isolate, dbname,
                                 "_admin/debug/failat/" + StringUtils::urlEncode(point),
                                 arangodb::rest::RequestType::DELETE_REQ, "");
@@ -1736,7 +1737,7 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
     }
     std::string dbname(v8g->_vocbase->name());
 
-    int res =
+    auto res =
         clusterSendToAllServers(isolate, dbname, "_admin/debug/failat",
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {

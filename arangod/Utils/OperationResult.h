@@ -72,7 +72,7 @@ struct OperationResult final {
   // Result-like interface
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
-  int errorNumber() const noexcept { return result.errorNumber(); }
+  ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
   bool is(int errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }

@@ -2040,7 +2040,7 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20001,
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
         std::string("Gossip message must be an object. Incoming type is ") +
             slice.typeName());
   }
@@ -2060,7 +2060,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("id") || !slice.get("id").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20002, "Gossip message must contain string parameter 'id'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain string parameter 'id'");
   }
   std::string id = slice.get("id").copyString();
 
@@ -2080,7 +2081,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message must contain string parameter 'endpoint'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
 
@@ -2093,7 +2095,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
 
   if (!slice.hasKey("pool") || !slice.get("pool").isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        20003, "Gossip message must contain object parameter 'pool'");
+        TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+        "Gossip message must contain object parameter 'pool'");
   }
   VPackSlice pslice = slice.get("pool");
 
@@ -2101,7 +2104,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   for (auto pair : VPackObjectIterator(pslice)) {
     if (!pair.value.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          20004, "Gossip message pool must contain string parameters");
+          TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
+          "Gossip message pool must contain string parameters");
     }
   }
 
