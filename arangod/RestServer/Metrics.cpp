@@ -140,6 +140,8 @@ char const* arangodb::metricsNameList[] = {
   "arangodb_replication_tailing_removals",
   "arangodb_replication_tailing_requests",
   "arangodb_replication_tailing_request_time",
+  "arangodb_rocksdb_write_stalls",
+  "arangodb_rocksdb_write_stops",
   "arangodb_scheduler_awake_threads",
   "arangodb_scheduler_high_prio_queue_length",
   "arangodb_scheduler_jobs_dequeued",
@@ -171,9 +173,6 @@ char const* arangodb::metricsNameList[] = {
   "arangodb_v8_context_entered",
   "arangodb_v8_context_enter_failures",
   "arangodb_v8_context_exited",
-  "heartbeat_send_time_ms_docs",
-  "rocksdb_write_stalls",
-  "rocksdb_write_stops",
   nullptr
 };
 

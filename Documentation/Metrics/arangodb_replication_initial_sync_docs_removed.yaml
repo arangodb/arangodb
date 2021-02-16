@@ -1,0 +1,15 @@
+name: arangodb_metric
+help: >
+  Put the help string here.
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: >
+  Description here. Can be multiline and use markdown.
+threshold: >
+  Optional text to describe thresholds and normal ranges for the metrics.
+  Can be multiline markdown.
+troubleshoot: >
+  If at all possible describe hints for troubleshooting and how to get
+  metrics in allowable range again.

@@ -1,0 +1,2679 @@
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
+- description: 'Description here. Can be multiline and use markdown.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Put the help string here.
+
+    '
+  name: arangodb_metric
+  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
+    Can be multiline markdown.
+
+    '
+  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
+    get metrics in allowable range again.
+
+    '
