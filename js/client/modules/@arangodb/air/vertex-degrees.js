@@ -92,6 +92,18 @@ function vertex_degrees(
 function exec_test_vertex_degrees_on_graph(graphSpec) {
   testhelpers.wait_for_pregel("AIR vertex-degree", vertex_degrees(graphSpec.name, "vertexDegrees"));
 
+  db._profileQuery(`
+    FOR d IN @@V
+      LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
+      LET inDegree = LENGTH(FOR x IN @@E FILTER x._to == d._id RETURN x)
+      FILTER d.inDegree != inDegree || d.outDegree != outDegree
+      RETURN { aql: { inDegree: inDegree, outDegree: outDegree },
+               air: { inDegree: d.inDegree, outDegree: d.outDegree } }`,
+      {
+        "@V": graphSpec.vname,
+        "@E": graphSpec.ename
+      });
+
   return testhelpers.compare_pregel(db._query(`
     FOR d IN @@V
       LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
