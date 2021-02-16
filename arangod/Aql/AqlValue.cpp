@@ -53,6 +53,13 @@ using namespace arangodb::aql;
 // this is a copy of that functionality, because the functions in velocypack
 // are not accessible from here
 namespace {
+
+union DoubleEndianessConverter {
+  double dbl;
+  uint64_t uint;
+};
+static_assert(sizeof(uint64_t) == sizeof(double), "Double does not fit into uint64_t");
+
 static inline uint64_t toUInt64(int64_t v) noexcept {
   // If v is negative, we need to add 2^63 to make it positive,
   // before we can cast it to an uint64_t:
@@ -73,7 +80,7 @@ static inline uint8_t intLength(int64_t value) noexcept {
   uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
                           : static_cast<uint64_t>(-(value + 1));
   uint8_t nSize = (x & UINT64_C(0xFFFFFFFF80000000)) ? x >>= 32, 5 : 1;
-  nSize += (x & UINT64_C(0xFFFF8000)) ? x >>= 16,2 : 0;
+  nSize += (x & UINT64_C(0xFFFF8000)) ? x >>= 16, 2 : 0;
   nSize += (x & 0xFF80) ? 1 :0;
   return nSize;
 }
@@ -97,7 +104,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
     }
     case RANGE: {
       uint64_t const n = _data.rangeMeta.range->size();
-      
+
       // simon: copied from VPackSlice::normalizedHash()
       // normalize arrays by hashing array length and iterating
       // over all array members
@@ -109,7 +116,7 @@ uint64_t AqlValue::hash(uint64_t seed) const {
         double v = static_cast<double>(_data.rangeMeta.range->at(i));
         value ^= VELOCYPACK_HASH(&v, sizeof(v), value);
       }
-      
+
       return value;
     }
   }
@@ -253,7 +260,7 @@ bool AqlValue::isString() const noexcept {
       break;
     }
   }
-  
+
   return false;
 }
 
@@ -280,7 +287,7 @@ bool AqlValue::isObject() const noexcept {
       break;
     }
   }
-  
+
   return false;
 }
 
@@ -308,7 +315,7 @@ bool AqlValue::isArray() const noexcept {
       break;
     }
   }
-  
+
   return true;
 }
 
@@ -840,8 +847,9 @@ double AqlValue::toDouble(bool& failed) const {
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val));
     case VPACK_64BIT_INLINE_UINT:
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
-    case VPACK_64BIT_INLINE_DOUBLE:
-      return basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val);
+    case VPACK_64BIT_INLINE_DOUBLE: {
+     basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -897,8 +905,11 @@ int64_t AqlValue::toInt64() const {
       return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_64BIT_INLINE_UINT:
       return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
-    case VPACK_64BIT_INLINE_DOUBLE:
-      return static_cast<int64_t>(basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val));
+    case VPACK_64BIT_INLINE_DOUBLE: {
+      DoubleEndianessConverter tmp;
+      tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      return static_cast<int64_t>(tmp.dbl);
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -958,8 +969,11 @@ bool AqlValue::toBoolean() const {
       return _data.longNumberMeta.data.intLittleEndian.val != 0;
     case VPACK_64BIT_INLINE_UINT: // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.uintLittleEndian.val != 0;
-    case VPACK_64BIT_INLINE_DOUBLE:
-      return basics::littleToHost(_data.longNumberMeta.data.doubleLittleEndian.val) != 0.0;
+    case VPACK_64BIT_INLINE_DOUBLE: {
+      DoubleEndianessConverter tmp;
+      tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      return tmp.dbl != 0.0;
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -994,7 +1008,7 @@ AqlValue::MemoryOriginType AqlValue::memoryOriginType() const noexcept {
   TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
   return mot;
 }
-  
+
 /// @brief store meta information for values of type VPACK_MANAGED_SLICE
 void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length) {
   TRI_ASSERT(length > 0);
@@ -1019,7 +1033,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::V
   TRI_ASSERT(memoryOriginType() == mot);
   TRI_ASSERT(memoryUsage() == length);
 }
-  
+
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options const* options) const {
   auto context = TRI_IGETC;
@@ -1072,7 +1086,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointerMeta.pointer);
         break;
-      }  
+      }
     [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_48BIT_INLINE_INT:
@@ -1261,7 +1275,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     }
     // fall-through to other types intentional
   } else {
-    switch(leftType) {
+    switch (leftType) {
       case VPACK_48BIT_INLINE_INT:
       case VPACK_48BIT_INLINE_UINT:
       case VPACK_64BIT_INLINE_INT: {
@@ -1292,7 +1306,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
         break; // do VPack comparison
     }
   }
-  
+
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
@@ -1375,7 +1389,7 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
     case RANGE:
       _data.rangeMeta.range = static_cast<Range*>(data);
       break;
-  };
+  }
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
@@ -1407,7 +1421,10 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   } else {
     // a "real" double
     _data.longNumberMeta.data.slice.slice[0] = 0x1b;
-    _data.longNumberMeta.data.doubleLittleEndian.val = arangodb::basics::hostToLittle(value);
+    DoubleEndianessConverter tmp;
+    tmp.dbl = value;
+    _data.longNumberMeta.data.uintLittleEndian.val =
+      arangodb::basics::hostToLittle(tmp.uint);
     valueType = AqlValueType::VPACK_64BIT_INLINE_DOUBLE;
   }
   setType(AqlValueType::VPACK_INLINE);
@@ -1656,14 +1673,6 @@ void AqlValue::setType(AqlValue::AqlValueType type) noexcept {
 
 void* AqlValue::data() const noexcept {
   switch (type()) {
-    case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
-      TRI_ASSERT(FALSE);
-      return nullptr;
     case VPACK_SLICE_POINTER:
       return const_cast<uint8_t*>(_data.pointerMeta.pointer);
     case VPACK_MANAGED_SLICE:
@@ -1671,6 +1680,15 @@ void* AqlValue::data() const noexcept {
       return  _data.managedSliceMeta.managedPointer;
     case RANGE:
       return const_cast<Range*>(_data.rangeMeta.range);
+    case VPACK_INLINE:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+    default:
+      TRI_ASSERT(FALSE);
+      return nullptr;
   }
 }
 
@@ -1728,6 +1746,9 @@ size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue co
       return std::hash<void const*>()(x._data.managedSliceMeta.managedPointer);
     case arangodb::aql::AqlValue::RANGE:
       return std::hash<void const*>()(x._data.rangeMeta.range);
+    default:
+      TRI_ASSERT(false);
+      return 0;
   }
 }
 
@@ -1758,5 +1779,8 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
       return a._data.managedSliceMeta.managedPointer ==  a._data.managedSliceMeta.managedPointer;
     case arangodb::aql::AqlValue::RANGE:
       return a._data.rangeMeta.range == b._data.rangeMeta.range;
+    default:
+      TRI_ASSERT(false);
+      return false;
   }
 }
