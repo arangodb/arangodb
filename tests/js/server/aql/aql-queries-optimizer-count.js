@@ -55,6 +55,7 @@ function ahuacatlQueryOptimizerCollectTestSuite() {
       collection.ensureIndex({type: "persistent", fields: ["someBoolean", "someArray[*]"]});
 
       // create 100 (50+50) documents in total
+      let docsToInsert = [];
       for (let outer = 0; outer < 50; outer++) {
         let myArray = [];
         // create 100 entries for our inner document array
@@ -62,9 +63,10 @@ function ahuacatlQueryOptimizerCollectTestSuite() {
           // write numeric strings
           myArray.push(JSON.stringify(inner));
         }
-        collection.save({"someBoolean": true, "someArray": myArray});
-        collection.save({"someBoolean": false, "someArray": myArray});
+        docsToInsert.push({"someBoolean": true, "someArray": myArray});
+        docsToInsert.push({"someBoolean": false, "someArray": myArray});
       }
+      collection.save(docsToInsert);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,12 +78,16 @@ function ahuacatlQueryOptimizerCollectTestSuite() {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief check sort optimization without index
+/// @brief check collect with count with index (on array index attribute)
 ////////////////////////////////////////////////////////////////////////////////
 
     testCountWithMultipleAttributesIncludingIndexArray: function () {
       let countWithLengthQuery = "RETURN LENGTH(" + cn + ")";
-      let countWithCollectQuery = "FOR d IN " + cn + " FILTER (d.someBoolean == true) OR (d.someBoolean == false) COLLECT WITH COUNT INTO c RETURN c";
+      let countWithCollectQuery = `
+        FOR d IN ${cn} FILTER (d.someBoolean == true) OR (d.someBoolean == false)
+          COLLECT WITH COUNT INTO c
+          OPTIONS {indexHint: ['someBoolean', 'someArray'], forceIndexHint: true}
+        RETURN c`;
 
       let resCountWithLength = getQueryResults(countWithLengthQuery);
       let resCountWithCollect = getQueryResults(countWithCollectQuery);
