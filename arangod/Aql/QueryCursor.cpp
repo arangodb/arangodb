@@ -317,6 +317,8 @@ void QueryStreamCursor::resetWakeupHandler() {
 }
 
 Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
+  bool const silent = _query->queryOptions().silent;
+
   try {
     VPackOptions const* oldOptions = builder.options;
     TRI_DEFER(builder.options = oldOptions);
@@ -326,7 +328,9 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
     options.escapeUnicode = true;
     builder.options = &options;
     // reserve some space in Builder to avoid frequent reallocs
-    builder.reserve(16 * 1024);
+    if (!silent) {
+      builder.reserve(16 * 1024);
+    }
     builder.add("result", VPackValue(VPackValueType::Array, true));
 
     aql::ExecutionEngine* engine = _query->rootEngine();
@@ -340,10 +344,12 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
       TRI_ASSERT(_queryResultPos < block->size());
 
       while (rowsWritten < batchSize() && _queryResultPos < block->size()) {
-        AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
-        if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
-          value.toVelocyPack(&_query->vpackOptions(), builder, false);
-          ++rowsWritten;
+        if (!silent) {
+          AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
+          if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
+            value.toVelocyPack(&_query->vpackOptions(), builder, false);
+            ++rowsWritten;
+          }
         }
         ++_queryResultPos;
       }
@@ -434,9 +440,11 @@ ExecutionState QueryStreamCursor::prepareDump() {
   numBufferedRows -= _queryResultPos;
 
   ExecutionState state = ExecutionState::HASMORE;
+  bool const silent = _query->queryOptions().silent;
+
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
-  while (state != ExecutionState::DONE && numBufferedRows <= batchSize()) {
+  while (state != ExecutionState::DONE && (silent || numBufferedRows <= batchSize())) {
     SharedAqlItemBlockPtr resultBlock;
     std::tie(state, resultBlock) = engine->getSome(batchSize());
     if (state == ExecutionState::WAITING) {

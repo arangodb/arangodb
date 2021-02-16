@@ -1,6 +1,28 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Fix profiling of AQL queries with the `silent` and `stream` options sets in
+  combination. Using the `silent` option makes a query execute, but discard all
+  its results instantly. This led to some confusion in streaming queries, which
+  can return the first query results once they are available, but don't
+  necessarily execute the full query.
+  Now, `silent` correctly discards all results even in streaming queries, but
+  this has the effect that a streaming query will likely be executed completely
+  when the `silent` option is set. This is not the default however, and the
+  `silent` option is normally not set. There is no change for streaming queries
+  if the `silent` option is not set.
+
+  As a side-effect of this change, this makes profiling (i.e. using
+  `db._profileQuery(...)` work for streaming queries as well. Previously,
+  profiling a streaming query could have led to some internal errors, and even
+  query results being returned, even though profiling a query should not return
+  any query results.
+
+* Improved the wording for sharding options displayed in the web interface.
+
+  Instead of offering `flexible` and `single`, now use the more intuitive
+  `Sharded` and `OneShard` options, and update the help text for them.
+
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
 
