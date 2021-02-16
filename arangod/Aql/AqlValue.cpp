@@ -1689,7 +1689,7 @@ void* AqlValue::data() const noexcept {
     case VPACK_64BIT_INLINE_UINT:
     case VPACK_64BIT_INLINE_DOUBLE:
     default:
-      TRI_ASSERT(FALSE);
+      TRI_ASSERT(false);
       return nullptr;
   }
 }
@@ -1778,7 +1778,7 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
     case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
       return a._data.pointerMeta.pointer == b._data.pointerMeta.pointer;
     case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:
-      return a._data.managedSliceMeta.managedPointer ==  a._data.managedSliceMeta.managedPointer;
+      return a._data.managedSliceMeta.managedPointer ==  b._data.managedSliceMeta.managedPointer;
     case arangodb::aql::AqlValue::RANGE:
       return a._data.rangeMeta.range == b._data.rangeMeta.range;
     default:
