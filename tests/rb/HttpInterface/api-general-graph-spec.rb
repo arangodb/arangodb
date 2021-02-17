@@ -741,7 +741,7 @@ describe ArangoDB do
             doc.parsed_response['new']['value'].should eq("foo")
           end
 
-          it "can not create edge with unknown from vertex collection, waitForSync = #{sync}" do
+          it "can not create edge with unknown _from vertex collection, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1 = v1.parsed_response['vertex']['_id']
             doc = create_edge( sync, graph_name, friend_collection, "MISSING/v2", v1, {})
