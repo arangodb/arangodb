@@ -121,9 +121,9 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
   
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,
-                         uint64_t messageId, int errorNum,
-                         char const* errorMessage = nullptr);
-  
+                         uint64_t messageId, ErrorCode errorNum,
+                         std::string_view errorMessage = {});
+
   /// @brief send simple response including response body
   void sendSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
                           velocypack::Buffer<uint8_t>&&);

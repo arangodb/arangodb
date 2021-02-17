@@ -454,7 +454,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
       return res;
     } else if (tmp.slice().isNone()) {
       // did not find a suitable index
-      int code = create ? TRI_ERROR_OUT_OF_MEMORY : TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+      auto code = create ? TRI_ERROR_OUT_OF_MEMORY : TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
       events::CreateIndex(collection->vocbase().name(), collection->name(), indexDef, code);
       return Result(code);
     }
@@ -672,8 +672,6 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
         collection->vocbase().name(), std::to_string(collection->id().id()), iid, 0.0  // args
     );
 #endif
-    events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid.id()), res.errorNumber());
     return res;
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
@@ -708,7 +706,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     bool ok = col->dropIndex(idx->id());
-    int code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+    auto code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
     events::DropIndex(collection->vocbase().name(), collection->name(),
                       std::to_string(iid.id()), code);
     return Result(code);

@@ -133,7 +133,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(transaction::Methods* trx) const
 }
 
 /// @brief write locks a collection, with a timeout
-int RocksDBMetaCollection::lockWrite(double timeout) {
+ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
   return doLock(timeout, AccessMode::Type::WRITE);
 }
 
@@ -141,7 +141,7 @@ int RocksDBMetaCollection::lockWrite(double timeout) {
 void RocksDBMetaCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
-int RocksDBMetaCollection::lockRead(double timeout) {
+ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -195,7 +195,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto lockGuard = scopeGuard([this] { unlockWrite(); });
-    int res = lockWrite(transaction::Options::defaultLockTimeout);
+    auto res = lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -874,7 +874,7 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
 }
 
 /// @brief lock a collection, with a timeout
-int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
+ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
 

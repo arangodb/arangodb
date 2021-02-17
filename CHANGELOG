@@ -1,6 +1,186 @@
 devel
 -----
 
+* Fixed issue #DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with
+  an index which has been created with an array index attribute.
+
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
+
+* Improved the wording for sharding options displayed in the web interface.
+
+  Instead of offering `flexible` and `single`, now use the more intuitive
+  `Sharded` and `OneShard` options, and update the help text for them.
+
+* Fix profiling of AQL queries with the `silent` and `stream` options sets in
+  combination. Using the `silent` option makes a query execute, but discard all
+  its results instantly. This led to some confusion in streaming queries, which
+  can return the first query results once they are available, but don't 
+  necessarily execute the full query.
+  Now, `silent` correctly discards all results even in streaming queries, but
+  this has the effect that a streaming query will likely be executed completely
+  when the `silent` option is set. This is not the default however, and the
+  `silent` option is normally not set. There is no change for streaming queries
+  if the `silent` option is not set.
+
+  As a side-effect of this change, this makes profiling (i.e. using 
+  `db._profileQuery(...)` work for streaming queries as well. Previously, 
+  profiling a streaming query could have led to some internal errors, and even
+  query results being returned, even though profiling a query should not return 
+  any query results.
+
+* Make dropping of indexes in cluster retry in case of precondition failed.
+
+  When dropping an indexes of a collection in the cluster, the operation could
+  fail with a "precondition failed" error in case there were simultaneous
+  index creation or drop actions running for the same collection. The error
+  was returned properly internally, but got lost at the point when 
+  `<collection>.dropIndex()` simply converted any error to just `false`.
+  We can't make `dropIndex()` throw an exception for any error, because that
+  would affect downwards-compatibility. But in case there is a simultaneous
+  change to the collection indexes, we can just retry our own operation and
+  check if it succeeds then. This is what `dropIndex()` will do now.
+
+* Try to raise file descriptors limit in local start scripts (in `scripts/`
+  directory - used for development only).
+
+* Fix error reporting in the reloadTLS route.
+
+* Fix potential undefined behavior when iterating over connected nodes in an
+  execution plan and calling callbacks for each of the nodes: if the callbacks
+  modified the list of connected nodes of the current that they were called
+  from, this could lead to potentially undefined behavior due to iterator
+  invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
+
+* Fixed replication bug in MerkleTree sync protocol, which could lead to
+  data corruption. The visible effect was that shards could no longer get
+  in sync since the counts would not match after sync, even after a recount.
+  This corruption only happened if there were large amounts of differences
+  (at least 65537) and the destination side had newer revisions for some
+  keys than the source side.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Simplify the DistributeExecutor and avoid implicit modification of its input
+  variable. Previously the DistributeExecutor could update the input variable
+  in-place, leading to unexpected results (see #13509).
+  The modification logic has now been moved into three new _internal_ AQL
+  functions (MAKE_DISTRIBUTE_INPUT, MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION,
+  and MAKE_DISTRIBUTE_GRAPH_INPUT) and an additional calculation node with an
+  according function call will be introduced if we need to prepare the input
+  data for the distribute node.
+  
+* Added new REST APIs for retrieving the sharding distribution:
+
+  - GET `/_api/database/shardDistribution` will return the number of 
+    collections, shards, leaders and followers for the database it is run
+    inside. The request can optionally be restricted to include data from 
+    only a single DB server, by passing the `DBserver` URL parameter.
+
+    This API can only be used on coordinators.
+
+  - GET `/_admin/cluster/shardDistribution` will return global statistics
+    on the current shard distribution, showing the total number of databases,
+    collections, shards, leaders and followers for the entire cluster. 
+    The results can optionally be restricted to include data from only a
+    single DB server, by passing the `DBserver` URL parameter.
+    By setting the `details` URL parameter, the response will not contain
+    aggregates, but instead one entry per available database will be returned.
+
+    This API can only be used in the `_system` database of coordinators, and
+    requires admin user privileges.
+
+* Decrease the size of serialized index estimates, by introducing a 
+  compressed serialization format. The compressed format uses the previous
+  uncompressed format internally, compresses it, and stores the compressed
+  data instead. This makes serialized index estimates a lot smaller, which
+  in turn decreases the size of I/O operations for index maintenance.
+
+* Do not create index estimator objects for proxy collection objects on 
+  coordinators and DB servers. Proxy objects are created on coordinators and
+  DB servers for all shards, and they also make index objects available. In
+  order to reduce the memory usage by these objects, we don't create any
+  index estimator objects for indexes in those proxy objects. Index estimators
+  usually take several KB of memory each, so not creating them will pay out
+  for higher numbers of collections/shards.
+
+* More improvements for logging:
+  
+  * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
+    in a more intuitve format, putting each log entry with all its properties
+    into an object. The API response is an array with all log message objects
+    that match the search criteria.
+    This is an extension to the already existing API endpoint GET `/_admin/log`,
+    which returned log messages fragmented into 5 separate arrays.
+
+    The already existing API endpoint GET `/_admin/log` for retrieving log 
+    messages is now deprecated, altough it will stay available for some time.
+
+  * Truncation of log messages now takes JSON format into account, so that
+    the truncation of oversized JSON log messages still keeps a valid JSON
+    structure even after the truncation.
+
+  * The maximum size of in-memory log messages was doubled from 256 to 512
+    chars, so that longer parts of each log message can be preserved now.
+
+* Improvements for logging. This adds the following startup options to arangod:
+
+  - `--log.max-entry-length`: controls the maximum line length for individual
+    log messages that are written into normal logfiles by arangod (note: this
+    does not include audit log messages). 
+    Any log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. The purpose of this parameter is to 
+    shorten long log messages in case there is not a lot of space for logfiles, 
+    and to keep rogue log messages from overusing resources. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+  
+  - `--audit.max-entry-length`: controls the maximum line length for individual
+    audit log messages that are written into audit logs by arangod. Any audit
+    log messages longer than the specified value will be truncated and the 
+    suffix '...' will be added to them. 
+    The default value is 128 MB, which is very high and should effectively
+    mean downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+
+  - `--log.in-memory-level`: controls which log messages are preserved in 
+    memory (in case `--log.in-memory` is set to `true`). The default value is
+    `info`, meaning all log messages of types `info`, `warning`, `error` and
+    `fatal` will be stored by an instance in memory (this was also the behavior
+    in previous versions of ArangoDB). By setting this option to `warning`,
+    only `warning`, `error` and `fatal` log messages will be preserved in memory, 
+    and by setting the option to `error` only error and fatal messages will be kept.
+    This option is useful because the number of in-memory log messages is 
+    limited to the latest 2048 messages, and these slots are by default shared 
+    between informational, warning and error messages. 
+
+* Honor the value of startup option `--log.api-enabled` when set to `false`.
+  The desired behavior in this case is to turn off the REST API for logging,
+  but was not implemented. The default value for the option is `true`, so the
+  REST API is enabled. This behavior did not change, and neither did the 
+  behavior when setting the option to a value of `jwt` (meaning the REST API
+  for logging is only available for superusers with a valid JWT token).
+
+* Split the update operations for the _fishbowl system collection with Foxx
+  apps into separate insert/replace and remove operations. This makes the
+  overall update not atomic, but as removes are unlikely here, we can now get
+  away with a simple multi-document insert-replace operation instead of a
+  truncate and an exclusive transaction, which was used before.
+
+* Fix `/_admin/cluster/removeServer` API.
+  This often returned HTTP 500 with an error message "Need open Array" due to
+  an internal error when setting up agency preconditions.
+
 * Remove logging startup options `--log.api-enabled` and `--log.keep-logrotate` 
   for all client tools (arangosh, arangodump, arangorestore etc.), as these 
   options are only meaningful for arangod.
@@ -133,19 +313,22 @@ devel
     document update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+  
+  The timer metrics are turned off by default, and can be enabled by setting
+  the startup option `--server.export-read-write-metrics true`.
 
 * Fixed some wrong behavior in single document updates. If the option
   ignoreRevs=false was given and the precondition _rev was given in the body
   but the _key was given in the URL path, then the rev was wrongly taken
   as 0, rather than using the one from the document body.
 
-* Make `padded` and `autoincrement` key generators export their `lastValue`
-  values, so that they are available in dumps and can be restored elsewhere
-  from a dump.
-
 * Improved logging for error 1489 ("a shard leader refuses to perform a
   replication operation"). The log message will now provide the database and
   shard name plus the differing information about the shard leader.
+
+* Make `padded` and `autoincrement` key generators export their `lastValue` 
+  values, so that they are available in dumps and can be restored elsewhere
+  from a dump.
 
 * Fix decoding of values in `padded` key generator when restoring from a dump.
 
@@ -327,7 +510,7 @@ devel
   run in parallel. The defaults are intentionally high in order to not stop any valid,
   previously working queries from succedding.
 
-* Added startup options `--audit.queue` to control audit logging queuing
+* Added startup option `--audit.queue` to control audit logging queuing
   behavior (Enterprise Edition only):
 
   The option controls whether audit log messages are submitted to a queue

@@ -52,6 +52,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -170,7 +171,7 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 
 static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
+  auto res = TRI_errno();
 
   std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
@@ -235,7 +236,7 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
     std::string message("read failed for file '" + filename + "': " + strerror(res));
     LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
     return {TRI_ERROR_SYS_ERROR, message};
@@ -262,7 +263,8 @@ Result slurp(std::string const& filename, std::string& result) {
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("write failed for file '" + filename + "': " + TRI_last_error());
+  auto message = StringUtils::concatT("write failed for file '", filename,
+                                      "': ", TRI_last_error());
   LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -317,30 +319,31 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool createDirectory(std::string const& name, int* errorNumber) {
+bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
   return createDirectory(name, 0777, errorNumber);
 }
 
-bool createDirectory(std::string const& name, int mask, int* errorNumber) {
+bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
   auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
 
-  int res = errno;
-  if (result != 0 && res == EEXIST && isDirectory(name)) {
-    result = 0;
-  } else if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  if (errorNumber != nullptr) {
-    *errorNumber = res;
+  if (result != 0) {
+    int res = errno;
+    if (res == EEXIST && isDirectory(name)) {
+      result = 0;
+    } else {
+      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      if (errorNumber != nullptr) {
+        *errorNumber = errorCode;
+      }
+    }
   }
 
   return (result != 0) ? false : true;
@@ -526,7 +529,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
 
     std::string message("failed to enumerate files in directory '" + directory +
                         "': " + strerror(res));
@@ -554,7 +557,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   if (d == nullptr) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
 
     std::string message("failed to enumerate files in directory '" + directory +
                         "': " + strerror(res));
@@ -704,7 +707,7 @@ void makePathAbsolute(std::string& path) {
 
 static void throwProgramError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
+  auto res = TRI_errno();
 
   std::string message("open failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;

@@ -52,13 +52,13 @@ RestStatus RestGraphHandler::execute() {
   return RestStatus::DONE;
 }
 
-Result RestGraphHandler::returnError(int errorNumber) {
+Result RestGraphHandler::returnError(ErrorCode errorNumber) {
   auto res = Result(errorNumber);
   generateError(res);
   return res;
 }
 
-Result RestGraphHandler::returnError(int errorNumber, char const* message) {
+Result RestGraphHandler::returnError(ErrorCode errorNumber, std::string_view message) {
   auto res = Result(errorNumber, message);
   generateError(res);
   return res;

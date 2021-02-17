@@ -37,7 +37,7 @@ using namespace arangodb::network;
 
 TEST(NetworkUtilsTest, errorFromBody) {
   const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
-  auto res = network::resultFromBody(VPackParser::fromJson(str), 0);
+  auto res = network::resultFromBody(VPackParser::fromJson(str), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(res.errorNumber(), 1337);
   ASSERT_EQ(res.errorMessage(), "abc");
 }
