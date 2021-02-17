@@ -548,13 +548,6 @@ else ()
   set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 endif ()
 
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL, globally
-  # enabling it for each target individually will lead to problems when
-  # linking libraries and executable with different settings.
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -D_GLIBCXX_DEBUG")
-endif ()
-
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.3")
     message(WARNING "ArangoDB requires g++ 9.3 or newer, building with older compiler versions is unsupported")
@@ -748,7 +741,7 @@ option(UNCONDITIONALLY_BUILD_LOG_MESSAGES
   )
 if (UNCONDITIONALLY_BUILD_LOG_MESSAGES)
   add_definitions("-DARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES=1")
-endif()
+endif ()
 
 option(USE_MAINTAINER_MODE
   "whether we want to have assertions and other development features"
@@ -759,7 +752,14 @@ if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
   if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_definitions("-D_FORTIFY_SOURCE=2")
-  endif()
+  endif ()
+  
+  if (CMAKE_COMPILER_IS_GNUCC)
+    # enable debug STL, globally
+    # enabling it for each target individually will lead to problems when
+    # linking libraries and executable with different settings.
+    add_definitions("-D_GLIBCXX_DEBUG")
+  endif ()
 
   find_package(FLEX)
   find_package(BISON)
@@ -769,10 +769,11 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+
 option(USE_GOOGLE_TESTS "Compile C++ unit tests" ON)
 if (USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
-endif()
+endif ()
 
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
