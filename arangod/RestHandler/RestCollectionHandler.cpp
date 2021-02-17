@@ -718,9 +718,7 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   OperationOptions options(_context);
   auto figures = OperationResult(Result(), options);
   if (showFigures != FiguresType::None) {
-    auto res = coll->figures(showFigures == FiguresType::Detailed, options);
-    TRI_ASSERT(res.holds_inline_value());
-    figures = std::move(res).await_unwrap();
+    figures = coll->figures(showFigures == FiguresType::Detailed, options).await_unwrap();
   }
 
   auto&& [out_future, p] = futures::makePromise<OperationResult>();
@@ -743,7 +741,9 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
         return futures::makeFuture(OperationResult(Result(), options));
       },
       std::move(figures))
-      .fulfill(std::move(p));
+      .finally([p = std::move(p)](futures::Try<OperationResult>&& opRes) mutable noexcept {
+        std::move(p).fulfill(std::move(opRes));
+      });
 
   return std::move(out_future).thenValue([=, &ctxt](OperationResult&& opRes) -> void {
     if (opRes.fail()) {
