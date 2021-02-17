@@ -769,14 +769,15 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
 
   // check if vertex collections are part of the graph definition
   auto it = _graph.vertexCollections().find(fromCollectionName);
+
   if (it == _graph.vertexCollections().end()) {
     // not found from vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
+    return std::make_pair(OperationResult(TRI_ERROR_GRAPH_FROM_VERTEX_COLLECTION_DOES_NOT_EXIST), true);
   }
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
     // not found to vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
+    return std::make_pair(OperationResult(TRI_ERROR_GRAPH_TO_VERTEX_COLLECTION_DOES_NOT_EXIST), true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), true);

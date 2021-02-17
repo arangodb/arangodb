@@ -379,6 +379,8 @@ ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orpha
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 ERROR_GRAPH_COLLECTION_IS_INITIAL,1945,"initial collection is not allowed to be removed manually","the collection is used as the initial collection of this graph and is not allowed to be removed manually."
 ERROR_GRAPH_NO_INITIAL_COLLECTION,1946,"no valid initial collection found","during the graph creation process no collection could be selected as the needed initial collection. Happens if a distributeShardsLike or replicationFactor mismatch was found."
+ERROR_GRAPH_FROM_VERTEX_COLLECTION_DOES_NOT_EXIST,1947,"_from vertex collection does not exist","the specified _from vertex collection does not exist."
+ERROR_GRAPH_TO_VERTEX_COLLECTION_DOES_NOT_EXIST,1948,"_to vertex collection does not exist","the specified _to vertex collection does not exist."
 
 ################################################################################
 ## Session errors
