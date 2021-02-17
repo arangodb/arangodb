@@ -1258,16 +1258,23 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
+  size_t i = 0;
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, /*leader*/ p.second[0], headers);
 
-    futures.emplace_back(
-        network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
-                                  "/_api/collection/" + StringUtils::urlEncode(p.first) + "/count",
-                                  VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
+    auto fut = network::sendRequestRetry(pool, "shard:" + p.first, fuerte::RestVerb::Get,
+        "/_api/collection/" + StringUtils::urlEncode(p.first) + "/count",
+        VPackBuffer<uint8_t>(), reqOpts, std::move(headers));
+
+    futures.emplace_back(std::move(fut).and_then([i = i++](futures::Try<network::Response>&& v) noexcept {
+      LOG_DEVEL << "count request " << i << " has returned";
+      return std::move(v);
+    }));
   }
+
+  LOG_DEVEL << "sent " << i << " count requests";
 
   auto cb = [options = options](std::vector<Try<network::Response>>&& results) mutable -> OperationResult {
     auto handler = [](Result& result, VPackBuilder& builder,
@@ -1295,7 +1302,10 @@ futures::Future<OperationResult> countOnCoordinator(transaction::Methods& trx,
     };
     return handleResponsesFromAllShards(options, results, handler, pre, post);
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  return futures::collectAll(std::move(futures)).thenValue(std::move(cb)).and_then([&](auto v) noexcept {
+    LOG_DEVEL << "count collect has returned";
+    return std::move(v);
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1350,6 +1360,8 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
                                   reqOpts, std::move(headers)));
   }
 
+  LOG_DEVEL << "sent " << futures.size() << " requests";
+
   // format of expected answer:
   // in `indexes` is a map that has keys in the format
   // s<shardid>/<indexid> and index information as value
@@ -1363,6 +1375,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature, std::string co
   std::map<std::string, std::vector<double>> indexEstimates;
   for (Future<network::Response>& f : futures) {
     network::Response r = std::move(f).await_unwrap();
+    LOG_DEVEL << "received one request";
 
     if (r.fail()) {
       return {network::fuerteToArangoErrorCode(r), network::fuerteToArangoErrorMessage(r)};
@@ -1847,6 +1860,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   }
 
   if (canUseFastPath) {
+    LOG_DEVEL << "fast path for get document";
     // All shard keys are known in all documents.
     // Contact all shards directly with the correct information.
 
@@ -1861,6 +1875,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     return std::move(f).then_bind(
         [=, &trx, opCtx(std::move(opCtx)),
          options = options](Result&& r) mutable -> Future<OperationResult> {
+          LOG_DEVEL << "wellcome to fast path";
           if (r.fail()) {
             return makeFuture(OperationResult(std::move(r), options));
           }
@@ -1869,7 +1884,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
           std::vector<Future<network::Response>> futures;
           futures.reserve(opCtx.shardMap.size());
-
+          size_t i = 0;
           for (auto const& it : opCtx.shardMap) {
             network::Headers headers;
             addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
@@ -1904,16 +1919,31 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
               }
               builder.close();
             }
-            futures.emplace_back(
-                network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
+            LOG_DEVEL << "sending request " << i;
+            auto fut = network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
                                           std::move(url), std::move(buffer),
-                                          reqOpts, std::move(headers)));
+                                          reqOpts, std::move(headers));
+            LOG_DEVEL << "request sent";
+            futures.emplace_back(std::move(fut)/*.and_then_direct([i](auto res) noexcept {
+              LOG_DEVEL << "request " << i << " returned";
+              return std::move(res);
+            })*/);
+            LOG_DEVEL << futures[0]._get_base()._next;
           }
 
           // Now compute the result
           if (!useMultiple) {  // single-shard fast track
+            LOG_DEVEL << "using single";
+            if (futures[0].holds_inline_value()) {
+              LOG_DEVEL << "futures holds inline value";
+            } else {
+              LOG_DEVEL << "future has base._next == " << futures[0]._get_base()._next;
+            }
+
             TRI_ASSERT(futures.size() == 1);
             return std::move(futures[0]).thenValue([options = options](network::Response res) -> OperationResult {
+
+              LOG_DEVEL << "returned single";
               if (res.error != fuerte::Error::NoError) {
                 return OperationResult(network::fuerteToArangoErrorCode(res), options);
               }
@@ -1928,12 +1958,16 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
                 return handleCRUDShardResponsesFast(network::clusterResultDocument,
                                                     opCtx, results);
               });
-        });
+        }).and_then([](auto res) noexcept {
+      LOG_DEVEL << "fast path completed";
+      return std::move(res);
+    });
   }
 
   // Not all shard keys are known in all documents.
   // We contact all shards with the complete body and ignore NOT_FOUND
 
+  LOG_DEVEL << "slow path for get document";
   if (isManaged) {  // lazily begin the transaction
     Result res = ::beginTransactionOnAllLeaders(trx, *shardIds).await_unwrap();
     if (res.fail()) {
@@ -1951,6 +1985,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     VPackStringRef const key(slice.isObject() ? slice.get(StaticStrings::KeyString) : slice);
 
     const bool addMatch = !options.ignoreRevs && slice.hasKey(StaticStrings::RevString);
+    size_t i = 0;
     for (auto const& shardServers : *shardIds) {
       ShardID const& shard = shardServers.first;
 
@@ -1959,12 +1994,15 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       if (addMatch) {
         headers.try_emplace("if-match", slice.get(StaticStrings::RevString).copyString());
       }
-
+      LOG_DEVEL << "sending request " << i;
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
-          VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
+          VPackBuffer<uint8_t>(), reqOpts, std::move(headers)).and_then([i](auto res) noexcept {
+                                 LOG_DEVEL << "received request " << i;
+                                 return std::move(res);
+                               }));
     }
   } else {
     VPackBuffer<uint8_t> buffer;
@@ -1980,8 +2018,10 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     }
   }
 
+  LOG_DEVEL << "collecting all futures";
   return futures::collectAll(std::move(futures))
       .thenValue([=, options = options](std::vector<Try<network::Response>>&& responses) mutable -> OperationResult {
+        LOG_DEVEL << "collect completed";
         return ::handleCRUDShardResponsesSlow(network::clusterResultDocument, expectedLen,
                                               std::move(options), responses);
       });

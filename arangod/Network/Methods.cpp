@@ -298,14 +298,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
  public:
   RequestsState(ConnectionPool* pool, futures::Promise<network::Response>&& promise, DestinationId&& destination, RestVerb type,
                 std::string&& path, velocypack::Buffer<uint8_t>&& payload,
-                Headers&& headers, RequestOptions const& options)
+                Headers&& headers, RequestOptions const& options, std::size_t requestId)
       : _destination(std::move(destination)),
         _options(options),
         _pool(pool),
         _promise(std::move(promise)),
         _startTime(std::chrono::steady_clock::now()),
         _endTime(_startTime + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                                  options.timeout)) {
+                                  options.timeout)),
+        _requestId(requestId) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
   }
@@ -326,6 +327,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
 
+  std::size_t _requestId;
+
   fuerte::Error _tmp_err;
 
  public:
@@ -334,7 +337,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
     if (ADB_UNLIKELY(!_pool)) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
+      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION) << "[rid = " << _requestId << "] "
           << "connection pool unavailable";
       _tmp_err = Error::ConnectionCanceled;
       _tmp_res = nullptr;
@@ -372,10 +375,15 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
 
     auto& server = _pool->config().clusterInfo->server();
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
+    LOG_DEVEL << "sending request " << _tmp_req.get();
     nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
                    [self = shared_from_this()](fuerte::Error err,
                                                std::unique_ptr<fuerte::Request> req,
                                                std::unique_ptr<fuerte::Response> res) {
+                     LOG_DEVEL << "received request " << req.get() << " err = " << to_string(err);
+                     if (err == fuerte::Error::NoError) {
+                       LOG_DEVEL << "req "<< req.get() << ": " << res->statusCode() << " " << res->slice().toJson();
+                     }
                      self->_tmp_err = err;
                      self->_tmp_req = std::move(req);
                      self->_tmp_res = std::move(res);
@@ -527,12 +535,16 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
   }
 };
 
+std::atomic<std::size_t> requestID = 0;
+
 /// @brief send a request to a given destination, retry until timeout is exceeded
 FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
                            arangodb::fuerte::RestVerb type, std::string path,
                            velocypack::Buffer<uint8_t> payload,
                            RequestOptions const& options, Headers headers) {
   try {
+    auto rid = requestID.fetch_add(1);
+
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b96", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
@@ -540,16 +552,19 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
           Response{std::move(destination), Error::ConnectionCanceled, nullptr, nullptr});
     }
 
-    LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION)
+    LOG_TOPIC("2713b", DEBUG, Logger::COMMUNICATION) << "[rid=" << rid << "] "
         << "request to '" << destination << "' '" << fuerte::to_string(type)
         << " " << path << "'";
 
     auto&&[f, p] = futures::makePromise<Response>();
     auto rs = std::make_shared<RequestsState>(pool, std::move(p), std::move(destination), type,
                                               std::move(path), std::move(payload),
-                                              std::move(headers), options);
+                                              std::move(headers), options, rid);
     rs->startRequest();  // will auto reference itself
-    return std::move(f);
+    return std::move(f).and_then([rid](futures::Try<Response>&& v) noexcept {
+      LOG_TOPIC("27d3c", DEBUG, Logger::COMMUNICATION) << "[rid=" << rid << "]" << " request finished";
+      return std::move(v);
+    });
 
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)

@@ -286,7 +286,7 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
   continuation<T>* expected = nullptr;
   if (!base->_next.compare_exchange_strong(expected, step, std::memory_order_release,
                                            std::memory_order_acquire)) {  // ask mpoeter
-    T value = std::invoke([&] {
+    T value = std::invoke([&]() -> T {
       if (expected == FUTURES_INVALID_POINTER_PROMISE_ABANDONED(T)) {
         return detail::handler_helper<Tag, T>::abandon_promise(base->get_backtrace());
       } else {
@@ -444,6 +444,7 @@ struct continuation_step final : continuation_base<Tag, R>,
       : function_store<F>(std::in_place, std::forward<G>(f)) {}
 
   void operator()(T&& t) noexcept override {
+    static_assert(std::is_nothrow_constructible_v<R, R>);
     detail::fulfill_continuation<Tag>(this, std::invoke(function_store<F>::function_self(),
                                                         std::move(t)));
   }
@@ -1044,7 +1045,7 @@ struct future
       : future(std::move(o).template as<U>().finalize()) {}
 
   /**
-   * If the init_future was not used or moved away, the init_future is
+   * If the future was not used or moved away, the init_future is
    * abandoned. For more, see `abandon`.
    */
   ~future() {
@@ -1245,6 +1246,10 @@ struct future
   explicit future(detail::base_ptr_t, detail::continuation_base<Tag, T>* ptr) noexcept
       : _base(ptr) {}
 
+  auto _get_base() -> detail::continuation_base<Tag, T>& {
+    return *_base;
+  }
+
  private:
   template <typename, typename>
   friend struct future;
@@ -1289,8 +1294,9 @@ struct future_type_based_extensions<expect::expected<T>, Fut, Tag>
   auto then(F&& f) && noexcept {
     static_assert(!is_future_like_v<R>);
     return std::move(self()).and_then(
-        [f = std::forward<F>(f)](expect::expected<T>&& e) mutable noexcept
-        -> expect::expected<R> { return std::move(e).map_value(f); });
+        [f = std::forward<F>(f)](expect::expected<void>&& e) mutable noexcept -> expect::expected<R> {
+          return std::move(e).map_value(std::forward<F>(f));
+        });
   }
 
   /**

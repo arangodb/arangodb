@@ -825,6 +825,7 @@ Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 Future<OperationResult> transaction::Methods::documentAsync(std::string const& cname,
                                                             VPackSlice value,
                                                             OperationOptions& options) {
+  LOG_DEVEL << "transaction::Methods::documentAsync " << cname << " value=" << value.toJson();
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   if (!value.isObject() && !value.isArray()) {
@@ -835,7 +836,14 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
   }
 
   if (_state->isCoordinator()) {
-    return addTracking(documentCoordinator(cname, value, options),
+
+    LOG_DEVEL << "transaction::Methods::documentAsync (coordinator) " << cname << " value=" << value.toJson();
+    auto fut = documentCoordinator(cname, value, options).and_then([](auto v) noexcept {
+      LOG_DEVEL << "documentCoordinator future fulfilled";
+      return std::move(v);
+    });
+    LOG_DEVEL << "after documentCoordinator";
+    return addTracking(std::move(fut),
                        [=, cname = cname](OperationResult&& opRes) {
       events::ReadDocument(vocbase().name(), cname, value, opRes.options, opRes.errorNumber());
       return std::move(opRes);
@@ -1960,6 +1968,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     // no cache hit, or detailed results requested
     return arangodb::countOnCoordinator(*this, collectionName, options)
         .thenValue([&cache, type, options = options](OperationResult&& res) -> OperationResult {
+          LOG_DEVEL << "count request returned to helper";
           if (res.fail()) {
             return std::move(res);
           }
