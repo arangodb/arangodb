@@ -747,7 +747,7 @@ describe ArangoDB do
             doc = create_edge( sync, graph_name, friend_collection, "MISSING/v2", v1, {})
             doc.parsed_response['error'].should eq(true)
             doc.parsed_response['code'].should eq(400)
-            doc.parsed_response['errorMessage'].should include("_from vertex collection does not exist")
+            doc.parsed_response['errorMessage'].should include("referenced _from collection: MISSING does not exist")
             doc.parsed_response['errorNum'].should eq(1947)
           end
 
@@ -757,8 +757,8 @@ describe ArangoDB do
             doc = create_edge( sync, graph_name, friend_collection, v1, "MISSING/v2", {})
             doc.parsed_response['error'].should eq(true)
             doc.parsed_response['code'].should eq(400)
-            doc.parsed_response['errorMessage'].should include("_to vertex collection does not exist")
-            doc.parsed_response['errorNum'].should eq(1948)
+            doc.parsed_response['errorMessage'].should include("referenced _to collection: MISSING does not exist")
+            doc.parsed_response['errorNum'].should eq(1947)
           end
 
           it "replace edge (collection does not exist) not found, waitForSync = #{sync}" do
