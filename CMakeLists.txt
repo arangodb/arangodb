@@ -605,8 +605,6 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-  add_definitions("-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1") # try to remove this when
-                                                                 # boost is upgraded to 1.70 or later
 
   # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
   # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
@@ -754,13 +752,6 @@ if (USE_MAINTAINER_MODE)
     add_definitions("-D_FORTIFY_SOURCE=2")
   endif ()
   
-  if (CMAKE_COMPILER_IS_GNUCC)
-    # enable debug STL, globally
-    # enabling it for each target individually will lead to problems when
-    # linking libraries and executable with different settings.
-    add_definitions("-D_GLIBCXX_DEBUG")
-  endif ()
-
   find_package(FLEX)
   find_package(BISON)
   # these are required for generateREADME.sh
@@ -888,6 +879,17 @@ endif ()
 # ------------------------------------------------------------------------------
 
 add_definitions(-DNDEBUG)
+ 
+# ------------------------------------------------------------------------------
+# Debug STL 
+# ------------------------------------------------------------------------------
+
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL, globally
+  # enabling it for each target individually will lead to problems when
+  # linking libraries and executables with different settings.
+  add_definitions("-D_GLIBCXX_DEBUG")
+endif ()
 
 ################################################################################
 ## FLAGS
@@ -1020,13 +1022,13 @@ if (VERBOSE)
   message(STATUS)
 endif ()
 
-if(ARANGODB_DEBUG_CMAKE)
+if (ARANGODB_DEBUG_CMAKE)
   get_directory_property( DirDefs DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} COMPILE_DEFINITIONS )
-  foreach( d ${DirDefs} )
-    message( STATUS "Found Define: " ${d} )
-  endforeach()
-  message( STATUS "DirDefs: ${DirDefs}" )
-endif()
+  foreach (d ${DirDefs})
+    message(STATUS "Found Define: " ${d})
+  endforeach ()
+  message(STATUS "DirDefs: ${DirDefs}")
+endif ()
 
 
 ################################################################################
