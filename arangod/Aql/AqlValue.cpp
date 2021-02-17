@@ -1372,14 +1372,6 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
   TRI_ASSERT(data != nullptr);
   setType(other.type());
   switch (other.type()) {
-    case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
-      TRI_ASSERT(false);
-      break;
     case VPACK_MANAGED_SLICE:
       _data.managedSliceMeta.lengthOrigin = other._data.managedSliceMeta.lengthOrigin;
       _data.managedSliceMeta.managedPointer = static_cast<uint8_t*>(data);
@@ -1390,6 +1382,15 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
       break;
     case RANGE:
       _data.rangeMeta.range = static_cast<Range*>(data);
+      break;
+    case VPACK_INLINE:
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_DOUBLE:
+    default:
+      TRI_ASSERT(false);
       break;
   }
 }
@@ -1473,7 +1474,8 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   auto aqlValueType {AqlValueType::VPACK_INLINE};
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
-    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_UINT;
+    // treat SmallInt as INT just to be consistent
+    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
     _data.shortNumberMeta.data.uint48.val = value;
     _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
   } else {
@@ -1544,10 +1546,8 @@ AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
   VPackValueLength length = buffer.length();
   if (length < sizeof(AqlValue)) {
     // Use inline value
-    memcpy(_data.inlineSliceMeta.slice, buffer.data(), static_cast<size_t>(length));
-    setType(AqlValueType::VPACK_INLINE);
+    initFromSlice(VPackSlice(buffer.data()), buffer.length());
     buffer.clear(); // for move semantics
-    // FIXME: produce optimized values here!
   } else {
     // Use managed slice
     if (buffer.usesLocalMemory()) {
@@ -1657,10 +1657,31 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
   if (length <= sizeof(_data.inlineSliceMeta.slice)) {
-    // Use inline value
-    memcpy(_data.inlineSliceMeta.slice, slice.begin(), static_cast<size_t>(length));
-    setType(AqlValueType::VPACK_INLINE);
-    // FIXME check optimization values inline?
+    if (slice.isDouble()) {
+      setType(AqlValueType::VPACK_64BIT_INLINE_DOUBLE);
+      TRI_ASSERT(length == (sizeof(double) + 1));
+      memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+    } else if (slice.isInteger()) {
+      if (length > 7) {
+        setType(slice.isUInt() ? AqlValueType::VPACK_64BIT_INLINE_UINT : AqlValueType::VPACK_64BIT_INLINE_INT);
+        memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+      } else {
+        memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+        if (slice.isUInt()) {
+          setType(AqlValueType::VPACK_48BIT_INLINE_UINT);
+          _data.shortNumberMeta.data.uint48.val = slice.getNumber<uint64_t>();
+        } else {
+          TRI_ASSERT(slice.isInt() || slice.isSmallInt());
+          // treat SmallInt as INT just to be consistent
+          setType(AqlValueType::VPACK_48BIT_INLINE_INT);
+          _data.shortNumberMeta.data.int48.val = slice.getNumber<int64_t>();
+        }
+      }
+    } else {
+      // Use inline value
+      memcpy(_data.inlineSliceMeta.slice, slice.begin(), static_cast<size_t>(length));
+      setType(AqlValueType::VPACK_INLINE);
+    }
   } else {
     // Use managed slice
     setManagedSliceData(MemoryOriginType::New, length);
@@ -1699,7 +1720,11 @@ void AqlValue::setPointer(uint8_t const* pointer) noexcept {
   _data.pointerMeta.pointer = pointer;
   // we use isManagedDoc flag to distinguish between data pointing to
   // database documents (1) and other data(0)
-  _data.pointerMeta.isManagedDoc = isManagedDoc ? 1 : 0;
+  if constexpr (isManagedDoc) {
+    _data.pointerMeta.isManagedDoc = 1;
+  } else {
+    _data.pointerMeta.isManagedDoc = 0;
+  }
   setType(AqlValueType::VPACK_SLICE_POINTER);
 }
 
