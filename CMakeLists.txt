@@ -548,6 +548,13 @@ else ()
   set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base libraries")
 endif ()
 
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL, globally
+  # enabling it for each target individually will lead to problems when
+  # linking libraries and executable with different settings.
+  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -D_GLIBCXX_DEBUG")
+endif ()
+
 if (CMAKE_COMPILER_IS_GNUCC)
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "9.3")
     message(WARNING "ArangoDB requires g++ 9.3 or newer, building with older compiler versions is unsupported")

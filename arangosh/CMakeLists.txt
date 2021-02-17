@@ -62,11 +62,6 @@ target_link_libraries(${BIN_ARANGOBENCH}
   arango_shell
 )
 
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOBENCH} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
-
 install(
   TARGETS ${BIN_ARANGOBENCH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -125,11 +120,6 @@ target_link_libraries(${BIN_ARANGOBACKUP}
   boost_boost
   arango_shell
 )
-
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOBACKUP} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
 
 install(
   TARGETS ${BIN_ARANGOBACKUP}
@@ -190,11 +180,6 @@ target_link_libraries(${BIN_ARANGODUMP}
   arango_shell
 )
 
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGODUMP} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
-
 install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -250,11 +235,6 @@ target_link_libraries(${BIN_ARANGOEXPORT}
   boost_boost
   arango_shell
 )
-
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOEXPORT} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
 
 install(
   TARGETS ${BIN_ARANGOEXPORT}
@@ -314,11 +294,6 @@ target_link_libraries(${BIN_ARANGOIMPORT}
   boost_boost
   arango_shell
 )
-
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOIMPORT} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
 
 install(
   TARGETS arangoimport
@@ -384,11 +359,6 @@ target_link_libraries(${BIN_ARANGORESTORE}
   boost_boost
   arango_shell
 )
-
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGORESTORE} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
 
 install(
   TARGETS ${BIN_ARANGORESTORE}
@@ -456,11 +426,6 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_shell
 )
 
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOSH} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
-
 install(
   TARGETS ${BIN_ARANGOSH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
@@ -516,11 +481,6 @@ target_link_libraries(${BIN_ARANGOVPACK}
   boost_boost
   arango_shell
 )
-
-if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
-  # enable debug STL
-  target_compile_options(${BIN_ARANGOVPACK} PRIVATE -D_GLIBCXX_DEBUG)
-endif ()
 
 install(
   TARGETS ${BIN_ARANGOVPACK}
