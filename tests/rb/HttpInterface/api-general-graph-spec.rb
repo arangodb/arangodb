@@ -761,7 +761,7 @@ describe ArangoDB do
             doc.parsed_response['errorNum'].should eq(1948)
           end
 
-          it "replace edge (collection does not exist) not found, waitForSync = #{sync}" do
+          it "should not replace an edge in case the collection does not exist, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1 = v1.parsed_response['vertex']['_id']
             v2 = create_vertex( sync, graph_name, user_collection, {})
