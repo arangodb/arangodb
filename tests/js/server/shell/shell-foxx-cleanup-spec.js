@@ -23,9 +23,6 @@ describe('Foxx self-heal cleanup', () => {
 
   it('should clean up stray bundles', () => {
     const rootBundlePath = FoxxService.rootBundlePath();
-
-    require('@arangodb/foxx/manager').heal();
-
     // First wait until the path exists, it is created by the selfheal
     // mechanism of the Foxx manager, otherwise we might run into an error
     // with the write:
