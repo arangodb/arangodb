@@ -1077,6 +1077,11 @@ if (USE_ENTERPRISE)
   endif()
 endif()
 
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL
+  target_compile_options(arangoserver PRIVATE -D_GLIBCXX_DEBUG)
+endif ()
+
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
   ${ProductVersionFiles}

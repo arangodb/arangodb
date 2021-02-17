@@ -43,6 +43,10 @@ target_include_directories(fuertetest SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/fuerte/src
 )
 
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL
+  target_compile_options(fuertetest PRIVATE -D_GLIBCXX_DEBUG)
+endif ()
 
 # ----------------------------------------
 # Link directories
@@ -298,6 +302,11 @@ add_executable(
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
 endif()
+
+if (USE_MAINTAINER_MODE AND CMAKE_COMPILER_IS_GNUCC)
+  # enable debug STL
+  target_compile_options(arangodbtests PRIVATE -D_GLIBCXX_DEBUG)
+endif ()
 
 target_link_libraries(arangodbtests
   arango_agency
