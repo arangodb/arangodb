@@ -368,8 +368,7 @@ ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graph
 ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,1942,"edge collection already set","Tried to add an edge collection which is already defined."
 ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
-ERROR_GRAPH_FROM_VERTEX_COLLECTION_DOES_NOT_EXIST,1947,"_from vertex collection does not exist","the specified _from vertex collection does not exist."
-ERROR_GRAPH_TO_VERTEX_COLLECTION_DOES_NOT_EXIST,1948,"_to vertex collection does not exist","the specified _to vertex collection does not exist."
+ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST,1947,"referenced vertex collection does not exist","the specified referenced vertex collection does not exist."
 
 ################################################################################
 ## Session errors
