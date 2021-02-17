@@ -1771,6 +1771,7 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
       return a._data.shortNumberMeta.data.uint48.val == b._data.shortNumberMeta.data.uint48.val;
     case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_INT:
     case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_UINT:
+    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_DOUBLE:
       // equal is equal. sign/endianess does not matter
       return a._data.longNumberMeta.data.intLittleEndian.val == b._data.longNumberMeta.data.intLittleEndian.val;
       return arangodb::velocypack::Slice(a._data.longNumberMeta.data.slice.slice)
