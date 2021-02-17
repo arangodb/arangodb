@@ -1,7 +1,7 @@
 devel
 -----
 
-* TEST!
+* TEST2!
 
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
