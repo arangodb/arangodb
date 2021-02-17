@@ -24,6 +24,7 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/exitcodes.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -59,7 +60,7 @@ struct FileDescriptors {
     if (res != 0) {
       LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
           << "cannot get the file descriptors limit value: " << strerror(errno);
-      FATAL_ERROR_EXIT();
+     FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TO_LOW);
     }
 
     return {rlim.rlim_max, rlim.rlim_cur};
