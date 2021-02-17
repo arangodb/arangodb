@@ -190,8 +190,6 @@ struct AqlValue final {
       Range const* range;
     } rangeMeta;
     static_assert(sizeof(rangeMeta) == 16, "RANGE layout is not 16 bytes!");
-    //static_assert(alignof(decltype(rangeMeta)::range) == alignof(Range const*),
-    //  "Invalid alignment for range");
 
     // VPACK_MANAGED_SLICE
     struct {
@@ -215,8 +213,6 @@ struct AqlValue final {
       uint8_t* managedPointer;
     } managedSliceMeta;
     static_assert(sizeof(managedSliceMeta) == 16, "VPACK_MANAGED_SLICE layout is not 16 bytes!");
-    //static_assert(alignof(decltype(managedSliceMeta)::managedPointer) == alignof(uint8_t*),
-    //  "Invalid alignment for managed pointer");
 
     // VPACK_SLICE_POINTER
     struct {
@@ -226,8 +222,6 @@ struct AqlValue final {
       uint8_t const* pointer; 
     } pointerMeta;
     static_assert(sizeof(pointerMeta) == 16, "VPACK_SLICE_POINTER layout is not 16 bytes!");
-    //static_assert(alignof(decltype(pointerMeta)::pointer) == alignof(uint8_t const*),
-    //  "Invalid alignment for  pointer");
 
     // VPACK_INLINE
     struct {
@@ -254,10 +248,6 @@ struct AqlValue final {
       } data;
     } shortNumberMeta;
     static_assert(sizeof(shortNumberMeta) == 16, "VPACK_48BIT_INLINE_INT layout is not 16 bytes!");
-    //static_assert(alignof(decltype(decltype(decltype(shortNumberMeta)::data)::int48)::val) == alignof(int64_t),
-    //  "Invalid alignment for unpacked int val");
-    //static_assert(alignof(decltype(decltype(decltype(shortNumberMeta)::data)::uint48)::val) == alignof(uint64_t),
-    //  "Invalid alignment for unpacked uint val");
     
     // VPACK_64BIT_INLINE_INT
     // VPACK_64BIT_INLINE_UINT
@@ -279,12 +269,6 @@ struct AqlValue final {
       } data;
     } longNumberMeta;
     static_assert(sizeof(longNumberMeta) == 16, "VPACK_64BIT_INLINE_INT layout is not 16 bytes!");
-    //static_assert(alignof(decltype(decltype(decltype(longNumberMeta)::data)::intLittleEndian)::val) == alignof(int64_t),
-    //  "Invalid alignment for unpacked int val");
-    //static_assert(alignof(decltype(decltype(decltype(longNumberMeta)::data)::uintLittleEndian)::val) == alignof(uint64_t),
-    //  "Invalid alignment for unpacked uint val");
-    //static_assert(alignof(decltype(decltype(decltype(decltype(longNumberMeta)::data)::doubleLittleEndian)::dbl)::val) == alignof(double),
-    //  "Invalid alignment for unpacked double val");
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type

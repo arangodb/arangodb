@@ -1024,7 +1024,7 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::V
   // the last byte contains the AqlValueType (always VPACK_MANAGED_SLICE)
   _data.managedSliceMeta.lengthOrigin = length;
   if constexpr (basics::isLittleEndian()) {
-    _data.managedSliceMeta.lengthOrigin >>= 16;
+    _data.managedSliceMeta.lengthOrigin <<= 16;
     _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(mot) << 8);
     _data.managedSliceMeta.lengthOrigin |= AqlValueType::VPACK_MANAGED_SLICE;
   } else {
@@ -1512,7 +1512,7 @@ AqlValue::AqlValue(char const* value, size_t length) {
     setManagedSliceData(MemoryOriginType::New, length + 1);
     _data.managedSliceMeta.managedPointer = new uint8_t[length + 1];
     _data.managedSliceMeta.managedPointer[0] = static_cast<uint8_t>(0x40U + length);
-    memcpy(&_data.managedSliceMeta.managedPointer + 1, value, length);
+    memcpy(_data.managedSliceMeta.managedPointer + 1, value, length);
   } else {
     // long string
     // create a big enough uint8_t buffer
