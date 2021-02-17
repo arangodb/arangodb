@@ -1,3 +1,9 @@
+v3.7.9 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue BTS-268: fix a flaky Foxx test.
+
+
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
