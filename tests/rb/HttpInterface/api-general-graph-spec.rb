@@ -741,7 +741,7 @@ describe ArangoDB do
             doc.parsed_response['new']['value'].should eq("foo")
           end
 
-          it "can not create edge with unknown from vertex collection, waitForSync = #{sync}" do
+          it "can not create edge with unknown _from vertex collection, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1 = v1.parsed_response['vertex']['_id']
             doc = create_edge( sync, graph_name, friend_collection, "MISSING/v2", v1, {})
@@ -751,7 +751,7 @@ describe ArangoDB do
             doc.parsed_response['errorNum'].should eq(1947)
           end
 
-          it "can not create edge with unknown to vertex collection, waitForSync = #{sync}" do
+          it "can not create edge with unknown _to vertex collection, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1 = v1.parsed_response['vertex']['_id']
             doc = create_edge( sync, graph_name, friend_collection, v1, "MISSING/v2", {})
@@ -761,7 +761,7 @@ describe ArangoDB do
             doc.parsed_response['errorNum'].should eq(1947)
           end
 
-          it "replace edge (collection does not exist) not found, waitForSync = #{sync}" do
+          it "should not replace an edge in case the collection does not exist, waitForSync = #{sync}" do
             v1 = create_vertex( sync, graph_name, user_collection, {})
             v1 = v1.parsed_response['vertex']['_id']
             v2 = create_vertex( sync, graph_name, user_collection, {})
