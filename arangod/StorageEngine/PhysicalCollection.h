@@ -24,7 +24,9 @@
 #ifndef ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H
 #define ARANGOD_VOCBASE_PHYSICAL_COLLECTION_H 1
 
+#include <atomic>
 #include <set>
+#include <thread>
 
 #include <velocypack/Builder.h>
 
@@ -108,7 +110,7 @@ class PhysicalCollection {
                               const std::shared_ptr<Index>& right) const;
   };
 
-  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder> ;
+  using IndexContainerType = std::set<std::shared_ptr<Index>, IndexOrder>;
   /// @brief find index by definition
   static std::shared_ptr<Index> findIndex(velocypack::Slice const&,
                                           IndexContainerType const&);
@@ -261,6 +263,7 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'
   IndexContainerType _indexes;
 };
 

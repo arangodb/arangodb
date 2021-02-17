@@ -371,12 +371,11 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
       _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::vpack());
 
-  if (!_unique && !ServerState::instance()->isCoordinator()) {
+  if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
     // And only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(
         RocksDBIndex::ESTIMATOR_SIZE);
-    TRI_ASSERT(_estimator != nullptr);
   }
   TRI_ASSERT(!_fields.empty());
 
@@ -392,6 +391,9 @@ double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef co
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_unique) {
     return 1.0;
+  }
+  if (_estimator == nullptr) {
+    return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
   return _estimator->computeEstimate();
@@ -658,6 +660,138 @@ void RocksDBVPackIndex::fillPaths(std::vector<std::vector<std::string>>& paths,
   }
 }
 
+/// @brief returns whether the document can be inserted into the index
+/// (or if there will be a conflict)
+Result RocksDBVPackIndex::checkInsert(transaction::Methods& trx, RocksDBMethods* mthds,
+                                      LocalDocumentId const& documentId,
+                                      velocypack::Slice doc, OperationOptions const& options) {
+  Result res;
+    
+  // non-unique indexes will not cause any constraint violation
+  if (_unique) {
+    // unique indexes...
+
+    Index::OperationMode mode = options.indexOperationMode;
+    rocksdb::Status s;
+    ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+    ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+    ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
+
+    {
+      // rethrow all types of exceptions from here...
+      transaction::BuilderLeaser leased(&trx);
+      auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+
+      if (r != TRI_ERROR_NO_ERROR) {
+        return addErrorMsg(res, r);
+      }
+    }
+
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+
+    for (RocksDBKey const& key : elements) {
+      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+
+      if (s.ok()) {  // detected conflicting index entry
+        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        // find conflicting document's key
+        LocalDocumentId docId = RocksDBValue::documentId(existing);
+        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+           [&](LocalDocumentId const&, VPackSlice doc) {
+             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+             if (mode == Index::OperationMode::internal) {
+               // in this error mode, we return the conflicting document's key
+               // inside the error message string (and nothing else)!
+               res = Result{res.errorNumber(), key.copyString()};
+             } else {
+               // normal mode: build a proper error message
+               addErrorMsg(res, key.copyString());
+             }
+             return true; // return value does not matter here
+           });
+        TRI_ASSERT(success);
+        TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
+        addErrorMsg(res);
+      }
+    }
+  }
+
+  return res;
+}
+
+/// @brief returns whether the document can be replaced into the index
+/// (or if there will be a conflict)
+Result RocksDBVPackIndex::checkReplace(transaction::Methods& trx, RocksDBMethods* mthds,
+                                       LocalDocumentId const& documentId,
+                                       velocypack::Slice doc, OperationOptions const& options) {
+  Result res;
+    
+  // non-unique indexes will not cause any constraint violation
+  if (_unique) {
+    // unique indexes...
+
+    Index::OperationMode mode = options.indexOperationMode;
+    rocksdb::Status s;
+    ::arangodb::containers::SmallVector<RocksDBKey>::allocator_type::arena_type elementsArena;
+    ::arangodb::containers::SmallVector<RocksDBKey> elements{elementsArena};
+    ::arangodb::containers::SmallVector<uint64_t>::allocator_type::arena_type hashesArena;
+    ::arangodb::containers::SmallVector<uint64_t> hashes{hashesArena};
+
+    {
+      // rethrow all types of exceptions from here...
+      transaction::BuilderLeaser leased(&trx);
+      auto r = fillElement(*(leased.get()), documentId, doc, elements, hashes);
+
+      if (r != TRI_ERROR_NO_ERROR) {
+        return addErrorMsg(res, r);
+      }
+    }
+
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+
+    for (RocksDBKey const& key : elements) {
+      s = mthds->Get(_cf, key.string(), &existing); /* TODO: lock */
+
+      if (s.ok()) {  // detected conflicting index entry
+        LocalDocumentId docId = RocksDBValue::documentId(existing);
+        if (docId == documentId) {
+          // same document, this is ok!
+          continue;
+        }
+        res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+        // find conflicting document's key
+        auto success = _collection.getPhysical()->readDocumentWithCallback(&trx, docId,
+           [&](LocalDocumentId const&, VPackSlice doc) {
+             VPackSlice key = transaction::helpers::extractKeyFromDocument(doc);
+             if (mode == Index::OperationMode::internal) {
+               // in this error mode, we return the conflicting document's key
+               // inside the error message string (and nothing else)!
+               res = Result{res.errorNumber(), key.copyString()};
+             } else {
+               // normal mode: build a proper error message
+               addErrorMsg(res, key.copyString());
+             }
+             return true; // return value does not matter here
+           });
+        TRI_ASSERT(success);
+        TRI_ASSERT(res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED));
+        break;
+      } else if (!s.IsNotFound()) {
+        res.reset(rocksutils::convertStatus(s));
+        addErrorMsg(res);
+      }
+    }
+  }
+
+  return res;
+}
+
 /// @brief inserts a document into the index
 Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
                                  LocalDocumentId const& documentId,
@@ -688,7 +822,7 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
     transaction::StringLeaser leased(&trx);
     rocksdb::PinnableSlice existing(leased.get());
     for (RocksDBKey& key : elements) {
-      if (!options.ignoreUniqueConstraints) {
+      if (!options.checkUniqueConstraintsInPreflight) {
         s = mthds->GetForUpdate(_cf, key.string(), &existing);
         if (s.ok()) {  // detected conflicting index entry
           res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
@@ -1284,6 +1418,9 @@ void RocksDBVPackIndex::afterTruncate(TRI_voc_tick_t tick,
   if (unique()) {
     return;
   }
+  if (_estimator == nullptr) {
+    return;
+  }
   TRI_ASSERT(_estimator != nullptr);
   _estimator->bufferTruncate(tick);
   RocksDBIndex::afterTruncate(tick, trx);
@@ -1301,6 +1438,9 @@ void RocksDBVPackIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator
 
 void RocksDBVPackIndex::recalculateEstimates() {
   if (unique()) {
+    return;
+  }
+  if (_estimator == nullptr) {
     return;
   }
 

@@ -1,4 +1,160 @@
-v3.7.7 (XXXX-XX-XX)
+v3.7.8 (XXXX-XX-XX)
+-------------------
+
+* Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with an
+	index which has been created with an array index attribute.
+
+* Fix profiling of AQL queries with the `silent` and `stream` options sets in
+  combination. Using the `silent` option makes a query execute, but discard all
+  its results instantly. This led to some confusion in streaming queries, which
+  can return the first query results once they are available, but don't
+  necessarily execute the full query.
+  Now, `silent` correctly discards all results even in streaming queries, but
+  this has the effect that a streaming query will likely be executed completely
+  when the `silent` option is set. This is not the default however, and the
+  `silent` option is normally not set. There is no change for streaming queries
+  if the `silent` option is not set.
+
+  As a side-effect of this change, this makes profiling (i.e. using
+  `db._profileQuery(...)` work for streaming queries as well. Previously,
+  profiling a streaming query could have led to some internal errors, and even
+  query results being returned, even though profiling a query should not return
+  any query results.
+
+* Improved the wording for sharding options displayed in the web interface.
+
+  Instead of offering `flexible` and `single`, now use the more intuitive
+  `Sharded` and `OneShard` options, and update the help text for them.
+
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
+
+* EE only bugfix: On DisjointSmartGraphs that are used in anonymous way, there
+  was a chance that the query could fail, if non-disjoint collections were part
+  of the query. Named DisjointSmartGraphs have been save to this bug.
+  Example:
+  DisjointSmartGraph (graph) on vertices -edges-> vertices
+  Query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" edges
+    FOR u IN unrelated
+    RETURN [out, u]
+  
+  The "unrelated" collection was pulled into the DisjointSmartGraph, causing the
+  AQL setup to create erroneous state.
+  This is now fixed and the above query works.
+  This query:
+
+  WITH vertices, unrelated
+  FOR out IN 1 OUTBOUND "v/1:1" GRAPH "graph"
+    FOR u IN unrelated
+    RETURN [out, u]
+
+  was not affected by this bug.
+
+* Avoid a potential deadlock when dropping indexes.
+
+  A deadlock could theoretically happen for a thread that is attempting to drop
+  an index in case there was another thread that tried to create or drop an
+  index in the very same collection at the very same time. We haven't managed to
+  trigger the deadlock with concurrency tests, so it may have been a theoretical
+  issue only. The underlying code was changed anyway to make sure this will not
+  cause problems in reality.
+
+* Make dropping of indexes in cluster retry in case of precondition failed.
+
+  When dropping an indexes of a collection in the cluster, the operation could
+  fail with a "precondition failed" error in case there were simultaneous index
+  creation or drop actions running for the same collection. The error was
+  returned properly internally, but got lost at the point when
+  `<collection>.dropIndex()` simply converted any error to just `false`.
+  We can't make `dropIndex()` throw an exception for any error, because that
+  would affect downwards-compatibility. But in case there is a simultaneous
+  change to the collection indexes, we can just retry our own operation and
+  check if it succeeds then. This is what `dropIndex()` will do now.
+
+* Improve incremental sync replication for single server and cluster to cope
+  with multiple secondary index unique constraint violations (before this was
+  limited to a failure in a single unique secondary index). This allows
+  replicating the leader state to the follower in basically any order, as any
+  *other* conflicting documents in unique secondary indexes will be  detected
+  and removed on the follower.
+
+* Fix potential undefined behavior when iterating over connected nodes in an
+  execution plan and calling callbacks for each of the nodes: if the callbacks
+  modified the list of connected nodes of the current that they were called
+  from, this could lead to potentially undefined behavior due to iterator
+  invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
+
+* Fixed a RocksDB bug which could lead to an assertion failure when compiling
+  with STL debug mode -D_GLIBCXX_DEBUG.
+
+* Fixed a rare internal buffer overflow around ridBuffers.
+
+* Issue #13141: The `move-filters-into-enumerate` optimization, when applied to
+  an EnumerateCollectionNode (i.e. full collection scan), did not do regular
+  checks for the query being killed during the filtering of documents, resulting
+  in the maxRuntime option and manual kill of a query not working timely.
+
+* Do not create index estimator objects for proxy collection objects on
+  coordinators and DB servers. Proxy objects are created on coordinators and DB
+  servers for all shards, and they also make index objects available. In order
+  to reduce the memory usage by these objects, we don't create any index
+  estimator objects for indexes in those proxy objects. Index estimators usually
+  take several KB of memory each, so not creating them will pay out for higher
+  numbers of collections/shards.
+
+* Improvements for logging. This adds the following startup options to arangod:
+
+  - `--log.max-entry-length`: controls the maximum line length for individual
+    log messages that are written into normal logfiles by arangod (note: this
+    does not include audit log messages).
+    Any log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them. The purpose of this parameter is to
+    shorten long log messages in case there is not a lot of space for logfiles,
+    and to keep rogue log messages from overusing resources.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+  
+  - `--audit.max-entry-length`: controls the maximum line length for individual
+    audit log messages that are written into audit logs by arangod. Any audit
+    log messages longer than the specified value will be truncated and the
+    suffix '...' will be added to them.
+    The default value is 128 MB, which is very high and should effectively mean
+    downwards-compatiblity with previous arangod versions, which did not
+    restrict the maximum size of log messages.
+
+  - `--log.in-memory-level`: controls which log messages are preserved in
+    memory. The default value is `info`, meaning all log messages of types
+    `info`, `warning`, `error` and `fatal` will be stored by an instance in
+    memory (this was also the behavior in previous versions of ArangoDB).
+    By setting this option to `warning`, only `warning` log messages will be
+    preserved in memory, and by setting the option to `error` only error
+    messages will be kept.
+    This option is useful because the number of in-memory log messages is
+    limited to the latest 2048 messages, and these slots are by default shared
+    between informational, warning and error messages.
+
+* Honor the value of startup option `--log.api-enabled` when set to `false`.
+  The desired behavior in this case is to turn off the REST API for logging, but
+  was not implemented. The default value for the option is `true`, so the REST
+  API is enabled. This behavior did not change, and neither did the behavior
+  when setting the option to a value of `jwt` (meaning the REST API for logging
+  is only available for superusers with a valid JWT token).
+
+* Fix error reporting in the reloadTLS route.
+
+* Split the update operations for the _fishbowl system collection with Foxx apps
+  into separate insert/replace and remove operations. This makes the overall
+  update not atomic, but as removes are unlikely here, we can now get away with
+  a simple multi-document insert-replace operation instead of a truncate and an
+  exclusive transaction, which was used before.
+
+
+v3.7.7 (2020-02-05)
 -------------------
 
 * Added metrics for document read and write operations:
@@ -6,28 +162,28 @@ v3.7.7 (XXXX-XX-XX)
   - `arangodb_document_writes: Total number of document write operations
     (successful and failed) not performed by synchronous replication.
   - `arangodb_document_writes_replication`: Total number of document write
-    operations (successful and failed) by synchronous replication.
+    operations (successful and failed) by cluster synchronous replication.
   - `arangodb_collection_truncates`: Total number of collection truncate
-    operations (successful and failed) not performed by synchronous replication.
+    operations (successful and failed) not performed by cluster synchronous
+    replication.
   - `arangodb_collection_truncates_replication`: Total number of collection
-    truncate
-    operations (successful and failed) by synchronous replication.
-  - `arangodb_document_read_time`: Execution time histogram of all document read
-    operations (successful and failed) [s].
+    truncate operations (successful and failed) by synchronous replication.
+  - `arangodb_document_read_time`: Execution time histogram of all document
+    primary key read operations (successful and failed) [s]. Note: this does not
+    include secondary index lookups, range scans and full collection scans.
   - `arangodb_document_insert_time`: Execution time histogram of all document
-    insert
-    operations (successful and failed) [s].
+    insert operations (successful and failed) [s].
   - `arangodb_document_replace_time`: Execution time histogram of all document
-    replace
-    operations (successful and failed) [s].
+    replace operations (successful and failed) [s].
   - `arangodb_document_remove_time`: Execution time histogram of all document
-    remove
-    operations (successful and failed) [s].
+    remove operations (successful and failed) [s].
   - `arangodb_document_update_time`: Execution time histogram of all document
-    update
-    operations (successful and failed) [s].
+    update operations (successful and failed) [s].
   - `arangodb_collection_truncate_time`: Execution time histogram of all
     collection truncate operations (successful and failed) [s].
+
+  The timer metrics are turned off by default, and can be enabled by setting the
+  startup option `--server.export-read-write-metrics true`.
 
 * Fixed issue #12543: Unused Foxx service config can not be discarded.
 

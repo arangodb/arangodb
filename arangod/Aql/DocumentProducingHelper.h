@@ -138,6 +138,7 @@ struct DocumentProducingFunctionContext {
   std::vector<size_t> const& _coveringIndexAttributePositions;
   size_t _numScanned;
   size_t _numFiltered;
+  uint_fast16_t _killCheckCounter = 0;
 
   /// @brief Builder that is reused to generate projections 
   arangodb::velocypack::Builder _objectBuilder;
