@@ -17,7 +17,7 @@
 !define ARANGO_EXIT_UNSUPPORTED_STORAGE_ENGINE 25
 !define ARANGO_EXIT_ICU_INITIALIZATION_FAILED 26
 !define ARANGO_EXIT_TZDATA_INITIALIZATION_FAILED 27
-!define ARANGO_EXIT_RESOURCES_TO_LOW 28
+!define ARANGO_EXIT_RESOURCES_TOO_LOW 28
 
 !macro printExitCode exitCode Message DetailMessage
   Push "${exitCode}"
@@ -100,8 +100,8 @@ ${Switch} $1
     MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> failed to locate tzdata <<$\r$\n"Will be returned if tzdata is not found"$\r$\n$3'
   ${Break}
 
-  ${Case} 28 # EXIT_RESOURCES_TO_LOW
-    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> the system restricts resources below what we can bear <<$\r$\n"Will be returned if i.e. ulimit is too restrictive"$\r$\n$3'
+  ${Case} 28 # EXIT_RESOURCES_TOO_LOW
+    MessageBox MB_ICONEXCLAMATION '$2:$\r$\n>> the system restricts resources below what is required to start arangod <<$\r$\n"Will be returned if i.e. ulimit is too restrictive"$\r$\n$3'
   ${Break}
 
   ${Default}

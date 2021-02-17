@@ -60,7 +60,7 @@ struct FileDescriptors {
     if (res != 0) {
       LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
           << "cannot get the file descriptors limit value: " << strerror(errno);
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TO_LOW);
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
 
     return {rlim.rlim_max, rlim.rlim_cur};
@@ -142,7 +142,7 @@ void FileDescriptorsFeature::start() {
       LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
     } else {
       LOG_TOPIC("8c771", FATAL, arangodb::Logger::SYSCALL) << s.str();
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
   }
 }

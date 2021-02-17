@@ -25,7 +25,7 @@
     "EXIT_UNSUPPORTED_STORAGE_ENGINE" : { "code" : 25, "message" : "unsupported storage engine" },
     "EXIT_ICU_INITIALIZATION_FAILED" : { "code" : 26, "message" : "failed to initialize ICU library" },
     "EXIT_TZDATA_INITIALIZATION_FAILED" : { "code" : 27, "message" : "failed to locate tzdata" },
-    "EXIT_RESOURCES_TO_LOW"        : { "code" : 28, "message" : "the system restricts resources below what we can bear" }
+    "EXIT_RESOURCES_TOO_LOW"       : { "code" : 28, "message" : "the system restricts resources below what is required to start arangod" }
   };
 }());
 

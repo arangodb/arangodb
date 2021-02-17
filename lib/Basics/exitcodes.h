@@ -95,10 +95,10 @@ constexpr int TRI_EXIT_ICU_INITIALIZATION_FAILED                                
 /// Will be returned if tzdata is not found
 constexpr int TRI_EXIT_TZDATA_INITIALIZATION_FAILED                             = 27;
 
-/// 28: EXIT_RESOURCES_TO_LOW
-/// the system restricts resources below what we can bear
+/// 28: EXIT_RESOURCES_TOO_LOW
+/// the system restricts resources below what is required to start arangod
 /// Will be returned if i.e. ulimit is too restrictive
-constexpr int TRI_EXIT_RESOURCES_TO_LOW                                         = 28;
+constexpr int TRI_EXIT_RESOURCES_TOO_LOW                                        = 28;
 
 
 #endif
