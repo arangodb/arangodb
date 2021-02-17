@@ -1,6 +1,10 @@
 v3.7.8 (XXXX-XX-XX)
 -------------------
 
+* Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with an
+	index which has been created with an array index attribute.
+
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
   its results instantly. This led to some confusion in streaming queries, which
