@@ -1792,7 +1792,7 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
            .binaryEquals(arangodb::velocypack::Slice(b._data.inlineSliceMeta.slice));
     case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
     case arangodb::aql::AqlValue::VPACK_INLINE_UINT48:
-      // equal is equal. sign does not matters. So compare unsigned
+      // equal is equal. sign does not matter. So compare unsigned
       return a._data.shortNumberMeta.data.uint48.val == b._data.shortNumberMeta.data.uint48.val;
     case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
     case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
