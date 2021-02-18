@@ -117,7 +117,6 @@ uint64_t fasthash32(void const*, std::size_t, uint32_t);
 #include <stdlib.h>
 #elif __linux__
 #include <endian.h>
-#include <byteswap.h>
 #else
 #pragma messsage("unsupported os or compiler")
 #endif
@@ -152,17 +151,79 @@ static constexpr bool isLittleEndian() { return false; }
 
 
 template<typename T>
-VELOCYPACK_FORCE_INLINE T doByteswap(T value) noexcept {
-  if constexpr (sizeof(T) == 16) {
-    return bswap_16(value);
+VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
+  if constexpr (sizeof(T) == 64) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt64(in);
+#elif __linux__
+    return htole64(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
+#endif
   }
   if constexpr (sizeof(T) == 32) {
-    return bswap_32(value);
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt32(in);
+#elif __linux__
+    return htole32(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ulong(in);
+    }
+#endif
   }
+  if constexpr (sizeof(T) == 16) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt16(in);
+#elif __linux__
+    return htole16(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ushort(in);
+    }
+#endif
+  }
+  return in;
+}
+
+template<typename T>
+VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
   if constexpr (sizeof(T) == 64) {
-    return bswap_64(value);
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt64(in);
+#elif __linux__
+    return le64toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
+#endif
   }
-  return value;
+  if constexpr (sizeof(T) == 32) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt32(in);
+#elif __linux__
+    return le32toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ulong(in);
+    }
+#endif
+  }
+  if constexpr (sizeof(T) == 16) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt16(in);
+#elif __linux__
+    return le16toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ushort(in);
+    }
+#endif
+  }
+  return in;
 }
 
 // unified size type for VPack, can be used on 32 and 64 bit
@@ -269,7 +330,7 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   T value{0};
   memcpy(&value, start, length);
   if constexpr (!isLittleEndian()) {
-   value = doByteswap(value);
+   value = littleToHost(value);
   }
   return value;
 }
@@ -284,7 +345,7 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
   T value{0};
   memcpy(&value, start, length);
   if constexpr (!isLittleEndian()) {
-    value = doByteswap(value);
+    value = littleToHost(value);
   }
   return value;
 }
@@ -295,7 +356,7 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
  if constexpr (!isLittleEndian()) {
-   value = doByteswap(value);
+   value = hostToLittle(value);
  }
  memcpy(start, &value, sizeof(value));
 
