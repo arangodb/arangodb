@@ -117,6 +117,7 @@ uint64_t fasthash32(void const*, std::size_t, uint32_t);
 #include <stdlib.h>
 #elif __linux__
 #include <endian.h>
+#include <byteswap.h>
 #else
 #pragma messsage("unsupported os or compiler")
 #endif
@@ -140,7 +141,6 @@ static constexpr bool isLittleEndian() { return false; }
 #define bswap_64(x) _byteswap_uint64(x)
 static constexpr bool isLittleEndian() { return true; }
 #elif __linux__
-#include <byteswap.h>
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static constexpr bool isLittleEndian() { return true; }
 #elif __BYTE_ORDER == __BIG_ENDIAN

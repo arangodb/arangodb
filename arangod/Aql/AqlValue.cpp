@@ -1276,7 +1276,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                                                          compareUtf8, options);
     }
     // fall-through to other types intentional
-  } 
+  }
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
