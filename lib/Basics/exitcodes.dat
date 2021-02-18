@@ -25,7 +25,7 @@ EXIT_DB_NOT_EMPTY,24,"database not empty","Will be returned when commanding to i
 EXIT_UNSUPPORTED_STORAGE_ENGINE,25,"unsupported storage engine","Will be returned when trying to start with an unsupported storage engine"
 EXIT_ICU_INITIALIZATION_FAILED,26,"failed to initialize ICU library","Will be returned if icudtl.dat is not found, of the wrong version or invalid. Check for an incorrectly set ICU_DATA environment variable"
 EXIT_TZDATA_INITIALIZATION_FAILED,27,"failed to locate tzdata","Will be returned if tzdata is not found"
-
+EXIT_RESOURCES_TOO_LOW,28,"the system restricts resources below what is required to start arangod","Will be returned if i.e. ulimit is too restrictive"
 # network
 #EXIT_NO_COORDINATOR
 #EXIT_NO_AGENCY
