@@ -853,7 +853,7 @@ function BaseTestConfig () {
       checkCountConsistency(cn, expected);
     },
 
-        // create large AQL operation on leader using AQL
+    // create large AQL operation on leader using AQL
     testIncrementalQuickKeys: function () {
       let c = db._create(cn);
       let rev = c.insert({_key: "testi", value: 1 })._rev;
