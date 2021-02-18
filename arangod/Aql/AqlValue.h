@@ -163,7 +163,7 @@ struct AqlValue final {
   /// data and is managed by the AqlValue. The second-last byte contains info
   /// about how the memory was allocated:
   /// - MemoryOriginType::New: memory was allocated by new[] and must be deleted
-  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'dSD  
+  /// - MemoryOriginType::Malloc: memory was malloc'd and needs to be free'd  
   /// RANGE: a managed range object. The memory is managed by the AqlValue
   /// 
   /// AqlValue memory layout:
