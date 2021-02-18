@@ -1118,7 +1118,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                             _config.leader.endpoint, url, ": ", r.errorMessage()));
     }
 
-    VPackSlice const slice = builder.slice();
+    slice = builder.slice();
     if (!slice.isObject()) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
