@@ -69,7 +69,6 @@ Result DBServerAgencySync::getLocalCollections(
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
-  Result result;
 
   if (!_server.hasFeature<DatabaseFeature>()) {
     LOG_TOPIC("d0ef2", ERR, Logger::HEARTBEAT)
@@ -86,7 +85,7 @@ Result DBServerAgencySync::getLocalCollections(
     TRI_vocbase_t& vocbase = *tmp;
     auto unuse = scopeGuard([&vocbase] { vocbase.release(); });
 
-    auto [it,created] =
+    auto [it, created] =
       databases.try_emplace(dbname, std::make_shared<VPackBuilder>());
     if (!created) {
       LOG_TOPIC("0e9d7", ERR, Logger::MAINTENANCE)
