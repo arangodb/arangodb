@@ -1,6 +1,9 @@
 devel
 -----
 
+* On Windows create a minidump in case of an unhandled SEH exception for
+  post-mortem debugging.
+
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
 
