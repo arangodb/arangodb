@@ -2177,7 +2177,7 @@ Result DatabaseInitialSyncer::batchFinish() {
 /// @brief patch quickKeysNumDocsLimit for testing
 void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit() {
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
-    syncer._quickKeysNumDocsLimit = 100;
+    _quickKeysNumDocsLimit = 100;
   }
 }
 #endif
