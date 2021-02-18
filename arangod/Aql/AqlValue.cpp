@@ -33,7 +33,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "V8/v8-vpack.h"
-#include <utils/math_utils.hpp>
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
@@ -90,11 +89,11 @@ static inline uint8_t intLength(int64_t value) noexcept {
 uint64_t AqlValue::hash(uint64_t seed) const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -127,11 +126,11 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNone();
@@ -154,11 +153,11 @@ bool AqlValue::isNone() const noexcept {
 /// @brief whether or not the value is a null value
 bool AqlValue::isNull(bool emptyIsNull) const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       VPackSlice s(_data.inlineSliceMeta.slice);
@@ -186,11 +185,11 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
 /// @brief whether or not the value is a boolean value
 bool AqlValue::isBoolean() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isBoolean();
@@ -213,11 +212,11 @@ bool AqlValue::isBoolean() const noexcept {
 /// @brief whether or not the value is a number
 bool AqlValue::isNumber() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return true;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNumber();
@@ -240,11 +239,11 @@ bool AqlValue::isNumber() const noexcept {
 /// @brief whether or not the value is a string
 bool AqlValue::isString() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isString();
@@ -267,11 +266,11 @@ bool AqlValue::isString() const noexcept {
 /// @brief whether or not the value is an object
 bool AqlValue::isObject() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isObject();
@@ -295,11 +294,11 @@ bool AqlValue::isObject() const noexcept {
 /// as arrays, too!)
 bool AqlValue::isArray() const noexcept {
   switch (type()) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isArray();
@@ -342,11 +341,11 @@ char const* AqlValue::getTypeString() const noexcept {
 size_t AqlValue::length() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       // FIXME: values above will immediately throw in Slice::length. Maybe throw directly or return 1?
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -402,11 +401,11 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
       }
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -455,11 +454,11 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
       // intentionally falls through
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -496,11 +495,11 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -543,11 +542,11 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -584,11 +583,11 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -625,11 +624,11 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -672,11 +671,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -720,11 +719,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -792,11 +791,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
       // will return null
       break;
     }
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       break; // just do default
   }
 
@@ -808,11 +807,11 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 bool AqlValue::hasKey(std::string const& name) const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -839,15 +838,15 @@ double AqlValue::toDouble(bool& failed) const {
   failed = false;
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
+    case VPACK_INLINE_INT48:
       return static_cast<double>(_data.shortNumberMeta.data.int48.val);
-    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_INLINE_UINT48:
       return static_cast<double>(_data.shortNumberMeta.data.uint48.val);
-    case VPACK_64BIT_INLINE_INT:
+    case VPACK_INLINE_INT64:
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val));
-    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_INLINE_UINT64:
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
-    case VPACK_64BIT_INLINE_DOUBLE: {
+    case VPACK_INLINE_DOUBLE: {
      DoubleEndianessConverter tmp;
      tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
      return tmp.dbl;
@@ -899,15 +898,15 @@ double AqlValue::toDouble(bool& failed) const {
 int64_t AqlValue::toInt64() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
+    case VPACK_INLINE_INT48:
       return static_cast<int64_t>(_data.shortNumberMeta.data.int48.val);
-    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_INLINE_UINT48:
       return static_cast<uint64_t>(_data.shortNumberMeta.data.uint48.val);
-    case VPACK_64BIT_INLINE_INT:
+    case VPACK_INLINE_INT64:
       return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
-    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_INLINE_UINT64:
       return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
-    case VPACK_64BIT_INLINE_DOUBLE: {
+    case VPACK_INLINE_DOUBLE: {
       DoubleEndianessConverter tmp;
       tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
       return static_cast<int64_t>(tmp.dbl);
@@ -963,15 +962,15 @@ int64_t AqlValue::toInt64() const {
 bool AqlValue::toBoolean() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
+    case VPACK_INLINE_INT48:
       return _data.shortNumberMeta.data.int48.val != 0;
-    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_INLINE_UINT48:
       return _data.shortNumberMeta.data.uint48.val != 0;
-    case VPACK_64BIT_INLINE_INT: // intentinally ignore endianess. 0 is always 0
+    case VPACK_INLINE_INT64: // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.intLittleEndian.val != 0;
-    case VPACK_64BIT_INLINE_UINT: // intentinally ignore endianess. 0 is always 0
+    case VPACK_INLINE_UINT64: // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.uintLittleEndian.val != 0;
-    case VPACK_64BIT_INLINE_DOUBLE: {
+    case VPACK_INLINE_DOUBLE: {
       DoubleEndianessConverter tmp;
       tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
       return tmp.dbl != 0.0;
@@ -1042,11 +1041,11 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
   AqlValueType t = type();
   switch (t) {
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return TRI_VPackToV8(isolate, slice(t), options);
@@ -1091,11 +1090,11 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       }
     [[fallthrough]];
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE: {
       if (resolveExternals) {
         bool const sanitizeExternals = true;
@@ -1127,11 +1126,11 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       hasCopied = false;
@@ -1155,11 +1154,11 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   AqlValueType t = type();
   switch (t) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return AqlValue(*this);
     case VPACK_INLINE: {
       // copy internal data
@@ -1196,11 +1195,11 @@ AqlValue AqlValue::clone() const {
 void AqlValue::destroy() noexcept {
   switch (type()) {
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER: {
       // nothing to do
       return;
@@ -1232,12 +1231,12 @@ VPackSlice AqlValue::slice() const {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice(AqlValueType type) const {
   switch (type) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
      return VPackSlice(_data.shortNumberMeta.data.slice.slice).resolveExternal();
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
      return VPackSlice(_data.longNumberMeta.data.slice.slice).resolveExternal();
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
@@ -1280,13 +1279,13 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
     // if right value type is aslo optimized inline we can optimize comparison
       if (leftType == rightType) {
-        if (leftType == VPACK_64BIT_INLINE_UINT) {
+        if (leftType == VPACK_INLINE_UINT64) {
           uint64_t l = static_cast<uint64_t>(left.toInt64());
           uint64_t r = static_cast<uint64_t>(right.toInt64());
           if (l == r) {
@@ -1304,13 +1303,12 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
         // intentional fallthrough to double comparison
       }
     [[fallthrough]];
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_DOUBLE:
     // here we could only compare doubles in case of right is also inlined
     // the same is done in VelocyPackHelper::compare for numbers. Equal types are compared
     // directly - unequal (or doubles) as doubles
-      if (rightType == VPACK_48BIT_INLINE_INT || rightType == VPACK_48BIT_INLINE_UINT ||
-          rightType == VPACK_64BIT_INLINE_INT || rightType == VPACK_64BIT_INLINE_UINT ||
-          rightType == VPACK_64BIT_INLINE_DOUBLE) {
+      if (rightType >= VPACK_INLINE_INT48 &&
+          rightType <= VPACK_INLINE_DOUBLE) {
         double l = left.toDouble();
         double r = right.toDouble();
         if (l == r) {
@@ -1386,11 +1384,11 @@ AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
       _data.rangeMeta.range = static_cast<Range*>(data);
       break;
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     default:
       TRI_ASSERT(false);
       break;
@@ -1430,7 +1428,7 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
     tmp.dbl = value;
     _data.longNumberMeta.data.uintLittleEndian.val =
       arangodb::basics::hostToLittle(tmp.uint);
-    valueType = AqlValueType::VPACK_64BIT_INLINE_DOUBLE;
+    valueType = AqlValueType::VPACK_INLINE_DOUBLE;
   }
   setType(valueType);
 }
@@ -1440,12 +1438,12 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
   auto aqlValueType {AqlValueType::VPACK_INLINE};
   if (value >= 0 && value <= 9) {
     // a smallint
-    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
     _data.shortNumberMeta.data.int48.val = value;
     _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
   } else if (value < 0 && value >= -6) {
     // a negative smallint
-    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
     _data.shortNumberMeta.data.int48.val = value;
     _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x40U + value);
   } else {
@@ -1454,14 +1452,14 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
     if (vSize > 6) {
       x = toUInt64(value);
       _data.longNumberMeta.data.intLittleEndian.val = arangodb::basics::hostToLittle(x); // FIXME: use just value ???
-      aqlValueType = AqlValueType::VPACK_64BIT_INLINE_INT;
+      aqlValueType = AqlValueType::VPACK_INLINE_INT64;
       // always store  as 8 byte Slice as we need full alignet value in binary representation
       _data.longNumberMeta.data.slice.slice[0] = 0x1fU + 8;
     } else {
       int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
       x = value >= 0 ? static_cast<uint64_t>(value)
                      : static_cast<uint64_t>(value + shift) + shift;
-      aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+      aqlValueType = AqlValueType::VPACK_INLINE_INT48;
       _data.shortNumberMeta.data.int48.val = value;
       _data.shortNumberMeta.data.slice.slice[0] = 0x1fU + vSize;
       x = arangodb::basics::hostToLittle(x);
@@ -1477,7 +1475,7 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
     // treat SmallInt as INT just to be consistent
-    aqlValueType = AqlValueType::VPACK_48BIT_INLINE_INT;
+    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
     _data.shortNumberMeta.data.uint48.val = value;
     _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
   } else {
@@ -1485,7 +1483,7 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
     uint8_t const vSize = intLength(value);
     if (vSize > 6) {
       _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
-      aqlValueType = AqlValueType::VPACK_64BIT_INLINE_UINT;
+      aqlValueType = AqlValueType::VPACK_INLINE_UINT64;
       // always store  as 8 byte Slice as we need full alignet value in binary representation
       _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
     } else {
@@ -1493,7 +1491,7 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
       value = arangodb::basics::hostToLittle(value);
       memcpy(&_data.shortNumberMeta.data.slice.slice[1], &value, vSize);
       _data.shortNumberMeta.data.uint48.val = value;
-      aqlValueType = AqlValueType::VPACK_48BIT_INLINE_UINT;
+      aqlValueType = AqlValueType::VPACK_INLINE_UINT48;
     }
   }
   setType(aqlValueType);
@@ -1594,11 +1592,11 @@ bool AqlValue::requiresDestruction() const noexcept {
   switch (t) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
       return false;
     default:
       return true;
@@ -1635,11 +1633,11 @@ size_t AqlValue::memoryUsage() const noexcept {
   auto const t = type();
   switch (t) {
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
       return 0;
     case VPACK_MANAGED_SLICE:
@@ -1660,22 +1658,22 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
   TRI_ASSERT(slice.byteSize() == length);
   if (length <= sizeof(_data.inlineSliceMeta.slice)) {
     if (slice.isDouble()) {
-      setType(AqlValueType::VPACK_64BIT_INLINE_DOUBLE);
+      setType(AqlValueType::VPACK_INLINE_DOUBLE);
       TRI_ASSERT(length == (sizeof(double) + 1));
       memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
     } else if (slice.isInteger()) {
       if (length > 7) {
-        setType(slice.isUInt() ? AqlValueType::VPACK_64BIT_INLINE_UINT : AqlValueType::VPACK_64BIT_INLINE_INT);
+        setType(slice.isUInt() ? AqlValueType::VPACK_INLINE_UINT64 : AqlValueType::VPACK_INLINE_INT64);
         memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
       } else {
         memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
         if (slice.isUInt()) {
-          setType(AqlValueType::VPACK_48BIT_INLINE_UINT);
+          setType(AqlValueType::VPACK_INLINE_UINT48);
           _data.shortNumberMeta.data.uint48.val = slice.getNumber<uint64_t>();
         } else {
           TRI_ASSERT(slice.isInt() || slice.isSmallInt());
           // treat SmallInt as INT just to be consistent
-          setType(AqlValueType::VPACK_48BIT_INLINE_INT);
+          setType(AqlValueType::VPACK_INLINE_INT48);
           _data.shortNumberMeta.data.int48.val = slice.getNumber<int64_t>();
         }
       }
@@ -1706,11 +1704,11 @@ void* AqlValue::data() const noexcept {
     case RANGE:
       return const_cast<Range*>(_data.rangeMeta.range);
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_UINT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     default:
       TRI_ASSERT(false);
       return nullptr;
@@ -1762,12 +1760,12 @@ size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue co
   switch (type) {
     case arangodb::aql::AqlValue::VPACK_INLINE:
       return static_cast<size_t>(arangodb::velocypack::Slice(x._data.inlineSliceMeta.slice).hash());
-    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_UINT:
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT48:
       return static_cast<size_t>(arangodb::velocypack::Slice(x._data.shortNumberMeta.data.slice.slice).hash());
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_UINT:
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_DOUBLE:
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_DOUBLE:
       return static_cast<size_t>(arangodb::velocypack::Slice(x._data.longNumberMeta.data.slice.slice).hash());
     case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
       return std::hash<void const*>()(x._data.pointerMeta.pointer);
@@ -1792,13 +1790,13 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
     case arangodb::aql::AqlValue::VPACK_INLINE:
       return arangodb::velocypack::Slice(a._data.inlineSliceMeta.slice)
            .binaryEquals(arangodb::velocypack::Slice(b._data.inlineSliceMeta.slice));
-    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_48BIT_INLINE_UINT:
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT48:
       // equal is equal. sign does not matters. So compare unsigned
       return a._data.shortNumberMeta.data.uint48.val == b._data.shortNumberMeta.data.uint48.val;
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_INT:
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_UINT:
-    case arangodb::aql::AqlValue::VPACK_64BIT_INLINE_DOUBLE:
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_DOUBLE:
       // equal is equal. sign/endianess does not matter
       return a._data.longNumberMeta.data.intLittleEndian.val == b._data.longNumberMeta.data.intLittleEndian.val;
       return arangodb::velocypack::Slice(a._data.longNumberMeta.data.slice.slice)

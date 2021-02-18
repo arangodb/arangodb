@@ -28,6 +28,7 @@
 #include "Aql/AqlValueFwd.h"
 #include "Aql/types.h"
 #include "Basics/Endian.h"
+#include "IResearch/Misc.h"
 
 #include <velocypack/velocypack-common.h>
 #include <vector>
@@ -135,12 +136,17 @@ struct AqlValue final {
     VPACK_MANAGED_SLICE,   // contains vpack, via pointer to a managed uint8_t
                            // slice, allocated by new[] or malloc()
     RANGE,    // a pointer to a range remembering lower and upper bound, managed
-    VPACK_48BIT_INLINE_INT,    // contains vpack data, inline and unpacked 48bit stored as 64bit int number value (system endianess)
-    VPACK_48BIT_INLINE_UINT,   // contains vpack data, inline and unpacked 48bit stored as 64bit uint number value (system endianess)
-    VPACK_64BIT_INLINE_INT,    // contains vpack data, inline and unpacked 64bit int number value (in little-endian)
-    VPACK_64BIT_INLINE_UINT,   // contains vpack data, inline and unpacked 64bit uint number value (in little-endian)
-    VPACK_64BIT_INLINE_DOUBLE  // contains vpack data, inline and unpacked 64bit double number value (in little-endian)
+    VPACK_INLINE_INT48,    // contains vpack data, inline and unpacked 48bit stored as 64bit int number value (system endianess)
+    VPACK_INLINE_UINT48,   // contains vpack data, inline and unpacked 48bit stored as 64bit uint number value (system endianess)
+    VPACK_INLINE_INT64,    // contains vpack data, inline and unpacked 64bit int number value (in little-endian)
+    VPACK_INLINE_UINT64,   // contains vpack data, inline and unpacked 64bit uint number value (in little-endian)
+    VPACK_INLINE_DOUBLE    // contains vpack data, inline and unpacked 64bit double number value (in little-endian)
   };
+
+  static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
+                VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64,
+                VPACK_INLINE_UINT48, VPACK_INLINE_INT48>(),
+                "Values are not adjacent");
 
   /// @brief Holds the actual data for this AqlValue
   /// The last byte of this union (_data.internal[15]) will be used to identify
@@ -229,8 +235,8 @@ struct AqlValue final {
       uint8_t slice[15]; 
     } inlineSliceMeta;
 
-    //VPACK_48BIT_INLINE_INT
-    //VPACK_48BIT_INLINE_UINT
+    //VPACK_INLINE_INT48
+    //VPACK_INLINE_UINT48
     struct {
       union {
         struct {
@@ -247,11 +253,11 @@ struct AqlValue final {
         } int48;
       } data;
     } shortNumberMeta;
-    static_assert(sizeof(shortNumberMeta) == 16, "VPACK_48BIT_INLINE_INT layout is not 16 bytes!");
+    static_assert(sizeof(shortNumberMeta) == 16, "VPACK_INLINE_INT48 layout is not 16 bytes!");
     
-    // VPACK_64BIT_INLINE_INT
-    // VPACK_64BIT_INLINE_UINT
-    // VPACK_64BIT_INLINE_DOUBLE
+    // VPACK_INLINE_INT64
+    // VPACK_INLINE_UINT64
+    // VPACK_INLINE_DOUBLE
     struct {
       union {
         struct {
@@ -268,7 +274,7 @@ struct AqlValue final {
         } intLittleEndian;
       } data;
     } longNumberMeta;
-    static_assert(sizeof(longNumberMeta) == 16, "VPACK_64BIT_INLINE_INT layout is not 16 bytes!");
+    static_assert(sizeof(longNumberMeta) == 16, "VPACK_INLINE_INT64 layout is not 16 bytes!");
   } _data;
 
   /// @brief type of memory that we are dealing with for values of type
