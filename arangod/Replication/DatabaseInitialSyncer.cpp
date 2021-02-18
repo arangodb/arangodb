@@ -368,7 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  adjustquickKeysNumDocsLimit(*this);
+  adjustquickKeysNumDocsLimit();
 #endif
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
@@ -1147,13 +1147,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
     LOG_TOPIC("6e1b3", ERR, Logger::REPLICATION)
-        << "client: DatabaseInitialSyncer::run - expected ony document count for quick call";
+        << "client: DatabaseInitialSyncer::run - expected only document count for quick call";
     TRI_ASSERT(false);
   }
 #endif
 
   if (!slice.hasKey("id")) { // we only have count
-    maxWaitTime = ndocs * 8 / 100000;
+    if (ndocs >= 1000000) { // only bother beyond a million documents
+      maxWaitTime = ndocs * 8 / 100000;
+    }
     ck = keysCall(false);
     if (!ck.ok()) {
       return ck;
@@ -2173,8 +2175,7 @@ Result DatabaseInitialSyncer::batchFinish() {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief patch quickKeysNumDocsLimit for testing
-/*static*/ void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit(
-  DatabaseInitialSyncer& syncer) {
+void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit() {
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
     syncer._quickKeysNumDocsLimit = 100;
   }
