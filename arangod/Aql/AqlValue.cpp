@@ -1233,11 +1233,11 @@ VPackSlice AqlValue::slice(AqlValueType type) const {
   switch (type) {
     case VPACK_INLINE_INT48:
     case VPACK_INLINE_UINT48:
-     return VPackSlice(_data.shortNumberMeta.data.slice.slice).resolveExternal();
+     return VPackSlice(_data.shortNumberMeta.data.slice.slice);
     case VPACK_INLINE_INT64:
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
-     return VPackSlice(_data.longNumberMeta.data.slice.slice).resolveExternal();
+     return VPackSlice(_data.longNumberMeta.data.slice.slice);
     case VPACK_INLINE: {
       return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
     }
