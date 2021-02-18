@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,49 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_AQL_BLOCK_COLLECTOR_H
-#define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
-
-#include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
+#include "Basics/Exceptions.h"
 
-#include <cstdint>
-#include <vector>
+namespace arangodb::aql {
+  RegisterId RegisterId::fromUInt32(uint32_t value) {
+    auto v = static_cast<value_t>(value);
+    auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
+    RegisterId result(v, type);
+    TRI_ASSERT(result.isValid());
+    if (!result.isValid()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot parse RegisterId from value " + std::to_string(value));
+    }
+    return result;
+  }
 
-namespace arangodb {
-namespace aql {
-class AqlItemBlock;
-class AqlItemBlockManager;
-
-class BlockCollector {
-  friend class AqlItemBlock;
-
- public:
-  BlockCollector(BlockCollector const&) = delete;
-  BlockCollector& operator=(BlockCollector const&) = delete;
-
-  explicit BlockCollector(AqlItemBlockManager*);
-  ~BlockCollector();
-
-  size_t totalSize() const;
-  RegisterCount nrRegs() const;
-
-  void clear();
-
-  void add(SharedAqlItemBlockPtr block);
-
-  SharedAqlItemBlockPtr steal();
-
- private:
-  AqlItemBlockManager* _blockManager;
-  std::vector<SharedAqlItemBlockPtr> _blocks;
-  size_t _totalSize;
-};
-
-}  // namespace aql
-}  // namespace arangodb
-
-#endif
+  uint32_t RegisterId::toUInt32() const noexcept {
+    uint32_t result = _value;
+    result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
+    return result;
+  }
+}

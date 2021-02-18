@@ -2578,7 +2578,7 @@ function explainQuerysRegisters(plan) {
     } = data;
     const nrRegs = nrRegsArray[depth];
     const regIdByVarId = Object.fromEntries(
-      varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+      varInfoList.filter(varInfo => varInfo.RegisterId < 1000).map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
     const meta = {id, type, depth};
     const result = [];
