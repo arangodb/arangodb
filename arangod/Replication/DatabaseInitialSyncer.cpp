@@ -1153,8 +1153,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 #endif
 
   if (!slice.hasKey("id")) { // we only have count
-    if (ndocs >= 1000000) { // only bother beyond a million documents
-      maxWaitTime = ndocs * 8 / 100000;
+    if (ndocs > 1000000) { // only bother beyond a 
+      maxWaitTime = ndocs * 80;
     }
     ck = keysCall(false);
     if (!ck.ok()) {
@@ -2177,7 +2177,7 @@ Result DatabaseInitialSyncer::batchFinish() {
 /// @brief patch quickKeysNumDocsLimit for testing
 void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit() {
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
-    _quickKeysNumDocsLimit = 100;
+    syncer._quickKeysNumDocsLimit = 100;
   }
 }
 #endif
