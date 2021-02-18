@@ -54,7 +54,7 @@ struct Options {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   /// @brief patch intermediateCommitCount for testing
-  static void adjustIntermediateCommitCount();
+  static void adjustIntermediateCommitCount(Options& options);
 #endif
 
   static constexpr double defaultLockTimeout = 900.0;

@@ -50,7 +50,7 @@ Options::Options()
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   // patch intermediateCommitCount for testing
-  adjustIntermediateCommitCount();
+  adjustIntermediateCommitCount(*this);
 #endif
 }
   
@@ -137,7 +137,7 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief patch intermediateCommitCount for testing
-void Options::adjustIntermediateCommitCount() {
+/*static*/ void Options::adjustIntermediateCommitCount(Options& options) {
   TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
     options.intermediateCommitCount = 100;
   }
