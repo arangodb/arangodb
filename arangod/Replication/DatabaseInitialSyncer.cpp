@@ -368,7 +368,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  adjustquickKeysNumDocsLimit();
+  adjustQuickKeysNumDocsLimit();
 #endif
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
