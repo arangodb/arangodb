@@ -1318,6 +1318,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
         }
         return (l < r ? -1 : 1);
       }
+    [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
