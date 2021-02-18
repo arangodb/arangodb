@@ -1453,7 +1453,7 @@ AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
       x = toUInt64(value);
       _data.longNumberMeta.data.intLittleEndian.val = arangodb::basics::hostToLittle(x); // FIXME: use just value ???
       aqlValueType = AqlValueType::VPACK_INLINE_INT64;
-      // always store  as 8 byte Slice as we need full alignet value in binary representation
+      // always store as 8 byte Slice as we need full aligned value in binary representation
       _data.longNumberMeta.data.slice.slice[0] = 0x1fU + 8;
     } else {
       int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
@@ -1484,7 +1484,7 @@ AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
     if (vSize > 6) {
       _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
       aqlValueType = AqlValueType::VPACK_INLINE_UINT64;
-      // always store  as 8 byte Slice as we need full alignet value in binary representation
+      // always store as 8 byte Slice as we need full aligned value in binary representation
       _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
     } else {
       _data.shortNumberMeta.data.slice.slice[0] = 0x27U + vSize;
@@ -1669,12 +1669,12 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
         memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
         if (slice.isUInt()) {
           setType(AqlValueType::VPACK_INLINE_UINT48);
-          _data.shortNumberMeta.data.uint48.val = slice.getNumber<uint64_t>();
+          _data.shortNumberMeta.data.uint48.val = slice.getUIntUnchecked();
         } else {
           TRI_ASSERT(slice.isInt() || slice.isSmallInt());
           // treat SmallInt as INT just to be consistent
           setType(AqlValueType::VPACK_INLINE_INT48);
-          _data.shortNumberMeta.data.int48.val = slice.getNumber<int64_t>();
+          _data.shortNumberMeta.data.int48.val = slice.getIntUnchecked();
         }
       }
     } else {
@@ -1699,7 +1699,7 @@ void* AqlValue::data() const noexcept {
     case VPACK_SLICE_POINTER:
       return const_cast<uint8_t*>(_data.pointerMeta.pointer);
     case VPACK_MANAGED_SLICE:
-      // byte size is stored in the first 6 bytes of the second uint64_t value
+      // pointer is stored in the second uint64_t value
       return  _data.managedSliceMeta.managedPointer;
     case RANGE:
       return const_cast<Range*>(_data.rangeMeta.range);
