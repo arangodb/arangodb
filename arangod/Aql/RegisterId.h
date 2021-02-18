@@ -34,10 +34,7 @@ typedef uint16_t RegisterCount;
 
 /// @brief type for register numbers/ids
 struct RegisterId {
-  enum class Type : uint16_t {
-    Regular = 0,
-    Const = 1
-  };
+  enum class Type : uint16_t { Regular = 0, Const = 1 };
 
   using value_t = uint16_t;
   static_assert(std::is_same_v<value_t, RegisterCount>);
@@ -45,7 +42,7 @@ struct RegisterId {
   constexpr RegisterId() = default;
 
   static constexpr value_t maxRegisterId = 1000;
-  
+
   // TODO - make constructor explicit (requires a lot of changes in test code)
   constexpr RegisterId(value_t v, Type type = Type::Regular)
       : _value(v), _type(type) {
@@ -71,42 +68,66 @@ struct RegisterId {
 
   constexpr Type type() const noexcept { return _type; }
 
-  constexpr bool isConstRegister() const noexcept { return _type == Type::Const; }
-  constexpr bool isRegularRegister() const noexcept { return _type == Type::Regular; }
+  constexpr bool isConstRegister() const noexcept {
+    return _type == Type::Const;
+  }
+  constexpr bool isRegularRegister() const noexcept {
+    return _type == Type::Regular;
+  }
 
-  constexpr bool isValid() const noexcept { return _value < maxRegisterId && _type <= Type::Const; }
+  constexpr bool isValid() const noexcept {
+    return _value < maxRegisterId && _type <= Type::Const;
+  }
 
-  constexpr bool operator<(const RegisterId& rhs) const noexcept {
+  constexpr bool operator<(RegisterId const& rhs) const noexcept {
     TRI_ASSERT(type() == rhs.type())
     return _value < rhs._value;
   }
 
-  constexpr bool operator>(const RegisterId& rhs) const noexcept {
+  constexpr bool operator>(RegisterId const& rhs) const noexcept {
     TRI_ASSERT(type() == rhs.type())
     return _value > rhs._value;
   }
-  
-  constexpr bool operator==(const RegisterId& rhs) const noexcept {
+
+  constexpr bool operator==(RegisterId const& rhs) const noexcept {
     return type() == rhs.type() && _value == rhs._value;
   }
 
-  constexpr bool operator!=(const RegisterId& rhs) const noexcept {
+  constexpr bool operator!=(RegisterId const& rhs) const noexcept {
     return !(*this == rhs);
   }
 
-  constexpr bool operator==(const value_t& rhs) const noexcept {
+  constexpr bool operator==(value_t const& rhs) const noexcept {
     return _value == rhs;
   }
-  
-  constexpr bool operator!=(const value_t& rhs) const noexcept {
+
+  constexpr bool operator!=(value_t const& rhs) const noexcept {
     return _value != rhs;
   }
+
  private:
   uint16_t _value = 0;
   Type _type = Type::Regular;
 };
 static_assert(sizeof(RegisterId) == sizeof(uint32_t));
 
-}
+}  // namespace arangodb::aql
+
+namespace std {
+template <>
+struct hash<arangodb::aql::RegisterId> {
+  size_t operator()(arangodb::aql::RegisterId const& x) const noexcept {
+    return std::hash<unsigned>()(x.value());
+  }
+};
+
+template <>
+struct equal_to<arangodb::aql::RegisterId> {
+  bool operator()(arangodb::aql::RegisterId const& lhs,
+                  arangodb::aql::RegisterId const& rhs) const noexcept {
+    return lhs == rhs;
+  }
+};
+}  // namespace std
 
 #endif

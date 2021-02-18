@@ -87,7 +87,7 @@ struct Variable {
   bool isEqualTo(Variable const& other) const;
   
   /// @brief returns the type of the variable. The type is determined based
-  // on the constantValue. If constantValue.isNone, the type is Type::Regulor,
+  // on the constantValue. If constantValue.isNone, the type is Type::Regular,
   // otherwise it is Type::Const
   Type type() const noexcept;
 
