@@ -63,13 +63,4 @@ void TempFeature::prepare() {
   }
 }
 
-void TempFeature::start() {
-  // signal that the temp path is available
-  auto context = ArangoGlobalContext::CONTEXT;
-
-  if (context != nullptr) {
-    context->createMiniDumpFilename();
-  }
-}
-
 }  // namespace arangodb

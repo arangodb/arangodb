@@ -33,6 +33,10 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef _WIN32
+#include <DbgHelp.h>
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <exception>
@@ -470,6 +474,60 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 }
 #endif
 
+#ifdef _WIN32
+
+static std::string miniDumpDirectory = "C:\\temp";
+
+// This function is called once after installing the exceptionFilter.
+void setMiniDumpDirectory() { miniDumpDirectory = TRI_GetTempPath(); }
+
+void createMiniDump(EXCEPTION_POINTERS* pointers) {
+  time_t rawtime;
+  time(&rawtime);
+  struct tm timeinfo;
+  _gmtime64_s(&timeinfo, &rawtime);
+  char time[20];
+  strftime(time, sizeof(time), "%Y-%m-%dT%H-%M-%S", &timeinfo);
+  
+  char filename[MAX_PATH];
+  sprintf(filename, "%s\\%s_%d_%d.dmp", miniDumpDirectory.c_str(), time, GetCurrentProcessId(), GetCurrentThreadId());
+  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr,
+                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (hFile == INVALID_HANDLE_VALUE) {
+    LOG_TOPIC("ba80e", FATAL, arangodb::Logger::CRASH)
+        << "Could not open minidump file: " << GetLastError();
+    return;
+  }
+
+  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+  exceptionInfo.ThreadId = GetCurrentThreadId();
+  exceptionInfo.ExceptionPointers = pointers;
+  exceptionInfo.ClientPointers = FALSE;
+
+  if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
+                        pointers ? &exceptionInfo : nullptr, nullptr, nullptr)) {
+    LOG_TOPIC("93315", FATAL, arangodb::Logger::CRASH) << "Wrote minidump: " << filename;
+  } else {
+    LOG_TOPIC("af06b", FATAL, arangodb::Logger::CRASH)
+        << "Failed to write minidump: " << GetLastError();
+  }
+
+  CloseHandle(hFile);
+}
+
+LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
+  TRI_ASSERT(pointers && pointers->ExceptionRecord);
+  LOG_TOPIC("87ff4", FATAL, arangodb::Logger::CRASH)
+      << "Unhandled exception: " << std::hex << pointers->ExceptionRecord->ExceptionCode
+      << " in thread " << GetCurrentThreadId();
+      
+  createMiniDump(pointers);
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 } // namespace
 
 namespace arangodb {
@@ -576,6 +634,9 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
+#else // _WIN32
+  setMiniDumpDirectory();
+  SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
   // install handler for std::terminate()

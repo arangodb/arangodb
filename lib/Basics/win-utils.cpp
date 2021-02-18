@@ -65,42 +65,6 @@
 
 using namespace arangodb::basics;
 
-// .............................................................................
-// Some global variables which may be required later
-// .............................................................................
-
-_invalid_parameter_handler oldInvalidHandleHandler;
-_invalid_parameter_handler newInvalidHandleHandler;
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Sets up a handler when invalid (win) handles are passed to a windows
-// function.
-// This is not of much use since no values can be returned. All we can do
-// for now is to ignore error and hope it goes away!
-////////////////////////////////////////////////////////////////////////////////
-static void InvalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
-                                    const wchar_t* function,  // name of function - NULL
-                                    const wchar_t* file,  // file where code resides - NULL
-                                    unsigned int line,  // line within file - NULL
-                                    uintptr_t pReserved) {  // in case microsoft forget something
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  char buf[1024] = "";
-  snprintf(buf, sizeof(buf) - 1,
-           "Expression: %ls Function: %ls File: %ls Line: %d", expression,
-           function, file, (int)line);
-  buf[sizeof(buf) - 1] = '\0';
-#endif
-
-  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      << "Invalid handle parameter passed: " << buf;
-#else
-      << "Invalid handle parameter passed";
-#endif
-}
-
 int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
@@ -110,33 +74,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
   switch (initializeWhat) {
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
       _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) | _CRTDBG_CHECK_ALWAYS_DF);
-      return 0;
-    }
-
-      // ...........................................................................
-      // Assign a handler for invalid handles
-      // ...........................................................................
-
-    case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
-#if 0
-      // currently disabled. TODO: make this code work properly
-
-      DWORD error;
-      HANDLE hProcess;
-
-      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-      hProcess = GetCurrentProcess();
-
-      if (!SymInitialize(hProcess, NULL, true)) {
-        // SymInitialize failed
-        error = GetLastError();
-        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
-            << "SymInitialize returned error :" << error;
-      }
-#endif
-      newInvalidHandleHandler = InvalidParameterHandler;
-      oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
       return 0;
     }
 
@@ -610,12 +547,6 @@ void ADB_WindowsEntryFunction() {
   // you do get some similar functionality.
   // ...........................................................................
   // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
-
-  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 
