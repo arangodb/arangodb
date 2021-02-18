@@ -1,15 +1,18 @@
-name: arangodb_metric
-help: >
-  Put the help string here.
+name: arangodb_heartbeat_failures
+help: |
+  Total number of failed heartbeat transmissions.
+unit: number
+type: counter
+category: Health
+complexity: simple
 exposedBy:
   - coordinator
   - dbserver
-  - agent
-description: >
-  Description here. Can be multiline and use markdown.
-threshold: >
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: >
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
+description: |
+  Total number of failed heartbeat transmissions.
+threshold: |
+  It is a bad sign for health if heartbeat transmissions fail. This can
+  lead to failover actions which are ultimately bad for the service.
+troubleshoot: |
+  This can be a sign of overload or of bad network connectivity. Potentially
+  move the agent instances to separate machines.

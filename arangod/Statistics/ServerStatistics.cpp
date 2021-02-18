@@ -99,7 +99,7 @@ void TransactionStatistics::setupDocumentMetrics() {
   _rocksdb_truncate_sec =
     _metrics.histogram("arangodb_collection_truncate_time",
                        log_scale_t<float>(10., 0.0, 1000.0, 11),
-                       "Total time spent in collcection truncate operations [s]");
+                       "Total time spent in collection truncate operations [s]");
 }
 
 void ServerStatistics::setupDocumentMetrics() {

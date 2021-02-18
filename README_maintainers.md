@@ -76,6 +76,43 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding metrics
+
+As of 3.8 we have enforced documentation for metrics. This works as
+follows. Every metric which is generated has a name. This name must be
+listed in the file `arangod/RestServer/Metrics.cpp` in the static array
+`metricsNameList`. If this is not done and you build with maintainer
+mode, then the server will not start. Note that since not all metrics
+are active in all modes (single, agent, dbserver, coordinator), absence
+of a name in the list is only detected when you run an instance in a
+mode which uses the metric. If you add a name to the list, please use
+the formatting used so far with one name per line in double quotes.
+
+Then there is a helper script `utils/generateAllMetricsDocumentation.py`
+which needs `python3` with the `yaml` module. It will check and do the
+following things:
+
+ - every name in the list `metricsNameList` in the source has a
+   corresponding documentation snippet in `Documentation/Metrics`
+   under the name of the metric with `.yaml` appended
+ - each such file is a YAML file of a certain format (see template
+   under `Documentation/Metrics/template.yaml`)
+ - many of the componentes are required, so please provide adequate
+   information about your metric
+ - the script also assembles all these YAML documentation snippets
+   into a single file under `Documentation/Metrics/allMetrics.yaml`,
+   the format is again a structured YAML file which can easily be
+   processed by the documentation tools.
+
+Please, if you have added or modified a metric, make sure to add the
+name of the metric to `metricsNameList` and add a documentation YAML
+snippet in the correct format. Afterwards, run
+
+    utils/generateAllMetricsDocumentation.py
+
+and include `Documentation/allMetrics.yaml` in your PR.
+
+
 ---
 
 ## Building

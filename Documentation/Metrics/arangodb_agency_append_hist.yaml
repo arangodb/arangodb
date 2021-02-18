@@ -1,15 +1,18 @@
-name: arangodb_metric
-help: >
-  Put the help string here.
+name: arangodb_agency_append_hist
+help: |
+  Agency RAFT follower append histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
 exposedBy:
-  - coordinator
-  - dbserver
   - agent
-description: >
-  Description here. Can be multiline and use markdown.
-threshold: >
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: >
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
+description: |
+  This measures the time an agency follower needs for individual
+  append operations resulting from `AppendEntriesRPC` requests.
+threshold: |
+  Normally these times should be clearly sub-second.
+troubleshoot: |
+  If you see delays here, the agents might not have enough IO bandwidth
+  or might be overloaded. Try to provision more IOPS or more CPU capacity,
+  potentially moving agents to separate machines.

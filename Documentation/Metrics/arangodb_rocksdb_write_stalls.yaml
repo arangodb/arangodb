@@ -1,15 +1,12 @@
-name: arangodb_metric
-help: >
-  Put the help string here.
+name: arangodb_rocksdb_write_stalls
+help: |
+  Number of times RocksDB has entered a stalled (slowed) write state.
+unit: number
+type: counter
+category: RocksDB
+complexity: simple
 exposedBy:
-  - coordinator
   - dbserver
   - agent
-description: >
-  Description here. Can be multiline and use markdown.
-threshold: >
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: >
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
+description: |
+  Number of times RocksDB has entered a stalled (slowed) write state.

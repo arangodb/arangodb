@@ -1,2679 +1,3266 @@
-- description: 'Description here. Can be multiline and use markdown.
+- category: Agency
+  complexity: medium
+  description: 'This measures the time an agency follower needs for individual
 
+    append operations resulting from `AppendEntriesRPC` requests.
+
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Agency RAFT follower append histogram.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_agency_append_hist
+  threshold: 'Normally these times should be clearly sub-second.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  troubleshoot: 'If you see delays here, the agents might not have enough IO bandwidth
 
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Put the help string here.
+    or might be overloaded. Try to provision more IOPS or more CPU capacity,
 
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+    potentially moving agents to separate machines.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: advanced
+  description: 'This reflects the current number of callbacks the local `AgencyCache`
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    has registered.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  - dbserver
+  - coordinator
+  help: 'Current number of entries in agency cache callbacks table.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_cache_callback_count
+  threshold: 'This number will usually be very low, something like 2 or 3.
 
     '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Put the help string here.
+  troubleshoot: 'If this number is considerably higher, this should be investigated.
 
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+    Please contact support.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: advanced
+  description: 'This metric reflects the current number of agency callbacks being
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    registered.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Current number of agency callbacks registered.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_callback_count
+  threshold: 'This number will usually be very low, something like 2 or 3.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: 'If this number is considerably higher, this should be investigated.
+
+    Please contact support.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: advanced
+  description: 'This metric reflects the total number of agency callbacks ever registered
 
+    over time.
+
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of agency callbacks ever registered.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_callback_registered
+  type: counter
+  unit: number
+- category: Agency
+  complexity: advanced
+  description: 'Current number of entries in agency client id lookup table.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Current number of entries in agency client id lookup table.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_client_lookup_table_size
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: medium
+  description: 'Agency RAFT commit time histogram.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  exposedBy:
+  - agent
+  help: 'Agency RAFT commit histogram.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_commit_hist
+  type: histogram
+  unit: ms
+- category: Network
+  complexity: medium
+  description: 'This histogram shows how long requests to the agency took.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
+  help: 'Request time for Agency requests.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agencycomm_request_time_msec
+  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
+    \n"
+  troubleshoot: 'If the network or the agents are overloaded, it can help to move
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    agent instances to separate machines.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency compaction time histogram.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Agency compaction time histogram.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_compaction_hist
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: simple
+  description: 'This agent''s commit index.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'This agent''s commit index.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_local_commit_index
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Agency replicated log size in bytes.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  exposedBy:
+  - agent
+  help: 'Agency replicated log size.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_log_size_bytes
+  type: gauge
+  unit: bytes
+- category: Agency
+  complexity: simple
+  description: 'Agency read with no leader.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Agency read no leader.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_agency_read_no_leader
+  threshold: 'This should normally not happen. If it happens regularly, the agency
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    is reelecting its leader often.
 
     '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Put the help string here.
+  troubleshoot: 'The latency of the network between the agents might be too high or
 
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+    the agents may be overloaded. It might help to move agent instances
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    to separate machines.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: counter
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Number of agency read operations which went ok.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Agency read ok.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_read_ok
+  type: counter
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Accumulated supervision runtime.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Accumulated supervision runtime.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_supervision_accum_runtime_msec
+  type: counter
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Accumulated supervision wait for replication time.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  exposedBy:
+  - agent
+  help: 'Accumulated supervision wait for replication time.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec
+  type: counter
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Counter for FailedServer jobs.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Counter for FailedServer jobs.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_supervision_failed_server_count
+  threshold: 'Many FailedServer jobs indicate frequent failures of dbservers. This
+
+    is generally not good.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: 'Find the root cause of server failures. Overload and bad network
+    latency
 
+    can lead to misdetected server failures.
+
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: counter
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Agency Supervision runtime histogram.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Agency Supervision runtime histogram.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_supervision_runtime_msec
+  threshold: 'The supervision runtime goes up linearly with the number of collections
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    and shards.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency supervision wait for replication time.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  help: 'Agency supervision wait for replication time.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_agency_supervision_runtime_wait_for_replication_msec
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency''s term.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
-
-    '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  help: 'Agency''s term.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_agency_term
+  threshold: 'This number should usually not grow. If it does, the agency is doing
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    repeated reelections, which suggests overload or bad network latency
 
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Put the help string here.
+    between agents.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  troubleshoot: 'It might help to reduce network latency between agents or move agent
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    instances to separate machines.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: medium
+  description: 'Agency write time histogram.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Agency write time histogram.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
-
-    '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_write_hist
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency write operations with no leader.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Agency write operations with no leader.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_agency_write_no_leader
+  type: counter
+  unit: number
+- category: Agency
+  complexity: medium
+  description: 'Agency write operations which went ok.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  exposedBy:
+  - agent
+  help: 'Agency write operations which went ok.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_agency_write_ok
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Total number of AQL queries finished.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of AQL queries finished.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_aql_all_query
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Current number of AQL queries executing.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Current number of AQL queries executing.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_aql_current_query
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Execution time histogram for all AQL queries.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Execution time histogram for all AQL queries.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
-
-    '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_aql_query_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: simple
+  description: 'Number of slow AQL queries.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  help: 'Number of slow AQL queries.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_aql_slow_query
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Execution time histogram for slow AQL queries.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
-
-    '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Execution time histogram for slow AQL queries.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_aql_slow_query_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: simple
+  description: 'Total execution time of all AQL queries.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  help: 'Total execution time of all AQL queries.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_aql_total_query_time_msec
+  type: histogram
+  unit: ms
+- category: AQL
+  complexity: medium
+  description: 'Total amount of collection lock acquisition time.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
-
-    '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total amount of collection lock acquisition time.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_lock_acquisition_micros
+  type: counter
+  unit: microseconds
+- category: AQL
+  complexity: medium
+  description: 'Collection lock acquisition time histogram.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Collection lock acquisition time histogram.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_lock_acquisition_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: advanced
+  description: 'Number of transactions using sequential locking of collections to
+    avoid deadlocking.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_lock_sequential_mode
+  type: counter
+  unit: number
+- category: AQL
+  complexity: medium
+  description: 'Number of timeouts when trying to acquire collection exclusive locks.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Number of timeouts when trying to acquire collection exclusive locks.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_lock_timeouts_exclusive
+  type: counter
+  unit: number
+- category: AQL
+  complexity: medium
+  description: 'Number of timeouts when trying to acquire collection write locks.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
+  help: 'Number of timeouts when trying to acquire collection write locks.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_collection_lock_timeouts_write
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total number of collection truncate operations (excl. synchronous
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    replication). Note that this metric is only present when the command
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    line option `--server.export-read-write-metrics` is set to `true`.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
+  - coordinator
+  help: 'Total number of collection truncate operations (excl. synchronous replication).
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  name: arangodb_collection_truncates
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: medium
+  description: 'Total number of collection truncate operations by synchronous
 
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+    replication. Note that this metric is only present when the command
 
-    '
-- description: 'Description here. Can be multiline and use markdown.
+    line option `--server.export-read-write-metrics` is set to `true`.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
+  help: 'Total number of collection truncate operations by synchronous replication.
 
     '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
-
-    '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_truncates_replication
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total time spent in collection truncate operations.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total time spent in collection truncate operations.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_collection_truncate_time
+  type: histogram
+  unit: s
+- category: Connectivity
+  complexity: medium
+  description: 'Current number of connections in pool for AgencyComm.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  help: 'Current number of connections in pool for AgencyComm.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  name: arangodb_connection_connections_current_AgencyComm
+  type: gauge
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Current number of connections in pool for ClusterComm.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
-
-    '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Current number of connections in pool for ClusterComm.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_connection_connections_current_ClusterComm
+  type: gauge
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Total number of successful connection leases for AgencyComm connection
+    pool.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of successful connection leases for AgencyComm connection pool.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_connection_leases_successful_AgencyComm
+  type: counter
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Total number of successful connection leases for ClusterComm connection
+    pool.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of successful connection leases for ClusterComm connection pool.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_connection_leases_successful_ClusterComm
+  type: counter
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Total number of connections created for AgencyComm connection pool.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of connections created for AgencyComm connection pool.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_connection_pool_connections_created_AgencyComm
+  type: counter
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Total number of connections created for ClusterComm connection pool.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Put the help string here.
-
-    '
-  name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
-
-    '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  help: 'Total number of connections created for ClusterComm connection pool.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  name: arangodb_connection_pool_connections_created_ClusterComm
+  type: counter
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
-- description: 'Description here. Can be multiline and use markdown.
+  type: gauge
+  unit: number
+- category: Health
+  complexity: simple
+  description: 'Description here. Can be multiline and use markdown.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  grafana:
+    json: '{}'
+    query: rate(arangodb_metric[1m]) by (instance)
   help: 'Put the help string here.
 
     '
   name: arangodb_metric
-  threshold: 'Optional text to describe thresholds and normal ranges for the metrics.
-    Can be multiline markdown.
+  threshold: '# optional Optional text to describe thresholds and normal ranges for
+    the metrics. Can be multiline markdown.
 
     '
-  troubleshoot: 'If at all possible describe hints for troubleshooting and how to
-    get metrics in allowable range again.
+  troubleshoot: '# optional If at all possible describe hints for troubleshooting
+    and how to get metrics in allowable range again.
 
     '
+  type: gauge
+  unit: number

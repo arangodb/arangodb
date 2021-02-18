@@ -1,15 +1,13 @@
-name: arangodb_metric
-help: >
-  Put the help string here.
+name: arangodb_scheduler_jobs_dequeued
+help: |
+  Total number of jobs dequeued.
+unit: number
+type: gauge
+category: Scheduler
+complexity: advanced
 exposedBy:
   - coordinator
   - dbserver
   - agent
-description: >
-  Description here. Can be multiline and use markdown.
-threshold: >
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: >
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
+description: |
+  Total number of jobs dequeued.

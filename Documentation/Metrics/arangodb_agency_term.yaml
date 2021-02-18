@@ -1,15 +1,18 @@
-name: arangodb_metric
-help: >
-  Put the help string here.
+name: arangodb_agency_term
+help: |
+  Agency's term.
+unit: number
+type: gauge
+category: Agency
+complexity: medium
 exposedBy:
-  - coordinator
-  - dbserver
   - agent
-description: >
-  Description here. Can be multiline and use markdown.
-threshold: >
-  Optional text to describe thresholds and normal ranges for the metrics.
-  Can be multiline markdown.
-troubleshoot: >
-  If at all possible describe hints for troubleshooting and how to get
-  metrics in allowable range again.
+description: |
+  Agency's term.
+threshold: |
+  This number should usually not grow. If it does, the agency is doing
+  repeated reelections, which suggests overload or bad network latency
+  between agents.
+troubleshoot: |
+  It might help to reduce network latency between agents or move agent
+  instances to separate machines.

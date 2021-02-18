@@ -47,7 +47,7 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
           "Wait time for replication requests [ms]")),
       _waitedForDumpApply(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_dump_apply_time", 0,
-          "time needed to apply replication dump data [ms]")),
+          "Accumulated time needed to apply replication dump data [ms]")),
       _numSyncKeysRequests(server.getFeature<arangodb::MetricsFeature>().counter(
           "arangodb_replication_initial_sync_keys_requests", 0,
           "Number of replication initial sync keys requests")),

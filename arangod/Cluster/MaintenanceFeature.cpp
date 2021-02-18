@@ -189,13 +189,13 @@ void MaintenanceFeature::initializeMetrics() {
 
   _action_duplicated_counter = metricsFeature.counter(
       StaticStrings::ActionDuplicateCounter, 0,
-      "Counter of action that have been discarded because of a duplicate");
+      "Counter of actions that have been discarded because of a duplicate");
   _action_registered_counter = metricsFeature.counter(
       StaticStrings::ActionRegisteredCounter, 0,
-      "Counter of action that have been registered in the action registry");
+      "Counter of actions that have been registered in the action registry");
   _action_done_counter =
       metricsFeature.counter(StaticStrings::ActionDoneCounter, 0,
-                             "Counter of action that are done and have been "
+                             "Counter of actions that are done and have been "
                              "removed from the registry");
 
   const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
@@ -210,11 +210,11 @@ void MaintenanceFeature::initializeMetrics() {
         action,
         metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
                                  log_scale_t<uint64_t>(4, 82, 86400000, 10),
-                                 "Time spend execution the action [ms]"),
+                                 "Time spent executing a maintenance action [ms]"),
         metricsFeature.histogram(
             {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
             log_scale_t<uint64_t>(2, 82, 3600000, 12),
-            "Time spend in the queue before execution [ms]"),
+            "Time spent in the queue before execution for maintenance actions [ms]"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionAccumRuntimeMs, action_label},
                                0, "Accumulated action runtime"),
@@ -223,7 +223,7 @@ void MaintenanceFeature::initializeMetrics() {
                                0, "Accumulated action queue time"),
 
         metricsFeature.counter({StaticStrings::MaintenanceActionFailureCounter, action_label},
-                               0, "Failure counter for the action"));
+                               0, "Failure counter for the maintenance actions"));
   }
 }
 
