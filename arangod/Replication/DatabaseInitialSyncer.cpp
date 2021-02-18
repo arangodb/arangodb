@@ -1216,8 +1216,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 #endif
 
   if (!slice.hasKey("id")) { // we only have count
-    if (ndocs >= 1000000) { // only bother beyond 1000000 documents
-      maxWaitTime = ndocs * 8 / 100000;
+    if (ndocs >= 3750000) { // only bother beyond  documents
+      maxWaitTime = ndocs * 80;
     }
     ck = keysCall(false);
     if (!ck.ok()) {
