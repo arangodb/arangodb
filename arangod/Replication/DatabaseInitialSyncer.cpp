@@ -1013,10 +1013,18 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   std::string msg =
       "fetching collection keys for collection '" + coll->name() + "' from " + url;
   _config.progress.set(msg);
+  
+  // use a lower bound for maxWaitTime of 180M microseconds, i.e. 180 seconds
+  constexpr uint64_t lowerBoundForWaitTime = 180000000;
 
+  // note: maxWaitTime has a unit of microseconds
+  uint64_t maxWaitTime = _config.applier._initialSyncMaxWaitTime;
+  maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
+  
+
+  // the following two variables can be modified by the "keysCall" lambda
   VPackBuilder builder;
   VPackSlice slice;
-  auto maxWaitTime = _config.applier._initialSyncMaxWaitTime;
 
   auto keysCall = [&](bool quick) {
     // send an initial async request to collect the collection keys on the other
@@ -1082,6 +1090,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
                         _config.leader.endpoint);
         }
       }
+    
+      TRI_ASSERT(maxWaitTime >= lowerBoundForWaitTime);
 
       if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= maxWaitTime) {
         ++stats.numFailedConnects;
@@ -1135,14 +1145,13 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     return ck;
   }
   VPackSlice const c = slice.get("count");
-  uint64_t ndocs = 0;
-  if (c.isNumber()) {
-    ndocs = c.getNumber<uint64_t>();
-  } else {
+  if (!c.isNumber()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
                   _config.leader.endpoint + url + ": response count not a number");
-  }
+  } 
+    
+  uint64_t ndocs = c.getNumber<uint64_t>();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
@@ -1153,9 +1162,21 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
 #endif
 
   if (!slice.hasKey("id")) { // we only have count
-    if (ndocs > 3750000) { // only bother beyond a 
-      maxWaitTime = ndocs * 80;
-    }
+    // calculate a wait time proportional to the number of documents on the leader
+    // if we get 1M documents back, the wait time is 80M microseconds, i.e. 80 seconds
+    // if we get 10M documents back, the wait time is 800M microseconds, i.e. 800 seconds
+    // ...
+    maxWaitTime = std::max<uint64_t>(maxWaitTime, ndocs * 80);
+
+    // there is an additional lower bound for the wait time as defined initially in
+    //    _config.applier._initialSyncMaxWaitTime
+    // we also apply an additional lower bound of 180 seconds here, in case that value
+    // is configured too low, for whatever reason
+    maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
+
+    TRI_ASSERT(maxWaitTime >= lowerBoundForWaitTime);
+    
+    // note: keysCall() can modify the "slice" variable
     ck = keysCall(false);
     if (!ck.ok()) {
       return ck;
@@ -1163,7 +1184,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
   }
 
   VPackSlice const keysId = slice.get("id");
-
   if (!keysId.isString()) {
     ++stats.numFailedConnects;
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

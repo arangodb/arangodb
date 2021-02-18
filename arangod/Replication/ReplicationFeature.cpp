@@ -139,10 +139,10 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      .setIntroducedIn(30409).setIntroducedIn(30504);
 
   options->addOption("--replication.quick-keys-limit",
-                     "Limit at which quick calls to replication keys return only a count for second run",
+                     "Limit at which 'quick' calls to the replication keys API return only the document count for second run",
                      new UInt64Parameter(&_quickKeysLimit),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30708);
+                     .setIntroducedIn(30709).setIntroducedIn(30800);
 
   options
       ->addOption(
