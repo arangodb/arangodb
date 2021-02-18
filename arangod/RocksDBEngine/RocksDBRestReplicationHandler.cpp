@@ -843,7 +843,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 /// @brief patch quickKeysNumDocsLimit for testing
 void RocksDBRestReplicationHandler::adjustquickKeysNumDocsLimit() {
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
-    handler._quickKeysNumDocsLimit = 100;
+    _quickKeysNumDocsLimit = 100;
   }
 }
 #endif
