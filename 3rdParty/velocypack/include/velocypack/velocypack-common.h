@@ -135,9 +135,6 @@ static constexpr bool isLittleEndian() { return false; }
 #include <libkern/OSByteOrder.h>
 #endif
 #elif _WIN32
-#define bswap_16(x) _byteswap_ushort(x)
-#define bswap_32(x) _byteswap_ulong(x)
-#define bswap_64(x) _byteswap_uint64(x)
 static constexpr bool isLittleEndian() { return true; }
 #elif __linux__
 #if __BYTE_ORDER == __LITTLE_ENDIAN
