@@ -360,7 +360,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                           : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
                                     !infos.getCoveringIndexAttributePositions().empty()
                                 ? Type::Covering
-                                : Type::Document) {
+                                : Type::Document),
+      _checkUniqueness(checkUniqueness) {
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -393,6 +394,7 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _cursor(std::move(other._cursor)),
       _context(other._context),
       _type(other._type),
+      _checkUniqueness(other._checkUniqueness),
       _documentNonProducer(std::move(other._documentNonProducer)),
       _documentProducer(std::move(other._documentProducer)),
       _documentSkipper(std::move(other._documentSkipper)) {}
@@ -446,13 +448,13 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
 
 size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(_type != Type::Count);
-  
+
   if (!hasMore()) {
     return 0;
   }
 
   uint64_t skipped = 0;
-  if (_infos.getFilter() != nullptr) {
+  if (_infos.getFilter() != nullptr || _checkUniqueness) {
     switch (_type) {
       case Type::Covering:
       case Type::LateMaterialized:
