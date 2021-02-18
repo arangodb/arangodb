@@ -25,6 +25,20 @@ devel
 
   was not affected by this bug.
 
+* Fixed issue BTS-268: fix a flaky Foxx test.
+
+* Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with
+  an index which has been created with an array index attribute.
+
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
+
+* Improved the wording for sharding options displayed in the web interface.
+
+  Instead of offering `flexible` and `single`, now use the more intuitive
+  `Sharded` and `OneShard` options, and update the help text for them.
+
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
   its results instantly. This led to some confusion in streaming queries, which
@@ -240,17 +254,17 @@ devel
   possible for a very small number of queries and even had adverse effects,
   so it is now removed entirely.
 
-* On Linux and MacOS, require at least 8192 usable file descriptors at startup.
+* On Linux and MacOS, require at least 65535 usable file descriptors at startup.
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
-  Even the chosen minimum value of 8192 will often not be high enough to
+  Even the chosen minimum value of 65535 will often not be high enough to
   store considerable amounts of data. However, no higher value was chosen
   in order to not make too many existing small installations fail at startup
   after upgrading.
 
   The required number of file descriptors can be configured using the startup
-  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
+  option `--server.descriptors-minimum`. It defaults to 65535, but it can be
   increased to ensure that arangod can make use of a sufficiently high number
   of files. Setting `--server.descriptors-minimum` to a value of `0` will
   make the startup require only an absolute minimum limit of 1024 file
