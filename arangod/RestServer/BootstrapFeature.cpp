@@ -305,10 +305,17 @@ void BootstrapFeature::start() {
       LOG_TOPIC("724e0", DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
       raceForClusterBootstrap(*this);
 
+      // wait until at least one database appears. this is an indication that
+      // both Plan and Current have been populated successfully
+      waitForDatabases();
+
       if (v8Enabled && !databaseFeature.upgrade()) {
         ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
+      // don't wait for databases in Current here, as we are a DB server and may be
+      // the one responsible to create it. blocking here is thus no option!
+      //
       LOG_TOPIC("a2b65", DEBUG, Logger::STARTUP) << "Running bootstrap";
 
       auto upgradeRes = methods::Upgrade::clusterBootstrap(*vocbase);
@@ -405,5 +412,19 @@ void BootstrapFeature::waitForHealthEntry() {
     LOG_TOPIC("b0de6", DEBUG, arangodb::Logger::CLUSTER) << "found our health entry in Supervision/Health";
   } else {
     LOG_TOPIC("2c993", INFO, arangodb::Logger::CLUSTER) << "did not find our health entry after 15 s in Supervision/Health";
+  }
+}
+
+void BootstrapFeature::waitForDatabases() const {
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  uint64_t iterations = 0;
+  while (ci.databases().empty() && !server().isStopping()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+
+    if (++iterations % 2000 == 0) {
+      // log every few seconds that we are waiting here
+      LOG_TOPIC("db886", INFO, Logger::CLUSTER) << "waiting for databases to appear...";
+    }
   }
 }
