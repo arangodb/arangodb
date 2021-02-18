@@ -7,7 +7,7 @@
 #include "Basics/voc-errors.h"
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<int, const char*, 366> ErrorMessages = {
+constexpr static frozen::unordered_map<int, const char*, 367> ErrorMessages = {
     {int(TRI_ERROR_NO_ERROR),  // 0
       "no error"},
     {int(TRI_ERROR_FAILED),  // 1
@@ -572,6 +572,8 @@ constexpr static frozen::unordered_map<int, const char*, 366> ErrorMessages = {
       "initial collection is not allowed to be removed manually"},
     {int(TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION),  // 1946
       "no valid initial collection found"},
+    {int(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST),  // 1947
+      "referenced vertex collection does not exist"},
     {int(TRI_ERROR_SESSION_UNKNOWN),  // 1950
       "unknown session"},
     {int(TRI_ERROR_SESSION_EXPIRED),  // 1951
