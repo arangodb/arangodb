@@ -2175,7 +2175,7 @@ Result DatabaseInitialSyncer::batchFinish() {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief patch quickKeysNumDocsLimit for testing
-void DatabaseInitialSyncer::adjustquickKeysNumDocsLimit() {
+void DatabaseInitialSyncer::adjustQuickKeysNumDocsLimit() {
   TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
     _quickKeysNumDocsLimit = 100;
   }

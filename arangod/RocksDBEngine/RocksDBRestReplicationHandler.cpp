@@ -66,7 +66,7 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
           server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
       _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-  adjustquickKeysNumDocsLimit();
+  adjustQuickKeysNumDocsLimit();
 #endif
 
 }
