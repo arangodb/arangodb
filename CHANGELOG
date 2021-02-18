@@ -1,7 +1,7 @@
 v3.6.12 (XXXX-XX-XX)
 --------------------
 
-* Fixed issue BTS-268: fix a flaky Foxx test.
+* Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
 * Avoid a potential deadlock when dropping indexes.
 
