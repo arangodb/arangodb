@@ -1,6 +1,9 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* Fix too early stop of replication, when waiting for keys in large
+  collections/shards.
+
 * Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
   statement could lead to a wrong count output when used in combination with an
 	index which has been created with an array index attribute.
@@ -320,8 +323,6 @@ v3.7.7 (2020-02-05)
 
 v3.7.6 (2021-01-04)
 -------------------
-
-* Fix too early stop of replication, when waiting for keys in large collections/shards.
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
 
