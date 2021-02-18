@@ -1276,27 +1276,41 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
                                                          compareUtf8, options);
     }
     // fall-through to other types intentional
-  } else {
-    switch (leftType) {
-      case VPACK_48BIT_INLINE_INT:
-      case VPACK_48BIT_INLINE_UINT:
-      case VPACK_64BIT_INLINE_INT: {
-        int64_t l = left.toInt64();
-        int64_t r = right.toInt64();
-        if (l == r) {
-          return 0;
+  } 
+  // if we get here, types are equal or can be treated as being equal
+
+  switch (leftType) {
+    case VPACK_48BIT_INLINE_INT:
+    case VPACK_48BIT_INLINE_UINT:
+    case VPACK_64BIT_INLINE_INT:
+    case VPACK_64BIT_INLINE_UINT:
+    // if right value type is aslo optimized inline we can optimize comparison
+      if (leftType == rightType) {
+        if (leftType == VPACK_64BIT_INLINE_UINT) {
+          uint64_t l = static_cast<uint64_t>(left.toInt64());
+          uint64_t r = static_cast<uint64_t>(right.toInt64());
+          if (l == r) {
+            return 0;
+          }
+          return (l < r ? -1 : 1);
+        } else {
+          int64_t l = left.toInt64();
+          int64_t r = right.toInt64();
+          if (l == r) {
+            return 0;
+          }
+          return (l < r ? -1 : 1);
         }
-        return (l < r ? -1 : 1);
+        // intentional fallthrough to double comparison
       }
-      case VPACK_64BIT_INLINE_UINT: {
-        uint64_t l = static_cast<uint64_t>(left.toInt64());
-        uint64_t r = static_cast<uint64_t>(right.toInt64());
-        if (l == r) {
-          return 0;
-        }
-        return (l < r ? -1 : 1);
-      }
-      case VPACK_64BIT_INLINE_DOUBLE: {
+    [[fallthrough]];
+    case VPACK_64BIT_INLINE_DOUBLE:
+    // here we could only compare doubles in case of right is also inlined
+    // the same is done in VelocyPackHelper::compare for numbers. Equal types are compared
+    // directly - unequal (or doubles) as doubles
+      if (rightType == VPACK_48BIT_INLINE_INT || rightType == VPACK_48BIT_INLINE_UINT ||
+          rightType == VPACK_64BIT_INLINE_INT || rightType == VPACK_64BIT_INLINE_UINT ||
+          rightType == VPACK_64BIT_INLINE_DOUBLE) {
         double l = left.toDouble();
         double r = right.toDouble();
         if (l == r) {
@@ -1304,20 +1318,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
         }
         return (l < r ? -1 : 1);
       }
-      default:
-        break; // do VPack comparison
-    }
-  }
-
-  // if we get here, types are equal or can be treated as being equal
-
-  switch (leftType) {
     case VPACK_INLINE:
-    case VPACK_48BIT_INLINE_INT:
-    case VPACK_48BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_INT:
-    case VPACK_64BIT_INLINE_UINT:
-    case VPACK_64BIT_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return arangodb::basics::VelocyPackHelper::compare(left.slice(leftType), right.slice(rightType),
