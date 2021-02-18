@@ -1,11 +1,7 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
-* Fixed issue BTS-268: fix a flaky Foxx test.
-
-
-v3.7.8 (XXXX-XX-XX)
--------------------
+* Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
 * Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
   statement could lead to a wrong count output when used in combination with an
@@ -32,9 +28,6 @@ v3.7.8 (XXXX-XX-XX)
 
   Instead of offering `flexible` and `single`, now use the more intuitive
   `Sharded` and `OneShard` options, and update the help text for them.
-
-* Fixed ES-784 regression related to encryption cipher propagation to
-  ArangoSearch data.
 
 * EE only bugfix: On DisjointSmartGraphs that are used in anonymous way, there
   was a chance that the query could fail, if non-disjoint collections were part
@@ -158,6 +151,13 @@ v3.7.8 (XXXX-XX-XX)
   update not atomic, but as removes are unlikely here, we can now get away with
   a simple multi-document insert-replace operation instead of a truncate and an
   exclusive transaction, which was used before.
+
+
+v3.7.8 (2020-02-16)
+-------------------
+
+* Fixed ES-784 regression related to encryption cipher propagation to
+  ArangoSearch data.
 
 
 v3.7.7 (2020-02-05)
