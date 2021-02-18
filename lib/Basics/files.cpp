@@ -444,7 +444,7 @@ bool TRI_ExistsFile(char const* path) {
 
 #endif
 
-int TRI_ChMod(char const* path, long mode, std::string& err) {
+ErrorCode TRI_ChMod(char const* path, long mode, std::string& err) {
   int res;
 #ifdef _WIN32
   res = _wchmod(toWString(path).data(), static_cast<int>(mode));
@@ -453,9 +453,10 @@ int TRI_ChMod(char const* path, long mode, std::string& err) {
 #endif
 
   if (res != 0) {
-    err = "error setting desired mode " + std::to_string(mode) + " for file " +
-          path + ": " + strerror(errno);
-    return errno;
+    auto res2 = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    err = StringUtils::concatT("error setting desired mode ", std::to_string(mode),
+                               " for file ", path, ": ", TRI_last_error());
+    return res2;
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -465,7 +466,7 @@ int TRI_ChMod(char const* path, long mode, std::string& err) {
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MTimeFile(char const* path, int64_t* mtime) {
+ErrorCode TRI_MTimeFile(char const* path, int64_t* mtime) {
   TRI_stat_t stbuf;
   int res = TRI_STAT(path, &stbuf);
 
@@ -487,12 +488,12 @@ int TRI_MTimeFile(char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
-                                 std::string& systemErrorStr) {
+ErrorCode TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+                                       std::string& systemErrorStr) {
   char const* p;
   char const* s;
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   std::string copy = std::string(path);
   p = s = copy.data();
 
@@ -543,19 +544,19 @@ int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr) {
+ErrorCode TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr) {
   // reset error flag
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
   int res = TRI_MKDIR(path, 0777);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    return res;
+  if (res == 0) {
+    return TRI_ERROR_NO_ERROR;
   }
 
   // check errno
   res = errno;
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     systemErrorStr = std::string("failed to create directory '") + path + "': " + TRI_LAST_ERROR_STR;
     systemError = res;
 
@@ -577,7 +578,7 @@ int TRI_CreateDirectory(char const* path, long& systemError, std::string& system
 /// @brief removes an empty directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveEmptyDirectory(char const* filename) {
+ErrorCode TRI_RemoveEmptyDirectory(char const* filename) {
   int res = TRI_RMDIR(filename);
 
   if (res != 0) {
@@ -593,7 +594,7 @@ int TRI_RemoveEmptyDirectory(char const* filename) {
 /// @brief removes a directory recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectory(char const* filename) {
+ErrorCode TRI_RemoveDirectory(char const* filename) {
   if (TRI_IsSymbolicLink(filename)) {
     LOG_TOPIC("abdb4", TRACE, arangodb::Logger::FIXME)
         << "removing symbolic link '" << filename << "'";
@@ -602,12 +603,12 @@ int TRI_RemoveDirectory(char const* filename) {
     LOG_TOPIC("0207a", TRACE, arangodb::Logger::FIXME)
         << "removing directory '" << filename << "'";
 
-    int res = TRI_ERROR_NO_ERROR;
+    auto res = TRI_ERROR_NO_ERROR;
     std::vector<std::string> files = TRI_FilesDirectory(filename);
     for (auto const& dir : files) {
       std::string full = arangodb::basics::FileUtils::buildFilename(filename, dir);
 
-      int subres = TRI_RemoveDirectory(full.c_str());
+      auto subres = TRI_RemoveDirectory(full.c_str());
 
       if (subres != TRI_ERROR_NO_ERROR) {
         res = subres;
@@ -652,7 +653,7 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
   // LOG_TOPIC("0d9b9", TRACE, arangodb::Logger::FIXME) << "removing files in directory
   // '" << filename << "' in this order: " << files;
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
 
   for (auto const& it : files) {
     if (it.empty()) {
@@ -661,14 +662,14 @@ int TRI_RemoveDirectoryDeterministic(char const* filename) {
     }
 
     std::string full = arangodb::basics::FileUtils::buildFilename(filename, it);
-    int subres = TRI_RemoveDirectory(full.c_str());
+    auto subres = TRI_RemoveDirectory(full.c_str());
 
     if (subres != TRI_ERROR_NO_ERROR) {
       res = subres;
     }
   }
 
-  int subres = TRI_RemoveDirectory(filename);
+  auto subres = TRI_RemoveDirectory(filename);
   if (subres != TRI_ERROR_NO_ERROR) {
     res = subres;
   }
@@ -843,8 +844,8 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path) {
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename, long* systemError,
-                   std::string* systemErrorStr) {
+ErrorCode TRI_RenameFile(char const* old, char const* filename,
+                         long* systemError, std::string* systemErrorStr) {
   int res;
   TRI_ERRORBUF;
 #ifdef _WIN32
@@ -893,7 +894,7 @@ int TRI_RenameFile(char const* old, char const* filename, long* systemError,
 /// @brief unlinks a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnlinkFile(char const* filename) {
+ErrorCode TRI_UnlinkFile(char const* filename) {
   int res = TRI_UNLINK(filename);
 
   if (res != 0) {
@@ -1028,7 +1029,7 @@ char* TRI_SlurpFile(char const* filename, size_t* length) {
   TRI_InitStringBuffer(&result, false);
 
   while (true) {
-    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+    auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE(fd);
@@ -1088,7 +1089,7 @@ bool TRI_ProcessFile(char const* filename,
     TRI_DestroyStringBuffer(&result);
   });
 
-  int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+  auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return false;
@@ -1133,7 +1134,7 @@ char* TRI_SlurpGzipFile(char const* filename, size_t* length) {
     TRI_InitStringBuffer(&result, false);
 
     while (true) {
-      int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+      auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
       if (res != TRI_ERROR_NO_ERROR) {
         TRI_AnnihilateStringBuffer(&result);
@@ -1200,7 +1201,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
   TRI_InitStringBuffer(&result, false);
 
   while (true) {
-    int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
+    auto res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_CLOSE(fd);
@@ -1243,7 +1244,7 @@ char* TRI_SlurpDecryptFile(EncryptionFeature& encryptionFeature, char const* fil
 
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
-int TRI_CreateLockFile(char const* filename) {
+ErrorCode TRI_CreateLockFile(char const* filename) {
   TRI_ERRORBUF;
   OVERLAPPED ol;
 
@@ -1276,7 +1277,7 @@ int TRI_CreateLockFile(char const* filename) {
     TRI_SYSTEM_ERROR();
     LOG_TOPIC("c2286", ERR, arangodb::Logger::FIXME)
         << "cannot write lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
-    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     if (r) {
       CloseHandle(fd);
@@ -1294,7 +1295,7 @@ int TRI_CreateLockFile(char const* filename) {
     TRI_SYSTEM_ERROR();
     LOG_TOPIC("f0d61", ERR, arangodb::Logger::FIXME)
         << "cannot set lockfile status '" << filename << "': " << TRI_GET_ERRORBUF;
-    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     CloseHandle(fd);
     TRI_UNLINK(filename);
@@ -1309,7 +1310,7 @@ int TRI_CreateLockFile(char const* filename) {
 
 #else
 
-int TRI_CreateLockFile(char const* filename) {
+ErrorCode TRI_CreateLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
 
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
@@ -1331,7 +1332,7 @@ int TRI_CreateLockFile(char const* filename) {
   int rv = TRI_WRITE(fd, buf.c_str(), static_cast<TRI_write_t>(buf.size()));
 
   if (rv == -1) {
-    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
@@ -1349,7 +1350,7 @@ int TRI_CreateLockFile(char const* filename) {
   rv = fcntl(fd, F_SETLK, &lock);
 
   if (rv == -1) {
-    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_CLOSE(fd);
     TRI_UNLINK(filename);
@@ -1370,7 +1371,7 @@ int TRI_CreateLockFile(char const* filename) {
 
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
-int TRI_VerifyLockFile(char const* filename) {
+ErrorCode TRI_VerifyLockFile(char const* filename) {
   HANDLE fd;
 
   if (!TRI_ExistsFile(filename)) {
@@ -1396,7 +1397,7 @@ int TRI_VerifyLockFile(char const* filename) {
 
 #else
 
-int TRI_VerifyLockFile(char const* filename) {
+ErrorCode TRI_VerifyLockFile(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -1428,7 +1429,7 @@ int TRI_VerifyLockFile(char const* filename) {
   }
 
   uint32_t fc = TRI_UInt32String(buffer);
-  int res = TRI_errno();
+  auto res = TRI_errno();
 
   if (res != TRI_ERROR_NO_ERROR) {
     // invalid pid value
@@ -1465,9 +1466,7 @@ int TRI_VerifyLockFile(char const* filename) {
   // file was not yet locked; could be locked
   if (canLock == 0) {
     // lock.l_type = F_UNLCK;
-    res = fcntl(fd, F_GETLK, &lock);
-
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (0 != fcntl(fd, F_GETLK, &lock)) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC("c960a", WARN, arangodb::Logger::FIXME)
           << "fcntl on lockfile '" << filename << "' failed: " << TRI_last_error();
@@ -2062,11 +2061,10 @@ std::string TRI_HomeDirectory() {
 /// @brief calculate the crc32 checksum of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Crc32File(char const* path, uint32_t* crc) {
+ErrorCode TRI_Crc32File(char const* path, uint32_t* crc) {
   FILE* fin;
   void* buffer;
-  int res;
-  int res2;
+  auto res = TRI_ERROR_NO_ERROR;
 
   *crc = TRI_InitialCrc32();
 
@@ -2092,7 +2090,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 
     if (sizeRead < bufferSize) {
       if (feof(fin) == 0) {
-        res = errno;
+        res = TRI_ERROR_FAILED;
         break;
       }
     }
@@ -2106,11 +2104,8 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 
   TRI_Free(buffer);
 
-  res2 = fclose(fin);
-  if (res2 != TRI_ERROR_NO_ERROR && res2 != EOF) {
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = res2;
-    }
+  if (0 != fclose(fin)) {
+    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
     // otherwise keep original error
   }
 
@@ -2386,7 +2381,7 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
     dir.pop_back();
   }
 
-  int res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
+  auto res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -2537,7 +2532,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
   }
 
   // no fallocate present, or at least pretend it's not there...
-  int res = TRI_ERROR_NOT_IMPLEMENTED;
+  int res = 1;
 
 #ifdef __linux__
 #ifdef FALLOC_FL_ZERO_RANGE
@@ -2547,7 +2542,7 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize) {
 #endif
 
   // cppcheck-suppress knownConditionTrueFalse
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     // either fallocate failed or it is not there...
     
     // create a buffer filled with zeros
@@ -2736,4 +2731,3 @@ std::string TRI_SHA256Functor::finalize() {
   }
   return arangodb::basics::StringUtils::encodeHex(reinterpret_cast<char const*>(&hash[0]), lengthOfHash);
 }
-

@@ -395,7 +395,7 @@ bool ImportHelper::importJson(std::string const& collectionName,
   while (!_hasError) {
     // reserve enough room to read more data
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
-      _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+      _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       return false;
     }

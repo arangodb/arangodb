@@ -263,7 +263,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, &_vocbase, command, isSystem, res);
 
@@ -315,7 +315,7 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  int res = Task::unregisterTask(suffixes[0], true);
+  auto res = Task::unregisterTask(suffixes[0], true);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;

@@ -76,12 +76,12 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
 
   /// insert index elements into the specified write batch.
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const doc,
-                arangodb::OperationOptions& options) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                arangodb::OperationOptions const& /*options*/) override;
 
   /// remove index elements and put it in the specified write batch.
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId, velocypack::Slice const docs) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc) override;
 
  private:
   std::string const _typeName;

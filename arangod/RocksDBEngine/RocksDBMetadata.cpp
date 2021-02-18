@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -374,7 +375,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   auto indexes = coll.getIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
-    RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+    RocksDBCuckooIndexEstimatorType* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
       LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
           << "[" << this << "] index '" << idx->objectId()
@@ -388,7 +389,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << idx->objectId() << "'";
       output.clear();
 
-      est->serialize(output, maxCommitSeq);
+      auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::COMPRESSED;
+      est->serialize(output, maxCommitSeq, format);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
@@ -556,10 +558,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     }
 
     arangodb::velocypack::StringRef estimateInput(value.data(), value.size());
-    if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
+    if (RocksDBCuckooIndexEstimatorType::isFormatSupported(estimateInput)) {
       TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <= db->GetLatestSequenceNumber());
 
-      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
+      auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "[" << this << "] found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
