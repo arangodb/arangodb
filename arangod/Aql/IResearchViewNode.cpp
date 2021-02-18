@@ -1452,7 +1452,7 @@ aql::RegIdSet IResearchViewNode::calcInputRegs() const {
     for (auto const& it : vars) {
       aql::RegisterId reg = variableToRegisterId(it);
       // The filter condition may refer to registers that are written here
-      if (reg < getNrInputRegisters()) {
+      if (reg.isConstRegister() || reg < getNrInputRegisters()) {
         inputRegs.emplace(reg);
       }
     }
@@ -1612,7 +1612,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
     }
 
     TRI_ASSERT(writableOutputRegisters.size() ==
-               numDocumentRegs + numScoreRegisters + numViewVarsRegisters);
+               static_cast<std::size_t>(numDocumentRegs) + numScoreRegisters + numViewVarsRegisters);
 
     aql::RegisterInfos registerInfos =
         createRegisterInfos(calcInputRegs(), std::move(writableOutputRegisters));

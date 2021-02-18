@@ -46,7 +46,7 @@ class BlockCollector {
   ~BlockCollector();
 
   size_t totalSize() const;
-  RegisterId nrRegs() const;
+  RegisterCount nrRegs() const;
 
   void clear();
 

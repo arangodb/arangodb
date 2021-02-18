@@ -3574,7 +3574,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
   }
 
   // constant propagation
-  if (variable->constValue() == nullptr) {
+  if (variable->getConstAstNode() == nullptr) {
     return node;
   }
 
@@ -3585,7 +3585,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
     return node;
   }
 
-  return static_cast<AstNode*>(variable->constValue());
+  return variable->getConstAstNode();
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
@@ -3638,7 +3638,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
     // e.g.
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
     // 2 LET c = 4
-    v->constValue(static_cast<void*>(expression));
+    v->setConstAstNode(expression);
   }
 
   return node;
