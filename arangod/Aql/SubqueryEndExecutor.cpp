@@ -52,7 +52,7 @@ SubqueryEndExecutorInfos::SubqueryEndExecutorInfos(velocypack::Options const* op
 SubqueryEndExecutorInfos::~SubqueryEndExecutorInfos() = default;
 
 bool SubqueryEndExecutorInfos::usesInputRegister() const noexcept {
-  return _inReg != RegisterPlan::MaxRegisterId;
+  return _inReg.isValid();
 }
 
 velocypack::Options const* SubqueryEndExecutorInfos::vpackOptions() const noexcept {

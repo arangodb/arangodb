@@ -42,7 +42,7 @@ namespace {
 
 void eraseRow(SharedAqlItemBlockPtr& block, size_t row) {
   auto const nrRegs = block->numRegisters();
-  for (arangodb::aql::RegisterId i = 0; i < nrRegs; i++) {
+  for (arangodb::aql::RegisterId::value_t i = 0; i < nrRegs; i++) {
     block->destroyValue(row, i);
   }
 }
@@ -139,7 +139,7 @@ namespace {
 auto initRegsToKeep(RegisterCount size) -> RegIdFlatSetStack {
   auto regsToKeepStack = RegIdFlatSetStack{};
   auto& regsToKeep = regsToKeepStack.emplace_back();
-  for (RegisterId i = 0; i < size; i++) {
+  for (RegisterId::value_t i = 0; i < size; i++) {
     regsToKeep.emplace(i);
   }
   return regsToKeepStack;

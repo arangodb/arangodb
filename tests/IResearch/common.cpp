@@ -463,6 +463,7 @@ std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
   arangodb::aql::Query query(ctx, arangodb::aql::QueryString(queryString),
                              nullptr, arangodb::velocypack::Parser::fromJson(optionsString)->slice());
+  query.initTrxForTests();
 
   auto result = query.parse();
 

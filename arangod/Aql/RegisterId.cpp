@@ -18,38 +18,27 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H
-#define APPLICATION_FEATURES_BOOTSTRAP_FEATURE_H 1
+#include "Aql/types.h"
+#include "Basics/Exceptions.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
+namespace arangodb::aql {
+  RegisterId RegisterId::fromUInt32(uint32_t value) {
+    auto v = static_cast<value_t>(value);
+    auto type = static_cast<Type>(value >> (sizeof(value_t) * 8));
+    RegisterId result(v, type);
+    TRI_ASSERT(result.isValid());
+    if (!result.isValid()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Cannot parse RegisterId from value " + std::to_string(value));
+    }
+    return result;
+  }
 
-namespace arangodb {
-
-class BootstrapFeature final : public application_features::ApplicationFeature {
- public:
-  explicit BootstrapFeature(application_features::ApplicationServer& server);
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void unprepare() override final;
-
-  static std::string const& name() noexcept;
-
-  bool isReady() const { return _isReady; }
-
- private:
-  void waitForHealthEntry();
-  /// @brief wait for databases to appear in Plan and Current
-  void waitForDatabases() const;
- 
- private:
-  bool _isReady;
-  bool _bark;
-};
-
-}  // namespace arangodb
-
-#endif
+  uint32_t RegisterId::toUInt32() const noexcept {
+    uint32_t result = _value;
+    result |= static_cast<uint32_t>(_type) << (sizeof(value_t) * 8);
+    return result;
+  }
+}
