@@ -99,7 +99,7 @@ class InputRangeTest : public AqlExecutorTestCase<> {
             // Simulate that shadowRows have been "moved"  by clearing their dataRegisters
             for (size_t i = 0; i < copiedBlock->numRows(); ++i) {
               if (copiedBlock->isShadowRow(i)) {
-                for (RegisterId r = 0; r < copiedBlock->numRegisters(); ++r) {
+                for (RegisterId::value_t r = 0; r < copiedBlock->numRegisters(); ++r) {
                   copiedBlock->destroyValue(i, r);
                 }
 

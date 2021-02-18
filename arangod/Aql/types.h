@@ -25,9 +25,9 @@
 #define ARANGOD_AQL_TYPES_H 1
 
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/RegisterId.h"
 #include "Basics/debugging.h"
 
-#include <Basics/debugging.h>
 #include <Containers/HashSetFwd.h>
 
 #include <map>
@@ -60,9 +60,6 @@ struct Collection;
 /// @brief type for variable ids
 typedef uint32_t VariableId;
 
-/// @brief type for register numbers/ids
-typedef unsigned RegisterId;
-typedef size_t RegisterCount;
 
 /// @brief type of a query id
 typedef uint64_t QueryId;
