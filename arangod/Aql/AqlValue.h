@@ -471,7 +471,7 @@ struct AqlValue final {
 
   /// @brief Returns the type of this value. If true it uses an external pointer
   /// if false it uses the internal data structure.
-  /// Do not move it to cpp file as MSVC does not inlines it.
+  /// Do not move it to cpp file as MSVC does not inline it.
   AqlValueType type() const noexcept {
     return static_cast<AqlValueType>(_data.aqlValueType);
   }
