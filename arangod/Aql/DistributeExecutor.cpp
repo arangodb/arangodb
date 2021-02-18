@@ -51,7 +51,7 @@ DistributeExecutorInfos::DistributeExecutorInfos(
       _type(type) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
-  TRI_ASSERT(_regId != RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(_regId.isValid());
   return _regId;
 }
 
