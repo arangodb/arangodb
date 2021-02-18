@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fixed issue BTS-268: fix a flaky Foxx test.
+* Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
 * Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
   statement could lead to a wrong count output when used in combination with
