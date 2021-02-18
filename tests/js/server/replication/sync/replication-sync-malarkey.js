@@ -169,7 +169,7 @@ function BaseTestConfig () {
       c = db._collection(cn);
      
       db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1 } IN " + cn);
-      
+
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
@@ -895,6 +895,47 @@ function BaseTestConfig () {
       
       checkCountConsistency(cn, expected);
     }, 
+    // create large AQL operation on leader using AQL
+    testIncrementalQuickKeys: function () {
+      let c = db._create(cn);
+      let rev = c.insert({_key: "testi", value: 1 })._rev;
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(1, c.document("testi").value);
+      assertEqual(rev, c.document("testi")._rev);
+
+      c.replace("testi", {_key: "testi", value: 2 });
+
+      connectToLeader();
+      db._flushCache();
+      c = db._collection(cn);
+
+      setFailurePoint("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
+      db._query("FOR i IN 1..10000 INSERT { _key: CONCAT('testmann', i) } INTO " + cn);
+
+      rev = c.replace("testi", { _key: "testi", value: 3 })._rev;
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+      assertEqual(3, c.document("testi").value);
+      assertEqual(rev, c.document("testi")._rev);
+
+      checkCountConsistency(cn, 10001);
+    },
   };
 }
 

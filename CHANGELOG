@@ -1,6 +1,9 @@
 devel
 -----
 
+* Database initial sync considers document count on leader for
+  estimating timeouts when over 1 million docs on leader.
+
 * EE only bugfix: On DisjointSmartGraphs that are used in anonymous way,
   there was a chance that the query could fail, if non-disjoint collections
   were part of the query. Named DisjointSmartGraphs have been save to this bug.
