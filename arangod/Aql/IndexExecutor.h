@@ -194,6 +194,7 @@ class IndexExecutor {
     std::unique_ptr<OperationCursor> _cursor;
     DocumentProducingFunctionContext& _context;
     Type const _type;
+    bool const _checkUniqueness;
 
     // Only one of _documentProducer and _documentNonProducer is set at a time, depending on _type.
     // As std::function is not trivially destructible, it's safer not to use a

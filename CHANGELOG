@@ -3,6 +3,10 @@ v3.6.12 (XXXX-XX-XX)
 
 * Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
+* Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
+  statement could lead to a wrong count output when used in combination with an
+  index which has been created with an array index attribute.
+
 * Avoid a potential deadlock when dropping indexes.
 
   A deadlock could theoretically happen for a thread that is attempting to drop
