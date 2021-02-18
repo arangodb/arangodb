@@ -153,14 +153,14 @@ v3.7.9 (XXXX-XX-XX)
   exclusive transaction, which was used before.
 
 
-v3.7.8 (2020-02-16)
+v3.7.8 (2021-02-16)
 -------------------
 
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
 
 
-v3.7.7 (2020-02-05)
+v3.7.7 (2021-02-05)
 -------------------
 
 * Added metrics for document read and write operations:
