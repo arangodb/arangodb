@@ -170,13 +170,6 @@ function BaseTestConfig () {
      
       db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1 } IN " + cn);
 
-      console.error(cn);
-      console.error({
-        endpoint: leaderEndpoint,
-        verbose: true,
-        incremental: true
-      });
-      
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
