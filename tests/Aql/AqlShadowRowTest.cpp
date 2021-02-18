@@ -53,7 +53,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     ASSERT_TRUE(result.isArray());
     ASSERT_TRUE(input.isInitialized());
     ASSERT_EQ(input.getNumRegisters(), static_cast<size_t>(result.length()));
-    for (RegisterId i = 0; i < input.getNumRegisters(); ++i) {
+    for (RegisterId::value_t i = 0; i < input.getNumRegisters(); ++i) {
       if (regsToIgnore.find(i) == regsToIgnore.end()) {
         auto val = input.getValue(i);
         ASSERT_TRUE(VelocyPackHelper::equal(val.slice(), result.at(i), false))
@@ -79,7 +79,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     auto protoRegSet = RegIdFlatSet{};
-    for (RegisterId r = 0; r < numRegisters; ++r) {
+    for (RegisterId::value_t r = 0; r < numRegisters; ++r) {
       protoRegSet.emplace(r);
     }
 
@@ -123,7 +123,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
                                        numRegisters + 1));
     // We do not add or remove anything, just move
-    auto outputRegisters = RegIdSet{static_cast<RegisterId>(numRegisters)};
+    auto outputRegisters = RegIdSet{numRegisters};
     size_t maxShadowRowDepth = 0;
     for (size_t rowIdx = 0; rowIdx < inputBlock->numRows(); ++rowIdx) {
       if (inputBlock->isShadowRow(rowIdx)) {
@@ -133,7 +133,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
     }
 
     auto protoRegSet = RegIdFlatSet{};
-    for (RegisterId r = 0; r < numRegisters; ++r) {
+    for (RegisterId::value_t r = 0; r < numRegisters; ++r) {
       protoRegSet.emplace(r);
     }
 
@@ -159,7 +159,7 @@ class AqlShadowItemRowTest : public ::testing::Test {
             bool mustDestroy = true;
             AqlValue clonedValue = shadowRowData.clone();
             AqlValueGuard guard{clonedValue, mustDestroy};
-            testee.consumeShadowRow(static_cast<RegisterId>(numRegisters), source, guard);
+            testee.consumeShadowRow(numRegisters, source, guard);
           }
           ASSERT_TRUE(testee.produced());
           testee.advanceRow();

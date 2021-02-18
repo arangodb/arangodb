@@ -71,7 +71,7 @@ class HashedCollectExecutorTest
     return empty;
   }
 
-  auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildRegisterInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
@@ -81,7 +81,7 @@ class HashedCollectExecutorTest
     auto readableInputRegisters = RegIdSet{};
     auto writeableOutputRegisters = RegIdSet{};
 
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
       registersToClear.emplace(i);
     }
@@ -109,7 +109,7 @@ class HashedCollectExecutorTest
                          registersToKeep};
   };
 
-  auto buildExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::string> aggregateTypes = {},
@@ -519,7 +519,7 @@ struct AggregateInput {
 std::ostream& operator<<(std::ostream& out, AggregateInput const& agg) {
   out << agg.name;
   if (agg.inReg != RegisterPlan::MaxRegisterId) {
-    out << " reg: " << agg.inReg;
+    out << " reg: " << agg.inReg.value();
   }
   return out;
 }
@@ -539,7 +539,7 @@ class HashedCollectExecutorTestAggregate
     return info;
   }
 
-  auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildRegisterInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> const& groupRegisters)
       -> RegisterInfos {
     RegIdSet registersToClear{};
@@ -547,7 +547,7 @@ class HashedCollectExecutorTestAggregate
     auto readableInputRegisters = RegIdSet{};
     auto writeableOutputRegisters = RegIdSet{};
 
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
       registersToClear.emplace(i);
     }

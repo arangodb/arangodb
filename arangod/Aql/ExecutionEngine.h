@@ -156,6 +156,8 @@ class ExecutionEngine {
   /// Also sets root execution block as engine root
   void setupEngineRoot(ExecutionBlock& planRoot);
   
+  static void initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr);
+  
   const EngineId _engineId;
   
   /// @brief a pointer to the query
