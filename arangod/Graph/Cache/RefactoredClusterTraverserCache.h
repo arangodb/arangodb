@@ -74,9 +74,9 @@ class RefactoredClusterTraverserCache {
     return _datalake;
   }
 
-  size_t& insertedDocuments() { return _insertedDocuments; }
+  size_t& insertedDocuments() { return _insertedDocuments; } // TODO do we need?
 
-  size_t& filteredDocuments() { return _filteredDocuments; }
+  size_t& filteredDocuments() { return _filteredDocuments; } // TODO do we need?
 
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
   auto cacheEdge(VertexType origin, EdgeType edgeId, velocypack::Slice edgeSlice, bool backward) -> void;
