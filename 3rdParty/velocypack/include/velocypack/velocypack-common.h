@@ -149,6 +149,8 @@ static constexpr bool isLittleEndian() { return false; }
 
 template<typename T>
 VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
+  static_assert(sizeof(T) == 8 || sizeof(T) == 4 || sizeof(T) == 2 || sizeof(T) == 1,
+    "Type size is not supported");
   if constexpr (sizeof(T) == 8) {
 #ifdef __APPLE__
     return OSSwapHostToLittleInt64(in);
@@ -187,6 +189,8 @@ VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
 
 template<typename T>
 VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
+  static_assert(sizeof(T) == 8 || sizeof(T) == 4 || sizeof(T) == 2 || sizeof(T) == 1,
+    "Type size is not supported");
   if constexpr (sizeof(T) == 8) {
 #ifdef __APPLE__
     return OSSwapLittleToHostInt64(in);
