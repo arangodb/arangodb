@@ -909,11 +909,19 @@ int64_t AqlValue::toInt64() const {
     case VPACK_INLINE_INT64:
       return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_INLINE_UINT64:
+      if (ADB_UNLIKELY(_data.longNumberMeta.data.uintLittleEndian.val > 
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
+        throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
+      }
       return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
     case VPACK_INLINE_DOUBLE: {
       double val;
       auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
       memcpy(&val, &hostVal, sizeof(val));
+      if (ADB_UNLIKELY(val > 
+          static_cast<double>(std::numeric_limits<int64_t>::max()))) {
+        throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
+      }
       return static_cast<int64_t>(val);
     }
     case VPACK_INLINE:
@@ -1667,7 +1675,7 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
       setType(AqlValueType::VPACK_INLINE_DOUBLE);
       TRI_ASSERT(length == (sizeof(double) + 1));
       memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
-    } else if (slice.isInteger()) {
+    } else if (slice.isInteger() && length <= 9) { // we could hold only 8 bytes number values 
       if (length > 7) {
         setType(slice.isUInt() ? AqlValueType::VPACK_INLINE_UINT64 : AqlValueType::VPACK_INLINE_INT64);
         memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
