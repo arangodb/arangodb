@@ -47,11 +47,11 @@ class OurLessThan {
       : _vpackOptions(options), _input(input), _sortRegisters(sortRegisters) {}
 
   bool operator()(AqlItemMatrix::RowIndex const& a, AqlItemMatrix::RowIndex const& b) const {
-    InputAqlItemRow const& left = _input.getRow(a);
-    InputAqlItemRow const& right = _input.getRow(b);
+    auto const& left = _input.getBlockRef(a.first);
+    auto const& right = _input.getBlockRef(b.first);
     for (auto const& reg : _sortRegisters) {
-      AqlValue const& lhs = left.getValue(reg.reg);
-      AqlValue const& rhs = right.getValue(reg.reg);
+      AqlValue const& lhs = left.first->getValueReference(a.second, reg.reg);
+      AqlValue const& rhs = right.first->getValueReference(b.second, reg.reg);
 
       int const cmp = AqlValue::Compare(_vpackOptions, lhs, rhs, true);
 
