@@ -160,16 +160,10 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
-    // TODO: Discuss how to handle this properly. Currently we'll mark looseEnds in fetch as fetched
     // Will throw all network errors here
-    /*
     auto&& preparedEnds = futureEnds.get();
-    for (auto const& end : preparedEnds) {
-      LOG_DEVEL << "(currently does nothing) Prepare this loose end now: " << end->getVertex().getID().toString();
-      // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
-      // the queue again, in order to remove them from the loosend list.
-    }*/
 
+    TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
   }
 
