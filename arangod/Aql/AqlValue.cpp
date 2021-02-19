@@ -53,11 +53,6 @@ using namespace arangodb::aql;
 // are not accessible from here
 namespace {
 
-union DoubleEndianessConverter {
-  double dbl;
-  uint64_t uint;
-};
-static_assert(sizeof(uint64_t) == sizeof(double), "Double does not fit into uint64_t");
 
 static inline uint64_t toUInt64(int64_t v) noexcept {
   // If v is negative, we need to add 2^63 to make it positive,
@@ -855,9 +850,10 @@ double AqlValue::toDouble(bool& failed) const {
     case VPACK_INLINE_UINT64:
       return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
     case VPACK_INLINE_DOUBLE: {
-     DoubleEndianessConverter tmp;
-     tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
-     return tmp.dbl;
+     double val;
+     auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+     memcpy(&val, &hostVal, sizeof(val));
+     return val;
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -915,9 +911,10 @@ int64_t AqlValue::toInt64() const {
     case VPACK_INLINE_UINT64:
       return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
     case VPACK_INLINE_DOUBLE: {
-      DoubleEndianessConverter tmp;
-      tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
-      return static_cast<int64_t>(tmp.dbl);
+      double val;
+      auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      memcpy(&val, &hostVal, sizeof(val));
+      return static_cast<int64_t>(val);
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -979,9 +976,10 @@ bool AqlValue::toBoolean() const {
     case VPACK_INLINE_UINT64: // intentinally ignore endianess. 0 is always 0
       return _data.longNumberMeta.data.uintLittleEndian.val != 0;
     case VPACK_INLINE_DOUBLE: {
-      DoubleEndianessConverter tmp;
-      tmp.uint = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
-      return tmp.dbl != 0.0;
+      auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      double val;
+      memcpy(&val, &hostVal, sizeof(val));
+      return val != 0.0;
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -1432,10 +1430,10 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   } else {
     // a "real" double
     _data.longNumberMeta.data.slice.slice[0] = 0x1b;
-    DoubleEndianessConverter tmp;
-    tmp.dbl = value;
+    uint64_t uintVal;
+    memcpy(&uintVal, &value, sizeof(uintVal));
     _data.longNumberMeta.data.uintLittleEndian.val =
-      arangodb::basics::hostToLittle(tmp.uint);
+      arangodb::basics::hostToLittle(uintVal);
     valueType = AqlValueType::VPACK_INLINE_DOUBLE;
   }
   setType(valueType);
