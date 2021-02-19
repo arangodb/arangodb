@@ -1283,7 +1283,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     case VPACK_INLINE_UINT48:
     case VPACK_INLINE_INT64:
     case VPACK_INLINE_UINT64:
-    // if right value type is aslo optimized inline we can optimize comparison
+    // if right value type is also optimized inline we can optimize comparison
       if (leftType == rightType) {
         if (leftType == VPACK_INLINE_UINT64) {
           uint64_t l = static_cast<uint64_t>(left.toInt64());
