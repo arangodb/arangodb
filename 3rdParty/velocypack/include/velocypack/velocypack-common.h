@@ -110,8 +110,122 @@ uint64_t fasthash32(void const*, std::size_t, uint32_t);
 #define VELOCYPACK_HASH32(mem, size, seed) fasthash32(mem, size, seed)
 #endif
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+#include <machine/endian.h>
+#elif _WIN32
+#include <stdlib.h>
+#elif __linux__
+#include <endian.h>
+#else
+#pragma messsage("unsupported os or compiler")
+#endif
+
 namespace arangodb {
 namespace velocypack {
+
+#ifdef __APPLE__
+#define bswap_16(x) OSSwapInt16(x)
+#define bswap_32(x) OSSwapInt32(x)
+#define bswap_64(x) OSSwapInt64(x)
+#if BYTE_ORDER == LITTLE_ENDIAN
+static constexpr bool isLittleEndian() { return true; }
+#elif BYTE_ORDER == BIG_ENDIAN
+static constexpr bool isLittleEndian() { return false; }
+#include <libkern/OSByteOrder.h>
+#endif
+#elif _WIN32
+static constexpr bool isLittleEndian() { return true; }
+#elif __linux__
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+static constexpr bool isLittleEndian() { return true; }
+#elif __BYTE_ORDER == __BIG_ENDIAN
+static constexpr bool isLittleEndian() { return false; }
+#endif
+#else
+#pragma messsage("unsupported os or compiler")
+#endif
+
+
+template<typename T>
+VELOCYPACK_FORCE_INLINE T hostToLittle(T in) noexcept {
+  static_assert(sizeof(T) == 8 || sizeof(T) == 4 || sizeof(T) == 2 || sizeof(T) == 1,
+    "Type size is not supported");
+  if constexpr (sizeof(T) == 8) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt64(in);
+#elif __linux__
+    return htole64(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
+#endif
+  }
+  if constexpr (sizeof(T) == 4) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt32(in);
+#elif __linux__
+    return htole32(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ulong(in);
+    }
+#endif
+  }
+  if constexpr (sizeof(T) == 2) {
+#ifdef __APPLE__
+    return OSSwapHostToLittleInt16(in);
+#elif __linux__
+    return htole16(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ushort(in);
+    }
+#endif
+  }
+  return in;
+}
+
+template<typename T>
+VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
+  static_assert(sizeof(T) == 8 || sizeof(T) == 4 || sizeof(T) == 2 || sizeof(T) == 1,
+    "Type size is not supported");
+  if constexpr (sizeof(T) == 8) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt64(in);
+#elif __linux__
+    return le64toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
+#endif
+  }
+  if constexpr (sizeof(T) == 4) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt32(in);
+#elif __linux__
+    return le32toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ulong(in);
+    }
+#endif
+  }
+  if constexpr (sizeof(T) == 2) {
+#ifdef __APPLE__
+    return OSSwapLittleToHostInt16(in);
+#elif __linux__
+    return le16toh(in);
+#elif _WIN32
+    if constexpr (!isLittleEndian()) {
+      return _byteswap_ushort(in);
+    }
+#endif
+  }
+  return in;
+}
 
 // unified size type for VPack, can be used on 32 and 64 bit
 // though no VPack values can exceed the bounds of 32 bit on a 32 bit OS
@@ -134,6 +248,7 @@ static VELOCYPACK_FORCE_INLINE constexpr std::size_t checkOverflow(ValueLength l
   return static_cast<std::size_t>(length);
 }
 #endif
+
 
 // calculate the length of a variable length integer in unsigned LEB128 format
 static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
@@ -213,12 +328,10 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
+  T value{0};
+  memcpy(&value, start, length);
+  if constexpr (!isLittleEndian()) {
+   value = littleToHost(value);
   }
   return value;
 }
@@ -230,12 +343,10 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   VELOCYPACK_ASSERT(length > 0);
   VELOCYPACK_ASSERT(length <= sizeof(T));
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
+  T value{0};
+  memcpy(&value, start, length);
+  if constexpr (!isLittleEndian()) {
+    value = littleToHost(value);
   }
   return value;
 }
@@ -245,11 +356,11 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 }
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
-  uint8_t const* end = start + 8;
-  do {
-    *start++ = static_cast<uint8_t>(value & 0xffU);
-    value >>= 8;
-  } while (start < end);
+ if constexpr (!isLittleEndian()) {
+   value = hostToLittle(value);
+ }
+ memcpy(start, &value, sizeof(value));
+
 }
 
 }  // namespace arangodb::velocypack
