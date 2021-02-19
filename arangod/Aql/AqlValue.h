@@ -137,7 +137,6 @@ struct AqlValue final {
                            // slice, allocated by new[] or malloc()
     RANGE,    // a pointer to a range remembering lower and upper bound, managed
     VPACK_INLINE_INT48,    // contains vpack data, inline and unpacked 48bit stored as 64bit int number value (system endianess)
-    VPACK_INLINE_UINT48,   // contains vpack data, inline and unpacked 48bit stored as 64bit uint number value (system endianess)
     VPACK_INLINE_INT64,    // contains vpack data, inline and unpacked 64bit int number value (in little-endian)
     VPACK_INLINE_UINT64,   // contains vpack data, inline and unpacked 64bit uint number value (in little-endian)
     VPACK_INLINE_DOUBLE    // contains vpack data, inline and unpacked 64bit double number value (in little-endian)
@@ -145,7 +144,7 @@ struct AqlValue final {
 
   static_assert(iresearch::adjacencyChecker<AqlValueType>::checkAdjacency<
                 VPACK_INLINE_DOUBLE, VPACK_INLINE_UINT64, VPACK_INLINE_INT64,
-                VPACK_INLINE_UINT48, VPACK_INLINE_INT48>(),
+                VPACK_INLINE_INT48>(),
                 "Values are not adjacent");
 
   /// @brief Holds the actual data for this AqlValue
@@ -182,7 +181,7 @@ struct AqlValue final {
   /// | AT | MO | ML | ML | ML | ML | ML | ML | PD | PD | PD | PD | PD | PD | PD | PD |   VPACK_MANAGED_SLICE
   /// | AT | XX | XX | XX | XX | XX | XX | XX | PD | PD | PD | PD | PD | PD | PD | PD |   RANGE
   /// | AT | ST | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_INLINE
-  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_(INT/UINT)
+  /// | AT | ST | SD | SD | SD | SD | SD | SD | ND | ND | ND | ND | ND | ND | ND | ND |   VPACK_48BIT_INLINE_INT
   /// | AT | XX | XX | XX | XX | XX | XX | ST | SD | SD | SD | SD | SD | SD | SD | SD |   VPACK_64BIT_INLINE_(INT/UINT/DOUBLE)
  private:
 
@@ -236,17 +235,12 @@ struct AqlValue final {
     } inlineSliceMeta;
 
     //VPACK_INLINE_INT48
-    //VPACK_INLINE_UINT48
     struct {
       union {
         struct {
           uint8_t padding;
           uint8_t slice[7];
         } slice;
-        struct {
-          uint8_t padding[8];
-          uint64_t val;
-        } uint48;
         struct {
           uint8_t padding[8];
           int64_t val;
