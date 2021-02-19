@@ -152,8 +152,6 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     }
 
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
-      // LOG_DEVEL << "Vertex in Cluster Provider: " << pair.key.toString();
-      // LOG_DEVEL << "WE Need the ID here, not the key!";  // TODO verify
       VertexType vertexKey(pair.key);
       /*if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
        // TODO: Check!
@@ -163,7 +161,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
       }*/
 
-      if (!isPayloadCached) {  // TODO include check direction?
+      if (!isPayloadCached) {
         _opts.getCache()->datalake().add(payload);
         isPayloadCached = true;
       }
@@ -174,7 +172,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
       }
     }
 
-    /* TODO: Check!
+    /* TODO: Needs to be taken care of as soon as we enable shortest paths for ClusterProvider
     bool forShortestPath = true;
     if (!forShortestPath) {
       // Fill everything we did not find with NULL
@@ -188,18 +186,20 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 
   // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
-    if (_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-      result.emplace_back(std::move(lE));
+    if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
+      // TODO NULL / + register warning (!vertex not found! check)
+      // if we end up here, we we're not able to cache the requested vertex (e.g. it does not exist)
+      _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()), VPackSlice::nullSlice());
     }
+    result.emplace_back(std::move(lE));
   }
 }
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
+  // Currently unused. This is just here as a placeholder. Needs to be implemented in the future
+  // as soon as we enable the ClusterProvider globally.
   auto const* engines = _opts.getCache()->engines();
 
-  // TODO: adjust comment or implement
-  // This function works for one specific vertex
-  // or for a list of vertices.
   // TRI_ASSERT(vertexId.isString() || vertexId.isArray());
 
   transaction::BuilderLeaser leased(trx());
@@ -241,9 +241,10 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     if (res.fail()) {
       return res;
     }
-    // TODO CHECK: read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-    _opts.getCache()->insertedDocuments() +=
-        Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
+    _stats.addFiltered(Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
+    _stats.addScannedIndex(Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
+    /*_opts.getCache()->insertedDocuments() +=
+        Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);*/
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");
@@ -280,23 +281,24 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   if (looseEnds.size() > 0) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
+    _stats.addHttpRequests(_opts.getCache()->engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
-      auto res = fetchEdgesFromEngines(step->getVertex().getID());  // TODO: Check depth
+      auto res = fetchEdgesFromEngines(step->getVertex().getID());
       // TODO: check stats (also take a look of vertex stats)
       // add http stats
       _stats.addHttpRequests(_opts.getCache()->engines()->size());
 
       if (res.fail()) {
-        // TODO: "need to take care of this";
         THROW_ARANGO_EXCEPTION(res);
       }
+
       // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
       step->setFetched();
     }
   }
 
-  // TODO: This needs to be changed! (future?)
+  // Note: Discuss if we want to keep it that way in the future.
   return futures::makeFuture(std::move(result));
 }
 
