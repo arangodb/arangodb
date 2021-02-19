@@ -119,12 +119,15 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   // have the same length:
   std::vector<RegisterCount> nrRegs;
 
+  RegisterCount nrConstRegs = 0;
+
   // We collect the subquery nodes to deal with them at the end:
   std::vector<T*> subqueryNodes;
 
   /// @brief maximum register id that can be assigned, plus one.
   /// this is used for assertions
-  static constexpr RegisterId MaxRegisterId = RegisterId{1000};
+  static constexpr RegisterId MaxRegisterId = RegisterId(RegisterId::maxRegisterId);
+  // TODO - remove MaxRegisterId in favor of RegisterId::maxRegisterId
 
   /// @brief Only used when the register plan is being explained
   std::map<ExecutionNodeId, RegIdOrderedSetStack> unusedRegsByNode;
@@ -150,6 +153,7 @@ struct RegisterPlanT final : public std::enable_shared_from_this<RegisterPlanT<T
   static void toVelocyPackEmpty(arangodb::velocypack::Builder& builder);
 
   auto variableToRegisterId(Variable const* variable) const -> RegisterId;
+  auto variableToOptionalRegisterId(VariableId varId) const -> RegisterId;
 
   auto calcRegsToKeep(VarSetStack const& varsUsedLaterStack, VarSetStack const& varsValidStack,
                       std::vector<Variable const*> const& varsSetHere) const -> RegIdSetStack;

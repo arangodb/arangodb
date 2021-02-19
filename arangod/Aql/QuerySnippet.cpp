@@ -650,6 +650,16 @@ auto QuerySnippet::prepareFirstBranch(
           if (localGraphNode->isDisjoint()) {
             if (found->second == server) {
               myExp.emplace(shard);
+            } else {
+              // the target server does not have anything to do with the particular
+              // collection (e.g. because the collection's shards are all on other
+              // servers), but it may be asked for this collection, because vertex
+              // collections are registered _globally_ with the TraversalNode and
+              // not on a per-target server basis.
+              // so in order to serve later lookups for this collection, we insert
+              // an empty string into the collection->shard map.
+              // on lookup, we will react to this.
+              localGraphNode->addCollectionToShard(aqlCollection->name(), "");
             }
           } else {
             localGraphNode->addCollectionToShard(aqlCollection->name(), shard);
@@ -657,7 +667,6 @@ auto QuerySnippet::prepareFirstBranch(
 
           numShards++;
         }
-
         if (myExp.size() > 0) {
           localGraphNode->addCollectionToShard(aqlCollection->name(), *myExp.begin());
           if (myExp.size() > 1) {
