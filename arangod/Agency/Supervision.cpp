@@ -1625,6 +1625,10 @@ bool Supervision::handleJobs() {
       << "Begin cleanupFinishedAndFailedJobs";
   cleanupFinishedAndFailedJobs();
 
+  LOG_TOPIC("0892c", TRACE, Logger::SUPERVISION)
+      << "Begin cleanupHotbackupTransferJobs";
+  cleanupHotbackupTransferJobs();
+
   return true;
 }
 
@@ -1682,6 +1686,56 @@ void Supervision::cleanupFinishedAndFailedJobs() {
 
   cleanup(finishedPrefix, maximalFinishedJobs);
   cleanup(failedPrefix, maximalFailedJobs);
+}
+
+// Guarded by caller
+void Supervision::cleanupHotbackupTransferJobs() {
+  // This deletes old Hotbackup transfer jobs in 
+  // /Target/HotBackup/TransferJobs according to their time stamp.
+  // We keep at most 100 transfer jobs.
+  _lock.assertLockedByCurrentThread();
+
+  constexpr uint64_t maximalNumberTransferJobs = 100;
+  constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
+
+  auto const& jobs = snapshot().hasAsChildren(prefix).first;
+  if (jobs.size() <= maximalNumberTransferJobs + 6) {
+    return;
+  }
+  typedef std::pair<std::string, std::string> keyDate;
+  std::vector<keyDate> v;
+  v.reserve(jobs.size());
+  for (auto const& p : jobs) {
+    auto created = p.second->hasAsString("timestamp");
+    if (created.second) {
+      v.emplace_back(p.first, created.first);
+    } else {
+      v.emplace_back(p.first, "1970");  // will be sorted very early
+    }
+  }
+  std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
+    return a.second < b.second;
+  });
+  size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
+  LOG_TOPIC("98452", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
+                                           << " old transfer jobs"
+                                              " in "
+                                           << prefix;
+  VPackBuilder trx;  // We build a transaction here
+  {                  // Pair for operation, no precondition here
+    VPackArrayBuilder guard1(&trx);
+    {
+      VPackObjectBuilder guard2(&trx);
+      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+        trx.add(VPackValue(prefix + it->first));
+        {
+          VPackObjectBuilder guard2(&trx);
+          trx.add("op", VPackValue("delete"));
+        }
+      }
+    }
+  }
+  singleWriteTransaction(_agent, trx, false);  // do not care about the result
 }
 
 // Guarded by caller
