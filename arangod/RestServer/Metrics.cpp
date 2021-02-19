@@ -198,12 +198,11 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
 
 Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
   : _name(name), _help(help), _labels(labels) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // In maintainer mode we look up the name at runtime in the list of
-  // metrics arangodb::metricsNameList. This ensures that each metric is
-  // listed in that list. External scripts then parse the source code of
-  // the list and ensure that all metrics have documentation snippets
-  // in `Documentation/Metrics` and that these are well-formed.
+  // We look up the name at runtime in the list of metrics
+  // arangodb::metricsNameList. This ensures that each metric is listed
+  // in that list. External scripts then parse the source code of the
+  // list and ensure that all metrics have documentation snippets in
+  // `Documentation/Metrics` and that these are well-formed.
   char const** p = metricsNameList;
   bool found = false;
   while (*p != nullptr) {
@@ -222,7 +221,6 @@ Metric::Metric(std::string const& name, std::string const& help, std::string con
          "`Documentation/Metrics`.";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED);
   }
-#endif
 };
 
 Metric::~Metric() = default;
