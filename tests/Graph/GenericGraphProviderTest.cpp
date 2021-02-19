@@ -199,7 +199,7 @@ TYPED_TEST_CASE(GraphProviderTest, TypesToTest);
 TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
 
-  auto testee = this->makeProvider(empty);
+  TypeParam testee = this->makeProvider(empty);
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
@@ -220,7 +220,14 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   EXPECT_EQ(result.size(), 0);
   TraversalStats stats = testee.stealStats();
   EXPECT_EQ(stats.getFiltered(), 0);
-  EXPECT_EQ(stats.getHttpRequests(), 0);
+
+
+  if constexpr (std::is_same_v<TypeParam, SingleServerProvider> || std::is_same_v<TypeParam, MockGraphProvider>) {
+    EXPECT_EQ(stats.getHttpRequests(), 0);
+  } else if (std::is_same_v<TypeParam, SingleServerProvider>) {
+    EXPECT_EQ(stats.getHttpRequests(), 1);
+  }
+
   // We have no edges, so nothing scanned in the Index.
   EXPECT_EQ(stats.getScannedIndex(), 0);
 }
@@ -255,7 +262,11 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    EXPECT_EQ(stats.getHttpRequests(), 0);
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider> || std::is_same_v<TypeParam, MockGraphProvider>) {
+      EXPECT_EQ(stats.getHttpRequests(), 0);
+    } else if (std::is_same_v<TypeParam, SingleServerProvider>) {
+      EXPECT_EQ(stats.getHttpRequests(), 1);
+    }
     // We have 1 edge, this shall be counted
     EXPECT_EQ(stats.getScannedIndex(), 1);
   }
@@ -303,7 +314,11 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   {
     TraversalStats stats = testee.stealStats();
     EXPECT_EQ(stats.getFiltered(), 0);
-    EXPECT_EQ(stats.getHttpRequests(), 0);
+    if constexpr (std::is_same_v<TypeParam, SingleServerProvider> || std::is_same_v<TypeParam, MockGraphProvider>) {
+      EXPECT_EQ(stats.getHttpRequests(), 0);
+    } else if (std::is_same_v<TypeParam, SingleServerProvider>) {
+      EXPECT_EQ(stats.getHttpRequests(), 1);
+    }
     // We have 3 edges, this shall be counted
     EXPECT_EQ(stats.getScannedIndex(), 3);
   }
