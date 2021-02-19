@@ -1,6 +1,9 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* Fix too early stop of replication, when waiting for keys in large
+  collections/shards.
+
 * Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
 * Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
@@ -330,7 +333,7 @@ v3.7.6 (2021-01-04)
   metric increases this indicates lock contention in transaction setup.
   Most likely this is caused by exlcusive locks used on collections with more
   than one shard.
-  
+
 * Fix for BTS-213
   Changed the transaction locking mechanism in the cluster case.
   For all installations that do not use "exclusive" collection locks this change

@@ -37,6 +37,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/utilities.h"
 #include "Rest/CommonDefines.h"
 #include "RestHandler/RestReplicationHandler.h"
@@ -257,7 +258,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
       TRI_ASSERT(options.indexOperationMode == arangodb::Index::OperationMode::internal);
 
       Result res = physical->insert(&trx, masterDoc, mdr, options);
-      
+
       if (res.fail()) {
         if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) &&
             res.errorMessage() > keySlice.copyString()) {
@@ -275,7 +276,7 @@ arangodb::Result fetchRevisions(arangodb::transaction::Methods& trx,
           }
           options.indexOperationMode = arangodb::Index::OperationMode::normal;
           res = physical->insert(&trx, masterDoc, mdr, options);
-          
+
           options.indexOperationMode = arangodb::Index::OperationMode::internal;
           if (res.fail()) {
             return res;
@@ -344,14 +345,15 @@ bool DatabaseInitialSyncer::Configuration::isChild() const {
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t& vocbase,
                                              ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration,
-                    [this](std::string const& msg) -> void { setProgress(msg); }),
-      _config{_state.applier,    _state.barrier, _batch,
-              _state.connection, false,          _state.master,
-              _progress,         _state,         vocbase},
-      _isClusterRole(ServerState::instance()->isClusterRole()) {
+    : InitialSyncer(configuration, [this](std::string const& msg) -> void { setProgress(msg); }),
+      _config{_state.applier, _state.barrier, _batch, _state.connection, false, _state.master, _progress, _state, vocbase},
+      _isClusterRole(ServerState::instance()->isClusterRole()),
+      _quickKeysNumDocsLimit(vocbase.server().getFeature<arangodb::ReplicationFeature>().quickKeysLimit()) {
   _state.vocbases.try_emplace(vocbase.name(), vocbase);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  adjustQuickKeysNumDocsLimit();
+#endif
   if (configuration._database.empty()) {
     _state.databaseName = vocbase.name();
   }
@@ -369,7 +371,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental, VPackSlice dbIn
   try {
     bool const preventMultiStart = !_isClusterRole;
     MultiStartPreventer p(vocbase(), preventMultiStart);
-      
+
     setAborted(false);
 
     _config.progress.set("fetching master state");
@@ -628,7 +630,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
       response->getHeaderField(StaticStrings::ContentTypeHeader, found);
   if (found && (cType == StaticStrings::MimeTypeVPack)) {
     LOG_TOPIC("b9f4d", DEBUG, Logger::REPLICATION) << "using vpack for chunk contents";
-    
+
     VPackValidator validator(&basics::VelocyPackHelper::strictRequestValidationOptions);
 
     try {
@@ -639,7 +641,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(transaction::Methods& trx,
 
         VPackSlice marker(reinterpret_cast<uint8_t const*>(p));
         Result r = parseCollectionDumpMarker(trx, coll, marker);
-        
+
         TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
         if (r.fail()) {
           r.reset(r.errorNumber(),
@@ -1078,104 +1080,169 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
     _config.barrier.extend(_config.connection);
   }
 
+  // We'll do one quick attempt at getting the keys on the leader.
+  // We might receive the keys or a count of the keys. In the first case we continue
+  // with the sync. If we get a document count, we'll estimate a pessimistic wait
+  // of roughly 1e9/day and repeat the call without a quick option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "/keys" + "?collection=" + urlEncode(leaderColl) +
+  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
                     "&to=" + std::to_string(maxTick) +
                     "&serverId=" + _state.localServerIdString +
                     "&batchId=" + std::to_string(_config.batch.id);
 
   std::string msg =
-      "fetching collection keys for collection '" + coll->name() + "' from " + url;
+    "fetching collection keys for collection '" + coll->name() + "' from " + url;
   _config.progress.set(msg);
 
-  // send an initial async request to collect the collection keys on the other
-  // side
-  // sending this request in a blocking fashion may require very long to
-  // complete,
-  // so we're sending the x-arango-async header here
-  auto headers = replutils::createHeaders();
-  headers[StaticStrings::Async] = "store";
+  // use a lower bound for maxWaitTime of 180M microseconds, i.e. 180 seconds
+  constexpr uint64_t lowerBoundForWaitTime = 180000000;
+ 
+  // note: maxWaitTime has a unit of microseconds
+  uint64_t maxWaitTime = _config.applier._initialSyncMaxWaitTime;
+  maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
 
-  std::unique_ptr<httpclient::SimpleHttpResult> response;
-  _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-    response.reset(client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
-  });
+  // the following two variables can be modified by the "keysCall" lambda
+  VPackBuilder builder;
+  VPackSlice slice;
 
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
+  auto keysCall = [&](bool quick) {
 
-  bool found = false;
-  std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
+    // send an initial async request to collect the collection keys on the other
+    // side
+    // sending this request in a blocking fashion may require very long to
+    // complete,
+    // so we're sending the x-arango-async header here
+    auto headers = replutils::createHeaders();
+    headers[StaticStrings::Async] = "store";
 
-  if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url +
-                      ": could not find 'X-Arango-Async' header");
-  }
-
-  double const startTime = TRI_microtime();
-
-  while (true) {
-    if (!_config.isChild()) {
-      batchExtend();
-      _config.barrier.extend(_config.connection);
-    }
-
-    std::string const jobUrl = "/_api/job/" + jobId;
+    std::unique_ptr<httpclient::SimpleHttpResult> response;
     _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
-      response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+      response.reset(client->retryRequest(rest::RequestType::POST, (quick) ? url + "&quick=true" : url, nullptr, 0, headers));
     });
 
-    if (response != nullptr && response->isComplete()) {
-      if (response->hasHeaderField("x-arango-async-id")) {
-        // job is done, got the actual response
-        break;
-      }
-      if (response->getHttpReturnCode() == 404) {
-        // unknown job, we can abort
-        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                      std::string("job not found on master at ") +
-                          _config.master.endpoint);
-      }
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    double waitTime = TRI_microtime() - startTime;
+    bool found = false;
+    std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
-    if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= _config.applier._initialSyncMaxWaitTime) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                    std::string(
-                        "timed out waiting for response from master at ") +
+    if (!found) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url +
+                    ": could not find 'X-Arango-Async' header");
+    }
+
+    double const startTime = TRI_microtime();
+
+    while (true) {
+      if (!_config.isChild()) {
+        batchExtend();
+        _config.barrier.extend(_config.connection);
+      }
+
+      std::string const jobUrl = "/_api/job/" + jobId;
+      _config.connection.lease([&](httpclient::SimpleHttpClient* client) {
+        response.reset(client->request(rest::RequestType::PUT, jobUrl, nullptr, 0));
+      });
+
+      if (response != nullptr && response->isComplete()) {
+        if (response->hasHeaderField("x-arango-async-id")) {
+          // job is done, got the actual response
+          break;
+        }
+        if (response->getHttpReturnCode() == 404) {
+          // unknown job, we can abort
+          return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                        std::string("job not found on master at ") +
                         _config.master.endpoint);
+        }
+      }
+
+      double waitTime = TRI_microtime() - startTime;
+
+      TRI_ASSERT(maxWaitTime >= lowerBoundForWaitTime);
+
+      if (static_cast<uint64_t>(waitTime * 1000.0 * 1000.0) >= maxWaitTime) {
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
+                      std::string(
+                        "timed out waiting for response from master at ") +
+                      _config.master.endpoint);
+      }
+
+      if (isAborted()) {
+        return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+      }
+
+      std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
+      std::this_thread::sleep_for(sleepTime);
     }
 
-    if (isAborted()) {
-      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
+    if (replutils::hasFailed(response.get())) {
+      return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    std::chrono::milliseconds sleepTime = ::sleepTimeFromWaitTime(waitTime);
-    std::this_thread::sleep_for(sleepTime);
+    Result r = replutils::parseResponse(builder, response.get());
+
+    if (r.fail()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url + ": " + r.errorMessage());
+    }
+
+    slice = builder.slice();
+    if (!slice.isObject()) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    std::string("got invalid response from master at ") +
+                    _config.master.endpoint + url + ": response is no object");
+    }
+
+    return Result();
+
+  };
+
+  auto ck = keysCall(true);
+  if (!ck.ok()) {
+    return ck;
   }
-
-  if (replutils::hasFailed(response.get())) {
-    return replutils::buildHttpError(response.get(), url, _config.connection);
-  }
-
-  VPackBuilder builder;
-  Result r = replutils::parseResponse(builder, response.get());
-
-  if (r.fail()) {
+  VPackSlice const c = slice.get("count");
+  if (!c.isNumber()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                   std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url + ": " + r.errorMessage());
+                  _config.master.endpoint + url + ": response count not a number");
   }
 
-  VPackSlice const slice = builder.slice();
-  if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  std::string("got invalid response from master at ") +
-                      _config.master.endpoint + url + ": response is no object");
+  uint64_t ndocs = c.getNumber<uint64_t>();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  if (ndocs > _quickKeysNumDocsLimit && slice.hasKey("id")) {
+    LOG_TOPIC("6e1b3", ERR, Logger::REPLICATION)
+        << "client: DatabaseInitialSyncer::run - expected ony document count for quick call";
+    TRI_ASSERT(false);
+  }
+#endif
+
+  if (!slice.hasKey("id")) { // we only have count
+    // calculate a wait time proportional to the number of documents on the leader
+    // if we get 1M documents back, the wait time is 80M microseconds, i.e. 80 seconds
+    // if we get 10M documents back, the wait time is 800M microseconds, i.e. 800 seconds
+    // ...
+    maxWaitTime = std::max<uint64_t>(maxWaitTime, ndocs * 80);
+
+    // there is an additional lower bound for the wait time as defined initially in
+    //    _config.applier._initialSyncMaxWaitTime
+    // we also apply an additional lower bound of 180 seconds here, in case that value
+    // is configured too low, for whatever reason
+    maxWaitTime = std::max<uint64_t>(maxWaitTime, lowerBoundForWaitTime);
+
+    TRI_ASSERT(maxWaitTime >= lowerBoundForWaitTime);
+    
+    // note: keysCall() can modify the "slice" variable
+    ck = keysCall(false);
+    if (!ck.ok()) {
+      return ck;
+    }
   }
 
   VPackSlice const keysId = slice.get("id");
@@ -1391,7 +1458,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(arangodb::LogicalCo
                   std::string("unable to start transaction: ") + res.errorMessage());
   }
   auto guard = scopeGuard(
-      [trx = trx.get()]() -> void { 
+      [trx = trx.get()]() -> void {
         if (trx->status() == transaction::Status::RUNNING) {
           trx->abort();
         }
@@ -1868,7 +1935,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string const& masterColl = !masterUuid.empty() ? masterUuid : itoa(masterCid);
-    auto res = incremental && hasDocuments(*col) 
+    auto res = incremental && hasDocuments(*col)
                    ? fetchCollectionSync(col, masterColl, _config.master.lastLogTick)
                    : fetchCollectionDump(col, masterColl, _config.master.lastLogTick);
 
@@ -2156,5 +2223,13 @@ Result DatabaseInitialSyncer::batchFinish() {
   return _config.batch.finish(_config.connection, _config.progress, _config.state.syncerId);
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch quickKeysNumDocsLimit for testing
+void DatabaseInitialSyncer::adjustQuickKeysNumDocsLimit() {
+  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+    _quickKeysNumDocsLimit = 100;
+  }
+}
+#endif
 
 }  // namespace arangodb
