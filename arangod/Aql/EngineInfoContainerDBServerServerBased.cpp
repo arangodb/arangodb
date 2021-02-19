@@ -286,8 +286,6 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   transaction::Methods& trx = _query.trxForOptimization();
   trx.state()->analyzersRevision().toVelocyPack(infoBuilder);
   infoBuilder.close();  // Base object
-  LOG_DEVEL << "Logging infoBuilder";
-  LOG_DEVEL << infoBuilder.toString();
   TRI_ASSERT(infoBuilder.isClosed());
 
   return didCreateEngine;
