@@ -340,7 +340,7 @@ size_t AqlValue::length() const {
     case VPACK_INLINE_INT64:
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
-      //values above will immediately throw in Slice::length - let it be for consitency (one place of throwing)
+      //values above will immediately throw in Slice::length - let it be for consistency (one place of throwing)
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
