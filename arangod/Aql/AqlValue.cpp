@@ -78,8 +78,16 @@ static inline uint8_t intLength(int64_t value) noexcept {
   }
   uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
                           : static_cast<uint64_t>(-(value + 1));
+  // check  4 MSB bytes - if there is at least one 1 than all  4 LSB should be kept and we could add 4 to counter
+  // and then check how many of 4 MSB we actually need.
+  // if 4 MSB bytes are all 0 then we should check only 4 LSB
+  // we actually set (5 : 1) as we at the end will anyway need to do +1 for last byte - so do it here.
   uint8_t nSize = (x & UINT64_C(0xFFFFFFFF80000000)) ? x >>= 32, 5 : 1;
+
+  // same trick but with 4 left bytes now checking by 2 bytes
   nSize += (x & UINT64_C(0xFFFF8000)) ? x >>= 16, 2 : 0;
+
+  // same trick with 2 last bytes
   nSize += (x & 0xFF80) ? 1 :0;
   return nSize;
 }
@@ -346,7 +354,7 @@ size_t AqlValue::length() const {
     case VPACK_INLINE_INT64:
     case VPACK_INLINE_UINT64:
     case VPACK_INLINE_DOUBLE:
-      // FIXME: values above will immediately throw in Slice::length. Maybe throw directly or return 1?
+      //values above will immediately throw in Slice::length - let it be for consitency (one place of throwing)
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
