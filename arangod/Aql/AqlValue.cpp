@@ -905,7 +905,7 @@ int64_t AqlValue::toInt64() const {
     case VPACK_INLINE_INT48:
       return static_cast<int64_t>(_data.shortNumberMeta.data.int48.val);
     case VPACK_INLINE_UINT48:
-      return static_cast<uint64_t>(_data.shortNumberMeta.data.uint48.val);
+      return static_cast<int64_t>(_data.shortNumberMeta.data.uint48.val);
     case VPACK_INLINE_INT64:
       return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
     case VPACK_INLINE_UINT64:
