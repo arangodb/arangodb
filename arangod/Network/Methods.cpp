@@ -188,7 +188,7 @@ static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode status
     VPackObjectBuilder guard(&builder);
     auto errorNum = res.errorNumber();
     builder.add(StaticStrings::Error, VPackValue(errorNum != TRI_ERROR_NO_ERROR));
-    builder.add(StaticStrings::ErrorNum, VPackValue(int(errorNum)));
+    builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
     if (errorNum != TRI_ERROR_NO_ERROR) {
       builder.add(StaticStrings::ErrorMessage, VPackValue(res.errorMessage()));
     }

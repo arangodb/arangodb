@@ -533,10 +533,13 @@ arangodb::Result modifyLinks(                              // modify links
   // validate success
   for (auto& state: linkModifications) {
     if (!state._result.ok()) {
-      error.append(error.empty() ? "" : ", ") // separator
-        .append(collectionsToLock[state._collectionsToLockOffset]) // collection name
-        .append(": ").append(std::to_string(int(state._result.errorNumber()))) // error code
-        .append(" ").append(state._result.errorMessage()); // error message
+      error
+          .append(error.empty() ? "" : ", ")  // separator
+          .append(collectionsToLock[state._collectionsToLockOffset])  // collection name
+          .append(": ")
+          .append(std::to_string(static_cast<int>(state._result.errorNumber())))  // error code
+          .append(" ")
+          .append(state._result.errorMessage());  // error message
     }
   }
 

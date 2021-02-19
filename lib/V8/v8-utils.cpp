@@ -4945,7 +4945,8 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
       args.Holder()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   self->Set(context, ErrorKey, v8::True(isolate)).FromMaybe(false);
-  self->Set(context, ErrorNumKey, v8::Integer::New(isolate, int(TRI_ERROR_FAILED)))
+  self->Set(context, ErrorNumKey,
+            v8::Integer::New(isolate, static_cast<int>(TRI_ERROR_FAILED)))
       .FromMaybe(false);
 
   if (0 < args.Length() && args[0]->IsObject()) {

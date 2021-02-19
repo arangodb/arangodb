@@ -326,7 +326,7 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
-                         int syncerShutdownCode)
+                         ErrorCode syncerShutdownCode)
   : _server(server),
     _agency(server),
     _agencyCallbackRegistry(agencyCallbackRegistry),
@@ -2160,7 +2160,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
   AgencyComm ac(_server);
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
   if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME, std::string("duplicate database name '") + database.getName() + "'");
     }
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN);
@@ -2283,7 +2283,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(CreateDatabaseInfo const& 
   auto res = ac.sendTransactionWithFailover(trx, 0.0);
 
   if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                     "Could not finish creation of database: Plan/Databases/ "
                     "entry was modified in Agency");
@@ -2332,7 +2332,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(CreateDatabaseInfo const& da
       break;
     }
     
-    if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+    if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
       auto [acb, index] = agencyCache.read(
         std::vector<std::string>{
@@ -2444,7 +2444,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
                                 delPlanAnalyzers, incrementVersion}, databaseExists);
   AgencyCommResult res = ac.sendTransactionWithFailover(trans);
   if (!res.successful()) {
-    if (res._statusCode == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
     return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_PLAN);
@@ -2874,7 +2874,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           [[maybe_unused]] Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
         }
         return;
-      } else if (res.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+      } else if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
         return;
       }
 
@@ -2928,7 +2928,7 @@ Result ClusterInfo::createCollectionsCoordinator(
       auto res = ac.sendTransactionWithFailover(transaction);
       // Only if not precondition failed
       if (!res.successful()) {
-        if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
           // use this special error code to signal that we got a precondition failure
           // in this case the caller can try again with an updated version of the plan change
           LOG_TOPIC("98763", DEBUG, Logger::CLUSTER)
@@ -2939,11 +2939,11 @@ Result ClusterInfo::createCollectionsCoordinator(
           return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
                   "operation aborted due to precondition failure"};
         }
-        std::string errorMsg = "HTTP code: " + std::to_string(res.httpCode());
-        errorMsg += " error message: ";
-        errorMsg += res.errorMessage();
-        errorMsg += " error details: " + res.errorDetails();
-        errorMsg += " body: " + res.body();
+        auto errorMsg =
+            basics::StringUtils::concatT("HTTP code: ", static_cast<int>(res.httpCode()),
+                                         " error message: ", res.errorMessage(),
+                                         " error details: ", res.errorDetails(),
+                                         " body: ", res.body());
         for (auto const& info : infos) {
           events::CreateCollection(databaseName, info.name,
                                    TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN);
@@ -3250,7 +3250,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   res = ac.sendTransactionWithFailover(trans);
 
   if (!res.successful()) {
-    if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       LOG_TOPIC("279c5", ERR, Logger::CLUSTER)
           << "Precondition failed for this agency transaction: " << trans.toJson()
           << ", return code: " << res.httpCode();
@@ -3459,7 +3459,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
 
   // Only if not precondition failed
   if (!res.successful()) {
-    if (res.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       // Dump agency plan:
 
       logAgencyDump();
@@ -3472,12 +3472,12 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
 
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN);
-    return Result(                                        // result
-        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,  // code
-        std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-            " HTTP code: " + std::to_string(res.httpCode()) +
-            " error message: " + std::string(res.errorMessage()) +
-            " error details: " + res.errorDetails() + " body: " + res.body());
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_VIEW_IN_PLAN,
+                  basics::StringUtils::concatT("file: ", __FILE__, " line: ", __LINE__,
+                                               " HTTP code: ", static_cast<int>(res.httpCode()),
+                                               " error message: ", res.errorMessage(),
+                                               " error details: ", res.errorDetails(),
+                                               " body: ", res.body()));
   }
 
   Result r;
@@ -3517,7 +3517,7 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   }
 
   if (!res.successful() && !result.fail()) {
-    if (res.errorCode() == int(rest::ResponseCode::PRECONDITION_FAILED)) {
+    if (res.errorCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
       result = Result(                                            // result
           TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
           std::string("Precondition that view  with ID ") + viewID +
@@ -3527,12 +3527,12 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
       logAgencyDump();
     } else {
       // FIXME COULD_NOT_REMOVE_VIEW_IN_PLAN
-      result =
-          Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
-                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                     " HTTP code: " + std::to_string(res.httpCode()) +
-                     " error message: " + std::string(res.errorMessage()) +
-                     " error details: " + res.errorDetails() + " body: " + res.body());
+      result = Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,
+                 basics::StringUtils::concatT("file: ", __FILE__, " line: ", __LINE__,
+                                              " HTTP code: ", static_cast<int>(res.httpCode()),
+                                              " error message: ", res.errorMessage(),
+                                              " error details: ", res.errorDetails(),
+                                              " body: ", res.body()));
     }
   }
 
@@ -3665,7 +3665,7 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
 
     // Only if not precondition failed
     if (!res.successful()) {
-      if (res.httpCode() == static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      if (res.httpCode() == arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
         if (TRI_microtime() > endTime) {
           // Dump agency plan
           logAgencyDump();
@@ -3683,13 +3683,14 @@ std::pair<Result, AnalyzersRevision::Revision> ClusterInfo::startModifyingAnalyz
         continue;
       }
 
-      return std::make_pair(
-          Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                 std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                     " HTTP code: " + std::to_string(res.httpCode()) +
-                     " error message: " + std::string(res.errorMessage()) +
-                     " error details: " + res.errorDetails() + " body: " + res.body()),
-          AnalyzersRevision::LATEST);
+      return std::make_pair(Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
+                                   basics::StringUtils::concatT(
+                                       "file: ", __FILE__, " line: ", __LINE__,
+                                       " HTTP code: ", static_cast<int>(res.httpCode()),
+                                       " error message: ", res.errorMessage(),
+                                       " error details: ", res.errorDetails(),
+                                       " body: ", res.body())),
+                            AnalyzersRevision::LATEST);
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
@@ -3769,16 +3770,18 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(DatabaseID const& databas
       // if preconditions failed -> somebody already finished our revision record.
       // That means agency maintanence already reverted our operation - we must abandon this operation.
       // So it differs from what we do in startModifying.
-      if (res.httpCode() != static_cast<int>(arangodb::rest::ResponseCode::PRECONDITION_FAILED)) {
+      if (res.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
         if (TRI_microtime() > endTime) {
           // Dump agency plan
           logAgencyDump();
 
           return Result(TRI_ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,
-                    std::string("file: ") + __FILE__ + " line: " + std::to_string(__LINE__) +
-                        " HTTP code: " + std::to_string(res.httpCode()) +
-                        " error message: " + std::string(res.errorMessage()) +
-                        " error details: " + res.errorDetails() + " body: " + res.body());
+                        basics::StringUtils::concatT(
+                            "file: ", __FILE__, " line: ", __LINE__,
+                            " HTTP code: ", static_cast<int>(res.httpCode()),
+                            " error message: ", res.errorMessage(),
+                            " error details: ", res.errorDetails(),
+                            " body: ", res.body()));
         }
 
         if (_server.isStopping()) {
@@ -4081,8 +4084,8 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             *errMsg = "Error during index creation: " + *errMsg;
             // Returns the specific error number if set, or the general
             // error otherwise
-            auto errNum = ErrorCode{arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED)};
+            auto errNum = arangodb::basics::VelocyPackHelper::getNumericValue<ErrorCode>(
+                v, StaticStrings::ErrorNum, TRI_ERROR_ARANGO_INDEX_CREATION_FAILED);
             dbServerResult->store(errNum, std::memory_order_release);
             return true;
           }
@@ -4166,17 +4169,17 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
   CollectionWatcher collectionWatcher(_agencyCallbackRegistry, collection);
 
   if (!result.successful()) {
-    if (result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+    if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
       // Retry loop is outside!
       return Result(TRI_ERROR_HTTP_PRECONDITION_FAILED);
     }
 
-    return Result(                                         // result
-        TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,  // code
-        std::string(" Failed to execute ") + trx.toJson() +
-            " ResultCode: " + std::to_string(result.errorCode()) +
-            " HttpCode: " + std::to_string(result.httpCode()) + " " +
-            std::string(__FILE__) + ":" + std::to_string(__LINE__));
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_INDEX_IN_PLAN,
+                  basics::StringUtils::concatT(" Failed to execute ", trx.toJson(),
+                                               " ResultCode: ", result.errorCode(),
+                                               " HttpCode: ",
+                                               static_cast<int>(result.httpCode()),
+                                               " ", __FILE__, ":", __LINE__));
   }
 
   // From here on we want to roll back the index creation if we run into
@@ -4319,7 +4322,7 @@ Result ClusterInfo::ensureIndexCoordinatorInner(LogicalCollection const& collect
             return Result(*tmpRes, *errMsg);
           }
 
-          if (update._statusCode == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+          if (update._statusCode == rest::ResponseCode::PRECONDITION_FAILED) {
             // Collection was removed, let's break here and report outside
             break;
           }
@@ -4523,10 +4526,9 @@ Result ClusterInfo::dropIndexCoordinator(  // drop index
     events::DropIndex(databaseName, collectionID, idString,
                       TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN);
 
-    return Result(                                       // result
-        TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,  // code
-        std::string(" Failed to execute ") + trx.toJson() +
-            " ResultCode: " + std::to_string(result.errorCode()));
+    return Result(TRI_ERROR_CLUSTER_COULD_NOT_DROP_INDEX_IN_PLAN,
+                  basics::StringUtils::concatT(" Failed to execute ", trx.toJson(),
+                                               " ResultCode: ", result.errorCode()));
   }
   if (VPackSlice resultSlice = result.slice().get("results"); resultSlice.length() > 0) {
     Result r = waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
@@ -5465,10 +5467,10 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
 
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
-    arangodb::Result result(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                            std::string(
-                                "Error reporting to agency: _statusCode: ") +
-                                std::to_string(r.errorCode()));
+    arangodb::Result result(
+        TRI_ERROR_HOT_BACKUP_INTERNAL,
+        basics::StringUtils::concatT("Error reporting to agency: _statusCode: ",
+                                     r.errorCode()));
     return result;
   }
 
@@ -5609,8 +5611,7 @@ arangodb::Result ClusterInfo::agencyHotBackupLock(std::string const& backupId,
 
   // *** ATTENTION ***: Result will always be 412.
   // So we're going to fail, if we have an error OTHER THAN 412:
-  if (!result.successful() &&
-      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+  if (!result.successful() && result.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
     return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
                             "failed to acquire backup lock in agency");
   }
@@ -5714,7 +5715,7 @@ arangodb::Result ClusterInfo::agencyHotBackupUnlock(std::string const& backupId,
   auto result = _agency.sendWithFailover(arangodb::rest::RequestType::POST,
                                          timeout, writeURL, builder.slice());
   if (!result.successful() &&
-      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      result.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
     LOG_TOPIC("6ae43", WARN, Logger::BACKUP)
         << "Error when unlocking backup lock for backup " << backupId
         << " in agency, errorCode: " << result.httpCode()

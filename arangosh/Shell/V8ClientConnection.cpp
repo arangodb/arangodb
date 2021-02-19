@@ -2042,12 +2042,14 @@ v8::Local<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate,
         break;
     }
 
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                v8::Integer::New(isolate, int(errorNumber))).FromMaybe(false);
-    result->Set(context,
-                TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
-                TRI_V8_STD_STRING(isolate, _lastErrorMessage)).FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+              v8::Integer::New(isolate, static_cast<int>(errorNumber)))
+        .FromMaybe(false);
+    result
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage),
+              TRI_V8_STD_STRING(isolate, _lastErrorMessage))
+        .FromMaybe(false);
 
     return result;
   }

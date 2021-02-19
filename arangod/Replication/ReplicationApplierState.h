@@ -115,7 +115,7 @@ struct ReplicationApplierState {
 
     void toVelocyPack(arangodb::velocypack::Builder& result) const {
       result.add(VPackValue(VPackValueType::Object));
-      result.add(StaticStrings::ErrorNum, VPackValue(int(code)));
+      result.add(StaticStrings::ErrorNum, VPackValue(code));
 
       if (code != TRI_ERROR_NO_ERROR) {
         result.add("time", VPackValue(time));

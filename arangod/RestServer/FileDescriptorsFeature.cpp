@@ -167,7 +167,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 
       FileDescriptors copy = current;
       copy.hard = recommended;
-      if (copy.store() == TRI_ERROR_NO_ERROR) {
+      if (copy.store() == 0) {
         // value adjusted successfully
         current.hard = recommended;
       }
@@ -182,8 +182,7 @@ void FileDescriptorsFeature::adjustFileDescriptors() {
 
       FileDescriptors copy = current;
       copy.soft = recommended;
-      int res = copy.store();
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (copy.store() != 0) {
         LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
           << "cannot raise the file descriptors limit to " << recommended << ": "
           << strerror(errno);

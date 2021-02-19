@@ -264,7 +264,7 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
                            std::unordered_map<int, size_t>& errorCounter,
                            VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
-  TRI_ASSERT(errorCounter.find(int(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) ==
+  TRI_ASSERT(errorCounter.find(static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) ==
              errorCounter.end());
   size_t realNotFound = 0;
 
@@ -297,7 +297,7 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
   resultBody.close();
   if (realNotFound > 0) {
-    errorCounter.try_emplace(int(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), realNotFound);
+    errorCounter.try_emplace(static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), realNotFound);
   }
 }
 

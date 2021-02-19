@@ -79,7 +79,7 @@ void ReplaceDocument(std::string const& db, std::string const& collection,
 void ModifyDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
                     ErrorCode code);
-void IllegalDocumentOperation(GeneralRequest const& request, ErrorCode result);
+void IllegalDocumentOperation(GeneralRequest const& request, rest::ResponseCode result);
 void AqlQuery(aql::Query const& query);
 void CreateHotbackup(std::string const& id, ErrorCode result);
 void RestoreHotbackup(std::string const& id, ErrorCode result);

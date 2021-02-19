@@ -529,7 +529,7 @@ void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
       builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
       builder.add(StaticStrings::Error, VPackValue(true));
       builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
-      builder.add(StaticStrings::ErrorNum, VPackValue(int(errorNumber)));
+      builder.add(StaticStrings::ErrorNum, VPackValue(errorNumber));
       builder.close();
 
       if (_request != nullptr) {

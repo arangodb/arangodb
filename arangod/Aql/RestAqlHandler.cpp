@@ -793,8 +793,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   if (!success) {
     return RestStatus::DONE;
   }
-  
-  int errorCode = VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
+
+  auto errorCode = ErrorCode{
+      VelocyPackHelper::getNumericValue<int>(querySlice, StaticStrings::Code,
+                                             static_cast<int>(TRI_ERROR_INTERNAL))};
   std::unique_ptr<ClusterQuery> query = _queryRegistry->destroyQuery(_vocbase.name(), qid, errorCode);
   if (!query) {
     // this may be a race between query garbage collection and the client

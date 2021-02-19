@@ -22,11 +22,30 @@
 
 #include "ErrorCode.h"
 
+#include "Basics/debugging.h"
+#include "Basics/error.h"
+
+#include <velocypack/Value.h>
+
 #include <ostream>
 
+using namespace arangodb;
+
 auto to_string(::ErrorCode value) -> std::string {
-  return std::to_string(int(value));
+  return std::to_string(value._value);
 }
+
+ErrorCode::operator arangodb::velocypack::Value() const noexcept {
+  return velocypack::Value(_value);
+}
+
+// ErrorCode::ErrorCode(arangodb::rest::ResponseCode code)
+//     : _value(static_cast<int>(code)) {
+//   using namespace std::string_literals;
+//   TRI_ASSERT(100 <= _value && _value < 600);
+//   // check whether there is an entry in errors.dat for that code
+//   // TRI_ASSERT("unknown error"s != TRI_errno_string(*this))
+// }
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream& {
   return out << int(res);

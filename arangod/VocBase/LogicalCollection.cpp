@@ -623,7 +623,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int LogicalCollection::close() {
+ErrorCode LogicalCollection::close() {
   // This was unload() in 3.0
   return getPhysical()->close();
 }

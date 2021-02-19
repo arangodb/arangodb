@@ -104,10 +104,10 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::Code),
-                   v8::Number::New(isolate, result.httpCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.httpCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                   v8::Number::New(isolate, result.errorCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.errorCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
   errorObject->Set(context,

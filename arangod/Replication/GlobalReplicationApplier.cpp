@@ -84,7 +84,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
     application_features::ApplicationServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {

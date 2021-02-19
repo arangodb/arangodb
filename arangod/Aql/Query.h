@@ -155,7 +155,7 @@ class Query : public QueryContext {
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
-  int resultCode() const noexcept;
+  ErrorCode resultCode() const noexcept;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<arangodb::velocypack::Builder> bindParameters() const {
@@ -230,13 +230,13 @@ class Query : public QueryContext {
   void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  aql::ExecutionState cleanupPlanAndEngine(int errorCode, bool sync);
+  aql::ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
   
   void unregisterSnippets();
   
  private:
   
-  aql::ExecutionState cleanupTrxAndEngines(int errorCode);
+  aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
   
   void finishDBServerParts(int errorCode);
 
@@ -309,7 +309,7 @@ class Query : public QueryContext {
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
-  int _resultCode;
+  std::optional<ErrorCode> _resultCode;
   
   /// @brief whether or not someone else has acquired a V8 context for us
   bool const _contextOwnedByExterior;

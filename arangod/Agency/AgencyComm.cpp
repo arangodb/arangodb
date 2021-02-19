@@ -378,7 +378,7 @@ bool AgencyReadTransaction::validate(AgencyCommResult const& result) const {
 // --SECTION--                                                  AgencyCommResult
 // -----------------------------------------------------------------------------
 
-AgencyCommResult::AgencyCommResult(int code, std::string message)
+AgencyCommResult::AgencyCommResult(ResponseCode code, std::string message)
     : _message(std::move(message)), _statusCode(code) {}
 
 AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
@@ -389,7 +389,7 @@ AgencyCommResult::AgencyCommResult(AgencyCommResult&& other) noexcept
       _connected(other._connected),
       _sent(other._sent),
       _vpack(std::move(other._vpack)) {
-  other._statusCode = 0;
+  other._statusCode = {};
   other._connected = false;
   other._sent = false;
 }
@@ -404,14 +404,14 @@ AgencyCommResult& AgencyCommResult::operator=(AgencyCommResult&& other) noexcept
     _sent = other._sent;
     _vpack = std::move(other._vpack);
 
-    other._statusCode = 0;
+    other._statusCode = {};
     other._connected = false;
     other._sent = false;
   }
   return *this;
 }
 
-void AgencyCommResult::set(int code, std::string message) {
+void AgencyCommResult::set(ResponseCode code, std::string message) {
   _message = std::move(message);
   _statusCode = code;
   _location.clear();
@@ -421,7 +421,7 @@ void AgencyCommResult::set(int code, std::string message) {
 
 bool AgencyCommResult::connected() const { return _connected; }
 
-int AgencyCommResult::httpCode() const { return _statusCode; }
+rest::ResponseCode AgencyCommResult::httpCode() const { return _statusCode; }
 
 bool AgencyCommResult::sent() const { return _sent; }
 
@@ -485,8 +485,8 @@ Result AgencyCommResult::asResult() const {
     auto const errorCode = std::invoke([&]() -> ErrorCode {
       if (err.first) {
         return *err.first;
-      } else if (_statusCode > 0) {
-        return ErrorCode{_statusCode};
+      } else if (_statusCode != rest::ResponseCode{}) {
+        return ErrorCode{static_cast<int>(_statusCode)};
       } else {
         return TRI_ERROR_INTERNAL;
       }
@@ -514,7 +514,7 @@ void AgencyCommResult::clear() {
   _location = "";
   _message = "";
   _vpack.reset();
-  _statusCode = 0;
+  _statusCode = ResponseCode{};
   _sent = false;
   _connected = false;
 }
@@ -546,7 +546,7 @@ void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
         builder.add("vpack", _vpack->slice());
       }
     }
-    builder.add("statusCode", VPackValue(_statusCode));
+    builder.add("statusCode", VPackValue(static_cast<int>(_statusCode)));
     builder.add(VPackValue("values"));
     {
       VPackObjectBuilder v(&builder);
@@ -757,17 +757,18 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
 
   try {
     if (!result.slice().isArray()) {
-      result.set(500, "got invalid result structure for getValues response");
+      result.set(ResponseCode::SERVER_ERROR,
+                 "got invalid result structure for getValues response");
       return result;
     }
 
     if (result.slice().length() != 1) {
-      result.set(500,
+      result.set(ResponseCode::SERVER_ERROR,
                  "got invalid result structure length for getValues response");
       return result;
     }
 
-    result._statusCode = 200;
+    result._statusCode = rest::ResponseCode::OK;
 
   } catch (std::exception const& e) {
     LOG_TOPIC("a6906", ERR, Logger::AGENCYCOMM)
@@ -797,7 +798,7 @@ AgencyCommResult AgencyComm::dump() {
     return result;
   }
 
-  result._statusCode = 200;
+  result._statusCode = rest::ResponseCode::OK;
 
   return result;
 }
@@ -994,13 +995,14 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(AgencyTransaction const
                        url, builder.slice());
 
   if (!result.successful() &&
-      result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+      result.httpCode() != ResponseCode::PRECONDITION_FAILED) {
     return result;
   }
 
   try {
     if (!transaction.validate(result)) {
-      result.set(500, std::string("validation failed for response to URL " + url));
+      result.set(ResponseCode::SERVER_ERROR,
+                 std::string("validation failed for response to URL " + url));
       LOG_TOPIC("f2083", DEBUG, Logger::AGENCYCOMM)
           << "validation failed for url: " << url
           << ", type: " << transaction.typeName()
@@ -1079,7 +1081,7 @@ bool AgencyComm::lock(std::string const& key, double ttl, double timeout,
     AgencyCommResult result = casValue(key + "/Lock", oldSlice, slice, ttl, timeout);
 
     if (!result.successful() &&
-        result.httpCode() == (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+        result.httpCode() == ResponseCode::PRECONDITION_FAILED) {
       // key does not yet exist. create it now
       result = casValue(key + "/Lock", slice, false, ttl, timeout);
     }
@@ -1162,7 +1164,7 @@ AgencyCommResult toAgencyCommResult(AsyncAgencyCommResult const& result) {
     }
 
     oldResult._message = "";
-    oldResult._statusCode = result.statusCode();
+    oldResult._statusCode = static_cast<ResponseCode>(result.statusCode());
     if (result.response->isContentTypeJSON()) {
       auto vpack = VPackParser::fromJson(result.response->payloadAsString());
       oldResult.setVPack(std::move(vpack));
@@ -1231,7 +1233,7 @@ AgencyCommResult AgencyComm::sendWithFailover(arangodb::rest::RequestType method
                                    AsyncAgencyComm::RequestType::CUSTOM, std::move(buffer))
                  .get();
   } else {
-    return AgencyCommResult{static_cast<int>(rest::ResponseCode::METHOD_NOT_ALLOWED),
+    return AgencyCommResult{rest::ResponseCode::METHOD_NOT_ALLOWED,
                             "method not supported"};
   }
   LOG_TOPIC("4e440", TRACE, Logger::AGENCYCOMM)
@@ -1373,7 +1375,7 @@ bool AgencyComm::tryInitializeStructure() {
         AgencyPrecondition("Plan", AgencyPrecondition::Type::EMPTY, true));
 
     AgencyCommResult result = sendTransactionWithFailover(initTransaction);
-    if (result.httpCode() == int(ResponseCode::UNAUTHORIZED)) {
+    if (result.httpCode() ==ResponseCode::UNAUTHORIZED) {
       LOG_TOPIC("a695d", ERR, Logger::AUTHENTICATION)
           << "Cannot authenticate with agency,"
           << " check value of --server.jwt-secret";
@@ -1399,7 +1401,7 @@ bool AgencyComm::shouldInitializeStructure() {
 
     if (!result.successful()) {  // Not 200 - 299
 
-      if (result.httpCode() == 401) {
+      if (result.httpCode() == ResponseCode::UNAUTHORIZED) {
         // unauthorized
         LOG_TOPIC("32781", FATAL, Logger::STARTUP)
             << "Unauthorized. Wrong credentials.";

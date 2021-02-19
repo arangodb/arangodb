@@ -937,7 +937,7 @@ arangodb::PhysicalCollection* PhysicalCollectionMock::clone(arangodb::LogicalCol
   return nullptr;
 }
 
-int PhysicalCollectionMock::close() {
+ErrorCode PhysicalCollectionMock::close() {
   for (auto& index : _indexes) {
     index->unload();
   }

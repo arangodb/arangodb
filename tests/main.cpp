@@ -80,7 +80,7 @@ char const* ARGV0 = "";
 
 namespace arangodb {
   // Only to please the linker, this is not used in the tests.
-  std::function<int()>* restartAction;
+  std::function<ErrorCode()>* restartAction;
 }
 
 int main(int argc, char* argv[]) {

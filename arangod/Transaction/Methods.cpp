@@ -213,7 +213,7 @@ static void createBabiesError(VPackBuilder& builder,
   builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
   builder.close();
 
-  auto it = countErrorCodes.find(error.errorNumber());
+  auto it = countErrorCodes.find(static_cast<int>(error.errorNumber()));
   if (it == countErrorCodes.end()) {
     countErrorCodes.emplace(error.errorNumber(), 1);
   } else {

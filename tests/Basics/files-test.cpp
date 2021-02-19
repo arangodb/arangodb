@@ -167,8 +167,8 @@ TEST_F(CFilesTest, tst_createdirectory) {
   std::string filename = out.str();
   long unused1;
   std::string unused2;
-  int res = TRI_CreateDirectory(filename.c_str(), unused1, unused2);
-  EXPECT_TRUE(0 == res);
+  auto res = TRI_CreateDirectory(filename.c_str(), unused1, unused2);
+  EXPECT_TRUE(TRI_ERROR_NO_ERROR == res);
   EXPECT_TRUE(true == TRI_ExistsFile(filename.c_str()));
   EXPECT_TRUE(true == TRI_IsDirectory(filename.c_str()));
 
@@ -187,8 +187,8 @@ TEST_F(CFilesTest, tst_createdirectoryrecursive) {
 
   long unused1;
   std::string unused2;
-  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
-  EXPECT_TRUE(0 == res);
+  auto res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  EXPECT_EQ(TRI_ERROR_NO_ERROR, res);
   EXPECT_TRUE(true == TRI_ExistsFile(filename1.c_str()));
   EXPECT_TRUE(true == TRI_IsDirectory(filename1.c_str()));
   EXPECT_TRUE(true == TRI_ExistsFile(filename2.c_str()));
@@ -211,8 +211,8 @@ TEST_F(CFilesTest, tst_removedirectorydeterministic) {
 
   long unused1;
   std::string unused2;
-  int res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
-  EXPECT_TRUE(0 == res);
+  auto res = TRI_CreateRecursiveDirectory(filename2.c_str(), unused1, unused2);
+  EXPECT_EQ(TRI_ERROR_NO_ERROR, res);
   EXPECT_TRUE(true == TRI_ExistsFile(filename1.c_str()));
   EXPECT_TRUE(true == TRI_IsDirectory(filename1.c_str()));
   EXPECT_TRUE(true == TRI_ExistsFile(filename2.c_str()));

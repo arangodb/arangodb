@@ -237,6 +237,20 @@ class VelocyPackHelper {
     return defaultValue;
   }
 
+  /// @brief specialization for ErrorCode, shortcut to avoid back-and-forth
+  /// casts from and to int.
+  template <>
+  ErrorCode getNumericValue<ErrorCode, ErrorCode, std::string_view>(
+      VPackSlice const& slice, std::string_view const& name, ErrorCode defaultValue) {
+    return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+  }
+  template <>
+  ErrorCode getNumericValue<ErrorCode, ErrorCode, std::string>(VPackSlice const& slice,
+                                                               std::string const& name,
+                                                               ErrorCode defaultValue) {
+    return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+  }
+
   /// @brief returns a boolean sub-element, or a default if it does not exist
   template <typename NameType>
   static bool getBooleanValue(VPackSlice const& slice, NameType const& name, bool defaultValue) {

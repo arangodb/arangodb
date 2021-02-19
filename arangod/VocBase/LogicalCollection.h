@@ -250,7 +250,7 @@ class LogicalCollection : public LogicalDataSource {
                                                    OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  int close();
+  ErrorCode close();
 
   // SECTION: Indexes
 

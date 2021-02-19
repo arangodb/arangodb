@@ -85,7 +85,7 @@ std::string const key_string = "_key";
 std::string const rev_string = "_rev";
 std::string const id_string = "_id";
 std::string const from_string = "_from";
-std::string const to_string = "_to";
+std::string const to_string_ = "_to";
 
 } // namespace
 
@@ -99,7 +99,7 @@ SpecialProperties view_to_special(std::string_view view) {
         return SpecialProperties::Rev;
     } else if (view == from_string) {
         return SpecialProperties::From;
-    } else if (view == to_string) {
+    } else if (view == to_string_) {
         return SpecialProperties::To;
     } else {
         return SpecialProperties::None;
@@ -220,7 +220,7 @@ tao::json::basic_schema<tao::json::traits>* new_schema(VPackSlice const& schema)
             return from_string;
         }
         case VelocyPackHelper::ToAttribute: {
-            return to_string;
+            return to_string_;
         }
     }
     assert(false);

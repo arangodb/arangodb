@@ -104,7 +104,7 @@ void QueryWarnings::updateOptions(QueryOptions const& opts) {
   _failOnWarning = opts.failOnWarning;
 }
 
-std::vector<std::pair<int, std::string>> QueryWarnings::all() const {
+std::vector<std::pair<ErrorCode, std::string>> QueryWarnings::all() const {
   std::lock_guard<std::mutex> guard(_mutex);
   return _list;
 }

@@ -467,9 +467,9 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
                                                       OperationResult const& result,
                                                       std::string const& key,
                                                       RevisionId rev) {
-  int code = result.errorNumber();
-  switch (code) {
-    case TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND:
+  auto const code = result.errorNumber();
+  switch (static_cast<int>(code)) {
+    case static_cast<int>(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND):
       if (collectionName.empty()) {
         // no collection name specified
         generateError(rest::ResponseCode::BAD, code,
@@ -481,16 +481,16 @@ void RestVocbaseBaseHandler::generateTransactionError(std::string const& collect
       }
       return;
 
-    case TRI_ERROR_ARANGO_READ_ONLY:
+    case static_cast<int>(TRI_ERROR_ARANGO_READ_ONLY):
       generateError(rest::ResponseCode::FORBIDDEN, code,
                     "collection is read-only");
       return;
 
-    case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND):
       generateDocumentNotFound(collectionName, key);
       return;
 
-    case TRI_ERROR_ARANGO_CONFLICT:
+    case static_cast<int>(TRI_ERROR_ARANGO_CONFLICT):
       if (result.buffer != nullptr && !result.slice().isNone()) {
         // This case happens if we come via the generateTransactionError that
         // has a proper OperationResult with a slice:

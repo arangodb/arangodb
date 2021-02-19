@@ -177,7 +177,7 @@ void errorCodesFromHeaders(network::Headers headers,
       VPackValueLength codeLength;
       char const* codeString = code.key.getString(codeLength);
       auto codeNr = NumberUtils::atoi_zero<int>(codeString, codeString + codeLength);
-      if (includeNotFound || codeNr != int(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      if (includeNotFound || codeNr != static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         errorCounter[codeNr] += code.value.getNumericValue<size_t>();
       }
     }

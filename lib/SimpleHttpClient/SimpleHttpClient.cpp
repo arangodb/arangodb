@@ -432,7 +432,7 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
 
   if (_state < FINISHED && _errorMessage.empty()) {
     setErrorMessage("Request timeout reached");
-    _result->setHttpReturnCode(int(ResponseCode::GATEWAY_TIMEOUT));
+    _result->setHttpReturnCode(static_cast<int>(ResponseCode::GATEWAY_TIMEOUT));
   }
 
   // set result type in getResult()

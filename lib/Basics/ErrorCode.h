@@ -26,6 +26,13 @@
 #include <iosfwd>
 #include <string>
 
+namespace arangodb::velocypack {
+class Value;
+}
+namespace arangodb::rest {
+enum class ResponseCode;
+}
+
 // TODO We probably want to put this into a namespace, but this is easy to
 //      refactor automatically later.
 
@@ -38,7 +45,15 @@ class ErrorCode {
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  constexpr explicit operator int() const noexcept { return _value; }
+  // This could also be constexpr, but we'd have to include "Rest/CommonDefines.h",
+  // and I'm unsure whether that's worth it, and rather rely on IPO here.
+  // explicit ErrorCode(arangodb::rest::ResponseCode code);
+
+  [[nodiscard]] constexpr explicit operator int() const noexcept { return _value; }
+
+  // This could also be constexpr, but we'd have to include <velocypack/Value.h>,
+  // and I'm unsure whether that's worth it, and rather rely on IPO here.
+  [[nodiscard]] explicit operator arangodb::velocypack::Value() const noexcept;
 
   [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept -> bool {
     return _value == other._value;
