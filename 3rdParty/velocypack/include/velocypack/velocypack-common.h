@@ -206,6 +206,55 @@ static inline int64_t toInt64(uint64_t v) noexcept {
                      : static_cast<int64_t>(v);
 }
 
+
+#ifdef _WIN32
+#pragma warning (push)
+#pragma warning (disable: 4554)
+#endif
+template <typename T, unsigned Bytes, unsigned Shift = 0>
+static inline T readIntFixed(uint8_t const* p) noexcept {
+  // bailout if nothing to shift or target type is too small for shift
+  // to avoid compiler warning
+  if constexpr (Bytes == 0 || sizeof(T) * 8 <= Shift) {
+      return 0;
+  } else {
+    return readIntFixed<T, Bytes - 1, Shift + 8>(p + 1) | (static_cast<T>(*p) << Shift);
+    // for some reason MSVC detects possible operator precedence error here ~~^                                                                          ^
+  }
+}
+#ifdef _WIN32
+#pragma warning (pop)
+#endif
+
+template <typename T>
+static inline T readIntegerFixed(uint8_t const* start, uint8_t length) noexcept {
+  switch (length) {
+    case 1:
+      return *start;
+    case 2:
+      return readIntFixed<T, 2>(start);
+    case 3:
+      return readIntFixed<T, 3>(start);
+    case 4:
+      return readIntFixed<T, 4>(start);
+    case 5:
+      return readIntFixed<T, 5>(start);
+    case 6:
+      return readIntFixed<T, 6>(start);
+    case 7:
+      return readIntFixed<T, 7>(start);
+    case 8: { 
+      // avoid compiler warning for small types
+      if constexpr (sizeof(T) == 8) {
+        T v;
+        memcpy(&v, start, 8);
+        return v;
+      }
+    }
+  }
+  return 0;
+}
+
 // read an unsigned little endian integer value of the
 // specified length, starting at the specified byte offset
 template <typename T, ValueLength length>
@@ -213,14 +262,32 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
+  static_assert(length <=8);
+  switch (length) {
+    case 1:
+      return *start;
+    case 2:
+      return readIntFixed<T, 2>(start);
+    case 3:
+      return readIntFixed<T, 3>(start);
+    case 4:
+      return readIntFixed<T, 4>(start);
+    case 5:
+      return readIntFixed<T, 5>(start);
+    case 6:
+      return readIntFixed<T, 6>(start);
+    case 7:
+      return readIntFixed<T, 7>(start);
+    case 8: { 
+      // avoid compiler warning for small types
+      if constexpr (sizeof(T) == 8) {
+        T v;
+        memcpy(&v, start, 8);
+        return v;
+      }
+    }
   }
-  return value;
+  return 0;
 }
 
 // read an unsigned little endian integer value of the
@@ -230,14 +297,33 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   VELOCYPACK_ASSERT(length > 0);
   VELOCYPACK_ASSERT(length <= sizeof(T));
-  uint64_t x = 8;
-  uint8_t const* end = start + length;
-  T value = static_cast<T>(*start++);
-  while (start < end) {
-    value += static_cast<T>(*start++) << x;
-    x += 8;
+  VELOCYPACK_ASSERT(length <= 8);
+  switch (length) {
+    case 1:
+      return *start;
+    case 2:
+      return readIntFixed<T, 2>(start);
+    case 3:
+      return readIntFixed<T, 3>(start);
+    case 4:
+      return readIntFixed<T, 4>(start);
+    case 5:
+      return readIntFixed<T, 5>(start);
+    case 6:
+      return readIntFixed<T, 6>(start);
+    case 7:
+      return readIntFixed<T, 7>(start);
+    case 8: { 
+      T v;
+      // avoid compiler warning for small types
+      if constexpr (sizeof(T) == 8) { 
+        memcpy(&v, start, 8);
+      }
+      return v; 
+    }
   }
-  return value;
+  VELOCYPACK_ASSERT(false);
+  return 0;
 }
 
 static inline uint64_t readUInt64(uint8_t const* start) noexcept {
