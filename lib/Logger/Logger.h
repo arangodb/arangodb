@@ -97,13 +97,6 @@ struct LogMessage {
         _message(std::move(message)),
         _offset(offset) {}
 
-  void shrink(std::size_t maxLength) {
-    if (_message.size() > maxLength) {
-      _message.resize(maxLength);
-      _message.append("...", 3);
-    }
-  }
-
   char const* _function;
   char const* _file;
   int const _line;

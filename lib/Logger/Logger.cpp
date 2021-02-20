@@ -387,18 +387,23 @@ void Logger::log(char const* function, char const* file, int line,
     StringUtils::itoa(uint64_t(line), out);
     out.append("] ", 2);
   }
+  
+  size_t offset = out.size();
 
   // generate the complete message
   out.append(message);
-
+  
   uint32_t maxLength = _maxEntryLength;
   // truncate message to maximum size
   if (out.size() > maxLength) {
     out.resize(maxLength);
     out.append("...", 3);
+
+    if (offset > maxLength) {
+      offset = maxLength;
+    }
   }
  
-  size_t offset = out.size() - message.size();
   auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
 
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
