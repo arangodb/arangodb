@@ -208,15 +208,15 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                   new DiscreteValuesParameter<StringParameter>(
                       &_minInMemoryLogLevel, logLevels),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30708);
+                  .setIntroducedIn(30709);
 }
 
 void LogBufferFeature::prepare() {
-    LogLevel level;
-    bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
-    if (!isValid) {
-      level = LogLevel::INFO;
-    }
+  LogLevel level;
+  bool isValid = Logger::translateLogLevel(_minInMemoryLogLevel, true, level);
+  if (!isValid) {
+    level = LogLevel::INFO;
+  }
 
   // only create the in-memory appender when we really need it. if we created it
   // in the ctor, we would waste a lot of memory in case we don't need the in-memory
