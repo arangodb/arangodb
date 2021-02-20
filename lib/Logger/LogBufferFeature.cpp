@@ -224,7 +224,7 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
       ->addOption("--log.in-memory", "use in-memory log appender, which can be queried via API and web UI",
                   new BooleanParameter(&_useInMemoryAppender),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30701);
+                  .setIntroducedIn(30800);
   
   std::unordered_set<std::string> const logLevels = { "fatal", "error", "err", "warning", "warn", "info", "debug", "trace" };
   options
@@ -232,7 +232,7 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                   new DiscreteValuesParameter<StringParameter>(
                       &_minInMemoryLogLevel, logLevels),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30800);
+                  .setIntroducedIn(30800).setIntroducedIn(30709);
 }
 
 void LogBufferFeature::prepare() {
