@@ -88,7 +88,8 @@ void Node::rebuildVecBuf() const {
         }
       }
     }
-    _vecBuf = std::make_unique<Buffer<uint8_t>>(std::move(*tmp.steal()));
+    _vecBuf = std::make_unique<SmallBuffer>(tmp.size());
+    memcpy(_vecBuf->data(), tmp.data(), tmp.size());
     _vecBufDirty = false;
   }
 }
@@ -140,7 +141,7 @@ Node::Node(Node const& other)
       _children(nullptr),
       _ttl(other._ttl),
       _value(nullptr),
-      _vecBuf(other._vecBuf ? std::make_unique<Buffer<uint8_t>>(*other._vecBuf) : nullptr),
+      _vecBuf(other._vecBuf ? std::make_unique<SmallBuffer>(*other._vecBuf) : nullptr),
       _vecBufDirty(other._vecBufDirty),
       _isArray(other._isArray) {
   if (other._children) {
@@ -248,7 +249,7 @@ Node& Node::operator=(Node const& rhs) {
     }
   } else {
     if (rhs._vecBuf) {
-      _vecBuf = std::make_unique<Buffer<uint8_t>>(*rhs._vecBuf);
+      _vecBuf = std::make_unique<SmallBuffer>(*rhs._vecBuf);
     }
   }
   _vecBufDirty = rhs._vecBufDirty;

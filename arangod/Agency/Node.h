@@ -417,7 +417,7 @@ class Node final {
   mutable std::unique_ptr<Children> _children;  ///< @brief child nodes
   TimePoint _ttl;                       ///< @brief my expiry
   std::unique_ptr<std::vector<SmallBuffer>> _value;  ///< @brief my value
-  mutable std::unique_ptr<Buffer<uint8_t>> _vecBuf;
+  mutable std::unique_ptr<SmallBuffer> _vecBuf;
   mutable bool _vecBufDirty;
   bool _isArray;
   static Children const dummyChildren;
