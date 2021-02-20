@@ -1124,6 +1124,10 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
+  if (value == -0.0) {
+    // unify -0.0 and +0.0 
+    value = 0.0;
+  }
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
@@ -3000,30 +3004,33 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
     return const_cast<AstNode*>(converted);
-  } else {
-    // - number
-    if (converted->value.type == VALUE_TYPE_INT) {
-      // int64
-      return createNodeValueInt(-converted->getIntValue());
-    } else {
-      // double
-      double const value = -converted->getDoubleValue();
-
-      if (value != value ||  // intentional
-          value == HUGE_VAL || value == -HUGE_VAL) {
-        // IEEE754 NaN values have an interesting property that we can
-        // exploit...
-        // if the architecture does not use IEEE754 values then this shouldn't
-        // do
-        // any harm either
-        return const_cast<AstNode*>(&_specialNodes.ZeroNode);
-      }
-
-      return createNodeValueDouble(value);
-    }
+  }
+  
+  // - number
+  if (converted->value.type == VALUE_TYPE_INT) {
+    // int64
+    return createNodeValueInt(-converted->getIntValue());
   }
 
-  TRI_ASSERT(false);
+  // double
+  double value = -converted->getDoubleValue();
+
+  if (value != value ||  // intentional
+      value == HUGE_VAL || value == -HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can
+    // exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't
+    // do
+    // any harm either
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
+  }
+
+  if (value == -0.0) {
+    // unify +0.0 and -0.0
+    value = 0.0;
+  }
+
+  return createNodeValueDouble(value);
 }
 
 /// @brief optimizes the unary operator NOT
