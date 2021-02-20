@@ -6,6 +6,14 @@ devel
   provide a better progress indicator, especially if there is more than one
   follower for a shard.
 
+* For Windows builds, remove the defines `_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS`
+  and `_ENABLE_ATOMIC_ALIGNMENT_FIX` that were needed to build Boost components
+  with MSVC in older versions of Boost and MSVC.
+  Both of these defines are obsolete nowadays.
+
+* Database initial sync considers document count on leader for
+  estimating timeouts when over 1 million docs on leader.
+
 * EE only bugfix: On DisjointSmartGraphs that are used in anonymous way,
   there was a chance that the query could fail, if non-disjoint collections
   were part of the query. Named DisjointSmartGraphs have been save to this bug.
