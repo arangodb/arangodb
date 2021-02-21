@@ -227,12 +227,13 @@ VELOCYPACK_FORCE_INLINE T littleToHost(T in) noexcept {
   return in;
 }
 
+
 // unified size type for VPack, can be used on 32 and 64 bit
 // though no VPack values can exceed the bounds of 32 bit on a 32 bit OS
 typedef uint64_t ValueLength;
 
 // disable hand-coded SSE4_2 functions for JSON parsing
-// this must be called before the JSON parser is used 
+// this must be called before the JSON parser is used
 void disableAssemblerFunctions();
 
 // whether or not the SSE4_2 functions are disabled
@@ -248,7 +249,6 @@ static VELOCYPACK_FORCE_INLINE constexpr std::size_t checkOverflow(ValueLength l
   return static_cast<std::size_t>(length);
 }
 #endif
-
 
 // calculate the length of a variable length integer in unsigned LEB128 format
 static inline ValueLength getVariableValueLength(ValueLength value) noexcept {
@@ -321,6 +321,26 @@ static inline int64_t toInt64(uint64_t v) noexcept {
                      : static_cast<int64_t>(v);
 }
 
+
+#ifdef _WIN32
+#pragma warning(push)
+#pragma warning(disable: 4554)
+#endif
+template <typename T, unsigned Bytes, unsigned Shift = 0>
+static inline T readIntFixedHelper(uint8_t const* p) noexcept {
+  // bailout if nothing to shift or target type is too small for shift
+  // to avoid compiler warning
+  if constexpr (Bytes == 0 || sizeof(T) * 8 <= Shift) {
+      return 0;
+  } else {
+    return readIntFixedHelper<T, Bytes - 1, Shift + 8>(p + 1) | (static_cast<T>(*p) << Shift);
+    // for some reason MSVC detects possible operator precedence error here ~~^                                                                          ^
+  }
+}
+#ifdef _WIN32
+#pragma warning(pop)
+#endif
+
 // read an unsigned little endian integer value of the
 // specified length, starting at the specified byte offset
 template <typename T, ValueLength length>
@@ -328,12 +348,51 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   static_assert(length > 0, "length must be > 0");
   static_assert(length <= sizeof(T), "length must be <= sizeof(T)");
-  T value{0};
-  memcpy(&value, start, length);
-  if constexpr (!isLittleEndian()) {
-   value = littleToHost(value);
+  static_assert(length <=8);
+  switch (length) {
+    case 1:
+      return *start;
+    case 2:
+      return readIntFixedHelper<T, 2>(start);
+    case 3:
+      return readIntFixedHelper<T, 3>(start);
+    case 4:
+      return readIntFixedHelper<T, 4>(start);
+    case 5: // starting with 5 bytes memcpy shows better results than shifts. But
+            // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 5>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 5);
+        return v;
+      }
+    case 6:
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 6>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 6);
+        return v;
+      }
+    case 7:
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 7>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 7);
+        return v;
+      }
+    case 8: {
+      T v;
+      memcpy(&v, start, 8);
+      if constexpr (!isLittleEndian()) {
+        v = littleToHost(v);
+      }
+      return v;
+    }
   }
-  return value;
+  return 0;
 }
 
 // read an unsigned little endian integer value of the
@@ -343,12 +402,27 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
   static_assert(std::is_unsigned<T>::value, "result type must be unsigned");
   VELOCYPACK_ASSERT(length > 0);
   VELOCYPACK_ASSERT(length <= sizeof(T));
-  T value{0};
-  memcpy(&value, start, length);
-  if constexpr (!isLittleEndian()) {
-    value = littleToHost(value);
+  VELOCYPACK_ASSERT(length <= 8);
+  switch (length) {
+    case 1:
+      return *start;
+    case 2:
+      return readIntegerFixed<T, 2>(start);
+    case 3:
+      return readIntegerFixed<T, 3>(start);
+    case 4:
+      return readIntegerFixed<T, 4>(start);
+    case 5:
+      return readIntegerFixed<T, 5>(start);
+    case 6:
+      return readIntegerFixed<T, 6>(start);
+    case 7:
+      return readIntegerFixed<T, 7>(start);
+    case 8:
+      return readIntegerFixed<T, 8>(start);
   }
-  return value;
+  VELOCYPACK_ASSERT(false);
+  return 0;
 }
 
 static inline uint64_t readUInt64(uint8_t const* start) noexcept {
@@ -356,11 +430,10 @@ static inline uint64_t readUInt64(uint8_t const* start) noexcept {
 }
 
 static inline void storeUInt64(uint8_t* start, uint64_t value) noexcept {
- if constexpr (!isLittleEndian()) {
-   value = hostToLittle(value);
- }
- memcpy(start, &value, sizeof(value));
-
+  if constexpr (!isLittleEndian()) {
+    value = hostToLittle(value);
+  }
+  memcpy(start, &value, sizeof(value));
 }
 
 }  // namespace arangodb::velocypack
