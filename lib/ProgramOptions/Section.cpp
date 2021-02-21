@@ -73,7 +73,7 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
 
   // propagate print command to options
   for (auto const& it : options) {
-    if (hl != headlines.end() && it.first > (*hl).first) {
+    if (hl != headlines.end() && it.first >= (*hl).first) {
       // must print a headline
       std::cout << " # " << (*hl).second << std::endl;
       ++hl;
