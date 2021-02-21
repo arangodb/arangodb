@@ -290,7 +290,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
 void ApplicationServer::collectOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
-  _options->addSection(Section("", "Global configuration", "global options", false, false));
+  _options->addSection(Section("", "Global configuration", "", "global options", false, false));
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
