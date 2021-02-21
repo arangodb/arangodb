@@ -6,4 +6,5 @@ audit
 dfdb
 fuerte
 agency-restart
+dump_jwt
 dump_no_envelope
