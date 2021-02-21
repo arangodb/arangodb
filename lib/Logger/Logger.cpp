@@ -102,7 +102,7 @@ void LogMessage::shrink(std::size_t maxLength) {
     if (_offset > _message.size()) {
       // we need to make sure that the offset is not outside of the message
       // after shrinking
-      _offset = _message.size();
+      _offset = static_cast<uint32_t>(_message.size());
     }
     _message.append("...", 3);
     _shrunk = true;
