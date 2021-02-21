@@ -327,48 +327,19 @@ static inline int64_t toInt64(uint64_t v) noexcept {
 #pragma warning(disable: 4554)
 #endif
 template <typename T, unsigned Bytes, unsigned Shift = 0>
-static inline T readIntFixed(uint8_t const* p) noexcept {
+static inline T readIntFixedHelper(uint8_t const* p) noexcept {
   // bailout if nothing to shift or target type is too small for shift
   // to avoid compiler warning
   if constexpr (Bytes == 0 || sizeof(T) * 8 <= Shift) {
       return 0;
   } else {
-    return readIntFixed<T, Bytes - 1, Shift + 8>(p + 1) | (static_cast<T>(*p) << Shift);
+    return readIntFixedHelper<T, Bytes - 1, Shift + 8>(p + 1) | (static_cast<T>(*p) << Shift);
     // for some reason MSVC detects possible operator precedence error here ~~^                                                                          ^
   }
 }
 #ifdef _WIN32
 #pragma warning(pop)
 #endif
-
-template <typename T>
-static inline T readIntegerFixed(uint8_t const* start, uint8_t length) noexcept {
-  switch (length) {
-    case 1:
-      return *start;
-    case 2:
-      return readIntFixed<T, 2>(start);
-    case 3:
-      return readIntFixed<T, 3>(start);
-    case 4:
-      return readIntFixed<T, 4>(start);
-    case 5:
-      return readIntFixed<T, 5>(start);
-    case 6:
-      return readIntFixed<T, 6>(start);
-    case 7:
-      return readIntFixed<T, 7>(start);
-    case 8: {
-      // avoid compiler warning for small types
-      if constexpr (sizeof(T) == 8) {
-        T v;
-        memcpy(&v, start, 8);
-        return v;
-      }
-    }
-  }
-  return 0;
-}
 
 // read an unsigned little endian integer value of the
 // specified length, starting at the specified byte offset
@@ -382,27 +353,43 @@ static inline T readIntegerFixed(uint8_t const* start) noexcept {
     case 1:
       return *start;
     case 2:
-      return readIntFixed<T, 2>(start);
+      return readIntFixedHelper<T, 2>(start);
     case 3:
-      return readIntFixed<T, 3>(start);
+      return readIntFixedHelper<T, 3>(start);
     case 4:
-      return readIntFixed<T, 4>(start);
-    case 5:
-      return readIntFixed<T, 5>(start);
-    case 6:
-      return readIntFixed<T, 6>(start);
-    case 7:
-      return readIntFixed<T, 7>(start);
-    case 8: {
-      // avoid compiler warning for small types
-      if constexpr (sizeof(T) == 8) {
-        T v;
-        memcpy(&v, start, 8);
-        if constexpr (!isLittleEndian()) {
-          v = littleToHost(v);
-        }
+      return readIntFixedHelper<T, 4>(start);
+    case 5: // starting with 5 bytes memcpy shows better results than shifts. But
+            // for big-endian we leave shifts as this saves some cpu cyles on byteswapping
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 5>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 5);
         return v;
       }
+    case 6:
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 6>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 6);
+        return v;
+      }
+    case 7:
+      if constexpr (!isLittleEndian()) {
+        return readIntFixedHelper<T, 7>(start);
+      } else {
+        T v{};
+        memcpy(&v, start, 7);
+        return v;
+      }
+    case 8: {
+      T v;
+      memcpy(&v, start, 8);
+      if constexpr (!isLittleEndian()) {
+        v = littleToHost(v);
+      }
+      return v;
     }
   }
   return 0;
@@ -420,28 +407,19 @@ static inline T readIntegerNonEmpty(uint8_t const* start, ValueLength length) no
     case 1:
       return *start;
     case 2:
-      return readIntFixed<T, 2>(start);
+      return readIntegerFixed<T, 2>(start);
     case 3:
-      return readIntFixed<T, 3>(start);
+      return readIntegerFixed<T, 3>(start);
     case 4:
-      return readIntFixed<T, 4>(start);
+      return readIntegerFixed<T, 4>(start);
     case 5:
-      return readIntFixed<T, 5>(start);
+      return readIntegerFixed<T, 5>(start);
     case 6:
-      return readIntFixed<T, 6>(start);
+      return readIntegerFixed<T, 6>(start);
     case 7:
-      return readIntFixed<T, 7>(start);
-    case 8: {
-      // avoid compiler warning for small types
-      if constexpr (sizeof(T) == 8) {
-        T v;
-        memcpy(&v, start, 8);
-        if constexpr (!isLittleEndian()) {
-          v = littleToHost(v);
-        }
-        return v;
-      }
-    }
+      return readIntegerFixed<T, 7>(start);
+    case 8:
+      return readIntegerFixed<T, 8>(start);
   }
   VELOCYPACK_ASSERT(false);
   return 0;
