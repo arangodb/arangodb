@@ -119,6 +119,7 @@ target_link_libraries(${BIN_ARANGOBACKUP}
   boost_system
   boost_boost
   arango_shell
+  fuerte
 )
 
 install(
