@@ -38,10 +38,10 @@ BlockCollector::~BlockCollector() { clear(); }
 
 size_t BlockCollector::totalSize() const { return _totalSize; }
 
-RegisterId BlockCollector::nrRegs() const {
+RegisterCount BlockCollector::nrRegs() const {
   TRI_ASSERT(_totalSize > 0);
   TRI_ASSERT(!_blocks.empty());
-  return static_cast<RegisterId>(_blocks[0]->numRegisters());
+  return _blocks[0]->numRegisters();
 }
 
 void BlockCollector::clear() {

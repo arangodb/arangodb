@@ -80,7 +80,7 @@ std::ostream& operator<<(std::ostream& out, WindowInput const& agg) {
   out << b.toJson() << " ";
   out << agg.name;
   if (agg.inReg != RegisterPlan::MaxRegisterId) {
-    out << " reg: " << agg.inReg;
+    out << " reg: " << agg.inReg.value();
   }
   return out;
 }
@@ -100,8 +100,8 @@ class WindowExecutorTest
     return info;
   }
 
-  auto buildRegisterInfos(RegisterId nrInputRegisters,
-                          RegisterId nrOutputRegisters)
+  auto buildRegisterInfos(RegisterCount nrInputRegisters,
+                          RegisterCount nrOutputRegisters)
       -> RegisterInfos {
     RegIdSet registersToClear{};
     RegIdSetStack registersToKeep{{}};
@@ -109,7 +109,7 @@ class WindowExecutorTest
     auto writeableOutputRegisters = RegIdSet{};
 
     RegIdSet toKeep;
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be kept!
       toKeep.emplace(i);
     }

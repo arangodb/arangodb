@@ -210,7 +210,7 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
         if (!hasShadowRows || !newBlock->isShadowRow(row)) {
           for (auto const& reg : regs) {
             AqlValue const& val = newBlock->getValueReference(row, reg);
-            TRI_ASSERT(val.isEmpty());
+            TRI_ASSERT(val.isEmpty() && reg.isRegularRegister());
           }
         }
       }

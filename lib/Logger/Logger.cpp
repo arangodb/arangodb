@@ -78,6 +78,37 @@ class DefaultLogGroup final : public LogGroup {
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
+  
+LogMessage::LogMessage(char const* function, char const* file, int line,
+                       LogLevel level, size_t topicId, std::string&& message, 
+                       uint32_t offset, bool shrunk) noexcept
+    : _function(function),
+      _file(file),
+      _line(line),
+      _level(level),
+      _topicId(topicId),
+      _message(std::move(message)),
+      _offset(offset),
+      _shrunk(shrunk) {}
+  
+void LogMessage::shrink(std::size_t maxLength) {
+  // no need to shrink an already shrunk message
+  if (!_shrunk && _message.size() > maxLength) {
+    _message.resize(maxLength);
+
+    // normally, offset should be around 20 to 30 bytes,
+    // whereas the minimum for maxLength should be around 256 bytes.
+    TRI_ASSERT(maxLength > _offset);
+    if (_offset > _message.size()) {
+      // we need to make sure that the offset is not outside of the message
+      // after shrinking
+      _offset = static_cast<uint32_t>(_message.size());
+    }
+    _message.append("...", 3);
+    _shrunk = true;
+  }
+}
+
 
 Mutex Logger::_initializeMutex;
 

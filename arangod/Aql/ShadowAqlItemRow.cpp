@@ -55,8 +55,9 @@ bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
-  return block().getValueReference(_baseIndex, registerId);
+  return block().getValueReference(_baseIndex, registerId.value());
 }
 
 AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
@@ -106,7 +107,7 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNumRegisters(); ++i) {
+  for (RegisterId::value_t i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }
