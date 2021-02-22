@@ -1124,6 +1124,10 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+    return createNodeValueNull();
+  }
+
   if (value == -0.0) {
     // unify -0.0 and +0.0 
     value = 0.0;
