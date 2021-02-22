@@ -3,6 +3,7 @@
     <div class="dashboard-sub-bar-title"><%= title %></div>
   </div>
 <% } %>
+
 <% var largeChart = function(name, title, arrows) { %>
   <div class="dashboard-large-chart pure-u-1-1 pure-u-sm-1-1 pure-u-md-2-3">
     <div class="dashboard-large-chart-inner dashboard-chart" id="<%= name %>Container">
@@ -39,6 +40,7 @@
     <% subBar(title) %>
   </div>
 <% } %>
+
 <% var tendency = function(title, name, arrows) { %>
 
 <div class="dashboard-tendency-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
@@ -122,22 +124,22 @@
               </div>
             </div>
           </div>
-          <div class="dashboard-sub-bar"
-          ">Memory
+          <div class="dashboard-sub-bar">Memory
+          </div>
         </div>
+
+        <% tendency("Virtual Size in GB", "virtualSize", false); %>
+      </div>
+      <div class="dashboard-row pure-u" style="width: 100%">
+        <% mediumChart("pageFaultsChart", "Major Page Faults") %>
+        <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
       </div>
 
-      <% tendency("Virtual Size in GB", "virtualSize", false); %>
     </div>
-    <div class="dashboard-row pure-u" style="width: 100%">
-      <% mediumChart("pageFaultsChart", "Major Page Faults") %>
-      <% mediumChart("systemUserTimeChart", "Used CPU Time per Second") %>
+
+    <div id="logs" class="tendency-box-sizing" style="display: none">
+      <b>Logs will appear here :-)</b>
     </div>
 
   </div>
-
-  <div id="logs" class="tendency-box-sizing" style="display: none">
-    <b>Logs will appear here :-)</b>
-  </div>
-
 </div>
