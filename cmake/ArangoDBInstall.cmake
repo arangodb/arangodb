@@ -163,6 +163,43 @@ install(
     ${CMAKE_INSTALL_LOCALSTATEDIR}/lib
 )
 
+
+################################################################################
+### @brief if you want to install the integration tests:
+################################################################################
+
+install(
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/js/client/modules/@arangodb/testsuites
+    ${PROJECT_SOURCE_DIR}/js/client/modules/@arangodb/testutils
+    ${PROJECT_SOURCE_DIR}/tests/js/
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
+install(
+  DIRECTORY
+    ${PROJECT_SOURCE_DIR}/UnitTests
+  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/Unittests
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+  )
+
+
+configure_file(
+    ${PROJECT_SOURCE_DIR}/scripts/_unittests.in
+    "${PROJECT_BINARY_DIR}/unittests"
+    NEWLINE_STYLE UNIX
+    @ONLY)
+
+install(
+  FILES "${PROJECT_BINARY_DIR}/unittests"
+  DESTINATION ${CMAKE_INSTALL_BINDIR}/
+  COMPONENT testsuites
+  EXCLUDE_FROM_ALL
+)
+
+
 ################################################################################
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
