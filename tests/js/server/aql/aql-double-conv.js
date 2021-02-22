@@ -64,6 +64,14 @@ function doubleConvSuite () {
       const q4 = `RETURN NOOPT(-1.0) / NOOPT(-0.0)`;
       res = db._query(q4).toArray()[0];
       assertNull(res);
+      
+      const q5 = `RETURN 0.0 / 0.0`;
+      res = db._query(q5).toArray()[0];
+      assertNull(res);
+      
+      const q6 = `RETURN NOOPT(0.0) / NOOPT(0.0)`;
+      res = db._query(q6).toArray()[0];
+      assertNull(res);
     },
     
     testPosNegNullGrouping: function () {
