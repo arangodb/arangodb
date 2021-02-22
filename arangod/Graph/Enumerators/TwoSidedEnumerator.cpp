@@ -136,19 +136,19 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       }
     }
   }
-  //if (!looseEnds.empty()) {
-    // futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+
+  if (!looseEnds.empty()) {
+    // Will throw all network errors here
+    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    futureEnds.get();
+    // Notes for the future:
+    // Vertices are now fetched. Thnink about other less-blocking and batch-wise
+    // fetching (e.g. re-fetch at some later point).
     // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in fetch as fetched.
     // This works, but we might create a batch limit here in the future.
     // Also discuss: Do we want (re-)fetch logic here?
-
-    // Will throw all network errors here
-    //auto&& preparedEnds = futureEnds.get();
-    // LOG_DEVEL << "needs to be implemented: " << preparedEnds;
-    // TODO: we need to ensure that we now have all vertices fetched - (future - not yet implemented and not relevant yet)
-    // or that we need to refetch at some later point.
     // TODO: maybe we can combine this with prefetching of paths
-  //}
+  }
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
