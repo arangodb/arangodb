@@ -5674,9 +5674,6 @@ function testEmptyGraphKPathsOutbound(testGraph) {
       `;
 
   const res = db._query(query);
-
-  console.error(res.toArray());
-  console.error(res.getExtra());
   const foundPaths = res.toArray();
   assertEqual(foundPaths.length, 0);
 }
