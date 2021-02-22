@@ -172,7 +172,6 @@ std::unique_ptr<fuerte::Response> PreparedRequestResponse::generateResponse() co
   auto resp = std::make_unique<fuerte::Response>(header);
   velocypack::Buffer<uint8_t> cloned{*payloadBuilder.buffer()};
   resp->setPayload(std::move(cloned), 0);
-  LOG_DEVEL << "I got a response";
   return resp;
 }
 

@@ -69,7 +69,9 @@ class GraphProviderTest : public ::testing::Test {
   GraphProviderTest() {}
   ~GraphProviderTest() {}
 
-  auto makeProvider(MockGraph const& graph) -> ProviderType {
+  auto makeProvider(MockGraph const& graph,
+                    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch)
+      -> ProviderType {
     // Setup code for each provider type
     if constexpr (std::is_same_v<ProviderType, MockGraphProvider>) {
       s = std::make_unique<GraphTestSetup>();
@@ -149,13 +151,12 @@ class GraphProviderTest : public ::testing::Test {
         opts.addReverseLookupInfo(fakeQuery.plan(), "s9880",
                                   StaticStrings::FromString, toCondition);
 
-        std::unordered_set<MockGraph::VertexDef, MockGraph::hashVertexDef> verticesList {{"v/0"}};
-        
-        std::tie(preparedResponses, engineId) = graph.simulateApi(server, verticesList, opts);
-        LOG_DEVEL << "Debug, size is: " << preparedResponses.size();
-        for (auto const& resp : preparedResponses) {
+        std::tie(preparedResponses, engineId) =
+            graph.simulateApi(server, expectedVerticesEdgesBundleToFetch, opts);
+        // Note: Please don't remove for debugging purpose.
+        /*for (auto const& resp : preparedResponses) {
           LOG_DEVEL << resp.generateResponse()->copyPayload().get()->toString();
-        }
+        }*/
       }
 
       server = std::make_unique<mocks::MockCoordinator>(false);
@@ -199,7 +200,9 @@ TYPED_TEST_CASE(GraphProviderTest, TypesToTest);
 TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
   MockGraph empty{};
 
-  TypeParam testee = this->makeProvider(empty);
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
+      {0, {}}};
+  TypeParam testee = this->makeProvider(empty, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
@@ -236,7 +239,13 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   MockGraph g{};
   g.addEdge(0, 1);
 
-  auto testee = this->makeProvider(g);
+  /* Expected http calls:
+   * [v, [e1, e2, e3]]
+   */
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
+      {0, {}}};
+
+  auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
   std::string startString = "v/0";
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
@@ -287,11 +296,21 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
   g.addEdge(0, 3);
   std::unordered_set<std::string> found{};
 
-  auto testee = this->makeProvider(g);
-  std::string startString = "v/0";
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
+      {0, {}}
+  };
+  auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
+  std::string startString = g.vertexToId(0);
   VPackHashedStringRef startH{startString.c_str(),
                               static_cast<uint32_t>(startString.length())};
   auto start = testee.startVertex(startH);
+
+  if (start.isLooseEnd()) {
+    std::vector<decltype(start)*> looseEnds{};
+    looseEnds.emplace_back(&start);
+    auto futures = testee.fetch(looseEnds);
+    auto steps = futures.get();
+  }
 
   std::vector<typename decltype(testee)::Step> result{};
   testee.expand(start, 0, [&](typename decltype(testee)::Step n) -> void {

@@ -88,7 +88,6 @@ class MockGraph {
   ~MockGraph() {}
 
   void addEdge(std::string from, std::string to, double weight = 1.0);
-
   void addEdge(size_t from, size_t to, double weight = 1.0);
 
   auto edges() const -> std::vector<EdgeDef> const& { return _edges; }
@@ -99,8 +98,17 @@ class MockGraph {
   std::string const& getVertexCollectionName() const {
     return _vertexCollectionName;
   }
+
   std::string const& getEdgeCollectionName() const {
     return _edgeCollectionName;
+  }
+
+  std::string const vertexToId(size_t vertex) const {
+    return _vertexCollectionName + "/" + std::to_string(vertex);
+  }
+
+  std::string const edgeToId(size_t edge) const {
+    return _edgeCollectionName + "/" + std::to_string(edge);
   }
 
   template <class ServerType>
@@ -108,7 +116,8 @@ class MockGraph {
 
   template <class ServerType>
   std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> simulateApi(
-      ServerType& server, std::unordered_set<VertexDef, hashVertexDef> verticesList,
+      ServerType& server,
+      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch,
       arangodb::graph::BaseOptions& opts) const;
 
   void storeData(TRI_vocbase_t& vocbase, std::string const& vertexCollectionName,

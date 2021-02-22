@@ -25,6 +25,7 @@
 #include "IResearch/RestHandlerMock.h"
 #include "InternalRestHandler/InternalRestTraverserHandler.h"
 
+#include "MockGraph.h"
 #include "gtest/gtest.h"
 
 #include "Mocks/PreparedResponseConnectionPool.h"
@@ -170,7 +171,8 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
 template <>
 // Future: Also engineID's need to be returned here.
 std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockGraph::simulateApi(
-    MockDBServer& server, std::unordered_set<VertexDef, hashVertexDef> verticesList,
+    MockDBServer& server,
+    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch,
     arangodb::graph::BaseOptions& opts) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
@@ -273,7 +275,10 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
   // merge given vertices with available graph vertices
   // verticesList.insert(vertices().begin(), vertices().end());
 
-  for (auto const& vertex : verticesList) {
+  for (auto const& vertexBundle : expectedVerticesEdgesBundleToFetch) {
+    auto vertex = vertexBundle.first;
+    auto edges = vertexBundle.second;
+
     {
       // 1.) fetch the vertex itself
       arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
@@ -285,7 +290,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       VPackBuilder leased;
       leased.openObject();
       leased.add("keys", VPackValue(VPackValueType::Array));
-      leased.add(VPackValue(vertex._id));
+      leased.add(VPackValue(vertexToId(vertex)));
       leased.close();  // 'keys' Array
       leased.close();  // base object
 
@@ -320,7 +325,7 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
        */
       VPackBuilder leased;
       leased.openObject();
-      leased.add("keys", VPackValue(vertex._id));
+      leased.add("keys", VPackValue(vertexToId(vertex)));
       leased.add("backward", VPackValue(false));
       leased.close();  // base object
 
