@@ -87,27 +87,13 @@ struct LogMessage {
 
   LogMessage(char const* function, char const* file, int line,
              LogLevel level, size_t topicId, std::string&& message, 
-             uint32_t offset, bool shrunk)
-      : _function(function),
-        _file(file),
-        _line(line),
-        _level(level),
-        _topicId(topicId),
-        _message(std::move(message)),
-        _offset(offset),
-        _shrunk(shrunk) {}
+             uint32_t offset, bool shrunk) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
 
-  void shrink(std::size_t maxLength) {
-    // no need to shrink an already shrunk message
-    if (!_shrunk && _message.size() > maxLength) {
-      _message.resize(maxLength);
-      _message.append("...", 3);
-      _shrunk = true;
-    }
-  }
+  /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
+  void shrink(std::size_t maxLength);
 
   /// @brief all details about the log message. we need to
   /// keep all this data around and not just the big log
@@ -127,7 +113,7 @@ struct LogMessage {
   /// @biref the actual log message
   std::string _message;
   /// @brief byte offset where actual message starts (i.e. excluding prologue)
-  uint32_t const _offset;
+  uint32_t _offset;
   /// @brief whether or not the log message was already shrunk (used to
   /// prevent duplicate shrinking of message)
   bool _shrunk;
