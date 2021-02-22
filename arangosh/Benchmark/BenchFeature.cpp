@@ -68,7 +68,6 @@ using namespace arangodb::rest;
 /// We use an evil global pointer here.
 ////////////////////////////////////////////////////////////////////////////////
 
-BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
@@ -160,18 +159,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "test for duration seconds instead of a fixed test count",
                      new UInt64Parameter(&_duration));
 
-  std::unordered_set<std::string> cases = {
-      "version",         "stream-cursor",
-      "document",        "collection",
-      "import-document", "hash",
-      "skiplist",        "edge",
-      "shapes",          "shapes-append",
-      "random-shapes",   "crud",
-      "crud-append",     "crud-write-read",
-      "aqltrx",          "counttrx",
-      "multitrx",        "multi-collection",
-      "aqlinsert",       "aqlv8"};
-
+  std::unordered_set<std::string> cases;
+  for (auto& [name, _] : BenchmarkOperation::allBenchmarks()) {
+    cases.emplace(name);
+  };
   options->addOption("--test-case", "test case to use",
                      new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
@@ -264,12 +255,10 @@ void BenchFeature::start() {
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
-  ARANGOBENCH = this;
 
-  std::unique_ptr<BenchmarkOperation> benchmark(GetTestCase(_testCase));
+  std::unique_ptr<BenchmarkOperation> benchmark = BenchmarkOperation::createBenchmark(_testCase, *this);
 
   if (benchmark == nullptr) {
-    ARANGOBENCH = nullptr;
     LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::FIXME)
         << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
@@ -619,4 +608,3 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
   }
 }
 
-void BenchFeature::unprepare() { ARANGOBENCH = nullptr; }

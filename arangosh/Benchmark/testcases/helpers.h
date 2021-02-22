@@ -18,27 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "testcases\AqlInsertTest.h"
-#include "testcases\AqlV8Test.h"
-#include "testcases\CollectionCreationTest.h"
-#include "testcases\DocumentCreationTest.h"
-#include "testcases\DocumentCrudAppendTest.h"
-#include "testcases\DocumentCrudTest.h"
-#include "testcases\DocumentCrudWriteReadTest.h"
-#include "testcases\DocumentImportTest.h"
-#include "testcases\EdgeCrudTest.h"
-#include "testcases\HashTest.h"
-#include "testcases\RandomShapesTest.h"
-#include "testcases\ShapesAppendTest.h"
-#include "testcases\ShapesTest.h"
-#include "testcases\SkiplistTest.h"
-#include "testcases\StreamCursorTest.h"
-#include "testcases\TransactionAqlTest.h"
-#include "testcases\TransactionCountTest.h"
-#include "testcases\TransactionDeadlockTest.h"
-#include "testcases\TransactionMultiCollectionTest.h"
-#include "testcases\TransactionMultiTest.h"
-#include "testcases\VersionTest.h"
+#ifndef ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
+#define ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
+
+#include "SimpleHttpClient/SimpleHttpClient.h"
+
+namespace arangodb {
+  class BenchFeature;
+}
+
+namespace arangodb::arangobench {
+
+bool DeleteCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&);
+
+bool CreateCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&, int const, BenchFeature const& arangobench);
+
+bool CreateDocument(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                    std::string const&);
+
+bool CreateIndex(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                 std::string const&, std::string const&);
+}  // namespace arangodb::arangobench
+#endif

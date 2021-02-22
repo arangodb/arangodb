@@ -28,6 +28,8 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <velocypack/velocypack-aliases.h>
+
 namespace arangodb {
 
 class ClientFeature;
@@ -52,7 +54,6 @@ class BenchFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void start() override final;
-  void unprepare() override final;
 
   bool async() const { return _async; }
   uint64_t concurrency() const { return _concurrency; }

@@ -18,27 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "testcases\AqlInsertTest.h"
-#include "testcases\AqlV8Test.h"
-#include "testcases\CollectionCreationTest.h"
-#include "testcases\DocumentCreationTest.h"
-#include "testcases\DocumentCrudAppendTest.h"
-#include "testcases\DocumentCrudTest.h"
-#include "testcases\DocumentCrudWriteReadTest.h"
-#include "testcases\DocumentImportTest.h"
-#include "testcases\EdgeCrudTest.h"
-#include "testcases\HashTest.h"
-#include "testcases\RandomShapesTest.h"
-#include "testcases\ShapesAppendTest.h"
-#include "testcases\ShapesTest.h"
-#include "testcases\SkiplistTest.h"
-#include "testcases\StreamCursorTest.h"
-#include "testcases\TransactionAqlTest.h"
-#include "testcases\TransactionCountTest.h"
-#include "testcases\TransactionDeadlockTest.h"
-#include "testcases\TransactionMultiCollectionTest.h"
-#include "testcases\TransactionMultiTest.h"
-#include "testcases\VersionTest.h"
+#include "BenchmarkOperation.h"
+
+namespace arangodb::arangobench {
+
+std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
+  // this is a static inline variable to avoid issues with initialization order.
+  static std::map<std::string, BenchmarkFactory> benchmarks;
+  return benchmarks;
+}
+
+std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::string const& name, BenchFeature& arangobench) {
+  auto it = allBenchmarks().find(name);
+  if (it != allBenchmarks().end()) {
+    return it->second.operator()(arangobench);
+  }
+  return nullptr;
+}
+
+void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
+  allBenchmarks().emplace(std::move(name), std::move(factory));
+}
+
+}  // namespace arangodb::arangobench
