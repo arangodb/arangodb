@@ -1,6 +1,13 @@
 devel
 -----
 
+* Prevent arangosh from trying to connect after every executed command.
+  This fixes the case when arangosh is started with default options, but no
+  server is running on localhost:8529. In this particular case, arangosh will
+  try to connect on startup and after every executed shell command. The
+  connect attempts all fail and time out after 300ms.
+  In this case we now don't try to reconnect after every command.
+
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
