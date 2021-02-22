@@ -308,6 +308,7 @@ class DumpRestoreHelper {
       this.results.restore = this.arangorestore();
       if (this.results.restore.exitCode === 38) {
         print("Failure point has terminated the application, restarting");
+        require('internal').sleep(1);
         this.restoreConfig.enableContinue();
       }
     } while(this.results.restore.exitCode === 38);
