@@ -236,8 +236,6 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     }
     _stats.addFiltered(Helper::getNumericValue<size_t>(resSlice, "filtered", 0));
     _stats.addScannedIndex(Helper::getNumericValue<size_t>(resSlice, "readIndex", 0));
-    /*_opts.getCache()->insertedDocuments() +=
-        Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);*/
 
     bool allCached = true;
     VPackSlice edges = resSlice.get("edges");

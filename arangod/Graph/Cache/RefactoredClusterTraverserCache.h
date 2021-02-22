@@ -75,10 +75,6 @@ class RefactoredClusterTraverserCache {
     return _datalake;
   }
 
-  size_t& insertedDocuments() { return _insertedDocuments; } // TODO do we need?
-
-  size_t& filteredDocuments() { return _filteredDocuments; } // TODO do we need?
-
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
   auto cacheEdge(VertexType origin, EdgeType edgeId, velocypack::Slice edgeSlice, bool backward) -> void;
 
@@ -95,9 +91,6 @@ class RefactoredClusterTraverserCache {
   
 
  private:
-  size_t _insertedDocuments;
-  size_t _filteredDocuments;
-
   arangodb::ResourceMonitor& _resourceMonitor;
 
   //////////////////////////////////////////////////////////////////////////////

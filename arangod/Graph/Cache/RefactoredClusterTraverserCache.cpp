@@ -39,10 +39,8 @@ constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::veloc
 
 RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines, ResourceMonitor& resourceMonitor)
-    : _insertedDocuments{0},
-      _filteredDocuments{0},
-      _resourceMonitor{resourceMonitor},
-      _stringHeap(resourceMonitor, 4096),  /* arbitrary block-size may be adjusted for performance */
+    : _resourceMonitor{resourceMonitor},
+      _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
       _datalake(resourceMonitor),
       _engines(engines) {}
 
