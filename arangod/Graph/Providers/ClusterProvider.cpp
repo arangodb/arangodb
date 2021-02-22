@@ -180,8 +180,8 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
-      // TODO NULL / + register warning (!vertex not found! check)
       // if we end up here, we we're not able to cache the requested vertex (e.g. it does not exist)
+      _query->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, lE->getVertexIdentifier().toString());
       _opts.getCache()->cacheVertex(std::move(lE->getVertexIdentifier()), VPackSlice::nullSlice());
     }
     result.emplace_back(std::move(lE));
