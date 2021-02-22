@@ -172,7 +172,7 @@ Node& Node::operator=(VPackSlice const& slice) {
     _value->reserve(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
       _value->emplace_back(slice[i].byteSize());
-      memcpy((*_value)[i].data(), slice.start(), slice.byteSize());
+      memcpy((*_value)[i].data(), slice[i].start(), slice[i].byteSize());
     }
   } else {
     _isArray = false;
