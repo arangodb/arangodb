@@ -72,6 +72,9 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t replicationFactor() const { return _replicationFactor; }
   uint64_t numberOfShards() const { return _numberOfShards; }
   bool waitForSync() const { return _waitForSync; }
+  
+  std::string const& customQuery() const { return _customQuery; }
+  std::string const& customQueryFile() const { return _customQueryFile; }
 
  private:
   void status(std::string const& value);
@@ -100,6 +103,9 @@ class BenchFeature final : public application_features::ApplicationFeature {
   uint64_t _replicationFactor;
   uint64_t _numberOfShards;
   bool _waitForSync;
+  
+  std::string _customQuery;
+  std::string _customQueryFile;
 
   int* _result;
 
