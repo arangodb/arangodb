@@ -797,9 +797,8 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 void ClusterFeature::allocateMembers() {
   try {
-    server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
+    server().getFeature<arangodb::MetricsFeature>().histogram<arangodb_agencycomm_request_time_msec>(
+      log_scale_t<uint64_t>(2, 58, 120000, 10), "Request time for Agency requests");
   } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);

@@ -33,21 +33,52 @@
 #include "Statistics/ServerStatistics.h"
 
 inline extern constexpr char arangodb_agency_write_ok[] = "arangodb_agency_write_ok";
-inline extern constexpr char arangodb_agency_write_no_leader[] = "arangodb_agency_write_no_leader";
-inline extern constexpr char arangodb_agency_read_ok[] = "arangodb_agency_read_ok";
-inline extern constexpr char arangodb_agency_read_no_leader[] = "arangodb_agency_read_no_leader";
+inline extern constexpr char arangodb_agency_write_no_leader[] =
+  "arangodb_agency_write_no_leader";
+inline extern constexpr char arangodb_agency_read_ok[] =
+  "arangodb_agency_read_ok";
+inline extern constexpr char arangodb_agency_read_no_leader[] =
+  "arangodb_agency_read_no_leader";
+inline extern constexpr char arangodb_agency_write_hist[] =
+  "arangodb_agency_write_hist";
+inline extern constexpr char arangodb_agency_commit_hist[] =
+  "arangodb_agency_commit_hist";
+inline extern constexpr char arangodb_agency_append_hist[] =
+  "arangodb_agency_append_hist";
+inline extern constexpr char arangodb_agency_compaction_hist[] =
+  "arangodb_agency_compaction_hist";
+inline extern constexpr char arangodb_agency_local_commit_index[] =
+  "arangodb_agency_local_commit_index";
 inline extern constexpr char arangodb_agency_supervision_accum_runtime_msec[] =
   "arangodb_agency_supervision_accum_runtime_msec";
 inline extern constexpr char arangodb_agency_supervision_accum_runtime_wait_for_replication_msec[] =
   "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec";
 inline extern constexpr char arangodb_agency_supervision_failed_server_count[] =
   "arangodb_agency_supervision_failed_server_count";
-inline extern constexpr char arangodb_v8_context_creation_time_msec[] = "arangodb_v8_context_creation_time_msec";
-inline extern constexpr char arangodb_v8_context_created[] = "arangodb_v8_context_created";
-inline extern constexpr char arangodb_v8_context_destroyed[] = "arangodb_v8_context_destroyed";
-inline extern constexpr char arangodb_v8_context_entered[] = "arangodb_v8_context_entered";
-inline extern constexpr char arangodb_v8_context_exited[] = "arangodb_v8_context_exited";
-inline extern constexpr char arangodb_v8_context_enter_failures[] = "arangodb_v8_context_enter_failures";
+inline extern constexpr char arangodb_agencycomm_request_time_msec[] =
+  "arangodb_agencycomm_request_time_msec";
+inline extern constexpr char arangodb_agency_term[] =
+  "arangodb_agency_term";
+inline extern constexpr char arangodb_agency_log_size_bytes[] =
+  "arangodb_agency_log_size_bytes";
+inline extern constexpr char arangodb_agency_client_lookup_table_size[] =
+  "arangodb_agency_client_lookup_table_size";
+inline extern constexpr char arangodb_agency_supervision_runtime_msec[] =
+  "arangodb_agency_supervision_runtime_msec";
+inline extern constexpr char arangodb_agency_supervision_runtime_wait_for_replication_msec[] =
+  "arangodb_agency_supervision_runtime_wait_for_replication_msec";
+inline extern constexpr char arangodb_v8_context_creation_time_msec[] =
+  "arangodb_v8_context_creation_time_msec";
+inline extern constexpr char arangodb_v8_context_created[] =
+  "arangodb_v8_context_created";
+inline extern constexpr char arangodb_v8_context_destroyed[] =
+  "arangodb_v8_context_destroyed";
+inline extern constexpr char arangodb_v8_context_entered[] =
+  "arangodb_v8_context_entered";
+inline extern constexpr char arangodb_v8_context_exited[] =
+  "arangodb_v8_context_exited";
+inline extern constexpr char arangodb_v8_context_enter_failures[] =
+  "arangodb_v8_context_enter_failures";
 inline extern constexpr char arangodb_connection_leases_successful[] =
   "arangodb_connection_leases_successful_";
 inline extern constexpr char arangodb_connection_pool_leases_failed[] =
@@ -56,33 +87,60 @@ inline extern constexpr char arangodb_connection_pool_connections_created[] =
   "arangodb_connection_pool_connections_created_";
 inline extern constexpr char arangodb_rocksdb_write_stalls[] =
   "arangodb_rocksdb_write_stalls";
-inline extern constexpr char arangodb_rocksdb_write_stops[] = "arangodb_rocksdb_write_stops";
-inline extern constexpr char arangodb_replication_dump_requests[] = "arangodb_replication_dump_requests";
-inline extern constexpr char arangodb_replication_dump_bytes_received[] = "arangodb_replication_dump_bytes_received";
-inline extern constexpr char arangodb_replication_dump_documents[] = "arangodb_replication_dump_documents";
-inline extern constexpr char arangodb_replication_dump_request_time[] = "arangodb_replication_dump_request_time";
-inline extern constexpr char arangodb_replication_dump_apply_time[] = "arangodb_replication_dump_apply_time";
-inline extern constexpr char arangodb_replication_initial_sync_keys_requests[] = "arangodb_replication_initial_sync_keys_requests";
-inline extern constexpr char arangodb_replication_initial_sync_docs_requests[] = "arangodb_replication_initial_sync_docs_requests";
-inline extern constexpr char arangodb_replication_initial_sync_docs_requested[] = "arangodb_replication_initial_sync_docs_requested";
-inline extern constexpr char arangodb_replication_initial_sync_docs_inserted[] = "arangodb_replication_initial_sync_docs_inserted";
-inline extern constexpr char arangodb_replication_initial_sync_docs_removed[] = "arangodb_replication_initial_sync_docs_removed";
-inline extern constexpr char arangodb_replication_initial_sync_bytes_received[] = "arangodb_replication_initial_sync_bytes_received";
-inline extern constexpr char arangodb_replication_initial_chunks_requests_time[] = "arangodb_replication_initial_chunks_requests_time";
-inline extern constexpr char arangodb_replication_initial_keys_requests_time[] = "arangodb_replication_initial_keys_requests_time";
-inline extern constexpr char arangodb_replication_initial_docs_requests_time[] = "arangodb_replication_initial_docs_requests_time";
-inline extern constexpr char arangodb_replication_initial_insert_apply_time[] = "arangodb_replication_initial_insert_apply_time";
-inline extern constexpr char arangodb_replication_initial_remove_apply_time[] = "arangodb_replication_initial_remove_apply_time";
-inline extern constexpr char arangodb_replication_initial_lookup_time[] = "arangodb_replication_initial_lookup_time";
-inline extern constexpr char arangodb_replication_tailing_requests[] = "arangodb_replication_tailing_requests";
-inline extern constexpr char arangodb_replication_tailing_follow_tick_failures[] = "arangodb_replication_tailing_follow_tick_failures";
-inline extern constexpr char arangodb_replication_tailing_markers[] = "arangodb_replication_tailing_markers";
-inline extern constexpr char arangodb_replication_tailing_documents[] = "arangodb_replication_tailing_documents";
-inline extern constexpr char arangodb_replication_tailing_removals[] = "arangodb_replication_tailing_removals";
-inline extern constexpr char arangodb_replication_tailing_bytes_received[] = "arangodb_replication_tailing_bytes_received";
-inline extern constexpr char arangodb_replication_failed_connects[] = "arangodb_replication_failed_connects";
-inline extern constexpr char arangodb_replication_tailing_request_time[] = "arangodb_replication_tailing_request_time";
-inline extern constexpr char arangodb_replication_tailing_apply_time[]= "arangodb_replication_tailing_apply_time";
+inline extern constexpr char arangodb_rocksdb_write_stops[] =
+  "arangodb_rocksdb_write_stops";
+inline extern constexpr char arangodb_replication_dump_requests[] =
+  "arangodb_replication_dump_requests";
+inline extern constexpr char arangodb_replication_dump_bytes_received[] =
+  "arangodb_replication_dump_bytes_received";
+inline extern constexpr char arangodb_replication_dump_documents[] =
+  "arangodb_replication_dump_documents";
+inline extern constexpr char arangodb_replication_dump_request_time[] =
+  "arangodb_replication_dump_request_time";
+inline extern constexpr char arangodb_replication_dump_apply_time[] =
+  "arangodb_replication_dump_apply_time";
+inline extern constexpr char arangodb_replication_initial_sync_keys_requests[] =
+  "arangodb_replication_initial_sync_keys_requests";
+inline extern constexpr char arangodb_replication_initial_sync_docs_requests[] =
+  "arangodb_replication_initial_sync_docs_requests";
+inline extern constexpr char arangodb_replication_initial_sync_docs_requested[] =
+  "arangodb_replication_initial_sync_docs_requested";
+inline extern constexpr char arangodb_replication_initial_sync_docs_inserted[] =
+  "arangodb_replication_initial_sync_docs_inserted";
+inline extern constexpr char arangodb_replication_initial_sync_docs_removed[] =
+  "arangodb_replication_initial_sync_docs_removed";
+inline extern constexpr char arangodb_replication_initial_sync_bytes_received[] =
+  "arangodb_replication_initial_sync_bytes_received";
+inline extern constexpr char arangodb_replication_initial_chunks_requests_time[] =
+  "arangodb_replication_initial_chunks_requests_time";
+inline extern constexpr char arangodb_replication_initial_keys_requests_time[] =
+  "arangodb_replication_initial_keys_requests_time";
+inline extern constexpr char arangodb_replication_initial_docs_requests_time[] =
+  "arangodb_replication_initial_docs_requests_time";
+inline extern constexpr char arangodb_replication_initial_insert_apply_time[] =
+  "arangodb_replication_initial_insert_apply_time";
+inline extern constexpr char arangodb_replication_initial_remove_apply_time[] =
+  "arangodb_replication_initial_remove_apply_time";
+inline extern constexpr char arangodb_replication_initial_lookup_time[] =
+  "arangodb_replication_initial_lookup_time";
+inline extern constexpr char arangodb_replication_tailing_requests[] =
+  "arangodb_replication_tailing_requests";
+inline extern constexpr char arangodb_replication_tailing_follow_tick_failures[] =
+  "arangodb_replication_tailing_follow_tick_failures";
+inline extern constexpr char arangodb_replication_tailing_markers[] =
+  "arangodb_replication_tailing_markers";
+inline extern constexpr char arangodb_replication_tailing_documents[] =
+  "arangodb_replication_tailing_documents";
+inline extern constexpr char arangodb_replication_tailing_removals[] =
+  "arangodb_replication_tailing_removals";
+inline extern constexpr char arangodb_replication_tailing_bytes_received[] =
+  "arangodb_replication_tailing_bytes_received";
+inline extern constexpr char arangodb_replication_failed_connects[] =
+  "arangodb_replication_failed_connects";
+inline extern constexpr char arangodb_replication_tailing_request_time[] =
+  "arangodb_replication_tailing_request_time";
+inline extern constexpr char arangodb_replication_tailing_apply_time[]=
+  "arangodb_replication_tailing_apply_time";
 inline extern constexpr char arangodb_replication_synchronous_requests_total_time[] =
   "arangodb_replication_synchronous_requests_total_time";
 inline extern constexpr char arangodb_dropped_followers_count[] =
@@ -101,6 +159,24 @@ inline extern constexpr char arangodb_agency_callback_registered[] =
   "arangodb_agency_callback_registered";
 inline extern constexpr char arangodb_transactions_expired[] =
   "arangodb_transactions_expired";
+inline extern constexpr char arangodb_collection_lock_acquisition_time[] =
+  "arangodb_collection_lock_acquisition_time";
+inline extern constexpr char arangodb_document_read_time[] =
+  "arangodb_document_read_time";
+inline extern constexpr char arangodb_document_insert_time[] =
+  "arangodb_document_insert_time";
+inline extern constexpr char arangodb_document_replace_time[] =
+  "arangodb_document_replace_time";
+inline extern constexpr char arangodb_document_remove_time[] =
+  "arangodb_document_remove_time";
+inline extern constexpr char arangodb_document_update_time[] =
+  "arangodb_document_update_time";
+inline extern constexpr char arangodb_collection_truncate_time[] =
+  "arangodb_collection_truncate_time";
+inline extern constexpr char arangodb_aql_query_time[] =
+  "arangodb_aql_query_time";
+inline extern constexpr char arangodb_aql_slow_query_time[] =
+  "arangodb_aql_slow_query_time";
 inline extern constexpr char arangodb_aql_all_query[] =
   "arangodb_aql_all_query";
 inline extern constexpr char arangodb_aql_slow_query[] =
@@ -111,6 +187,8 @@ inline extern constexpr char arangodb_network_forwarded_requests[] =
   "arangodb_network_forwarded_requests";
 inline extern constexpr char arangodb_network_request_timeouts[] =
   "arangodb_network_request_timeouts";
+inline extern constexpr char arangodb_network_request_duration_as_percentage_of_timeout[] =
+  "arangodb_network_request_duration_as_percentage_of_timeout";
 inline extern constexpr char arangodb_maintenance_phase1_accum_runtime_msec[] =
   "arangodb_maintenance_phase1_accum_runtime_msec";
 inline extern constexpr char arangodb_maintenance_phase2_accum_runtime_msec[] =
@@ -127,6 +205,61 @@ inline extern constexpr char arangodb_maintenance_action_accum_queue_time_msec[]
   "arangodb_maintenance_action_accum_queue_time_msec";
 inline extern constexpr char arangodb_maintenance_action_failure_counter[] =
   "arangodb_maintenance_action_failure_counter";
+inline extern constexpr char arangodb_maintenance_phase1_runtime_msec[] =
+  "arangodb_maintenance_phase1_runtime_msec";
+inline extern constexpr char arangodb_maintenance_phase2_runtime_msec[] =
+  "arangodb_maintenance_phase2_runtime_msec";
+inline extern constexpr char arangodb_maintenance_agency_sync_runtime_msec[] =
+  "arangodb_maintenance_agency_sync_runtime_msec";
+inline extern constexpr char arangodb_maintenance_action_runtime_msec[] =
+  "arangodb_maintenance_action_runtime_msec";
+inline extern constexpr char arangodb_maintenance_action_queue_time_msec[] =
+  "arangodb_maintenance_action_queue_time_msec";
+inline extern constexpr char arangodb_heartbeat_send_time_msec[] =
+  "arangodb_heartbeat_send_time_msec";
+inline extern constexpr char arangodb_load_current_runtime[] =
+  "arangodb_load_current_runtime";
+inline extern constexpr char arangodb_connection_pool_lease_time_hist[] =
+  "arangodb_connection_pool_lease_time_hist";
+inline extern constexpr char arangodb_scheduler_queue_length[] =
+  "arangodb_scheduler_queue_length";
+inline extern constexpr char arangodb_scheduler_jobs_done[] =
+  "arangodb_scheduler_jobs_done";
+inline extern constexpr char arangodb_scheduler_jobs_submitted[] =
+  "arangodb_scheduler_jobs_submitted";
+inline extern constexpr char arangodb_scheduler_jobs_dequeued[] =
+  "arangodb_scheduler_jobs_dequeued";
+inline extern constexpr char arangodb_scheduler_awake_threads[] =
+  "arangodb_scheduler_awake_threads";
+inline extern constexpr char arangodb_scheduler_num_working_threads[] =
+  "arangodb_scheduler_num_working_threads";
+inline extern constexpr char arangodb_scheduler_ongoing_low_prio[] =
+  "arangodb_scheduler_ongoing_low_prio";
+inline extern constexpr char arangodb_scheduler_low_prio_queue_last_dequeue_time[] =
+  "arangodb_scheduler_low_prio_queue_last_dequeue_time";
+inline extern constexpr char arangodb_scheduler_maintenance_prio_queue_length[] =
+  "arangodb_scheduler_maintenance_prio_queue_length";
+inline extern constexpr char arangodb_scheduler_high_prio_queue_length[] =
+  "arangodb_scheduler_high_prio_queue_length";
+inline extern constexpr char arangodb_scheduler_medium_prio_queue_length[] =
+  "arangodb_scheduler_medium_prio_queue_length";
+inline extern constexpr char arangodb_scheduler_low_prio_queue_length[] =
+  "arangodb_scheduler_low_prio_queue_length";
+inline extern constexpr char arangodb_aql_current_query[] =
+  "arangodb_aql_current_query";
+inline extern constexpr char arangodb_network_requests_in_flight[] =
+  "arangodb_network_requests_in_flight";
+inline extern constexpr char arangodb_connection_connections_current[] =
+  "arangodb_connection_connections_current";
+inline extern constexpr char arangodb_agency_callback_count[] =
+  "arangodb_agency_callback_count";
+inline extern constexpr char arangodb_shards_out_of_sync[] =
+  "arangodb_shards_out_of_sync";
+inline extern constexpr char arangodb_shards_not_replicated[] =
+  "arangodb_shards_not_replicated";
+inline extern constexpr char arangodb_agency_cache_callback_count[] =
+  "arangodb_agency_cache_callback_count";
+//inline extern constexpr char [] = "";
 
 namespace arangodb {
 struct metrics_key;
@@ -170,20 +303,19 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  template <typename Scale>
-  Histogram<Scale>& histogram(std::string const& name, Scale const& scale,
-                              std::string const& help = std::string()) {
-    return histogram<Scale>(metrics_key(name), scale, help);
+  template <char const* name, typename Scale>
+  Histogram<Scale>& histogram(Scale const& scale, std::string const& help = std::string()) {
+    return histogram<name, Scale>(metrics_key(name), scale, help);
   }
 
-  template <typename Scale>
+  template <char const* name, typename Scale>
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& il,
                               Scale const& scale,
                               std::string const& help = std::string()) {
-    return histogram<Scale>(metrics_key(il), scale, help);
+    return histogram<name, Scale>(metrics_key(name, il), scale, help);
   }
 
-  template <typename Scale>
+  template <char const* name, typename Scale>
   Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
                               std::string const& help = std::string()) {
     std::string labels = mk.labels;
@@ -197,7 +329,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
 
-    auto metric = std::make_shared<Histogram<Scale>>(scale, mk.name, help, labels);
+    auto metric = std::make_shared<Histogram<Scale>>(scale, name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -206,58 +338,11 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     std::string("histogram ") + mk.name +
+                                     std::string("histogram ") + name +
                                          " alredy exists");
     }
     return *metric;
   };
-
-  template <typename Scale>
-  Histogram<Scale>& histogram(std::string const& name) {
-    return histogram<Scale>({name});
-  }
-
-  template <typename Scale>
-  Histogram<Scale>& histogram(std::initializer_list<std::string> const& key) {
-    metrics_key mk(key);
-    std::shared_ptr<Histogram<Scale>> metric = nullptr;
-    std::string error;
-    {
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(mk);
-      if (it == _registry.end()) {
-        it = _registry.find(mk.name);
-        if (it == _registry.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         std::string("No gauge booked as ") + mk.name);
-        }
-        try {
-          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-        } catch (std::exception const& e) {
-          error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
-        }
-        if (metric == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("Non matching scale classes for cloning ") + mk.name);
-        }
-        return histogram(mk, metric->scale(), metric->help());
-      }
-
-      try {
-        metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
-        if (metric == nullptr) {
-          error = std::string("Failed to retrieve histogram ") + mk.name;
-        }
-      } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve histogram ") + mk.name + ": " + e.what();
-      }
-    }
-    if (!error.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
-    }
-    return *metric;
-  }
 
   template<const char* name>
   Counter& counter(
@@ -298,18 +383,18 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   }
 
 
-  template <typename T>
-  Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {
-    return gauge(metrics_key(name), t, help);
+  template <const char* name, typename T>
+  Gauge<T>& gauge(T const& t, std::string const& help) {
+    return gauge<name>(metrics_key(name), t, help);
   }
 
-  template <typename T>
+  template <const char* name, typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& il, T const& t,
                   std::string const& help) {
-    return gauge(metrics_key(il), t, help);
+    return gauge<name>(metrics_key(name, il), t, help);
   }
 
-  template <typename T>
+  template <const char* name, typename T>
   Gauge<T>& gauge(metrics_key const& key, T const& t,
                   std::string const& help = std::string()) {
     metrics_key mk(key);
@@ -323,7 +408,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
           "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
     }
-    auto metric = std::make_shared<Gauge<T>>(t, mk.name, help, labels);
+    auto metric = std::make_shared<Gauge<T>>(t, name, help, labels);
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
@@ -331,62 +416,12 @@ class MetricsFeature final : public application_features::ApplicationFeature {
           _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
     }
     if (!success) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("gauge ") + mk.name +
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("gauge ") + name +
                                                              " alredy exists");
     }
     return *metric;
   }
 
-  template <typename T>
-  Gauge<T>& gauge(std::string const& name) {
-    return gauge<T>(metrics_key(name));
-  }
-  template <typename T>
-  Gauge<T>& gauge(std::initializer_list<std::string> const& il) {
-    return gauge<T>(metrics_key(il));
-  }
-
-  template <typename T>
-  Gauge<T>& gauge(metrics_key const& key) {
-    metrics_key mk(key);
-    std::shared_ptr<Gauge<T>> metric = nullptr;
-    std::string error;
-    {
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      registry_type::const_iterator it = _registry.find(mk);
-      if (it == _registry.end()) {
-        it = _registry.find(mk.name);
-        if (it == _registry.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         std::string("No gauge booked as ") + mk.name);
-        }
-        try {
-          metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
-        } catch (std::exception const& e) {
-          error = std::string("Failed to retrieve gauge ") + mk.name + ": " + e.what();
-        }
-        if (metric == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_INTERNAL,
-              std::string("Non matching type for cloning ") + mk.name);
-        }
-        return gauge(mk, T(0), metric->help());
-      }
-
-      try {
-        metric = std::dynamic_pointer_cast<Gauge<T>>(it->second);
-        if (metric == nullptr) {
-          error = std::string("Failed to retrieve gauge ") + mk.name;
-        }
-      } catch (std::exception const& e) {
-        error = std::string("Failed to retrieve gauge ") + mk.name + ": " + e.what();
-      }
-    }
-    if (!error.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
-    }
-    return *metric;
-  }
 
   void toPrometheus(std::string& result) const;
 

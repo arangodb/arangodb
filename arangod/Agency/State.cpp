@@ -68,11 +68,11 @@ State::State(application_features::ApplicationServer& server)
     _lastCompactionAt(0),
     _cur(0),
     _log_size(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_log_size_bytes", uint64_t(0), "Agency replicated log size [bytes]")),
+      _server.getFeature<MetricsFeature>().gauge<arangodb_agency_log_size_bytes>(
+        uint64_t(0), "Agency replicated log size [bytes]")),
     _clientIdLookupCount(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_client_lookup_table_size", uint64_t(0), "Current number of entries in agency client id lookup table")) {}
+      _server.getFeature<MetricsFeature>().gauge<arangodb_agency_client_lookup_table_size>(
+        uint64_t(0), "Current number of entries in agency client id lookup table")) {}
 
 /// Default dtor
 State::~State() = default;

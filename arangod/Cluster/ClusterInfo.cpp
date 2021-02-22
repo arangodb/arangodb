@@ -340,14 +340,12 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _currentIndex(0),
     _planLoader(std::thread::id()),
     _uniqid(),
-    _lpTimer(_server.getFeature<MetricsFeature>().histogram(
-               "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Plan loading runtimes [ms]")),
+    _lpTimer(_server.getFeature<MetricsFeature>().histogram<arangodb_load_plan_runtime>(
+               log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),"Plan loading runtimes [ms]")),
     _lpTotal(_server.getFeature<MetricsFeature>().counter<arangodb_load_plan_accum_runtime_msec>(
                0, "Accumulated runtime of Plan loading [ms]")),
-    _lcTimer(_server.getFeature<MetricsFeature>().histogram(
-               "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Current loading runtimes [ms]")),
+    _lcTimer(_server.getFeature<MetricsFeature>().histogram<arangodb_load_current_runtime>(
+               log_scale_t(std::exp(1.f), 0.f, 2500.f, 10), "Current loading runtimes [ms]")),
     _lcTotal(_server.getFeature<MetricsFeature>().counter<arangodb_load_current_accum_runtime_msec>(
                0, "Accumulated runtime of Current loading [ms]")) {
   _uniqid._currentValue = 1ULL;

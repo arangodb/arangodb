@@ -91,16 +91,15 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_network_forwarded_requests>(
           0, "Number of requests forwarded to another coordinator")),
       _maxInFlight(::MaxAllowedInFlight),
-      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::uint64_t>(
-          "arangodb_network_requests_in_flight", 0,
-          "Number of outgoing internal requests in flight")),
+      _requestsInFlight(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_network_requests_in_flight>(
+          uint64_t(0), "Number of outgoing internal requests in flight")),
       _requestTimeouts(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_network_request_timeouts>(
           0, "Number of internal requests that have timed out")),
-      _requestDurations(server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_network_request_duration_as_percentage_of_timeout",
-          fixed_scale_t(0.0, 100.0, {1.0, 5.0, 15.0, 50.0}),
-          "Internal request round-trip time as a percentage of timeout [%]")) {
+      _requestDurations(
+        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_network_request_duration_as_percentage_of_timeout>(
+           fixed_scale_t(0.0, 100.0, {1.0, 5.0, 15.0, 50.0}), "Internal request round-trip time as a percentage of timeout [%]")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();

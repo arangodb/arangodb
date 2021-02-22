@@ -154,18 +154,14 @@ void MaintenanceFeature::initializeMetrics() {
   auto& metricsFeature = server().getFeature<arangodb::MetricsFeature>();
 
   _phase1_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenancePhaseOneRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Maintenance Phase 1 runtime histogram [ms]");
+    metricsFeature.histogram<arangodb_maintenance_phase1_runtime_msec>(
+      log_scale_t<uint64_t>(2, 50, 8000, 10), "Maintenance Phase 1 runtime histogram [ms]");
   _phase2_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenancePhaseTwoRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Maintenance Phase 2 runtime histogram [ms]");
-
+    metricsFeature.histogram<arangodb_maintenance_phase2_runtime_msec>(
+      log_scale_t<uint64_t>(2, 50, 8000, 10), "Maintenance Phase 2 runtime histogram [ms]");
   _agency_sync_total_runtime_msec =
-      metricsFeature.histogram(StaticStrings::MaintenanceAgencySyncRuntimeMs,
-                               log_scale_t<uint64_t>(2, 50, 8000, 10),
-                               "Total time spend on agency sync [ms]");
+    metricsFeature.histogram<arangodb_maintenance_agency_sync_runtime_msec>(
+      log_scale_t<uint64_t>(2, 50, 8000, 10), "Total time spend on agency sync [ms]");
 
   _phase1_accum_runtime_msec =
     metricsFeature.counter<arangodb_maintenance_phase1_accum_runtime_msec>(
@@ -174,21 +170,17 @@ void MaintenanceFeature::initializeMetrics() {
     metricsFeature.counter<arangodb_maintenance_phase2_accum_runtime_msec>(
       0, "Accumulated runtime of phase two [ms]");
   _agency_sync_total_accum_runtime_msec =
-      metricsFeature.counter<arangodb_maintenance_agency_sync_accum_runtime_msec>(
-        0, "Accumulated runtime of agency sync phase [ms]");
+    metricsFeature.counter<arangodb_maintenance_agency_sync_accum_runtime_msec>(
+      0, "Accumulated runtime of agency sync phase [ms]");
 
-  _shards_out_of_sync = metricsFeature.gauge<uint64_t>(
-      StaticStrings::ShardsOutOfSync, 0,
-      "Number of leader shards not fully replicated");
-  _shards_total_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsTotalCount, 0,
-                                     "Number of shards on this machine");
-  _shards_leader_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsLeaderCount, 0,
-                                     "Number of leader shards on this machine");
-  _shards_not_replicated_count =
-      metricsFeature.gauge<uint64_t>(StaticStrings::ShardsNotReplicated, 0,
-                                     "Number of shards not replicated at all");
+  _shards_out_of_sync = metricsFeature.gauge<arangodb_shards_out_of_sync>(
+    uint64_t(0), "Number of leader shards not fully replicated");
+  _shards_total_count = metricsFeature.gauge<arangodb_shards_total_count>(
+    uint64_t(0), "Number of shards on this machine");
+  _shards_leader_count = metricsFeature.gauge<arangodb_shards_leader_count>(
+    uint64_t(0), "Number of leader shards on this machine");
+  _shards_not_replicated_count = metricsFeature.gauge<arangodb_shards_not_replicated>(
+    uint64_t(0), "Number of shards not replicated at all");
 
   _action_duplicated_counter = metricsFeature.counter<arangodb_maintenance_action_duplicate_counter>(
     0, "Counter of actions that have been discarded because of a duplicate");
@@ -206,13 +198,11 @@ void MaintenanceFeature::initializeMetrics() {
     std::string action_label = std::string{"action=\""} + action + '"';
 
     _maintenance_job_metrics_map.try_emplace(
-      action,
-      metricsFeature.histogram({StaticStrings::MaintenanceActionRuntimeMs, action_label},
-                               log_scale_t<uint64_t>(4, 82, 86400000, 10),
-                               "Time spent executing a maintenance action [ms]"),
-      metricsFeature.histogram(
-        {StaticStrings::MaintenanceActionQueueTimeMs, action_label},
-        log_scale_t<uint64_t>(2, 82, 3600000, 12),
+      action, metricsFeature.histogram<arangodb_maintenance_action_runtime_msec>(
+        {action_label}, log_scale_t<uint64_t>(4, 82, 86400000, 10),
+        "Time spent executing a maintenance action [ms]"),
+      metricsFeature.histogram<arangodb_maintenance_action_queue_time_msec>(
+        {action_label}, log_scale_t<uint64_t>(2, 82, 3600000, 12),
         "Time spent in the queue before execution for maintenance actions [ms]"),
 
       metricsFeature.counter<arangodb_maintenance_action_accum_runtime_msec>(

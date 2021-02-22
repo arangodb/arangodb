@@ -47,8 +47,8 @@ AgencyCache::AgencyCache(
     _callbackRegistry(callbackRegistry), 
     _lastSnapshot(0),
     _callbacksCount(
-      _server.getFeature<MetricsFeature>().gauge(
-        "arangodb_agency_cache_callback_count", uint64_t(0), "Current number of entries in agency cache callbacks table")) {
+      _server.getFeature<MetricsFeature>().gauge<arangodb_agency_cache_callback_count>(
+        uint64_t(0), "Current number of entries in agency cache callbacks table")) {
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   TRI_ASSERT(_shutdownCode == TRI_ERROR_NO_ERROR || _shutdownCode == TRI_ERROR_SHUTTING_DOWN);

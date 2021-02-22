@@ -172,58 +172,51 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerQueueLength, 0,
-          "Server's internal queue length")),
-      _metricsJobsDone(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_done", 0, "Total number of queue jobs done")),
-      _metricsJobsSubmitted(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_submitted", 0,
-          "Total number of jobs submitted to the queue")),
-      _metricsJobsDequeued(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_jobs_dequeued", 0,
-          "Total number of jobs dequeued")),
-      _metricsAwakeThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerAwakeWorkers, 0,
-          "Number of awake worker threads")),
-      _metricsNumWorkingThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_scheduler_num_working_threads", 0,
-          "Number of working threads")),
-      _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
+      _metricsQueueLength(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_queue_length>(
+          uint64_t(0),"Server's internal queue length")),
+      _metricsJobsDone(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_done>(
+          uint64_t(0),"Total number of queue jobs done")),
+      _metricsJobsSubmitted(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_submitted>(
+          uint64_t(0),"Total number of jobs submitted to the queue")),
+      _metricsJobsDequeued(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_dequeuedmuint64_t>(
+          uint64_t(0),"Total number of jobs dequeued")),
+      _metricsAwakeThreads(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_awake_threads>(
+          uint64_t(0),"Number of awake worker threads")),
+      _metricsNumWorkingThreads(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_num_working_threads>(
+          uint64_t(0),"Number of working threads")),
+      _metricsNumWorkerThreads(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_num_worker_threads>(
+          uint64_t(0),"Number of worker threads")),
       _metricsThreadsStarted(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_started>(
-          0, "Number of scheduler threads started")),
+          uint64_t(0),"Number of scheduler threads started")),
       _metricsThreadsStopped(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_stopped>(
-          0, "Number of scheduler threads stopped")),
+          uint64_t(0),"Number of scheduler threads stopped")),
       _metricsQueueFull(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_queue_full_failures>(
-          0, "Tasks dropped and not added to internal queue")),
-      _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
-          "Total number of ongoing RestHandlers coming from "
-          "the low prio queue")),
-      _metricsLastLowPriorityDequeueTime(_server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_scheduler_low_prio_queue_last_dequeue_time", uint64_t(0),
-          "Last recorded dequeue time for a low priority queue item [ms]")),
+          uint64_t(0),"Tasks dropped and not added to internal queue")),
+      _ongoingLowPriorityGauge(
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_ongoing_low_prio>(
+          uint64_t(0), "Total number of ongoing RestHandlers coming from the low prio queue")),
+      _metricsLastLowPriorityDequeueTime(
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_low_prio_queue_last_dequeue_time>(
+          uint64_t(0), "Last recorded dequeue time for a low priority queue item [ms]")),
       _metricsQueueLengths{
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_maintenance_prio_queue_length", uint64_t(0),
-              "Current queue length of the maintenance priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_high_prio_queue_length", uint64_t(0),
-              "Current queue length of the high priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_medium_prio_queue_length", uint64_t(0),
-              "Current queue length of the medium priority queue in "
-              "the scheduler"),
-          _server.getFeature<arangodb::MetricsFeature>().gauge(
-              "arangodb_scheduler_low_prio_queue_length", uint64_t(0),
-              "Current queue length of the low priority queue in "
-              "the scheduler")} {
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_maintenance_prio_queue_length>(
+          uint64_t(0), "Current queue length of the maintenance priority queue in the scheduler"),
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_high_prio_queue_length>(
+          uint64_t(0), "Current queue length of the high priority queue in the scheduler"),
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_medium_prio_queue_length>(
+          uint64_t(0), "Current queue length of the medium priority queue in the scheduler"),
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_low_prio_queue_length>(
+          uint64_t(0), "Current queue length of the low priority queue in the scheduler")} {
   _queues[0].reserve(maxQueueSize);
   _queues[1].reserve(fifo1Size);
   _queues[2].reserve(fifo2Size);
