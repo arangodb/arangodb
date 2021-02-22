@@ -354,7 +354,6 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
-          LOG_DEVEL << "Using SS default KPaths";
           using KPathRefactored = KPathEnumerator<SingleServerProvider>;
 
           auto kPathUnique = std::make_unique<KPathRefactored>(
@@ -371,9 +370,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
           return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         } else {
-          LOG_DEVEL << "Using SS KPaths Trace";
+          // TODO: implement better initialization with less duplicate code
           using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
-          // TODO: below copy paste from above. clean this up later.
           auto kPathUnique = std::make_unique<TracedKPathRefactored>(
               ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
                                                    opts->query().resourceMonitor()},
