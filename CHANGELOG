@@ -1,6 +1,10 @@
 devel
 -----
 
+* Reduce memory footprint of agency Store in Node class.
+
+* Cleanup old hotbackup transfer jobs in agency.
+
 * For Windows builds, remove the defines `_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS`
   and `_ENABLE_ATOMIC_ALIGNMENT_FIX` that were needed to build Boost components
   with MSVC in older versions of Boost and MSVC.
