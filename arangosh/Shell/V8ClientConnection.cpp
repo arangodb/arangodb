@@ -64,6 +64,19 @@ using namespace arangodb::import;
 
 namespace fu = arangodb::fuerte;
 
+namespace {
+// return an identifier to a connection configuration, consisting of
+// endpoint, username, password, jwt, authentication and protocol type
+std::string connectionIdentifier(fuerte::ConnectionBuilder& builder) {
+  return
+      builder.normalizedEndpoint() + "/" +
+      builder.user() + "/" + builder.password() + "/" + 
+      builder.jwtToken() + "/" +
+      to_string(builder.authenticationType()) + "/" + 
+      to_string(builder.protocolType());
+}
+} // namespace
+
 V8ClientConnection::V8ClientConnection(application_features::ApplicationServer& server,
                                        ClientFeature& client)
     : _server(server),
@@ -110,7 +123,25 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
     setCustomError(400, "no endpoint specified");
     return nullptr;
   }
-  auto newConnection = _builder.connect(_loop);
+
+  auto findConnection = [this]() {
+    std::string id = connectionIdentifier(_builder);
+
+    // check if we have a connection for that endpoint in our cache
+    auto it = _connectionCache.find(id);
+    if (it != _connectionCache.end()) { 
+      auto c = (*it).second;
+      // cache hit. remove the connection from the cache and return it!
+      _connectionCache.erase(it);
+      return c;
+    }
+    // no connection found in cache. create a new one
+    return _builder.connect(_loop);
+  };
+
+  // try to find an existing connection in the cache
+  // the cache has one connection per endpoint
+  auto newConnection = findConnection();
   fu::StringMap params{{"details", "true"}};
   auto req = fu::createRequest(fu::RestVerb::Get, "/_api/version", params);
   req->header.database = _databaseName;
@@ -297,6 +328,8 @@ void V8ClientConnection::connect() {
 void V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
+  std::string id = connectionIdentifier(_builder);
+
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
@@ -315,7 +348,13 @@ void V8ClientConnection::reconnect() {
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
   if (oldConnection) {
-    oldConnection->cancel();
+    if (oldConnection->state() == fu::Connection::State::Closed) {
+      oldConnection->cancel();
+    } else {
+      // a non-closed connection. now try to insert it into the connection
+      // cache for later reuse
+      _connectionCache.emplace(id, oldConnection);
+    }
   }
   oldConnection.reset();
   try {

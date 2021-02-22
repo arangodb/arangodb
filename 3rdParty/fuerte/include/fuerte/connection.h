@@ -204,7 +204,7 @@ class ConnectionBuilder {
 
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
-  /// @brief protocol typr
+  /// @brief protocol type
   inline ProtocolType protocolType() const { return _conf._protocolType; }
   void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
 

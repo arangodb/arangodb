@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add an experimental connection cache to arangosh, so that the number of 
+  connections and thus ephemeral TCP ports used can be reduced for pathologic 
+  use cases such as connect to A, connect to B, connect to A, connect to B, ...
+
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
