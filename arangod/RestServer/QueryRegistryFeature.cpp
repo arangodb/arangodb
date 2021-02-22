@@ -88,7 +88,7 @@ uint64_t defaultMemoryLimit(uint64_t available) {
     dyn = 0.0;
   }
 
-  return std::max<uint64_t>(dyn, 0.25 * available);
+  return std::max(static_cast<uint64_t>(dyn), static_cast<uint64_t>(0.25 * available));
 }
 
 } // namespace
@@ -160,7 +160,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
+                     "memory limit per AQL query (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
@@ -298,6 +298,12 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void QueryRegistryFeature::prepare() {
+  if (!server().options()->processingResult().touched("--query.memory-limit")) {
+    LOG_TOPIC("f6e0e", INFO, Logger::AQL)
+        << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
+        << "to modify this value, please adjust the startup option `--query.memory-limit`";
+  }
+  
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
     // for the cluster
