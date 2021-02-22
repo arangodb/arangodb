@@ -1286,6 +1286,7 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   AstNode const* graph = node->getMember(4);
 
   // Refactored variant shall be default on SingleServer and Cluster on KPaths
+  // After the whole refactoring is done, this can be removed.
   bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths;
 
   auto options = createShortestPathOptions(getAst(), direction, node->getMember(5), defaultToRefactor);
