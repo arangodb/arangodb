@@ -1277,6 +1277,32 @@ function ahuacatlQueryShortestPathTestSuite () {
       var actual = getQueryResults(query);
 
       assertEqual([ ], actual);
+    },
+
+    testKPathsConnectedButInnerVertexDeleted : function () {
+      // Find the path(s): A -> B -> F (which is valid)
+      // Case: B will be deleted before query execution.
+      // This is valid, but the query needs to report an error!
+      let key = 'B';
+      let item = `${vn}/${key}`;
+      vertexCollection.remove(item);
+
+      // Execute without fail and check
+      let query = `WITH ${vn} FOR path IN 1..3 OUTBOUND K_PATHS "${vn}/A" TO "${vn}/F" ${en} RETURN path.vertices[* RETURN CURRENT._key]`;
+      let actual = getQueryResults(query);
+      assertEqual(2, actual.length); // two paths because testShortestPathDijkstraCycles test added edges
+      assertEqual([['A', 'null', 'F'], ['A', 'D', 'null', 'F']], actual);
+
+      // Now execute with fail on warnings
+      try {
+        db._query(query, null, {"failOnWarning": true});
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err.errorNum);
+      }
+
+      // re-add vertex to let environment stay as is has been before the test
+      vertexCollection.save({ _key: key, name: key });
     }
 
   };
