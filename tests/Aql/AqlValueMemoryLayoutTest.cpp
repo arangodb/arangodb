@@ -88,7 +88,7 @@ void runChecksForUInt64(uint64_t value, uint8_t const* expected) {
   new (p) AqlValue((AqlValueHintUInt(value)));
   // although we are using placement new here, we don't need to call the
   // destructor here, as the AqlValue with the payloads we use here won't
-  // do anything it is destructor
+  // do anything in its destructor
 
   AqlValue& aqlValue = *reinterpret_cast<AqlValue*>(p);
   runChecksForNumber(aqlValue, expected);
