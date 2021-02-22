@@ -351,7 +351,54 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     }
     return *metric;
   };
+  
+  template <char const* name, typename Scale>
+  Histogram<Scale>& histogram(std::initializer_list<std::string> const& key) {
+    metrics_key mk(name,key);
+    std::shared_ptr<Histogram<Scale>> metric = nullptr;
+    std::string error;
+    {
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      registry_type::const_iterator it = _registry.find(mk);
+      if (it == _registry.end()) {
+        it = _registry.find(mk);
+        if (it == _registry.end()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         std::string("No gauge booked as ") + name);
+        }
+        try {
+          metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+        } catch (std::exception const& e) {
+          error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
+        }
+        if (metric == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            std::string("Non matching scale classes for cloning ") + name);
+        }
+        return histogram<name>(mk, metric->scale(), metric->help());
+      }
 
+      try {
+        metric = std::dynamic_pointer_cast<Histogram<Scale>>(it->second);
+        if (metric == nullptr) {
+          error = std::string("Failed to retrieve histogram ") + name;
+        }
+      } catch (std::exception const& e) {
+        error = std::string("Failed to retrieve histogram ") + name + ": " + e.what();
+      }
+    }
+    if (!error.empty()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
+    }
+    return *metric;
+  }
+  
+  template <char const* name, typename Scale>
+  Histogram<Scale>& histogram() {
+    return histogram<name,Scale>(std::initializer_list<std::string>{});
+  }
+  
   template<const char* name>
   Counter& counter(
     std::initializer_list<std::string> const& key, uint64_t const& val,

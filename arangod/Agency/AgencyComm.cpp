@@ -634,7 +634,7 @@ AgencyComm::AgencyComm(application_features::ApplicationServer& server)
     : _server(server),
       _agency_comm_request_time_ms(
         server.getFeature<arangodb::MetricsFeature>().histogram<
-        arangodb_agencycomm_request_time_msec>(log_scale_t<uint64_t>(2,0,1000,10), "")) {}
+        arangodb_agencycomm_request_time_msec,log_scale_t<uint64_t>>()) {}
 
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
