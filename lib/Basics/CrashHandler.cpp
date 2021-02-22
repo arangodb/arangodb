@@ -504,11 +504,12 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
   _gmtime64_s(&timeinfo, &rawtime);
   char time[20];
   strftime(time, sizeof(time), "%Y-%m-%dT%H-%M-%S", &timeinfo);
-  
+
   char filename[MAX_PATH];
-  sprintf(filename, "%s\\%s_%d_%d.dmp", miniDumpDirectory.c_str(), time, GetCurrentProcessId(), GetCurrentThreadId());
-  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr,
-                            CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  _snprintf_s(filename, sizeof(filename), "%s\\%s_%d_%d.dmp", miniDumpDirectory.c_str(),
+              time, GetCurrentProcessId(), GetCurrentThreadId());
+  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (hFile == INVALID_HANDLE_VALUE) {
     char* p = &buffer[0];
