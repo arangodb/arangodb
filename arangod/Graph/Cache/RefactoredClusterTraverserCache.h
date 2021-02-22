@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_GRAPH_REFACTORED_CLUSTER_TRAVERSER_CACHE_H
