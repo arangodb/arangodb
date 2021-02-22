@@ -36,7 +36,6 @@ class ApplicationServer;
 }
 namespace httpclient {
 class SimpleHttpClient;
-class SimpleHttpResult;
 }  // namespace httpclient
 
 /**
