@@ -239,9 +239,6 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
   MockGraph g{};
   g.addEdge(0, 1);
 
-  /* Expected http calls:
-   * [v, [e1, e2, e3]]
-   */
   std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const& expectedVerticesEdgesBundleToFetch = {
       {0, {}}};
 
