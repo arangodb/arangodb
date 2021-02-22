@@ -24,6 +24,7 @@
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/CrashHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -61,6 +62,12 @@ void TempFeature::prepare() {
   if (!_path.empty()) {
     TRI_SetTempPath(_path);
   }
+}
+
+void TempFeature::start() {
+#ifdef _WIN32
+  CrashHandler::setMiniDumpDirectory(TRI_GetTempPath());
+#endif
 }
 
 }  // namespace arangodb

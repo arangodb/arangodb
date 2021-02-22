@@ -488,9 +488,6 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 static std::string miniDumpDirectory = "C:\\temp";
 static std::mutex miniDumpLock;
 
-// This function is called once after installing the exceptionFilter.
-void setMiniDumpDirectory() { miniDumpDirectory = TRI_GetTempPath(); }
-
 void createMiniDump(EXCEPTION_POINTERS* pointers) {
   // we have to serialize calls to MiniDumpWriteDump
   std::lock_guard<std::mutex> lock(miniDumpLock);
@@ -672,7 +669,6 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
 #else // _WIN32
-  setMiniDumpDirectory();
   SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
@@ -712,5 +708,11 @@ void CrashHandler::installCrashHandler() {
     CrashHandler::crash(&buffer[0]);
   });
 }
+
+#ifdef _WIN32
+void CrashHandler::setMiniDumpDirectory(std::string path) {
+  ::miniDumpDirectory = std::move(path);
+}
+#endif
 
 }  // namespace arangodb
