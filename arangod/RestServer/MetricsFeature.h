@@ -257,6 +257,10 @@ inline extern constexpr char arangodb_agency_callback_count[] =
   "arangodb_agency_callback_count";
 inline extern constexpr char arangodb_shards_out_of_sync[] =
   "arangodb_shards_out_of_sync";
+inline extern constexpr char arangodb_shards_total_count[] =
+  "arangodb_shards_total_count";
+inline extern constexpr char arangodb_shards_leader_count[] =
+  "arangodb_shards_leader_count";
 inline extern constexpr char arangodb_shards_not_replicated[] =
   "arangodb_shards_not_replicated";
 inline extern constexpr char arangodb_agency_cache_callback_count[] =
