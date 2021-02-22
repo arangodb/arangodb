@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyStrings.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
