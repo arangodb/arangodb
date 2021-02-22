@@ -1399,84 +1399,76 @@ AqlValue::AqlValue(AqlValueHintZero const&) noexcept {
 
 AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   double value = v.value;
-  auto valueType = AqlValueType::VPACK_INLINE;
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     // null
     _data.inlineSliceMeta.slice[0] = 0x18;
+     setType(AqlValueType::VPACK_INLINE);
   } else {
     // a "real" double
     _data.longNumberMeta.data.slice.slice[0] = 0x1b;
+    // unify +0.0 and -0.0 to +0.0
+    if (ADB_UNLIKELY(value == -0.0)) { 
+      value = 0.0;
+    }
     uint64_t uintVal;
     memcpy(&uintVal, &value, sizeof(uintVal));
-    _data.longNumberMeta.data.uintLittleEndian.val =
-      arangodb::basics::hostToLittle(uintVal);
-    valueType = AqlValueType::VPACK_INLINE_DOUBLE;
+    _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(uintVal);
+    setType(AqlValueType::VPACK_INLINE_DOUBLE);
   }
-  setType(valueType);
 }
 
 AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
   int64_t value = v.value;
-  auto aqlValueType {AqlValueType::VPACK_INLINE};
-  if (value >= 0 && value <= 9) {
+  if (value >= -6 && value <= 9) {
     // a smallint
-    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
     _data.shortNumberMeta.data.int48.val = value;
-    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
-  } else if (value < 0 && value >= -6) {
-    // a negative smallint
-    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
-    _data.shortNumberMeta.data.int48.val = value;
-    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x40U + value);
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(value >= 0 ? (0x30U + value) : (0x40U + value));
+    setType(AqlValueType::VPACK_INLINE_INT48);
   } else {
     uint8_t const vSize = intLength(value);
     uint64_t x;
     if (vSize > 6) {
       x = toUInt64(value);
       _data.longNumberMeta.data.intLittleEndian.val = arangodb::basics::hostToLittle(x); // FIXME: use just value ???
-      aqlValueType = AqlValueType::VPACK_INLINE_INT64;
       // always store as 8 byte Slice as we need full aligned value in binary representation
       _data.longNumberMeta.data.slice.slice[0] = 0x1fU + 8;
+      setType(AqlValueType::VPACK_INLINE_INT64);
     } else {
       int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
       x = value >= 0 ? static_cast<uint64_t>(value)
                      : static_cast<uint64_t>(value + shift) + shift;
-      aqlValueType = AqlValueType::VPACK_INLINE_INT48;
       _data.shortNumberMeta.data.int48.val = value;
       _data.shortNumberMeta.data.slice.slice[0] = 0x1fU + vSize;
       x = arangodb::basics::hostToLittle(x);
       memcpy(&_data.shortNumberMeta.data.slice.slice[1], &x, vSize);
+      setType(AqlValueType::VPACK_INLINE_INT48);
     }
   }
-  setType(aqlValueType);
 }
 
 AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   uint64_t value = v.value;
-  auto aqlValueType {AqlValueType::VPACK_INLINE};
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
     // treat SmallInt as INT just to be consistent
-    aqlValueType = AqlValueType::VPACK_INLINE_INT48;
     _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
     _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
-  } else {
+    setType(AqlValueType::VPACK_INLINE_INT48);
+  } else if (value < 0x000080ffffffffffULL) {
     // UInt, 0x28 - 0x2f
     uint8_t const vSize = intLength(value);
-    if (vSize > 6) {
-      _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
-      aqlValueType = AqlValueType::VPACK_INLINE_UINT64;
-      // always store as 8 byte Slice as we need full aligned value in binary representation
-      _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
-    } else {
-      _data.shortNumberMeta.data.slice.slice[0] = 0x27U + vSize;
-      value = arangodb::basics::hostToLittle(value);
-      memcpy(&_data.shortNumberMeta.data.slice.slice[1], &value, vSize);
-      _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
-      aqlValueType = AqlValueType::VPACK_INLINE_INT48;
-    }
+    _data.shortNumberMeta.data.slice.slice[0] = 0x27U + vSize;
+    value = arangodb::basics::hostToLittle(value);
+    memcpy(&_data.shortNumberMeta.data.slice.slice[1], &value, vSize);
+    _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
+    setType(AqlValueType::VPACK_INLINE_INT48);
+  } else {
+      // value larger than largest int48 value
+    _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
+    // always store as 8 byte Slice as we need full aligned value in binary representation
+    _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
+    setType(AqlValueType::VPACK_INLINE_UINT64);
   }
-  setType(aqlValueType);
 }
 
 AqlValue::AqlValue(char const* value, size_t length) {
