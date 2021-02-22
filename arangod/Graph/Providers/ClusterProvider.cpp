@@ -92,7 +92,7 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
       _stats{} {}
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
-  LOG_TOPIC("78156", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
+  LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
   // Create default initial step
   // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
   return Step(_opts.getCache()->persistString(vertex));  // TODO check / get rid of persit string
@@ -243,7 +243,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
       VPackSlice id = e.get(StaticStrings::IdString);
       if (!id.isString()) {
         // invalid id type
-        LOG_TOPIC("da49d", ERR, Logger::GRAPHS)
+        LOG_TOPIC("eb7cd", ERR, Logger::GRAPHS)
             << "got invalid edge id type: " << id.typeName();
         continue;
       }
@@ -266,7 +266,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
 
 auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     -> futures::Future<std::vector<Step*>> {
-  LOG_TOPIC("c9160", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
+  LOG_TOPIC("03c1b", TRACE, Logger::GRAPHS) << "<ClusterProvider> Fetching...";
   std::vector<Step*> result{};
 
   if (looseEnds.size() > 0) {
