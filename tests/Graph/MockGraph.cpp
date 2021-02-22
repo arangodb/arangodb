@@ -272,9 +272,6 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     engineId = eidSlice.getNumericValue<uint64_t>();
   }
 
-  // merge given vertices with available graph vertices
-  // verticesList.insert(vertices().begin(), vertices().end());
-
   for (auto const& vertexBundle : expectedVerticesEdgesBundleToFetch) {
     auto vertex = vertexBundle.first;
     auto edges = vertexBundle.second;
@@ -294,11 +291,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       leased.close();  // 'keys' Array
       leased.close();  // base object
 
-      // Request muss ins array: preparedResponses
       prep.setRequestType(arangodb::rest::RequestType::PUT);
-
       prep.addRestSuffix("traverser");
-
       prep.addSuffix("vertex");
       prep.addSuffix(basics::StringUtils::itoa(engineId));
       prep.addBody(leased.slice());
