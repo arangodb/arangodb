@@ -354,7 +354,7 @@ TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues48Bit_140737488355327) {
 // in certain AqlValue configurations.
 // if you add tests, make sure that none of the test data includes 0xa5!
 TEST(AqlValueMemoryLayoutTest, UnsignedLargerValues64Bit_281474976710654) {
-  // 80 ff ff ff ff ff
+  // ff ff ff ff ff fe
   uint8_t const expected[] = { 
     AqlValue::AqlValueType::VPACK_INLINE_UINT64, UNINITIALIZED, UNINITIALIZED, UNINITIALIZED, UNINITIALIZED, UNINITIALIZED, UNINITIALIZED, 0x2f,
     0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x00
