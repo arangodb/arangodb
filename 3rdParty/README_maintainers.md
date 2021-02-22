@@ -76,14 +76,16 @@ https://github.com/lz4/lz4
 
 ## rocksdb
 
-our branch is maintained at:
+(upstream commit ec711b23152ca4e426057557784af322a2065fbc)
+
+Our branch is maintained at:
 https://github.com/arangodb-helper/rocksdb
 
 Most changes can be ported upstream:
 https://github.com/facebook/rocksdb
 
 On Upgrade:
-- `./thirdparty.inc``needs to be adjusted to use the snappy we specify. This can be
+- `./thirdparty.inc` needs to be adjusted to use the snappy we specify. This can be
    adjusted by commenting out the section that sets Snappy-related CMake variables:
 
     -set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
