@@ -230,7 +230,10 @@ class Node final {
   VPackBuilder toBuilder() const;
 
   /// @brief Access children
-  Children& children();
+  //Children& children();
+
+  /// @brief Access for unit tests:
+  void addChild(std::string const& name, std::shared_ptr<Node>& node);
 
   /// @brief Access children
   Children const& children() const;

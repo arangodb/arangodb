@@ -963,16 +963,16 @@ std::ostream& Node::print(std::ostream& o) const {
   return o;
 }
 
-Node::Children& Node::children() {
+void Node::addChild(std::string const& name, std::shared_ptr<Node>& node) {
   if (_children == nullptr) {
     _children = std::make_unique<Children>();
   }
-  return *_children;
+  _children->insert(std::make_pair(name, node));
 }
 
 Node::Children const& Node::children() const {
   if (_children == nullptr) {
-    _children = std::make_unique<Children>();
+    return dummyChildren;
   }
   return *_children;
 }
