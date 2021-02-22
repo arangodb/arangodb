@@ -351,8 +351,5 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
     }
   }
 
-  // Try without first, if not working:
-  // 3.) Send a Delete to RestAqlHandler (? => End query execution)
-
   return std::make_pair(std::move(preparedResponses), engineId);
 }
