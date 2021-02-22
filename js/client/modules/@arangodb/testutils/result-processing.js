@@ -591,9 +591,31 @@ function locateLongRunning(options, results, otherResults) {
       });
       let results = {};
       for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i --) {
-        let key = " - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
-          sortedByDuration[i].count + " - " +
+        let key = " - " +
+            fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - ^ " +
+            fancyTimeFormat(sortedByDuration[i].test.totalSetUp / 1000) + " v " +
+            fancyTimeFormat(sortedByDuration[i].test.totalTearDown / 1000) + " - " +
+            sortedByDuration[i].count + " - [" +
+            fancyTimeFormat((
+              sortedByDuration[i].duration +
+                sortedByDuration[i].test.totalSetUp +
+                sortedByDuration[i].test.totalTearDown) / 1000) + "] - " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
+        let setupStatistics = []
+        if (_.size(sortedByDuration[i].test.setUpAllDuration) > 1) {
+          let sortStart = [];
+          let d = sortedByDuration[i].test.setUpAllDuration;
+          Object.keys(d).forEach(a => {
+            sortStart.push([d[a], a]);
+          });
+          sortStart.sort(function(a, b) {
+            return b[0] - a[0];
+          });
+          sortStart.forEach(a => {
+            setupStatistics.push(fancyTimeFormat(a[0] / 1000) + " - " + a[1]);
+          });
+        }
+
         let testCases = [];
         let thisTestSuite = sortedByDuration[i];
         for (let testName in thisTestSuite.test) {
@@ -605,11 +627,17 @@ function locateLongRunning(options, results, otherResults) {
           if (test.hasOwnProperty('duration')) {
             duration += test.duration;
           }
+          if (test.hasOwnProperty('totalSetUp')) {
+            duration += test.totalSetUp;
+          }
           if (test.hasOwnProperty('setUpDuration')) {
             duration += test.setUpDuration;
           }
           if (test.hasOwnProperty('tearDownDuration')) {
             duration += test.tearDownDuration;
+          }
+          if (test.hasOwnProperty('totalTearDown')) {
+            duration += test.totalTearDown;
           }
           testCases.push({
             testName: testName,
@@ -627,7 +655,6 @@ function locateLongRunning(options, results, otherResults) {
             otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
             otherTestTime = " - " + fancyTimeFormat(otherTestTime / 1000);
           }
-
           statistics.push(
             fancyTimeFormat(testCases[j].duration / 1000) +
               otherTestTime +
@@ -638,7 +665,9 @@ function locateLongRunning(options, results, otherResults) {
           'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
           'stats': statistics
         };
-
+        if (setupStatistics.length > 0) {
+          results[key]['setupStatistics'] = setupStatistics;
+        }
       }
       testRunStatistics +=  yaml.safeDump(results);
       sortedByDuration = [];
