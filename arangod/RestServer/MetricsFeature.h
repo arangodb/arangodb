@@ -235,6 +235,8 @@ inline extern constexpr char arangodb_scheduler_awake_threads[] =
   "arangodb_scheduler_awake_threads";
 inline extern constexpr char arangodb_scheduler_num_working_threads[] =
   "arangodb_scheduler_num_working_threads";
+inline extern constexpr char arangodb_scheduler_num_worker_threads[] =
+  "arangodb_scheduler_num_worker_threads";
 inline extern constexpr char arangodb_scheduler_ongoing_low_prio[] =
   "arangodb_scheduler_ongoing_low_prio";
 inline extern constexpr char arangodb_scheduler_low_prio_queue_last_dequeue_time[] =

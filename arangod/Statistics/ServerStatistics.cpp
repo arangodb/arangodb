@@ -97,7 +97,7 @@ void TransactionStatistics::setupDocumentMetrics() {
     _metrics.counter<arangodb_collection_truncates_replication>(
       0, "Total number of collection truncate operations by synchronous replication");
   _rocksdb_read_sec = 
-    _metrics.histogram(
+    _metrics.histogram<arangodb_document_read_time>(
       log_scale_t<float>(10., 0.0, 1000.0, 11), "Total time spent in document read operations [s]");
   _rocksdb_insert_sec = 
     _metrics.histogram<arangodb_document_insert_time>(

@@ -182,7 +182,7 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
         server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_submitted>(
           uint64_t(0),"Total number of jobs submitted to the queue")),
       _metricsJobsDequeued(
-        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_dequeuedmuint64_t>(
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_dequeued>(
           uint64_t(0),"Total number of jobs dequeued")),
       _metricsAwakeThreads(
         server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_awake_threads>(
