@@ -38,19 +38,19 @@ namespace {
 constexpr uint8_t UNINITIALIZED = 0xa5;
 
 void runChecksForNumber(AqlValue const& value, uint8_t const* expected) {
-  ASSERT_FALSE(value.requiresDestruction());
-  ASSERT_FALSE(value.isEmpty());
-  ASSERT_FALSE(value.isPointer());
-  ASSERT_FALSE(value.isManagedDocument());
-  ASSERT_FALSE(value.isRange());
-  ASSERT_FALSE(value.isNone());
-  ASSERT_FALSE(value.isNull(false));
-  ASSERT_FALSE(value.isNull(true));
-  ASSERT_FALSE(value.isBoolean());
-  ASSERT_TRUE(value.isNumber());
-  ASSERT_FALSE(value.isString());
-  ASSERT_FALSE(value.isObject());
-  ASSERT_FALSE(value.isArray());
+  EXPECT_FALSE(value.requiresDestruction());
+  EXPECT_FALSE(value.isEmpty());
+  EXPECT_FALSE(value.isPointer());
+  EXPECT_FALSE(value.isManagedDocument());
+  EXPECT_FALSE(value.isRange());
+  EXPECT_FALSE(value.isNone());
+  EXPECT_FALSE(value.isNull(false));
+  EXPECT_FALSE(value.isNull(true));
+  EXPECT_FALSE(value.isBoolean());
+  EXPECT_TRUE(value.isNumber());
+  EXPECT_FALSE(value.isString());
+  EXPECT_FALSE(value.isObject());
+  EXPECT_FALSE(value.isArray());
 
   if constexpr (arangodb::basics::isLittleEndian()) {
     uint8_t const* data = reinterpret_cast<uint8_t const*>(&value);
@@ -61,7 +61,7 @@ void runChecksForNumber(AqlValue const& value, uint8_t const* expected) {
       if (expected[i] == UNINITIALIZED) {
         continue;
       }
-      ASSERT_EQ(data[i], expected[i]);
+      EXPECT_EQ(data[i], expected[i]);
     }
   }
 }
@@ -93,13 +93,13 @@ void runChecksForUInt64(uint64_t value, uint8_t const* expected) {
   AqlValue& aqlValue = *reinterpret_cast<AqlValue*>(p);
   runChecksForNumber(aqlValue, expected);
 
-  ASSERT_EQ(value != 0, aqlValue.toBoolean());
+  EXPECT_EQ(value != 0, aqlValue.toBoolean());
   
-  ASSERT_EQ(value, aqlValue.slice().getNumber<uint64_t>());
+  EXPECT_EQ(value, aqlValue.slice().getNumber<uint64_t>());
 
   if (value <= static_cast<uint64_t>(INT64_MAX)) {
-    ASSERT_EQ(static_cast<int64_t>(value), aqlValue.toInt64());
-    ASSERT_EQ(static_cast<int64_t>(value), aqlValue.slice().getNumber<int64_t>());
+    EXPECT_EQ(static_cast<int64_t>(value), aqlValue.toInt64());
+    EXPECT_EQ(static_cast<int64_t>(value), aqlValue.slice().getNumber<int64_t>());
   }
 }
 
