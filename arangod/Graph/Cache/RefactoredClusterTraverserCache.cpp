@@ -87,7 +87,7 @@ auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edge
   auto edgeToEmplace =
       std::pair{edgeId, VertexType{getEdgeDestination(edgeSlice, origin)}};
   std::vector<std::pair<EdgeType, VertexType>> initVector{};
-  
+
   if (backward) {
     _edgeDataBackward.try_emplace(edgeId, edgeSlice);
     _vertexConnectedEdgesBackward.try_emplace(origin, initVector);
