@@ -323,11 +323,8 @@ std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t> MockG
       leased.add("backward", VPackValue(false));
       leased.close();  // base object
 
-      // Request muss ins array: preparedResponses
       prep.setRequestType(arangodb::rest::RequestType::PUT);
-
       prep.addRestSuffix("traverser");
-
       prep.addSuffix("edge");
       prep.addSuffix(basics::StringUtils::itoa(engineId));
       prep.addBody(leased.slice());
