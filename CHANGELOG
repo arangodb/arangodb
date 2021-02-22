@@ -1,6 +1,10 @@
 devel
 -----
 
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
+
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
