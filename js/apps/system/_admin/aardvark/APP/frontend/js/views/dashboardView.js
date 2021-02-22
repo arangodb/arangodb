@@ -153,7 +153,7 @@
 
     toggleViews: function (e) {
       var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['requests', 'system'];
+      var views = ['requests', 'system', 'logs'];
 
       _.each(views, function (view) {
         if (id !== view) {
