@@ -32,6 +32,102 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
+inline extern constexpr char arangodb_agency_write_ok[] = "arangodb_agency_write_ok";
+inline extern constexpr char arangodb_agency_write_no_leader[] = "arangodb_agency_write_no_leader";
+inline extern constexpr char arangodb_agency_read_ok[] = "arangodb_agency_read_ok";
+inline extern constexpr char arangodb_agency_read_no_leader[] = "arangodb_agency_read_no_leader";
+inline extern constexpr char arangodb_agency_supervision_accum_runtime_msec[] =
+  "arangodb_agency_supervision_accum_runtime_msec";
+inline extern constexpr char arangodb_agency_supervision_accum_runtime_wait_for_replication_msec[] =
+  "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec";
+inline extern constexpr char arangodb_agency_supervision_failed_server_count[] =
+  "arangodb_agency_supervision_failed_server_count";
+inline extern constexpr char arangodb_v8_context_creation_time_msec[] = "arangodb_v8_context_creation_time_msec";
+inline extern constexpr char arangodb_v8_context_created[] = "arangodb_v8_context_created";
+inline extern constexpr char arangodb_v8_context_destroyed[] = "arangodb_v8_context_destroyed";
+inline extern constexpr char arangodb_v8_context_entered[] = "arangodb_v8_context_entered";
+inline extern constexpr char arangodb_v8_context_exited[] = "arangodb_v8_context_exited";
+inline extern constexpr char arangodb_v8_context_enter_failures[] = "arangodb_v8_context_enter_failures";
+inline extern constexpr char arangodb_connection_leases_successful[] =
+  "arangodb_connection_leases_successful_";
+inline extern constexpr char arangodb_connection_pool_leases_failed[] =
+  "arangodb_connection_pool_leases_failed_";
+inline extern constexpr char arangodb_connection_pool_connections_created[] =
+  "arangodb_connection_pool_connections_created_";
+inline extern constexpr char arangodb_rocksdb_write_stalls[] =
+  "arangodb_rocksdb_write_stalls";
+inline extern constexpr char arangodb_rocksdb_write_stops[] = "arangodb_rocksdb_write_stops";
+inline extern constexpr char arangodb_replication_dump_requests[] = "arangodb_replication_dump_requests";
+inline extern constexpr char arangodb_replication_dump_bytes_received[] = "arangodb_replication_dump_bytes_received";
+inline extern constexpr char arangodb_replication_dump_documents[] = "arangodb_replication_dump_documents";
+inline extern constexpr char arangodb_replication_dump_request_time[] = "arangodb_replication_dump_request_time";
+inline extern constexpr char arangodb_replication_dump_apply_time[] = "arangodb_replication_dump_apply_time";
+inline extern constexpr char arangodb_replication_initial_sync_keys_requests[] = "arangodb_replication_initial_sync_keys_requests";
+inline extern constexpr char arangodb_replication_initial_sync_docs_requests[] = "arangodb_replication_initial_sync_docs_requests";
+inline extern constexpr char arangodb_replication_initial_sync_docs_requested[] = "arangodb_replication_initial_sync_docs_requested";
+inline extern constexpr char arangodb_replication_initial_sync_docs_inserted[] = "arangodb_replication_initial_sync_docs_inserted";
+inline extern constexpr char arangodb_replication_initial_sync_docs_removed[] = "arangodb_replication_initial_sync_docs_removed";
+inline extern constexpr char arangodb_replication_initial_sync_bytes_received[] = "arangodb_replication_initial_sync_bytes_received";
+inline extern constexpr char arangodb_replication_initial_chunks_requests_time[] = "arangodb_replication_initial_chunks_requests_time";
+inline extern constexpr char arangodb_replication_initial_keys_requests_time[] = "arangodb_replication_initial_keys_requests_time";
+inline extern constexpr char arangodb_replication_initial_docs_requests_time[] = "arangodb_replication_initial_docs_requests_time";
+inline extern constexpr char arangodb_replication_initial_insert_apply_time[] = "arangodb_replication_initial_insert_apply_time";
+inline extern constexpr char arangodb_replication_initial_remove_apply_time[] = "arangodb_replication_initial_remove_apply_time";
+inline extern constexpr char arangodb_replication_initial_lookup_time[] = "arangodb_replication_initial_lookup_time";
+inline extern constexpr char arangodb_replication_tailing_requests[] = "arangodb_replication_tailing_requests";
+inline extern constexpr char arangodb_replication_tailing_follow_tick_failures[] = "arangodb_replication_tailing_follow_tick_failures";
+inline extern constexpr char arangodb_replication_tailing_markers[] = "arangodb_replication_tailing_markers";
+inline extern constexpr char arangodb_replication_tailing_documents[] = "arangodb_replication_tailing_documents";
+inline extern constexpr char arangodb_replication_tailing_removals[] = "arangodb_replication_tailing_removals";
+inline extern constexpr char arangodb_replication_tailing_bytes_received[] = "arangodb_replication_tailing_bytes_received";
+inline extern constexpr char arangodb_replication_failed_connects[] = "arangodb_replication_failed_connects";
+inline extern constexpr char arangodb_replication_tailing_request_time[] = "arangodb_replication_tailing_request_time";
+inline extern constexpr char arangodb_replication_tailing_apply_time[]= "arangodb_replication_tailing_apply_time";
+inline extern constexpr char arangodb_replication_synchronous_requests_total_time[] =
+  "arangodb_replication_synchronous_requests_total_time";
+inline extern constexpr char arangodb_dropped_followers_count[] =
+  "arangodb_dropped_followers_count";
+inline extern constexpr char arangodb_refused_followers_count[] =
+  "arangodb_refused_followers_count";
+inline extern constexpr char arangodb_sync_wrong_checksum[] =
+  "arangodb_sync_wrong_checksum";
+inline extern constexpr char arangodb_load_plan_accum_runtime_msec[] =
+  "arangodb_load_plan_accum_runtime_msec";
+inline extern constexpr char arangodb_load_current_accum_runtime_msec[] =
+  "arangodb_load_current_accum_runtime_msec";
+inline extern constexpr char arangodb_heartbeat_failures[] =
+  "arangodb_heartbeat_failures";
+inline extern constexpr char arangodb_agency_callback_registered[] =
+  "arangodb_agency_callback_registered";
+inline extern constexpr char arangodb_transactions_expired[] =
+  "arangodb_transactions_expired";
+inline extern constexpr char arangodb_aql_all_query[] =
+  "arangodb_aql_all_query";
+inline extern constexpr char arangodb_aql_slow_query[] =
+  "arangodb_aql_slow_query";
+inline extern constexpr char arangodb_aql_total_query_time_msec[] =
+  "arangodb_aql_total_query_time_msec";
+inline extern constexpr char arangodb_network_forwarded_requests[] =
+  "arangodb_network_forwarded_requests";
+inline extern constexpr char arangodb_network_request_timeouts[] =
+  "arangodb_network_request_timeouts";
+inline extern constexpr char arangodb_maintenance_phase1_accum_runtime_msec[] =
+  "arangodb_maintenance_phase1_accum_runtime_msec";
+inline extern constexpr char arangodb_maintenance_phase2_accum_runtime_msec[] =
+  "arangodb_maintenance_phase2_accum_runtime_msec";
+inline extern constexpr char arangodb_maintenance_agency_sync_accum_runtime_msec[] =
+  "arangodb_maintenance_agency_sync_accum_runtime_msec";
+inline extern constexpr char arangodb_maintenance_action_duplicate_counter[] =
+  "arangodb_maintenance_action_duplicate_counter";
+inline extern constexpr char arangodb_maintenance_action_registered_counter[] =
+  "arangodb_maintenance_action_registered_counter";
+inline extern constexpr char arangodb_maintenance_action_accum_runtime_msec[] =
+  "arangodb_maintenance_action_accum_runtime_msec";
+inline extern constexpr char arangodb_maintenance_action_accum_queue_time_msec[] =
+  "arangodb_maintenance_action_accum_queue_time_msec";
+inline extern constexpr char arangodb_maintenance_action_failure_counter[] =
+  "arangodb_maintenance_action_failure_counter";
+
 namespace arangodb {
 struct metrics_key;
 }
@@ -51,9 +147,11 @@ struct metrics_key {
   std::string name;
   std::string labels;
   std::size_t _hash;
+  metrics_key() {}
   metrics_key(std::string const& name);
   metrics_key(std::string const& name, std::string const& labels);
   metrics_key(std::initializer_list<std::string> const& il);
+  metrics_key(std::string const& name, std::initializer_list<std::string> const& il);
   std::size_t hash() const noexcept;
   bool operator==(metrics_key const& other) const;
 };
@@ -161,12 +259,44 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  Counter& counter(std::string const& name, uint64_t const& val, std::string const& help);
-  Counter& counter(std::initializer_list<std::string> const& key,
-                   uint64_t const& val, std::string const& help);
-  Counter& counter(metrics_key const& key, uint64_t const& val, std::string const& help);
-  Counter& counter(std::string const& name);
-  Counter& counter(std::initializer_list<std::string> const& key);
+  template<const char* name>
+  Counter& counter(
+    std::initializer_list<std::string> const& key, uint64_t const& val,
+    std::string const& help) {
+    return counter<name>(metrics_key(name, key), val, help);
+  }
+
+  template<const char* name>
+  Counter& counter(
+    metrics_key const& mk, uint64_t const& val, std::string const& help) {
+
+    std::string labels = mk.labels;
+    if (ServerState::instance() != nullptr &&
+        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
+      if (!labels.empty()) {
+        labels += ",";
+      }
+      labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
+        "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
+    }
+    auto metric = std::make_shared<Counter>(val, name, help, labels);
+    bool success = false;
+    {
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+    }
+    if (!success) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, std::string("counter ") + name + " already exists");
+    }
+    return *metric;
+  }
+
+  template<const char* name>
+  Counter& counter(uint64_t const& val, std::string const& help) {
+    return counter<name>(metrics_key(name), val, help);
+  }
+
 
   template <typename T>
   Gauge<T>& gauge(std::string const& name, T const& t, std::string const& help) {

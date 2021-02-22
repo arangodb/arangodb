@@ -28,36 +28,57 @@
 
 using namespace arangodb;
 
+extern constexpr char arangodb_transactions_started[] =
+  "arangodb_transactions_started";
+extern constexpr char arangodb_transactions_aborted[] =
+  "arangodb_transactions_aborted";
+extern constexpr char arangodb_transactions_committed[] =
+  "arangodb_transactions_committed";
+extern constexpr char arangodb_intermediate_commits[] =
+  "arangodb_intermediate_commits";
+extern constexpr char arangodb_collection_lock_timeouts_exclusive[] =
+  "arangodb_collection_lock_timeouts_exclusive";
+extern constexpr char arangodb_collection_lock_timeouts_write[] =
+  "arangodb_collection_lock_timeouts_write";
+extern constexpr char arangodb_collection_lock_acquisition_micros[] =
+  "arangodb_collection_lock_acquisition_micros";
+extern constexpr char arangodb_collection_lock_sequential_mode[] =
+  "arangodb_collection_lock_sequential_mode";
+extern constexpr char arangodb_document_writes[] =
+  "arangodb_document_writes";
+extern constexpr char arangodb_document_writes_replication[] =
+  "arangodb_document_writes_replication";
+extern constexpr char arangodb_collection_truncates[] =
+  "arangodb_collection_truncates";
+extern constexpr char arangodb_collection_truncates_replication[] =
+  "arangodb_collection_truncates_replication";
+
 TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
     : _metrics(metrics),
-      _transactionsStarted(_metrics.counter("arangodb_transactions_started", 0,
-                                            "Number of transactions started")),
-      _transactionsAborted(_metrics.counter("arangodb_transactions_aborted", 0,
-                                            "Number of transactions aborted")),
+      _transactionsStarted(
+        _metrics.counter<arangodb_transactions_started>(0, "Number of transactions started")),
+      _transactionsAborted(
+        _metrics.counter<arangodb_transactions_aborted>(0, "Number of transactions aborted")),
       _transactionsCommitted(
-          _metrics.counter("arangodb_transactions_committed", 0,
-                           "Number of transactions committed")),
+        _metrics.counter<arangodb_transactions_committed>(0, "Number of transactions committed")),
       _intermediateCommits(
-        _metrics.counter("arangodb_intermediate_commits", 0,
-                         "Number of intermediate commits performed in transactions")),
+        _metrics.counter<arangodb_intermediate_commits>(0, "Number of intermediate commits performed in transactions")),
       _exclusiveLockTimeouts(
-        _metrics.counter("arangodb_collection_lock_timeouts_exclusive", 0,
-                         "Number of timeouts when trying to acquire "
-                         "collection exclusive locks")),
+        _metrics.counter<arangodb_collection_lock_timeouts_exclusive>(
+          0, "Number of timeouts when trying to acquire collection exclusive locks")),
       _writeLockTimeouts(
-        _metrics.counter("arangodb_collection_lock_timeouts_write", 0,
-                         "Number of timeouts when trying to acquire collection write locks")),
+        _metrics.counter<arangodb_collection_lock_timeouts_write>(
+          0, "Number of timeouts when trying to acquire collection write locks")),
       _lockTimeMicros(
-        _metrics.counter("arangodb_collection_lock_acquisition_micros", 0,
-                         "Total amount of collection lock acquisition time [μs]")),
+        _metrics.counter<arangodb_collection_lock_acquisition_micros>(
+          0, "Total amount of collection lock acquisition time [μs]")),
       _lockTimes(
         _metrics.histogram("arangodb_collection_lock_acquisition_time",
                            log_scale_t(10., 0.0, 1000.0, 11),
                            "Collection lock acquisition time histogram [s]")),
       _sequentialLocks(
-        _metrics.counter("arangodb_collection_lock_sequential_mode", 0,
-                         "Number of transactions using sequential locking of "
-                         "collections to avoid deadlocking")),
+        _metrics.counter<arangodb_collection_lock_sequential_mode>(
+          0, "Number of transactions using sequential locking of collections to avoid deadlocking")),
       _exportReadWriteMetrics(/*may be updated later*/ false) {}
 
 void TransactionStatistics::setupDocumentMetrics() {
@@ -65,17 +86,17 @@ void TransactionStatistics::setupDocumentMetrics() {
   _exportReadWriteMetrics = true;
   
   _numWrites = 
-    _metrics.counter("arangodb_document_writes", 0,
-                     "Total number of document write operations (excl. synchronous replication)");
+    _metrics.counter<arangodb_document_writes>(
+      0, "Total number of document write operations (excl. synchronous replication)");
   _numWritesReplication = 
-    _metrics.counter("arangodb_document_writes_replication", 0,
-                     "Total number of document write oprations by synchronous replication");
+    _metrics.counter<arangodb_document_writes_replication>(
+      0, "Total number of document write oprations by synchronous replication");
   _numTruncates = 
-    _metrics.counter("arangodb_collection_truncates", 0,
+    _metrics.counter<arangodb_collection_truncates>(0,
                      "Total number of collection truncate operations (excl. synchronous replication)");
   _numTruncatesReplication = 
-    _metrics.counter("arangodb_collection_truncates_replication", 0,
-                     "Total number of collection truncate operations by synchronous replication");
+    _metrics.counter<arangodb_collection_truncates_replication>(
+      0, "Total number of collection truncate operations by synchronous replication");
   _rocksdb_read_sec = 
     _metrics.histogram("arangodb_document_read_time",
                        log_scale_t<float>(10., 0.0, 1000.0, 11),

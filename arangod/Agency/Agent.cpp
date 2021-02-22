@@ -76,17 +76,17 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_ok", 0, "Agency write ok")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_ok>(
+          0, "Agency write ok")),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_no_leader", 0, "Agency write no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_no_leader>(
+          0, "Agency write no leader")),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_ok", 0, "Agency read ok")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_read_ok>(
+          0, "Agency read ok")),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_no_leader", 0, "Agency read no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_read_no_leader>(
+          0, "Agency read no leader")),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram(
           "arangodb_agency_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),

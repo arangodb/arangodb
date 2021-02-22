@@ -75,6 +75,9 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
+extern constexpr char arangodb_replication_cluster_inventory_requests[] =
+  "arangodb_replication_cluster_inventory_requests";
+
 namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
@@ -89,8 +92,8 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
       _inventoryRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_replication_cluster_inventory_requests>(
+          0, "Number of cluster replication inventory requests received")) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 

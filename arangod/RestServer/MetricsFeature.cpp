@@ -50,6 +50,7 @@ using namespace arangodb::options;
 // --SECTION--                                                 MetricsFeature
 // -----------------------------------------------------------------------------
 
+
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Metrics"), 
     _export(true) , 
@@ -115,87 +116,23 @@ void MetricsFeature::toPrometheus(std::string& result) const {
   }
 }
 
-Counter& MetricsFeature::counter(
-  std::initializer_list<std::string> const& key, uint64_t const& val,
-  std::string const& help) {
-  return counter(metrics_key(key), val, help);
-}
-
-Counter& MetricsFeature::counter(
-  metrics_key const& mk, uint64_t const& val,
-  std::string const& help) {
-
-  std::string labels = mk.labels;
-  if (ServerState::instance() != nullptr &&
-      ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
-    if (!labels.empty()) {
-      labels += ",";
-    }
-    labels += "role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) +
-      "\",shortname=\"" + ServerState::instance()->getShortName() + "\"";
-  }
-  auto metric = std::make_shared<Counter>(val, mk.name, help, labels);
-  bool success = false;
-  {
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
-  }
-  if (!success) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("counter ") + mk.name + " already exists");
-  }
-  return *metric;
-}
-
-Counter& MetricsFeature::counter(
-  std::string const& name, uint64_t const& val, std::string const& help) {
-  return counter(metrics_key(name), val, help);
-}
-
 ServerStatistics& MetricsFeature::serverStatistics() {
   return *_serverStatistics;
 }
 
-Counter& MetricsFeature::counter(std::initializer_list<std::string> const& key) {
-  metrics_key mk(key);
-  std::shared_ptr<Counter> metric = nullptr;
-  std::string error;
-  {
-    std::lock_guard<std::recursive_mutex> guard(_lock);
-    registry_type::const_iterator it = _registry.find(mk);
-    if (it == _registry.end()) {
-      it = _registry.find(mk.name);
-      if (it == _registry.end()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
-      } else {
-        auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
-        return counter(mk, 0, tmp->help());
-      }
-    }
-    try {
-      metric = std::dynamic_pointer_cast<Counter>(it->second);
-      if (metric == nullptr) {
-        error = std::string("Failed to retrieve counter ") + mk.name;
-      }
-    } catch (std::exception const& e) {
-      error = std::string("Failed to retrieve counter ") + mk.name +  ": " + e.what();
-    }
+metrics_key::metrics_key(std::string const& name, std::initializer_list<std::string> const& il) {
+  TRI_ASSERT(il.size() > 0);
+  TRI_ASSERT(il.size() < 2);
+  if (il.size() == 1) {
+    labels = *(il.begin());
   }
-  if (!error.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, error);
-  }
-  return *metric;
-}
-
-Counter& MetricsFeature::counter(std::string const& name) {
-  return counter({name});
+  _hash = std::hash<std::string>{}(name + labels);
 }
 
 metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
   TRI_ASSERT(il.size() > 0);
   TRI_ASSERT(il.size() < 3);
-  name = *il.begin();
+  name = *(il.begin());
   if (il.size() == 2) {
     labels = *(il.begin()+1);
   }

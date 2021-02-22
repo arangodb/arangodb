@@ -50,8 +50,8 @@ AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::Application
   : _agency(server), 
     _callbackBasePath(callbackBasePath),
     _totalCallbacksRegistered(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_callback_registered", 0, "Total number of agency callbacks registered")),
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_callback_registered>(
+          0, "Total number of agency callbacks registered")),
     _callbacksCount(
         server.getFeature<arangodb::MetricsFeature>().gauge(
           "arangodb_agency_callback_count", uint64_t(0), "Current number of agency callbacks registered")) {}

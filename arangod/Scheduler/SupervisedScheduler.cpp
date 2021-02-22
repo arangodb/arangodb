@@ -144,6 +144,12 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 }  // namespace arangodb
 
+extern constexpr char arangodb_scheduler_threads_started[] =
+  "arangodb_scheduler_threads_started";
+extern constexpr char arangodb_scheduler_threads_stopped[] =
+  "arangodb_scheduler_threads_stopped";
+extern constexpr char arangodb_scheduler_queue_full_failures[] =
+  "arangodb_scheduler_queue_full_failures";
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize, uint64_t fifo1Size,
@@ -185,15 +191,15 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
           "Number of working threads")),
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
           StaticStrings::SchedulerNumWorker, 0, "Number of worker threads")),
-      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_threads_started", 0,
-          "Number of scheduler threads started")),
-      _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_threads_stopped", 0,
-          "Number of scheduler threads stopped")),
-      _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_scheduler_queue_full_failures", 0,
-          "Tasks dropped and not added to internal queue")),
+      _metricsThreadsStarted(
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_started>(
+          0, "Number of scheduler threads started")),
+      _metricsThreadsStopped(
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_stopped>(
+          0, "Number of scheduler threads stopped")),
+      _metricsQueueFull(
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_queue_full_failures>(
+          0, "Tasks dropped and not added to internal queue")),
       _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().gauge(
           "arangodb_scheduler_ongoing_low_prio", uint64_t(0),
           "Total number of ongoing RestHandlers coming from "

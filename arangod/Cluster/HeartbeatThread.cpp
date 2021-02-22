@@ -218,9 +218,9 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
           StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
           "Time required to send heartbeat [ms]")),
-      _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
-          StaticStrings::HeartbeatFailureCounter, 0,
-          "Counting failed heartbeat transmissions")) {}
+      _heartbeat_failure_counter(
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_heartbeat_failures>(
+          0, "Counting failed heartbeat transmissions")) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread

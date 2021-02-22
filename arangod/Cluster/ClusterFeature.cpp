@@ -582,15 +582,15 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        StaticStrings::DroppedFollowerCount, 0,
-        "Number of drop-follower events");
-    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_refused_followers_count", 0,
-        "Number of refusal answers from a follower during synchronous replication");
-    _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_sync_wrong_checksum", 0,
-        "Number of times a mismatching shard checksum was detected when syncing shards");
+    _followersDroppedCounter =
+      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_dropped_followers_count>(
+        0, "Number of drop-follower events");
+    _followersRefusedCounter =
+      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_refused_followers_count>(
+        0, "Number of refusal answers from a follower during synchronous replication");
+    _followersWrongChecksumCounter =
+      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_sync_wrong_checksum>(
+        0, "Number of times a mismatching shard checksum was detected when syncing shards");
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
