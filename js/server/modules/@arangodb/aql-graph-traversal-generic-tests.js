@@ -5619,7 +5619,6 @@ function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph,
   });
 }
 
-/*
 function testUnconnectedGraphKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
 
@@ -5662,7 +5661,7 @@ function testUnconnectedGraphKPathsOutboundInvalidToVertex(testGraph) {
   const res = db._query(query);
   const foundPaths = res.toArray();
   assertEqual(foundPaths.length, 0);
-}*/
+}
 
 function testEmptyGraphKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
