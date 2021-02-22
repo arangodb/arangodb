@@ -40,6 +40,7 @@
 #include <algorithm>
 #include <atomic>
 #include <exception>
+#include <mutex>
 #include <thread>
 
 #include <boost/core/demangle.hpp>
@@ -161,6 +162,14 @@ void appendHexValue(unsigned char const* src, size_t len, char*& dst, bool strip
   if (stripLeadingZeros) {
     *dst++ = '0';
   }
+}
+
+template <typename T>
+void appendHexValue(T value, char*& dst, bool stripLeadingZeros) {
+  static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
+  unsigned char buffer[sizeof(T)];
+  memcpy(buffer, &value, sizeof(T));
+  appendHexValue(buffer, sizeof(T), dst, stripLeadingZeros);
 }
 
 #ifdef ARANGODB_HAVE_LIBUNWIND
@@ -477,11 +486,18 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 #ifdef _WIN32
 
 static std::string miniDumpDirectory = "C:\\temp";
+static std::mutex miniDumpLock;
 
 // This function is called once after installing the exceptionFilter.
 void setMiniDumpDirectory() { miniDumpDirectory = TRI_GetTempPath(); }
 
 void createMiniDump(EXCEPTION_POINTERS* pointers) {
+  // we have to serialize calls to MiniDumpWriteDump
+  std::lock_guard<std::mutex> lock(miniDumpLock);
+
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
   time_t rawtime;
   time(&rawtime);
   struct tm timeinfo;
@@ -495,8 +511,11 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
                             CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (hFile == INVALID_HANDLE_VALUE) {
-    LOG_TOPIC("ba80e", FATAL, arangodb::Logger::CRASH)
-        << "Could not open minidump file: " << GetLastError();
+    char* p = &buffer[0];
+    appendNullTerminatedString("Could not open minidump file: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("ba80e", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
     return;
   }
 
@@ -508,10 +527,17 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
   if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
                         MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
                         pointers ? &exceptionInfo : nullptr, nullptr, nullptr)) {
-    LOG_TOPIC("93315", FATAL, arangodb::Logger::CRASH) << "Wrote minidump: " << filename;
+    char* p = &buffer[0];
+    appendNullTerminatedString("Wrote minidump: ", p);
+    appendNullTerminatedString(filename, p);
+    LOG_TOPIC("93315", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
   } else {
-    LOG_TOPIC("af06b", FATAL, arangodb::Logger::CRASH)
-        << "Failed to write minidump: " << GetLastError();
+    char* p = &buffer[0];
+    appendNullTerminatedString("Failed to write minidump: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("af06b", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
   }
 
   CloseHandle(hFile);
@@ -519,10 +545,20 @@ void createMiniDump(EXCEPTION_POINTERS* pointers) {
 
 LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
   TRI_ASSERT(pointers && pointers->ExceptionRecord);
-  LOG_TOPIC("87ff4", FATAL, arangodb::Logger::CRASH)
-      << "Unhandled exception: " << std::hex << pointers->ExceptionRecord->ExceptionCode
-      << " in thread " << GetCurrentThreadId();
-      
+
+  {
+    char buffer[4096];
+    memset(&buffer[0], 0, sizeof(buffer));
+    char* p = &buffer[0];
+    appendNullTerminatedString("Unhandled exception: ", p);
+    appendHexValue(pointers->ExceptionRecord->ExceptionCode, p, false);
+    appendNullTerminatedString(" at address ", p);
+    appendHexValue(pointers->ContextRecord->Rip, p, false);
+    appendNullTerminatedString(" in thread ", p);
+    appendHexValue(GetCurrentThreadId(), p, true);
+    LOG_TOPIC("87ff4", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  } 
   createMiniDump(pointers);
   return EXCEPTION_CONTINUE_SEARCH;
 }
