@@ -153,13 +153,6 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       VertexType vertexKey(pair.key);
-      /*if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
-       // TODO: Check!
-        // We either found the same vertex twice,
-        // or found a vertex we did not request.
-        // Anyways something somewhere went seriously wrong
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_GOT_CONTRADICTING_ANSWERS);
-      }*/
 
       if (!isPayloadCached) {
         _opts.getCache()->datalake().add(payload);

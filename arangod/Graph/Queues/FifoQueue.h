@@ -51,6 +51,7 @@ class FifoQueue {
   };
 
   void append(Step step) {
+    // TODO: We need to implement a method to verify that we do not have duplicate looseEnds objects here (e.g. same vertex looseEnd twice)
     _resourceMonitor.increaseMemoryUsage(sizeof(Step));
     _queue.push_back(std::move(step));
   };
