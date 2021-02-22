@@ -219,6 +219,8 @@ inline extern constexpr char arangodb_heartbeat_send_time_msec[] =
   "arangodb_heartbeat_send_time_msec";
 inline extern constexpr char arangodb_load_current_runtime[] =
   "arangodb_load_current_runtime";
+inline extern constexpr char arangodb_load_plan_runtime[] =
+  "arangodb_load_plan_runtime";
 inline extern constexpr char arangodb_connection_pool_lease_time_hist[] =
   "arangodb_connection_pool_lease_time_hist";
 inline extern constexpr char arangodb_scheduler_queue_length[] =
