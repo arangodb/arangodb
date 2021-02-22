@@ -1855,6 +1855,8 @@ void RestoreFeature::start() {
     if (result.fail()) {
       break;
     }
+    
+    _progressTracker->cleanup();
   }
 
   if (result.fail()) {

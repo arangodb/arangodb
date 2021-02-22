@@ -5,6 +5,14 @@ devel
 
 * Cleanup old hotbackup transfer jobs in agency.
 
+* Add JWT secret support for arangodump and arangorestore, i.e. they now also
+  provide the command-line options `--server.ask-jwt-secret` and 
+  `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
+
+* Add optional hyperlink to program option sections for information purposes,
+  and add optional sub-headlines to program options for better grouping.
+  These changes will be visible only when using `--help`.
+
 * For Windows builds, remove the defines `_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS`
   and `_ENABLE_ATOMIC_ALIGNMENT_FIX` that were needed to build Boost components
   with MSVC in older versions of Boost and MSVC.
