@@ -601,7 +601,7 @@ function locateLongRunning(options, results, otherResults) {
                 sortedByDuration[i].test.totalSetUp +
                 sortedByDuration[i].test.totalTearDown) / 1000) + "] - " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
-        let setupStatistics = []
+        let setupStatistics = [];
         if (_.size(sortedByDuration[i].test.setUpAllDuration) > 1) {
           let sortStart = [];
           let d = sortedByDuration[i].test.setUpAllDuration;
