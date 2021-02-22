@@ -114,9 +114,6 @@ TEST_F(RestDocumentAPITest, test_roundtrip_api_document_read) {
     try {
       auto status = testee.execute();
       auto res = testee.stealResponse();
-      LOG_DEVEL << "Status: " << (int)status;
-      LOG_DEVEL << "Response "
-                << static_cast<GeneralResponseMock*>(res.get())->_payload.toJson();
       prep.rememberResponse(std::move(res));
       preparedResponses.emplace_back(std::move(prep));
     } catch (...) {
@@ -150,39 +147,10 @@ TEST_F(RestDocumentAPITest, test_roundtrip_api_document_read) {
         trx->documentAsync(collectionName, builder.slice(), options);
     try {
       OperationResult const& opRes = future.get();
-      LOG_DEVEL << "Got Result: " << opRes.ok();
-      if (opRes.hasSlice()) {
-        LOG_DEVEL << opRes.slice().toJson();
-      } else {
-        LOG_DEVEL << "NONO slice";
-      }
-
     } catch (std::exception const& e) {
       LOG_DEVEL << "Got Error: " << e.what();
     }
     res = trx->commit();
     ASSERT_TRUE(res.ok());
-    LOG_DEVEL << "SHUTDOWN";
-    /*
-
-        auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
-        auto fakeResponse = std::make_unique<GeneralResponseMock>();
-        fakeRequest->setRequestType(arangodb::rest::RequestType::GET);
-        fakeRequest->addSuffix(collectionName);
-        fakeRequest->addSuffix(keyName);
-        VocbaseContext* vc = static_cast<VocbaseContext*>(fakeRequest->requestContext());
-        vc->forceSuperuser();
-
-        arangodb::RestDocumentHandler testee(server.server(), fakeRequest.release(),
-                                             fakeResponse.release());
-        testee.runHandler(
-            [](rest::RestHandler* handler) { LOG_DEVEL << "internal call!"; });
-
-        auto status = testee.execute();
-        auto res = testee.stealResponse();
-        LOG_DEVEL << "Status: " << (int)status;
-        LOG_DEVEL << "Response "
-                  << static_cast<GeneralResponseMock*>(res.get())->_payload.toJson();
-                  */
   });
 }
