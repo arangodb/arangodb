@@ -103,7 +103,11 @@ else()
     if(WITH_JEMALLOC)
       find_package(JeMalloc REQUIRED)
       add_definitions(-DROCKSDB_JEMALLOC -DJEMALLOC_NO_DEMANGLE)
-      list(APPEND THIRDPARTY_LIBS JeMalloc::JeMalloc)
+      # intentional deviation from RocksDB CMake
+      # list(APPEND THIRDPARTY_LIBS JeMalloc::JeMalloc)
+      include_directories(${JEMALLOC_INCLUDE_DIR})
+      list(APPEND THIRDPARTY_LIBS ${JEMALLOC_LIBRARIES})
+      # intentional deviation end
     endif()
   endif()
 
@@ -135,7 +139,11 @@ else()
       find_package(Snappy REQUIRED)
     endif()
     add_definitions(-DSNAPPY)
-    list(APPEND THIRDPARTY_LIBS Snappy::snappy)
+    # intentional deviation from RocksDB CMake
+    # list(APPEND THIRDPARTY_LIBS Snappy::snappy)
+    include_directories(${SNAPPY_INCLUDE_DIR})
+    list(APPEND THIRDPARTY_LIBS ${SNAPPY_LIBRARIES})
+    # intentional deviation end
   endif()
 
   if(WITH_ZLIB)

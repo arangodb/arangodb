@@ -52,10 +52,10 @@ endif ()
 #
 # Edit these 4 lines to define paths to Snappy
 #
-set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
-set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
-set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
-set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
+#set(SNAPPY_HOME $ENV{THIRDPARTY_HOME}/Snappy.Library)
+#set(SNAPPY_INCLUDE ${SNAPPY_HOME}/build/native/inc/inc)
+#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
+#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
 
 # For compatibility
 if(SNAPPY)
@@ -69,20 +69,20 @@ if (WITH_SNAPPY)
     set(SNAPPY_INCLUDE $ENV{SNAPPY_INCLUDE})
   endif()
 
-  if(DEFINED ENV{SNAPPY_LIB_DEBUG})
-    set(SNAPPY_LIB_DEBUG $ENV{SNAPPY_LIB_DEBUG})
-  endif()
+# if(DEFINED ENV{SNAPPY_LIB_DEBUG})
+#   set(SNAPPY_LIB_DEBUG $ENV{SNAPPY_LIB_DEBUG})
+# endif()
 
-  if(DEFINED ENV{SNAPPY_LIB_RELEASE})
-    set(SNAPPY_LIB_RELEASE $ENV{SNAPPY_LIB_RELEASE})
-  endif()
+#  if(DEFINED ENV{SNAPPY_LIB_RELEASE})
+#    set(SNAPPY_LIB_RELEASE $ENV{SNAPPY_LIB_RELEASE})
+#  endif()
 
   set(SNAPPY_CXX_FLAGS -DSNAPPY)
-  set(SNAPPY_LIBS debug ${SNAPPY_LIB_DEBUG} optimized ${SNAPPY_LIB_RELEASE})
+#  set(SNAPPY_LIBS debug ${SNAPPY_LIB_DEBUG} optimized ${SNAPPY_LIB_RELEASE})
 
   add_definitions(${SNAPPY_CXX_FLAGS})
   include_directories(${SNAPPY_INCLUDE})
-  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} ${SNAPPY_LIBS})
+  set (THIRDPARTY_LIBS ${THIRDPARTY_LIBS} snappy)
 else ()
   message(STATUS "SNAPPY library is disabled")
 endif ()
