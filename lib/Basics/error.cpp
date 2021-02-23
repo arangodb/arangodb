@@ -72,7 +72,7 @@ ErrorCode TRI_set_errno(ErrorCode error) {
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept {
   using arangodb::error::ErrorMessages;
-  auto it = ErrorMessages.find(static_cast<int>(code));
+  auto it = ErrorMessages.find(code);
 
   if (it == ErrorMessages.end()) {
     // return a hard-coded string as not all callers check for nullptr

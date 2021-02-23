@@ -172,7 +172,8 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("read failed for file '" + filename + "': " + TRI_last_error());
+  auto message = StringUtils::concatT("read failed for file '", filename,
+                                      "': ", TRI_last_error());
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -235,7 +236,8 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
 
   if (fd == -1) {
     auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    std::string message("read failed for file '" + filename + "': " + TRI_last_error());
+    auto message = StringUtils::concatT("read failed for file '", filename,
+                                        "': ", TRI_last_error());
     LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
     return {res, message};
   }

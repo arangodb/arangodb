@@ -71,6 +71,15 @@ class ErrorCode {
   int _value;
 };
 
+namespace std {
+template <>
+struct hash<ErrorCode> {
+  std::size_t operator()(ErrorCode const& errorCode) const noexcept {
+    return std::hash<int>{}(static_cast<int>(errorCode));
+  }
+};
+}  // namespace std
+
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
 
 #endif  // LIB_BASICS_ERRORCODE_H

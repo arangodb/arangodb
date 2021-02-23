@@ -99,12 +99,21 @@ def genErrorRegistryHeaderFile(errors):
 #ifndef ARANGODB_BASICS_ERROR_REGISTRY_H
 #define ARANGODB_BASICS_ERROR_REGISTRY_H
 
-#include <frozen/unordered_map.h>
-
 #include "Basics/voc-errors.h"
 
+namespace frozen {{
+template <>
+struct elsa<ErrorCode> {{
+  constexpr std::size_t operator()(ErrorCode const& value, std::size_t seed) const {{
+    return elsa<int>{{}}.operator()(static_cast<int>(value), seed);
+  }}
+}};
+}}  // namespace frozen
+
+#include <frozen/unordered_map.h>
+
 namespace arangodb::error {{
-constexpr static frozen::unordered_map<int, const char*, {numErrorMessages}> ErrorMessages = {{
+constexpr static frozen::unordered_map<ErrorCode, const char*, {numErrorMessages}> ErrorMessages = {{
 {initializerList}
 }};
 }}
@@ -112,7 +121,7 @@ constexpr static frozen::unordered_map<int, const char*, {numErrorMessages}> Err
 #endif  // ARANGODB_BASICS_ERROR_REGISTRY_H
 """
     initializerList = '\n'.join([
-        "    {int(" + errorName(e) + "),  // " + e[1] + "\n" + \
+        "    {" + errorName(e) + ",  // " + e[1] + "\n" + \
         "      " + quotedErrorMessage(e) + "},"
         for e in errors
     ])
