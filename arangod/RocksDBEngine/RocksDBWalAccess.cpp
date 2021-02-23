@@ -652,6 +652,35 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     // drop and truncate may use this, but we do not print anything
     return rocksdb::Status();  // make WAL iterator happy
   }
+  
+  rocksdb::Status MarkBeginPrepare(bool = false) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkBeginPrepare() handler not defined.");
+  }
+  
+  rocksdb::Status MarkEndPrepare(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkEndPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkNoop(bool empty_batch) override {
+    TRI_ASSERT(empty_batch);
+    if (!empty_batch) {
+      incTick();
+    }
+    return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
+  }
+    
+  rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument(
+        "MarkRollbackPrepare() handler not defined.");
+  }
+    
+  rocksdb::Status MarkCommit(rocksdb::Slice const& /*xid*/) override {
+    TRI_ASSERT(false);
+    return rocksdb::Status::InvalidArgument("MarkCommit() handler not defined.");
+  }
 
  public:
   /// figures out from which sequence number we need to start scanning
@@ -663,7 +692,7 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     }
     return _filter.tickStart;
   }
-
+    
   void startNewBatch(rocksdb::SequenceNumber startSequence) {
     // LOG_TOPIC("24e69", TRACE, Logger::ENGINES) << "starting new batch with sequence: " << startSequence;
     TRI_ASSERT(!_stopOnNext);
