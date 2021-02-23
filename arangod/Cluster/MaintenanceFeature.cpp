@@ -195,8 +195,6 @@ void MaintenanceFeature::initializeMetrics() {
   for (const char* action : instrumentedActions) {
     std::string action_label = std::string{"action=\""} + action + '"';
 
-    LOG_DEVEL << std::hash<std::string>{}(std::string(arangodb_maintenance_action_failure_counter) + action_label);
-
     _maintenance_job_metrics_map.try_emplace(
       action, metricsFeature.histogram<arangodb_maintenance_action_runtime_msec>(
         {action_label}, log_scale_t<uint64_t>(4, 82, 86400000, 10),
