@@ -48,6 +48,21 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+RegisterId findVariableRegister(RegisterPlan& plan, VariableId varId) {
+  RegisterId reg = plan.variableToOptionalRegisterId(varId);
+  if (reg.value() == RegisterId::maxRegisterId) {
+    for (auto s : plan.subqueryNodes) {
+      reg = findVariableRegister(*ExecutionNode::castTo<SubqueryNode*>(s)->getSubquery()->getRegisterPlan(), varId);
+      if (reg.value() != RegisterId::maxRegisterId) {
+        break;
+      }
+    }
+  }
+  return reg;
+}
+}  // namespace
+
 // @brief Local struct to create the
 // information required to build traverser engines
 // on DB servers.
@@ -194,7 +209,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId,
                        : std::make_shared<SharedQueryState>(query.vocbase().server())),
       _blocks(),
       _root(nullptr),
-      _resultRegister(0),
+      _resultRegister(RegisterId::maxRegisterId),
       _initializeCursorCalled(false) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
@@ -628,7 +643,9 @@ void ExecutionEngine::instantiateFromPlan(Query& query,
   bool const pushToSingleServer = false;
 #endif
   
-  AqlItemBlockManager& mgr = query.itemBlockManager();
+  auto& mgr = query.itemBlockManager();
+  initializeConstValueBlock(plan, mgr);
+
   aql::SnippetList& snippets = query.snippets();
   TRI_ASSERT(snippets.empty() || ServerState::instance()->isClusterRole(role));
 
@@ -693,14 +710,16 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
     bool const returnInheritedResults =
       ExecutionNode::castTo<ReturnNode const*>(root.getPlanNode())->returnInheritedResults();
     if (returnInheritedResults) {
-      auto returnNode =
+      auto executor =
         dynamic_cast<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>*>(
           &root);
-      TRI_ASSERT(returnNode != nullptr);
-      resultRegister(returnNode->getOutputRegisterId());
+      TRI_ASSERT(executor != nullptr);
+      resultRegister(executor->getOutputRegisterId());
     } else {
-      auto returnNode = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
-      TRI_ASSERT(returnNode != nullptr);
+      auto executor = dynamic_cast<ExecutionBlockImpl<ReturnExecutor>*>(&root);
+      TRI_ASSERT(executor != nullptr);
+      // the ReturnExecutor always writes its output into register 0
+      resultRegister(RegisterId(0));
     }
   }
 
@@ -710,11 +729,34 @@ void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {
 void arangodb::aql::ExecutionEngine::initFromPlanForCalculation(ExecutionPlan& plan) {
   plan.findVarUsage();
   plan.planRegisters(ExplainRegisterPlan::No);
+  initializeConstValueBlock(plan, _itemBlockManager);
   //plan.findCollectionAccessVariables();
   SingleServerQueryInstanciator inst(*this);
   plan.root()->walk(inst);
   TRI_ASSERT(inst.root)
   setupEngineRoot(*inst.root);
+}
+
+void ExecutionEngine::initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr) {
+  auto registerPlan = plan.root()->getRegisterPlan();
+  auto nrConstRegs = registerPlan->nrConstRegs;
+  if (nrConstRegs > 0 && mgr.getConstValueBlock() == nullptr) {
+    mgr.initializeConstValueBlock(nrConstRegs);
+    plan.getAst()->variables()->visit([plan = plan.root()->getRegisterPlan(),
+                                       block = mgr.getConstValueBlock()](Variable* var) {
+      if (var->type() == Variable::Type::Const) {
+        RegisterId reg = findVariableRegister(*plan, var->id);
+        if (reg.value() != RegisterId::maxRegisterId) {
+          TRI_ASSERT(reg.isConstRegister());
+          AqlValue value = var->constantValue();
+          TRI_ASSERT(!value.isNone());
+          // the constValueBlock takes ownership, so we have to create a copy here.
+          block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
+        }
+      }
+    });
+  }
+  TRI_ASSERT(nrConstRegs == 0 || mgr.getConstValueBlock()->numRegisters() == nrConstRegs);
 }
 
 /// @brief add a block to the engine
@@ -729,7 +771,7 @@ ExecutionBlock* ExecutionEngine::addBlock(std::unique_ptr<ExecutionBlock> block)
 void arangodb::aql::ExecutionEngine::reset() {
   _root = nullptr;
   _blocks.clear();
-  _resultRegister = 0;
+  _resultRegister = RegisterId{RegisterId::maxRegisterId};
   _initializeCursorCalled = false;
   _sharedState.reset();
 }

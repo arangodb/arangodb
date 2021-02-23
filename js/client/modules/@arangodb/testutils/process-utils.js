@@ -85,8 +85,12 @@ class ConfigBuilder {
   }
 
   setAuth(username, password) {
-    this.config['server.username'] = username;
-    this.config['server.password'] = password;
+    if (username !== undefined) {
+      this.config['server.username'] = username;
+    }
+    if (password !== undefined) {
+      this.config['server.password'] = password;
+    }
   }
   setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
   setDatabase(database) {
@@ -117,6 +121,10 @@ class ConfigBuilder {
     } else {
       this.config['create-database'] = 'false';
     }
+  }
+  setJwtFile(file) {
+    delete this.config['server.password'];
+    this.config['server.jwt-secret-keyfile'] = file;
   }
   setMaskings(dir) {
     if (this.type !== 'dump') {
@@ -189,7 +197,9 @@ class ConfigBuilder {
 
 const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
   const cfg = new ConfigBuilder(type);
-  cfg.setAuth(options.username, options.password);
+  if (!options.jwtSecret) {
+    cfg.setAuth(options.username, options.password);
+  }
   cfg.setDatabase(database);
   cfg.setEndpoint(instanceInfo.endpoint);
   cfg.setRootDir(instanceInfo.rootDir);

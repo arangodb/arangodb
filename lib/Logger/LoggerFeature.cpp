@@ -124,7 +124,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
                   new UInt32Parameter(&_maxEntryLength))
-      .setIntroducedIn(30800).setIntroducedIn(30708);
+      .setIntroducedIn(30800).setIntroducedIn(30709);
 
   options
       ->addOption("--log.use-local-time", "use local timezone instead of UTC",
@@ -170,7 +170,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.use-json-format", "use json output format",
                   new BooleanParameter(&_useJson))
-      .setIntroducedIn(30701);
+      .setIntroducedIn(30800);
 
 #ifdef ARANGODB_HAVE_SETGID
   options

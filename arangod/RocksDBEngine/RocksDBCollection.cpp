@@ -1522,7 +1522,7 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (options.ignoreUniqueConstraints) {
+  if (options.checkUniqueConstraintsInPreflight) {
     // we can only afford the separation of checking and inserting in a
     // transaction that disallows concurrency, i.e. we need to have the
     // exclusive lock on the collection.
@@ -1673,7 +1673,7 @@ Result RocksDBCollection::updateDocument(transaction::Methods* trx,
   RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
   RocksDBMethods* mthds = state->rocksdbMethods();
 
-  if (options.ignoreUniqueConstraints) {
+  if (options.checkUniqueConstraintsInPreflight) {
     // we can only afford the separation of checking and inserting in a
     // transaction that disallows concurrency, i.e. we need to have the
     // exclusive lock on the collection.

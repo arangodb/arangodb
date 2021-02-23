@@ -237,7 +237,7 @@ bool Conductor::_startGlobalStep() {
       _state = _inErrorAbort ? ExecutionState::FATAL_ERROR : ExecutionState::DONE;
       _endTimeSecs = TRI_microtime();
       LOG_TOPIC("9e82c", INFO, Logger::PREGEL)
-          << "Done execution took" << totalRuntimeSecs() << " s";
+          << "Done, execution took: " << totalRuntimeSecs() << " s";
     }
     return false;
   }

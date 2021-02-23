@@ -33,6 +33,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <fuerte/jwt.h>
+
 namespace {
 
 arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* result) {
@@ -94,6 +96,9 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   std::string dbName = client.databaseName();
   httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
   httpClient->params().setUserNamePassword("/", client.username(), client.password());
+  if (!client.jwtSecret().empty()) {
+    httpClient->params().setJwt(fuerte::jwt::generateInternalToken(client.jwtSecret(), client.endpoint()));
+  }
 
   // now connect by retrieving version
   ErrorCode errorCode = TRI_ERROR_NO_ERROR;

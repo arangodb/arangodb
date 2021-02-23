@@ -261,7 +261,8 @@ Result slurp(std::string const& filename, std::string& result) {
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("write failed for file '" + filename + "': " + TRI_last_error());
+  auto message = StringUtils::concatT("write failed for file '", filename,
+                                      "': ", TRI_last_error());
   LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);

@@ -2507,8 +2507,8 @@ void arangodb::aql::simplifyConditionsRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto nn = ExecutionNode::castTo<CalculationNode*>(n);
 
-    if (!nn->expression()->isDeterministic()) {
-      // If this node is non-deterministic, we must not touch it!
+    if (!nn->expression()->isDeterministic() || nn->outVariable()->type() == Variable::Type::Const) {
+      // If this node is non-deterministic or has a constant expression, we must not touch it!
       continue;
     }
 
@@ -3086,7 +3086,8 @@ struct SortToIndexNode final
     // resolve all FILTER variables into their appropriate filter conditions
     TRI_ASSERT(!_filters.empty());
     for (auto const& filter : _filters.back()) {
-      auto it = _variableDefinitions.find(filter);
+      TRI_ASSERT(filter.isRegularRegister());
+      auto it = _variableDefinitions.find(filter.value());
       if (it != _variableDefinitions.end()) {
         // AND-combine all filter conditions we found, and fill constAttributes
         // and nonNullAttributes as we go along
@@ -4028,6 +4029,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* 
                                          node->getTypeString() + ".");
     } break;
   }
+
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(inputVariable != nullptr);
   
@@ -4116,7 +4118,7 @@ auto arangodb::aql::insertDistributeGatherSnippet(ExecutionPlan& plan,
   auto* gatherNode = createGatherNodeFor(plan, distNode);
   gatherNode->addDependency(remoteNode);
 
-TRI_ASSERT(parents.size() < 2);
+  TRI_ASSERT(parents.size() < 2);
   // Song and dance to deal with at being the root of a plan or a subquery
   if (parents.empty()) {
     if (snode) {

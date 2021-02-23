@@ -24,6 +24,7 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/exitcodes.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -47,7 +48,7 @@ namespace arangodb {
 
 struct FileDescriptors {
   static constexpr rlim_t requiredMinimum = 1024;
-  static constexpr rlim_t recommendedMinimum = 65536;
+  static constexpr rlim_t recommendedMinimum = 65535;
 
   rlim_t hard;
   rlim_t soft;
@@ -59,7 +60,7 @@ struct FileDescriptors {
     if (res != 0) {
       LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
           << "cannot get the file descriptors limit value: " << strerror(errno);
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
 
     return {rlim.rlim_max, rlim.rlim_cur};
@@ -141,7 +142,7 @@ void FileDescriptorsFeature::start() {
       LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
     } else {
       LOG_TOPIC("8c771", FATAL, arangodb::Logger::SYSCALL) << s.str();
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
   }
 }

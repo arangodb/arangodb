@@ -47,11 +47,15 @@
 
 /// @brief throws an arango exception with an error code and arbitrary
 /// arguments (to be inserted in printf-style manner)
-#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                     \
-  throw arangodb::basics::Exception(code,                                                    \
-                                    arangodb::basics::Exception::FillFormatExceptionString(  \
-                                        "%s: " format, TRI_errno_string(code), __VA_ARGS__), \
-                                    __FILE__, __LINE__)
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                                      \
+  do {                                                                                        \
+    auto const errnoStr = TRI_errno_string(code);                                             \
+    throw arangodb::basics::Exception(code,                                                   \
+                                      arangodb::basics::Exception::FillFormatExceptionString( \
+                                          "%*s: " format, errnoStr.size(),                    \
+                                          errnoStr.data(), __VA_ARGS__),                      \
+                                      __FILE__, __LINE__);                                    \
+  } while (0)
 
 /// @brief throws an arango exception with an error code and an already-built
 /// error message

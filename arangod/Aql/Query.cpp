@@ -78,6 +78,7 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 /// @brief internal constructor, Used to construct a full query or a ClusterQuery
 Query::Query(std::shared_ptr<transaction::Context> const& ctx,
@@ -456,7 +457,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             break;
           }
 
-          if (!_queryOptions.silent) {
+          if (!_queryOptions.silent && resultRegister.isValid()) {
             // cache low-level pointer to avoid repeated shared-ptr-derefs
             TRI_ASSERT(queryResult.data != nullptr);
             auto& resultBuilder = *queryResult.data;
@@ -535,18 +536,20 @@ ExecutionState Query::execute(QueryResult& queryResult) {
                                             QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(ex.code(), /*sync*/true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
-                             TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                                 QueryExecutionState::toStringWithPrefix(_execState)));
+    queryResult.reset(
+        Result(TRI_ERROR_OUT_OF_MEMORY,
+               StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                    QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
   } catch (...) {
-    queryResult.reset(Result(TRI_ERROR_INTERNAL,
-                             TRI_errno_string(TRI_ERROR_INTERNAL) +
-                                 QueryExecutionState::toStringWithPrefix(_execState)));
+    queryResult.reset(
+        Result(TRI_ERROR_INTERNAL,
+               StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                    QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
   }
   
@@ -671,7 +674,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           continue;
         }
 
-        if (!_queryOptions.silent) {
+        if (!_queryOptions.silent && resultRegister.isValid()) {
           size_t memoryUsage = 0;
           size_t const n = value->numRows();
 
@@ -756,19 +759,21 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
                                             QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(ex.code(), /*sync*/true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
-                             TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                                 QueryExecutionState::toStringWithPrefix(_execState)));
+    queryResult.reset(
+        Result(TRI_ERROR_OUT_OF_MEMORY,
+               StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                    QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(TRI_ERROR_INTERNAL,
                              ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
   } catch (...) {
-    queryResult.reset(Result(TRI_ERROR_INTERNAL,
-                             TRI_errno_string(TRI_ERROR_INTERNAL) +
-                                 QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/true);
+    queryResult.reset(
+        Result(TRI_ERROR_INTERNAL,
+               StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                    QueryExecutionState::toStringWithPrefix(_execState))));
+    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
   return queryResult;
@@ -942,13 +947,16 @@ QueryResult Query::explain() {
   } catch (arangodb::basics::Exception const& ex) {
     result.reset(Result(ex.code(), ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::bad_alloc const&) {
-    result.reset(Result(TRI_ERROR_OUT_OF_MEMORY,
-                        TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY) +
-                        QueryExecutionState::toStringWithPrefix(_execState)));
+    result.reset(
+        Result(TRI_ERROR_OUT_OF_MEMORY,
+               StringUtils::concatT(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                                    QueryExecutionState::toStringWithPrefix(_execState))));
   } catch (std::exception const& ex) {
     result.reset(Result(TRI_ERROR_INTERNAL, ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (...) {
-    result.reset(Result(TRI_ERROR_INTERNAL, TRI_errno_string(TRI_ERROR_INTERNAL) + QueryExecutionState::toStringWithPrefix(_execState)));
+    result.reset(Result(TRI_ERROR_INTERNAL,
+                        StringUtils::concatT(TRI_errno_string(TRI_ERROR_INTERNAL),
+                                             QueryExecutionState::toStringWithPrefix(_execState))));
   }
 
   // will be returned in success or failure case
@@ -1198,8 +1206,11 @@ transaction::Methods& Query::trxForOptimization() {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void Query::initForTests() {
   this->init(/*createProfile*/ false);
-  _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions,
+  initTrxForTests();
+}
+
+void Query::initTrxForTests() {
+  _trx = AqlTransaction::create(_transactionContext, _collections, _queryOptions.transactionOptions,
                                 std::unordered_set<std::string>{});
   // create the transaction object, but do not start it yet
   _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel

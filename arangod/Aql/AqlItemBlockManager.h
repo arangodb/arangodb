@@ -65,6 +65,12 @@ class AqlItemBlockManager {
 
   SerializationFormat getFormatType() const { return _format; }
 
+  void initializeConstValueBlock(RegisterCount nrRegs);
+
+  AqlItemBlock* getConstValueBlock() {
+    return _constValueBlock;
+  }
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Only used for the mocks in the catch tests. Other code should always use
   // SharedAqlItemBlockPtr which in turn call returnBlock()!
@@ -110,6 +116,10 @@ class AqlItemBlockManager {
   };
 
   Bucket _buckets[numBuckets];
+
+  /// @brief the AqlItemBlock used to store the values of const variables
+  // Note: we are using a raw pointer here, because the AqlItemBlock destructor is protected.
+  AqlItemBlock* _constValueBlock = nullptr;
 };
 
 }  // namespace aql
