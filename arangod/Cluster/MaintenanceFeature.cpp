@@ -189,13 +189,13 @@ void MaintenanceFeature::initializeMetrics() {
   _action_done_counter = metricsFeature.counter<arangodb_maintenance_action_done_counter>(
     0, "Counter of actions that are done and have been removed from the registry");
 
-  const char* instrumentedActions[] = {CREATE_COLLECTION, CREATE_DATABASE,
-                                       UPDATE_COLLECTION, SYNCHRONIZE_SHARD,
-                                       DROP_COLLECTION,   DROP_DATABASE,
-                                       DROP_INDEX};
+  const char* instrumentedActions[] =
+    {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
 
   for (const char* action : instrumentedActions) {
     std::string action_label = std::string{"action=\""} + action + '"';
+
+    LOG_DEVEL << std::hash<std::string>{}(std::string(arangodb_maintenance_action_failure_counter) + action_label);
 
     _maintenance_job_metrics_map.try_emplace(
       action, metricsFeature.histogram<arangodb_maintenance_action_runtime_msec>(

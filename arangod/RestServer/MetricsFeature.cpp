@@ -125,6 +125,7 @@ metrics_key::metrics_key(std::string const& name, std::initializer_list<std::str
   TRI_ASSERT(il.size() < 2);
   if (il.size() == 1) {
     labels = *(il.begin());
+    LOG_DEVEL << name + labels;
   }
   _hash = std::hash<std::string>{}(name + labels);
 }

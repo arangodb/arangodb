@@ -37,6 +37,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Endpoint/Endpoint.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -631,12 +632,11 @@ std::string AgencyCommHelper::generateStamp() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
-    : _server(server),
-      _agency_comm_request_time_ms(
-        server.getFeature<arangodb::MetricsFeature>().histogram<
-        arangodb_agencycomm_request_time_msec,log_scale_t<uint64_t>>()) {}
+  : _server(server),
+    _agency_comm_request_time_ms( 
+      _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
 
-AgencyCommResult AgencyComm::sendServerState(double timeout) {
+  AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
   

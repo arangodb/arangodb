@@ -49,7 +49,10 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster"),
+    _agency_comm_request_time_ms(
+      server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agencycomm_request_time_msec>(
+        log_scale_t<uint64_t>(2, 58, 120000, 10), "Request time for Agency requests")){
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -797,8 +800,7 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 void ClusterFeature::allocateMembers() {
   try {
-    server().getFeature<arangodb::MetricsFeature>().histogram<arangodb_agencycomm_request_time_msec>(
-      log_scale_t<uint64_t>(2, 58, 120000, 10), "Request time for Agency requests");
+    ;
   } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
