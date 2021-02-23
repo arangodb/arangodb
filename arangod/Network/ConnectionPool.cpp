@@ -42,19 +42,19 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
       _loop(config.numIOThreads, config.name),
       _totalConnectionsInPool(
         _config.metricsFeature.gauge<arangodb_connection_connections_current>(
-          {_config.name}, uint64_t(0), "Current number of connections in pool")),
+          {std::string("pool=") + _config.name}, uint64_t(0), "Current number of connections in pool")),
       _successSelect(
         _config.metricsFeature.counter<arangodb_connection_leases_successful>(
-          {config.name}, 0, "Total number of successful connection leases")),
+          {std::string("pool=") + config.name}, 0, "Total number of successful connection leases")),
       _noSuccessSelect(
         _config.metricsFeature.counter<arangodb_connection_pool_leases_failed>(
-          {config.name}, 0, "Total number of failed connection leases")),
+          {std::string("pool=") + config.name}, 0, "Total number of failed connection leases")),
       _connectionsCreated(
         _config.metricsFeature.counter<arangodb_connection_pool_connections_created>(
-          {config.name}, 0, "Total number of connections created")),
+          {std::string("pool=") + config.name}, 0, "Total number of connections created")),
       _leaseHistMSec(
         _config.metricsFeature.histogram<arangodb_connection_pool_lease_time_hist>(
-          {_config.name}, log_scale_t(2.f, 0.f, 1000.f, 10),
+          {std::string("pool=") + _config.name}, log_scale_t(2.f, 0.f, 1000.f, 10),
           std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
   TRI_ASSERT(config.numIOThreads > 0);
 }

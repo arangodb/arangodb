@@ -121,7 +121,6 @@ ServerStatistics& MetricsFeature::serverStatistics() {
 }
 
 metrics_key::metrics_key(std::string const& name, std::initializer_list<std::string> const& il) : name(name) {
-  TRI_ASSERT(il.size() > 0);
   TRI_ASSERT(il.size() < 2);
   if (il.size() == 1) {
     labels = *(il.begin());
