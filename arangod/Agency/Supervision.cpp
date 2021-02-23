@@ -1692,7 +1692,7 @@ void Supervision::cleanupFinishedAndFailedJobs() {
 void Supervision::cleanupHotbackupTransferJobs() {
   // This deletes old Hotbackup transfer jobs in 
   // /Target/HotBackup/TransferJobs according to their time stamp.
-  // We keep at most 100 transfer jobs.
+  // We keep at most 100 transfer jobs which are completed.
   _lock.assertLockedByCurrentThread();
 
   constexpr uint64_t maximalNumberTransferJobs = 100;
@@ -1706,6 +1706,24 @@ void Supervision::cleanupHotbackupTransferJobs() {
   std::vector<keyDate> v;
   v.reserve(jobs.size());
   for (auto const& p : jobs) {
+    auto const& dbservers = p.second->hasAsChildren("DBServers");
+    if (!dbservers.second) {
+      continue;
+    }
+    bool completed = true;
+    for (auto const& pp : dbservers.first) {
+      auto const& status = pp.second->hasAsString("Status");
+      if (!status.second) {
+        completed = false;
+      } else {
+        if (status.first.compare("COMPLETED") != 0) {
+          completed = false;
+        }
+      }
+    }
+    if (!completed) {
+      continue;
+    }
     auto created = p.second->hasAsString("timestamp");
     if (created.second) {
       v.emplace_back(p.first, created.first);
@@ -1716,6 +1734,9 @@ void Supervision::cleanupHotbackupTransferJobs() {
   std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
     return a.second < b.second;
   });
+  if (v.size() <= maximalNumberTransferJobs) {
+    return;
+  }
   size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
   LOG_TOPIC("98452", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
                                            << " old transfer jobs"
