@@ -684,7 +684,7 @@ IOStatus WinFileSystem::GetChildren(const std::string& dir,
     if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
       // directory. now check if it is '.' or '..'
       auto x = RX_FILESTRING(data.cFileName, RX_FNLEN(data.cFileName));
-      if (x == "." || x == "..") {
+      if (x == RX_FILESTRING(".") || x == RX_FILESTRING("..")) {
         // yes, so we can ignore it
         ignoreEntry = true;
       }
