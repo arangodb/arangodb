@@ -406,12 +406,12 @@ T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
 /// @brief specializations for ErrorCode, shortcut to avoid back-and-forth
 /// casts from and to int.
 template <>
-ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
     VPackSlice const& slice, std::string_view const& name, ErrorCode defaultValue) {
   return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }
 template <>
-ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
     VPackSlice const& slice, std::string const& name, ErrorCode defaultValue) {
   return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
 }
