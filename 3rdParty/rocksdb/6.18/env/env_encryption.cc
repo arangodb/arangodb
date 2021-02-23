@@ -12,9 +12,9 @@
 #include <cctype>
 #include <iostream>
 
-#include "env/env_encryption_ctr.h"
 #include "monitoring/perf_context_imp.h"
 #include "rocksdb/convenience.h"
+#include "rocksdb/env_encryption_ctr.h"
 #include "util/aligned_buffer.h"
 #include "util/coding.h"
 #include "util/random.h"
