@@ -683,8 +683,13 @@ IOStatus WinFileSystem::GetChildren(const std::string& dir,
     // check if the entry is a directory
     if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) {
       // directory. now check if it is '.' or '..'
-      auto x = RX_FILESTRING(data.cFileName, RX_FNLEN(data.cFileName));
-      if (x == RX_FILESTRING(".") || x == RX_FILESTRING("..")) {
+#ifdef ROCKSDB_WINDOWS_UTF8_FILENAMES
+      wchar_t dot[] = L".";
+      wchar_t dotdot[] = L"..";
+      if (wcscmp(data.cFileName, dot) == 0 || wcscmp(data.cFileName, dotdot) == 0) {
+#else
+      if (strcmp(data.cFileName, ".") == 0 || strcmp(data.cFileName, "..") == 0) {
+#endif
         // yes, so we can ignore it
         ignoreEntry = true;
       }
