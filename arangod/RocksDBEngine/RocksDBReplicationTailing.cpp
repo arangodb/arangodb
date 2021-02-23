@@ -513,12 +513,13 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
   }
     
   rocksdb::Status MarkNoop(bool empty_batch) override {
-    // TODO: FIXME
-    TRI_ASSERT(empty_batch);
+    // TRI_ASSERT(empty_batch);
     if (!empty_batch) {
       tick();
     }
-    return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
+    // TODO FIXME
+    return rocksdb::Status::OK();
+    // return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
   }
     
   rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {

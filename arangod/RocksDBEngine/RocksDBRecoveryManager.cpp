@@ -519,8 +519,10 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   }
     
   rocksdb::Status MarkNoop(bool empty_batch) override {
-    TRI_ASSERT(empty_batch);
-    return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
+    //TRI_ASSERT(empty_batch);
+    return rocksdb::Status::OK();
+    // TODO:FIXME
+    // return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
   }
     
   rocksdb::Status MarkRollback(rocksdb::Slice const& /*xid*/) override {
