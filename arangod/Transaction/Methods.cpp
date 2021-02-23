@@ -808,10 +808,8 @@ namespace {
 template<typename F>
 Future<OperationResult> addTracking(Future<OperationResult>&& f, F&& func) {
 #ifdef USE_ENTERPRISE
-  LOG_DEVEL << "addTracking: future has inline value = " << f.holds_inline_value();
   return std::move(f)
       .and_then([](futures::Try<OperationResult>&& r) noexcept {
-        LOG_DEVEL << "add tracking received a value";
         return std::move(r);
       })
       .thenValue(std::forward<F>(func));
@@ -1912,7 +1910,6 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
     OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
   if (_state->isCoordinator()) {
-    LOG_DEVEL << "transaction::Methods::countAsync on coordinator";
     return countCoordinator(collectionName, type, options);
   }
 
@@ -1921,7 +1918,6 @@ futures::Future<OperationResult> transaction::Methods::countAsync(
     // so just downgrade the request to a normal request
     type = CountType::Normal;
   }
-  LOG_DEVEL << "transaction::Methods::countAsync on dbserver";
 
   return futures::makeFuture(countLocal(collectionName, type, options));
 }

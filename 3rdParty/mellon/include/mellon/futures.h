@@ -306,6 +306,7 @@ auto insert_continuation_step(continuation_base<Tag, T>* base, G&& f) noexcept
       return fut;
     } else {
       step->emplace(std::invoke(step->function_self(), std::move(value)));
+      step->_next = FUTURES_INVALID_POINTER_PROMISE_FULFILLED(R);
       base->destroy();
       delete base;
     }

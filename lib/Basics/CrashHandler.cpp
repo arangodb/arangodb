@@ -562,10 +562,7 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 } // namespace
 
-
 namespace arangodb {
-
-
 
 void CrashHandler::logBacktrace() {
   ::logBacktrace();
@@ -583,8 +580,6 @@ void CrashHandler::crash(char const* context) {
 
   Logger::flush();
   Logger::shutdown();
-
-
 
   // crash from here
   ::killProcess(SIGABRT);

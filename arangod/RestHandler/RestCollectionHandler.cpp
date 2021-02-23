@@ -115,7 +115,7 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   if (suffixes.size() == 1) {
     try {
       collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
+                               /*showFigures*/ FiguresType::None, 
                                /*showCount*/ CountType::None);
       generateOk(rest::ResponseCode::OK, _builder);
     } catch (basics::Exception const& ex) {  // do not log not found exceptions
@@ -397,7 +397,7 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     if (res.ok()) {
       bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
       collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
+                               /*showFigures*/ FiguresType::None, 
                                /*showCount*/ cc ? CountType::Standard : CountType::None);
       return standardResponse();
     } else {
@@ -649,7 +649,7 @@ void RestCollectionHandler::handleCommandDelete() {
 /// and create will not immediately show the expected results on a collection
 /// object.
 void RestCollectionHandler::collectionRepresentation(std::string const& name,
-                                                     bool showProperties,
+                                                     bool showProperties, 
                                                      FiguresType showFigures,
                                                      CountType showCount) {
   std::shared_ptr<LogicalCollection> coll;
@@ -662,7 +662,7 @@ void RestCollectionHandler::collectionRepresentation(std::string const& name,
 }
 
 void RestCollectionHandler::collectionRepresentation(std::shared_ptr<LogicalCollection> coll,
-                                                     bool showProperties,
+                                                     bool showProperties, 
                                                      FiguresType showFigures,
                                                      CountType showCount) {
   if (showProperties || showCount != CountType::None) {
@@ -680,7 +680,7 @@ void RestCollectionHandler::collectionRepresentation(std::shared_ptr<LogicalColl
 }
 
 void RestCollectionHandler::collectionRepresentation(methods::Collections::Context& ctxt,
-                                                     bool showProperties,
+                                                     bool showProperties, 
                                                      FiguresType showFigures,
                                                      CountType showCount) {
   collectionRepresentationAsync(ctxt, showProperties, showFigures, showCount).await_unwrap();
@@ -716,15 +716,15 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
   }
 
   OperationOptions options(_context);
-  auto figures = OperationResult(Result(), options);
-  if (showFigures != FiguresType::None) {
-    figures = coll->figures(showFigures == FiguresType::Detailed, options).await_unwrap();
-  }
+  futures::Future<OperationResult> figures = std::invoke([&]{
+    if (showFigures != FiguresType::None) {
+      return coll->figures(showFigures == FiguresType::Detailed, options);
+    }
+    return futures::makeFuture(OperationResult(Result(), options));
+  });
 
-  auto&& [out_future, p] = futures::makePromise<OperationResult>();
-
-  std::invoke(
-      [=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+  return std::move(figures)
+      .then_bind([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
         if (figures.buffer) {
           _builder.add("figures", figures.slice());
         }
@@ -739,30 +739,25 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
                                  options);
         }
         return futures::makeFuture(OperationResult(Result(), options));
-      },
-      std::move(figures))
-      .finally([p = std::move(p)](futures::Try<OperationResult>&& opRes) mutable noexcept {
-        std::move(p).fulfill(std::move(opRes));
+      })
+      .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
+        if (opRes.fail()) {
+          if (showCount != CountType::None) {
+            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+            TRI_ASSERT(trx != nullptr);
+            trx->finish(opRes.result);
+          }
+          THROW_ARANGO_EXCEPTION(opRes.result);
+        }
+
+        if (showCount != CountType::None) {
+          _builder.add("count", opRes.slice());
+        }
+
+        if (!wasOpen) {
+          _builder.close();
+        }
       });
-
-  return std::move(out_future).thenValue([=, &ctxt](OperationResult&& opRes) -> void {
-    if (opRes.fail()) {
-      if (showCount != CountType::None) {
-        auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
-        TRI_ASSERT(trx != nullptr);
-        trx->finish(opRes.result);
-      }
-      THROW_ARANGO_EXCEPTION(opRes.result);
-    }
-
-    if (showCount != CountType::None) {
-      _builder.add("count", opRes.slice());
-    }
-
-    if (!wasOpen) {
-      _builder.close();
-    }
-  });
 }
 
 RestStatus RestCollectionHandler::standardResponse() {
