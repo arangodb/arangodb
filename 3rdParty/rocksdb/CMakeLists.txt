@@ -4,7 +4,7 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_ROCKSDB_VERSION "6.8")
+set(ARANGO_ROCKSDB_VERSION "6.18")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
 
 # we want the following definitions to be in effect for both rocksdb and arangodb
@@ -35,8 +35,11 @@ set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield
 
 set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "build shared libraries")
 set(WITH_TOOLS OFF CACHE BOOL "disable tools")
+set(WITH_BENCHMARK_TOOLS OFF CACHE BOOL "disable benchmark tools")
 set(WITH_CORE_TOOLS OFF CACHE BOOL "disable core tools")
 set(WITH_TESTS OFF CACHE BOOL "disable tests")
+set(WITH_ALL_TESTS OFF CACHE BOOL "disable all tests")
+set(WITH_EXAMPLES OFF CACHE BOOL "disable all examples")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 if (MSVC) 
