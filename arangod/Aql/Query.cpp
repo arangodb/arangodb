@@ -1142,10 +1142,6 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
-  // set the final result code (either 0 = no error, or a specific error code).
-  // this can only be changed from "not set" to either 0 ("no error") or 
-  // > 0 (a specific error)
-  TRI_ASSERT(errorCode != TRI_ERROR_NO_ERROR);
   if (!_resultCode.has_value()) {
     // result code not yet set.
     _resultCode = errorCode;
