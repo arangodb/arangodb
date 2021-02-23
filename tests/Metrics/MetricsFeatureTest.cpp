@@ -73,6 +73,27 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
 }
 
 
+TEST_F(MetricsFeatureTest, test_same_counter_retrieve) {
+
+  auto& counter1 = feature.counter<COUNTER>();
+  ASSERT_EQ(&counter1, thisMetric);
+
+  auto& counter2 = feature.counter<COUNTER>({});
+  ASSERT_EQ(&counter2, thisMetric);
+
+  auto& counter3 = feature.counter<COUNTER>({"label=\"label\""});
+  std::string s;
+  counter3.toPrometheus(s);
+  std::cout << s << std::endl;
+  ASSERT_EQ(&counter3, thatMetric);
+
+  auto& counter4 = feature.counter<COUNTER>({"label=\"other_label\""});
+  s.clear();
+  counter4.toPrometheus(s);
+  std::cout << s << std::endl;
+
+}
+
 TEST_F(MetricsFeatureTest, test_histogram) {
 
   auto& histogram = feature.histogram<HISTOGRAM>(lin_scale_t(0.,1.,10), "linear histogram");
@@ -103,6 +124,30 @@ TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
 }
 
 
+TEST_F(MetricsFeatureTest, test_same_histogram_retrieve) {
+
+  auto& histogram1 = feature.histogram<HISTOGRAM,lin_scale_t<double>>();
+  ASSERT_EQ(&histogram1, thisMetric);
+
+  try {
+    auto& histogramFail = feature.histogram<HISTOGRAM,lin_scale_t<float>>();
+    ASSERT_TRUE(false);
+    std::cout << histogramFail << std::endl;
+  } catch (...) {
+    ASSERT_TRUE(true);
+  }
+
+  auto& histogram2 = feature.histogram<HISTOGRAM,lin_scale_t<double>>({});
+  ASSERT_EQ(&histogram2, thisMetric);
+
+  auto& histogram3 = feature.histogram<HISTOGRAM,log_scale_t<double>>({"label=\"label\""});
+  std::string s;
+  histogram3.toPrometheus(s);
+  std::cout << s << std::endl;
+  ASSERT_EQ(&histogram3, thatMetric);
+
+}
+
 TEST_F(MetricsFeatureTest, test_gauge) {
 
   auto& gauge = feature.gauge<GAUGE>(2.3, "one gauge");
@@ -122,3 +167,31 @@ TEST_F(MetricsFeatureTest, test_gauge) {
 }
 
 
+TEST_F(MetricsFeatureTest, test_same_gauge_retrieve) {
+
+  auto& gauge1 = feature.gauge<GAUGE,double>();
+  ASSERT_EQ(&gauge1, thisMetric);
+
+  try {
+    auto& gaugeFail = feature.gauge<GAUGE,float>();
+    ASSERT_TRUE(false);
+    std::cout << gaugeFail.name() << std::endl;
+  } catch (...) {
+    ASSERT_TRUE(true);
+  }
+
+  auto& gauge2 = feature.gauge<GAUGE,double>();
+  ASSERT_EQ(&gauge2, thisMetric);
+
+  auto& gauge3 = feature.gauge<GAUGE,double>({"label=\"label\""});
+  std::string s;
+  gauge3.toPrometheus(s);
+  std::cout << s << std::endl;
+  ASSERT_EQ(&gauge3, thatMetric);
+
+  auto& gauge4 = feature.gauge<GAUGE,double>({"label=\"other_label\""});
+  s.clear();
+  gauge4.toPrometheus(s);
+  std::cout << s << std::endl;
+
+}
