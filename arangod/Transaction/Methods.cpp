@@ -205,7 +205,7 @@ static void throwCollectionNotFound(char const* name) {
 
 /// @brief Insert an error reported instead of the new document
 static void createBabiesError(VPackBuilder& builder,
-                              std::unordered_map<int, size_t>& countErrorCodes,
+                              std::unordered_map<ErrorCode, size_t>& countErrorCodes,
                               Result const& error) {
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(true));
@@ -213,7 +213,7 @@ static void createBabiesError(VPackBuilder& builder,
   builder.add(StaticStrings::ErrorMessage, VPackValue(error.errorMessage()));
   builder.close();
 
-  auto it = countErrorCodes.find(static_cast<int>(error.errorNumber()));
+  auto it = countErrorCodes.find(error.errorNumber());
   if (it == countErrorCodes.end()) {
     countErrorCodes.emplace(error.errorNumber(), 1);
   } else {
@@ -903,7 +903,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   };
 
   Result res;
-  std::unordered_map<int, size_t> countErrorCodes;
+  std::unordered_map<ErrorCode, size_t> countErrorCodes;
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
   } else {
@@ -1162,7 +1162,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
   };
 
   Result res;
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<ErrorCode, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder b(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {
@@ -1420,7 +1420,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
   ///////////////////////
 
   bool multiCase = newValue.isArray();
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<ErrorCode, size_t> errorCounter;
   Result res;
   if (multiCase) {
     {
@@ -1634,7 +1634,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
   };
 
   Result res;
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<ErrorCode, size_t> errorCounter;
   if (value.isArray()) {
     VPackArrayBuilder guard(&resultBuilder);
     for (VPackSlice s : VPackArrayIterator(value)) {

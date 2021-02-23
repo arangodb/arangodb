@@ -332,7 +332,7 @@ void RestVocbaseBaseHandler::generate20x(arangodb::OperationResult const& result
     VPackBuilder errorBuilder;
     errorBuilder.openObject();
     for (auto const& it : result.countErrorCodes) {
-      errorBuilder.add(basics::StringUtils::itoa(it.first), VPackValue(it.second));
+      errorBuilder.add(to_string(it.first), VPackValue(it.second));
     }
     errorBuilder.close();
     _response->setHeaderNC(StaticStrings::ErrorCodes, errorBuilder.toJson());

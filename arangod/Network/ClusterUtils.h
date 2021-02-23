@@ -39,19 +39,19 @@ namespace network {
 OperationResult clusterResultInsert(fuerte::StatusCode responsecode,
                                     std::shared_ptr<velocypack::Buffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter);
 OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::shared_ptr<VPackBuffer<uint8_t>> body,
                                       OperationOptions options,
-                                      std::unordered_map<int, size_t> const& errorCounter);
+                                      std::unordered_map<ErrorCode, size_t> const& errorCounter);
 OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter);
 OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter);
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter);
 
 }  // namespace network
 }  // namespace arangodb

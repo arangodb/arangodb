@@ -261,10 +261,10 @@ const char* notFoundSlice =
 ///        well
 ////////////////////////////////////////////////////////////////////////////////
 void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
-                           std::unordered_map<int, size_t>& errorCounter,
+                           std::unordered_map<::ErrorCode, size_t>& errorCounter,
                            VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
-  TRI_ASSERT(errorCounter.find(static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) ==
+  TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
              errorCounter.end());
   size_t realNotFound = 0;
 
@@ -297,7 +297,7 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
   }
   resultBody.close();
   if (realNotFound > 0) {
-    errorCounter.try_emplace(static_cast<int>(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND), realNotFound);
+    errorCounter.try_emplace(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, realNotFound);
   }
 }
 
@@ -307,7 +307,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
   std::map<ShardID, VPackSlice> resultMap;
   std::map<ShardID, int> shardError;
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
 
   fuerte::StatusCode code = fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
@@ -417,7 +417,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   std::vector<VPackSlice> allResults;
   allResults.reserve(responses.size());
 
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
   // If no server responds we return 500
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();

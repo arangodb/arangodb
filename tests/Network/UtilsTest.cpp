@@ -53,9 +53,9 @@ TEST(NetworkUtilsTest, errorCodesFromHeaders) {
   network::Headers headers;
   headers[StaticStrings::ErrorCodes] = "{\"5\":2}";
   
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<ErrorCode, size_t> errorCounter;
   network::errorCodesFromHeaders(headers, errorCounter, true);
   ASSERT_EQ(errorCounter.size(), 1);
-  ASSERT_EQ(errorCounter.begin()->first, 5);
+  ASSERT_EQ(errorCounter.begin()->first, ErrorCode{5});
   ASSERT_EQ(errorCounter.begin()->second, 2);
 }

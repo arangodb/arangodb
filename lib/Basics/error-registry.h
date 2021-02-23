@@ -4,16 +4,16 @@
 
 #include "Basics/voc-errors.h"
 
-#include <frozen/unordered_map.h>
-
 namespace frozen {
 template <>
 struct elsa<ErrorCode> {
   constexpr std::size_t operator()(ErrorCode const& value, std::size_t seed) const {
-    return frozen::elsa<int>{}.operator()(static_cast<int>(value), seed);
+    return elsa<int>{}.operator()(static_cast<int>(value), seed);
   }
 };
 }  // namespace frozen
+
+#include <frozen/unordered_map.h>
 
 namespace arangodb::error {
 constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessages = {
