@@ -65,6 +65,50 @@
 
 using namespace arangodb::basics;
 
+////////////////////////////////////////////////////////////////////////////////
+// Callback function that is called when invalid parameters are passed to a CRT
+// function. The MS documentations states:
+//   > When the runtime calls the invalid parameter function, it usually means
+//   > that a nonrecoverable error occurred. The invalid parameter handler
+//   > function you supply should save any data it can and then abort. It should
+//   > not return control to the main function unless you're confident that the
+//   > error is recoverable.
+// https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/set-invalid-parameter-handler-set-thread-local-invalid-parameter-handler
+//
+// The behavior of the default invalid_parameter_handler is to simulate an
+// unhandled SEH exception and let the Windows Error Reporting take over.
+// However, there are potentially some cases that would trigger this callback.
+// For example, ManagedDirectory::File::File has previously called TRI_DUP
+// with an invalid file descriptor, which would result in a call to the
+// invalid_parameter_handler.
+//
+// Since we cannot be sure whether there are some other cases, we use a custom
+// callback that does _NOT_ follow the MS recommendation to abort the process,
+// but simply hope that it is safe to ignore the error.
+// However, we do log a message and that message should be taken VERY seriously!
+////////////////////////////////////////////////////////////////////////////////
+static void invalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
+                                    const wchar_t* function,  // name of function - NULL
+                                    const wchar_t* file,  // file where code resides - NULL
+                                    unsigned int line,  // line within file - NULL
+                                    uintptr_t pReserved) {  // in case microsoft forget something
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  char buf[1024] = "";
+  snprintf(buf, sizeof(buf) - 1,
+           "Expression: %ls Function: %ls File: %ls Line: %d", expression,
+           function, file, (int)line);
+  buf[sizeof(buf) - 1] = '\0';
+#endif
+
+  LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      << "Invalid parameter passed: " << buf;
+#else
+      << "Invalid parameter passed";
+#endif
+}
+
 int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
   // ............................................................................
   // The data is used to transport information from the calling function to here
@@ -547,6 +591,8 @@ void ADB_WindowsEntryFunction() {
   // you do get some similar functionality.
   // ...........................................................................
   // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
+
+  _set_invalid_parameter_handler(invalidParameterHandler);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 
