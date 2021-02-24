@@ -697,6 +697,7 @@ IOStatus WinFileSystem::GetChildren(const std::string& dir,
     // any non-directories or real directories other than '.' and '..'
     // will be reported back
     if (!ignoreEntry) {
+      auto x = RX_FILESTRING(data.cFileName, RX_FNLEN(data.cFileName));
       result->push_back(FN_TO_RX(x));
     }
 
