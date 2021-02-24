@@ -155,7 +155,7 @@ class EnumerateListExecutorTestProduce
   EnumerateListExecutorTestProduce() : executorInfos(0, 1) {}
 
   auto makeRegisterInfos(RegisterId inputRegister = 0, RegisterId outputRegister = 1,
-                         RegisterId nrInputRegister = 1, RegisterId nrOutputRegister = 2,
+                         RegisterCount nrInputRegister = 1, RegisterCount nrOutputRegister = 2,
                          RegIdSet regToClear = {},
                          RegIdSetStack regToKeep = {RegIdSet{0}}) -> RegisterInfos {
     auto infos = RegisterInfos{RegIdSet{inputRegister},

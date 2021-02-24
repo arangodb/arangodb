@@ -45,9 +45,9 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-RegisterInfos MakeBaseInfos(RegisterId numRegs) {
+RegisterInfos MakeBaseInfos(RegisterCount numRegs) {
   RegIdSet prototype{};
-  for (RegisterId r = 0; r < numRegs; ++r) {
+  for (RegisterId::value_t r = 0; r < numRegs; ++r) {
     prototype.emplace(r);
   }
   return RegisterInfos({}, {}, numRegs, numRegs, {},

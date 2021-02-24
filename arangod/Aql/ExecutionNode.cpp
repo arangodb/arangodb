@@ -38,6 +38,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
@@ -124,6 +125,27 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
+
+void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
+  for (auto const& [id, info] : from.varInfo) {
+    if (info.registerId.isConstRegister()) {
+      to.varInfo.try_emplace(id, info);
+    }
+  }
+}
+
+// we have to ensure that all const variables are available in the
+// register plans of all subqueries. this can be removed once the
+// old-subqueries are fully removed in 3.9.
+void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
+  for (auto& s : plan.subqueryNodes) {
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
+    subqueryPlan.nrConstRegs = plan.nrConstRegs;
+    propagateConstVariables(plan, subqueryPlan);
+    propagateConstVariablesToSubqueries(subqueryPlan);
+  }
+}
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -411,7 +433,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _regsToClear.reserve(regsToClearList.length());
   for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.insert(it.getNumericValue<RegisterId>());
+    _regsToClear.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
   }
 
   auto allVars = plan->getAst()->variables();
@@ -491,7 +513,7 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       regsToKeep.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        regsToKeep.insert(it.getNumericValue<RegisterId>());
+        regsToKeep.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
       }
     }
   } else if (!regsToKeepStackSlice.isNone()) {
@@ -669,10 +691,28 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
     return true;
   }
 
-  // Now the children in their natural order:
-  for (auto const& it : _dependencies) {
-    if (it->walk(worker)) {
-      return true;
+  if (!_dependencies.empty()) {
+    // intentionally copy the dependencies from before you we iterate
+    // over them.
+    // we keep this copy to check that no worker function modifies the
+    // dependencies while we are working over them. this would be
+    // inherently unsafe, e.g. adding to _dependencies while walking 
+    // over them could lead to vector storage reallocation, and
+    // removing dependencies while walking over them can invalidate
+    // iterators.
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<ExecutionNode*> dependencies{arena};
+
+    // we normally should have 1, at most 2 dependencies here!
+    dependencies.assign(_dependencies.begin(), _dependencies.end());
+
+    // Now the children in their natural order:
+    for (auto const& it : dependencies) {
+      bool stopWalking = it->walk(worker);
+
+      if (stopWalking) {
+        return true;
+      }
     }
   }
 
@@ -827,7 +867,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        nodes.add(VPackValue(oneRegisterID));
+        TRI_ASSERT(oneRegisterID.isRegularRegister());
+        nodes.add(VPackValue(oneRegisterID.value()));
       }
     }
 
@@ -849,7 +890,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
       for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
-          nodes.add(VPackValue(reg));
+          TRI_ASSERT(reg.isRegularRegister());
+          nodes.add(VPackValue(reg.value()));
         }
       }
     }
@@ -875,7 +917,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         for (auto const& stackEntry : unusedRegsStack) {
           VPackArrayBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
-            nodes.add(VPackValue(reg));
+            TRI_ASSERT(reg.isRegularRegister());
+            nodes.add(VPackValue(reg.value()));
           }
         }
       }
@@ -889,7 +932,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
             using std::to_string;
-            nodes.add(VPackValue(to_string(reg.first)));
+            nodes.add(VPackValue(to_string(reg.first.value())));
             reg.second->toVelocyPack(nodes);
           }
         }
@@ -1000,7 +1043,15 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   for (auto& s : v->subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
+    // we only want to create a single const block for all queries, so we have to
+    // ensure that nrConstRegs in the RegisterPlan of the root node contains the
+    // sum of all const regs in all (sub)queries.
+    v->nrConstRegs = subqueryPlan.nrConstRegs;
+    propagateConstVariables(subqueryPlan, *v);
   }
+
+  propagateConstVariablesToSubqueries(*v);
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1157,7 +1208,7 @@ void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
     std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
-      TRI_ASSERT(regId <= maxRegister);
+      TRI_ASSERT(regId.value() <= maxRegister.value());
     });
   };
   assertNotContained(maxRegister, _regsToClear);
@@ -1365,7 +1416,7 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   if (var) {
     return variableToRegisterId(var);
   }
-  return RegisterPlan::MaxRegisterId;
+  return RegisterId{RegisterId::maxRegisterId};
 }
 
 bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }
@@ -1832,6 +1883,15 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)) {}
 
+CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
+    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
+  TRI_ASSERT(_expression != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
+
+CalculationNode::~CalculationNode() = default;
+
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
@@ -1906,6 +1966,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
+  TRI_ASSERT((_outVariable->type() == Variable::Type::Const) == outputRegister.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -1935,7 +1996,14 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
-                          RegIdSet{outputRegister});
+                          outputRegister.isRegularRegister() ? RegIdSet{outputRegister} : RegIdSet{});
+
+  if (_outVariable->type() == Variable::Type::Const) {
+    // we have a const variable, so we can simply use an IdExector to forward the rows.
+    auto executorInfos = IdExecutorInfos(false, outputRegister);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
@@ -1976,15 +2044,6 @@ CostEstimate CalculationNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
-
-CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
-    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
-  TRI_ASSERT(_expression != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
-}
-
-CalculationNode::~CalculationNode() = default;
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 

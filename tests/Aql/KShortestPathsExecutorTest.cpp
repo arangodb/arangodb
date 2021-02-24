@@ -70,7 +70,7 @@ using Path = std::vector<std::string>;
 using PathSequence = std::vector<Path>;
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)), regTarget(1), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 
   MatrixBuilder<2> const noneRow{{{{}}}};

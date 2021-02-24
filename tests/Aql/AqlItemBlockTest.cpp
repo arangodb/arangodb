@@ -242,7 +242,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
   // Only write a single value in a single line with 3 registers.
   // Use first, second and third position independently.
   // All other positions remain empty
-  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+  for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
 
     block->emplaceValue(0, dataPosition, dummyData(4));
@@ -260,7 +260,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i == dataPosition) {
         compareWithDummy(testee, 0, i, 4);
       } else {
@@ -275,9 +275,9 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
   // Only write a single value twice in a single line with 3 registers.
   // Use first, second and third position as empty independently.
   // All other positions use the value
-  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+  for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i != dataPosition) {
         block->emplaceValue(0, i, dummyData(4));
       }
@@ -296,7 +296,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i != dataPosition) {
         compareWithDummy(testee, 0, i, 4);
       } else {
@@ -587,7 +587,7 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_2) {
   // Only write a single value in a single line with 3 registers.
   // Use first, second and third position independently.
   // All other positions remain empty
-  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+  for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
 
     block->emplaceValue(0, dataPosition, dummyData(4));
@@ -605,7 +605,7 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_2) {
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i == dataPosition) {
         compareWithDummy(testee, 0, i, 4);
       } else {
@@ -619,9 +619,9 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_3) {
   // Only write a single value twice in a single line with 3 registers.
   // Use first, second and third position as empty independently.
   // All other positions use the value
-  for (RegisterId dataPosition = 0; dataPosition < 3; ++dataPosition) {
+  for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
     SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i != dataPosition) {
         block->emplaceValue(0, i, dummyData(4));
       }
@@ -640,7 +640,7 @@ TEST_F(AqlItemBlockClassicTest, test_serialization_deserialization_3) {
     EXPECT_EQ(testee->numEntries(), block->numEntries());
     EXPECT_EQ(testee->capacity(), block->capacity());
     // check data
-    for (RegisterId i = 0; i < 3; ++i) {
+    for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i != dataPosition) {
         compareWithDummy(testee, 0, i, 4);
       } else {

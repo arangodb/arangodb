@@ -126,7 +126,7 @@ auto KShortestPathsExecutorInfos<FinderType>::getTargetInputValue() const
 
 template <class FinderType>
 auto KShortestPathsExecutorInfos<FinderType>::getOutputRegister() const -> RegisterId {
-  TRI_ASSERT(_outputRegister != RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(_outputRegister.isValid());
   return _outputRegister;
 }
 

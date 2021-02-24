@@ -1345,8 +1345,8 @@ Result RestReplicationHandler::processRestoreCollection(VPackSlice const& collec
     auto res = createCollection(parameters, &colPtr);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res, std::string("unable to create collection: ") +
-                             TRI_errno_string(res));
+      return Result(res, StringUtils::concatT("unable to create collection: ",
+                                              TRI_errno_string(res)));
     }
     // If we get here, we must have a collection ptr.
     TRI_ASSERT(colPtr != nullptr);
@@ -1524,7 +1524,7 @@ Result RestReplicationHandler::parseBatch(transaction::Methods& trx,
           if (generateNewRevisionIds && 
               !isKey && 
               arangodb::velocypack::StringRef(it.key) == StaticStrings::RevString) {
-            char ridBuffer[11];
+            char ridBuffer[arangodb::basics::maxUInt64StringSize];
             RevisionId newRid = physical->newRevisionId();
             documentsToInsert.add(newRid.toValuePair(ridBuffer));
           } else {
@@ -2007,8 +2007,9 @@ void RestReplicationHandler::handleCommandRestoreView() {
       if (!overwrite) {
         generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_DUPLICATE_NAME),
                       TRI_ERROR_ARANGO_DUPLICATE_NAME,
-                      std::string("unable to restore view '") + nameSlice.copyString() +
-                          ": " + TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME));
+                      StringUtils::concatT("unable to restore view '",
+                                           nameSlice.copyString(), ": ",
+                                           TRI_errno_string(TRI_ERROR_ARANGO_DUPLICATE_NAME)));
         return;
       }
 
@@ -3059,7 +3060,7 @@ void RestReplicationHandler::handleCommandRevisionRanges() {
     };
     setRange(current);
 
-    char ridBuffer[11];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     {
       TRI_ASSERT(response.isOpenObject());
       VPackArrayBuilder rangesGuard(&response, StaticStrings::RevisionTreeRanges);

@@ -69,7 +69,7 @@ OutputAqlItemRow::OutputAqlItemRow(SharedAqlItemBlockPtr block, RegIdSet const& 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_block != nullptr) {
     for (auto const& reg : _outputRegisters) {
-      TRI_ASSERT(reg < _block->numRegisters());
+      TRI_ASSERT(reg.isConstRegister() || reg < _block->numRegisters());
     }
     // the block must have enough columns for the registers of both data rows,
     // and all the different shadow row depths
@@ -110,6 +110,7 @@ template <class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType& value) {
   TRI_ASSERT(isOutputRegister(registerId));
   // This is already implicitly asserted by isOutputRegister:
+  TRI_ASSERT(registerId.isRegularRegister());
   TRI_ASSERT(registerId < getNumRegisters());
   TRI_ASSERT(_numValuesWritten < numRegistersToWrite());
   TRI_ASSERT(block().getValueReference(_baseIndex, registerId).isNone());
@@ -119,7 +120,7 @@ void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId, ValueType&
     value.steal();
   } else {
     static_assert(std::is_same_v<std::decay_t<ValueType>, VPackSlice>);
-    block().emplaceValue(_baseIndex, registerId, value);
+    block().emplaceValue(_baseIndex, registerId.value(), value);
   }
   _numValuesWritten++;
 }
@@ -447,7 +448,8 @@ void OutputAqlItemRow::doCopyOrMoveRow(ItemRowType& sourceRow, bool ignoreMissin
         TRI_ASSERT(sourceRow.isInitialized());
       }
 #endif
-      if (ignoreMissing && itemId >= sourceRow.getNumRegisters()) {
+      TRI_ASSERT(itemId.isRegularRegister());
+      if (ignoreMissing && itemId.value() >= sourceRow.getNumRegisters()) {
         continue;
       }
       if (ADB_LIKELY(!_allowSourceRowUninitialized || sourceRow.isInitialized())) {

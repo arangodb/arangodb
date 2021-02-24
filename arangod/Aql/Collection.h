@@ -85,7 +85,7 @@ struct Collection {
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection

@@ -150,7 +150,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -397,7 +397,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   auto readableInputRegisters = RegIdSet{0};
   auto writeableOutputRegisters = RegIdSet{1, 2};
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -490,7 +490,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   auto writeableOutputRegisters = RegIdSet{1, 2};
 
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -596,7 +596,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -928,7 +928,7 @@ class SortedCollectExecutorTestSplit
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   RegisterId collectRegister;
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;

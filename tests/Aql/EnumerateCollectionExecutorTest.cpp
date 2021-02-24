@@ -297,8 +297,8 @@ class EnumerateCollectionExecutorTestProduce
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
                       projections, random, count) {}
 
-  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
+  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterCount nrInputRegister = 1,
+                         RegisterCount nrOutputRegister = 1, RegIdFlatSet regToClear = {},
                          RegIdFlatSetStack regToKeep = {{}}) -> RegisterInfos {
     RegisterInfos registerInfos{{},
                                 RegIdSet{outputRegister},
@@ -309,7 +309,7 @@ class EnumerateCollectionExecutorTestProduce
     return registerInfos;
   }
 
-  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterCount nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
     auto infos = EnumerateCollectionExecutorInfos{
         outputRegister, *fakedQuery,

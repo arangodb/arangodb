@@ -210,7 +210,7 @@ enum class ShortestPathOutput { VERTEX_ONLY, VERTEX_AND_EDGE };
 // Namespace conflict with the other shortest path executor
 namespace {
 Vertex const constSource("vertex/source"), constTarget("vertex/target"),
-    regSource(0), regTarget(1), brokenSource{"IwillBreakYourSearch"},
+    regSource(RegisterId(0)), regTarget(RegisterId(1)), brokenSource{"IwillBreakYourSearch"},
     brokenTarget{"I will also break your search"};
 MatrixBuilder<2> const noneRow{{{{}}}};
 MatrixBuilder<2> const oneRow{{{{R"("vertex/source")"}, {R"("vertex/target")"}}}};
