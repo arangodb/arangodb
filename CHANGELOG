@@ -8,6 +8,14 @@ devel
   connect attempts all fail and time out after 300ms.
   In this case we now don't try to reconnect after every command.
 
+* Added 'custom-query' testcase to arangobench to allow execution of custom 
+  queries.
+  This also adds the options `--custom-query` and `--custom-query-file` for
+  arangobench.
+
+* On Windows create a minidump in case of an unhandled SEH exception for
+  post-mortem debugging.
+  
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
