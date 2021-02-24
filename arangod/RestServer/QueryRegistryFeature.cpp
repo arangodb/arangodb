@@ -298,7 +298,9 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void QueryRegistryFeature::prepare() {
-  if (!server().options()->processingResult().touched("--query.memory-limit")) {
+  // note that options() can be a nullptr during unit testing
+  if (server().options() != nullptr &&
+      !server().options()->processingResult().touched("--query.memory-limit")) {
     LOG_TOPIC("f6e0e", INFO, Logger::AQL)
         << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
         << "to modify this value, please adjust the startup option `--query.memory-limit`";
