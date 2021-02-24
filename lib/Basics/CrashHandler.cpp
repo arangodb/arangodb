@@ -442,7 +442,7 @@ void logProcessInfo() {
 #ifdef MELLON_RECORD_PENDING_OBJECTS
 static void dump_pending_objects() {
   using namespace mellon;
-  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "pending asynchronous objects: ";
+  LOG_TOPIC("c7902", FATAL, arangodb::Logger::CRASH) << "pending asynchronous objects: ";
   ::std::unique_lock guard(detail::pending_objects_mutex);
 
   std::unordered_set<detail::continuation_object_recorder const*> next_ptr;
@@ -459,61 +459,61 @@ static void dump_pending_objects() {
     }
   }
 
-  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "pending head objects";
+  LOG_TOPIC("c7904", FATAL, arangodb::Logger::CRASH) << "pending head objects";
   for (auto const* c : detail::pending_objects) {
     if (next_ptr.find(c) != next_ptr.end()) {
       continue;
     }
 
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
+    LOG_TOPIC("c7905", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
                                                        << " object " << c->get_value_type_name() << " tag "
                                                        << c->get_tag_name();
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
+    LOG_TOPIC("c2908", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
     detail::continuation_rel_base* next = c->get_next_pointer();
     if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
+      LOG_TOPIC("c7907", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
     } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
+      LOG_TOPIC("c7909", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
     } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
+      LOG_TOPIC("c1913", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
     } else if  (next == nullptr) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
+      LOG_TOPIC("c7864", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
     } else {
       auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
+      LOG_TOPIC("d6433", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
     }
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "created at: ";
+    LOG_TOPIC("d5764", FATAL, arangodb::Logger::CRASH)  << "created at: ";
     for (auto const& line : c->get_create_backtrace()) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << line;
+      LOG_TOPIC("e54f6", FATAL, arangodb::Logger::CRASH)  << line;
     }
   }
 /*
-  LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "other pending objects";
+  LOG_TOPIC("ef876", FATAL, arangodb::Logger::CRASH) << "other pending objects";
   for (auto const* c : detail::pending_objects) {
     if (next_ptr.find(c) == next_ptr.end()) {
       continue;
     }
 
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
+    LOG_TOPIC("ab4bc", FATAL, arangodb::Logger::CRASH) << "0x" << std::setfill('0') << std::setw(16) << std::hex << c
                                                        << " object " << c->get_value_type_name() << " tag "
                                                        << c->get_tag_name();
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
+    LOG_TOPIC("ab12c", FATAL, arangodb::Logger::CRASH) << "next-pointer: ";
     detail::continuation_rel_base* next = c->get_next_pointer();
     if (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_abandoned)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
+      LOG_TOPIC("ae789", FATAL, arangodb::Logger::CRASH)  << "(promise is abandoned)";
     } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_future_abandoned)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
+      LOG_TOPIC("af763", FATAL, arangodb::Logger::CRASH) << "(future is abandoned)";
     } else if  (next == reinterpret_cast<detail::continuation_rel_base*>(&detail::invalid_pointer_promise_fulfilled)) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
+      LOG_TOPIC("af769", FATAL, arangodb::Logger::CRASH)  << "(promise is fulfilled)";
     } else if  (next == nullptr) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
+      LOG_TOPIC("af768", FATAL, arangodb::Logger::CRASH)  << "(nullptr)";
     } else {
       auto* rel_base = static_cast<detail::continuation_rel_base*>(next);
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
+      LOG_TOPIC("af767", FATAL, arangodb::Logger::CRASH)  << "0x" << std::setfill('0') << std::setw(16) << std::hex << rel_base->get_object_recorder_ptr();
     }
-    LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << "created at: ";
+    LOG_TOPIC("af766", FATAL, arangodb::Logger::CRASH)  << "created at: ";
     for (auto const& line : c->get_create_backtrace()) {
-      LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH)  << line;
+      LOG_TOPIC("af765", FATAL, arangodb::Logger::CRASH)  << line;
     }
   }*/
 }
