@@ -190,10 +190,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--progress", "log intermediate progress",
                      new BooleanParameter(&_progress));
 
-  options->addOption("--custom-query", "the query to be used in the 'custom' benchmark",
+  options->addOption("--custom-query", "the query to be used in the 'custom-query' testcase",
                      new StringParameter(&_customQuery));
                      
-  options->addOption("--custom-query-file", "path to a file with the query to be used in the 'custom' benchmark. "
+  options->addOption("--custom-query-file", "path to a file with the query to be used in the 'custom-query' testcase. "
                      "If --custom-query is specified as well, it has higher priority.",
                      new StringParameter(&_customQueryFile));
                      

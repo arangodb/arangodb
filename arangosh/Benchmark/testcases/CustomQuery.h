@@ -33,7 +33,7 @@
 namespace arangodb::arangobench {
 
 struct CustomQueryTest : public Benchmark<CustomQueryTest> {
-  static std::string name() { return "custom"; }
+  static std::string name() { return "custom-query"; }
 
   CustomQueryTest(BenchFeature& arangobench)
       : Benchmark<CustomQueryTest>(arangobench) {}

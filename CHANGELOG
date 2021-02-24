@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add 'custom' testcase in arangobench to allow execution of custom queries.
+* Add 'custom-query' testcase in arangobench to allow execution of custom queries.
 
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
