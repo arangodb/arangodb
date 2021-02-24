@@ -514,9 +514,9 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     
   rocksdb::Status MarkNoop(bool empty_batch) override {
     // TRI_ASSERT(empty_batch);
-    if (!empty_batch) {
-      tick();
-    }
+    //if (!empty_batch) {
+    //  tick();
+    //}
     // TODO FIXME
     return rocksdb::Status::OK();
     // return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();

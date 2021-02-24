@@ -665,9 +665,9 @@ class MyWALDumper final : public rocksdb::WriteBatch::Handler, public WalAccessC
     
   rocksdb::Status MarkNoop(bool empty_batch) override {
     //TRI_ASSERT(empty_batch);
-    if (!empty_batch) {
-      incTick();
-    }
+    //if (!empty_batch) {
+    //  incTick();
+    //}
     return rocksdb::Status::OK();
     // TODO FIXME
     // return empty_batch ? rocksdb::Status::OK() : rocksdb::Status::InvalidArgument();
