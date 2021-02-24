@@ -122,18 +122,27 @@ class AqlItemBlock {
   /// @brief getValue, get the value of a register
   AqlValue getValue(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register
+  AqlValue getValue(size_t index, RegisterId::value_t column) const;
+  
   /// @brief getValue, get the value of a register by reference
   AqlValue const& getValueReference(size_t index, RegisterId varNr) const;
 
+  /// @brief getValue, get the value of a register by reference
+  AqlValue const& getValueReference(size_t index, RegisterId::value_t column) const;
+  
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  
+  /// @brief setValue, set the current value of a register
+  void setValue(size_t index, RegisterId::value_t column, AqlValue const& value);
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place
   template <typename... Args>
   // std::enable_if_t<!(std::is_same<AqlValue,std::decay_t<Args>>::value || ...), void>
-  void emplaceValue(size_t index, RegisterId varNr, Args&&... args) {
-    auto address = getAddress(index, varNr);
+  void emplaceValue(size_t index, RegisterId::value_t column, Args&&... args) {
+    auto address = getAddress(index, column);
     AqlValue* p = &_data[address];
     TRI_ASSERT(p->isEmpty());
     // construct the AqlValue in place
@@ -171,6 +180,7 @@ class AqlItemBlock {
   /// use with caution only in special situations when it can be ensured that
   /// no one else will be pointing to the same value
   void destroyValue(size_t index, RegisterId varNr);
+  void destroyValue(size_t index, RegisterId::value_t column);
 
   /// @brief eraseValue, erase the current value of a register not freeing it
   /// this is used if the value is stolen and later released from elsewhere
@@ -341,7 +351,7 @@ class AqlItemBlock {
                                        size_t sourceRow, bool forceShadowRow);
 
   /// @brief get the computed address within the data vector
-  size_t getAddress(size_t index, RegisterId varNr) const noexcept;
+  size_t getAddress(size_t index, RegisterId::value_t reg) const noexcept;
 
   void copySubqueryDepth(size_t currentRow, size_t fromRow);
 

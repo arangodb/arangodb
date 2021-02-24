@@ -78,7 +78,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
             << "expected row " << rowIdx << " to be a shadow row";
 
         InputAqlItemRow input{block, rowIdx};
-        for (unsigned int colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
+        for (RegisterId::value_t colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
           auto expected = VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))

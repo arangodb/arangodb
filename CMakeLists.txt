@@ -605,13 +605,6 @@ if (MSVC)
   add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
   add_definitions("-DFD_SETSIZE=8192")
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-  add_definitions("-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS=1") # try to remove this when
-                                                                 # boost is upgraded to 1.70 or later
-
-  # https://blogs.msdn.microsoft.com/vcblog/2016/04/14/stl-fixes-in-vs-2015-update-2/
-  # https://connect.microsoft.com/VisualStudio/feedback/details/1892487
-  # http://lists.boost.org/boost-users/2016/04/85968.php
-  add_definitions("-D_ENABLE_ATOMIC_ALIGNMENT_FIX")
 
   # bcrypt is needed for SSL
   set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)

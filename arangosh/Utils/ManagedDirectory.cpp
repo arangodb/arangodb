@@ -470,10 +470,12 @@ ManagedDirectory::File::File(ManagedDirectory const& directory,
   if (isGzip) {
     char const* gzFlags = nullptr;
 
-    // gzip is going to perform a redundant close,
-    //  simpler code to give it redundant handle
-    _gzfd = TRI_DUP(_fd);
-
+    if (_fd >= 0) {
+      // gzip is going to perform a redundant close,
+      //  simpler code to give it redundant handle
+      _gzfd = TRI_DUP(_fd);
+    }
+    
     if (O_WRONLY & flags) {
       gzFlags = "wb";
     } else {

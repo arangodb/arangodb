@@ -254,6 +254,11 @@ class DatabaseInitialSyncer : public InitialSyncer {
 
   /// @brief whether or not we are a coordinator/dbserver
   bool const _isClusterRole;
+  uint64_t _quickKeysNumDocsLimit;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void adjustQuickKeysNumDocsLimit();
+#endif
 };
 
 }  // namespace arangodb
