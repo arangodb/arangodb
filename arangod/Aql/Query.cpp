@@ -414,7 +414,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // reserve some space in Builder to avoid frequent reallocs
         _resultBuilder->reserve(16 * 1024);
 
-        _resultBuilder->openArray();
+        // Index the result array to avoid a performance problem in the current java
+        // driver; this is removed in 3.8. See #13476 for details.
+        _resultBuilder->openArray(false);
         _executionPhase = ExecutionPhase::EXECUTE;
       }
       [[fallthrough]];
@@ -481,6 +483,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
         }
 
+        // Index the result array to avoid a performance problem in the current java
+        // driver; this is removed in 3.8. See #13476 for details.
+        _resultBuilderOptions->buildUnindexedArrays = false;
         // must close result array here because it must be passed as a closed
         // array to the query cache
         _resultBuilder->close();

@@ -103,7 +103,9 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     TRI_DEFER(builder.options = oldOptions);
     builder.options = _result.context->getVPackOptionsForDump();
 
-    builder.add("result", VPackValue(VPackValueType::Array));
+    // Index the result array to avoid a performance problem in the current java
+    // driver; this is removed in 3.8. See #13476 for details.
+    builder.add("result", VPackValue(VPackValueType::Array, false));
     for (size_t i = 0; i < n; ++i) {
       if (!hasNext()) {
         break;
@@ -331,7 +333,9 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
     if (!silent) {
       builder.reserve(16 * 1024);
     }
-    builder.add("result", VPackValue(VPackValueType::Array, true));
+    // Index the result array to avoid a performance problem in the current java
+    // driver; this is removed in 3.8. See #13476 for details.
+    builder.add("result", VPackValue(VPackValueType::Array, false));
 
     aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
@@ -364,6 +368,9 @@ Result QueryStreamCursor::writeResult(VPackBuilder& builder) {
 
     TRI_ASSERT(_queryResults.empty() || _queryResultPos < _queryResults.front()->size());
 
+    // Index the result array to avoid a performance problem in the current java
+    // driver; this is removed in 3.8. See #13476 for details.
+    options.buildUnindexedArrays = false;
     builder.close();  // result
 
     // If there is a block left, there's at least one row left in it. On the
