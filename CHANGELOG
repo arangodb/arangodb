@@ -1,5 +1,13 @@
 devel
 -----
+* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
+
+* Prevent arangosh from trying to connect after every executed command.
+  This fixes the case when arangosh is started with default options, but no
+  server is running on localhost:8529. In this particular case, arangosh will
+  try to connect on startup and after every executed shell command. The
+  connect attempts all fail and time out after 300ms.
+  In this case we now don't try to reconnect after every command.
 
 * Added startup option `--query.global-memory-limit` to set a limit on the
   combined estimated memory usage of all AQL queries (in bytes). 
