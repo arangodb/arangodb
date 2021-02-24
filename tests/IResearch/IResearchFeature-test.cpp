@@ -2160,7 +2160,7 @@ class IResearchFeatureTestCoordinator
 
  protected:
   IResearchFeatureTestCoordinator()
-      : server(false) {
+      : server(true, false) {
 
     arangodb::tests::init();
 
@@ -2374,7 +2374,7 @@ class IResearchFeatureTestDBServer
 
  protected:
   IResearchFeatureTestDBServer()
-      : server(false) {
+      : server(true, false) {
 
 
     arangodb::tests::init();
