@@ -5,6 +5,9 @@ devel
 
 * Cleanup old hotbackup transfer jobs in agency.
 
+* On Windows create a minidump in case of an unhandled SEH exception for
+  post-mortem debugging.
+  
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
