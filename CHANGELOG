@@ -1,6 +1,8 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
+
 * Fix too early stop of replication, when waiting for keys in large
   collections/shards.
 
