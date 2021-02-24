@@ -138,6 +138,7 @@ function ReplicationSuite() {
           db._flushCache();
         }
       }
+      db._useDatabase('_system');
     } else {
 
       var printed = false;
