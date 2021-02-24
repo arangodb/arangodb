@@ -1,5 +1,6 @@
 devel
 -----
+* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
 
 * Added 'custom-query' testcase to arangobench to allow execution of custom 
   queries.
