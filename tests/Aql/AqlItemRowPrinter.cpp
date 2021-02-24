@@ -64,7 +64,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   if (row.getNumRegisters() > 0) {
     stream << row.getValue(0).slice().toJson();
   }
-  for (RegisterId i = 1; i < row.getNumRegisters(); ++i) {
+  for (RegisterId::value_t i = 1; i < row.getNumRegisters(); ++i) {
     stream << ", ";
     stream << row.getValue(i).slice().toJson();
   }

@@ -268,7 +268,7 @@ class RegisterPlanTest : public ::testing::Test {
             << "variable " << v->name << " of node " << final.getTypeString()
             << " not planned ";
         auto regId = info->second.registerId;
-        varsRequiredHere.at(regId) = v;
+        varsRequiredHere.at(regId.value()) = v;
       }
     }
 
@@ -279,15 +279,15 @@ class RegisterPlanTest : public ::testing::Test {
                                              << n.getTypeString() << " not planned ";
         auto regId = info->second.registerId;
         ASSERT_LT(regId, total) << "Planned Register out of bounds";
-        ASSERT_TRUE(varsRequiredHere.at(regId).has_value())
-            << "Writing variable " << v->name << " to register " << regId
+        ASSERT_TRUE(varsRequiredHere.at(regId.value()).has_value())
+            << "Writing variable " << v->name << " to register " << regId.value()
             << " where it is not expected";
-        auto expected = varsRequiredHere.at(regId).value();
+        auto expected = varsRequiredHere.at(regId.value()).value();
         ASSERT_EQ(v, expected)
-            << "register " << regId << " used twice, content of "
+            << "register " << regId.value() << " used twice, content of "
             << expected->name << " expected while writing " << v->name;
         // Variable is produced here, cannot be required before
-        varsRequiredHere.at(regId) = std::nullopt;
+        varsRequiredHere.at(regId.value()) = std::nullopt;
       }
     };
 
@@ -301,13 +301,13 @@ class RegisterPlanTest : public ::testing::Test {
             << n.getTypeString() << " not planned ";
         auto regId = info->second.registerId;
         ASSERT_LT(regId, total) << "Planned Register out of bounds";
-        auto target = varsRequiredHere.at(regId);
+        auto target = varsRequiredHere.at(regId.value());
         if (!target.has_value()) {
           // This register is free, claim it!
-          varsRequiredHere.at(regId) = v;
+          varsRequiredHere.at(regId.value()) = v;
         } else {
           ASSERT_EQ(target.value(), v)
-              << "register " << regId << " used twice, content of "
+              << "register " << regId.value() << " used twice, content of "
               << target.value()->name << " still expected while also expecting "
               << v->name;
         }

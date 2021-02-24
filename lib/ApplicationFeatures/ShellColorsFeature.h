@@ -61,6 +61,9 @@ class ShellColorsFeature final : public application_features::ApplicationFeature
   static char const* SHELL_COLOR_BLINK;
   static char const* SHELL_COLOR_BRIGHT;
   static char const* SHELL_COLOR_RESET;
+  static char const* SHELL_COLOR_LINK_START;
+  static char const* SHELL_COLOR_LINK_MIDDLE;
+  static char const* SHELL_COLOR_LINK_END;
 
  private:
   bool _initialized;
