@@ -52,7 +52,7 @@ struct CustomQueryTest : public Benchmark<CustomQueryTest> {
 
     if (_query.empty()) {
       LOG_TOPIC("79cce", FATAL, arangodb::Logger::FIXME)
-          << "custom benchmark requires custom-query or custom-query-file to "
+          << "custom benchmark requires --custom-query or --custom-query-file to "
              "be specified";
       return false;
     }

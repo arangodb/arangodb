@@ -191,11 +191,11 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      new BooleanParameter(&_progress));
 
   options->addOption("--custom-query", "the query to be used in the 'custom-query' testcase",
-                     new StringParameter(&_customQuery));
+                     new StringParameter(&_customQuery)).setIntroducedIn(30800);
                      
   options->addOption("--custom-query-file", "path to a file with the query to be used in the 'custom-query' testcase. "
                      "If --custom-query is specified as well, it has higher priority.",
-                     new StringParameter(&_customQueryFile));
+                     new StringParameter(&_customQueryFile)).setIntroducedIn(30800);
                      
   options->addOption("--verbose",
                      "print out replies if the HTTP header indicates DB errors",
@@ -614,4 +614,3 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
         << result._incomplete << " arangobench requests with incomplete results!";
   }
 }
-
