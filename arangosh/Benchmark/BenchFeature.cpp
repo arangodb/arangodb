@@ -217,7 +217,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  double minTime = -1.0;
+  double minTime = std::numeric_limits<double>::infinity;
   double maxTime = 0.0;
   double avgTime = 0.0;
   uint64_t counter = 0;
