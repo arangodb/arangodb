@@ -24,7 +24,16 @@
 #ifndef ARANGOD_FUTURES_FUTURE_H
 #define ARANGOD_FUTURES_FUTURE_H 1
 
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 #include <mellon/futures.h>
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
 
 #include "Basics/CrashHandler.h"
 #include "Basics/debugging.h"
