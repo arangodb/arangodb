@@ -18,41 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H
-#define ARANGODB_BASICS_ARANGO_GLOBAL_CONTEXT_H 1
+#ifndef ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
+#define ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
 
-#include <string>
-#include <vector>
-
-#include "Basics/Common.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
-class ArangoGlobalContext {
- public:
-  static ArangoGlobalContext* CONTEXT;
+  class BenchFeature;
+}
 
- public:
-  ArangoGlobalContext(int argc, char* argv[], char const* installDirectory);
-  ~ArangoGlobalContext();
+namespace arangodb::arangobench {
 
- public:
-  std::string binaryName() const { return _binaryName; }
-  std::string runRoot() const { return _runRoot; }
-  void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
-  void normalizePath(std::string& path, char const* whichPath, bool fatal);
-  std::string const& getBinaryPath() const { return _binaryPath; }
-  int exit(int ret);
-  void installHup();
+bool DeleteCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&);
 
- private:
-  std::string const _binaryName;
-  std::string const _binaryPath;
-  std::string const _runRoot;
-  int _ret;
-};
-}  // namespace arangodb
+bool CreateCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&, int const, BenchFeature const& arangobench);
 
+bool CreateDocument(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                    std::string const&);
+
+bool CreateIndex(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                 std::string const&, std::string const&);
+}  // namespace arangodb::arangobench
 #endif

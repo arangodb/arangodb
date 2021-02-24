@@ -1,11 +1,29 @@
 devel
 -----
 
+* Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
+  jobs.
+
 * Improve progress reporting for shard synchronization in the web UI.
   The UI will now show how many shards are actively syncing data, and will 
   provide a better progress indicator, especially if there is more than one
   follower for a shard.
 
+* Prevent arangosh from trying to connect after every executed command.
+  This fixes the case when arangosh is started with default options, but no
+  server is running on localhost:8529. In this particular case, arangosh will
+  try to connect on startup and after every executed shell command. The
+  connect attempts all fail and time out after 300ms.
+  In this case we now don't try to reconnect after every command.
+
+* Added 'custom-query' testcase to arangobench to allow execution of custom 
+  queries.
+  This also adds the options `--custom-query` and `--custom-query-file` for
+  arangobench.
+
+* On Windows create a minidump in case of an unhandled SEH exception for
+  post-mortem debugging.
+  
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
