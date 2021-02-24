@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added 'custom-query' testcase to arangobench to allow execution of custom 
+  queries.
+  This also adds the options `--custom-query` and `--custom-query-file` for
+  arangobench.
+
 * On Windows create a minidump in case of an unhandled SEH exception for
   post-mortem debugging.
   

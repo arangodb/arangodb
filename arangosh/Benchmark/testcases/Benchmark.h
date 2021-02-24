@@ -18,28 +18,31 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "testcases/AqlInsertTest.h"
-#include "testcases/AqlV8Test.h"
-#include "testcases/CustomQuery.h"
-#include "testcases/CollectionCreationTest.h"
-#include "testcases/DocumentCreationTest.h"
-#include "testcases/DocumentCrudAppendTest.h"
-#include "testcases/DocumentCrudTest.h"
-#include "testcases/DocumentCrudWriteReadTest.h"
-#include "testcases/DocumentImportTest.h"
-#include "testcases/EdgeCrudTest.h"
-#include "testcases/HashTest.h"
-#include "testcases/RandomShapesTest.h"
-#include "testcases/ShapesAppendTest.h"
-#include "testcases/ShapesTest.h"
-#include "testcases/SkiplistTest.h"
-#include "testcases/StreamCursorTest.h"
-#include "testcases/TransactionAqlTest.h"
-#include "testcases/TransactionCountTest.h"
-#include "testcases/TransactionDeadlockTest.h"
-#include "testcases/TransactionMultiCollectionTest.h"
-#include "testcases/TransactionMultiTest.h"
-#include "testcases/VersionTest.h"
+#ifndef ARANGODB_BENCHMARK_TESTCASES_BENCHMARK_H
+#define ARANGODB_BENCHMARK_TESTCASES_BENCHMARK_H
+
+#include "../BenchmarkOperation.h"
+#include "../BenchFeature.h"
+
+namespace arangodb::arangobench {
+
+template <class Derived>
+struct Benchmark : public BenchmarkOperation {
+  explicit Benchmark(BenchFeature& arangobench) : BenchmarkOperation(arangobench) {}
+ private:
+  struct Registrar {
+    Registrar() {
+      registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {
+        return std::make_unique<Derived>(arangobench);
+      });
+    }
+  };
+
+  static inline Registrar _registrar;
+};
+
+}  // namespace arangodb::arangobench
+#endif
