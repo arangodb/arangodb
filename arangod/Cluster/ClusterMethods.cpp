@@ -1444,7 +1444,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     return makeFuture(Result());
   });
 
-  return std::move(f).then_bind([=, &trx, &coll, opCtx(std::move(opCtx)), options = options]
+  return std::move(f).then_bind([=, &trx, &coll, opCtx = std::move(opCtx), options = options]
                                 (Result&& r) mutable -> Future<OperationResult> {
     if (r.fail()) {
       return Future<OperationResult>{std::in_place, std::move(r), options};
@@ -1528,7 +1528,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     }
 
     return futures::collectAll(std::move(futures))
-        .thenValue([opCtx(std::move(opCtx))](std::vector<Try<network::Response>>&& results) -> OperationResult {
+        .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
           return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx, results);
         });
   });
