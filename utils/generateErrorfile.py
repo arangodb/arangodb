@@ -104,7 +104,7 @@ def genErrorRegistryHeaderFile(errors):
 namespace frozen {{
 template <>
 struct elsa<ErrorCode> {{
-  constexpr std::size_t operator()(ErrorCode const& value, std::size_t seed) const {{
+  constexpr auto operator()(ErrorCode const& value, std::size_t seed) const -> std::size_t {{
     return elsa<int>{{}}.operator()(static_cast<int>(value), seed);
   }}
 }};

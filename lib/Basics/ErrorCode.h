@@ -29,9 +29,6 @@
 namespace arangodb::velocypack {
 class Value;
 }
-namespace arangodb::rest {
-enum class ResponseCode;
-}
 
 // TODO We probably want to put this into a namespace, but this is easy to
 //      refactor automatically later.
@@ -44,10 +41,6 @@ class ErrorCode {
   constexpr ErrorCode(ErrorCode&&) noexcept = default;
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
-
-  // This could also be constexpr, but we'd have to include "Rest/CommonDefines.h",
-  // and I'm unsure whether that's worth it, and rather rely on IPO here.
-  // explicit ErrorCode(arangodb::rest::ResponseCode code);
 
   [[nodiscard]] constexpr explicit operator int() const noexcept { return _value; }
 
@@ -63,8 +56,6 @@ class ErrorCode {
     return _value != other._value;
   }
 
-  [[nodiscard]] constexpr auto asInt() const noexcept -> int { return _value; }
-
   friend auto to_string(::ErrorCode value) -> std::string;
 
  private:
@@ -74,7 +65,7 @@ class ErrorCode {
 namespace std {
 template <>
 struct hash<ErrorCode> {
-  std::size_t operator()(ErrorCode const& errorCode) const noexcept {
+  auto operator()(ErrorCode const& errorCode) const noexcept -> std::size_t {
     return std::hash<int>{}(static_cast<int>(errorCode));
   }
 };

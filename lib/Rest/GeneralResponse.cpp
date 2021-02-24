@@ -134,7 +134,6 @@ std::string GeneralResponse::responseString(ResponseCode code) {
       return "502 Bad Gateway";
     case ResponseCode::SERVICE_UNAVAILABLE:
       return "503 Service Unavailable";
-
     case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
       return "505 HTTP Version Not Supported";
     case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:

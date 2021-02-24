@@ -1300,7 +1300,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
             }
           }
         }
-        
+
         val = res.slice().get("code");
         if (val.isNumber()) {
           return Result{ErrorCode{val.getNumericValue<int>()}};
