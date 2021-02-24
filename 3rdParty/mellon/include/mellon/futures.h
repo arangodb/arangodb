@@ -666,7 +666,7 @@ struct future_prototype {
       bool was_waiting;
       {
         std::unique_lock guard(data.mutex);
-        data.box.template emplace(std::move(v));
+        data.box.emplace(std::move(v));
         data.has_value = true;
         was_waiting = data.is_waiting;
       }
