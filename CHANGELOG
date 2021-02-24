@@ -1,5 +1,6 @@
 devel
 -----
+* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
 
 * On Windows create a minidump in case of an unhandled SEH exception for
   post-mortem debugging.
