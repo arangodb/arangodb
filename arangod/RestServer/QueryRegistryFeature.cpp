@@ -235,7 +235,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
   
   options->addOption("--query.parallelize-traversals",
                      "enable traversal parallelization",

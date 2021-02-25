@@ -232,7 +232,7 @@ void LogBufferFeature::collectOptions(std::shared_ptr<options::ProgramOptions> o
                   new DiscreteValuesParameter<StringParameter>(
                       &_minInMemoryLogLevel, logLevels),
                   arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                  .setIntroducedIn(30800).setIntroducedIn(30709);
+                  .setIntroducedIn(30709);
 }
 
 void LogBufferFeature::prepare() {
