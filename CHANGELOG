@@ -5,6 +5,9 @@ v3.7.9 (XXXX-XX-XX)
   iterating over AQL cursor results in certain cases. This works around this.
   This workaround will no longer be available in 3.8.
 
+* Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup
+  jobs.
+
 * Fix too early stop of replication, when waiting for keys in large
   collections/shards.
 
