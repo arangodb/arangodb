@@ -1,6 +1,8 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* Cleanup old hotbackup transfer jobs in agency.
+
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup
   jobs.
 

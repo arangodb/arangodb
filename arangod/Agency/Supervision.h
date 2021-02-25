@@ -199,8 +199,11 @@ class Supervision : public arangodb::CriticalThread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief
+  /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
+
+  /// @brief Cleanup old hotbackup transfer jobs
+  void cleanupHotbackupTransferJobs();
 
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are
