@@ -1,6 +1,14 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly
+  when not being logged in to the `_system` database. For all other databases
+  than `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup
   jobs.
 

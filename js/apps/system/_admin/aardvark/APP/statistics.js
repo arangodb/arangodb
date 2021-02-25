@@ -407,8 +407,8 @@ router.use((req, res, next) => {
 });
 
 router.get('/coordshort', function (req, res) {
-  var merged = { };
-
+  let merged = { };
+  let oldName = db._name();
   const coordinators = global.ArangoClusterInfo.getCoordinators();
   try {
     const stats15Query = `
@@ -445,6 +445,8 @@ router.get('/coordshort', function (req, res) {
             patchesPerSecond: s.http.requestsPatchPerSecond
           }
       }`;
+
+    db._useDatabase("_system");
     
     const params = { start: startOffsetSchema - 2 * STATISTICS_INTERVAL, clusterIds: coordinators };
     const stats15 = db._query(stats15Query, params).toArray();
@@ -456,6 +458,10 @@ router.get('/coordshort', function (req, res) {
     }
   } catch (e) {
     // ignore exceptions, because throwing here will render the entire web UI cluster stats broken
+  } finally {
+    try {
+      db._useDatabase(oldName);
+    } catch (e) {}
   }
 
   res.json({'enabled': internal.enabledStatistics(), 'data': merged});
