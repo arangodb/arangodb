@@ -51,6 +51,13 @@ void enforceReplicationFunctional(Node const& snapshot,
                                   uint64_t& jobId,
                                   std::shared_ptr<VPackBuilder> envelope);
 
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot, 
+    std::shared_ptr<VPackBuilder> envelope);
+
 class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
