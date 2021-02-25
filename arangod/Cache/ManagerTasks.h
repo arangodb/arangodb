@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,20 +18,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_MANAGER_TASKS_H
 #define ARANGODB_CACHE_MANAGER_TASKS_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <cstdint>
+#include <memory>
+
+#include "Basics/SpinLocker.h"
 #include "Cache/Cache.h"
 #include "Cache/Manager.h"
 #include "Cache/Metadata.h"
-
-#include <stdint.h>
-#include <atomic>
-#include <memory>
 
 namespace arangodb {
 namespace cache {
@@ -39,7 +39,7 @@ namespace cache {
 class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
  private:
   Manager::TaskEnvironment _environment;
-  Manager* _manager;
+  Manager& _manager;
   std::shared_ptr<Cache> _cache;
 
  public:
@@ -47,7 +47,7 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
   FreeMemoryTask(FreeMemoryTask const&) = delete;
   FreeMemoryTask& operator=(FreeMemoryTask const&) = delete;
 
-  FreeMemoryTask(Manager::TaskEnvironment environment, Manager* manager,
+  FreeMemoryTask(Manager::TaskEnvironment environment, Manager& manager,
                  std::shared_ptr<Cache>);
   ~FreeMemoryTask();
 
@@ -60,7 +60,7 @@ class FreeMemoryTask : public std::enable_shared_from_this<FreeMemoryTask> {
 class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
  private:
   Manager::TaskEnvironment _environment;
-  Manager* _manager;
+  Manager& _manager;
   std::shared_ptr<Cache> _cache;
   std::shared_ptr<Table> _table;
 
@@ -69,7 +69,7 @@ class MigrateTask : public std::enable_shared_from_this<MigrateTask> {
   MigrateTask(MigrateTask const&) = delete;
   MigrateTask& operator=(MigrateTask const&) = delete;
 
-  MigrateTask(Manager::TaskEnvironment environment, Manager* manager,
+  MigrateTask(Manager::TaskEnvironment environment, Manager& manager,
               std::shared_ptr<Cache>, std::shared_ptr<Table>);
   ~MigrateTask();
 

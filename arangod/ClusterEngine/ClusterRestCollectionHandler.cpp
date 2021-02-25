@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterRestCollectionHandler.h"
-#include "ClusterEngine/MMFilesMethods.h"
 #include "ClusterEngine/RocksDBMethods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -32,20 +32,13 @@ ClusterRestCollectionHandler::ClusterRestCollectionHandler(application_features:
                                                            GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result ClusterRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
+Result ClusterRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    Result res = arangodb::rocksdb::recalculateCountsOnAllDBServers(_vocbase.name(),
-                                                                    coll.name());
-    if (res.ok()) {
-      VPackObjectBuilder guard(&builder);
-      builder.add("result", VPackValue(true));
-    }
-    return res;
-  } else if (suffix == "rotate") {
-    Result res = arangodb::mmfiles::rotateActiveJournalOnAllDBServers(_vocbase.name(),
-                                                                      coll.name());
+    Result res =
+        arangodb::rocksdb::recalculateCountsOnAllDBServers(server(), _vocbase.name(),
+                                                           coll->name());
     if (res.ok()) {
       VPackObjectBuilder guard(&builder);
       builder.add("result", VPackValue(true));

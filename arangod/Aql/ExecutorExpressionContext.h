@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_EXECUTOR_EXPRESSION_CONTEXT_H 1
 
 #include "Aql/QueryExpressionContext.h"
+#include "Aql/Variable.h"
 #include "Aql/types.h"
 
 #include <vector>
@@ -37,13 +38,17 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
-  ExecutorExpressionContext(Query* query, InputAqlItemRow const& inputRow,
+  ExecutorExpressionContext(transaction::Methods& trx,
+                            QueryContext& context,
+                            AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
                             std::vector<Variable const*> const& vars,
                             std::vector<RegisterId> const& regs);
 
   ~ExecutorExpressionContext() override = default;
 
-  size_t numRegisters() const override;
+  bool isDataFromCollection(Variable const* variable) const override {
+    return variable->isDataFromCollection;
+  }
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;

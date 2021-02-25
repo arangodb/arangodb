@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -46,45 +48,37 @@ using namespace arangodb;
 /// flush the WAL
 static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  bool writeShutdownFile = false;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj =
           args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
       if (TRI_HasProperty(context, isolate, obj, "waitForSync")) {
-        waitForSync = TRI_ObjectToBoolean(
-            isolate, obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+        waitForSync = TRI_ObjectToBoolean(isolate,
+                                          obj->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "waitForSync")).FromMaybe(v8::Local<v8::Value>()));
       }
       if (TRI_HasProperty(context, isolate, obj, "waitForCollector")) {
         waitForCollector = TRI_ObjectToBoolean(
             isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
-      }
-      if (TRI_HasProperty(context, isolate, obj, "writeShutdownFile")) {
-        writeShutdownFile = TRI_ObjectToBoolean(
-            isolate,
-            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+            obj->Get(context, TRI_V8_ASCII_STRING(isolate, "waitForCollector")).FromMaybe(v8::Local<v8::Value>()));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
-
-        if (args.Length() > 2) {
-          writeShutdownFile = TRI_ObjectToBoolean(isolate, args[2]);
-        }
       }
     }
   }
 
-  EngineSelectorFeature::ENGINE->flushWal(waitForSync, waitForCollector, writeShutdownFile);
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().flushWal(waitForSync, waitForCollector);
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
@@ -194,9 +188,30 @@ static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& a
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+  TRI_GET_GLOBALS();
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().waitForEstimatorSync(
+      std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_CollectionRevisionTreeSummary(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  auto* collection = UnwrapCollection(isolate, args.Holder());
+
+  if (!collection) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  auto* physical = toRocksDBCollection(*collection);
+  VPackBuilder builder;
+  physical->revisionTreeSummary(builder);
+
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -218,6 +233,9 @@ void RocksDBV8Functions::registerResources() {
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "_revisionTreeSummary"),
+                       JS_CollectionRevisionTreeSummary);
 
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(isolate,

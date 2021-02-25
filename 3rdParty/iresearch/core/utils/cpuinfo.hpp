@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_CPUID_ID
@@ -29,7 +28,7 @@
 #include "shared.hpp"
 #include <intrin.h>
 
-NS_ROOT
+namespace iresearch {
 
 class IRESEARCH_API cpuinfo {
  public:
@@ -44,7 +43,7 @@ class IRESEARCH_API cpuinfo {
   int f1_cpuinfo_[4];
 };
 
-NS_END
+}
 
 #endif
 

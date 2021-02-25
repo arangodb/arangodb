@@ -1,0 +1,24 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_BI{
+    Version{"2.1.48.22"}
+    calendar{
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, MMMM d, y",
+                "MMMM d, y",
+                "MMM d, y",
+                "M/d/yy",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+    }
+}

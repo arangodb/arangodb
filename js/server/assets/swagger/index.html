@@ -1,4 +1,4 @@
-<!-- swagger-ui 3.22.1 -->
+<!-- swagger-ui 3.25.1 -->
 <!-- HTML for static distribution bundle build -->
 <!DOCTYPE html>
 <html lang="en">
@@ -31,7 +31,9 @@
       }
 
       .swagger-ui .scheme-container {
-        display: none;
+        padding: 0;
+        box-shadow: none;
+        background: transparent;
       }
       .swagger-ui .info {
         margin: 15px 0;
@@ -73,7 +75,7 @@
         //#region ArangoDB-specific changes
         // Infer location of swagger.json from `location.href` instead of
         // defaulting to the pet store example.
-        url: location.href.replace("index.html", "swagger.json").replace(/#.*/, ""),
+        url: location.href.replace("index.html", "swagger.json").replace(/#.*/, "").replace(/\?collapsed$/, ""),
         //#endregion
         dom_id: '#swagger-ui',
         deepLinking: true,
@@ -86,8 +88,8 @@
         ],
         layout: "StandaloneLayout",
         //#region ArangoDB-specific changes
-        // Expand the API documentation by default.
-        docExpansion: "list",
+        validatorUrl: null,
+        docExpansion: new URL(location).searchParams.has("collapsed") ? "none" : "list",
         requestInterceptor: function (request) {
           var jwt = sessionStorage.getItem("jwt");
           // Inject the web interface JWT for bearer authentication if the

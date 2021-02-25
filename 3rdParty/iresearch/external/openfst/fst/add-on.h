@@ -9,6 +9,7 @@
 #define FST_ADD_ON_H_
 
 #include <stddef.h>
+
 #include <memory>
 #include <string>
 #include <utility>
@@ -21,7 +22,7 @@
 namespace fst {
 
 // Identifies stream data as an add-on FST.
-static FST_CONSTEXPR const int32 kAddOnMagicNumber = 446681434;
+static constexpr int32 kAddOnMagicNumber = 446681434;
 
 // Nothing to save.
 class NullAddOn {
@@ -108,7 +109,7 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
 
   // We make a thread-safe copy of the FST by default since an FST
   // implementation is expected to not share mutable data between objects.
-  AddOnImpl(const FST &fst, const string &type,
+  AddOnImpl(const FST &fst, const std::string &type,
             std::shared_ptr<T> t = std::shared_ptr<T>())
       : fst_(fst, true), t_(std::move(t)) {
     SetType(type);
@@ -119,7 +120,7 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
 
   // Conversion from const Fst<Arc> & to F always copies the underlying
   // implementation.
-  AddOnImpl(const Fst<Arc> &fst, const string &type,
+  AddOnImpl(const Fst<Arc> &fst, const std::string &type,
             std::shared_ptr<T> t = std::shared_ptr<T>())
       : fst_(fst), t_(std::move(t)) {
     SetType(type);
@@ -220,15 +221,15 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
   void SetAddOn(std::shared_ptr<T> t) { t_ = t; }
 
  private:
-  explicit AddOnImpl(const string &type) : t_() {
+  explicit AddOnImpl(const std::string &type) : t_() {
     SetType(type);
     SetProperties(kExpanded);
   }
 
   // Current file format version.
-  static FST_CONSTEXPR const int kFileVersion = 1;
+  static constexpr int kFileVersion = 1;
   // Minimum file format version supported.
-  static FST_CONSTEXPR const int kMinFileVersion = 1;
+  static constexpr int kMinFileVersion = 1;
 
   FST fst_;
   std::shared_ptr<T> t_;
@@ -237,10 +238,10 @@ class AddOnImpl : public FstImpl<typename FST::Arc> {
 };
 
 template <class FST, class T>
-FST_CONSTEXPR const int AddOnImpl<FST, T>::kFileVersion;
+constexpr int AddOnImpl<FST, T>::kFileVersion;
 
 template <class FST, class T>
-FST_CONSTEXPR const int AddOnImpl<FST, T>::kMinFileVersion;
+constexpr int AddOnImpl<FST, T>::kMinFileVersion;
 
 }  // namespace internal
 }  // namespace fst

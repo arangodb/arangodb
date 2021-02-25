@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,13 +52,12 @@ RestAdminExecuteHandler::RestAdminExecuteHandler(application_features::Applicati
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAdminExecuteHandler::execute() {
-  if (!V8DealerFeature::DEALER) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                  "JavaScript operations are not available");
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
     return RestStatus::DONE;
   }
 
-  TRI_ASSERT(V8DealerFeature::DEALER->allowAdminExecute());
+  TRI_ASSERT(server().getFeature<V8DealerFeature>().allowAdminExecute());
 
   arangodb::velocypack::StringRef bodyStr = _request->rawPayload();
   char const* body = bodyStr.data();
@@ -80,22 +79,26 @@ RestStatus RestAdminExecuteHandler::execute() {
     LOG_TOPIC("c838e", DEBUG, Logger::SECURITY) << "about to execute: '" << Logger::CHARS(body, bodySize) << "'";
 
     // get a V8 context
-    bool const allowUseDatabase = ActionFeature::ACTION->allowUseDatabase();
+    bool const allowUseDatabase = server().getFeature<ActionFeature>().allowUseDatabase();
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestAdminScriptActionContext(allowUseDatabase);
     V8ContextGuard guard(&_vocbase, securityContext);
 
     {
       v8::Isolate* isolate = guard.isolate();
       v8::HandleScope scope(isolate);
+      auto context = TRI_IGETC;
 
       v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
       v8::TryCatch tryCatch(isolate);
 
       // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
-      v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
-          current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+      v8::Local<v8::Function> ctor =
+        v8::Local<v8::Function>::Cast(current->Get(context,
+                                                   TRI_V8_ASCII_STRING(isolate, "Function"))
+                                      .FromMaybe(v8::Handle<v8::Value>())
+                                      );
       v8::Handle<v8::Value> args[1] = {TRI_V8_PAIR_STRING(isolate, body, bodySize)};
-      v8::Local<v8::Object> function = ctor->NewInstance(TRI_IGETC, 1, args).FromMaybe(v8::Local<v8::Object>());
+      v8::Local<v8::Object> function = ctor->NewInstance(context, 1, args).FromMaybe(v8::Local<v8::Object>());
       v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
 
       v8::Handle<v8::Value> rv;
@@ -116,7 +119,7 @@ RestStatus RestAdminExecuteHandler::execute() {
         });
 
         v8::Handle<v8::Value> args[] = {v8::Null(isolate)};
-        rv = action->Call(current, 0, args);
+        rv = action->Call(TRI_IGETC, current, 0, args).FromMaybe(v8::Local<v8::Value>());
       }
 
       if (tryCatch.HasCaught()) {
@@ -146,7 +149,7 @@ RestStatus RestAdminExecuteHandler::execute() {
             VPackBuilder builder(buffer);
             builder.add(VPackValuePair(reinterpret_cast<uint8_t const*>(errorMessage.data()), errorMessage.size()));
             _response->setContentType(rest::ContentType::VPACK);
-            _response->setPayload(std::move(buffer), true);
+            _response->setPayload(std::move(buffer));
             break;
           }
         }
@@ -162,14 +165,13 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         VPackBuilder result;
         bool handled = false;
-        int res = TRI_ERROR_FAILED;
 
         if (returnAsJSON) {
           result.openObject(true);
           result.add(StaticStrings::Error, VPackValue(false));
           result.add(StaticStrings::Code, VPackValue(static_cast<int>(rest::ResponseCode::OK)));
           if (rv->IsObject()) {
-            res = TRI_V8ToVPack(isolate, result, rv, false);
+            TRI_V8ToVPack(isolate, result, rv, false);
             handled = true;
           }
           result.close();
@@ -177,14 +179,7 @@ RestStatus RestAdminExecuteHandler::execute() {
 
         if (!handled) {
           result.clear();
-
-          VPackBuilder temp;
-          res = TRI_V8ToVPack(isolate, temp, rv, false);
-          result.add(temp.slice());
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
+          TRI_V8ToVPack(isolate, result, rv, false);
         }
 
         generateResult(rest::ResponseCode::OK, result.slice());

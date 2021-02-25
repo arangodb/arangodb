@@ -18,29 +18,23 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "formats_10_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         documents
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(documents);
-DEFINE_ATTRIBUTE_TYPE(documents)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         term_meta
 // -----------------------------------------------------------------------------
 
-NS_END // version10
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // version10
+} // ROOT

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
 
   VPackBuilder builder;
-  TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(collection, builder.slice(), create, output);
@@ -140,11 +140,11 @@ static void JS_DropIndexVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   if (args.Length() != 1) {
     events::DropIndex(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
-    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-handle>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("dropIndex(<index-id>)");
   }
 
   VPackBuilder builder;
-  TRI_V8ToVPackSimple(isolate, builder, args[0]);
+  TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
   auto res = methods::Indexes::drop(collection, builder.slice());
 
@@ -239,18 +239,14 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     if (!args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("<properties> must be an object");
     }
-    int res =
-        TRI_V8ToVPack(isolate, properties,
-                      args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, properties,
+                  args[1]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()), false);
     propSlice = properties.slice();
   }
 
   // waitForSync can be 3. or 4. parameter
-  auto& server = application_features::ApplicationServer::server();
-  auto& cluster = server.getFeature<ClusterFeature>();
+  TRI_GET_GLOBALS();
+  auto& cluster = v8g->_server.getFeature<ClusterFeature>();
   bool createWaitsForSyncReplication = cluster.createWaitsForSyncReplication();
   bool enforceReplicationFactor = true;
 
@@ -266,17 +262,21 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
                                        enforceReplicationFactor);
   }
 
+  VPackBuilder filtered = methods::Collections::filterInput(propSlice);
+  propSlice = filtered.slice();
+
   v8::Handle<v8::Value> result;
   std::shared_ptr<LogicalCollection> coll;
-  auto res = methods::Collections::create(
-      vocbase,                        // collection vocbase
-      name,                           // collection name
-      collectionType,                 // collection type
-      propSlice,                      // collection properties
-      createWaitsForSyncReplication,  // replication wait flag
-      enforceReplicationFactor,
-      false,  // is new Database?, here always false
-      coll);
+  OperationOptions options(ExecContext::current());
+  auto res = methods::Collections::create(vocbase,  // collection vocbase
+                                          options,
+                                          name,            // collection name
+                                          collectionType,  // collection type
+                                          propSlice,  // collection properties
+                                          createWaitsForSyncReplication,  // replication wait flag
+                                          enforceReplicationFactor,
+                                          false,  // is new Database?, here always false
+                                          coll);
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,11 +27,11 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Aql/InsertModifier.h"
@@ -58,10 +59,21 @@ ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type)
 
 ModifierOutput::ModifierOutput(InputAqlItemRow const& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
+
 ModifierOutput::ModifierOutput(InputAqlItemRow&& inputRow, Type type,
                                AqlValue const& oldValue, AqlValue const& newValue)
-    : _inputRow(std::move(inputRow)), _type(type), _oldValue(oldValue), _newValue(newValue) {}
+    : _inputRow(std::move(inputRow)),
+      _type(type),
+      _oldValue(oldValue),
+      _oldValueGuard(std::in_place, _oldValue.value(), true),
+      _newValue(newValue),
+      _newValueGuard(std::in_place, _newValue.value(), true) {}
 
 InputAqlItemRow ModifierOutput::getInputRow() const { return _inputRow; }
 ModifierOutput::Type ModifierOutput::getType() const { return _type; }
@@ -77,42 +89,27 @@ AqlValue const& ModifierOutput::getNewValue() const {
 }
 
 template <typename FetcherType, typename ModifierType>
-ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher,
-                                                                      Infos& infos)
-    : _lastState(ExecutionState::HASMORE), _infos(infos), _fetcher(fetcher), _modifier(infos) {
-  // In MMFiles we need to make sure that the data is not moved in memory or collected
-  // for this collection as soon as we start writing to it.
-  // This pin makes sure that no memory is moved pointers we get from a collection stay
-  // correct until we release this pin
-  _infos._trx->pinData(this->_infos._aqlCollection->id());
-}
+ModificationExecutor<FetcherType, ModifierType>::ModificationExecutor(Fetcher& fetcher, Infos& infos)
+    : _trx(infos._query.newTrxContext()), _lastState(ExecutionState::HASMORE), _infos(infos), _modifier(infos) {}
 
-// Fetches as many rows as possible from upstream using the fetcher's fetchRow
-// method and accumulates results through the modifier
+// Fetches as many rows as possible from upstream and accumulates results
+// through the modifier
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::doCollect(size_t maxOutputs) {
-  // for fetchRow
-  InputAqlItemRow row{CreateInvalidInputRowHint{}};
+auto ModificationExecutor<FetcherType, ModifierType>::doCollect(AqlItemBlockInputRange& input,
+                                                                size_t maxOutputs)
+    -> void {
   ExecutionState state = ExecutionState::HASMORE;
 
   // Maximum number of rows we can put into output
   // So we only ever produce this many here
-  // TODO: If we SKIP_IGNORE, then we'd be able to output more;
-  //       this would require some counting to happen in the modifier
-  while (_modifier.nrOfOperations() < maxOutputs && state != ExecutionState::DONE) {
-    std::tie(state, row) = _fetcher.fetchRow(maxOutputs);
-    if (state == ExecutionState::WAITING) {
-      return {ExecutionState::WAITING, ModificationStats{}};
-    }
-    if (row.isInitialized()) {
-      // Make sure we have a valid row
-      TRI_ASSERT(row.isInitialized());
-      _modifier.accumulate(row);
-    }
+  while (_modifier.nrOfOperations() < maxOutputs && input.hasDataRow()) {
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+
+    // Make sure we have a valid row
+    TRI_ASSERT(row.isInitialized());
+    _modifier.accumulate(row);
   }
   TRI_ASSERT(state == ExecutionState::DONE || state == ExecutionState::HASMORE);
-  return {state, ModificationStats{}};
 }
 
 // Outputs accumulated results, and counts the statistics
@@ -120,7 +117,10 @@ template <typename FetcherType, typename ModifierType>
 void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow& output,
                                                                Stats& stats) {
   typename ModifierType::OutputIterator modifierOutputIterator(_modifier);
+  // We only accumulated as many items as we can output, so this
+  // should be correct
   for (auto const& modifierOutput : modifierOutputIterator) {
+    TRI_ASSERT(!output.isFull());
     bool written = false;
     switch (modifierOutput.getType()) {
       case ModifierOutput::Type::ReturnIfRequired:
@@ -146,53 +146,127 @@ void ModificationExecutor<FetcherType, ModifierType>::doOutput(OutputAqlItemRow&
         break;
     }
   }
-
-  if (_infos._doCount) {
-    stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
-    stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
-  }
 }
 
 template <typename FetcherType, typename ModifierType>
-std::pair<ExecutionState, typename ModificationExecutor<FetcherType, ModifierType>::Stats>
-ModificationExecutor<FetcherType, ModifierType>::produceRows(OutputAqlItemRow& output) {
-  TRI_ASSERT(_infos._trx);
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::produceRows(
+    typename FetcherType::DataRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, ModificationStats, AqlCall> {
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
+  }
+  auto stats = ModificationStats{};
 
-  ModificationExecutor::Stats stats;
-
-  const size_t maxOutputs = std::min(output.numRowsLeft(), _modifier.getBatchSize());
-
-  // if we returned "WAITING" the last time we still have
-  // documents in the accumulator that we have not submitted
-  // yet
-  if (_lastState != ExecutionState::WAITING) {
-    _modifier.reset();
+  _modifier.reset();
+  if (!input.hasDataRow()) {
+    // Input is empty
+    return {input.upstreamState(), stats, upstreamCall};
   }
 
   TRI_IF_FAILURE("ModificationBlock::getSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  std::tie(_lastState, stats) = doCollect(maxOutputs);
+  // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = ExecutorState::HASMORE;
+  if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+    auto& range = input.getInputRange();
+    doCollect(range, output.numRowsLeft());
+    upstreamState = range.upstreamState();
+    if (upstreamState == ExecutorState::DONE) {
+      // We are done with this input.
+      // We need to forward it to the last ShadowRow.
+      input.skipAllRemainingDataRows();
+    }
+  } else {
+    doCollect(input, output.numRowsLeft());
+    upstreamState = input.upstreamState();
+  }
+  if (_modifier.nrOfOperations() > 0) {
+    _modifier.transact(_trx);
 
-  if (_lastState == ExecutionState::WAITING) {
-    return {ExecutionState::WAITING, std::move(stats)};
+    if (_infos._doCount) {
+      stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+      stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+    }
+
+    doOutput(output, stats);
   }
 
-  TRI_ASSERT(_lastState == ExecutionState::DONE || _lastState == ExecutionState::HASMORE);
+  return {upstreamState, stats, upstreamCall};
+}
 
-  _modifier.transact();
+template <typename FetcherType, typename ModifierType>
+[[nodiscard]] auto ModificationExecutor<FetcherType, ModifierType>::skipRowsRange(
+    typename FetcherType::DataRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  AqlCall upstreamCall{};
+  if constexpr (std::is_same_v<ModifierType, UpsertModifier> &&
+                !std::is_same_v<FetcherType, AllRowsFetcher>) {
+    upstreamCall.softLimit = _modifier.getBatchSize();
+  }
 
-  // If the query is silent, there is no way to relate
-  // the results slice contents and the submitted documents
-  // If the query is *not* silent, we should get one result
-  // for every document.
-  // Yes. Really.
-  TRI_ASSERT(_infos._options.silent || _modifier.nrOfDocuments() == _modifier.nrOfResults());
+  auto stats = ModificationStats{};
 
-  doOutput(output, stats);
+  TRI_IF_FAILURE("ModificationBlock::getSome") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
-  return {_lastState, std::move(stats)};
+  // only produce at most output.numRowsLeft() many results
+  ExecutorState upstreamState = input.upstreamState();
+  while (input.hasDataRow() && call.needSkipMore()) {
+    _modifier.reset();
+    size_t toSkip = call.getOffset();
+    if (call.getLimit() == 0 && call.hasHardLimit()) {
+      // We need to produce all modification operations.
+      // If we are bound by limits or not!
+      toSkip = ExecutionBlock::SkipAllSize();
+    }
+    if constexpr (std::is_same_v<typename FetcherType::DataRange, AqlItemBlockInputMatrix>) {
+      auto& range = input.getInputRange();
+      if (range.hasDataRow()) {
+        doCollect(range, toSkip);
+      }
+      upstreamState = range.upstreamState();
+      if (upstreamState == ExecutorState::DONE) {
+        // We are done with this input.
+        // We need to forward it to the last ShadowRow.
+        input.skipAllRemainingDataRows();
+        TRI_ASSERT(input.upstreamState() == ExecutorState::DONE);
+      }
+    } else {
+      doCollect(input, toSkip);
+      upstreamState = input.upstreamState();
+    }
+
+    if (_modifier.nrOfOperations() > 0) {
+      _modifier.transact(_trx);
+
+      if (_infos._doCount) {
+        stats.addWritesExecuted(_modifier.nrOfWritesExecuted());
+        stats.addWritesIgnored(_modifier.nrOfWritesIgnored());
+      }
+
+      if (call.needsFullCount()) {
+        // If we need to do full count the nr of writes we did
+        // in this batch is always correct.
+        // If we are in offset phase and need to produce data
+        // after the toSkip is limited to offset().
+        // otherwise we need to report everything we write
+        call.didSkip(_modifier.nrOfWritesExecuted());
+      } else {
+        // If we do not need to report fullcount.
+        // we cannot report more than offset
+        // but also not more than the operations we
+        // have successfully executed
+        call.didSkip((std::min)(call.getOffset(), _modifier.nrOfWritesExecuted()));
+      }
+    }
+  }
+
+  return {upstreamState, stats, call.getSkipCount(), upstreamCall};
 }
 
 using NoPassthroughSingleRowFetcher = SingleRowFetcher<BlockPassthrough::Disable>;

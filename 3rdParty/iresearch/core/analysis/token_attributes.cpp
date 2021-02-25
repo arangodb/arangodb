@@ -18,109 +18,60 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "token_attributes.hpp"
 #include "store/store_utils.hpp"
 
+namespace {
+
+struct empty_position final : irs::position {
+  virtual void reset() override { }
+  virtual bool next() override { return false; }
+  virtual attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
+  }
+};
+
+empty_position NO_POSITION;
+const irs::document INVALID_DOCUMENT;
+
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// !!! DO NOT MODIFY value in DEFINE_ATTRIBUTE_TYPE(...) as it may break
 /// already created indexes !!!
-/// FIXME: write test
 ////////////////////////////////////////////////////////////////////////////////
 
-NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                            offset
-// -----------------------------------------------------------------------------
+namespace iresearch {
 
 REGISTER_ATTRIBUTE(offset);
-DEFINE_ATTRIBUTE_TYPE(offset)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         increment
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(increment);
-DEFINE_ATTRIBUTE_TYPE(increment)
-
-increment::increment() NOEXCEPT
-  : basic_attribute<uint32_t>(1U) {
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    term_attribute
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(term_attribute);
-DEFINE_ATTRIBUTE_TYPE(term_attribute)
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                           payload
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(payload);
-DEFINE_ATTRIBUTE_TYPE(payload) // DO NOT CHANGE NAME
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          document
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(document);
-DEFINE_ATTRIBUTE_TYPE(document) // DO NOT CHANGE NAME
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         frequency
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(frequency);
-DEFINE_ATTRIBUTE_TYPE(frequency) // DO NOT CHANGE NAME
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                granularity_prefix
-// -----------------------------------------------------------------------------
-
 REGISTER_ATTRIBUTE(iresearch::granularity_prefix);
-DEFINE_ATTRIBUTE_TYPE(iresearch::granularity_prefix) // DO NOT CHANGE NAME
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              norm
 // -----------------------------------------------------------------------------
 
 REGISTER_ATTRIBUTE(norm);
-DEFINE_ATTRIBUTE_TYPE(norm) // DO NOT CHANGE NAME
-DEFINE_FACTORY_DEFAULT(norm)
 
-const document INVALID_DOCUMENT;
-
-norm::norm() NOEXCEPT {
-  reset();
+norm::norm() noexcept
+  : payload_(nullptr),
+    doc_(&INVALID_DOCUMENT) {
 }
 
-norm::norm(norm&& rhs) NOEXCEPT
-  : column_(std::move(rhs.column_)),
-    doc_(rhs.doc_) {
-  rhs.doc_ = nullptr;
-}
-
-norm& norm::operator=(norm&& rhs) NOEXCEPT {
-  if (this != &rhs) {
-    column_ = std::move(rhs.column_);
-    doc_ = rhs.doc_;
-    rhs.doc_ = nullptr;
-  }
-  return *this;
-}
-
-void norm::reset() {
-  column_ = [](doc_id_t, bytes_ref&){ return false; };
+void norm::clear() noexcept {
+  column_it_.reset();
+  payload_ = nullptr;
   doc_ = &INVALID_DOCUMENT;
 }
 
-bool norm::empty() const {
+bool norm::empty() const noexcept {
   return doc_ == &INVALID_DOCUMENT;
 }
 
@@ -131,19 +82,27 @@ bool norm::reset(const sub_reader& reader, field_id column, const document& doc)
     return false;
   }
 
-  column_ = column_reader->values();
+  column_it_ = column_reader->iterator();
+  if (!column_it_) {
+    return false;
+  }
+
+  payload_ = irs::get<irs::payload>(*column_it_);
+  if (!payload_) {
+    return false;
+  }
   doc_ = &doc;
   return true;
 }
 
 float_t norm::read() const {
-  bytes_ref value;
-  if (!column_(doc_->value, value)) {
+  assert(column_it_);
+  if (doc_->value != column_it_->seek(doc_->value)) {
     return DEFAULT();
   }
-
+  assert(payload_);
   // TODO: create set of helpers to decode float from buffer directly
-  bytes_ref_input in(value);
+  bytes_ref_input in(payload_->value);
   return read_zvfloat(in);
 }
 
@@ -151,15 +110,8 @@ float_t norm::read() const {
 // --SECTION--                                                          position
 // -----------------------------------------------------------------------------
 
+/*static*/ irs::position* position::empty() noexcept { return &NO_POSITION; }
+
 REGISTER_ATTRIBUTE(position);
-DEFINE_ATTRIBUTE_TYPE(position) // DO NOT CHANGE NAME
 
-position::position(size_t reserve_attrs) NOEXCEPT
-  : attrs_(reserve_attrs) {
 }
-
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

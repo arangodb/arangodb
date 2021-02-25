@@ -1,0 +1,26 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+tr{
+    Version{"2.1.19.14"}
+    collations{
+        search{
+            Sequence{
+                "[import und-u-co-search]"
+                "[import tr-u-co-standard]"
+            }
+            Version{"35.1"}
+        }
+        standard{
+            Sequence{
+                "&C<ç<<<Ç"
+                "&G<ğ<<<Ğ"
+                "&[before 1]i<ı<<<I"
+                "&i<<<İ"
+                "&O<ö<<<Ö"
+                "&S<ş<<<Ş"
+                "&U<ü<<<Ü"
+            }
+            Version{"35.1"}
+        }
+    }
+}

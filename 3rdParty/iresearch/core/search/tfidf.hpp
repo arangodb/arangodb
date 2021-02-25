@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TFIDF_H
@@ -26,33 +25,52 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class tfidf_sort : public sort {
 public:
-  DECLARE_SORT_TYPE();
+  using score_t = float_t;
 
-  static CONSTEXPR bool WITH_NORMS() NOEXCEPT {
+  static constexpr string_ref type_name() noexcept {
+    return "tfidf";
+  }
+
+  static constexpr bool WITH_NORMS() noexcept {
+    return false;
+  }
+
+  static constexpr bool BOOST_AS_SCORE() noexcept {
     return false;
   }
 
   // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY();
+  static sort::ptr make(
+    bool normalize = WITH_NORMS(),
+    bool boost_as_score = BOOST_AS_SCORE());
 
-  typedef float_t score_t;
-
-  explicit tfidf_sort(bool normalize = WITH_NORMS()) NOEXCEPT;
+  explicit tfidf_sort(
+    bool normalize = WITH_NORMS(),
+    bool boost_as_score = BOOST_AS_SCORE()) noexcept;
 
   static void init(); // for trigering registration in a static build
-  bool normalize() const NOEXCEPT { return normalize_; }
-  void normalize(bool value) NOEXCEPT { normalize_ = value; }
+  bool normalize() const noexcept { return normalize_; }
+  void normalize(bool value) noexcept { normalize_ = value; }
+
+  // use boost as score even if frequency is not set
+  bool use_boost_as_score() const noexcept {
+    return boost_as_score_;
+  }
+  void use_boost_as_score(bool use) noexcept {
+    boost_as_score_ = use;
+  }
 
   virtual sort::prepared::ptr prepare() const override;
 
-private:
+ private:
   bool normalize_;
+  bool boost_as_score_;
 }; // tfidf_sort
 
-NS_END
+}
 
 #endif

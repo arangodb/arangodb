@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ class ConsoleThread final : public Thread {
 
  public:
   void run() override;
-  bool isSilent() override { return true; }
+  bool isSilent() const override { return true; }
 
  public:
   void userAbort() { _userAborted.store(true); }

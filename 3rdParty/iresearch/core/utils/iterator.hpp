@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ITERATOR_H
@@ -26,23 +25,21 @@
 
 #include "noncopyable.hpp"
 #include "ebo.hpp"
+#include "std.hpp"
 
 #include <memory>
 #include <cassert>
 #include <boost/iterator/iterator_facade.hpp>
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                             Java style iterators 
 // ----------------------------------------------------------------------------
 
-template< typename T >
+template<typename T>
 struct IRESEARCH_API_TEMPLATE iterator {
-  DECLARE_UNIQUE_PTR(iterator<T>);
-  DEFINE_FACTORY_INLINE(iterator<T>)
-
-  virtual ~iterator() {}
+  virtual ~iterator() = default;
   virtual T value() const = 0;
   virtual bool next() = 0;
 };
@@ -74,16 +71,16 @@ template<
       end_(end) {
   }
 
-  const_reference value() const NOEXCEPT override {
+  const_reference value() const noexcept override {
     return *cur_;
   }
 
-  bool seek(const key_type& key) NOEXCEPT override {
+  bool seek(const key_type& key) noexcept override {
     begin_ = std::lower_bound(cur_, end_, key, comparer_t::get());
     return next();
   }
 
-  bool next() NOEXCEPT override {
+  bool next() noexcept override {
     if (begin_ == end_) {
       cur_ = begin_; // seal iterator
       return false;
@@ -103,7 +100,7 @@ template<
 // --SECTION--                                              C++ style iterators 
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename SmartPtr>
 struct extract_element_type {
@@ -119,21 +116,7 @@ struct extract_element_type<const SmartPtr> {
   typedef const typename SmartPtr::element_type* pointer;
 };
 
-template<typename In, typename Out>
-struct adjust_const {
-  typedef Out value_type;
-  typedef Out& reference;
-  typedef Out* pointer;
-};
-
-template<typename In, typename Out>
-struct adjust_const<const In, Out> {
-  typedef const Out value_type;
-  typedef const Out& reference;
-  typedef const Out* pointer;
-};
-
-NS_END
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class const_ptr_iterator
@@ -165,7 +148,7 @@ class ptr_iterator
   
   template<typename T>
   struct adjust_const 
-    : detail::adjust_const<typename element_type::value_type, T> { };
+    : irstd::adjust_const<typename element_type::value_type, T> { };
   
  public:
   typedef typename iterator_facade::reference reference;
@@ -231,6 +214,6 @@ class ptr_iterator
   IteratorImpl it_;
 };
 
-NS_END
+}
 
 #endif

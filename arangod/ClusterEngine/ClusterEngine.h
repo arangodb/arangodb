@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,7 +45,6 @@ class ClusterEngine final : public StorageEngine {
   void setActualEngine(StorageEngine* e);
   StorageEngine* actualEngine() const { return _actualEngine; }
   bool isRocksDB() const;
-  bool isMMFiles() const;
   bool isMock() const;
   ClusterEngineType engineType() const;
 
@@ -62,18 +62,15 @@ class ClusterEngine final : public StorageEngine {
   // the storage engine must not start any threads here or write any files
   void prepare() override;
   void start() override;
-
-  bool supportsDfdb() const override { return false; }
-  bool useRawDocumentPointers() override { return false; }
+  
+  HealthData healthCheck() override;
 
   std::unique_ptr<transaction::Manager> createTransactionManager(transaction::ManagerFeature&) override;
-  std::unique_ptr<transaction::ContextData> createTransactionContextData() override;
-  std::unique_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
-                                                           TRI_voc_tid_t tid,
+  std::shared_ptr<TransactionState> createTransactionState(TRI_vocbase_t& vocbase,
+                                                           TransactionId tid,
                                                            transaction::Options const& options) override;
   std::unique_ptr<TransactionCollection> createTransactionCollection(
-      TransactionState& state, TRI_voc_cid_t cid, AccessMode::Type accessType,
-      int nestingLevel) override;
+      TransactionState& state, DataSourceId cid, AccessMode::Type accessType) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(
@@ -86,14 +83,15 @@ class ClusterEngine final : public StorageEngine {
 
   void getDatabases(arangodb::velocypack::Builder& result) override;
 
-  void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  void getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                          arangodb::velocypack::Builder& result,
                          bool includeIndexes, TRI_voc_tick_t maxTick) override;
 
-  int getCollectionsAndIndexes(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result,
-                               bool wasCleanShutdown, bool isUpgrade) override;
+  ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                     arangodb::velocypack::Builder& result,
+                                     bool wasCleanShutdown, bool isUpgrade) override;
 
-  int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override {
     // the cluster engine does not have any versioning information
@@ -107,9 +105,6 @@ class ClusterEngine final : public StorageEngine {
     // the cluster engine does not have any database path
     return std::string();
   }
-  std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override {
-    return std::string();  // no path to be returned here
-  }
 
   void cleanupReplicationContexts() override {}
 
@@ -122,11 +117,12 @@ class ClusterEngine final : public StorageEngine {
   int removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                          velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice slice, bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) override {
+  ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                                bool doSync) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   Result handleSyncKeys(DatabaseInitialSyncer& syncer, LogicalCollection& col,
@@ -143,9 +139,8 @@ class ClusterEngine final : public StorageEngine {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   Result lastLogger(TRI_vocbase_t& vocbase,
-                    std::shared_ptr<transaction::Context> transactionContext,
                     uint64_t tickStart, uint64_t tickEnd,
-                    std::shared_ptr<velocypack::Builder>& builderSPtr) override {
+                    velocypack::Builder& builder) override {
     return {TRI_ERROR_NOT_IMPLEMENTED};
   }
   WalAccess const* walAccess() const override {
@@ -156,45 +151,33 @@ class ClusterEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
-  // intentionally empty, not useful for this type of engine
-  void waitForSyncTick(TRI_voc_tick_t) override {}
-
   /// @brief return a list of the currently open WAL files
   std::vector<std::string> currentWalFiles() const override {
     return std::vector<std::string>();
   }
 
-  Result flushWal(bool waitForSync, bool waitForCollector, bool writeShutdownFile) override {
-    return {TRI_ERROR_NO_ERROR};
+  Result flushWal(bool waitForSync, bool waitForCollector) override {
+    return {};
   }
+
   void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
 
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                 int& status) override;
-  int writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
-  void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker, int& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
-  void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
 
   // current recovery state
   RecoveryState recoveryState() override;
   // current recovery tick
   TRI_voc_tick_t recoveryTick() override;
-  // start compactor thread and delete files form collections marked as deleted
-  void recoveryDone(TRI_vocbase_t& vocbase) override;
 
  public:
-  std::string createCollection(TRI_vocbase_t& vocbase,
-                               LogicalCollection const& collection) override;
-
-  arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                     LogicalCollection const& collection) override;
+  void createCollection(TRI_vocbase_t& vocbase,
+                        LogicalCollection const& collection) override;
 
   arangodb::Result dropCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
-
-  void destroyCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
 
   void changeCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection, bool doSync) override;
@@ -202,27 +185,15 @@ class ClusterEngine final : public StorageEngine {
   arangodb::Result renameCollection(TRI_vocbase_t& vocbase, LogicalCollection const& collection,
                                     std::string const& oldName) override;
 
-  void unloadCollection(TRI_vocbase_t& vocbase, LogicalCollection& collection) override;
-
   arangodb::Result changeView(TRI_vocbase_t& vocbase,
                               arangodb::LogicalView const& view, bool doSync) override;
 
-  arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+  arangodb::Result createView(TRI_vocbase_t& vocbase, DataSourceId id,
                               arangodb::LogicalView const& view) override;
-
-  virtual void getViewProperties(TRI_vocbase_t& /*vocbase*/,
-                                 LogicalView const& /*view*/, VPackBuilder& /*builder*/
-                                 ) override {
-    // does nothing
-  }
 
   arangodb::Result dropView(TRI_vocbase_t const& vocbase, LogicalView const& view) override;
 
-  void destroyView(TRI_vocbase_t const& vocbase, LogicalView const& view) noexcept override;
-
-  void signalCleanup(TRI_vocbase_t& vocbase) override;
-
-  int shutdownDatabase(TRI_vocbase_t& vocbase) override;
+  arangodb::Result compactAll(bool changeLevel, bool compactBottomMostLevel) override;
 
   /// @brief Add engine-specific optimizer rules
   void addOptimizerRules(aql::OptimizerRulesFeature& feature) override;
@@ -248,7 +219,11 @@ class ClusterEngine final : public StorageEngine {
   static std::string const FeatureName;
 
   // mock mode
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   static bool Mocking;
+#else
+  static constexpr bool Mocking = false;
+#endif
 
  private:
   /// path to arangodb data dir

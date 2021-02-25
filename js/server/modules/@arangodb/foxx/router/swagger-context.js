@@ -30,6 +30,7 @@ const mediaTyper = require('media-typer');
 const check = require('@arangodb/foxx/check-args');
 const joiToJsonSchema = require('joi-to-json-schema');
 const tokenize = require('@arangodb/foxx/router/tokenize');
+const { uuidv4 } = require('@arangodb/crypto');
 
 const MIME_JSON = 'application/json; charset=utf-8';
 const DEFAULT_ERROR_SCHEMA = joi.object().keys({
@@ -84,6 +85,8 @@ module.exports = exports =
       this._pathParamNames = [];
       this._pathTokens = tokenize(path, this);
       this._tags = new Set();
+      this._securitySchemes = new Map();
+      this._security = new Map();
     }
 
     header (...args) {
@@ -283,6 +286,71 @@ module.exports = exports =
       return this;
     }
 
+    securityScheme(...args) {
+      const {type, options, description} = check(
+        'endpoint.security',
+        args,
+        [
+          ['type', 'string'],
+          ['options', 'object'],
+          ['description', 'string']
+        ],
+        [
+          ['type', 'string'],
+          ['options', 'object']
+        ],
+        [
+          ['type', 'string'],
+          ['description', 'string']
+        ],
+        [
+          ['type', 'string']
+        ]
+      );
+      const securityScheme = {...options, type};
+      if (description) securityScheme.description = description;
+      const id = securityScheme.id || uuidv4();
+      delete securityScheme.id;
+      this._securitySchemes.set(id, securityScheme);
+      this._security.set(id, new Set());
+      return this;
+    }
+
+    securityScope(...args) {
+      const [id, ...scopes] = check(
+        'endpoint.securityScope',
+        args,
+        [
+          ['id', 'string'],
+          ...repeat(Math.max(1, args.length - 1), ['scope', 'string'])
+        ]
+      );
+      if (this._security.has(id) && this._security.get(id) !== false) {
+        const security = this._security.get(id);
+        for (const scope of scopes) {
+          security.add(scope);
+        }
+      } else {
+        this._security.set(id, new Set(scopes));
+      }
+      return this;
+    }
+
+    security(...args) {
+      const [id, enabled = true] = check(
+        'endpoint.security',
+        args,
+        [['id', 'string'], ['enabled', 'boolean']],
+        [['id', 'string']]
+      );
+      if (enabled) {
+        this._security.set(id, new Set());
+      } else {
+        this._security.set(id, false);
+      }
+      return this;
+    }
+
     deprecated (...args) {
       const [flag] = check(
         'endpoint.summary',
@@ -307,6 +375,23 @@ module.exports = exports =
         }
         for (const tag of swaggerObj._tags) {
           this._tags.add(tag);
+        }
+        for (const [id, securityScheme] of swaggerObj._securitySchemes.entries()) {
+          if (!this._securitySchemes.has(id)) {
+            this._securitySchemes.set(id, securityScheme);
+          }
+        }
+        for (const [id, scopes] of swaggerObj._security.entries()) {
+          if (scopes === false) {
+            this._security.set(id, false);
+          } else if (this._security.has(id) && this._security.get(id) !== false) {
+            const security = this._security.get(id);
+            for (const scope of scopes) {
+              security.add(scope);
+            }
+          } else {
+            this._security.set(id, new Set(scopes));
+          }
         }
         if (!this._bodyParam && swaggerObj._bodyParam) {
           this._bodyParam = swaggerObj._bodyParam;
@@ -346,6 +431,7 @@ module.exports = exports =
     }
 
     _buildOperation () {
+      const meta = {};
       const operation = {
         produces: [],
         parameters: []
@@ -494,7 +580,17 @@ module.exports = exports =
         operation.responses[code] = response;
       }
 
-      return operation;
+      if (this._securitySchemes.size) {
+        meta.securitySchemes = this._securitySchemes;
+      };
+      operation.security = [];
+      for (const [id, scopes] of this._security.entries()) {
+        if (scopes !== false) {
+          operation.security.push({[id]: [...scopes]});
+        }
+      }
+
+      return {operation, meta};
     }
 };
 

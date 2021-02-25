@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -115,7 +116,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--console.colors", "enable color support",
                      new BooleanParameter(&_colors),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--console.auto-complete", "enable auto completion",
                      new BooleanParameter(&_autoComplete));
@@ -137,7 +138,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--console.pager-command", "pager command",
                      new StringParameter(&_pagerCommand),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--console.prompt",

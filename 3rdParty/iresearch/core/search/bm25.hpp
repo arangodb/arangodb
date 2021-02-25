@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BM25_H
@@ -26,42 +25,61 @@
 
 #include "scorers.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class bm25_sort : public sort {
  public:
-  DECLARE_SORT_TYPE();
+  using score_t = float_t;
 
-  static CONSTEXPR float_t K() NOEXCEPT {
+  static constexpr string_ref type_name() noexcept {
+    return "bm25";
+  }
+
+  static constexpr float_t K() noexcept {
     return 1.2f;
   }
 
-  static CONSTEXPR float_t B() NOEXCEPT {
+  static constexpr float_t B() noexcept {
     return 0.75f;
+  }
+
+  static constexpr bool BOOST_AS_SCORE() noexcept {
+    return false;
   }
 
   static void init(); // for trigering registration in a static build
 
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY();
+  static ptr make(
+    float_t k = K(),
+    float_t b = B(),
+    bool boost_as_score = BOOST_AS_SCORE());
 
-  typedef float_t score_t;
+  explicit bm25_sort(
+   float_t k = K(),
+   float_t b = B(),
+   bool boost_as_score = BOOST_AS_SCORE()) noexcept;
 
-  explicit bm25_sort(float_t k = K(), float_t b = B()) NOEXCEPT;
+  float_t k() const noexcept { return k_; }
+  void k(float_t k) noexcept { k_ = k; }
 
-  float_t k() const NOEXCEPT { return k_; }
-  void k(float_t k) NOEXCEPT { k_ = k; }
+  float_t b() const noexcept { return b_; }
+  void b(float_t b) noexcept { b_ = b; }
 
-  float_t b() const NOEXCEPT { return b_; }
-  void b(float_t b) NOEXCEPT { b_ = b; }
+  // use boost as score even if frequency is not set
+  bool use_boost_as_score() const noexcept {
+    return boost_as_score_;
+  }
+  void use_boost_as_score(bool use) noexcept {
+    boost_as_score_ = use;
+  }
 
   // returns 'true' if current scorer is 'bm11'
-  bool bm11() const NOEXCEPT {
+  bool bm11() const noexcept {
     return b_ == 1.f;
   }
 
   // returns 'true' if current scorer is 'bm15'
-  bool bm15() const NOEXCEPT {
+  bool bm15() const noexcept {
     return b_ == 0.f;
   }
 
@@ -70,8 +88,9 @@ class bm25_sort : public sort {
  private:
   float_t k_; // [1.2 .. 2.0]
   float_t b_; // 0.75
+  bool boost_as_score_;
 }; // bm25_sort
 
-NS_END
+}
 
 #endif

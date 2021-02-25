@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertUndefined, fail, more */
+/*global assertEqual, assertTrue, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -36,7 +36,7 @@ const aqlfunctions = require("@arangodb/aql/functions");
 /// @brief test suite: stream cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-function StreamCursorSuite () {
+function StreamCursorSuite() {
   'use strict';
 
   const cn = "StreamCursorCollection";
@@ -53,85 +53,132 @@ function StreamCursorSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief set up
+    ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       c = db._create(cn);
-      c.ensureIndex({ type: 'skiplist', fields: ["value1"]});
-      c.ensureIndex({ type: 'skiplist', fields: ["value2"]});
+      c.ensureIndex({ type: 'skiplist', fields: ["value1"] });
+      c.ensureIndex({ type: 'skiplist', fields: ["value2"] });
 
+      let docs = [];
       for (let i = 0; i < 5000; i++) {
-        c.insert({value1: i % 10, value2: i % 25 , value3: i % 25 });
+        docs.push({ value1: i % 10, value2: i % 25, value3: i % 25 });
       }
- 
+      c.insert(docs);
+
       try {
         aqlfunctions.unregister("my::test");
-      } catch (err) {}
+      } catch (err) { }
 
-      aqlfunctions.register("my::test", function() { return 42; });
+      aqlfunctions.register("my::test", function () { return 42; });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief tear down
+    ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       try {
         aqlfunctions.unregister("my::test");
-      } catch (err) {}
+      } catch (err) { }
 
       c.drop();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test cursor
-////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test cursor
+    ////////////////////////////////////////////////////////////////////////////////
 
-    testQueries : function () {
+    testQueries: function () {
       queries.forEach(q => {
-        var stmt = db._createStatement({ query: q,
+        let stmt = db._createStatement({
+          query: q,
           options: { stream: true },
-          batchSize: 1000});
-        var cursor = stmt.execute();
+          batchSize: 1000
+        });
+        let cursor = stmt.execute();
 
-        assertEqual(undefined, cursor.count());
-        while (cursor.hasNext()) {
-          cursor.next();
+        try {
+          assertEqual(undefined, cursor.count());
+          while (cursor.hasNext()) {
+            cursor.next();
+          }
+        } catch (err) {
+          fail("testQueries failed");
+        } finally {
+          cursor.dispose();
         }
-      });      
+      });
     },
 
-    testInfiniteAQL : function() {
-      var stmt = db._createStatement({ query: "FOR i IN 1..100000000000 RETURN i",
+    testInfiniteAQL: function () {
+      let stmt = db._createStatement({
+        query: "FOR i IN 1..100000000000 RETURN i",
         options: { stream: true },
-        batchSize: 1000});
-      var cursor = stmt.execute();
+        batchSize: 1000
+      });
+      let cursor = stmt.execute();
+      try {
+        assertUndefined(cursor.count());
+        let i = 10;
+        while (cursor.hasNext() && i-- > 0) {
+          cursor.next();
+        }
+      } catch (err) {
+        fail("testInfiniteAQL failed");
+      } finally {
+        cursor.dispose();
+      }
+    },
+
+    // Regression test, could fail in cluster (in 3.6)
+    testDisposeCursorWithCollection: function () {
+      let cursor = db._query("FOR doc IN @@cn RETURN doc", { "@cn": cn },
+        { stream: true, batchSize: 1000 });
 
       assertUndefined(cursor.count());
       let i = 10;
       while (cursor.hasNext() && i-- > 0) {
         cursor.next();
       }
+
+      cursor.dispose();
     },
 
-    testUserDefinedFunction : function () {
-      let stmt = db._createStatement({ 
+    testUserDefinedFunction: function () {
+      let stmt = db._createStatement({
         query: "FOR i IN 1..10000 RETURN my::test()",
         options: { stream: true },
         batchSize: 1000
       });
       let cursor = stmt.execute();
 
-      assertEqual(undefined, cursor.count());
-      let count = 0;
-      while (cursor.hasNext()) {
-        assertEqual(42, cursor.next());
-        ++count;
+      try {
+        assertEqual(undefined, cursor.count());
+        let count = 0;
+        while (cursor.hasNext()) {
+          assertEqual(42, cursor.next());
+          ++count;
+        }
+        assertEqual(10000, count);
+      } catch (err) {
+        fail("testUserDefinedFunction failed");
+      } finally {
+        cursor.dispose();
       }
-      assertEqual(10000, count);
     },
+
+    // Regression test, this led to an issue on shutdown
+    testNotCleaningUp: function () {
+      let cursor = db._query("FOR x IN 1..10 RETURN x", {}, { batchSize: 2, count: true, stream: true, ttl: 3 });
+      assertEqual(cursor.hasNext(), true);
+      if (cursor._hasMore) { // only exists in shell
+        assertEqual(cursor._hasMore, true);
+      }
+      require("internal").sleep(5);
+    }
   };
 }
 

@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -24,22 +25,21 @@
 #ifndef ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H
 #define ARANGODB_TESTS_MOCKS_STORAGE_ENGINE_MOCK_H 1
 
-#include <deque>
+#include <velocypack/StringRef.h>
 
 #include "Basics/Result.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/HealthData.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
-#include "Transaction/ContextData.h"
-#include "VocBase/LocalDocumentId.h"
-
-#include <velocypack/StringRef.h>
+#include "IResearchLinkMock.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 
-struct KeyLockInfo;
 class TransactionManager;
 class WalAccess;
 
@@ -75,60 +75,53 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info,
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
-  virtual bool dropIndex(TRI_idx_iid_t iid) override;
-  virtual void figuresSpecific(arangodb::velocypack::Builder&) override;
+  virtual bool dropIndex(arangodb::IndexId iid) override;
+  virtual void figuresSpecific(bool details, arangodb::velocypack::Builder&) override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAllIterator(
       arangodb::transaction::Methods* trx) const override;
   virtual std::unique_ptr<arangodb::IndexIterator> getAnyIterator(
       arangodb::transaction::Methods* trx) const override;
+  virtual std::unique_ptr<arangodb::ReplicationIterator> getReplicationIterator(
+      arangodb::ReplicationIterator::Ordering, uint64_t) override;
   virtual void getPropertiesVPack(arangodb::velocypack::Builder&) const override;
   virtual arangodb::Result insert(arangodb::transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
-                                  arangodb::KeyLockInfo* /*keyLockInfo*/,
-                                  std::function<void()> const& callbackDuringLock) override;
+                                  arangodb::OperationOptions& options) override;
 
-  virtual arangodb::LocalDocumentId lookupKey(arangodb::transaction::Methods*,
-                                              arangodb::velocypack::Slice const&) const override;
+  virtual arangodb::Result lookupKey(
+      arangodb::transaction::Methods*, arangodb::velocypack::StringRef,
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId>&) const override;
   virtual size_t memory() const override;
   virtual uint64_t numberDocuments(arangodb::transaction::Methods* trx) const override;
-  virtual void open(bool ignoreErrors) override;
   virtual std::string const& path() const override;
-  virtual arangodb::Result persistProperties() override;
   virtual void prepareIndexes(arangodb::velocypack::Slice indexesSlice) override;
   virtual arangodb::Result read(arangodb::transaction::Methods*,
                                 arangodb::velocypack::StringRef const& key,
-                                arangodb::ManagedDocumentResult& result, bool) override;
-  virtual arangodb::Result read(arangodb::transaction::Methods*,
-                                arangodb::velocypack::Slice const& key,
-                                arangodb::ManagedDocumentResult& result, bool) override;
+                                arangodb::IndexIterator::DocumentCallback const& cb) const override;
+  virtual bool read(arangodb::transaction::Methods* trx,
+                    arangodb::LocalDocumentId const& token,
+                    arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
                             arangodb::ManagedDocumentResult& result) const override;
-  virtual bool readDocumentWithCallback(arangodb::transaction::Methods* trx,
-                                        arangodb::LocalDocumentId const& token,
-                                        arangodb::IndexIterator::DocumentCallback const& cb) const override;
   virtual arangodb::Result remove(arangodb::transaction::Methods& trx,
                                   arangodb::velocypack::Slice slice,
                                   arangodb::ManagedDocumentResult& previous,
-                                  arangodb::OperationOptions& options, bool lock,
-                                  arangodb::KeyLockInfo* /*keyLockInfo*/,
-                                  std::function<void()> const& callbackDuringLock) override;
+                                  arangodb::OperationOptions& options) override;
   virtual arangodb::Result replace(arangodb::transaction::Methods* trx,
-                                   arangodb::velocypack::Slice const newSlice,
+                                   arangodb::velocypack::Slice newSlice,
                                    arangodb::ManagedDocumentResult& result,
-                                   arangodb::OperationOptions& options, bool lock,
+                                   arangodb::OperationOptions& options,
                                    arangodb::ManagedDocumentResult& previous) override;
-  virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
-  virtual void setPath(std::string const&) override;
+  virtual arangodb::RevisionId revision(arangodb::transaction::Methods* trx) const override;
   virtual arangodb::Result truncate(arangodb::transaction::Methods& trx,
                                     arangodb::OperationOptions& options) override;
   virtual arangodb::Result compact() override;
   virtual arangodb::Result update(arangodb::transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   arangodb::ManagedDocumentResult& previous) override;
   virtual void load() override {}
   virtual void unload() override {}
@@ -139,9 +132,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
 
   arangodb::Result updateInternal(arangodb::transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   arangodb::ManagedDocumentResult& result,
-                                  arangodb::OperationOptions& options, bool lock,
+                                  arangodb::OperationOptions& options,
                                   arangodb::ManagedDocumentResult& previous, bool isUpdate);
 
   uint64_t _lastDocumentId;
@@ -153,19 +146,16 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
 
 class TransactionCollectionMock : public arangodb::TransactionCollection {
  public:
-  TransactionCollectionMock(arangodb::TransactionState* state, TRI_voc_cid_t cid,
+  TransactionCollectionMock(arangodb::TransactionState* state, arangodb::DataSourceId cid,
                             arangodb::AccessMode::Type accessType);
   virtual bool canAccess(arangodb::AccessMode::Type accessType) const override;
-  virtual void freeOperations(arangodb::transaction::Methods* activeTrx,
-                              bool mustRollback) override;
   virtual bool hasOperations() const override;
-  virtual void release() override;
-  virtual void unuse(int nestingLevel) override;
-  virtual int use(int nestingLevel) override;
+  virtual void releaseUsage() override;
+  virtual arangodb::Result lockUsage() override;
 
  private:
-  int doLock(arangodb::AccessMode::Type type, int nestingLevel) override;
-  int doUnlock(arangodb::AccessMode::Type type, int nestingLevel) override;
+  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
 class TransactionStateMock : public arangodb::TransactionState {
@@ -174,11 +164,12 @@ class TransactionStateMock : public arangodb::TransactionState {
   static size_t beginTransactionCount;
   static size_t commitTransactionCount;
 
-  TransactionStateMock(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionStateMock(TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
                        arangodb::transaction::Options const& options);
   virtual arangodb::Result abortTransaction(arangodb::transaction::Methods* trx) override;
   virtual arangodb::Result beginTransaction(arangodb::transaction::Hints hints) override;
   virtual arangodb::Result commitTransaction(arangodb::transaction::Methods* trx) override;
+  virtual uint64_t numCommits() const override;
   virtual bool hasFailedOperations() const override;
 };
 
@@ -190,10 +181,11 @@ class StorageEngineMock : public arangodb::StorageEngine {
   static TRI_voc_tick_t recoveryTickResult;
   static std::string versionFilenameResult;
   static std::function<void()> recoveryTickCallback;
-  std::map<std::pair<TRI_voc_tick_t, TRI_voc_cid_t>, arangodb::velocypack::Builder> views;
+  std::map<std::pair<TRI_voc_tick_t, arangodb::DataSourceId>, arangodb::velocypack::Builder> views;
   std::atomic<size_t> vocbaseCount;
 
   explicit StorageEngineMock(arangodb::application_features::ApplicationServer& server);
+  arangodb::HealthData healthCheck() override;
   virtual void addOptimizerRules(arangodb::aql::OptimizerRulesFeature& feature) override;
   virtual void addRestHandlers(arangodb::rest::RestHandlerFactory& handlerFactory) override;
   virtual void addV8Functions() override;
@@ -202,9 +194,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                 bool doSync) override;
   virtual arangodb::Result changeView(TRI_vocbase_t& vocbase,
                                       arangodb::LogicalView const& view, bool doSync) override;
-  virtual std::string collectionPath(TRI_vocbase_t const& vocbase, TRI_voc_cid_t id) const override;
-  virtual std::string createCollection(TRI_vocbase_t& vocbase,
-                                       arangodb::LogicalCollection const& collection) override;
+  virtual void createCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
                                                         int& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
@@ -212,25 +202,19 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
   virtual arangodb::Result createTickRanges(VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::TransactionCollection> createTransactionCollection(
-      arangodb::TransactionState& state, TRI_voc_cid_t cid,
-      arangodb::AccessMode::Type, int nestingLevel) override;
-  virtual std::unique_ptr<arangodb::transaction::ContextData> createTransactionContextData() override;
+      arangodb::TransactionState& state, arangodb::DataSourceId cid,
+      arangodb::AccessMode::Type) override;
   virtual std::unique_ptr<arangodb::transaction::Manager> createTransactionManager(
       arangodb::transaction::ManagerFeature&) override;
-  virtual std::unique_ptr<arangodb::TransactionState> createTransactionState(
-      TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  virtual std::shared_ptr<arangodb::TransactionState> createTransactionState(
+      TRI_vocbase_t& vocbase, arangodb::TransactionId tid,
       arangodb::transaction::Options const& options) override;
-  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, TRI_voc_cid_t id,
+  virtual arangodb::Result createView(TRI_vocbase_t& vocbase, arangodb::DataSourceId id,
                                       arangodb::LogicalView const& view) override;
-  virtual void getViewProperties(TRI_vocbase_t& vocbase, arangodb::LogicalView const& view,
-                                 VPackBuilder& builder) override;
+  virtual arangodb::Result compactAll(bool changeLevels, bool compactBottomMostLevel) override;
   virtual TRI_voc_tick_t currentTick() const override;
   virtual std::string dataPath() const override;
   virtual std::string databasePath(TRI_vocbase_t const* vocbase) const override;
-  virtual void destroyCollection(TRI_vocbase_t& vocbase,
-                                 arangodb::LogicalCollection& collection) override;
-  virtual void destroyView(TRI_vocbase_t const& vocbase,
-                           arangodb::LogicalView const& view) noexcept override;
   virtual arangodb::Result dropCollection(TRI_vocbase_t& vocbase,
                                           arangodb::LogicalCollection& collection) override;
   virtual arangodb::Result dropDatabase(TRI_vocbase_t& vocbase) override;
@@ -238,12 +222,11 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                     arangodb::LogicalView const& view) override;
   virtual arangodb::Result firstTick(uint64_t&) override;
   virtual std::vector<std::string> currentWalFiles() const override;
-  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector,
-                                    bool writeShutdownFile) override;
-  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  virtual arangodb::Result flushWal(bool waitForSync, bool waitForCollector) override;
+  virtual void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) override;
-  virtual int getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+  virtual ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                        arangodb::velocypack::Builder& result,
                                        bool wasCleanShutdown, bool isUpgrade) override;
   virtual void getDatabases(arangodb::velocypack::Builder& result) override;
@@ -251,22 +234,19 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                                            int& result) override;
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
-  virtual int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  virtual ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
   virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                           arangodb::LogicalCollection& col,
                                           std::string const& keysId) override;
   virtual arangodb::RecoveryState recoveryState() override;
   virtual TRI_voc_tick_t recoveryTick() override;
+
   virtual arangodb::Result lastLogger(TRI_vocbase_t& vocbase,
-                                      std::shared_ptr<arangodb::transaction::Context> transactionContext,
                                       uint64_t tickStart, uint64_t tickEnd,
-                                      std::shared_ptr<VPackBuilder>& builderSPtr) override;
+                                      arangodb::velocypack::Builder& builderSPtr) override;
+
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&&,
                                                       bool isUpgrade) override;
-  virtual arangodb::Result persistCollection(TRI_vocbase_t& vocbase,
-                                             arangodb::LogicalCollection const& collection) override;
-  virtual void prepareDropDatabase(TRI_vocbase_t& vocbase, bool useWriteMarker,
-                                   int& status) override;
   using StorageEngine::registerCollection;
   using StorageEngine::registerView;
   virtual TRI_voc_tick_t releasedTick() const override;
@@ -276,22 +256,16 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                             arangodb::LogicalCollection const& collection,
                                             std::string const& oldName) override;
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                   arangodb::velocypack::Slice slice,
                                                   bool doSync) override;
-  virtual int saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
-  virtual int shutdownDatabase(TRI_vocbase_t& vocbase) override;
-  virtual void signalCleanup(TRI_vocbase_t& vocbase) override;
-  virtual bool supportsDfdb() const override;
-  virtual void unloadCollection(TRI_vocbase_t& vocbase,
-                                arangodb::LogicalCollection& collection) override;
-  virtual bool useRawDocumentPointers() override { return false; }
+  virtual ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
-  virtual void waitForSyncTick(TRI_voc_tick_t tick) override;
-  virtual void waitUntilDeletion(TRI_voc_tick_t id, bool force, int& status) override;
   virtual arangodb::WalAccess const* walAccess() const override;
-  virtual int writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) override;
+
+  static std::shared_ptr<arangodb::iresearch::IResearchLinkMock> buildLinkMock(
+    arangodb::IndexId id, arangodb::LogicalCollection& collection, VPackSlice const& info);
 
  private:
   TRI_voc_tick_t _releasedTick;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,7 @@ class ShardingStrategy {
 
   virtual bool usesDefaultShardKeys() = 0;
 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result);
+  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find the shard that is responsible for a document, which is given
@@ -71,9 +71,9 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                                  ShardID& shardID, bool& usesDefaultShardKeys,
-                                  arangodb::velocypack::StringRef const& key) = 0;
+  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                        ShardID& shardID, bool& usesDefaultShardKeys,
+                                        arangodb::velocypack::StringRef const& key) = 0;
 };
 
 }  // namespace arangodb

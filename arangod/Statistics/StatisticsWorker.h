@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,7 +42,6 @@ class StatisticsWorker final : public Thread {
 
   void run() override;
   void beginShutdown() override;
-  void generateRawStatistics(std::string& result, double const& now);
 
  private:
   // removes old statistics
@@ -67,8 +67,6 @@ class StatisticsWorker final : public Thread {
 
   void avgPercentDistributon(velocypack::Builder& result, velocypack::Slice const&,
                              velocypack::Slice const&, velocypack::Builder const&) const;
-
-  velocypack::Builder fillDistribution(basics::StatisticsDistribution const& dist) const;
 
   // save one statistics object
   void saveSlice(velocypack::Slice const&, std::string const&) const;

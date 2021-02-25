@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Rest/GeneralRequest.h"
@@ -41,20 +42,22 @@
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::basics;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a distribution vector
 ////////////////////////////////////////////////////////////////////////////////
 
 static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
-                                              std::vector<double> const& dist) {
+                                              std::initializer_list<double> const& dist) {
   v8::EscapableHandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
-  for (uint32_t i = 0; i < (uint32_t)dist.size(); ++i) {
-    result->Set(i, v8::Number::New(isolate, dist[i]));
+  uint32_t i = 0;
+  for (auto const& val : dist) {
+    result->Set(context, i, v8::Number::New(isolate, val)).FromMaybe(false);
+    ++i;
   }
 
   return scope.Escape<v8::Array>(result);
@@ -66,23 +69,24 @@ static v8::Handle<v8::Array> DistributionList(v8::Isolate* isolate,
 
 static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
                              v8::Handle<v8::String> name,
-                             StatisticsDistribution const& dist) {
+                             statistics::Distribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  auto context = TRI_IGETC;
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "sum"), v8::Number::New(isolate, dist._total));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
-              v8::Number::New(isolate, (double)dist._count));
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "sum"), v8::Number::New(isolate, dist._total)).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "count"),
+              v8::Number::New(isolate, (double)dist._count)).FromMaybe(false);
 
   v8::Handle<v8::Array> counts = v8::Array::New(isolate, (int)dist._counts.size());
   uint32_t pos = 0;
 
   for (auto i = dist._counts.begin(); i != dist._counts.end(); ++i, ++pos) {
-    counts->Set(pos, v8::Number::New(isolate, (double)*i));
+    counts->Set(context, pos, v8::Number::New(isolate, (double)*i)).FromMaybe(false);
   }
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "counts"), counts);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "counts"), counts).FromMaybe(false);
 
-  list->Set(name, result);
+  list->Set(context, name, result).FromMaybe(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,86 +102,90 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
 static void JS_ServerStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
+  TRI_GET_GLOBALS();
   ServerStatistics const& info =
-    application_features::ApplicationServer::server().
-    getFeature<MetricsFeature>().serverStatistics();
+      v8g->_server.getFeature<MetricsFeature>().serverStatistics();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "uptime"),
-              v8::Number::New(isolate, (double)info._uptime));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
-              v8::Number::New(isolate, (double)TRI_PhysicalMemory));
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "uptime"),
+              v8::Number::New(isolate, (double)info.uptime())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
+              v8::Number::New(isolate, (double)PhysicalMemory::getValue())).FromMaybe(false);
 
   // transaction info
   auto const& ts = info._transactionsStatistics;
   v8::Handle<v8::Object> v8TransactionInfoObj = v8::Object::New(isolate);
-  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "started"),
-              v8::Number::New(isolate, (double)ts._transactionsStarted.load()));
-  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "aborted"),
-              v8::Number::New(isolate, (double)ts._transactionsAborted.load()));
-  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "committed"),
-              v8::Number::New(isolate, (double)ts._transactionsCommitted.load()));
-  v8TransactionInfoObj->Set(TRI_V8_ASCII_STRING(isolate, "intermediateCommits"),
-              v8::Number::New(isolate, (double)ts._intermediateCommits.load()));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj);
+  v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "started"),
+              v8::Number::New(isolate, (double)ts._transactionsStarted.load())).FromMaybe(false);
+  v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "aborted"),
+              v8::Number::New(isolate, (double)ts._transactionsAborted.load())).FromMaybe(false);
+  v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "committed"),
+              v8::Number::New(isolate, (double)ts._transactionsCommitted.load())).FromMaybe(false);
+  v8TransactionInfoObj->Set(context, TRI_V8_ASCII_STRING(isolate, "intermediateCommits"),
+              v8::Number::New(isolate, (double)ts._intermediateCommits.load())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "transactions"), v8TransactionInfoObj).FromMaybe(false);
 
   // v8 counters
-  auto& server = application_features::ApplicationServer::server();
-  V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
+  V8DealerFeature& dealer = v8g->_server.getFeature<V8DealerFeature>();
   auto v8Counters = dealer.getCurrentContextNumbers();
   v8::Handle<v8::Object> v8CountersObj = v8::Object::New(isolate);
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "available"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.available)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "busy"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.busy)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "dirty"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.dirty)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "free"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.free)));
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "max"),
-                     v8::Number::New(isolate, static_cast<int32_t>(v8Counters.max)));
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "available"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.available))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "busy"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.busy))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "dirty"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.dirty))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "free"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.free))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "max"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.max))).FromMaybe(false);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "min"),
+                     v8::Number::New(isolate, static_cast<uint32_t>(v8Counters.min))).FromMaybe(false);
 
-  auto memoryStatistics = dealer.getCurrentMemoryNumbers();
+  auto memoryStatistics = dealer.getCurrentContextDetails();
 
   v8::Handle<v8::Array> v8ListOfMemory = v8::Array::New(isolate, static_cast<int>(memoryStatistics.size()));
   uint32_t pos = 0;
   for (auto memStatistic : memoryStatistics) {
     v8::Handle<v8::Object> v8MemStat = v8::Object::New(isolate);
-    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "contextId"),
-                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.id)));
-    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "tMax"),
-                   v8::Number::New(isolate, (double)memStatistic.tMax));
-    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "countOfTimes"),
-                   v8::Integer::New(isolate, static_cast<int32_t>(memStatistic.countOfTimes)));
-    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMax"),
-                   v8::Number::New(isolate, (double)memStatistic.heapMax));
-    v8MemStat->Set(TRI_V8_ASCII_STRING(isolate, "heapMin"),
-                   v8::Number::New(isolate, (double)memStatistic.heapMin));
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "contextId"),
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.id))).FromMaybe(false);
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "tMax"),
+                   v8::Number::New(isolate, (double)memStatistic.tMax)).FromMaybe(false);
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "countOfTimes"),
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.countOfTimes))).FromMaybe(false);
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "heapMax"),
+                   v8::Number::New(isolate, (double)memStatistic.heapMax)).FromMaybe(false);
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "heapMin"),
+                   v8::Number::New(isolate, (double)memStatistic.heapMin)).FromMaybe(false);
+    v8MemStat->Set(context, TRI_V8_ASCII_STRING(isolate, "invocations"),
+                   v8::Integer::New(isolate, static_cast<uint32_t>(memStatistic.invocations))).FromMaybe(false);
 
-    v8ListOfMemory->Set(pos++, v8MemStat);
+    v8ListOfMemory->Set(context, pos++, v8MemStat).FromMaybe(false);
   }
 
-  v8CountersObj->Set(TRI_V8_ASCII_STRING(isolate, "memory"),
-                     v8ListOfMemory);
+  v8CountersObj->Set(context, TRI_V8_ASCII_STRING(isolate, "memory"),
+                     v8ListOfMemory).FromMaybe(false);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "v8Context"), v8CountersObj).FromMaybe(false);
 
   v8::Handle<v8::Object> counters = v8::Object::New(isolate);
 
   auto qs = SchedulerFeature::SCHEDULER->queueStatistics();
 
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "schedulerThreads"),
-                v8::Number::New(isolate, static_cast<int32_t>(qs._running)));
+  counters->Set(context, TRI_V8_ASCII_STRING(isolate, "schedulerThreads"),
+                v8::Number::New(isolate, static_cast<int32_t>(qs._running))).FromMaybe(false);
 
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "inProgress"),
-                v8::Number::New(isolate, static_cast<int32_t>(qs._working)));
+  counters->Set(context, TRI_V8_ASCII_STRING(isolate, "inProgress"),
+                v8::Number::New(isolate, static_cast<int32_t>(qs._working))).FromMaybe(false);
 
-  counters->Set(TRI_V8_ASCII_STRING(isolate, "queued"),
-                v8::Number::New(isolate, static_cast<int32_t>(qs._queued)));
+  counters->Set(context, TRI_V8_ASCII_STRING(isolate, "queued"),
+                v8::Number::New(isolate, static_cast<int32_t>(qs._queued))).FromMaybe(false);
 
-  result->Set(TRI_V8_ASCII_STRING(isolate, "threads"), counters);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "threads"), counters).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -191,7 +199,9 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, StatisticsFeature::enabled());
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -203,39 +213,28 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  ConnectionStatistics::Snapshot connectionStats;
+  ConnectionStatistics::getSnapshot(connectionStats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
-
-  result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
-              v8::Number::New(isolate, (double)httpConnections._count));
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "httpConnections"),
+              v8::Number::New(isolate, (double)connectionStats.httpConnections.get())).FromMaybe(false);
   FillDistribution(isolate, result,
-                   TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionTime);
+                   TRI_V8_ASCII_STRING(isolate, "connectionTime"), connectionStats.connectionTime);
 
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
+  RequestStatistics::Snapshot requestStats;
+  RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
-
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), totalTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"), queueTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"), bytesSent);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"), requestStats.totalTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"), requestStats.requestTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"), requestStats.queueTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), requestStats.ioTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"), requestStats.bytesSent);
   FillDistribution(isolate, result,
-                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"), bytesReceived);
+                   TRI_V8_ASCII_STRING(isolate, "bytesReceived"), requestStats.bytesReceived);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -248,50 +247,51 @@ static void JS_ClientStatistics(v8::FunctionCallbackInfo<v8::Value> const& args)
 static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  ConnectionStatistics::Snapshot stats;
+  ConnectionStatistics::getSnapshot(stats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  using rest::RequestType;
 
   // request counters
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
-              v8::Number::New(isolate, (double)totalRequests._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
-              v8::Number::New(isolate, (double)asyncRequests._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsGet"),
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
+              v8::Number::New(isolate, (double)stats.totalRequests.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsSuperuser"),
+              v8::Number::New(isolate, (double)stats.totalRequestsSuperuser.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsUser"),
+              v8::Number::New(isolate, (double)stats.totalRequestsUser.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
+              v8::Number::New(isolate, (double)stats.asyncRequests.get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsGet"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::GET]._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsHead"),
+                  isolate, (double)stats.methodRequests[(int)RequestType::GET].get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsHead"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::HEAD]._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPost"),
+                  isolate, (double)stats.methodRequests[(int)RequestType::HEAD].get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPost"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::POST]._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPut"),
+                  isolate, (double)stats.methodRequests[(int)RequestType::POST].get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPut"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::PUT]._count));
-  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
+                  isolate, (double)stats.methodRequests[(int)RequestType::PUT].get())).FromMaybe(false);
+  result->Set(context, TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
               v8::Number::New(
-                  isolate, (double)methodRequests[(int)rest::RequestType::PATCH]._count));
-  result->Set(
+                  isolate, (double)stats.methodRequests[(int)RequestType::PATCH].get())).FromMaybe(false);
+  result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsDelete"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-  result->Set(
+                      (double)stats.methodRequests[(int)RequestType::DELETE_REQ].get())).FromMaybe(false);
+  result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsOptions"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::OPTIONS]._count));
-  result->Set(
+                      (double)stats.methodRequests[(int)rest::RequestType::OPTIONS].get())).FromMaybe(false);
+  result->Set(context, 
       TRI_V8_ASCII_STRING(isolate, "requestsOther"),
       v8::Number::New(isolate,
-                      (double)methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+                      (double)stats.methodRequests[(int)rest::RequestType::ILLEGAL].get())).FromMaybe(false);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -325,14 +325,14 @@ void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "CONNECTION_TIME_DISTRIBUTION"),
-      DistributionList(isolate, TRI_ConnectionTimeDistributionVectorStatistics));
+      DistributionList(isolate, statistics::ConnectionTimeDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REQUEST_TIME_DISTRIBUTION"),
-      DistributionList(isolate, TRI_RequestTimeDistributionVectorStatistics));
+      DistributionList(isolate, statistics::RequestTimeDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_SENT_DISTRIBUTION"),
-      DistributionList(isolate, TRI_BytesSentDistributionVectorStatistics));
+      DistributionList(isolate, statistics::BytesSentDistributionCuts));
   TRI_AddGlobalVariableVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_RECEIVED_DISTRIBUTION"),
-      DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
+      DistributionList(isolate, statistics::BytesReceivedDistributionCuts));
 }

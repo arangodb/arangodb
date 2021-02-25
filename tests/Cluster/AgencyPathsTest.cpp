@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,8 +23,8 @@
 
 #include "gtest/gtest.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Basics/StringUtils.h"
-#include "Cluster/AgencyPaths.h"
 
 #include <memory>
 #include <vector>
@@ -123,6 +124,7 @@ static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Da
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::WriteConcern>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_default_constructible<Root::Arango::Plan::Collections::Database::Collection::IsBuilding>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Plan::Databases::Database::Name>::value, CONSTRUCTIBLE_MESSAGE);
@@ -159,7 +161,6 @@ static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToSh
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TransactionId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::MapUniqueToShortId::Server::ShortName>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::FailedServers>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_default_constructible<Root::Arango::Target::MapLocalToId>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::NumberOfCoordinators>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::Finished>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_default_constructible<Root::Arango::Target::Version>::value, CONSTRUCTIBLE_MESSAGE);
@@ -262,6 +263,7 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Deleted, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::WriteConcern, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::CacheEnabled, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::IsBuilding, Root::Arango::Plan::Collections::Database::Collection>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases, Root::Arango::Plan>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database::Name, Root::Arango::Plan::Databases::Database>::value, CONSTRUCTIBLE_MESSAGE);
@@ -298,7 +300,6 @@ static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::S
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server::TransactionId, Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server::ShortName, Root::Arango::Target::MapUniqueToShortId::Server>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::FailedServers, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Target::MapLocalToId, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::NumberOfCoordinators, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::Finished, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::Version, Root::Arango::Target>::value, CONSTRUCTIBLE_MESSAGE);
@@ -401,6 +402,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Plan", "Collections", "_system", "12345", "deleted"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->deleted()},
       {{"arango", "Plan", "Collections", "_system", "12345", "writeConcern"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->writeConcern()},
       {{"arango", "Plan", "Collections", "_system", "12345", "cacheEnabled"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->cacheEnabled()},
+      {{"arango", "Plan", "Collections", "_system", "12345", "isBuilding"}, root()->arango()->plan()->collections()->database("_system")->collection("12345")->isBuilding()},
       {{"arango", "Plan", "Databases"}, root()->arango()->plan()->databases()},
       {{"arango", "Plan", "Databases", "_system"}, root()->arango()->plan()->databases()->database(DatabaseID{"_system"})},
       {{"arango", "Plan", "Databases", "someDb"}, root()->arango()->plan()->databases()->database(DatabaseID{"someDb"})},
@@ -489,7 +491,6 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Target", "MapUniqueToShortID", "CRDN-5678", "TransactionID"}, root()->arango()->target()->mapUniqueToShortID()->server("CRDN-5678")->transactionID()},
       {{"arango", "Target", "MapUniqueToShortID", "PRMR-1234", "ShortName"}, root()->arango()->target()->mapUniqueToShortID()->server("PRMR-1234")->shortName()},
       {{"arango", "Target", "FailedServers"}, root()->arango()->target()->failedServers()},
-      {{"arango", "Target", "MapLocalToID"}, root()->arango()->target()->mapLocalToID()},
       {{"arango", "Target", "NumberOfCoordinators"}, root()->arango()->target()->numberOfCoordinators()},
       {{"arango", "Target", "Finished"}, root()->arango()->target()->finished()},
       {{"arango", "Target", "Version"}, root()->arango()->target()->version()},
@@ -500,7 +501,7 @@ class AgencyPathsTest : public ::testing::Test {
       {{"arango", "Sync", "ServerStates"}, root()->arango()->sync()->serverStates()},
       {{"arango", "Sync", "Problems"}, root()->arango()->sync()->problems()},
       {{"arango", "Sync", "HeartbeatIntervalMs"}, root()->arango()->sync()->heartbeatIntervalMs()},
-      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestID()},
+      {{"arango", "Sync", "LatestID"}, root()->arango()->sync()->latestId()},
       {{"arango", "Bootstrap"}, root()->arango()->bootstrap()},
       {{"arango", "Cluster"}, root()->arango()->cluster()},
       {{"arango", "Agency"}, root()->arango()->agency()},

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,6 +25,7 @@
 #define ARANGOD_AQL_DISTRIBUTE_CONSUMER_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
@@ -37,7 +39,7 @@ class ScatterNode;
 
 class DistributeConsumerNode : public ExecutionNode {
  public:
-  DistributeConsumerNode(ExecutionPlan* plan, size_t id, std::string distributeId)
+  DistributeConsumerNode(ExecutionPlan* plan, ExecutionNodeId id, std::string distributeId)
       : ExecutionNode(plan, id),
         _distributeId(std::move(distributeId)),
         _isResponsibleForInitializeCursor(true) {}
@@ -89,8 +91,6 @@ class DistributeConsumerNode : public ExecutionNode {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "DistributeConsumerNode cannot be estimated");
   }
-
-  void cloneRegisterPlan(ScatterNode* dependency);
 
  protected:
   void toVelocyPackHelperInternal(arangodb::velocypack::Builder& nodes, unsigned flags,

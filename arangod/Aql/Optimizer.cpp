@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,15 +26,16 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRule.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
-// @brief constructor
 Optimizer::Optimizer(size_t maxNumberOfPlans)
     : _maxNumberOfPlans(maxNumberOfPlans), _runOnlyRequiredRules(false) {}
 
@@ -70,12 +71,122 @@ void Optimizer::addPlanAndRerun(std::unique_ptr<ExecutionPlan> plan,
   addPlanInternal(std::move(plan), rule, wasModified, it);
 }
 
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class NoSubqueryChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+  bool before(ExecutionNode* node) override {
+    TRI_ASSERT(node->getType() != ExecutionNode::SUBQUERY);
+    return false;
+  }
+};
+
+// Check the plan for inconsistencies, like more than one parent or dependency,
+// or mismatching parents and dependencies in adjacent nodes.
+class PlanChecker : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+ public:
+  explicit PlanChecker(ExecutionPlan& plan) : _plan{plan} {}
+
+  bool before(ExecutionNode* node) override {
+    bool ok = true;
+    std::vector<std::stringstream> errors;
+
+    switch (node->getType()) {
+      case ExecutionNode::RETURN:
+        if (node->getParents().size() != 0) {
+          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          ok = false;
+        }
+        break;
+      case ExecutionNode::INSERT:
+      case ExecutionNode::UPDATE:
+      case ExecutionNode::REPLACE:
+      case ExecutionNode::UPSERT:
+      case ExecutionNode::REMOVE:
+      case ExecutionNode::GATHER:
+      case ExecutionNode::REMOTESINGLE:
+        if (node->getParents().size() > 1) {
+          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          ok = false;
+        }
+        break;
+      default:
+        if (node->getParents().size() != 1) {
+          errors.emplace_back() << "#parents == " << node->getParents().size() << " at [" << node->id() << "] " << node->getTypeString();
+          ok = false;
+        }
+        break;
+    }
+    switch (node->getType()) {
+      case ExecutionNode::SINGLETON:
+        if (node->getDependencies().size() != 0) {
+          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          ok = false;
+        }
+        break;
+      default:
+        if (node->getDependencies().size() != 1) {
+          errors.emplace_back() << "#dependencies == " << node->getDependencies().size() << " at [" << node->id() << "] " << node->getTypeString();
+          ok = false;
+        }
+        break;
+    }
+
+    auto isDepOf = [](ExecutionNode const* node, ExecutionNode const* parent) {
+      auto const& deps = parent->getDependencies();
+      return std::any_of(deps.begin(), deps.end(), [&](auto it) { return it == node; });
+    };
+    auto isParentOf = [](ExecutionNode const* node, ExecutionNode const* dep) {
+      auto const& parents = dep->getParents();
+      return std::any_of(parents.begin(), parents.end(), [&](auto it) { return it == node; });
+    };
+
+    for (auto const& parent : node->getParents()) {
+      if (!isDepOf(node, parent)) {
+        errors.emplace_back() << "!isDepOf(" << node->id() << ", " << parent->id() << ")";
+        errors.emplace_back() << "  node is a " << node->getTypeString();
+        errors.emplace_back() << "  parent is a " << parent->getTypeString();
+        ok = false;
+      }
+    }
+    for (auto const& dep : node->getDependencies()) {
+      if (!isParentOf(node, dep)) {
+        errors.emplace_back() << "!isParentOf(" << dep->id() << ", " << node->id() << ")";
+        errors.emplace_back() << "  dependency is a " << dep->getTypeString();
+        errors.emplace_back() << "  node is a " << node->getTypeString();
+        ok = false;
+      }
+    }
+
+    if (!ok) {
+      LOG_TOPIC("d45f8", ERR, arangodb::Logger::AQL) << "Inconsistent plan:";
+      _plan.show();
+      LOG_TOPIC("c14a2", ERR, arangodb::Logger::AQL) << "encountered the following error(s):";
+      for (auto const& err : errors) {
+        LOG_TOPIC("17a18", ERR, arangodb::Logger::AQL) << err.str();
+      }
+    }
+    TRI_ASSERT(ok);
+
+    return false;
+  }
+
+ private:
+  ExecutionPlan& _plan;
+};
+
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+
   // @brief add a plan to the optimizer
 void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
                                 OptimizerRule const& rule, bool wasModified,
                                 RuleDatabase::iterator const& nextRule) {
   TRI_ASSERT(plan != nullptr);
   TRI_ASSERT(!_rules.empty());
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto checker = PlanChecker{*plan};
+  plan->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
 
   plan->setValidity(true);
 
@@ -99,12 +210,7 @@ void Optimizer::addPlanInternal(std::unique_ptr<ExecutionPlan> plan,
   }
 }
 
-// @brief the actual optimization
-void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                            QueryOptions const& queryOptions, bool estimateAllPlans) {
-  _runOnlyRequiredRules = false;
-  ExecutionPlan* initialPlan = plan.get();
-
+void Optimizer::initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions) {
   if (ADB_LIKELY(_rules.empty())) {
     auto const& rules = OptimizerRulesFeature::rules();
     _rules.reserve(rules.size());
@@ -118,10 +224,36 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
       // insert position of rule inside OptimizerRulesFeature::_rules
       _rules.emplace_back(++index);
       if (rule.isDisabledByDefault()) {
-        disableRule(initialPlan, rule.level);
+        disableRule(plan, rule.level);
       }
     }
   }
+  
+  // enable/disable rules as per user request
+  for (auto const& name : queryOptions.optimizerRules) {
+    if (name.empty()) {
+      continue;
+    }
+    if (name[0] == '-') {
+      disableRule(plan, arangodb::velocypack::StringRef(name));
+    } else {
+      enableRule(plan, arangodb::velocypack::StringRef(name));
+    }
+  }
+}
+
+// @brief the actual optimization
+void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
+                            QueryOptions const& queryOptions, bool estimateAllPlans) {
+  _runOnlyRequiredRules = false;
+  ExecutionPlan* initialPlan = plan.get();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto checker = PlanChecker{*plan};
+  plan->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+
+  initializeRules(initialPlan, queryOptions);
 
   TRI_ASSERT(!_rules.empty());
 
@@ -129,32 +261,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   _plans.clear();
   _plans.push_back(std::move(plan), _rules.begin());
 
-  if (!queryOptions.inspectSimplePlans &&
-      !arangodb::ServerState::instance()->isCoordinator() && initialPlan->isDeadSimple()) {
-    // the plan is so simple that any further optimizations would probably cost
-    // more than simply executing the plan
-    initialPlan->findVarUsage();
-    if (estimateAllPlans || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
-      // if profiling is turned on, we must do the cost estimation here
-      // because the cost estimation must be done while the transaction
-      // is still running
-      initialPlan->invalidateCost();
-      initialPlan->getCost();
-    }
-    return;
-  }
-
-  // enable/disable rules as per user request
-  for (auto const& name : queryOptions.optimizerRules) {
-    if (name.empty()) {
-      continue;
-    }
-    if (name[0] == '-') {
-      disableRule(initialPlan, arangodb::velocypack::StringRef(name));
-    } else {
-      enableRule(initialPlan, arangodb::velocypack::StringRef(name));
-    }
-  }
   _newPlans.clear();
 
   while (true) {
@@ -205,17 +311,30 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         }
 
         p->findVarUsage();
-
-        // all optimizer rule functions must obey the following guidelines:
-        // - the original plan passed to the rule function must be deleted if
-        //   and only if it has not been added (back) to the optimizer (using
-        //   addPlan).
-        // - if the rule throws, then the original plan will be deleted by the
-        // optimizer.
-        //   thus the rule must not have deleted the plan itself or add it
-        //   back to the optimizer
         p->setValidity(false);
-        rule.func(this, std::move(p), rule);
+
+        if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
+          // run rule with tracing optimizer rule execution time
+          if (_stats.executionTimes == nullptr) {
+            // allocate the map lazily, so we can save the initial memory allocation
+            // in case tracing is disabled.
+            _stats.executionTimes = std::make_unique<std::unordered_map<int, double>>();
+          }
+          TRI_ASSERT(_stats.executionTimes != nullptr);
+
+          double time = TRI_microtime();
+          rule.func(this, std::move(p), rule);
+          time = TRI_microtime() - time;
+          auto [it, inserted] = _stats.executionTimes->try_emplace(rule.level, time);
+          if (!inserted) {
+            // a rule may have been executed before already. in this case, just add to the
+            // already tracked time
+            (*it).second += time;
+          }
+        } else {
+          // run rule without tracing optimizer rules
+          rule.func(this, std::move(p), rule);
+        }
 
         if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
@@ -245,13 +364,33 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   TRI_ASSERT(_plans.size() >= 1);
 
-  // finalize plans
-  for (auto& plan : _plans.list) {
-    plan.first->findVarUsage();
-  }
+  finalizePlans();
+  
+  estimateCosts(queryOptions, estimateAllPlans);
+  
+  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
+      << "optimization ends with " << _plans.size() << " plans";
+}
 
-  // do cost estimation
-  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= PROFILE_LEVEL_BLOCKS) {
+void Optimizer::finalizePlans() {
+  for (auto& plan : _plans.list) {
+    insertDistributeInputCalculation(*plan.first);
+    
+    plan.first->findVarUsage();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_IF_FAILURE("Optimizer::allowOldSubqueries") {
+      // intentionally let old subqueries pass. this is used only in testing and can be removed in 3.9
+      continue;
+    }
+
+    NoSubqueryChecker checker;
+    plan.first->root()->walk(checker);
+#endif // ARANGODB_ENABLE_MAINTAINER_MODE
+  }
+}
+
+void Optimizer::estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans) {
+  if (estimateAllPlans || _plans.size() > 1 || queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running
@@ -270,9 +409,6 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                 });
     }
   }
-
-  LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
-      << "optimization ends with " << _plans.size() << " plans";
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, int level) {
@@ -326,5 +462,20 @@ void Optimizer::enableRule(ExecutionPlan* plan, arangodb::velocypack::StringRef 
     }
   } else {
     enableRule(plan, OptimizerRulesFeature::translateRule(name));
+  }
+}
+    
+void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
+  velocypack::ObjectBuilder guard(&b, true);
+  b.add("rulesExecuted", velocypack::Value(rulesExecuted));
+  b.add("rulesSkipped", velocypack::Value(rulesSkipped));
+  b.add("plansCreated", velocypack::Value(plansCreated));
+
+  if (executionTimes != nullptr) {
+    b.add("rules", velocypack::Value(velocypack::ValueType::Object));
+    for (auto const& it : *executionTimes) {
+      b.add(OptimizerRulesFeature::translateRule(it.first), velocypack::Value(it.second));
+    }
+    b.close();
   }
 }

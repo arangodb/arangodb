@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -207,18 +208,19 @@ IResearchViewMeta::Mask::Mask(bool mask /*=false*/) noexcept
       _writebufferIdle(mask),
       _writebufferSizeMax(mask),
       _primarySort(mask),
-      _storedValues(mask) {
-}
+      _storedValues(mask),
+      _primarySortCompression(mask) {}
 
 IResearchViewMeta::IResearchViewMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(10 * 1000),
+      _consolidationIntervalMsec(1000),
       _locale(std::locale::classic()),
       _version(LATEST_VERSION),
       _writebufferActive(0),
       _writebufferIdle(64),
-      _writebufferSizeMax(32 * (size_t(1) << 20)) {  // 32MB
+      _writebufferSizeMax(32 * (size_t(1) << 20)),  // 32MB
+      _primarySortCompression{getDefaultCompression()} {
   std::string errorField;
 
   // cppcheck-suppress useInitializationList
@@ -254,6 +256,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta&& other) noexc
     _writebufferSizeMax = std::move(other._writebufferSizeMax);
     _primarySort = std::move(other._primarySort);
     _storedValues = std::move(other._storedValues);
+    _primarySortCompression = std::move(other._primarySortCompression);
   }
 
   return *this;
@@ -272,6 +275,7 @@ IResearchViewMeta& IResearchViewMeta::operator=(IResearchViewMeta const& other) 
     _writebufferSizeMax = other._writebufferSizeMax;
     _primarySort = other._primarySort;
     _storedValues = other._storedValues;
+    _primarySortCompression = other._primarySortCompression;
   }
 
   return *this;
@@ -593,7 +597,7 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
     std::string errorSubField;
 
     auto const field = slice.get(fieldName);
-    mask->_storedValues = field.isArray();
+    mask->_storedValues = !field.isNone();
 
     if (!mask->_storedValues) {
       _storedValues = defaults._storedValues;
@@ -606,7 +610,22 @@ bool IResearchViewMeta::init(arangodb::velocypack::Slice const& slice, std::stri
       return false;
     }
   }
-
+  {
+    // optional string (only if primarySort present)
+    static VPackStringRef const fieldName("primarySortCompression");
+    auto const field = slice.get(fieldName);
+    mask->_primarySortCompression = !field.isNone();
+    if (mask->_primarySortCompression) {
+      _primarySortCompression = nullptr;
+      if (field.isString()) {
+        _primarySortCompression = columnCompressionFromString(field.copyString());
+      }
+      if (ADB_UNLIKELY(nullptr == _primarySortCompression)) {
+        errorField += ".primarySortCompression";
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -681,6 +700,12 @@ bool IResearchViewMeta::json(arangodb::velocypack::Builder& builder,
     }
   }
 
+  if ((!ignoreEqual || _primarySortCompression != ignoreEqual->_primarySortCompression) && 
+      (!mask || mask->_primarySortCompression)) {
+    auto compression = columnCompressionToString(_primarySortCompression);
+    addStringRef(builder, "primarySortCompression", compression);
+  }
+
   return true;
 }
 
@@ -693,7 +718,7 @@ size_t IResearchViewMeta::memory() const {
 IResearchViewMetaState::Mask::Mask(bool mask /*=false*/) noexcept
     : _collections(mask) {}
 
-IResearchViewMetaState::IResearchViewMetaState() {}
+IResearchViewMetaState::IResearchViewMetaState() = default;
 
 IResearchViewMetaState::IResearchViewMetaState(IResearchViewMetaState const& defaults) {
   *this = defaults;
@@ -775,13 +800,15 @@ bool IResearchViewMetaState::init(arangodb::velocypack::Slice const& slice,
       for (arangodb::velocypack::ArrayIterator itr(field); itr.valid(); ++itr) {
         decltype(_collections)::key_type value;
 
-        if (!getNumber(value,
+        DataSourceId::BaseType tmp;
+        if (!getNumber(tmp,
                        itr.value())) {  // [ <collectionId 1> ... <collectionId N> ]
           errorField = fieldName + "[" +
                        arangodb::basics::StringUtils::itoa(itr.index()) + "]";
 
           return false;
         }
+        value = DataSourceId{tmp};
 
         _collections.emplace(value);
       }
@@ -807,7 +834,7 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
       arangodb::velocypack::ArrayBuilder subBuilderWrapper(&subBuilder);
 
       for (auto& cid : _collections) {
-        subBuilderWrapper->add(arangodb::velocypack::Value(cid));
+        subBuilderWrapper->add(arangodb::velocypack::Value(cid.id()));
       }
     }
 
@@ -820,7 +847,7 @@ bool IResearchViewMetaState::json(arangodb::velocypack::Builder& builder,
 size_t IResearchViewMetaState::memory() const {
   auto size = sizeof(IResearchViewMetaState);
 
-  size += sizeof(TRI_voc_cid_t) * _collections.size();
+  size += sizeof(DataSourceId) * _collections.size();
 
   return size;
 }

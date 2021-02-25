@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,11 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Options.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
+
 // needs to come first
 #include "Ssl/ssl-helper.h"
 
@@ -44,7 +50,7 @@ class ProgramOptions;
 
 class SslServerFeature : public application_features::ApplicationFeature {
  public:
-  static SslServerFeature* SSL;
+  typedef std::shared_ptr<std::vector<asio_ns::ssl::context>> SslContextList;
 
   explicit SslServerFeature(application_features::ApplicationServer& server);
 
@@ -54,18 +60,41 @@ class SslServerFeature : public application_features::ApplicationFeature {
   void unprepare() override final;
   virtual void verifySslOptions();
 
-  virtual asio_ns::ssl::context createSslContext() const;
+  virtual SslContextList createSslContexts();
+  size_t chooseSslContext(std::string const& serverName) const;
+
+  // Dump all SSL related data into a builder, private keys
+  // are hashed.
+  virtual Result dumpTLSData(VPackBuilder& builder) const;
 
  protected:
+
+  struct SNIEntry {
+    std::string serverName;      // empty for default
+    std::string keyfileName;     // name of key file
+    std::string keyfileContent;  // content of key file
+    SNIEntry(std::string name, std::string keyfileName)
+      : serverName(name), keyfileName(keyfileName) {}
+  };
+
   std::string _cafile;
-  std::string _keyfile;
+  std::string _cafileContent;  // the actual cert file
+  std::string _keyfile;        // name of default keyfile
+  // For SNI, we have two maps, one mapping to the filename for a certain
+  // server, another, to keep the actual keyfile in memory.
+  std::vector<SNIEntry> _sniEntries;   // the first entry is the default server keyfile
+  std::unordered_map<std::string, size_t> _sniServerIndex;  // map server names to indices in _sniEntries
   bool _sessionCache;
   std::string _cipherList;
   uint64_t _sslProtocol;
   uint64_t _sslOptions;
   std::string _ecdhCurve;
+  bool _preferHttp11InAlpn;
 
  private:
+  asio_ns::ssl::context createSslContextInternal(std::string keyfileName,
+                                                 std::string& content);
+
   std::string stringifySslOptions(uint64_t opts) const;
 
   std::string _rctx;

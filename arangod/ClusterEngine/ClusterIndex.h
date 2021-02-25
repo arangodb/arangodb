@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,20 +24,21 @@
 #ifndef ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H
 #define ARANGOD_CLUSTER_ENGINE_CLUSTER_INDEX_H 1
 
+#include <velocypack/Builder.h>
+#include <velocypack/StringRef.h>
+
 #include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/StringRef.h>
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 class LogicalCollection;
 
 class ClusterIndex : public Index {
  public:
-  ClusterIndex(TRI_idx_iid_t id, LogicalCollection& collection, ClusterEngineType engineType,
+  ClusterIndex(IndexId id, LogicalCollection& collection, ClusterEngineType engineType,
                Index::IndexType type, arangodb::velocypack::Slice const& info);
 
   ~ClusterIndex();

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -148,11 +149,11 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
-    VPackBuilder b;
-    b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
+    VPackBuilder tmp;
+    tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll.get(), b.slice(), output);
+    Result res = methods::Indexes::getIndex(coll.get(), tmp.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -186,7 +187,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   std::unique_ptr<transaction::Methods> trx;
 
   try {
-    trx = createTransaction(cName, AccessMode::Type::READ);
+    trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions());
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -222,7 +223,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
     }
     std::string name = coll->name();
     name.push_back(TRI_INDEX_HANDLE_SEPARATOR_CHR);
-    name.append(std::to_string(idx->id()));
+    name.append(std::to_string(idx->id().id()));
     if (idx->hasSelectivityEstimate() || idx->unique()) {
       builder.add(name, VPackValue(idx->selectivityEstimate()));
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,9 +26,11 @@
 #include "v8-globals.h"
 
 #include "Basics/debugging.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
 
-TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
+TRI_v8_global_t::TRI_v8_global_t(arangodb::application_features::ApplicationServer& server,
+                                 v8::Isolate* isolate, size_t id)
     : AgencyTempl(),
       AgentTempl(),
       ClusterInfoTempl(),
@@ -87,6 +89,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
       NameKey(),
       OperationIDKey(),
       OverwriteKey(),
+      OverwriteModeKey(),
+      SkipDocumentValidationKey(),
       ParametersKey(),
       PathKey(),
       PrefixKey(),
@@ -127,6 +131,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
       _currentRequest(),
       _currentResponse(),
       _transactionContext(nullptr),
+      _expressionContext(nullptr),
       _vocbase(nullptr),
       _activeExternals(0),
       _canceled(false),
@@ -136,7 +141,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
       _lastMaxTime(TRI_microtime()),
       _countOfTimes(0),
       _heapMax(0),
-      _heapLow(0) {
+      _heapLow(0),
+      _server(server) {
   v8::HandleScope scope(isolate);
 
   BufferConstant.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "Buffer"));
@@ -184,6 +190,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
   NameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "name"));
   OperationIDKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "operationID"));
   OverwriteKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwrite"));
+  OverwriteModeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "overwriteMode"));
+  SkipDocumentValidationKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "skipDocumentValidation"));
   ParametersKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "parameters"));
   PathKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "path"));
   PrefixKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "prefix"));
@@ -214,6 +222,7 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate, size_t id)
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
+  CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(isolate, arangodb::StaticStrings::Compact));
 
   _DbCacheKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "__dbcache__"));
   _DbNameKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_dbName"));
@@ -272,14 +281,15 @@ TRI_v8_global_t::SharedPtrPersistent::~SharedPtrPersistent() {
   );
 }
 
-TRI_v8_global_t::~TRI_v8_global_t() {}
+TRI_v8_global_t::~TRI_v8_global_t() = default;
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate, size_t id) {
+TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer& server,
+                                     v8::Isolate* isolate, size_t id) {
   TRI_GET_GLOBALS();
 
   TRI_ASSERT(v8g == nullptr);
-  v8g = new TRI_v8_global_t(isolate, id);
+  v8g = new TRI_v8_global_t(server, isolate, id);
   isolate->SetData(arangodb::V8PlatformFeature::V8_DATA_SLOT, v8g);
 
   return v8g;
@@ -288,10 +298,6 @@ TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate, size_t id) {
 /// @brief returns a global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate* isolate) {
   TRI_GET_GLOBALS();
-
-  if (v8g == nullptr) {
-    v8g = TRI_CreateV8Globals(isolate, 0);
-  }
 
   TRI_ASSERT(v8g != nullptr);
   return v8g;
@@ -321,14 +327,14 @@ bool TRI_AddGlobalFunctionVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
                             static_cast<v8::PropertyAttribute>(v8::ReadOnly | v8::DontEnum))
         .FromMaybe(false);
   } else {
     return isolate->GetCurrentContext()
         ->Global()
         ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, func)->GetFunction(),
+                            v8::FunctionTemplate::New(isolate, func)->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()),
                             v8::ReadOnly)
         .FromMaybe(false);
   }
@@ -360,4 +366,28 @@ bool TRI_AddGlobalVariableVocbase(v8::Isolate* isolate, v8::Handle<v8::String> n
       ->Global()
       ->DefineOwnProperty(TRI_IGETC, name, value, v8::ReadOnly)
       .FromMaybe(false);
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string_view>(v8::Isolate* isolate,
+                                                             std::string_view const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<std::string>(v8::Isolate* isolate,
+                                                        std::string const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<char const*>(v8::Isolate* isolate,
+                                                        char const* const& arg) {
+  return v8Utf8StringFactory(isolate, arg, strlen(arg));
+}
+
+template <>
+v8::Local<v8::String> v8Utf8StringFactoryT<arangodb::basics::StringBuffer>(
+    v8::Isolate* isolate, arangodb::basics::StringBuffer const& arg) {
+  return v8Utf8StringFactory(isolate, arg.data(), arg.size());
 }

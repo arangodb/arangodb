@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -46,7 +47,8 @@ class ExecContext : public RequestContext {
   enum class Type { Default, Internal };
 
   ExecContext(ExecContext::Type type, std::string const& user,
-              std::string const& database, auth::Level systemLevel, auth::Level dbLevel);
+              std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
+              bool isAdminUser);
   ExecContext(ExecContext const&) = delete;
   ExecContext(ExecContext&&) = delete;
 
@@ -82,12 +84,10 @@ class ExecContext : public RequestContext {
   }
 
   /// @brief is allowed to manage users, create databases, ...
-  bool isAdminUser() const { return _systemDbAuthLevel == auth::Level::RW; }
+  bool isAdminUser() const { return _isAdminUser; }
 
-  /// @brief should immediately cance this operation
-  bool isCanceled() const { return _canceled; }
-
-  void cancel() { _canceled = true; }
+  /// @brief tells you if this execution was canceled
+  virtual bool isCanceled() const { return false; }
 
   /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
@@ -96,19 +96,20 @@ class ExecContext : public RequestContext {
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const {
     return _systemDbAuthLevel;
-  };
+  }
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
   auth::Level databaseAuthLevel() const {
     return _databaseAuthLevel;
-  };
+  }
 
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(auth::Level requested) const {
     return requested <= _databaseAuthLevel;
   }
+
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, auth::Level requested) const;
 
@@ -124,23 +125,29 @@ class ExecContext : public RequestContext {
                         auth::Level requested) const {
     return requested <= collectionAuthLevel(db, coll);
   }
+  
+#ifdef USE_ENTERPRISE
+  virtual std::string clientAddress() const { return ""; }
+  virtual std::string requestUrl() const { return ""; }
+  virtual std::string authMethod() const { return ""; }
+#endif
 
  protected:
-  Type _type;
   /// current user, may be empty for internal users
   std::string const _user;
-  /// current database to use
+  /// current database to use, superuser db is empty
   std::string const _database;
-  /// should be used to indicate a canceled request / thread
-  bool _canceled;
+  
+  Type _type;
+  /// Flag if admin user access (not regarding cluster RO mode)
+  bool _isAdminUser;
   /// level of system database
   auth::Level _systemDbAuthLevel;
   /// level of current database
   auth::Level _databaseAuthLevel;
-  
- private:
 
-  static ExecContext Superuser;
+ private:
+  static ExecContext const Superuser;
   static thread_local ExecContext const* CURRENT;
 };
 

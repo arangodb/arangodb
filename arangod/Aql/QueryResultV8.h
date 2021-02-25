@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_QUERY_RESULT_V8_H 1
 
 #include "Aql/QueryResult.h"
-#include "Basics/Common.h"
 
 #include <v8.h>
 
@@ -33,6 +32,7 @@ namespace arangodb {
 namespace aql {
 
 struct QueryResultV8 : public QueryResult {
+  QueryResultV8(QueryResultV8 const& other) = delete;
   QueryResultV8& operator=(QueryResultV8 const& other) = delete;
 
   QueryResultV8(QueryResultV8&& other) = default;

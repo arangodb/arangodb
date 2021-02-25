@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ALL_FILTER_H
@@ -26,7 +25,7 @@
 
 #include "filter.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class all
@@ -34,10 +33,9 @@ NS_ROOT
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API all: public filter {
  public:
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  all() NOEXCEPT;
+  all() noexcept;
 
   using filter::prepare;
 
@@ -45,10 +43,9 @@ class IRESEARCH_API all: public filter {
     const index_reader& reader,
     const order::prepared& order,
     boost_t filter_boost,
-    const attribute_view& ctx
-  ) const override;
+    const attribute_provider* ctx) const override;
 }; // all
 
-NS_END // ROOT
+} // ROOT
 
 #endif

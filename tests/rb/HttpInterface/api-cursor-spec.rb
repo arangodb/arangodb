@@ -317,7 +317,7 @@ describe ArangoDB do
         doc.parsed_response['cached'].should eq(false)
       end
 
-      it "creates a cursor" do
+      it "creates a usable cursor" do
         cmd = api
         body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 2 }"
         doc = ArangoDB.log_post("#{prefix}-create-for-limit-return", cmd, :body => body)
@@ -499,7 +499,7 @@ describe ArangoDB do
 
       it "creates a cursor that will expire" do
         cmd = api
-        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 2 }"
+        body = "{ \"query\" : \"FOR u IN #{@cn} LIMIT 5 RETURN u.n\", \"count\" : true, \"batchSize\" : 1, \"ttl\" : 5 }"
         doc = ArangoDB.log_post("#{prefix}-create-ttl", cmd, :body => body)
         
         doc.code.should eq(201)
@@ -550,7 +550,7 @@ describe ArangoDB do
         # when it really vanishes, as this depends on thread scheduling, state     
         # of the cleanup thread etc.
 
-        sleep 10 # this should delete the cursor on the server
+        sleep 8 # this should delete the cursor on the server
         doc = ArangoDB.log_put("#{prefix}-create-ttl", cmd)
         doc.code.should eq(404)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")

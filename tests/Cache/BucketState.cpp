@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::BucketState
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,16 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Cache/BucketState.h"
-
 #include "gtest/gtest.h"
 
-#include <stdint.h>
+#include <cstdint>
+
+#include "Cache/BucketState.h"
 
 using namespace arangodb::cache;
 
@@ -38,7 +34,7 @@ TEST(CacheBucketStateTest, test_lock_methods) {
   BucketState state;
   bool success;
 
-  uint32_t outsideBucketState = 0;
+  std::uint32_t outsideBucketState = 0;
 
   auto cb1 = [&outsideBucketState]() -> void { outsideBucketState = 1; };
 

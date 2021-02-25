@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -75,8 +75,8 @@ void spit(std::string const& filename, StringBuffer const& content, bool sync = 
 bool remove(std::string const& fileName, int* errorNumber = nullptr);
 
 // creates a new directory
-bool createDirectory(std::string const& name, int* errorNumber = nullptr);
-bool createDirectory(std::string const& name, int mask, int* errorNumber = nullptr);
+bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
+bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber = nullptr);
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function
@@ -85,18 +85,11 @@ bool copyRecursive(std::string const& source, std::string const& target,
                    std::function<bool(std::string const&)> const& filter,
                    std::string& error);
 
-/// @brief will not copy files/directories for which the filter function
-/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
-bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                            std::function<bool(std::string const&)> const& filter,
-                            std::string& error);
-
 enum TRI_copy_recursive_e {
   TRI_COPY_IGNORE,
   TRI_COPY_COPY,
   TRI_COPY_LINK
 };
-
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function

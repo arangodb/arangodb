@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +22,15 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "Mocks/Servers.h"  // this must be first because windows
+
 #include "gtest/gtest.h"
 
 #include "velocypack/Builder.h"
 
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
-#include "Mocks/Servers.h"
 
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
@@ -60,8 +63,8 @@
 // I have not dug into which header included by ClusterInfo.h will finally
 // include mwsockdef.h. Nor did I check whether all of the following headers
 // will include V8's "src/base/win32-headers.h".
-#include "src/api.h"
-#include "src/objects-inl.h"
+#include "src/api/api.h"
+// #include "src/objects-inl.h"
 #include "src/objects/scope-info.h"
 
 namespace {
@@ -81,8 +84,8 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-      : arangodb::LogicalView(vocbase, definition, planVersion) {}
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : arangodb::LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder& builder,
       Serialization) const override {
@@ -114,9 +117,8 @@ struct ViewFactory : public arangodb::ViewFactory {
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
                                        TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t planVersion) const override {
-    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+                                       arangodb::velocypack::Slice const& definition) const override {
+    view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
   }
@@ -170,18 +172,18 @@ TEST_F(V8UsersTest, test_collection_auth) {
   v8::HandleScope handleScope(isolate.get());  // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and TRI_AddMethodVocbase(...)
   auto context = v8::Context::New(isolate.get());
   v8::Context::Scope contextScope(context);  // required for TRI_AddMethodVocbase(...)
-  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
+  std::unique_ptr<TRI_v8_global_t> v8g(TRI_CreateV8Globals(server.server(),
+                                                           isolate.get(), 0));  // create and set inside 'isolate' for use with 'TRI_GET_GLOBALS()'
   v8g->ArangoErrorTempl.Reset(isolate.get(), v8::ObjectTemplate::New(isolate.get()));  // otherwise v8:-utils::CreateErrorObject(...) will fail
   v8g->_vocbase = vocbase;
   TRI_InitV8Users(context, vocbase, v8g.get(), isolate.get());
-
   auto arangoUsers =
-      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance();
+      v8::Local<v8::ObjectTemplate>::New(isolate.get(), v8g->UsersTempl)->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   auto fn_grantCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "grantCollection"));
+    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "grantCollection")).FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_grantCollection->IsFunction());
   auto fn_revokeCollection =
-      arangoUsers->Get(TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection"));
+    arangoUsers->Get(context, TRI_V8_ASCII_STRING(isolate.get(), "revokeCollection")).FromMaybe(v8::Local<v8::Value>());
   EXPECT_TRUE(fn_revokeCollection->IsFunction());
   std::vector<v8::Local<v8::Value>> grantArgs = {
       TRI_V8_STD_STRING(isolate.get(), userName),
@@ -212,15 +214,13 @@ TEST_F(V8UsersTest, test_collection_auth) {
     ExecContext()
         : arangodb::ExecContext(arangodb::ExecContext::Type::Default, userName,
                                 "", arangodb::auth::Level::RW,
-                                arangodb::auth::Level::NONE) {
+                                arangodb::auth::Level::NONE, true) {
     }  // ExecContext::isAdminUser() == true
   } execContext;
   arangodb::ExecContextScope execContextScope(&execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
   userManager->setGlobalVersion(0);  // required for UserManager::loadFromDB()
-  userManager->setQueryRegistry(&queryRegistry);
 
   // test auth missing (grant)
   {
@@ -243,7 +243,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -251,9 +251,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        grantArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -287,7 +286,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -295,9 +294,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        revokeArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -337,13 +335,13 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
                                        static_cast<int>(grantArgs.size()),
                                        grantArgs.data());
-    EXPECT_FALSE(result.IsEmpty());
+    ASSERT_FALSE(result.IsEmpty());
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
@@ -382,7 +380,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -425,7 +423,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -433,9 +431,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        grantArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -477,7 +474,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -485,9 +482,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
                                        revokeArgs.data());
     EXPECT_TRUE(result.IsEmpty());
     EXPECT_TRUE(tryCatch.HasCaught());
-    EXPECT_TRUE((TRI_ERROR_NO_ERROR == TRI_V8ToVPack(isolate.get(), responce,
-                                                     tryCatch.Exception(), false)));
-    auto slice = responce.slice();
+    TRI_V8ToVPack(isolate.get(), response, tryCatch.Exception(), false);
+    auto slice = response.slice();
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE((slice.hasKey(arangodb::StaticStrings::ErrorNum) &&
                  slice.get(arangodb::StaticStrings::ErrorNum).isNumber<int>() &&
@@ -527,7 +523,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_grantCollection)
                       ->CallAsFunction(context, arangoUsers,
@@ -572,7 +568,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
          execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
-    arangodb::velocypack::Builder responce;
+    arangodb::velocypack::Builder response;
     v8::TryCatch tryCatch(isolate.get());
     auto result = v8::Function::Cast(*fn_revokeCollection)
                       ->CallAsFunction(context, arangoUsers,

@@ -57,13 +57,13 @@ class PowerWeight : public TupleWeight<W, n> {
     return no_weight;
   }
 
-  static const string &Type() {
-    static const string *const type =
-        new string(W::Type() + "_^" + std::to_string(n));
+  static const std::string &Type() {
+    static const std::string *const type =
+        new std::string(W::Type() + "_^" + std::to_string(n));
     return *type;
   }
 
-  static FST_CONSTEXPR uint64 Properties() {
+  static constexpr uint64 Properties() {
     return W::Properties() &
            (kLeftSemiring | kRightSemiring | kCommutative | kIdempotent);
   }

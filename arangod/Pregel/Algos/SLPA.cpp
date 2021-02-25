@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -114,7 +115,7 @@ struct SLPAComputation : public VertexComputation<SLPAValue, int8_t, uint64_t> {
     uint64_t cumulativeSum = 0;
     // Randomly select a label with probability proportional to the
     // occurrence frequency of this label in its memory
-    for (std::pair<uint64_t, uint64_t> const& e : val->memory) {
+    for (auto const& e : val->memory) {
       cumulativeSum += e.second;
       if (cumulativeSum >= random) {
         sendMessageToAllNeighbours(e.first);
@@ -142,24 +143,21 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
         threshold(thr),
         maxCommunities(mc) {}
 
-  size_t estimatedVertexSize() const override { return sizeof(LPValue); };
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedVertexSize() const override { return sizeof(LPValue); }
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        SLPAValue& value) override {
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
+                      SLPAValue& value, uint64_t& vertexIdRange) override {
     value.nodeId = (uint32_t)vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {
-  }
-
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SLPAValue* ptr, size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, SLPAValue const* ptr) const override {
     if (ptr->memory.empty()) {
       return false;
     } else {
       std::vector<std::pair<uint64_t, double>> vec;
-      for (std::pair<uint64_t, uint64_t> pair : ptr->memory) {
+      for (auto const& pair : ptr->memory) {
         double t = (double)pair.second / ptr->numCommunities;
         if (t >= threshold) {
           vec.emplace_back(pair.first, t);
@@ -194,11 +192,6 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
     }
     return true;
   }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
-  }
 };
 
 GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
@@ -207,4 +200,4 @@ GraphFormat<SLPAValue, int8_t>* SLPA::inputFormat() const {
 
 WorkerContext* SLPA::workerContext(velocypack::Slice userParams) const {
   return new SLPAWorkerContext();
-};
+}

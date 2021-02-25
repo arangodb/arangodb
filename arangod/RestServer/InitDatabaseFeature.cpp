@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@
 #include <iostream>
 #include <thread>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -72,18 +74,18 @@ void InitDatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options
 
   options->addOption("--database.init-database", "initializes an empty database",
                      new BooleanParameter(&_initDatabase),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 
   options->addOption("--database.restore-admin",
                      "resets the admin users and sets a new password",
                      new BooleanParameter(&_restoreAdmin),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 
   options->addOption("--database.password", "initial password of root user",
                      new StringParameter(&_password),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void InitDatabaseFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -119,7 +121,7 @@ void InitDatabaseFeature::prepare() {
   if (!_seenPassword) {
     while (true) {
       std::string password1 =
-          readPassword("Please enter password for root user");
+          readPassword("Please enter a new password for the ArangoDB root user");
 
       if (!password1.empty()) {
         std::string password2 = readPassword("Repeat password");

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,10 @@
 
 #include "Basics/Common.h"
 
-#include "Basics/Mutex.h"
 #include "Rest/CommonDefines.h"
+#include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Statistics/figures.h"
-
-#include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
 class RequestStatistics {
@@ -39,143 +37,163 @@ class RequestStatistics {
   static void initialize();
   static size_t processAll();
 
-  static RequestStatistics* acquire();
-  void release();
+  class Item {
+   public:
+    Item() : _stat(nullptr) {}
+    explicit Item(RequestStatistics* stat) : _stat(stat) {}
 
-  static void SET_ASYNC(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_async = true;
+    Item(Item const&) = delete;
+    Item& operator=(Item const&) = delete;
+
+    Item(Item&& r) : _stat(r._stat) { r._stat = nullptr; }
+    Item& operator=(Item&& r) {
+      if (&r != this) {
+        reset();
+        _stat = r._stat;
+        r._stat = nullptr;
+      }
+      return *this;
     }
-  }
 
-  static void SET_IGNORE(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_ignore = true;
-    }
-  }
+    ~Item() { reset(); }
 
-  static void SET_REQUEST_TYPE(RequestStatistics* stat, rest::RequestType t) {
-    if (stat != nullptr) {
-      stat->_requestType = t;
-    }
-  }
-
-  static void SET_READ_START(RequestStatistics* stat, double start) {
-    if (stat != nullptr) {
-      if (stat->_readStart == 0.0) {
-        stat->_readStart = start;
+    void reset() {
+      if (_stat != nullptr) {
+        _stat->release();
+        _stat = nullptr;
       }
     }
-  }
 
-  static void SET_READ_END(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_readEnd = StatisticsFeature::time();
+    operator bool() const { return _stat != nullptr; }
+
+    void SET_ASYNC() const {
+      if (_stat != nullptr) {
+        _stat->_async = true;
+      }
     }
-  }
 
-  static void SET_WRITE_START(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_writeStart = StatisticsFeature::time();
+    void SET_REQUEST_TYPE(rest::RequestType t) const {
+      if (_stat != nullptr) {
+        _stat->_requestType = t;
+      }
     }
-  }
 
-  static void SET_WRITE_END(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_writeEnd = StatisticsFeature::time();
+    void SET_READ_START(double start) const {
+      if (_stat != nullptr) {
+        if (_stat->_readStart == 0.0) {
+          _stat->_readStart = start;
+        }
+      }
     }
-  }
 
-  static void SET_QUEUE_START(RequestStatistics* stat, int64_t nrQueued) {
-    if (stat != nullptr) {
-      stat->_queueStart = StatisticsFeature::time();
-      stat->_queueSize = nrQueued;
+    void SET_READ_END() const {
+      if (_stat != nullptr) {
+        _stat->_readEnd = StatisticsFeature::time();
+      }
     }
-  }
 
-  static void SET_QUEUE_END(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_queueEnd = StatisticsFeature::time();
+    void SET_WRITE_START() const {
+      if (_stat != nullptr) {
+        _stat->_writeStart = StatisticsFeature::time();
+      }
     }
-  }
 
-  static void ADD_RECEIVED_BYTES(RequestStatistics* stat, size_t bytes) {
-    if (stat != nullptr) {
-      stat->_receivedBytes += bytes;
+    void SET_WRITE_END() const {
+      if (_stat != nullptr) {
+        _stat->_writeEnd = StatisticsFeature::time();
+      }
     }
-  }
 
-  static void ADD_SENT_BYTES(RequestStatistics* stat, size_t bytes) {
-    if (stat != nullptr) {
-      stat->_sentBytes += bytes;
+    void SET_QUEUE_START(int64_t nrQueued) const {
+      if (_stat != nullptr) {
+        _stat->_queueStart = StatisticsFeature::time();
+        _stat->_queueSize = nrQueued;
+      }
     }
-  }
 
-  static void SET_EXECUTE_ERROR(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_executeError = true;
+    void SET_QUEUE_END() const {
+      if (_stat != nullptr) {
+        _stat->_queueEnd = StatisticsFeature::time();
+      }
     }
-  }
 
-  static void SET_REQUEST_START(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_requestStart = StatisticsFeature::time();
+    void ADD_RECEIVED_BYTES(size_t bytes) const {
+      if (_stat != nullptr) {
+        _stat->_receivedBytes += bytes;
+      }
     }
-  }
 
-  static void SET_REQUEST_END(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_requestEnd = StatisticsFeature::time();
+    void ADD_SENT_BYTES(size_t bytes) const {
+      if (_stat != nullptr) {
+        _stat->_sentBytes += bytes;
+      }
     }
-  }
 
-  static void SET_REQUEST_START_END(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_requestStart = StatisticsFeature::time();
-      stat->_requestEnd = StatisticsFeature::time();
+    void SET_REQUEST_START() const {
+      if (_stat != nullptr) {
+        _stat->_requestStart = StatisticsFeature::time();
+      }
     }
-  }
 
-  static double ELAPSED_SINCE_READ_START(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      return StatisticsFeature::time() - stat->_readStart;
-    } else {
-      return 0.0;
+    void SET_REQUEST_END() const {
+      if (_stat != nullptr) {
+        _stat->_requestEnd = StatisticsFeature::time();
+      }
     }
-  }
 
-  static void SET_SUPERUSER(RequestStatistics* stat) {
-    if (stat != nullptr) {
-      stat->_superuser = true;
+    void SET_REQUEST_START_END() const {
+      if (_stat != nullptr) {
+        _stat->_requestStart = StatisticsFeature::time();
+        _stat->_requestEnd = StatisticsFeature::time();
+      }
     }
-  }
 
-  double requestStart() const { return _requestStart; }
+    double ELAPSED_SINCE_READ_START() const {
+      if (_stat != nullptr) {
+        return StatisticsFeature::time() - _stat->_readStart;
+      } else {
+        return 0.0;
+      }
+    }
 
-  static void fill(basics::StatisticsDistribution& totalTime,
-                   basics::StatisticsDistribution& requestTime,
-                   basics::StatisticsDistribution& queueTime,
-                   basics::StatisticsDistribution& ioTime,
-                   basics::StatisticsDistribution& bytesSent,
-                   basics::StatisticsDistribution& bytesReceived,
-                   stats::RequestStatisticsSource source);
+    double ELAPSED_WHILE_QUEUED() const {
+      if (_stat != nullptr) {
+        return  _stat->_queueEnd - _stat->_queueStart;
+      } else {
+        return 0.0;
+      }
+    }
 
-  std::string timingsCsv();
-  std::string to_string();
-  void trace_log();
+    void SET_SUPERUSER() const {
+      if (_stat != nullptr) {
+        _stat->_superuser = true;
+      }
+    }
+
+    std::string timingsCsv() const;
+
+   private:
+     RequestStatistics* _stat;
+  };
+
+  static Item acquire();
+  struct Snapshot {
+    statistics::Distribution totalTime;
+    statistics::Distribution requestTime;
+    statistics::Distribution queueTime;
+    statistics::Distribution ioTime;
+    statistics::Distribution bytesSent;
+    statistics::Distribution bytesReceived;
+  };
+
+  static void getSnapshot(Snapshot& snapshot, stats::RequestStatisticsSource source);
 
  private:
-  static size_t const QUEUE_SIZE = 64 * 1024 - 2;  // current (1.62) boost maximum
-
-  static std::unique_ptr<RequestStatistics[]> _statisticsBuffer;
-
-  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _freeList;
-
-  static boost::lockfree::queue<RequestStatistics*, boost::lockfree::capacity<QUEUE_SIZE>> _finishedList;
-
   static void process(RequestStatistics*);
 
   RequestStatistics() { reset(); }
+
+  void release();
 
   void reset() {
     _readStart = 0.0;
@@ -191,9 +209,6 @@ class RequestStatistics {
     _sentBytes = 0.0;
     _requestType = rest::RequestType::ILLEGAL;
     _async = false;
-    _tooLarge = false;
-    _executeError = false;
-    _ignore = false;
     _released = true;
     _inQueue = false;
     _superuser = false;
@@ -216,9 +231,6 @@ class RequestStatistics {
   rest::RequestType _requestType;
 
   bool _async;
-  bool _tooLarge;
-  bool _executeError;
-  bool _ignore;
   bool _released;
   bool _inQueue;
   bool _superuser;

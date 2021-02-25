@@ -27,8 +27,8 @@
 #include "compression.hpp"
 #include "noncopyable.hpp"
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 class IRESEARCH_API delta_compressor : public compressor, private util::noncopyable {
  public:
@@ -38,20 +38,22 @@ class IRESEARCH_API delta_compressor : public compressor, private util::noncopya
 class IRESEARCH_API delta_decompressor : public decompressor, private util::noncopyable {
  public:
   /// @returns bytes_ref::NIL in case of error
-  virtual bytes_ref decompress(byte_type* src, size_t src_size,
+  virtual bytes_ref decompress(const byte_type* src, size_t src_size,
                                byte_type* dst, size_t dst_size) override final;
 }; // delta_decompressor
 
 struct IRESEARCH_API delta {
-  DECLARE_COMPRESSION_TYPE();
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::compression::delta";
+  }
 
   static void init();
   static compression::compressor::ptr compressor(const options& opts);
   static compression::decompressor::ptr decompressor();
 }; // delta
 
-NS_END // compression
-NS_END // NS_ROOT
+} // compression
+} // namespace iresearch {
 
 #endif
 

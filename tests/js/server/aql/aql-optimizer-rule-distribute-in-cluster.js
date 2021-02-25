@@ -31,7 +31,6 @@
 var db = require("@arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
-var isMMFiles = db._engine().name === "mmfiles";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -202,6 +201,7 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
@@ -229,6 +229,7 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "InsertNode",
@@ -256,6 +257,7 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "ReplaceNode",
@@ -283,6 +285,7 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "ReplaceNode",
@@ -309,6 +312,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode",
+                              "CalculationNode", 
                               "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
@@ -401,6 +405,7 @@ function optimizerRuleTestSuite () {
                               "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode", 
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
@@ -409,10 +414,8 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
 
-      if (db._engine().name !== 'mmfiles') {
-        expectedRules[0].push("patch-update-statements");
-        expectedRules[1].push("patch-update-statements");
-      }
+      expectedRules[0].push("patch-update-statements");
+      expectedRules[1].push("patch-update-statements");
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
@@ -500,6 +503,7 @@ function optimizerRuleTestSuite () {
                               "CalculationNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode", 
                               "DistributeNode", 
                               "RemoteNode", 
                               "InsertNode", 
@@ -508,10 +512,8 @@ function optimizerRuleTestSuite () {
                             ]
                           ];
       
-      if (db._engine().name !== 'mmfiles') {
-        expectedRules[0].push("patch-update-statements");
-        expectedRules[1].push("patch-update-statements");
-      }
+      expectedRules[0].push("patch-update-statements");
+      expectedRules[1].push("patch-update-statements");
 
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
@@ -574,6 +576,7 @@ function optimizerRuleTestSuite () {
                               "RemoteNode", 
                               "GatherNode",
                               "CalculationNode", 
+                              "CalculationNode", 
                               "DistributeNode",
                               "RemoteNode",
                               "RemoveNode",
@@ -600,6 +603,7 @@ function optimizerRuleTestSuite () {
                               "EnumerateCollectionNode", 
                               "RemoteNode", 
                               "GatherNode", 
+                              "CalculationNode", 
                               "CalculationNode", 
                               "DistributeNode", 
                               "RemoteNode", 
@@ -637,6 +641,48 @@ function optimizerRuleTestSuite () {
         assertTrue(result1.plan.rules.indexOf(ruleName) === -1, query);
         assertTrue(result2.plan.rules.indexOf(ruleName) === -1, query);
       });
+    },
+    
+    
+    testInsertsDistributeInputCalculationForModification : function () {
+      var queries = [ 
+        ["FOR k IN  ['1','2','3'] REMOVE k IN  " + cn1, "REMOVE"],
+        ["FOR k IN  ['1','2','3'] UPDATE k WITH { } IN  " + cn1, "UPDATE"],
+        ["FOR k IN  ['1','2','3'] REPLACE k WITH { } IN  " + cn1, "REPLACE"],
+      ];
+
+      const explainer = require("@arangodb/aql/explainer");
+      queries.forEach(function(query, i) {
+        const output = explainer.explain(query[0], {...thisRuleEnabled, colors: false}, false);
+        const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT\(k, { "allowKeyConversionToObject" : true, "ignoreErrors" : false, "canUseCustomKey" : true }\)/);
+        assertTrue(variable);
+        assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
+        assertTrue(output.includes(`${query[1]} #${variable[1]}`));
+      });
+    },
+    
+    testInsertsDistributeInputCalculationForInsert : function () {
+      const query = "FOR k IN  ['1','2','3'] INSERT k IN  " + cn1;
+      const explainer = require("@arangodb/aql/explainer");
+      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
+      const variable = output.match(/LET #([0-9]) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
+      assertTrue(variable);
+      assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION(k, null, { "allowSpecifiedKeys" : false, "ignoreErrors" : false, "collection" : "${cn1}" })`));
+      assertTrue(output.includes(`DISTRIBUTE #${variable[1]}`));
+      assertTrue(output.includes(`INSERT #${variable[1]}`));
+    },
+    
+    testInsertsDistributeInputCalculationForUpsert : function () {
+      const query = "FOR k IN  ['1','2','3'] UPSERT {_key: k} INSERT { miau: 42 } UPDATE { } IN  " + cn1;
+      const explainer = require("@arangodb/aql/explainer");
+      const output = explainer.explain(query, {...thisRuleEnabled, colors: false}, false);
+      const distributeVar = output.match(/LET #([0-9]+) = MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION/);
+      const inputVar = output.match(/LET #([0-9]+) = \{ \"miau\" : 42 \}/);
+      assertTrue(distributeVar);
+      assertTrue(inputVar);
+      assertTrue(output.includes(`MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION($OLD, #${inputVar[1]}, { "allowSpecifiedKeys" : true, "ignoreErrors" : false, "collection" : "${cn1}" })`));
+      assertTrue(output.includes(`DISTRIBUTE #${distributeVar[1]}`));
+      assertTrue(output.includes(`UPSERT $OLD INSERT #${distributeVar[1]} UPDATE`));
     },
   };
 }
@@ -707,7 +753,7 @@ function interactionOtherRulesTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
     
     testRule1AndRule2 : function () {
-      const projectionNode = isMMFiles ? "EnumerateCollectionNode" : "IndexNode";
+      const projectionNode = "IndexNode";
       
       var queries = [ 
         // collection sharded by _key
@@ -761,6 +807,7 @@ function interactionOtherRulesTestSuite () {
                                       "CalculationNode", 
                                       "RemoteNode", 
                                       "GatherNode", 
+                                      "CalculationNode", 
                                       "DistributeNode", 
                                       "RemoteNode", 
                                       "RemoveNode", 
@@ -935,6 +982,7 @@ function interactionOtherRulesTestSuite () {
           "CalculationNode", 
           "RemoteNode", 
           "GatherNode", 
+          "CalculationNode", 
           "DistributeNode", 
           "RemoteNode", 
           "RemoveNode", 
@@ -947,6 +995,7 @@ function interactionOtherRulesTestSuite () {
           "EnumerateCollectionNode", 
           "RemoteNode", 
           "GatherNode", 
+          "CalculationNode", 
           "DistributeNode", 
           "RemoteNode", 
           "RemoveNode", 
@@ -959,6 +1008,7 @@ function interactionOtherRulesTestSuite () {
           "EnumerateCollectionNode", 
           "RemoteNode", 
           "GatherNode", 
+          "CalculationNode", 
           "DistributeNode", 
           "RemoteNode", 
           "RemoveNode", 
@@ -973,6 +1023,7 @@ function interactionOtherRulesTestSuite () {
           "CalculationNode", 
           "RemoteNode", 
           "GatherNode", 
+          "CalculationNode", 
           "DistributeNode", 
           "RemoteNode", 
           "RemoveNode", 

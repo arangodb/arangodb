@@ -44,8 +44,7 @@ const console = require('console');
 const internal = require('internal');
 const arango = internal.arango;
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
-const mmfilesEngine = (db._engine().name === 'mmfiles');
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
@@ -1213,10 +1212,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           var c = db._create(cn, {
-            isVolatile: mmfilesEngine,
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576,
             keyOptions: {
               allowUserKeys: false
             }
@@ -1237,11 +1233,6 @@ function BaseTestConfig () {
 
           var properties = db._collection(cn2).properties();
           assertEqual(cn2, db._collection(cn2).name());
-          if (mmfilesEngine) {
-            assertTrue(properties.isVolatile);
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-          }
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
           assertFalse(properties.keyOptions.allowUserKeys);
@@ -1286,28 +1277,15 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
 
           var properties = c.properties();
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-          }
 
           properties = c.properties({
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1316,12 +1294,6 @@ function BaseTestConfig () {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-            assertEqual(properties.indexBuckets, properties.indexBuckets);
-          }
         }
       );
     },
@@ -1335,28 +1307,15 @@ function BaseTestConfig () {
         function (state) {
           var c = db._create(cn, {
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
 
           var properties = c.properties();
           assertTrue(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-          }
 
           properties = c.properties({
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
 
           state.cid = c._id;
           state.properties = c.properties();
@@ -1365,45 +1324,8 @@ function BaseTestConfig () {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
-          if (mmfilesEngine) {
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-            assertEqual(properties.indexBuckets, properties.indexBuckets);
-          }
         }
       );
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test change collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testChangeCollectionIndexBuckets: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 4
-            });
-
-            var properties = c.properties();
-            assertEqual(4, properties.indexBuckets);
-
-            properties = c.properties({
-              indexBuckets: 8
-            });
-            assertEqual(8, properties.indexBuckets);
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(8, properties.indexBuckets);
-          }
-        );
-      }
     },
 
     // /////////////////////////////////////////////////////////////////////////////
@@ -1414,10 +1336,7 @@ function BaseTestConfig () {
       compare(
         function (state) {
           var c = db._create(cn, {
-            isVolatile: mmfilesEngine,
             waitForSync: false,
-            doCompact: false,
-            journalSize: 1048576
           });
 
           state.cid = c._id;
@@ -1428,12 +1347,6 @@ function BaseTestConfig () {
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
-          if (mmfilesEngine) {
-            assertTrue(properties.isVolatile);
-            assertFalse(properties.doCompact);
-            assertEqual(1048576, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
           assertTrue(properties.keyOptions.allowUserKeys);
           assertEqual('traditional', properties.keyOptions.type);
         }
@@ -1452,10 +1365,7 @@ function BaseTestConfig () {
               type: 'autoincrement',
               allowUserKeys: false
             },
-            isVolatile: false,
             waitForSync: true,
-            doCompact: true,
-            journalSize: 2097152
           });
 
           state.cid = c._id;
@@ -1464,14 +1374,8 @@ function BaseTestConfig () {
         function (state) {
           var properties = db._collection(cn).properties();
           assertEqual(cn, db._collection(cn).name());
-          assertFalse(properties.isVolatile);
           assertTrue(properties.waitForSync);
           assertFalse(properties.deleted);
-          if (mmfilesEngine) {
-            assertTrue(properties.doCompact);
-            assertEqual(2097152, properties.journalSize);
-            assertTrue(properties.hasOwnProperty('indexBuckets'));
-          }
           assertFalse(properties.keyOptions.allowUserKeys);
           assertEqual('autoincrement', properties.keyOptions.type);
         }
@@ -1520,54 +1424,6 @@ function BaseTestConfig () {
           assertEqual('padded', properties.keyOptions.type);
         }
       );
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test create collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testCreateCollectionIndexBuckets1: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 16
-            });
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(cn, db._collection(cn).name());
-            assertEqual(16, properties.indexBuckets);
-          }
-        );
-      }
-    },
-
-    // /////////////////////////////////////////////////////////////////////////////
-    //  @brief test create collection
-    // /////////////////////////////////////////////////////////////////////////////
-
-    testCreateCollectionIndexBuckets2: function () {
-      if (mmfilesEngine) {
-        compare(
-          function (state) {
-            var c = db._create(cn, {
-              indexBuckets: 8
-            });
-
-            state.cid = c._id;
-            state.properties = c.properties();
-          },
-          function (state) {
-            var properties = db._collection(cn).properties();
-            assertEqual(cn, db._collection(cn).name());
-            assertEqual(8, properties.indexBuckets);
-          }
-        );
-      }
     },
 
     // /////////////////////////////////////////////////////////////////////////////
@@ -2110,11 +1966,6 @@ function BaseTestConfig () {
     // /////////////////////////////////////////////////////////////////////////////
 
     testWalRetain: function () {
-      // Doesn't affect MMFiles, which uses barriers instead
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-
       connectToMaster();
 
       const dbPrefix = db._name() === '_system' ? '' : '/_db/' + db._name();

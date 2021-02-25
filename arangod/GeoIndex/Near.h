@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,7 +35,7 @@
 
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -67,7 +68,7 @@ struct DocumentsDescending {
 
 /// @brief Helper class to build a simple near query iterator.
 /// Will return points sorted by distance to the target point, can
-/// also filter contains / intersect in regions (on rsesult points and
+/// also filter contains / intersect in regions (on result points and
 /// search intervals). Should be storage engine agnostic
 template <typename CMP = DocumentsAscending>
 class NearUtils {

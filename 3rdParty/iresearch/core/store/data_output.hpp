@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_DATAOUTPUT_H
@@ -31,14 +30,18 @@
 
 #include <streambuf>
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct data_output
 /// @brief base interface for all low-level output data streams
 //////////////////////////////////////////////////////////////////////////////
-struct IRESEARCH_API data_output
-    : std::iterator<std::output_iterator_tag, byte_type, void, void, void> {
+struct IRESEARCH_API data_output {
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   virtual ~data_output() = default;
 
@@ -73,9 +76,9 @@ struct IRESEARCH_API data_output
     write_byte(b);
     return *this;
   }
-  data_output& operator*() NOEXCEPT { return *this; }
-  data_output& operator++() NOEXCEPT { return *this; }
-  data_output& operator++(int) NOEXCEPT { return *this; }
+  data_output& operator*() noexcept { return *this; }
+  data_output& operator++() noexcept { return *this; }
+  data_output& operator++(int) noexcept { return *this; }
 }; // data_output
 
 //////////////////////////////////////////////////////////////////////////////
@@ -84,7 +87,7 @@ struct IRESEARCH_API data_output
 struct IRESEARCH_API index_output : public data_output {
  public:
   DECLARE_IO_PTR(index_output, close);
-  DEFINE_FACTORY_INLINE(index_output)
+  DEFINE_FACTORY_INLINE(index_output);
 
   virtual void flush() = 0;
 
@@ -110,6 +113,8 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 
   virtual int_type overflow(int_type c) override;
 
+  index_output* internal() const { return out_; }
+
  private:
   index_output* out_;
 }; // output_buf
@@ -119,10 +124,6 @@ class IRESEARCH_API output_buf final : public std::streambuf, util::noncopyable 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_output : public index_output, util::noncopyable {
  public:
-  static const size_t DEFAULT_BUFFER_SIZE = 1024;
-
-  buffered_index_output(size_t buf_size = DEFAULT_BUFFER_SIZE);
-
   virtual void flush() override;
 
   virtual void close() override;
@@ -142,6 +143,14 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
   virtual void write_long(int64_t v) override final;
 
  protected:
+  void reset(byte_type* buf, size_t size) noexcept {
+    buf_ = buf;
+    pos_ = buf;
+    end_ = buf + size;
+    buf_size_ = size;
+    start_ = 0;
+  }
+
   virtual void flush_buffer(const byte_type* b, size_t len) = 0;
 
   // returns number of reamining bytes in the buffer
@@ -151,14 +160,14 @@ class IRESEARCH_API buffered_index_output : public index_output, util::noncopyab
 
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr<byte_type[]> buf_;
-  size_t start_; // position of buffer in a file
-  byte_type* pos_;   // position in buffer
-  byte_type* end_;
-  const size_t buf_size_;
+  byte_type* buf_{};
+  byte_type* pos_{}; // position in buffer
+  byte_type* end_{};
+  size_t start_{};   // position of buffer in a file
+  size_t buf_size_{};
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_output
 
-NS_END
+}
 
 #endif // IRESEARCH_DATAOUTPUT_H

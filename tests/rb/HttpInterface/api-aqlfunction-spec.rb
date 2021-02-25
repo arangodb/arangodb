@@ -26,7 +26,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1580)
       end
     
-      it "add function, invalid name" do
+      it "add function, invalid name 1" do
         body = "{ \"name\" : \"\", \"code\" : \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-invalid1", api, :body => body)
 
@@ -37,7 +37,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1580)
       end
       
-      it "add function, invalid name" do
+      it "add function, invalid name 2" do
         body = "{ \"name\" : \"_aql::foobar\", \"code\" : \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-invalid2", api, :body => body)
 
@@ -48,7 +48,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1580)
       end
       
-      it "add function, invalid name" do
+      it "add function, invalid name 3" do
         body = "{ \"name\" : \"foobar\", \"code\" : \"function () { return 1; }\" }"
         doc = ArangoDB.log_post("#{prefix}-add-invalid3", api, :body => body)
 
@@ -240,6 +240,7 @@ describe ArangoDB do
         body = "{ \"name\" : \"UnitTests::mytest1\", \"code\": \"( function () { return   3 * 5; } ) \" }"
         doc = ArangoDB.log_post("#{prefix}-list-functions2", api, :body => body)
         doc.code.should eq(200)
+        doc.parsed_response['isNewlyCreated'].should eq(false)
         
         doc = ArangoDB.log_get("#{prefix}-list-functions2", api + "?prefix=UnitTests")
         doc.code.should eq(200)

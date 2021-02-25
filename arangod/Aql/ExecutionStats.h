@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,12 @@
 #ifndef ARANGOD_AQL_EXECUTION_STATS_H
 #define ARANGOD_AQL_EXECUTION_STATS_H 1
 
+#include "Aql/ExecutionNodeId.h"
+
 #include <cstdint>
 #include <map>
-#include <unordered_map>
+
+#include "Aql/ExecutionNodeStats.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -40,21 +43,10 @@ struct ExecutionStats {
 
   /// @brief instantiate the statistics from VelocyPack
   explicit ExecutionStats(arangodb::velocypack::Slice const& slice);
-
-  /// @brief statistics per ExecutionNode
-  struct Node {
-    size_t calls = 0;
-    size_t items = 0;
-    double runtime = 0.0;
-    ExecutionStats::Node& operator+=(ExecutionStats::Node const& other);
-  };
-
+ 
  public:
   /// @brief convert the statistics to VelocyPack
   void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
-
-  /// @brief create empty statistics for VelocyPack
-  static void toVelocyPackStatic(arangodb::velocypack::Builder&);
 
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value);
@@ -64,12 +56,15 @@ struct ExecutionStats {
 
   /// @brief sumarize two sets of ExecutionStats
   void add(ExecutionStats const& summand);
-
-  void clear();
-
-  void addAliases(std::unordered_map<size_t, size_t>&& aliases) {
+  void addNode(aql::ExecutionNodeId id, ExecutionNodeStats const&);
+  void addAlias(aql::ExecutionNodeId from, aql::ExecutionNodeId to) {
+    _nodeAliases.emplace(from, to);
+  }
+  void setAliases(std::map<aql::ExecutionNodeId, aql::ExecutionNodeId>&& aliases) {
     _nodeAliases = std::move(aliases);
   }
+
+  void clear();
 
   /// @brief number of successfully executed write operations
   int64_t writesExecuted;
@@ -102,15 +97,15 @@ struct ExecutionStats {
   /// @brief peak memory usage of the query
   size_t peakMemoryUsage;
 
-  ///  @brief statistics per ExecutionNodes
-  std::map<size_t, ExecutionStats::Node> nodes;
-
  private:
   /// @brief Node aliases, source => target.
   ///        Every source node in the this aliases list
   ///        will be counted as the target instead
   ///        within nodes.
-  std::unordered_map<size_t, size_t> _nodeAliases;
+  std::map<aql::ExecutionNodeId, aql::ExecutionNodeId> _nodeAliases;
+  
+  ///  @brief statistics per ExecutionNodes
+  std::map<aql::ExecutionNodeId, ExecutionNodeStats> _nodes;
 };
 }  // namespace aql
 }  // namespace arangodb

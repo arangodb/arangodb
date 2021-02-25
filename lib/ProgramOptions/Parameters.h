@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,16 +37,17 @@
 #include <numeric>
 #include <type_traits>
 #include <unordered_set>
+#include <stdexcept>
 
 namespace arangodb {
 namespace options {
 
-// helper functions to strip-non-numeric data from a string
+// helper function to strip-non-numeric data from a string
 std::string removeCommentsFromNumber(std::string const& value);
 
 // convert a string into a number, base version for signed or unsigned integer types
 template <typename T>
-inline T toNumber(std::string value, T base) {
+inline T toNumber(std::string value, T base = 1) {
   // replace leading spaces, replace trailing spaces & comments
   value = removeCommentsFromNumber(value);
 
@@ -56,15 +58,15 @@ inline T toNumber(std::string value, T base) {
   if (n > 3) {
     std::string suffix = value.substr(n - 3);
 
-    if (suffix == "kib" || suffix == "KiB") {
+    if (suffix == "kib" || suffix == "KiB" || suffix == "KIB") {
       m = 1024;
       value = value.substr(0, n - 3);
       seen = true;
-    } else if (suffix == "mib" || suffix == "MiB") {
+    } else if (suffix == "mib" || suffix == "MiB" || suffix == "MIB") {
       m = 1024 * 1024;
       value = value.substr(0, n - 3);
       seen = true;
-    } else if (suffix == "gib" || suffix == "GiB") {
+    } else if (suffix == "gib" || suffix == "GiB" || suffix == "GIB") {
       m = 1024 * 1024 * 1024;
       value = value.substr(0, n - 3);
       seen = true;
@@ -100,7 +102,7 @@ inline T toNumber(std::string value, T base) {
       m = 1000 * 1000 * 1000;
       value = value.substr(0, n - 1);
     } else if (suffix == "%") {
-      m = static_cast<T>(base);
+      m = static_cast<int64_t>(base);
       d = 100;
       value = value.substr(0, n - 1);
     }
@@ -130,7 +132,7 @@ inline double toNumber<double>(std::string value, double /*base*/) {
 
 // convert a string into another type, specialized version for numbers
 template <typename T>
-typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string value) {
+typename std::enable_if<std::is_arithmetic<T>::value, T>::type fromString(std::string const& value) {
   return toNumber<T>(value, static_cast<T>(1));
 }
 
@@ -169,7 +171,7 @@ inline std::string stringifyValue<std::string>(std::string const& value) {
 // abstract base parameter type struct
 struct Parameter {
   Parameter() = default;
-  virtual ~Parameter() {}
+  virtual ~Parameter() = default;
 
   virtual void flushValue() {}
 

@@ -33,7 +33,7 @@
 #include "utils/thread_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<typename Key, typename Hash = std::hash<Key>, typename Equal = std::equal_to<Key>>
 class ref_counter : public util::noncopyable { // noncopyable because shared_ptr refs hold reference to internal map keys
@@ -41,27 +41,27 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   typedef std::shared_ptr<const Key> ref_t;
 
   struct equal_to : Equal {
-    bool operator()(const ref_t& lhs, const ref_t& rhs) const NOEXCEPT {
+    bool operator()(const ref_t& lhs, const ref_t& rhs) const noexcept {
       assert(lhs && rhs);
       return Equal::operator()(*lhs, *rhs);
     }
   }; // equal_to
 
   struct hash : Hash {
-    size_t operator()(const ref_t& value) const NOEXCEPT {
+    size_t operator()(const ref_t& value) const noexcept {
       assert(value);
       return Hash::operator()(*value);
     }
   }; // hash
 
   ref_t add(Key&& key) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     auto res = refs_.emplace(ref_t(), &key);
 
     if (res.second) {
       try {
-        const_cast<ref_t&>(*res.first) = std::make_shared<const Key>(std::forward<Key>(key));
+        const_cast<ref_t&>(*res.first) = memory::make_shared<const Key>(std::forward<Key>(key));
       } catch (...) {
         // rollback
         refs_.erase(res.first);
@@ -75,34 +75,34 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   bool remove(const Key& key) {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.erase(ref) > 0;
   }
 
-  bool contains(const Key& key) const NOEXCEPT {
+  bool contains(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     return refs_.find(ref) != refs_.end();
   }
 
-  size_t find(const Key& key) const NOEXCEPT {
+  size_t find(const Key& key) const noexcept {
     const ref_t ref(ref_t(), &key); // aliasing ctor
 
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
     auto itr = refs_.find(ref);
 
     return itr == refs_.end() ? 0 : (itr->use_count() - 1); // -1 for usage by refs_ itself
   }
 
-  bool empty() const NOEXCEPT {
-    SCOPED_LOCK(lock_);
+  bool empty() const noexcept {
+    auto lock = make_lock_guard(lock_);
     return refs_.empty();
   }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor, bool remove_unused = false) {
-    SCOPED_LOCK(lock_);
+    auto lock = make_lock_guard(lock_);
 
     for (auto itr = refs_.begin(), end = refs_.end(); itr != end;) {
       auto& ref = *itr;
@@ -129,6 +129,6 @@ class ref_counter : public util::noncopyable { // noncopyable because shared_ptr
   std::unordered_set<ref_t, hash, equal_to> refs_;
 }; // ref_counter
 
-NS_END
+}
 
 #endif

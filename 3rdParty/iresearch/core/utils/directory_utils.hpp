@@ -30,13 +30,13 @@
 #include "store/directory.hpp"
 #include "store/directory_cleaner.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 class format;
 class index_meta;
 struct segment_meta;
 
-NS_BEGIN(directory_utils)
+namespace directory_utils {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           memory_allocator utils
@@ -98,7 +98,7 @@ IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segmen
   const directory& dir, const format& codec
 );
 
-NS_END
+}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class tracking_directory
@@ -111,59 +111,59 @@ struct IRESEARCH_API tracking_directory final : public directory {
   explicit tracking_directory(
     directory& impl,
     bool track_open = false
-  ) NOEXCEPT;
+  ) noexcept;
 
-  directory& operator*() NOEXCEPT {
+  directory& operator*() noexcept {
     return impl_;
   }
 
   using directory::attributes;
-  virtual attribute_store& attributes() NOEXCEPT override {
+  virtual attribute_store& attributes() noexcept override {
     return impl_.attributes();
   }
 
-  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+  virtual index_output::ptr create(const std::string& name) noexcept override;
 
-  void clear_tracked() NOEXCEPT;
+  void clear_tracked() noexcept;
 
   virtual bool exists(
       bool& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.exists(result, name);
   }
 
-  void flush_tracked(file_set& other) NOEXCEPT;
+  void flush_tracked(file_set& other) noexcept;
 
   virtual bool length(
       uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual index_lock::ptr make_lock(
       const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
       std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT override;
+  ) noexcept override;
 
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -185,56 +185,57 @@ struct IRESEARCH_API tracking_directory final : public directory {
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API ref_tracking_directory: public directory {
  public:
-  DECLARE_UNIQUE_PTR(ref_tracking_directory);
+  using ptr = std::unique_ptr<ref_tracking_directory>;
+
   // @param track_open - track file refs for calls to open(...)
   explicit ref_tracking_directory(directory& impl, bool track_open = false);
-  ref_tracking_directory(ref_tracking_directory&& other) NOEXCEPT;
+  ref_tracking_directory(ref_tracking_directory&& other) noexcept;
 
-  directory& operator*() NOEXCEPT {
+  directory& operator*() noexcept {
     return impl_;
   }
 
   using directory::attributes;
-  virtual attribute_store& attributes() NOEXCEPT override {
+  virtual attribute_store& attributes() noexcept override {
     return impl_.attributes();
   }
 
-  void clear_refs() const NOEXCEPT;
+  void clear_refs() const noexcept;
 
-  virtual index_output::ptr create(const std::string &name) NOEXCEPT override;
+  virtual index_output::ptr create(const std::string &name) noexcept override;
 
   virtual bool exists(
       bool& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
       uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.length(result, name);
   }
 
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override {
+  virtual index_lock::ptr make_lock(const std::string& name) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
       std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool remove(const std::string& name) noexcept override;
 
-  virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override;
+  virtual bool rename(const std::string& src, const std::string& dst) noexcept override;
 
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -260,6 +261,6 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // ref_tracking_directory
 
-NS_END
+}
 
 #endif

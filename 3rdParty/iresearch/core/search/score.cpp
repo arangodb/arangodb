@@ -18,36 +18,117 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "score.hpp"
+#include "shared.hpp"
 
-NS_LOCAL
+namespace {
 
-const irs::score EMPTY_SCORE;
+using namespace irs;
 
-NS_END
+const score EMPTY_SCORE;
 
-NS_ROOT
+const byte_type* default_score(score_ctx* ctx) noexcept {
+  return reinterpret_cast<byte_type*>(ctx);
+}
+
+}
+
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                            score
 // ----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::score)
-
-/*static*/ const irs::score& score::no_score() NOEXCEPT {
+/*static*/ const irs::score& score::no_score() noexcept {
   return EMPTY_SCORE;
 }
 
-score::score() NOEXCEPT
-  : func_([](const void*, byte_type*){}) {
+score::score() noexcept
+  : func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
 }
 
-NS_END // ROOT
+score::score(const order::prepared& ord)
+  : buf_(ord.score_size(), 0),
+    func_(reinterpret_cast<score_ctx*>(data()), &::default_score) {
+}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+bool score::is_default() const noexcept {
+  return reinterpret_cast<score_ctx*>(data()) == func_.ctx()
+    && func_.func() == &::default_score;
+}
+
+void score::reset() noexcept {
+  func_.reset(reinterpret_cast<score_ctx*>(data()),
+              &::default_score);
+}
+
+void reset(irs::score& score, order::prepared::scorers&& scorers) {
+  switch (scorers.size()) {
+    case 0: {
+      score.reset();
+    } break;
+    case 1: {
+      auto& scorer = scorers.front();
+      if (!scorer.bucket->score_offset) {
+        score.reset(std::move(scorer.func));
+      } else {
+        struct ctx : score_ctx {
+          explicit ctx(order::prepared::scorers::scorer&& scorer,
+                       const byte_type* score_buf) noexcept
+            : scorer(std::move(scorer)),
+              score_buf(score_buf) {
+          }
+
+          order::prepared::scorers::scorer scorer;
+          const byte_type* score_buf;
+        };
+
+        score.reset(
+          memory::make_unique<ctx>(std::move(scorer), scorers.score_buf()),
+          [](score_ctx* ctx) {
+            auto& state = *static_cast<struct ctx*>(ctx);
+            state.scorer.func();
+            return state.score_buf;
+        });
+      }
+    } break;
+    case 2: {
+      struct ctx : score_ctx {
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
+
+        order::prepared::scorers scorers;
+      };
+
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          scorers.front().func();
+          scorers.back().func();
+          return scorers.score_buf();
+      });
+    } break;
+    default: {
+      struct ctx : score_ctx {
+        explicit ctx(order::prepared::scorers&& scorers) noexcept
+          : scorers(std::move(scorers)) {
+        }
+
+        order::prepared::scorers scorers;
+      };
+
+      score.reset(
+        memory::make_unique<ctx>(std::move(scorers)),
+        [](score_ctx* ctx) {
+          auto& scorers = static_cast<struct ctx*>(ctx)->scorers;
+          return scorers.evaluate();
+      });
+    } break;
+  }
+}
+
+} // ROOT

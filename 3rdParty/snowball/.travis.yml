@@ -1,52 +1,85 @@
-language: c
-sudo: required
+language: minimal
 dist: trusty
 matrix:
   include:
-    - compiler: clang
-      env: c_tests=y cc_append=' -std=c90' PYTHON=pypy JAVA=java JAVAC=javac NPM=npm
-    - compiler: gcc
+    - language: c
+      compiler: gcc
+      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
+    - language: c
+      compiler: clang
+      env: c_tests=y cc_append=' -std=c90 -Wdeclaration-after-statement -Werror'
+    - language: java
+      env: JAVA=java JAVAC=javac
+    - language: go
+      go: "1.8"
+      env: GO=go
+    - language: go
+      dist: bionic
+      go: "1.12"
+      env: GO=go
+    - language: node_js
+      node_js: "node"
+      env: NODE=node
+    - language: rust
+      rust:
+        - stable
+        - beta
+      dist: bionic
       env: RUST=rust
-    - compiler: gcc
-      env: GO=go GOROOT=$HOME/goroot PATH=$PATH:$GOROOT/bin
-    - compiler: gcc
-      env: c_tests=y cc_append=' -std=c90' PYTHON=python3.5 THIN_FACTOR=10
-    - compiler: gcc
-      env: PYTHON=python3.3 THIN_FACTOR=10
-    - compiler: gcc
-      env: PYTHON=python2.7 THIN_FACTOR=10
-    - compiler: gcc
-      env: PYTHON=python2.6 THIN_FACTOR=10
-# Try to check out a branch of the same name from the snowball-data repo
-# sibling of this snowball repo, so that PRs requiring changes to both can be
-# CI tested easily.
-#
-# If that fails, just clone the standard snowball-data repo with the same
-# branch name, falling back to the default branch.
-#
-# Also, install rust using rustup.rs
+    - language: csharp
+      env: MCS=mcs
+    - name: Pascal
+      env: FPC=fpc
+      dist: bionic
+      addons:
+        apt:
+          packages:
+            - fpc
+    # The pure Python versions run slowly so we need to thin the testdata
+    # for languages such as Arabic where there's a lot, or else the build
+    # hits the travis time limit.  With pypy, it's enough faster than we
+    # can run the full tests.
+    - language: python
+      python: "3.7"
+      env: PYTHON=python THIN_FACTOR=10
+      dist: xenial
+    - language: python
+      python: "3.6"
+      env: PYTHON=python THIN_FACTOR=10
+    - language: python
+      python: "3.4"
+      env: PYTHON=python THIN_FACTOR=10
+    - language: python
+      python: "2.7"
+      env: PYTHON=python THIN_FACTOR=10
+    - language: python
+      python: "2.6"
+      env: PYTHON=python THIN_FACTOR=10
+    - language: python
+      python: "pypy"
+      env: PYTHON=python
+    - language: python
+      python: "pypy3.5"
+      env: PYTHON=python
 before_install:
-  - test -z "$RUST" || curl https://sh.rustup.rs -sSf -o rustup.sh
-  - test -z "$RUST" || chmod ugo+x rustup.sh
-  - test -z "$RUST" || ./rustup.sh -y
-  - test -z "$RUST" || source "$HOME/.cargo/env"
-  - test -z "$RUST" || rm rustup.sh
-  # install go into $HOME/goroot
-  - test -z "$GO" || curl -sLO https://storage.googleapis.com/golang/go1.8.1.linux-amd64.tar.gz
-  - test -z "$GO" || tar -C $HOME -xzf go1.8.1.linux-amd64.tar.gz
-  - test -z "$GO" || rm go1.8.1.linux-amd64.tar.gz
-  - test -z "$GO" || mv $HOME/go $HOME/goroot
-  # now create gopath that points to this repo
-  - test -z "$GO" || mkdir -p $HOME/gopath/src/github.com/
-  - test -z "$GO" || ln -s $HOME/build/snowballstem $HOME/gopath/src/github.com/snowballstem
-  - git clone --depth=1 -b "$TRAVIS_BRANCH" https://github.com:"${TRAVIS_REPO_SLUG%%/*}"/snowball-data.git || git clone --depth=1 -b "$TRAVIS_BRANCH" https://github.com/snowballstem/snowball-data.git || git clone --depth=1 https://github.com/snowballstem/snowball-data.git
+  # Try to check out a branch of the same name from the snowball-data repo
+  # sibling of this snowball repo, so that PRs requiring changes to both can be
+  # CI tested easily.
+  #
+  # If that fails, just use the standard snowball-data repo's default branch.
+  - GH_BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}
+  - GH_REPO_SLUG=${TRAVIS_PULL_REQUEST_SLUG:-$TRAVIS_REPO_SLUG}
+  - GH_REPO_URL=https://github.com/${GH_REPO_SLUG%%/*}/snowball-data.git
+  - echo "Trying branch $GH_BRANCH from $GH_REPO_URL"
+  - git clone --depth=1 -b "$GH_BRANCH" "$GH_REPO_URL" || git clone --depth=1 https://github.com/snowballstem/snowball-data.git
 script:
-  - make CC="$CC$cc_append"
-  - test -z "$c_tests" || make check CC="$CC$cc_append" STEMMING_DATA=snowball-data
+  - make CC="${CC:-gcc}$cc_append"
+  - test -z "$c_tests" || make check CC="${CC:-gcc}$cc_append" STEMMING_DATA=snowball-data
   - test -z "$PYTHON" || make check_python python="$PYTHON" STEMMING_DATA=snowball-data
   - test -z "$JAVA" -o -z "$JAVAC" || make check_java STEMMING_DATA=snowball-data
-  - test -z "$NPM" || "$NPM" install -g jsx
-  - test -z "$NPM" || make check_jsx STEMMING_DATA=snowball-data
+  - test -z "$MCS" || make check_csharp MCS="$MCS" STEMMING_DATA=snowball-data
+  - test -z "$NODE" || make check_js STEMMING_DATA=snowball-data
   - test -z "$RUST" || make check_rust STEMMING_DATA=snowball-data
   - test -z "$RUST" || make check_rust cargoflags=--release STEMMING_DATA=snowball-data
   - test -z "$GO" || make check_go STEMMING_DATA=snowball-data
+  - test -z "$FPC" || make check_pascal STEMMING_DATA=snowball-data

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 
 #include "SmartContext.h"
 
+#include "Basics/Exceptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -35,32 +37,32 @@ namespace arangodb {
 namespace transaction {
   
 SmartContext::SmartContext(TRI_vocbase_t& vocbase,
-                           TRI_voc_tid_t globalId,
-                           TransactionState* state)
-  : Context(vocbase), _globalId(globalId), _state(state) {
-  TRI_ASSERT(_globalId != 0);
+                           TransactionId globalId,
+                           std::shared_ptr<TransactionState> state)
+  : Context(vocbase), _globalId(globalId), _state(std::move(state)) {
+  TRI_ASSERT(_globalId.isSet());
 }
   
 SmartContext::~SmartContext() {
-  if (_state) {
-    if (_state->isTopLevelTransaction()) {
-      TRI_ASSERT(false); // probably should not happen
-      delete _state;
-    }
-  }
+//  if (_state) {
+//    if (_state->isTopLevelTransaction()) {
+//      std::this_thread::sleep_for(std::chrono::seconds(60));
+//      TRI_ASSERT(false); // probably should not happen
+//      delete _state;
+//    }
+//  }
 }
-  
+
 /// @brief order a custom type handler for the collection
-std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::SmartContext::orderCustomTypeHandler() {
+arangodb::velocypack::CustomTypeHandler* transaction::SmartContext::orderCustomTypeHandler() {
   if (_customTypeHandler == nullptr) {
-    _customTypeHandler.reset(
-        transaction::Context::createCustomTypeHandler(_vocbase, resolver()));
+    _customTypeHandler =
+        transaction::Context::createCustomTypeHandler(_vocbase, resolver());
     _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
   }
 
   TRI_ASSERT(_customTypeHandler != nullptr);
-  return _customTypeHandler;
+  return _customTypeHandler.get();
 }
 
 /// @brief return the resolver
@@ -72,54 +74,68 @@ CollectionNameResolver const& transaction::SmartContext::resolver() {
   return *_resolver;
 }
 
-TRI_voc_tid_t transaction::SmartContext::generateId() const {
+TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }
   
 //  ============= ManagedContext =============
   
-ManagedContext::ManagedContext(TRI_voc_tid_t globalId,
-                               TransactionState* state,
-                               AccessMode::Type mode)
-  : SmartContext(state->vocbase(), globalId, state), _mode(mode) {}
+ManagedContext::ManagedContext(TransactionId globalId,
+                               std::shared_ptr<TransactionState> state,
+                               bool responsibleForCommit, bool cloned)
+  : SmartContext(state->vocbase(), globalId, state),
+    _responsibleForCommit(responsibleForCommit), _cloned(cloned) {}
   
 ManagedContext::~ManagedContext() {
-  if (_state != nullptr) {
+  if (_state != nullptr && !_cloned) {
+    TRI_ASSERT(!_responsibleForCommit);
+    
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->returnManagedTrx(_globalId, _mode);
+    mgr->returnManagedTrx(_globalId);
     _state = nullptr;
   }
 }
 
-/// @brief get parent transaction (if any)
-TransactionState* ManagedContext::getParentTransaction() const {
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> transaction::ManagedContext::acquireState(transaction::Options const& options,
+                                                                                        bool& responsibleForCommit) {
   TRI_ASSERT(_state);
   // single document transaction should never be leased out
   TRI_ASSERT(!_state->hasHint(Hints::Hint::SINGLE_OPERATION));
+  responsibleForCommit = _responsibleForCommit;
   return _state;
 }
   
 void ManagedContext::unregisterTransaction() noexcept {
-  _state = nullptr; // delete is handled by transaction::Methods
+  TRI_ASSERT(_responsibleForCommit);
+  _state = nullptr;
 }
 
-// ============= AQLStandaloneContext =============
-  
-/// @brief get parent transaction (if any)
-TransactionState* AQLStandaloneContext::getParentTransaction() const {
-  return _state;
+std::shared_ptr<transaction::Context> ManagedContext::clone() const {
+  // cloned transactions may never be responsible for commits
+  auto clone = std::make_shared<transaction::ManagedContext>(_globalId, _state,
+                                                             /*responsibleForCommit*/false, /*cloned*/true);
+  clone->_state = _state;
+  return clone;
 }
-    
-/// @brief register the transaction,
-void AQLStandaloneContext::registerTransaction(TransactionState* state) {
-  TRI_ASSERT(_state == nullptr);
-  _state = state;
-  if (state) {
+  
+// ============= AQLStandaloneContext =============
+
+/// @brief get transaction state, determine commit responsiblity
+/*virtual*/ std::shared_ptr<TransactionState> transaction::AQLStandaloneContext::acquireState(transaction::Options const& options,
+                                                                                              bool& responsibleForCommit) {
+  if (!_state) {
+    responsibleForCommit = true;
+    _state = transaction::Context::createState(options);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->registerAQLTrx(state);
+    mgr->registerAQLTrx(_state);
+  } else {
+    responsibleForCommit = false;
   }
+
+  return _state;
 }
 
 /// @brief unregister the transaction
@@ -130,28 +146,11 @@ void AQLStandaloneContext::unregisterTransaction() noexcept {
   TRI_ASSERT(mgr != nullptr);
   mgr->unregisterAQLTrx(_globalId);
 }
-  
-// ============= StandaloneSmartContext =============
-  
-  
-StandaloneSmartContext::StandaloneSmartContext(TRI_vocbase_t& vocbase)
-  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
-  
-/// @brief get parent transaction (if any)
-TransactionState* StandaloneSmartContext::getParentTransaction() const {
-  return _state;
-}
 
-/// @brief register the transaction,
-void StandaloneSmartContext::registerTransaction(TransactionState* state) {
-  TRI_ASSERT(_state == nullptr);
-  _state = state;
-}
-
-/// @brief unregister the transaction
-void StandaloneSmartContext::unregisterTransaction() noexcept {
-  TRI_ASSERT(_state != nullptr);
-  _state = nullptr;
+std::shared_ptr<transaction::Context> AQLStandaloneContext::clone() const {
+  auto clone = std::make_shared<transaction::AQLStandaloneContext>(_vocbase, _globalId);
+  clone->_state = _state;
+  return clone;
 }
 
 }  // namespace transaction

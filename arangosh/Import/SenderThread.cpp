@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -125,7 +126,7 @@ void SenderThread::run() {
         TRI_ASSERT(!_idle && !_url.empty());
 
         {
-          QuickHistogramTimer timer(_stats->_histogram);
+          QuickHistogramTimer timer(_stats->_histogram, (_highLineNumber - _lowLineNumber) +1);
           std::unique_ptr<httpclient::SimpleHttpResult> result(
               _client->request(rest::RequestType::POST, _url, _data.c_str(),
                                _data.length()));
@@ -211,7 +212,6 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
       VPackSlice const errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
         _errorMessage = errorMessage.copyString();
-
       }
 
       // will trigger the waiting ImportHelper thread to cancel the import

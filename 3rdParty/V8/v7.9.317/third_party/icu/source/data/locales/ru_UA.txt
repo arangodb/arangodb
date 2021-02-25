@@ -1,0 +1,30 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ru_UA{
+    NumberElements{
+        minimumGroupingDigits{"2"}
+    }
+    Version{"2.1.47.71"}
+    calendar{
+        gregorian{
+            availableFormats{
+                GyMMM{"LLL y 'г'. G"}
+                yMEd{"ccc, d.MM.y"}
+            }
+            intervalFormats{
+                yMMM{
+                    y{"LLL y – LLL y"}
+                }
+                yMMMEd{
+                    y{"ccc, d MMM y – ccc, d MMM y"}
+                }
+                yMMMM{
+                    y{"LLLL y – LLLL y"}
+                }
+                yMMMd{
+                    y{"d MMM y – d MMM y"}
+                }
+            }
+        }
+    }
+}

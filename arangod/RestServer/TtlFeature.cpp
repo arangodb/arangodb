@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,7 +44,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -59,7 +60,7 @@ using namespace arangodb::options;
         
 namespace {
 // the AQL query to remove documents
-std::string const removeQuery("FOR doc IN @@collection FILTER doc.@indexAttribute >= 0 && doc.@indexAttribute <= @stamp SORT doc.@indexAttribute LIMIT @limit REMOVE doc IN @@collection OPTIONS { ignoreErrors: true }");
+std::string const removeQuery("/*ttl cleanup*/ FOR doc IN @@collection OPTIONS { forceIndexHint: true, indexHint: @indexHint } FILTER doc.@indexAttribute >= 0 && doc.@indexAttribute <= @stamp SORT doc.@indexAttribute LIMIT @limit REMOVE doc IN @@collection OPTIONS { ignoreErrors: true }");
 }
 
 namespace arangodb {
@@ -94,7 +95,8 @@ void TtlProperties::toVelocyPack(VPackBuilder& builder, bool isActive) const {
   builder.add("frequency", VPackValue(frequency)); 
   builder.add("maxTotalRemoves", VPackValue(maxTotalRemoves));
   builder.add("maxCollectionRemoves", VPackValue(maxCollectionRemoves));
-  builder.add("onlyLoadedCollections", VPackValue(onlyLoadedCollections));
+  // this attribute is hard-coded to false since v3.8, and will be removed later
+  builder.add("onlyLoadedCollections", VPackValue(false));
   builder.add("active", VPackValue(isActive));
   builder.close();
 }
@@ -108,7 +110,6 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
     uint64_t frequency = this->frequency;
     uint64_t maxTotalRemoves = this->maxTotalRemoves;
     uint64_t maxCollectionRemoves = this->maxCollectionRemoves;
-    uint64_t onlyLoadedCollections = this->onlyLoadedCollections;
 
     if (slice.hasKey("frequency")) {
       if (!slice.get("frequency").isNumber()) {
@@ -131,17 +132,10 @@ Result TtlProperties::fromVelocyPack(VPackSlice const& slice) {
       }
       maxCollectionRemoves = slice.get("maxCollectionRemoves").getNumericValue<uint64_t>();
     }
-    if (slice.hasKey("onlyLoadedCollections")) {
-      if (!slice.get("onlyLoadedCollections").isBool()) {
-        return Result(TRI_ERROR_BAD_PARAMETER, "expecting boolean value for onlyLoadedCollections");
-      }
-      onlyLoadedCollections = slice.get("onlyLoadedCollections").getBool();
-    }
 
     this->frequency = frequency;
     this->maxTotalRemoves = maxTotalRemoves;
     this->maxCollectionRemoves = maxCollectionRemoves;
-    this->onlyLoadedCollections = onlyLoadedCollections;
 
     return Result();
   } catch (arangodb::basics::Exception const& ex) {
@@ -247,9 +241,6 @@ class TtlThread final : public Thread {
 
     stats.runs++;
 
-    auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-    auto queryRegistry = queryRegistryFeature.queryRegistry();
-
     double const stamp = TRI_microtime();
     uint64_t limitLeft = properties.maxTotalRemoves; 
     
@@ -282,14 +273,6 @@ class TtlThread final : public Thread {
           return;
         }
 
-        if (properties.onlyLoadedCollections &&
-            collection->status() != TRI_VOC_COL_STATUS_LOADED) {
-          // we only care about collections that are already loaded here.
-          // otherwise our check may load them all into memory, and sure this is
-          // something we want to avoid here
-          continue;
-        }
-        
         if (ServerState::instance()->isDBServer() &&
             !collection->followers()->getLeader().empty()) {
           // we are a follower for this shard. do not remove any data here, but
@@ -319,6 +302,7 @@ class TtlThread final : public Thread {
 
           auto bindVars = std::make_shared<VPackBuilder>();
           bindVars->openObject();
+          bindVars->add("indexHint", VPackValue(index->name()));
           bindVars->add("@collection", VPackValue(collection->name()));
           bindVars->add(VPackValue("indexAttribute"));
           bindVars->openArray();
@@ -330,8 +314,10 @@ class TtlThread final : public Thread {
           bindVars->add("limit", VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
-          aql::Query query(false, *vocbase, aql::QueryString(::removeQuery), bindVars, nullptr, arangodb::aql::PART_MAIN);
-          aql::QueryResult queryResult = query.executeSync(queryRegistry);
+          aql::Query query(transaction::StandaloneContext::Create(*vocbase),
+                           aql::QueryString(::removeQuery), bindVars);
+          query.collections().add(collection->name(), AccessMode::Type::WRITE, aql::Collection::Hint::Shard);
+          aql::QueryResult queryResult = query.executeSync();
 
           if (queryResult.result.fail()) {
             // we can probably live with an error here...
@@ -427,8 +413,8 @@ void TtlFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("ttl.max-collection-removes", "maximum number of documents to remove per collection",
                      new UInt64Parameter(&_properties.maxCollectionRemoves));
 
-  options->addOption("ttl.only-loaded-collection", "only consider already loaded collections for removal",
-                     new BooleanParameter(&_properties.onlyLoadedCollections));
+  // the following option was obsoleted in 3.8
+  options->addObsoleteOption("ttl.only-loaded-collection", "only consider already loaded collections for removal", false);
 }
 
 void TtlFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {

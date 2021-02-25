@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_NUMERIC_UTILS_H
@@ -26,7 +25,7 @@
 
 #include "utils/string.hpp"
 
-NS_LOCAL
+namespace {
 
 // MSVC < v14.0 (Visual Studio >2015) does not support explicit initializer for arrays: error C2536
 // GCC < v4.9 does not initialize the union array member with the specified value (initializes with {0,0})
@@ -40,7 +39,7 @@ NS_LOCAL
   union big_endian_check {
     char raw[2]{ '\0', '\xff' };
     uint16_t num; // big endian: num < 0x100
-    CONSTEXPR operator bool() const { return num < 0x100; }
+    constexpr operator bool() const { return num < 0x100; }
   };
 #endif
 
@@ -59,10 +58,10 @@ struct equal_size_type<unsigned long, 4> { typedef uint32_t type; };
 template<>
 struct equal_size_type<unsigned long, 8> { typedef uint64_t type; };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(numeric_utils)
+namespace iresearch {
+namespace numeric_utils {
 
 
 #if defined(__APPLE__) \
@@ -70,9 +69,9 @@ NS_BEGIN(numeric_utils)
     || (defined(_MSC_VER) && (_MSC_VER >= 1900)) \
     || (defined(__GNUC__) && (__GNUC__ >= 5)) \
     || (defined(__GNUC__) && (__GNUC__ == 4) && (__GNUC_MINOR__ >= 9))
-  inline CONSTEXPR bool is_big_endian() { return big_endian_check(); }
+  inline constexpr bool is_big_endian() { return big_endian_check(); }
 #else
-  inline CONSTEXPR bool is_big_endian() { return *(uint16_t*)"\0\xff" < 0x100; }
+  inline constexpr bool is_big_endian() { return *(uint16_t*)"\0\xff" < 0x100; }
 #endif
 
 IRESEARCH_API const bytes_ref& mini64();
@@ -122,7 +121,7 @@ struct numeric_traits<int32_t> {
   static const bytes_ref& (min)() { return mini32(); } 
   static const bytes_ref& (max)() { return maxi32(); } 
   inline static integral_t integral(integral_t value) { return value; }
-  CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
+  constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
     return encode32(value, out, offset);
   }
@@ -149,7 +148,7 @@ struct numeric_traits<uint32_t> {
       sizeof(value)
     );
   }
-  CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
+  constexpr static size_t size() { return sizeof(integral_t) + 1; }
 };
 
 template<>
@@ -158,7 +157,7 @@ struct numeric_traits<int64_t> {
   static const bytes_ref& (min)() { return mini64(); } 
   static const bytes_ref& (max)() { return maxi64(); } 
   inline static integral_t integral(integral_t value) { return value; }
-  CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
+  constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
     return encode64(value, out, offset);
   }
@@ -185,7 +184,7 @@ struct numeric_traits<uint64_t> {
       sizeof(value)
     );
   }
-  CONSTEXPR static size_t size() { return sizeof(integral_t) + 1; }
+  constexpr static size_t size() { return sizeof(integral_t) + 1; }
 };
 
 // MacOS 'unsigned long' is a different type from any of the above
@@ -206,7 +205,7 @@ struct numeric_traits<float> {
   static const bytes_ref& inf() { return finf32(); }
   static float_t floating(integral_t value) { return i32tof(value); }
   static integral_t integral(float_t value) { return ftoi32(value); }
-  CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
+  constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
     return encodef32(value, out, offset);
   }
@@ -224,7 +223,7 @@ struct numeric_traits<double> {
   static const bytes_ref& inf() { return dinf64(); }
   static double_t floating(integral_t value) { return i64tod(value); }
   static integral_t integral(double_t value) { return dtoi64(value); }
-  CONSTEXPR static size_t size() { return sizeof(integral_t)+1; }
+  constexpr static size_t size() { return sizeof(integral_t)+1; }
   static size_t encode(integral_t value, byte_type* out, size_t offset = 0) {
     return encoded64(value, out, offset);
   }
@@ -237,7 +236,7 @@ template<>
 struct numeric_traits<long double> {
 }; // numeric_traits
 
-NS_END // numeric_utils
-NS_END // ROOT
+} // numeric_utils
+} // ROOT
 
 #endif // IRESEARCH_NUMERIC_UTILS_H

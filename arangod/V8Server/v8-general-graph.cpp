@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/LogicalCollection.h"
 
-#include <velocypack/HexDump.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -182,7 +181,7 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   GraphManager gmngr{vocbase};
   VPackBuilder result;
-  OperationResult r = gmngr.readGraphs(result, arangodb::aql::PART_DEPENDENT);
+  Result r = gmngr.readGraphs(result);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -190,7 +189,7 @@ static void JS_GetGraphs(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!result.isEmpty()) {
     auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
-    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"), ctx->getVPackOptionsForDump()));
+    TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice().get("graphs"), ctx->getVPackOptions()));
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -205,7 +204,7 @@ static void JS_GetGraphKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   GraphManager gmngr{vocbase};
   VPackBuilder result;
-  OperationResult r = gmngr.readGraphKeys(result, arangodb::aql::PART_DEPENDENT);
+  Result r = gmngr.readGraphKeys(result);
 
   if (r.fail()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
@@ -640,11 +639,11 @@ static void InitV8GeneralGraphClass(v8::Handle<v8::Context> context, TRI_vocbase
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"));
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoGraphCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // TODO WE DO NOT NEED THIS. Update _create to return a graph object properly
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoGraph"), aa);
@@ -688,10 +687,10 @@ static void InitV8SmartGraphClass(v8::Handle<v8::Context> context, TRI_vocbase_t
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "ArangoSmartGraphCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoSmartGraph"), aa);
@@ -735,10 +734,10 @@ static void InitV8GeneralGraphModule(v8::Handle<v8::Context> context, TRI_vocbas
       TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModuleCtor"));
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModuleCtor"),
-      ft->GetFunction(), true);
+      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoGeneralGraphModule"), aa);

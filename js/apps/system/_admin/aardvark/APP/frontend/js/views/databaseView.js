@@ -140,7 +140,7 @@
       } else if (err.status === 400) {
         arangoHelper.arangoError('DB', 'Invalid Parameters: ' + err.responseJSON.errorMessage);
       } else if (err.status === 403) {
-        arangoHelper.arangoError('DB', 'Insufficent rights. Execute this from _system database');
+        arangoHelper.arangoError('DB', 'Insufficient rights. Execute this from _system database');
       }
     },
 
@@ -187,6 +187,9 @@
       var userName = $('#newUser').val();
 
       var sharding = $('#newSharding').val();
+      if (frontendConfig.forceOneShard) {
+        sharding = 'single';
+      }
       var replicationFactor = $('#new-replication-factor').val();
       var writeConcern = $('#new-write-concern').val();
 
@@ -316,6 +319,7 @@
       tableContent.push(
         window.modalView.createReadOnlyEntry('id_name', 'Name', dbName, '')
       );
+      
       if (isDeletable) {
         buttons.push(
           window.modalView.createDeleteButton(
@@ -346,7 +350,7 @@
           self.createAddDatabaseModalReal(data);
         },
         error: function () {
-          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Database defaults.');
+          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB database defaults.');
         }
       });
     },
@@ -405,15 +409,15 @@
         tableContent.push(
           window.modalView.createTextEntry(
             'new-write-concern',
-            'Minimum replication factor',
+            'Write concern',
             dbDefaultProperties.writeConcern,
-            'Numeric value. Must be at least 1 and must be smaller or equal compared to the replication factor. Minimal number of copies of the data in the cluster to be in sync in order to allow writes.',
-            'Default minimum replication factor',
+            'Numeric value. Must be at least 1. Must be smaller or equal compared to the replication factor. Total number of copies of the data in the cluster that are required for each write operation. If we get below this value the collection will be read-only until enough copies are created.',
+            'Default write concern',
             false,
             [
               {
-                rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
-                msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
+                rule: Joi.string().allow('').optional().regex(/^([1-9]|10)$/),
+                msg: 'Must be a number between 1 and 10. Has to be smaller or equal compared to the replicationFactor.'
               }
             ]
           )
@@ -422,12 +426,12 @@
 
       // OneShard
       //if enterprise
-      if (window.App.isCluster && frontendConfig.isEnterprise) {
+      if (window.App.isCluster && frontendConfig.isEnterprise && !frontendConfig.forceOneShard) {
         var sharding = [ { value : "",
-                           label : "flexible"
+                           label : "Sharded"
                          },
                          { value : "single",
-                           label : "single"
+                           label : "OneShard"
                          }
                        ];
 
@@ -436,7 +440,7 @@
             'newSharding',
             'Sharding',
             'flexible',
-            'some nice description TODO',
+            'Selects the default sharding setup for new collections in this database.\n*Sharded* means that collections can have any number of shards, and that shards will be randomly distributed to database servers.\n*OneShard* means that all collections in the database will have only have a single but are all distributed to the same database server. This enables performance optimizations, e.g. pushing down entire queries to database servers. Use *OneShard* when it is known that the dataset fits on a single instance, and *Sharded* for larger datasets.',
             sharding
           )
         );

@@ -1309,9 +1309,6 @@ function optimizerIndexesMultiTestSuite () {
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
         assertEqual("CalculationNode", plan.nodes[2].type, query);
-        if (db._engine().name !== "rocksdb") {
-          assertEqual("SortNode", plan.nodes[3].type, query);
-        }
         
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
@@ -1369,9 +1366,7 @@ function optimizerIndexesMultiTestSuite () {
         // Furthermore, we check the type of expression in the CalcNode
         // and the number of subnodes:
         assertEqual("CalculationNode", plan.nodes[2].type, query);
-        if (db._engine().name !== "rocksdb") {
-          assertEqual("SortNode", plan.nodes[3].type, query);
-        }
+        
         var results = AQL_EXECUTE(query);
         var correct = makeResult(maker).map(function(x) { return x.a; });
         assertEqual(correct, results.json, query);

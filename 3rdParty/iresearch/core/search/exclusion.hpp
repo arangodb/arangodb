@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_EXCLUSION_H
@@ -27,19 +26,19 @@
 #include "analysis/token_attributes.hpp"
 #include "index/iterators.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
 ////////////////////////////////////////////////////////////////////////////////
 class exclusion final : public doc_iterator {
  public:
-  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) NOEXCEPT
+  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl) noexcept
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);
-    incl_doc_ = incl_->attributes().get<document>().get();
-    excl_doc_ = excl_->attributes().get<document>().get();
+    incl_doc_ = irs::get<document>(*incl_);
+    excl_doc_ = irs::get<document>(*excl_);
     assert(incl_doc_);
     assert(excl_doc_);
   }
@@ -68,8 +67,8 @@ class exclusion final : public doc_iterator {
     return next(target);
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return incl_->attributes();
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override {
+    return incl_->get_mutable(type);
   }
 
  private:
@@ -103,6 +102,6 @@ class exclusion final : public doc_iterator {
   const document* excl_doc_;
 }; // exclusion
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_EXCLUSION_H

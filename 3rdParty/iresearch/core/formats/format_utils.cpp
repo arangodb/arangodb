@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -28,9 +27,9 @@
 
 #include "formats/formats.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-void validate_footer(iresearch::index_input& in) {
+void validate_footer(index_input& in) {
   const int64_t remain = in.length() - in.file_pointer();
 
   if (remain != format_utils::FOOTER_LEN) {
@@ -59,7 +58,7 @@ void validate_footer(iresearch::index_input& in) {
   }
 }
 
-NS_BEGIN(format_utils)
+namespace format_utils {
 
 void write_header(index_output& out, const string_ref& format, int32_t ver) {
   out.write_int(FORMAT_MAGIC);
@@ -128,6 +127,6 @@ int64_t checksum(const index_input& in) {
   return stream->checksum(stream->length() - sizeof(uint64_t));
 }
 
-NS_END
+}
 
-NS_END
+}

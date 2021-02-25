@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +24,11 @@
 #ifndef ARANGOD_AQL_AQL_TRANSACTION_H
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
+#include "Aql/Collections.h"
 #include "Transaction/Methods.h"
 
-#include <map>
 #include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 namespace velocypack {
@@ -45,45 +46,27 @@ class AqlTransaction : public transaction::Methods {
  public:
   /// @brief create the transaction and add all collections
   /// from the query context
-  static std::shared_ptr<AqlTransaction>
+  static std::unique_ptr<AqlTransaction>
     create(std::shared_ptr<transaction::Context> const& transactionContext,
-                                std::map<std::string, aql::Collection*> const* collections,
-                                transaction::Options const& options, bool isMainTransaction,
-                                std::unordered_set<std::string> inaccessibleCollections =
-                                    std::unordered_set<std::string>());
+           aql::Collections const& collections,
+           transaction::Options const& options,
+           std::unordered_set<std::string> inaccessibleCollections =
+               std::unordered_set<std::string>());
 
   /// @brief end the transaction
   ~AqlTransaction() override = default;
-
-  /// @brief add a list of collections to the transaction
-  Result addCollections(std::map<std::string, aql::Collection*> const& collections);
-
-  /// @brief documentCollection
-  LogicalCollection* documentCollection(TRI_voc_cid_t cid);
-
-  /// @brief lockCollections, this is needed in a corner case in AQL: we need
-  /// to lock all shards in a controlled way when we set up a distributed
-  /// execution engine. To this end, we prevent the standard mechanism to
-  /// lock collections on the DBservers when we instantiate the query. Then,
-  /// in a second round, we need to lock the shards in exactly the right
-  /// order via an HTTP call. This method is used to implement that HTTP action.
-  int lockCollections() override;
-
+  
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
                  transaction::Options const& options);
 
   /// protected so we can create different subclasses
   AqlTransaction(std::shared_ptr<transaction::Context> const& transactionContext,
-                 std::map<std::string, aql::Collection*> const* collections,
-                 transaction::Options const& options, bool isMainTransaction);
-
-  /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*);
+                 aql::Collections const& collections,
+                 transaction::Options const& options);
 
  protected:
-  /// @brief keep a copy of the collections, this is needed for the clone
-  /// operation
-  std::map<std::string, aql::Collection*> _collections;
+  /// @brief add a collection to the transaction
+  Result processCollection(aql::Collection&);
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -38,7 +38,44 @@ save some network traffic.
 @RESTQUERYPARAM{overwrite,boolean,optional}
 If set to *true*, the insert becomes a replace-insert. If a document with the
 same *_key* already exists the new document is not rejected with unique
-constraint violated but will replace the old document.
+constraint violated but will replace the old document. Note that operations
+with `overwrite` parameter require a `_key` attribute in the request payload,
+therefore they can only be performed on collections sharded by `_key`.
+
+@RESTQUERYPARAM{overwriteMode,string,optional}
+This option supersedes *overwrite* and offers the following modes:
+- `"ignore"`: if a document with the specified *_key* value exists already,
+  nothing will be done and no write operation will be carried out. The
+  insert operation will return success in this case. This mode does not
+  support returning the old document version using `RETURN OLD`. When using
+  `RETURN NEW`, *null* will be returned in case the document already existed.
+- `"replace"`: if a document with the specified *_key* value exists already,
+  it will be overwritten with the specified document value. This mode will
+  also be used when no overwrite mode is specified but the *overwrite*
+  flag is set to *true*.
+- `"update"`: if a document with the specified *_key* value exists already,
+  it will be patched (partially updated) with the specified document value.
+  The overwrite mode can be further controlled via the *keepNull* and
+  *mergeObjects* parameters.
+- `"conflict"`: if a document with the specified *_key* value exists already,
+  return a unique constraint violation error so that the insert operation
+  fails. This is also the default behavior in case the overwrite mode is
+  not set, and the *overwrite* flag is *false* or not set either.
+
+@RESTQUERYPARAM{keepNull,boolean,optional}
+If the intention is to delete existing attributes with the update-insert
+command, the URL query parameter *keepNull* can be used with a value of
+*false*. This will modify the behavior of the patch command to remove any
+attributes from the existing document that are contained in the patch document
+with an attribute value of *null*.
+This option controls the update-insert behavior only.
+
+@RESTQUERYPARAM{mergeObjects,boolean,optional}
+Controls whether objects (not arrays) will be merged if present in both the
+existing and the update-insert document. If set to *false*, the value in the
+patch document will overwrite the existing document's value. If set to *true*,
+objects will be merged. The default is *true*.
+This option controls the update-insert behavior only.
 
 @RESTDESCRIPTION
 Creates new documents from the documents given in the body, unless there
@@ -57,7 +94,7 @@ the URL part or the query parameter collection respectively counts.
 If *silent* is not set to *true*, the body of the response contains an
 array of JSON objects with the following attributes:
 
-  - *_id* contains the document handle of the newly created document
+  - *_id* contains the document identifier of the newly created document
   - *_key* contains the document key
   - *_rev* contains the document revision
 

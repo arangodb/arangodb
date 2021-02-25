@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -41,24 +42,50 @@ char const* const Variable::NAME_NEW = "$NEW";
 char const* const Variable::NAME_CURRENT = "$CURRENT";
 
 /// @brief create the variable
-Variable::Variable(std::string const& name, VariableId id)
-    : name(name), value(nullptr), id(id) {}
+Variable::Variable(std::string name, VariableId id, bool isDataFromCollection)
+    : id(id), 
+      name(std::move(name)), 
+      isDataFromCollection(isDataFromCollection) {}
 
 Variable::Variable(arangodb::velocypack::Slice const& slice)
-    : Variable(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-                   slice, "name"),
-               arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
-                                                                                       "id")) {
-}
+    : id(arangodb::basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice, "id")),
+      name(arangodb::basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
+      isDataFromCollection(arangodb::basics::VelocyPackHelper::getBooleanValue(slice, "isDataFromCollection", false)),
+      _constantValue(slice.get("constantValue")) {}
 
 /// @brief destroy the variable
-Variable::~Variable() = default;
+Variable::~Variable() {
+  _constantValue.destroy();
+}
+  
+Variable* Variable::clone() const { 
+  return new Variable(name, id, isDataFromCollection); 
+}
+  
+bool Variable::isUserDefined() const {
+  TRI_ASSERT(!name.empty());
+  char const c = name[0];
+  // variables starting with a number are not user-defined
+  return (c < '0' || c > '9');
+}
+  
+bool Variable::needsRegister() const {
+  TRI_ASSERT(!name.empty());
+  // variables starting with a number are not user-defined
+  return isUserDefined() || name.back() != '_';
+}
 
 /// @brief return a VelocyPack representation of the variable
 void Variable::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder b(&builder);
-  builder.add("id", VPackValue(static_cast<double>(id)));
+  builder.add("id", VPackValue(id));
   builder.add("name", VPackValue(name));
+  builder.add("isDataFromCollection", VPackValue(isDataFromCollection));
+  if (type() == Variable::Type::Const) {
+    builder.add(VPackValue("constantValue"));
+    _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
+                                /*allowUnindexed*/ true);
+  }
 }
 
 /// @brief replace a variable by another
@@ -95,4 +122,16 @@ Variable* Variable::varFromVPack(Ast* ast, arangodb::velocypack::Slice const& ba
 
 bool Variable::isEqualTo(Variable const& other) const {
   return (id == other.id) && (name == other.name);
+}
+
+Variable::Type Variable::type() const noexcept {
+  if (_constantValue.isNone()) {
+    return Variable::Type::Regular;
+  }
+  return Variable::Type::Const;
+}
+
+void Variable::setConstantValue(AqlValue value) noexcept {
+  _constantValue.destroy();
+  _constantValue = value;
 }

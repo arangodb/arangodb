@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,19 +58,15 @@ using namespace arangodb::basics;
 static thread_local uint64_t LOCAL_THREAD_NUMBER = 0;
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
 
-#if !defined(ARANGODB_HAVE_GETTID) && !defined(_WIN32)
-
+#ifndef _WIN32
 namespace {
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
 }
-
 #endif
 
 /// @brief static started with access to the private variables
 void Thread::startThread(void* arg) {
-#if defined(ARANGODB_HAVE_GETTID)
-  LOCAL_THREAD_NUMBER = (uint64_t)gettid();
-#elif defined(_WIN32)
+#ifdef _WIN32
   LOCAL_THREAD_NUMBER = (uint64_t)GetCurrentThreadId();
 #else
   LOCAL_THREAD_NUMBER = NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst);
@@ -104,7 +100,6 @@ void Thread::startThread(void* arg) {
   } catch (std::exception const& ex) {
     LOG_TOPIC("6784f", WARN, Logger::THREADS)
         << "caught exception in thread '" << ptr->_name << "': " << ex.what();
-    ptr->crashNotification(ex);
     throw;
   }
 }
@@ -246,7 +241,7 @@ void Thread::shutdown() {
 }
 
 /// @brief checks if the current thread was asked to stop
-bool Thread::isStopping() const {
+bool Thread::isStopping() const noexcept {
   auto state = _state.load(std::memory_order_relaxed);
 
   return state == ThreadState::STOPPING || state == ThreadState::STOPPED;
@@ -304,7 +299,7 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   return ok;
 }
 
-void Thread::markAsStopped() {
+void Thread::markAsStopped() noexcept {
   // TODO - marked as stopped before accessing finishedCondition?
   _state.store(ThreadState::STOPPED);
 
@@ -325,14 +320,12 @@ void Thread::runMe() {
     if (!isSilent()) {
       LOG_TOPIC("3a30c", ERR, Logger::THREADS)
           << "exception caught in thread '" << _name << "': " << ex.what();
-      Logger::flush();
     }
     throw;
   } catch (...) {
     if (!isSilent()) {
       LOG_TOPIC("83582", ERR, Logger::THREADS)
           << "unknown exception caught in thread '" << _name << "'";
-      Logger::flush();
     }
     throw;
   }

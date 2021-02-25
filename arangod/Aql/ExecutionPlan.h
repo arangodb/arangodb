@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,9 @@
 
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/HashSet.h"
@@ -44,27 +46,33 @@ class Ast;
 struct AstNode;
 class CalculationNode;
 class CollectNode;
+class Collections;
 class ExecutionNode;
 struct OptimizerRule;
-class Query;
+class QueryContext;
 
 class ExecutionPlan {
  public:
   /// @brief create the plan
-  explicit ExecutionPlan(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  explicit ExecutionPlan(Ast* ast, bool trackMemoryUsage);
+  /// @brief whether or not memory usage should be tracked for this plan.
 
   /// @brief destroy the plan, frees all assigned nodes
   ~ExecutionPlan();
 
  public:
   /// @brief create an execution plan from an AST
-  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*);
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  static std::unique_ptr<ExecutionPlan> instantiateFromAst(Ast*, bool trackMemoryUsage);
 
   /// @brief process the list of collections in a VelocyPack
-  static void getCollectionsFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static void getCollectionsFromVelocyPack(aql::Collections&, arangodb::velocypack::Slice const);
 
   /// @brief create an execution plan from VelocyPack
-  static ExecutionPlan* instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
+  static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(Ast* ast, arangodb::velocypack::Slice const);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -74,27 +82,25 @@ class ExecutionPlan {
   /// @brief clone the plan by recursively cloning starting from the root
   ExecutionPlan* clone();
 
-  /// @brief create an execution plan identical to this one
-  ///   keep the memory of the plan on the query object specified.
-  ExecutionPlan* clone(Query const&);
-
   /// @brief export to VelocyPack
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose) const;
+  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(Ast*, bool verbose,
+                                                              ExplainRegisterPlan) const;
 
-  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, Ast*, bool verbose,
+                    ExplainRegisterPlan) const;
 
   /// @brief check if the plan is empty
   inline bool empty() const { return (_root == nullptr); }
 
   /// @brief note that an optimizer rule was applied
-  void addAppliedRule(int level); 
-  
+  void addAppliedRule(int level);
+
   /// @brief check if a specific optimizer rule was applied
   bool hasAppliedRule(int level) const;
-  
+
   /// @brief check if a specific rule is disabled
   bool isDisabledRule(int rule) const;
-  
+
   /// @brief enable a specific rule
   void enableRule(int rule);
 
@@ -102,10 +108,12 @@ class ExecutionPlan {
   void disableRule(int rule);
 
   /// @brief return the next value for a node id
-  inline size_t nextId() { return ++_nextId; }
+  ExecutionNodeId nextId();
 
   /// @brief get a node by its id
-  ExecutionNode* getNodeById(size_t id) const;
+  ExecutionNode* getNodeById(ExecutionNodeId id) const;
+
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> const& getNodesById() const;
 
   /// @brief check if the node is the root node
   inline bool isRoot(ExecutionNode const* node) const { return _root == node; }
@@ -133,16 +141,15 @@ class ExecutionPlan {
   /// @brief get the estimated cost . . .
   CostEstimate getCost() {
     TRI_ASSERT(_root != nullptr);
+    // Costs are only valid if the traversal options are prepared
+    // if they already are this is a noop.
+    prepareTraversalOptions();
     return _root->getCost();
   }
 
   /// @brief this can be called by the optimizer to tell that the
   /// plan is temporarily in an invalid state
   inline void setValidity(bool value) { _planValid = value; }
-
-  /// @brief returns true if a plan is so simple that optimizations would
-  /// probably cost more than simply executing the plan
-  bool isDeadSimple() const;
 
 /// @brief show an overview over the plan
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -173,9 +180,15 @@ class ExecutionPlan {
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
                        ExecutionNode::NodeType, bool enterSubqueries);
 
-  /// @brief find nodes of a certain types
+  /// @brief find nodes of certain types
   void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
-                       std::vector<ExecutionNode::NodeType> const&, bool enterSubqueries);
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
+  /// @brief find unique nodes of certain types
+  void findUniqueNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                             std::initializer_list<ExecutionNode::NodeType> const&,
+                             bool enterSubqueries);
 
   /// @brief find all end nodes in a plan
   void findEndNodes(::arangodb::containers::SmallVector<ExecutionNode*>& result,
@@ -194,7 +207,12 @@ class ExecutionPlan {
   void clearVarUsageComputed() { _varUsageComputed = false; }
 
   /// @brief static analysis
-  void planRegisters() { _root->planRegisters(); }
+  void planRegisters(ExplainRegisterPlan = ExplainRegisterPlan::No);
+
+  /// @brief find all variables that are populated with data from collections
+  void findCollectionAccessVariables();
+
+  void prepareTraversalOptions();
 
   /// @brief unlinkNodes, note that this does not delete the removed
   /// nodes and that one cannot remove the root node of the plan.
@@ -212,7 +230,7 @@ class ExecutionPlan {
   /// fails and throw an exception
   ExecutionNode* registerNode(ExecutionNode*);
 
-  template<typename Node, typename... Args>
+  template <typename Node, typename... Args>
   Node* createNode(Args&&...);
 
   /// @brief add a subquery to the plan, will call registerNode internally
@@ -241,6 +259,11 @@ class ExecutionPlan {
   /// @brief get ast
   inline Ast* getAst() const { return _ast; }
 
+  /// @brief resolves a variable alias, e.g. fn(tmp) -> "a.b" for the following:
+  ///  LET tmp = a.b
+  ///  LET x = tmp
+  AstNode const* resolveVariableAlias(AstNode const* node) const;
+
   /// @brief creates an anonymous calculation node for an arbitrary expression
   ExecutionNode* createTemporaryCalculation(AstNode const*, ExecutionNode*);
 
@@ -251,7 +274,7 @@ class ExecutionPlan {
   ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief whether or not the plan contains at least one node of this type
-  bool contains(ExecutionNode::NodeType type) const;
+  bool contains(ExecutionNode::NodeType) const;
 
   /// @brief increase the node counter for the type
   void increaseCounter(ExecutionNode::NodeType type) noexcept;
@@ -259,6 +282,12 @@ class ExecutionPlan {
   bool fullCount() const noexcept;
 
  private:
+  template <WalkerUniqueness U>
+  /// @brief find nodes of certain types
+  void findNodesOfType(::arangodb::containers::SmallVector<ExecutionNode*>& result,
+                       std::initializer_list<ExecutionNode::NodeType> const&,
+                       bool enterSubqueries);
+
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
 
@@ -307,19 +336,12 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST LET node
   ExecutionNode* fromNodeLet(ExecutionNode*, AstNode const*);
-
+  
   /// @brief create an execution plan element from an AST SORT node
   ExecutionNode* fromNodeSort(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST COLLECT node
   ExecutionNode* fromNodeCollect(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan element from an AST COLLECT node, COUNT
-  ExecutionNode* fromNodeCollectCount(ExecutionNode*, AstNode const*);
-
-  /// @brief create an execution plan element from an AST COLLECT node,
-  /// AGGREGATE
-  ExecutionNode* fromNodeCollectAggregate(ExecutionNode*, AstNode const*);
 
   /// @brief create an execution plan element from an AST LIMIT node
   ExecutionNode* fromNodeLimit(ExecutionNode*, AstNode const*);
@@ -341,13 +363,18 @@ class ExecutionPlan {
 
   /// @brief create an execution plan element from an AST UPSERT node
   ExecutionNode* fromNodeUpsert(ExecutionNode*, AstNode const*);
+  
+  /// @brief create an execution plan element from an AST WINDOW node
+  ExecutionNode* fromNodeWindow(ExecutionNode*, AstNode const*);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);
+  
+  std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous, AstNode const* node);
 
  private:
   /// @brief map from node id to the actual node
-  std::unordered_map<size_t, ExecutionNode*> _ids;
+  std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
   /// @brief root node of the plan
   ExecutionNode* _root;
@@ -357,9 +384,14 @@ class ExecutionPlan {
 
   /// @brief which optimizer rules were applied for a plan
   std::vector<int> _appliedRules;
-  
+
   /// @brief which optimizer rules were disabled for a plan
   ::arangodb::containers::HashSet<int> _disabledRules;
+
+  /// @brief whether or not memory usage should be tracked for this plan.
+  /// note: tracking memory usage requires accessing the Ast/Query objects,
+  /// which can be inherently unsafe when running within the gtest unit tests.
+  bool const _trackMemoryUsage;
 
   /// @brief if the plan is supposed to be in a valid state
   /// this will always be true, except while a plan is handed to
@@ -373,7 +405,7 @@ class ExecutionPlan {
   int _nestingLevel;
 
   /// @brief auto-increment sequence for node ids
-  size_t _nextId;
+  ExecutionNodeId _nextId;
 
   /// @brief the ast
   Ast* _ast;

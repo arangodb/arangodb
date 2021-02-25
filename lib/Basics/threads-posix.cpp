@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,10 +41,7 @@
 #include <mach/mach.h>
 #endif
 
-#ifdef TRI_HAVE_SIGNAL_H
-#include <signal.h>
-#endif
-
+#include "Basics/signals.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -68,9 +65,7 @@ struct thread_data_t {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void* ThreadStarter(void* data) {
-  sigset_t all;
-  sigfillset(&all);
-  pthread_sigmask(SIG_SETMASK, &all, nullptr);
+  arangodb::signals::maskAllSignals();
 
   // this will automatically free the thread struct when leaving this function
   std::unique_ptr<thread_data_t> d(static_cast<thread_data_t*>(data));

@@ -26,47 +26,39 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an analyzer capable of breaking up delimited text into tokens as per
 ///        RFC4180 (without starting new records on newlines)
 ////////////////////////////////////////////////////////////////////////////////
-class delimited_token_stream: public analyzer, util::noncopyable {
+class delimited_token_stream final
+    : public frozen_attributes<4, analyzer>,
+      private util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const string_ref& delimiter);
-
-  delimited_token_stream(const irs::string_ref& delimiter);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
+  static constexpr string_ref type_name() noexcept { return "delimiter"; }
   static void init(); // for trigering registration in a static build
+  static ptr make(const string_ref& delimiter);
+
+  explicit delimited_token_stream(const irs::string_ref& delimiter);
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
  private:
-  class term_attribute final: public irs::term_attribute {
-   public:
-    void value(const irs::bytes_ref& value) { value_ = value; }
-  };
-
-  irs::attribute_view attrs_;
-  irs::bytes_ref data_;
-  irs::bytes_ref delim_;
-  irs::bstring delim_buf_;
-  irs::increment inc_;
-  irs::offset offset_;
-  irs::payload payload_; // raw token value
+  bytes_ref data_;
+  bytes_ref delim_;
+  bstring delim_buf_;
+  increment inc_;
+  offset offset_;
+  payload payload_; // raw token value
   term_attribute term_; // token value with evaluated quotes
-  irs::bstring term_buf_; // buffer for the last evaluated term
+  bstring term_buf_; // buffer for the last evaluated term
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

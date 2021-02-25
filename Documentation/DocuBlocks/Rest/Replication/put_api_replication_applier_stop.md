@@ -4,6 +4,13 @@
 
 @RESTHEADER{PUT /_api/replication/applier-stop, Stop replication applier,handleCommandApplierStop}
 
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, stops the global replication applier for all
+databases. If set to *false*, stops the replication applier in the
+selected database.
+
 @RESTDESCRIPTION
 Stops the replication applier. This will return immediately if the
 replication applier is not running.

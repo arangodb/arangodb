@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,13 +29,12 @@
 
 #include <thread>
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to let CPU relax inside spinlock.
 ////////////////////////////////////////////////////////////////////////////////
-inline void cpu_relax() {
+inline void cpu_relax() noexcept {
 // TODO use <boost/fiber/detail/cpu_relax.hpp> when available (>1.65.0?)
 #if defined(__i386) || defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
 #if defined _WIN32
@@ -49,7 +48,6 @@ inline void cpu_relax() {
 #endif
 }
 
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics
 
 #endif

@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -52,14 +53,12 @@ TEST(ContainersTest, testResourceMutex) {
     Value value(&i);
     std::condition_variable cond;
     std::mutex cond_mutex;
-    SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
-    auto mutex = value.mutex();
-    SCOPED_LOCK(mutex);  // read lock
+    auto cond_lock = irs::make_unique_lock(cond_mutex);
+    auto lock = irs::make_lock_guard(value.mutex());  // read lock
 
     std::thread thread([&value, &cond, &cond_mutex]() -> void {
-      SCOPED_LOCK(cond_mutex);
-      auto mutex = value.mutex();
-      SCOPED_LOCK(mutex);
+      auto condLock = irs::make_lock_guard(cond_mutex);
+      auto mutexLlock = irs::make_lock_guard(value.mutex());
       cond.notify_all();
     });
     auto result = cond.wait_for(cond_lock, std::chrono::milliseconds(1000));  // assume thread finishes in 1000ms
@@ -74,23 +73,20 @@ TEST(ContainersTest, testResourceMutex) {
     Value value(&i);
     std::condition_variable cond;
     std::mutex cond_mutex;
-    SCOPED_LOCK_NAMED(value.mutex(), lock);
-    SCOPED_LOCK_NAMED(cond_mutex, cond_lock);
+    auto lock = irs::make_unique_lock(value.mutex());
+    auto cond_lock = irs::make_unique_lock(cond_mutex);
     std::atomic<bool> reset(false);
     std::thread thread([&cond, &cond_mutex, &value, &reset]() -> void {
       value.reset();
       reset = true;
-      SCOPED_LOCK(cond_mutex);
+      auto lock = irs::make_lock_guard(cond_mutex);
       cond.notify_all();
     });
 
     auto result0 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));
 
-    // MSVC 2015/2017 seems to sporadically notify condition variables without explicit request
-    MSVC2015_ONLY(while (!reset && result0 == std::cv_status::no_timeout) result0 =
-                      cond.wait_for(cond_lock, std::chrono::milliseconds(50)));
-    MSVC2017_ONLY(while (!reset && result0 == std::cv_status::no_timeout) result0 =
-                      cond.wait_for(cond_lock, std::chrono::milliseconds(50)));
+    while (!reset && result0 == std::cv_status::no_timeout) result0 =
+                      cond.wait_for(cond_lock, std::chrono::milliseconds(50));
 
     lock.unlock();
     auto result1 = cond.wait_for(cond_lock, std::chrono::milliseconds(50));

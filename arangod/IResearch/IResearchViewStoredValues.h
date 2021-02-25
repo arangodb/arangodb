@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,8 +26,11 @@
 
 #include "Basics/AttributeNameParser.h"
 #include "Basics/debugging.h"
-
-#include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include "VelocyPackHelper.h"
+#include "IResearchCompression.h"
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -43,6 +47,7 @@ class IResearchViewStoredValues {
   struct StoredColumn {
     std::string name;
     std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> fields;
+    irs::type_info::type_id compression{ getDefaultCompression() };
 
     bool operator==(StoredColumn const& rhs) const noexcept {
       return name == rhs.name;
@@ -75,6 +80,12 @@ class IResearchViewStoredValues {
   bool fromVelocyPack(velocypack::Slice, std::string& error);
 
  private:
+  bool buildStoredColumnFromSlice(
+      velocypack::Slice const& columnSlice,
+      std::unordered_set<std::string>& uniqueColumns,
+      std::vector<irs::string_ref>& fieldNames,
+      irs::type_info::type_id compression);
+
   void clear() noexcept {
     _storedColumns.clear();
   }

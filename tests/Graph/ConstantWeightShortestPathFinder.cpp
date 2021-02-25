@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,6 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -71,8 +71,8 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
   GraphTestSetup s;
   MockGraphDatabase gdb;
 
-  arangodb::aql::Query* query;
-  arangodb::graph::ShortestPathOptions* spo;
+  std::unique_ptr<arangodb::aql::Query> query;
+  std::unique_ptr<arangodb::graph::ShortestPathOptions> spo;
 
   ConstantWeightShortestPathFinder* finder;
 
@@ -84,8 +84,9 @@ class ConstantWeightShortestPathFinderTest : public ::testing::Test {
                            {12, 4},  {12, 5},  {21, 22}, {22, 23}, {23, 24},
                            {24, 25}, {21, 26}, {26, 27}, {27, 28}, {28, 25}});
 
-    query = gdb.getQuery("RETURN 1");
-    spo = gdb.getShortestPathOptions(query);
+    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    
+    spo = gdb.getShortestPathOptions(query.get());
 
     finder = new ConstantWeightShortestPathFinder(*spo);
   }
@@ -118,7 +119,7 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_1) {
 
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr = checkPath(spo, result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
+  auto cpr = checkPath(spo.get(), result, {"1", "2"}, {{}, {"v/1", "v/2"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
 
@@ -130,7 +131,7 @@ TEST_F(ConstantWeightShortestPathFinderTest, path_of_length_4) {
 
   auto rr = finder->shortestPath(start->slice(), end->slice(), result);
   ASSERT_TRUE(rr);
-  auto cpr = checkPath(spo, result, {"1", "2", "3", "4"},
+  auto cpr = checkPath(spo.get(), result, {"1", "2", "3", "4"},
                        {{}, {"v/1", "v/2"}, {"v/2", "v/3"}, {"v/3", "v/4"}}, msgs);
   ASSERT_TRUE(cpr) << msgs;
 }
@@ -147,14 +148,14 @@ TEST_F(ConstantWeightShortestPathFinderTest, two_paths_of_length_5) {
     ASSERT_TRUE(rr);
     // One of the two has to be returned
     // This of course leads to output from the LOG_DEVEL in checkPath
-    auto cpr = checkPath(spo, result, {"21", "22", "23", "24", "25"},
+    auto cpr = checkPath(spo.get(), result, {"21", "22", "23", "24", "25"},
                          {{},
                           {"v/21", "v/22"},
                           {"v/22", "v/23"},
                           {"v/23", "v/24"},
                           {"v/24", "v/25"}},
                          msgs) ||
-               checkPath(spo, result, {"21", "26", "27", "28", "25"},
+               checkPath(spo.get(), result, {"21", "26", "27", "28", "25"},
                          {{},
                           {"v/21", "v/26"},
                           {"v/26", "v/27"},

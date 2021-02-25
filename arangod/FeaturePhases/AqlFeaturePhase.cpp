@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +33,6 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 
 namespace arangodb {
 namespace application_features {
@@ -51,7 +51,6 @@ AqlFeaturePhase::AqlFeaturePhase(ApplicationServer& server)
   startsAfter<pregel::PregelFeature>();
   startsAfter<QueryRegistryFeature>();
   startsAfter<SystemDatabaseFeature>();
-  startsAfter<TraverserEngineRegistryFeature>();
 }
 
 }  // namespace application_features

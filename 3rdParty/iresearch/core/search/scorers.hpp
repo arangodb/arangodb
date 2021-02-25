@@ -24,22 +24,10 @@
 #ifndef IRESEARCH_SCORERS_H
 #define IRESEARCH_SCORERS_H
 
-#include "shared.hpp"
 #include "sort.hpp"
 #include "utils/text_format.hpp"
 
-NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 scorer definition
-// -----------------------------------------------------------------------------
-
-#define DECLARE_SORT_TYPE() DECLARE_TYPE_ID(::iresearch::sort::type_id)
-#define DEFINE_SORT_TYPE_NAMED(class_type, class_name) DEFINE_TYPE_ID(class_type, ::iresearch::sort::type_id) { \
-  static ::iresearch::sort::type_id type(class_name); \
-  return type; \
-}
-#define DEFINE_SORT_TYPE(class_type) DEFINE_SORT_TYPE_NAMED(class_type, #class_type)
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               scorer registration
@@ -48,17 +36,18 @@ NS_ROOT
 class IRESEARCH_API scorer_registrar {
  public:
   scorer_registrar(
-    const sort::type_id& type,
-    const irs::text_format::type_id& args_format,
+    const type_info& type,
+    const type_info& args_format,
     sort::ptr(*factory)(const irs::string_ref& args),
-    const char* source = nullptr
-  );
-  operator bool() const NOEXCEPT;
+    const char* source = nullptr);
+  operator bool() const noexcept;
+
  private:
   bool registered_;
 };
 
-#define REGISTER_SCORER__(scorer_name, args_format, factory, line, source) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), args_format, &factory, source)
+#define REGISTER_SCORER__(scorer_name, args_format, factory, line, source) \
+  static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(::iresearch::type<scorer_name>::get(), ::iresearch::type<args_format>::get(), &factory, source)
 #define REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, file, line) REGISTER_SCORER__(scorer_name, args_format, factory, line, file ":" TOSTRING(line))
 #define REGISTER_SCORER(scorer_name, args_format, factory) REGISTER_SCORER_EXPANDER__(scorer_name, args_format, factory, __FILE__, __LINE__)
 #define REGISTER_SCORER_CSV(scorer_name, factory) REGISTER_SCORER(scorer_name, ::iresearch::text_format::csv, factory)
@@ -78,9 +67,8 @@ class IRESEARCH_API scorers {
   ////////////////////////////////////////////////////////////////////////////////
   static bool exists(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
-    bool load_library = true
-  );
+    const type_info& args_format,
+    bool load_library = true);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find a scorer by name, or nullptr if not found
@@ -90,10 +78,9 @@ class IRESEARCH_API scorers {
   ////////////////////////////////////////////////////////////////////////////////
   static sort::ptr get(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
+    const type_info& args_format,
     const string_ref& args,
-    bool load_library = true
-  ) NOEXCEPT;
+    bool load_library = true) noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief for static lib reference all known scorers in lib
@@ -111,13 +98,12 @@ class IRESEARCH_API scorers {
   /// @brief visit all loaded scorers, terminate early if visitor returns false
   ////////////////////////////////////////////////////////////////////////////////
   static bool visit(
-    const std::function<bool(const string_ref&, const text_format::type_id&)>& visitor
-  );
+    const std::function<bool(const string_ref&, const type_info&)>& visitor);
 
  private:
   scorers() = delete;
 };
 
-NS_END
+}
 
 #endif

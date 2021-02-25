@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
 #define ARANGODB_CACHE_TRANSACTIONAL_CACHE_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <list>
+
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -36,11 +40,6 @@
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 
-#include <stdint.h>
-#include <atomic>
-#include <chrono>
-#include <list>
-
 namespace arangodb {
 namespace cache {
 
@@ -51,10 +50,10 @@ namespace cache {
 /// API mostly following that of the base Cache class. For any non-pure-virtual
 /// functions, see Cache.h for documentation. The only additional functions
 /// exposed on the API of the transactional cache are those dealing with the
-/// blacklisting of keys.
+/// banishing of keys.
 ///
 /// To operate correctly, whenever a key is about to be written to the backing
-/// store, it must be blacklisted in any corresponding transactional caches.
+/// store, it must be banished in any corresponding transactional caches.
 /// This will prevent the cache from serving stale or potentially incorrect
 /// values and allow for clients to fall through to the backing transactional
 /// store.
@@ -62,7 +61,7 @@ namespace cache {
 class TransactionalCache final : public Cache {
  public:
   TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
-                     uint64_t id, Metadata&& metadata,
+                     std::uint64_t id, Metadata&& metadata,
                      std::shared_ptr<Table> table, bool enableWindowedStats);
   ~TransactionalCache();
 
@@ -78,13 +77,13 @@ class TransactionalCache final : public Cache {
   /// fashion. The Result contained in the return value should report an error
   /// code in this case. Should not block for long.
   //////////////////////////////////////////////////////////////////////////////
-  Finding find(void const* key, uint32_t keySize) override;
+  Finding find(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to insert the given value.
   ///
   /// Returns ok if inserted, error otherwise. Will not insert if the key is
-  /// (or its corresponding hash) is blacklisted. Will not insert value if this
+  /// (or its corresponding hash) is banished. Will not insert value if this
   /// would cause the total usage to exceed the limits. May also not insert
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
@@ -100,18 +99,18 @@ class TransactionalCache final : public Cache {
   /// before quitting, so may block for longer than find or insert. Client may
   /// re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, uint32_t keySize) override;
+  Result remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Attempts to blacklist the given key.
+  /// @brief Attempts to banish the given key.
   ///
-  /// Returns ok if the key was blacklisted and is guaranteed not to be in the
-  /// cache, error otherwise. May not blacklist the key if it fails to
+  /// Returns ok if the key was banished and is guaranteed not to be in the
+  /// cache, error otherwise. May not banish the key if it fails to
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert. Client
   /// should re-try.
   //////////////////////////////////////////////////////////////////////////////
-  Result blacklist(void const* key, uint32_t keySize) override;
+  Result banish(void const* key, std::uint32_t keySize) override;
 
  private:
   // friend class manager and tasks
@@ -121,18 +120,18 @@ class TransactionalCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata&& metadata,
-                                       std::shared_ptr<Table> table,
+  static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
+                                       Metadata&& metadata, std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(uint32_t hash) override;
+  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
   virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, TransactionalBucket*, Table*> getBucket(uint32_t hash, uint64_t maxTries,
-                                                             bool singleOperation = true);
-  uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
+  std::tuple<Result, Table::BucketLocker> getBucket(std::uint32_t hash, std::uint64_t maxTries,
+                                                    bool singleOperation = true);
+  std::uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

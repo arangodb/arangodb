@@ -1,0 +1,241 @@
+/*
+Hungarian Stemmer
+Removes noun inflections
+*/
+
+routines (
+    mark_regions
+    R1
+    v_ending
+    case
+    case_special
+    case_other
+    plural
+    owned
+    sing_owner
+    plur_owner
+    instrum
+    factive
+    undouble
+    double
+)
+
+externals ( stem )
+
+integers ( p1 )
+groupings ( v )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a'  '{U+00E1}'  //a-acute
+stringdef e'  '{U+00E9}'  //e-acute
+stringdef i'  '{U+00ED}'  //i-acute
+stringdef o'  '{U+00F3}'  //o-acute
+stringdef o"  '{U+00F6}'  //o-umlaut
+stringdef oq  '{U+0151}' //o-double acute
+stringdef u'  '{U+00FA}'  //u-acute
+stringdef u"  '{U+00FC}'  //u-umlaut
+stringdef uq  '{U+0171}' //u-double acute
+
+define v 'aeiou{a'}{e'}{i'}{o'}{o"}{oq}{u'}{u"}{uq}'
+
+define mark_regions as (
+
+    $p1 = limit
+
+    (v goto non-v
+     among('cs' 'gy' 'ly' 'ny' 'sz' 'ty' 'zs' 'dzs') or next
+     setmark p1)
+    or
+
+    (non-v gopast v setmark p1)
+)
+
+backwardmode (
+
+    define R1 as $p1 <= cursor
+
+    define v_ending as (
+        [substring] R1 among(
+            '{a'}' (<- 'a')
+            '{e'}' (<- 'e')
+        )
+    )
+
+    define double as (
+        test among('bb' 'cc' 'ccs' 'dd' 'ff' 'gg' 'ggy' 'jj' 'kk' 'll' 'lly' 'mm'
+        'nn' 'nny' 'pp' 'rr' 'ss' 'ssz' 'tt' 'tty' 'vv' 'zz' 'zzs')
+    )
+
+    define undouble as (
+        next [hop 1] delete
+    )
+
+    define instrum as(
+        [substring] R1 among(
+            'al' (double)
+            'el' (double)
+        )
+        delete
+        undouble
+    )
+
+
+    define case as (
+        [substring] R1 among(
+            'ban' 'ben'
+            'ba' 'be'
+            'ra' 're'
+            'nak' 'nek'
+            'val' 'vel'
+            't{o'}l' 't{oq}l'
+            'r{o'}l' 'r{oq}l'
+            'b{o'}l' 'b{oq}l'
+            'hoz' 'hez' 'h{o"}z'
+            'n{a'}l' 'n{e'}l'
+            'ig'
+            'at' 'et' 'ot' '{o"}t'
+            '{e'}rt'
+            'k{e'}pp' 'k{e'}ppen'
+            'kor'
+            'ul' '{u"}l'
+            'v{a'}' 'v{e'}'
+            'onk{e'}nt' 'enk{e'}nt' 'ank{e'}nt'
+            'k{e'}nt'
+            'en' 'on' 'an' '{o"}n'
+            'n'
+            't'
+        )
+        delete
+        v_ending
+    )
+
+    define case_special as(
+        [substring] R1 among(
+            '{e'}n' (<- 'e')
+            '{a'}n' (<- 'a')
+            '{a'}nk{e'}nt' (<- 'a')
+        )
+    )
+
+    define case_other as(
+        [substring] R1 among(
+            'astul' 'est{u"}l' (delete)
+            'stul' 'st{u"}l' (delete)
+            '{a'}stul' (<- 'a')
+            '{e'}st{u"}l' (<- 'e')
+        )
+    )
+
+    define factive as(
+        [substring] R1 among(
+            '{a'}' (double)
+            '{e'}' (double)
+        )
+        delete
+        undouble
+    )
+
+    define plural as (
+        [substring] R1 among(
+            '{a'}k' (<- 'a')
+            '{e'}k' (<- 'e')
+            '{o"}k' (delete)
+            'ak' (delete)
+            'ok' (delete)
+            'ek' (delete)
+            'k' (delete)
+        )
+    )
+
+    define owned as (
+        [substring] R1 among (
+            'ok{e'}' '{o"}k{e'}' 'ak{e'}' 'ek{e'}' (delete)
+            '{e'}k{e'}' (<- 'e')
+            '{a'}k{e'}' (<- 'a')
+            'k{e'}' (delete)
+            '{e'}{e'}i' (<- 'e')
+            '{a'}{e'}i' (<- 'a')
+            '{e'}i'  (delete)
+            '{e'}{e'}' (<- 'e')
+            '{e'}' (delete)
+        )
+    )
+
+    define sing_owner as (
+        [substring] R1 among(
+            '{u"}nk' 'unk' (delete)
+            '{a'}nk' (<- 'a')
+            '{e'}nk' (<- 'e')
+            'nk' (delete)
+            '{a'}juk' (<- 'a')
+            '{e'}j{u"}k' (<- 'e')
+            'juk' 'j{u"}k' (delete)
+            'uk' '{u"}k' (delete)
+            'em' 'om' 'am' (delete)
+            '{a'}m' (<- 'a')
+            '{e'}m' (<- 'e')
+            'm' (delete)
+            'od' 'ed' 'ad' '{o"}d' (delete)
+            '{a'}d' (<- 'a')
+            '{e'}d' (<- 'e')
+            'd' (delete)
+            'ja' 'je' (delete)
+            'a' 'e' 'o' (delete)
+            '{a'}' (<- 'a')
+            '{e'}' (<- 'e')
+        )
+    )
+
+    define plur_owner as (
+        [substring] R1 among(
+            'jaim' 'jeim' (delete)
+            '{a'}im' (<- 'a')
+            '{e'}im' (<- 'e')
+            'aim' 'eim' (delete)
+            'im' (delete)
+            'jaid' 'jeid' (delete)
+            '{a'}id' (<- 'a')
+            '{e'}id' (<- 'e')
+            'aid' 'eid' (delete)
+            'id' (delete)
+            'jai' 'jei' (delete)
+            '{a'}i' (<- 'a')
+            '{e'}i' (<- 'e')
+            'ai' 'ei' (delete)
+            'i' (delete)
+            'jaink' 'jeink' (delete)
+            'eink' 'aink' (delete)
+            '{a'}ink' (<- 'a')
+            '{e'}ink' (<- 'e')
+            'ink'
+            'jaitok' 'jeitek' (delete)
+            'aitok' 'eitek' (delete)
+            '{a'}itok' (<- 'a')
+            '{e'}itek' (<- 'e')
+            'itek' (delete)
+            'jeik' 'jaik' (delete)
+            'aik' 'eik' (delete)
+            '{a'}ik' (<- 'a')
+            '{e'}ik' (<- 'e')
+            'ik' (delete)
+        )
+    )
+)
+
+define stem as (
+    do mark_regions
+    backwards (
+      do instrum
+        do case
+        do case_special
+        do case_other
+        do factive
+        do owned
+        do sing_owner
+        do plur_owner
+        do plural
+    )
+)

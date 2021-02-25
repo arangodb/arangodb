@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,8 @@
 #include "Basics/Common.h"
 
 #include "Basics/FileUtils.h"
+#include "Basics/PageSize.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Basics/memory-map.h"
@@ -51,38 +54,40 @@ namespace pregel {
 /// continuous memory buffer with a fixed capacity
 template <typename T>
 struct TypedBuffer {
-  static_assert(std::is_default_constructible<T>::value, "");
+  static_assert(std::is_default_constructible<T>::value, "Stored type T has to be default constructible");
   
   /// close file (see close() )
   virtual ~TypedBuffer() = default;
-  TypedBuffer() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
+  TypedBuffer() noexcept
+    : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
 
   /// end usage of the structure
   virtual void close() = 0;
 
   /// raw access
-  T* begin() const { return _begin; }
-  T* end() const { return _end; }
+  T* begin() const noexcept { return _begin; }
+  T* end() const noexcept { return _end; }
 
-  T& back() const {
+  T& back() const noexcept {
     return *(_end - 1);
   }
 
   /// get size
-  size_t size() const {
+  size_t size() const noexcept {
     TRI_ASSERT(_end >= _begin);
     return static_cast<size_t>(_end - _begin);
   }
   /// get number of actually mapped bytes
-  size_t capacity() const {
+  size_t capacity() const noexcept {
     TRI_ASSERT(_capacity >= _begin);
     return static_cast<size_t>(_capacity - _begin);
   }
-  size_t remainingCapacity() const {
+  size_t remainingCapacity() const noexcept {
     TRI_ASSERT(_capacity >= _end);
     return static_cast<size_t>(_capacity - _end);
   }
   
+  /// move end cursor, calls placement new 
   T* appendElement() {
     TRI_ASSERT(_begin <= _end);
     TRI_ASSERT(_end < _capacity);
@@ -91,16 +96,16 @@ struct TypedBuffer {
   
   template <typename U = T>
   typename std::enable_if<std::is_trivially_constructible<U>::value>::type
-  advance(std::size_t value) {
+  advance(std::size_t value) noexcept {
     TRI_ASSERT((_end + value) <= _capacity);
     _end += value;
   }
   
  private:
   /// don't copy object
-  TypedBuffer(const TypedBuffer&) = delete;
+  TypedBuffer(TypedBuffer const&) = delete;
   /// don't copy object
-  TypedBuffer& operator=(const TypedBuffer&) = delete;
+  TypedBuffer& operator=(TypedBuffer const&) = delete;
 
  protected:
   T* _begin; // begin
@@ -111,7 +116,8 @@ struct TypedBuffer {
 template <typename T>
 class VectorTypedBuffer : public TypedBuffer<T> {
  public:
-  explicit VectorTypedBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit VectorTypedBuffer(size_t capacity) 
+      : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0);
     this->_begin = static_cast<T*>(malloc(sizeof(T) * capacity));
     this->_end = this->_begin;
@@ -154,7 +160,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
   size_t _mappedSize;     // actually mapped size
   
  public:
-  explicit MappedFileBuffer(size_t capacity) : TypedBuffer<T>() {
+  explicit MappedFileBuffer(size_t capacity) 
+      : TypedBuffer<T>() {
     TRI_ASSERT(capacity > 0u);
     double tt = TRI_microtime();
     int64_t tt2 = arangodb::RandomGenerator::interval((int64_t)0LL, (int64_t)0x7fffffffffffffffLL);
@@ -167,7 +174,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     this->_filename = basics::FileUtils::buildFilename(TRI_GetTempPath(), file);
 
     _mappedSize = sizeof(T) * capacity;
-    size_t pageSize = PageSizeFeature::getPageSize();
+    size_t pageSize = PageSize::getValue();
     TRI_ASSERT(pageSize >= 256);
     // use multiples of page-size
     _mappedSize = (size_t)(((_mappedSize + pageSize - 1) / pageSize) * pageSize);
@@ -176,7 +183,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
     
     _fd = TRI_CreateDatafile(_filename, _mappedSize);
     if (_fd < 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, std::string("pregel cannot create mmap file '") + _filename + "': " + TRI_last_error());
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_SYS_ERROR,
+          basics::StringUtils::concatT("pregel cannot create mmap file '",
+                                       _filename, "': ", TRI_last_error()));
     }
 
     // memory map the data
@@ -186,8 +196,8 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // try populating the mapping already
     flags |= MAP_POPULATE;
 #endif
-    int res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
-                         &_mmHandle, 0, &data);
+    auto res = TRI_MMFile(0, _mappedSize, PROT_WRITE | PROT_READ, flags, _fd,
+                          &_mmHandle, 0, &data);
 
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_set_errno(res);
@@ -204,8 +214,10 @@ class MappedFileBuffer : public TypedBuffer<T> {
           << "The database directory might reside on a shared folder "
              "(VirtualBox, VMWare) or an NFS-mounted volume which does not "
              "allow memory mapped files.";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot memory map file '") +
-                                     _filename + "': '" + TRI_errno_string(res) + "'");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          basics::StringUtils::concatT("cannot memory map file '", _filename, "': '",
+                               TRI_errno_string(res), "'"));
     }
 
     this->_begin = static_cast<T*>(data);
@@ -254,7 +266,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     }
     if (_fd != -1) {
       TRI_ASSERT(_fd >= 0);
-      int res = TRI_CLOSE(_fd);
+      res = TRI_CLOSE(_fd);
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("00e1d", ERR, arangodb::Logger::FIXME)
             << "unable to close pregel mapped file '" << _filename << "': " << res;

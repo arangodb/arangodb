@@ -30,16 +30,22 @@
 #include <unordered_map>
 #include <functional>
 
-NS_LOCAL
+namespace {
 
 typedef std::function<irs::directory::ptr(const std::string&)> factory_f;
 
 const std::unordered_map<std::string, factory_f> FACTORIES {
-  { "mmap", &irs::directory::make<irs::mmap_directory, const std::string&> },
-  { "fs",   &irs::directory::make<irs::fs_directory, const std::string&>   }
+  { "mmap",
+    [](const std::string& path) {
+      return irs::memory::make_unique<irs::mmap_directory>(path); }
+  },
+  { "fs",
+    [](const std::string& path) {
+      return irs::memory::make_unique<irs::fs_directory>(path); }
+  }
 };
 
-NS_END
+}
 
 irs::directory::ptr create_directory(
     const std::string& type,

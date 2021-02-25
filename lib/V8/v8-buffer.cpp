@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -236,7 +236,7 @@ static void FromConstructorTemplate(v8::Isolate* isolate, v8::Local<v8::Function
   }
 
   v8::MaybeLocal<v8::Object> ret =
-      t->GetFunction()->NewInstance(TRI_IGETC, (int)argc, argv);
+    t->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, (int)argc, argv);
 
   TRI_V8_RETURN(ret.FromMaybe(v8::Local<v8::Object>()));
 }
@@ -394,6 +394,7 @@ static unsigned hex2bin(char c) {
 static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
                            v8::Handle<v8::Value> val, TRI_V8_encoding_t encoding) {
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   // A lot of improvement can be made here. See:
   // http://code.google.com/p/v8/issues/detail?id=270
@@ -421,9 +422,8 @@ static ssize_t DecodeWrite(v8::Isolate* isolate, char* buf, size_t buflen,
   if (is_buffer) {
     v8::Local<v8::Value> arg = TRI_V8_ASCII_STRING(isolate, "binary");
     v8::Handle<v8::Object> object = val.As<v8::Object>();
-    v8::Local<v8::Function> callback =
-        object->Get(TRI_V8_ASCII_STRING(isolate, "toString")).As<v8::Function>();
-    str = TRI_GET_STRING(callback->Call(object, 1, &arg));
+    v8::Local<v8::Function> callback = TRI_GetProperty(context, isolate, object, "toString").As<v8::Function>();
+    str = TRI_GET_STRING(callback->Call(TRI_IGETC, object, 1, &arg).FromMaybe(v8::Local<v8::Value>()));
   } else {
     str = TRI_GET_STRING(val);
   }
@@ -522,98 +522,6 @@ static TRI_V8_encoding_t ParseEncoding(v8::Isolate* isolate, v8::Handle<v8::Valu
   }
 }
 
-namespace {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief object info
-////////////////////////////////////////////////////////////////////////////////
-
-class RetainedBufferInfo : public v8::RetainedObjectInfo {
- public:
-  explicit RetainedBufferInfo(V8Buffer* buffer);
-
- public:
-  virtual void Dispose() override;
-  virtual bool IsEquivalent(RetainedObjectInfo* other) override;
-  virtual intptr_t GetHash() override;
-  virtual char const* GetLabel() override;
-  virtual intptr_t GetSizeInBytes() override;
-
- private:
-  static char const _label[];
-
- private:
-  V8Buffer* _buffer;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the class
-////////////////////////////////////////////////////////////////////////////////
-
-char const RetainedBufferInfo::_label[] = "Buffer";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructors
-////////////////////////////////////////////////////////////////////////////////
-
-RetainedBufferInfo::RetainedBufferInfo(V8Buffer* buffer) : _buffer(buffer) {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new wrapper info
-////////////////////////////////////////////////////////////////////////////////
-
-v8::RetainedObjectInfo* WrapperInfo(uint16_t classId, v8::Handle<v8::Value> wrapper) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  ISOLATE;
-  TRI_ASSERT(classId == TRI_V8_BUFFER_CID);
-  TRI_ASSERT(V8Buffer::hasInstance(isolate, wrapper));
-#endif
-
-  V8Buffer* buffer = V8Buffer::unwrap(wrapper.As<v8::Object>());
-  return new RetainedBufferInfo(buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes the info
-////////////////////////////////////////////////////////////////////////////////
-
-void RetainedBufferInfo::Dispose() {
-  _buffer = NULL;
-  delete this;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks for equivalence
-////////////////////////////////////////////////////////////////////////////////
-
-bool RetainedBufferInfo::IsEquivalent(RetainedObjectInfo* other) {
-  return _label == other->GetLabel() &&
-         _buffer == static_cast<RetainedBufferInfo*>(other)->_buffer;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the equivalence hash
-////////////////////////////////////////////////////////////////////////////////
-
-intptr_t RetainedBufferInfo::GetHash() {
-  return reinterpret_cast<intptr_t>(_buffer);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the label of the class
-////////////////////////////////////////////////////////////////////////////////
-
-char const* RetainedBufferInfo::GetLabel() { return _label; }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the size in bytes
-////////////////////////////////////////////////////////////////////////////////
-
-intptr_t RetainedBufferInfo::GetSizeInBytes() {
-  return V8Buffer::length(_buffer->_isolate, _buffer);
-}
-}  // namespace
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new buffer from arguments
 ////////////////////////////////////////////////////////////////////////////////
@@ -649,11 +557,12 @@ void V8Buffer::New(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 v8::Handle<v8::Object> V8Buffer::New(v8::Isolate* isolate, v8::Handle<v8::String> string) {
   TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
+  auto context = TRI_IGETC;
 
   // get Buffer from global scope.
   v8::Local<v8::Object> global = TRI_IGETC->Global();
   TRI_GET_GLOBAL_STRING(BufferConstant);
-  v8::Local<v8::Value> bv = global->Get(BufferConstant);
+  v8::Local<v8::Value> bv = global->Get(context, BufferConstant).FromMaybe(v8::Local<v8::Value>());
 
   if (!bv->IsFunction()) {
     return v8::Object::New(isolate);
@@ -678,7 +587,7 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, (uint32_t)length);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> b =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   if (b.IsEmpty()) {
     return NULL;
@@ -697,7 +606,8 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char const* data, size_t length) {
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
+    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, const_cast<char*>(data), length, NULL, NULL);
@@ -716,7 +626,8 @@ V8Buffer* V8Buffer::New(v8::Isolate* isolate, char* data, size_t length,
   v8::Local<v8::Value> arg = v8::Integer::NewFromUnsigned(isolate, 0);
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
   v8::Local<v8::Object> obj =
-      BufferTempl->GetFunction()->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
+    BufferTempl->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>())
+    ->NewInstance(TRI_IGETC, 1, &arg).FromMaybe(v8::Local<v8::Object>());
 
   V8Buffer* buffer = V8Buffer::unwrap(obj);
   buffer->replace(isolate, data, length, callback, hint);
@@ -810,7 +721,7 @@ void V8Buffer::replace(v8::Isolate* isolate, char* data, size_t length,
     auto handle = v8::Local<v8::Object>::New(isolate, _handle);
     TRI_GET_GLOBAL(LengthKey, v8::String);
     auto len = v8::Integer::NewFromUnsigned(isolate, (uint32_t)_length);
-    handle->Set(LengthKey, len);
+    handle->Set(TRI_IGETC, LengthKey, len).FromMaybe(false);
   }
 }
 
@@ -1392,7 +1303,7 @@ static void ReadFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   double offset_tmp = TRI_GET_DOUBLE(args[0]);
   int64_t offset = static_cast<int64_t>(offset_tmp);
-  bool doTRI_ASSERT = !args[1]->BooleanValue(TRI_IGETC).FromMaybe(true);
+  bool doTRI_ASSERT = !args[1]->BooleanValue(isolate);
 
   V8Buffer* buffer = V8Buffer::unwrap(args.This());
 
@@ -1462,7 +1373,7 @@ static void WriteFloatGeneric(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  bool doTRI_ASSERT = !args[2]->BooleanValue(TRI_IGETC).FromMaybe(true);
+  bool doTRI_ASSERT = !args[2]->BooleanValue(isolate);
 
   if (doTRI_ASSERT) {
     if (!args[0]->IsNumber()) {
@@ -1555,8 +1466,8 @@ static void JS_ByteLength(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void MapGetIndexedBuffer(uint32_t idx,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> self = args.Holder();
 
@@ -1564,7 +1475,7 @@ static void MapGetIndexedBuffer(uint32_t idx,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1589,8 +1500,8 @@ static void MapGetIndexedBuffer(uint32_t idx,
 static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   v8::Handle<v8::Object> self = args.Holder();
 
@@ -1598,7 +1509,7 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
     // seems object has become a FastBuffer already
     if (TRI_HasProperty(context, isolate, self, "parent")) {
       v8::Handle<v8::Value> parent =
-          self->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
+        self->Get(context, TRI_V8_ASCII_STRING(isolate, "parent")).FromMaybe(v8::Handle<v8::Value>());
       if (!parent->IsObject()) {
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
@@ -1627,7 +1538,6 @@ static void MapSetIndexedBuffer(uint32_t idx, v8::Local<v8::Value> value,
 void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::HandleScope scope(isolate);
 
-  // sanity checks
   TRI_ASSERT(unbase64('/') == 63);
   TRI_ASSERT(unbase64('+') == 62);
   TRI_ASSERT(unbase64('T') == 19);
@@ -1640,6 +1550,10 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
 
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
 
+
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "BYTELENGTH"), JS_ByteLength);
+
   // .............................................................................
   // generate the general SlowBuffer template
   // .............................................................................
@@ -1647,7 +1561,9 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   v8::Handle<v8::ObjectTemplate> rt;
 
   ft = v8::FunctionTemplate::New(isolate, V8Buffer::New);
+
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "SlowBuffer"));
+
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
 
@@ -1687,15 +1603,13 @@ void TRI_InitV8Buffer(v8::Isolate* isolate) {
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "fill"), JS_Fill);
   TRI_V8_AddProtoMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "copy"), JS_Copy);
 
-  TRI_V8_AddMethod(isolate, ft, TRI_V8_ASCII_STRING(isolate, "byteLength"), JS_ByteLength);
 
   // create the exports
-  v8::Handle<v8::Object> exports = v8::Object::New(isolate);
+  v8::Handle<v8::ObjectTemplate> exports = v8::ObjectTemplate::New(isolate);
 
-  TRI_V8_AddMethod(isolate, exports, TRI_V8_ASCII_STRING(isolate, "SlowBuffer"), ft);
-  TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"), exports);
 
-  v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
-  heap_profiler->SetWrapperClassInfoProvider(TRI_V8_BUFFER_CID, WrapperInfo);
+  exports->Set(TRI_V8_ASCII_STRING(isolate, "SlowBuffer"), ft);
+  TRI_AddGlobalVariableVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "EXPORTS_SLOW_BUFFER"),
+                               exports->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>()));
 }

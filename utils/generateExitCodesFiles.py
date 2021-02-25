@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import print_function
-import csv, sys, os.path, re
+import csv, sys, os.path, re, io
 
 # wrap text after x characters
 def wrap(string, width=80, ind1=0, ind2=0, prefix=''):
@@ -112,23 +112,7 @@ def genCFile(errors, filename):
   headerfile = os.path.splitext(filename)[0] + ".h"
 
   impl = prologue\
-         + "#include \"Basics/Common.h\"\n"\
-         + "#include \"Basics/exitcodes.h\"\n"\
-         + "\n"\
-         + "/// helper macro to define an exit code string\n"\
-         + "#define REG_EXIT(id, label) TRI_set_exitno_string(TRI_ ## id, label);\n"\
-         + "\n"\
-         + "void TRI_InitializeExitMessages() {\n"
-
-  # print individual errors
-  for e in errors:
-    msg  = e[2].replace("\n", " ").replace("\\", "").replace("\"", "\\\"")
-    impl = impl\
-           + "  REG_EXIT(" + e[0] + ", \"" + msg + "\");\n"
-
-  impl = impl\
-       + "}\n"
-
+         + "#include \"Basics/exitcodes.h\"\n"
   return impl
 
 
@@ -156,9 +140,6 @@ def genCHeaderFile(errors):
 
   header = header\
          + "\n"\
-         + "/// register all exit codes for ArangoDB\n"\
-         + "void TRI_InitializeExitMessages();\n"\
-         + "\n"\
          + "#endif\n"\
          + "\n"
 
@@ -178,7 +159,7 @@ source = sys.argv[1]
 # read input file
 errors=None
 errorsList = []
-with open(source, "r") as source_fh:
+with io.open(source, encoding="utf-8", newline=None) as source_fh:
     errors = csv.reader(source_fh)
 
     r1 = re.compile(r'^#.*')
@@ -216,5 +197,5 @@ else:
   print("usage: {} <sourcefile> <outfile>".format(sys.argv[0]), file=sys.stderr)
   sys.exit(1)
 
-with open(outfile, "w") as out_fh:
-    out_fh.write(out);
+with io.open(outfile, mode="w", encoding="utf-8", newline="") as out_fh:
+    out_fh.write(out)

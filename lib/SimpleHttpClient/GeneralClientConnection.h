@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,9 @@
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 class StringBuffer;
 }
@@ -59,9 +62,11 @@ class GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  GeneralClientConnection(Endpoint* endpoint, double, double, size_t);
+  GeneralClientConnection(application_features::ApplicationServer&,
+                          Endpoint* endpoint, double, double, size_t);
 
-  GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
+  GeneralClientConnection(application_features::ApplicationServer&,
+                          std::unique_ptr<Endpoint>& endpoint, double, double, size_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection
@@ -74,10 +79,12 @@ class GeneralClientConnection {
   /// @brief create a new connection from an endpoint
   //////////////////////////////////////////////////////////////////////////////
 
-  static GeneralClientConnection* factory(Endpoint*, double requestTimeout, double connectTimeout,
+  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
+                                          Endpoint*, double requestTimeout, double connectTimeout,
                                           size_t numRetries, uint64_t sslProtocol);
 
-  static GeneralClientConnection* factory(std::unique_ptr<Endpoint>&,
+  static GeneralClientConnection* factory(application_features::ApplicationServer& server,
+                                          std::unique_ptr<Endpoint>&,
                                           double requestTimeout, double connectTimeout,
                                           size_t numRetries, uint64_t sslProtocol);
 
@@ -159,6 +166,12 @@ class GeneralClientConnection {
     _isInterrupted.store(value, std::memory_order_release);
   }
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the underlying application server
+  //////////////////////////////////////////////////////////////////////////////
+
+  application_features::ApplicationServer& server() const;
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief connect
@@ -203,6 +216,12 @@ class GeneralClientConnection {
   virtual bool readable() = 0;
 
  protected:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the underlying application server
+  //////////////////////////////////////////////////////////////////////////////
+
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying socket
   //////////////////////////////////////////////////////////////////////////////

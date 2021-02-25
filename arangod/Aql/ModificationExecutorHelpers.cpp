@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationResult.h"
 
@@ -34,8 +36,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include <string>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -57,10 +57,8 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
                       value.slice().typeName());
   }
 
-  if (!value.hasKey(StaticStrings::KeyString)) {
-    return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
-  }
+  // not necessary to check if key exists in object, since AqlValue::get() will return a
+  // null-result below in case key does not exist.
 
   // Extract key from `value`, and make sure it is a string
   bool mustDestroyKey;
@@ -69,7 +67,7 @@ Result ModificationExecutorHelpers::getKey(CollectionNameResolver const& resolve
 
   if (!keyEntry.isString()) {
     return Result{TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING,
-                  std::string{"Expected _key to be present in document."}};
+                  std::string{"Expected _key to be a string attribute in document."}};
   }
 
   // Key found and assigned, note rev is empty by assertion
@@ -108,9 +106,7 @@ Result ModificationExecutorHelpers::getRevision(CollectionNameResolver const& re
 Result ModificationExecutorHelpers::getKeyAndRevision(CollectionNameResolver const& resolver,
                                                       AqlValue const& value,
                                                       std::string& key, std::string& rev) {
-  Result result;
-
-  result = getKey(resolver, value, key);
+  Result result = getKey(resolver, value, key);
   // The key can either be a string, or contained in an object
   // If it is passed in as a string, then there is no revision
   // and there is no point in extracting it further on.
@@ -150,8 +146,17 @@ bool ModificationExecutorHelpers::writeRequired(ModificationExecutorInfos const&
 }
 
 void ModificationExecutorHelpers::throwOperationResultException(
-    ModificationExecutorInfos const& infos, OperationResult const& result) {
-  auto const& errorCounter = result.countErrorCodes;
+    ModificationExecutorInfos const& infos, OperationResult const& operationResult) {
+
+  // A "higher level error" happened (such as the transaction being aborted,
+  // replication being refused, etc ), and we do not have errorCounter or
+  // similar so we throw.
+  if (!operationResult.ok()) {
+    // inside OperationResult hides a small result.
+    THROW_ARANGO_EXCEPTION(operationResult.result);
+  }
+
+  auto const& errorCounter = operationResult.countErrorCodes;
 
   // Early escape if we are ignoring errors.
   if (infos._ignoreErrors == true || errorCounter.empty()) {
@@ -164,11 +169,11 @@ void ModificationExecutorHelpers::throwOperationResultException(
   //
   // Find the first error with a message and throw that
   // This mirrors previous behaviour and might not be entirely ideal.
-  for (auto const p : errorCounter) {
-    auto const errorCode = p.first;
+  for (auto const& p : errorCounter) {
+    auto const errorCode = ErrorCode{p.first};
     if (!(infos._ignoreDocumentNotFound && errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       // Find the first error and throw with message.
-      for (auto doc : VPackArrayIterator(result.slice())) {
+      for (auto doc : VPackArrayIterator(operationResult.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
             doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
@@ -190,20 +195,21 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
                                                              Variable const* outVariableOld) {
   OperationOptions out;
 
-  // commented out OperationOptions attributesare not provided
+  // commented out OperationOptions attributes are not provided
   // by the ModificationOptions or the information given by the
   // Variable pointer.
 
   // in.ignoreErrors;
   out.waitForSync = in.waitForSync;
-  out.keepNull = !in.nullMeansRemove;
+  out.validate = in.validate;
+  out.keepNull = in.keepNull;
   out.mergeObjects = in.mergeObjects;
   // in.ignoreDocumentNotFound;
   // in.readCompleteInput;
-  out.isRestore = in.useIsRestore;
+  out.isRestore = in.isRestore;
   // in.consultAqlWriteFilter;
   // in.exclusive;
-  out.overwrite = in.overwrite;
+  out.overwriteMode = in.overwriteMode;
   out.ignoreRevs = in.ignoreRevs;
 
   out.returnNew = (outVariableNew != nullptr);
@@ -215,8 +221,9 @@ OperationOptions ModificationExecutorHelpers::convertOptions(ModificationOptions
 
 AqlValue ModificationExecutorHelpers::getDocumentOrNull(VPackSlice const& elm,
                                                         std::string const& key) {
-  if (elm.hasKey(key)) {
-    return AqlValue{elm.get(key)};
+  VPackSlice s = elm.get(key);
+  if (!s.isNone()) {
+    return AqlValue{s};
   }
-  return AqlValue{VPackSlice::nullSlice()};
+  return AqlValue(AqlValueHintNull());
 }

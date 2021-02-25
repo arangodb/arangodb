@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,8 +53,6 @@ class QueryResultCursor final : public arangodb::Cursor {
 
   aql::QueryResult const* result() const { return &_result; }
 
-  CursorType type() const override final { return CURSOR_VPACK; }
-
   bool hasNext();
 
   arangodb::velocypack::Slice next();
@@ -86,16 +84,9 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public arangodb::Cursor {
  public:
-  QueryStreamCursor(TRI_vocbase_t& vocbase, std::string const& query,
-                    std::shared_ptr<velocypack::Builder> bindVars,
-                    std::shared_ptr<velocypack::Builder> opts,
-                    size_t batchSize, double ttl,
-                    bool contextOwnedByExterior,
-                    std::shared_ptr<transaction::Context> ctx);
+  QueryStreamCursor(std::unique_ptr<aql::Query> q, size_t batchSize, double ttl);
 
   ~QueryStreamCursor();
-
-  CursorType type() const override final { return CURSOR_VPACK; }
 
   void kill() override;
 
@@ -116,24 +107,26 @@ class QueryStreamCursor final : public arangodb::Cursor {
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
   // to have fetched more than batchSize() result rows (if possible) in order to
   // set hasMore reliably.
-  Result writeResult(velocypack::Builder& builder);
+  ExecutionState writeResult(arangodb::velocypack::Builder& builder);
 
   ExecutionState prepareDump();
+  ExecutionState finalization();
 
   void cleanupStateCallback();
-  void cleanupResources();
 
  private:
-  DatabaseGuard _guard;
-  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
-  /// current query
+  velocypack::UInt8Buffer _extrasBuffer;
+  std::deque<SharedAqlItemBlockPtr> _queryResults; /// buffered results
+  std::shared_ptr<transaction::Context> _ctx; /// cache context
   std::unique_ptr<aql::Query> _query;
-  /// buffered results
-  std::deque<SharedAqlItemBlockPtr> _queryResults;
   /// index of the next to-be-returned row in _queryResults.front()
   size_t _queryResultPos;
+  
+  int64_t _exportCount;  // used by RocksDBRestExportHandler (<0 is not used)
   /// used when cursor is owned by V8 transaction
   transaction::Methods::StatusChangeCallback _stateChangeCb;
+  
+  bool _finalization;
 };
 
 }  // namespace aql

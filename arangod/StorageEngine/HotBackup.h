@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,7 +41,7 @@ class ClusterFeature;
 /// @brief HotBackup engine selector operations
 ////////////////////////////////////////////////////////////////////////////////
 
-enum BACKUP_ENGINE {ROCKSDB, MMFILES, CLUSTER};
+enum BACKUP_ENGINE {ROCKSDB, CLUSTER};
 
 class HotBackup {
 public:
@@ -73,13 +74,6 @@ private:
   arangodb::Result executeCoordinator(
     std::string const& command, VPackSlice const payload, VPackBuilder& report);
   
-  /**
-   * @brief select engine and create backup
-   * @param  payload  rest handling payload
-   */
-  arangodb::Result executeMMFiles(
-    std::string const& command, VPackSlice const payload, VPackBuilder& report);
-
 #ifdef USE_ENTERPRISE
   application_features::ApplicationServer& _server;
 #endif

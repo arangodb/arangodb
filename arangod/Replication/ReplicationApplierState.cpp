@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,7 +118,7 @@ void ReplicationApplierState::reset(bool resetPhase, bool reducedSet) {
   _stopInitialSynchronization = false;
   _progressMsg.clear();
   _progressTime[0] = '\0';
-  _serverId = 0;
+  _serverId = ServerId::none();
   _lastError.reset();
 
   if (resetPhase) {
@@ -226,7 +226,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
     TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
     result.add("time", VPackValue(&timeString[0]));
   } else {
-    result.add("serverId", VPackValue(std::to_string(_serverId)));
+    result.add("serverId", VPackValue(std::to_string(_serverId.id())));
     result.add("lastProcessedContinuousTick",
                VPackValue(std::to_string(_lastProcessedContinuousTick)));
     result.add("lastAppliedContinuousTick",

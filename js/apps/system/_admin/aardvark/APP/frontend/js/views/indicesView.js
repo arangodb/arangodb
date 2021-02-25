@@ -434,7 +434,12 @@
               : 'n/a'
           );
           var sparse = (v.hasOwnProperty('sparse') ? v.sparse : 'n/a');
-          var deduplicate = (v.hasOwnProperty('deduplicate') ? v.deduplicate : 'n/a');
+          var extras = [];
+          ["deduplicate", "expireAfter", "minLength", "geoJson"].forEach(function(k) {
+            if (v.hasOwnProperty(k)) {
+              extras.push(k + ": " + v[k]);
+            }
+          });
 
           $('#collectionEditIndexTable').append(
             '<tr>' +
@@ -442,7 +447,7 @@
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.type) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.unique) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(sparse) + '</th>' +
-            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(deduplicate) + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(extras.join(", ")) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(selectivity) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(fieldString) + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + arangoHelper.escapeHtml(v.name) + '</th>' +

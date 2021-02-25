@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,16 +47,16 @@ class RestHandlerFactory {
 
  public:
   // handler creator
-  typedef RestHandler* (*create_fptr)(application_features::ApplicationServer&,
-                                      GeneralRequest*, GeneralResponse*, void* data);
+  typedef std::shared_ptr<RestHandler> (*create_fptr)(application_features::ApplicationServer&,
+                                                      GeneralRequest*, GeneralResponse*, void* data);
 
   // cppcheck-suppress *
-  RestHandlerFactory() {}
+  RestHandlerFactory() = default;
 
   // creates a new handler
-  RestHandler* createHandler(application_features::ApplicationServer&,
-                             std::unique_ptr<GeneralRequest>,
-                             std::unique_ptr<GeneralResponse>) const;
+  std::shared_ptr<RestHandler> createHandler(application_features::ApplicationServer&,
+                                             std::unique_ptr<GeneralRequest>,
+                                             std::unique_ptr<GeneralResponse>) const;
 
   // adds a path and constructor to the factory
   void addHandler(std::string const& path, create_fptr, void* data = nullptr);

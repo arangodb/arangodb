@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,23 +42,15 @@ class NeighborsEnumerator final : public arangodb::traverser::PathEnumerator {
 
   uint64_t _searchDepth;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
  public:
   NeighborsEnumerator(arangodb::traverser::Traverser* traverser,
-                      arangodb::velocypack::Slice const& startVertex,
                       arangodb::traverser::TraverserOptions* opts);
 
   ~NeighborsEnumerator() = default;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Get the next Path element from the traversal.
-  //////////////////////////////////////////////////////////////////////////////
+  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
+  /// @brief Get the next Path element from the traversal.
   bool next() override;
 
   aql::AqlValue lastVertexToAqlValue() override;

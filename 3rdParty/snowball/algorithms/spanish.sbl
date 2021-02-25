@@ -1,0 +1,230 @@
+routines (
+           postlude mark_regions
+           RV R1 R2
+           attached_pronoun
+           standard_suffix
+           y_verb_suffix
+           verb_suffix
+           residual_suffix
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a'   '{U+00E1}'  // a-acute
+stringdef e'   '{U+00E9}'  // e-acute
+stringdef i'   '{U+00ED}'  // i-acute
+stringdef o'   '{U+00F3}'  // o-acute
+stringdef u'   '{U+00FA}'  // u-acute
+stringdef u"   '{U+00FC}'  // u-diaeresis
+stringdef n~   '{U+00F1}'  // n-tilde
+
+define v 'aeiou{a'}{e'}{i'}{o'}{u'}{u"}'
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit  // defaults
+
+    do (
+        ( v (non-v gopast v) or (v gopast non-v) )
+        or
+        ( non-v (non-v gopast v) or (v next) )
+        setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define postlude as repeat (
+    [substring] among(
+        '{a'}' (<- 'a')
+        '{e'}' (<- 'e')
+        '{i'}' (<- 'i')
+        '{o'}' (<- 'o')
+        '{u'}' (<- 'u')
+        // and possibly {u"}->u here, or in prelude
+        ''     (next)
+    ) //or next
+)
+
+backwardmode (
+
+    define RV as $pV <= cursor
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define attached_pronoun as (
+        [substring] among(
+            'me' 'se'  'sela' 'selo' 'selas' 'selos' 'la' 'le' 'lo'
+            'las' 'les' 'los' 'nos'
+        )
+        substring RV among(
+            'i{e'}ndo' (] <- 'iendo')
+            '{a'}ndo'  (] <- 'ando')
+            '{a'}r'    (] <- 'ar')
+            '{e'}r'    (] <- 'er')
+            '{i'}r'    (] <- 'ir')
+            'ando'
+            'iendo'
+            'ar' 'er' 'ir'
+                       (delete)
+            'yendo'    ('u' delete)
+        )
+    )
+
+    define standard_suffix as (
+        [substring] among(
+
+            'anza' 'anzas'
+            'ico' 'ica' 'icos' 'icas'
+            'ismo' 'ismos'
+            'able' 'ables'
+            'ible' 'ibles'
+            'ista' 'istas'
+            'oso' 'osa' 'osos' 'osas'
+            'amiento' 'amientos'
+            'imiento' 'imientos'
+            (
+                R2 delete
+            )
+            'adora' 'ador' 'aci{o'}n'
+            'adoras' 'adores' 'aciones'
+            'ante' 'antes' 'ancia' 'ancias'// Note 1
+            (
+                R2 delete
+                try ( ['ic'] R2 delete )
+            )
+            'log{i'}a'
+            'log{i'}as'
+            (
+                R2 <- 'log'
+            )
+            'uci{o'}n' 'uciones'
+            (
+                R2 <- 'u'
+            )
+            'encia' 'encias'
+            (
+                R2 <- 'ente'
+            )
+            'amente'
+            (
+                R1 delete
+                try (
+                    [substring] R2 delete among(
+                        'iv' (['at'] R2 delete)
+                        'os'
+                        'ic'
+                        'ad'
+                    )
+                )
+            )
+            'mente'
+            (
+                R2 delete
+                try (
+                    [substring] among(
+                        'ante' // Note 1
+                        'able'
+                        'ible' (R2 delete)
+                    )
+                )
+            )
+            'idad'
+            'idades'
+            (
+                R2 delete
+                try (
+                    [substring] among(
+                        'abil'
+                        'ic'
+                        'iv'   (R2 delete)
+                    )
+                )
+            )
+            'iva' 'ivo'
+            'ivas' 'ivos'
+            (
+                R2 delete
+                try (
+                    ['at'] R2 delete // but not a further   ['ic'] R2 delete
+                )
+            )
+        )
+    )
+
+    define y_verb_suffix as (
+        setlimit tomark pV for ([substring]) among(
+            'ya' 'ye' 'yan' 'yen' 'yeron' 'yendo' 'yo' 'y{o'}'
+            'yas' 'yes' 'yais' 'yamos'
+                ('u' delete)
+        )
+    )
+
+    define verb_suffix as (
+        setlimit tomark pV for ([substring]) among(
+
+            'en' 'es' '{e'}is' 'emos'
+                (try ('u' test 'g') ] delete)
+
+            'ar{i'}an' 'ar{i'}as' 'ar{a'}n' 'ar{a'}s' 'ar{i'}ais'
+            'ar{i'}a' 'ar{e'}is' 'ar{i'}amos' 'aremos' 'ar{a'}'
+            'ar{e'}'
+            'er{i'}an' 'er{i'}as' 'er{a'}n' 'er{a'}s' 'er{i'}ais'
+            'er{i'}a' 'er{e'}is' 'er{i'}amos' 'eremos' 'er{a'}'
+            'er{e'}'
+            'ir{i'}an' 'ir{i'}as' 'ir{a'}n' 'ir{a'}s' 'ir{i'}ais'
+            'ir{i'}a' 'ir{e'}is' 'ir{i'}amos' 'iremos' 'ir{a'}'
+            'ir{e'}'
+
+            'aba' 'ada' 'ida' '{i'}a' 'ara' 'iera' 'ad' 'ed'
+            'id' 'ase' 'iese' 'aste' 'iste' 'an' 'aban' '{i'}an'
+            'aran' 'ieran' 'asen' 'iesen' 'aron' 'ieron' 'ado'
+            'ido' 'ando' 'iendo' 'i{o'}' 'ar' 'er' 'ir' 'as'
+            'abas' 'adas' 'idas' '{i'}as' 'aras' 'ieras' 'ases'
+            'ieses' '{i'}s' '{a'}is' 'abais' '{i'}ais' 'arais'
+            'ierais'  'aseis' 'ieseis' 'asteis' 'isteis' 'ados'
+            'idos' 'amos' '{a'}bamos' '{i'}amos' 'imos'
+            '{a'}ramos' 'i{e'}ramos' 'i{e'}semos' '{a'}semos'
+                (delete)
+        )
+    )
+
+    define residual_suffix as (
+        [substring] among(
+            'os'
+            'a' 'o' '{a'}' '{i'}' '{o'}'
+                ( RV delete )
+            'e' '{e'}'
+                ( RV delete try( ['u'] test 'g' RV delete ) )
+        )
+    )
+)
+
+define stem as (
+    do mark_regions
+    backwards (
+        do attached_pronoun
+        do ( standard_suffix or
+             y_verb_suffix or
+             verb_suffix
+           )
+        do residual_suffix
+    )
+    do postlude
+)
+
+/*
+    Note 1: additions of 15 Jun 2005
+*/

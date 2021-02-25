@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,8 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -35,14 +36,13 @@ class Builder;
 
 class ManagedDocumentResult {
  public:
-  ManagedDocumentResult() : _vpack(nullptr), _revisionId(0) {}
+  ManagedDocumentResult() : _revisionId(0) {}
 
   ManagedDocumentResult(ManagedDocumentResult const& other) = default;
   ManagedDocumentResult& operator=(ManagedDocumentResult const& other) = default;
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) noexcept {
     _string = std::move(other._string);
-    _vpack = other._vpack;
     _revisionId = other._revisionId;
     other.clear();
     return *this;
@@ -50,59 +50,46 @@ class ManagedDocumentResult {
 
   ManagedDocumentResult(ManagedDocumentResult&& other) noexcept
       : _string(std::move(other._string)),
-        _vpack(other._vpack),
         _revisionId(other._revisionId) {
     other.clear();
   }
 
-  /// @brief store pointer to a valid document, sets revisionid
-  void setUnmanaged(uint8_t const* vpack);
   /// @brief copy in a valid document, sets revisionid
   void setManaged(uint8_t const* vpack);
 
   /// @brief access the internal buffer, revisionId must be set manually
   std::string* setManaged() noexcept {
     _string.clear();
-    _vpack = nullptr;
-    _revisionId = 0;
+    _revisionId = RevisionId::none();
     return &_string;
   }
 
-  inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
-  void setRevisionId(TRI_voc_rid_t rid) noexcept { _revisionId = rid; }
+  inline RevisionId revisionId() const noexcept { return _revisionId; }
+  void setRevisionId(RevisionId rid) noexcept { _revisionId = rid; }
   void setRevisionId() noexcept;
 
   void clearData() noexcept {
     _string.clear();
-    _vpack = nullptr;
   }
   
   void clear() noexcept {
     clearData();
-    _revisionId = 0;
+    _revisionId = RevisionId::none();
   }
   
   inline uint8_t const* vpack() const noexcept {
-    if (_vpack == nullptr) {
-      return reinterpret_cast<uint8_t const*>(_string.data());
-    }
-    return _vpack;
+    return reinterpret_cast<uint8_t const*>(_string.data());
   }
 
   inline bool empty() const noexcept {
-    return (_vpack == nullptr && _string.empty());
+    return _string.empty();
   }
 
-  inline bool canUseInExternal() const noexcept {
-    return _vpack != nullptr;
-  }
-
-  void addToBuilder(velocypack::Builder& builder, bool allowExternals) const;
+  void addToBuilder(velocypack::Builder& builder) const;
 
  private:
   std::string _string;
-  uint8_t* _vpack;
-  TRI_voc_rid_t _revisionId;
+  RevisionId _revisionId;
 };
 
 }  // namespace arangodb

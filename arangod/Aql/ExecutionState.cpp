@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,6 +38,21 @@ std::ostream& operator<<(std::ostream& ostream, ExecutionState state) {
       break;
     case ExecutionState::WAITING:
       ostream << "WAITING";
+      break;
+  }
+  return ostream;
+}
+
+std::ostream& operator<<(std::ostream& ostream, ExecutorState state) {
+  switch (state) {
+    case ExecutorState::DONE:
+      ostream << "DONE";
+      break;
+    case ExecutorState::HASMORE:
+      ostream << "HASMORE";
+      break;
+    default:
+      ostream << " WAT WAT WAT";
       break;
   }
   return ostream;

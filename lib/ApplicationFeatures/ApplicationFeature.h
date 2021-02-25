@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,15 +24,21 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_APPLICATION_FEATURE_H 1
 
-#include "Basics/Common.h"
+#include <memory>
+#include <string>
+#include <typeindex>
+#include <unordered_set>
+#include <vector>
 
-#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
-#include <unordered_set>
-
 namespace arangodb {
+namespace options {
+class ProgramOptions;
+}
 namespace application_features {
+class ApplicationServer;
 
 class ApplicationFeature {
   friend class ApplicationServer;
@@ -161,6 +168,9 @@ class ApplicationFeature {
     return _startsBefore;
   }
 
+  std::type_index registration() const;
+  void setRegistration(std::type_index registration);
+
  protected:
   void setOptional() { setOptional(true); }
 
@@ -217,6 +227,9 @@ class ApplicationFeature {
 
   // pointer to application server
   ApplicationServer& _server;
+
+  // type registration for lookup within the ApplicationServer
+  std::type_index _registration;
 
   // name of feature
   std::string const _name;

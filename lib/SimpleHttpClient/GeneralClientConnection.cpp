@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,9 +71,11 @@ using namespace arangodb::httpclient;
 /// @brief creates a new client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requestTimeout,
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 Endpoint* endpoint, double requestTimeout,
                                                  double connectTimeout, size_t connectRetries)
-    : _endpoint(endpoint),
+    : _server(server),
+      _endpoint(endpoint),
       _freeEndpointOnDestruction(false),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
@@ -88,10 +90,12 @@ GeneralClientConnection::GeneralClientConnection(Endpoint* endpoint, double requ
   TRI_invalidatesocket(&_socket);
 }
 
-GeneralClientConnection::GeneralClientConnection(std::unique_ptr<Endpoint>& endpoint,
+GeneralClientConnection::GeneralClientConnection(application_features::ApplicationServer& server,
+                                                 std::unique_ptr<Endpoint>& endpoint,
                                                  double requestTimeout,
                                                  double connectTimeout, size_t connectRetries)
-    : _endpoint(endpoint.release()),
+    : _server(server),
+      _endpoint(endpoint.release()),
       _freeEndpointOnDestruction(true),
       _requestTimeout(requestTimeout),
       _connectTimeout(connectTimeout),
@@ -120,29 +124,28 @@ GeneralClientConnection::~GeneralClientConnection() {
 /// @brief create a new connection from an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralClientConnection* GeneralClientConnection::factory(Endpoint* endpoint,
-                                                          double requestTimeout,
-                                                          double connectTimeout,
-                                                          size_t numRetries,
-                                                          uint64_t sslProtocol) {
+GeneralClientConnection* GeneralClientConnection::factory(
+    application_features::ApplicationServer& server, Endpoint* endpoint, double requestTimeout,
+    double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+    return new SslClientConnection(server, endpoint, requestTimeout,
+                                   connectTimeout, numRetries, sslProtocol);
   }
 
   return nullptr;
 }
 
 GeneralClientConnection* GeneralClientConnection::factory(
+    application_features::ApplicationServer& server,
     std::unique_ptr<Endpoint>& endpoint, double requestTimeout,
     double connectTimeout, size_t numRetries, uint64_t sslProtocol) {
   if (endpoint->encryption() == Endpoint::EncryptionType::NONE) {
-    return new ClientConnection(endpoint, requestTimeout, connectTimeout, numRetries);
+    return new ClientConnection(server, endpoint, requestTimeout, connectTimeout, numRetries);
   } else if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return new SslClientConnection(endpoint, requestTimeout, connectTimeout,
-                                   numRetries, sslProtocol);
+    return new SslClientConnection(server, endpoint, requestTimeout,
+                                   connectTimeout, numRetries, sslProtocol);
   }
 
   return nullptr;
@@ -178,18 +181,6 @@ bool GeneralClientConnection::connect() {
 
 void GeneralClientConnection::disconnect() {
   if (isConnected()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    if ((_written + _read) == 0) {
-      std::string bt;
-      TRI_GetBacktrace(bt);
-      LOG_TOPIC("b10b9", WARN, Logger::COMMUNICATION)
-          << "Closing HTTP-connection right after opening it without sending "
-             "data!"
-          << bt;
-    }
-    _written = 0;
-    _read = 0;
-#endif
     disconnectSocket();
     _numConnectRetries = 0;
     _isConnected = false;
@@ -209,8 +200,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
   double start = TRI_microtime();
   int res;
 
-  auto& server = application_features::ApplicationServer::server();
-  auto& comm = server.getFeature<application_features::CommunicationFeaturePhase>();
+  auto& comm = server().getFeature<application_features::CommunicationFeaturePhase>();
 
 #ifdef TRI_HAVE_POLL_H
   // Here we have poll, on all other platforms we use select
@@ -373,7 +363,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
                     std::string(" - ") + pErr;
 
-    TRI_set_errno(errno);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   return false;
@@ -392,7 +382,7 @@ bool GeneralClientConnection::checkSocket() {
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(errno);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     disconnect();
     return false;
   }
@@ -401,7 +391,8 @@ bool GeneralClientConnection::checkSocket() {
     return true;
   }
 
-  TRI_set_errno(so_error);
+  errno = so_error;
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
   disconnect();
 
   return false;
@@ -458,4 +449,8 @@ bool GeneralClientConnection::handleRead(double timeout, StringBuffer& buffer,
 
   connectionClosed = true;
   return false;
+}
+
+application_features::ApplicationServer& GeneralClientConnection::server() const {
+  return _server;
 }

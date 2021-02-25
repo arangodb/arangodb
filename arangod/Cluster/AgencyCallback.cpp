@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,12 +26,14 @@
 #include <chrono>
 #include <thread>
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -39,17 +41,29 @@
 using namespace arangodb;
 using namespace arangodb::application_features;
 
-AgencyCallback::AgencyCallback(AgencyComm& agency, std::string const& key,
+AgencyCallback::AgencyCallback(application_features::ApplicationServer& server, std::string const& key,
                                std::function<bool(VPackSlice const&)> const& cb,
                                bool needsValue, bool needsInitialValue)
-    : key(key), 
-      _agency(agency), 
-      _cb(cb), 
+    : key(key),
+      _server(server),
+      _cb(cb),
       _needsValue(needsValue),
-      _wasSignaled(false) {
+      _wasSignaled(false),
+      _local(true) {
   if (_needsValue && needsInitialValue) {
     refetchAndUpdate(true, false);
   }
+}
+
+void AgencyCallback::local(bool b) {
+  _local = b;
+  if (!b) {
+    _agency = std::make_unique<AgencyComm>(_server);
+  }
+}
+
+bool AgencyCallback::local() const {
+  return _local;
 }
 
 void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) {
@@ -64,26 +78,49 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
     return;
   }
 
-  AgencyCommResult result = _agency.getValues(key);
-
-  if (!result.successful()) {
-    auto& server = ApplicationServer::server();
-    if (!server.isStopping()) {
-      // only log errors if we are not already shutting down...
-      // in case of shutdown this error is somewhat expected
-      LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
-          << "Callback getValues to agency was not successful: " << result.errorCode()
-          << " " << result.errorMessage();
+  VPackSlice result;
+  std::shared_ptr<VPackBuilder> builder;
+  consensus::index_t idx = 0;
+  AgencyCommResult tmp;
+  
+  LOG_TOPIC("a6344", TRACE, Logger::CLUSTER) <<
+    "Refetching and update for " << AgencyCommHelper::path(key);
+  
+  if (_local) {
+    auto& _cache = _server.getFeature<ClusterFeature>().agencyCache();
+    std::tie(builder, idx) = _cache.read(std::vector<std::string>{AgencyCommHelper::path(key)});
+    result = builder->slice();
+    if (!result.isArray()) {
+      if (!_server.isStopping()) {
+        // only log errors if we are not already shutting down...
+        // in case of shutdown this error is somewhat expected
+        LOG_TOPIC("ec320", ERR, arangodb::Logger::CLUSTER)
+          << "Callback to get agency cache was not successful: " << result.toJson();
+      }
+      return;
     }
-    return;
+  } else {
+    TRI_ASSERT(_agency.get() != nullptr);
+    tmp = _agency->getValues(key);
+    if (!tmp.successful()) {
+      if (!_server.isStopping()) {
+        // only log errors if we are not already shutting down...
+        // in case of shutdown this error is somewhat expected
+        LOG_TOPIC("fb402", ERR, arangodb::Logger::CLUSTER)
+          << "Callback getValues to agency was not successful: " << tmp.errorCode()
+          << " " << tmp.errorMessage();
+      }
+      return;
+    }
+    result = tmp.slice();
   }
 
   std::vector<std::string> kv =
-      basics::StringUtils::split(AgencyCommManager::path(key), '/');
+      basics::StringUtils::split(AgencyCommHelper::path(key), '/');
   kv.erase(std::remove(kv.begin(), kv.end(), ""), kv.end());
 
   auto newData = std::make_shared<VPackBuilder>();
-  newData->add(result.slice()[0].get(kv));
+  newData->add(result[0].get(kv));
 
   if (needToAcquireMutex) {
     CONDITION_LOCKER(locker, _cv);
@@ -96,11 +133,13 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex, bool forceCheck) 
 void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forceCheck) {
   // Only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  if (!_lastData || !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false) || forceCheck) {
+  if (!_lastData || 
+      forceCheck || 
+      !arangodb::basics::VelocyPackHelper::equal(_lastData->slice(), newData->slice(), false)) {
     LOG_TOPIC("2bd14", DEBUG, Logger::CLUSTER)
         << "AgencyCallback: Got new value " << newData->slice().typeName()
         << " " << newData->toJson() << " forceCheck=" << forceCheck;
-    if (execute(newData)) {
+    if (execute(newData->slice())) {
       _lastData = newData;
     } else {
       LOG_TOPIC("337dc", DEBUG, Logger::CLUSTER)
@@ -112,32 +151,30 @@ void AgencyCallback::checkValue(std::shared_ptr<VPackBuilder> newData, bool forc
 bool AgencyCallback::executeEmpty() {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("96022", DEBUG, Logger::CLUSTER) << "Executing (empty)";
-  bool result = _cb(VPackSlice::noneSlice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
-  }
-  return result;
+  return execute(VPackSlice::noneSlice());
 }
 
-bool AgencyCallback::execute(std::shared_ptr<VPackBuilder> newData) {
+bool AgencyCallback::execute(velocypack::Slice newData) {
   // only called from refetchAndUpdate, we always have the mutex when
   // we get here!
-  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing";
-  bool result = _cb(newData->slice());
-  if (result) {
-    _wasSignaled = true;
-    _cv.signal();
+  LOG_TOPIC("add4e", DEBUG, Logger::CLUSTER) << "Executing" << (newData.isNone() ? " (empty)" : "");
+  try {
+    bool result = _cb(newData);
+    if (result) {
+      _wasSignaled = true;
+      _cv.signal();
+    }
+    return result;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("1de99", WARN, Logger::CLUSTER) << "AgencyCallback execution failed: " << ex.what();
+    throw;
   }
-  return result;
 }
 
 bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
   // One needs to acquire the mutex of the condition variable
   // before entering this function!
-  auto& server = ApplicationServer::server();
-  if (!server.isStopping()) {
+  if (!_server.isStopping()) {
     if (_wasSignaled) {
       // ok, we have been signaled already, so there is no need to wait at all
       // directly refetch the values

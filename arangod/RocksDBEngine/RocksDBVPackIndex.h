@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -65,17 +66,17 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   RocksDBVPackIndex() = delete;
 
-  RocksDBVPackIndex(TRI_idx_iid_t iid, LogicalCollection& collection,
+  RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                     arangodb::velocypack::Slice const& info);
 
   ~RocksDBVPackIndex();
 
-  bool hasSelectivityEstimate() const override { return true; }
+  bool hasSelectivityEstimate() const override;
 
   double selectivityEstimate(arangodb::velocypack::StringRef const& = arangodb::velocypack::StringRef()) const override;
 
-  RocksDBCuckooIndexEstimator<uint64_t>* estimator() override;
-  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) override;
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
   void recalculateEstimates() override;
 
   void toVelocyPack(velocypack::Builder&,
@@ -115,23 +116,37 @@ class RocksDBVPackIndex : public RocksDBIndex {
                                                       arangodb::aql::Variable const* reference,
                                                       IndexIteratorOptions const& opts) override;
 
-  void afterTruncate(TRI_voc_tick_t tick) override;
+  void afterTruncate(TRI_voc_tick_t tick,
+                     arangodb::transaction::Methods* trx) override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                LocalDocumentId const& documentId, velocypack::Slice doc,
+                OperationOptions const& options) override;
 
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& documentId,
-                velocypack::Slice const& doc, Index::OperationMode mode) override;
+                velocypack::Slice doc) override;
 
   Result update(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId const& oldDocumentId,
-                velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
-                velocypack::Slice const& newDoc, Index::OperationMode mode) override;
+                velocypack::Slice oldDoc, LocalDocumentId const& newDocumentId,
+                velocypack::Slice newDoc,
+                OperationOptions const& options) override;
 
  private:
+  /// @brief returns whether the document can be inserted into the index
+  /// (or if there will be a conflict)
+  Result checkInsert(transaction::Methods& trx, RocksDBMethods* methods,
+                     LocalDocumentId const& documentId, velocypack::Slice doc,
+                     OperationOptions const& options) override;
+  
+  /// @brief returns whether the document can be updated/replaced in the index
+  /// (or if there will be a conflict)
+  Result checkReplace(transaction::Methods& trx, RocksDBMethods* methods,
+                      LocalDocumentId const& documentId, velocypack::Slice doc,
+                      OperationOptions const& options) override;
+
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }
 
@@ -139,10 +154,10 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void fillPaths(std::vector<std::vector<std::string>>& paths, std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased,
-                  LocalDocumentId const& documentId, VPackSlice const& doc,
-                  ::arangodb::containers::SmallVector<RocksDBKey>& elements,
-                  ::arangodb::containers::SmallVector<uint64_t>& hashes);
+  ErrorCode fillElement(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId, VPackSlice const& doc,
+                        ::arangodb::containers::SmallVector<RocksDBKey>& elements,
+                        ::arangodb::containers::SmallVector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
@@ -180,7 +195,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.
-  std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>> _estimator;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 }  // namespace arangodb
 

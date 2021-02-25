@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,7 +54,6 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -74,28 +74,26 @@ static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice   systemDatabaseArgs = systemDatabaseBuilder.slice();
 
 struct TestAttributeX : public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestAttributeX";
+  }
 };
 
-DEFINE_ATTRIBUTE_TYPE(TestAttributeX);
 REGISTER_ATTRIBUTE(TestAttributeX);  // required to open reader on segments with analized fields
 
 struct TestAttributeY : public irs::attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestAttributeY";
+  }
 };
 
-DEFINE_ATTRIBUTE_TYPE(TestAttributeY);
 REGISTER_ATTRIBUTE(TestAttributeY);  // required to open reader on segments with analized fields
-
-struct TestTermAttribute : public irs::term_attribute {
- public:
-  void value(irs::bytes_ref const& value) { value_ = value; }
-  irs::bytes_ref const& value() const { return value_; }
-};
 
 class TestAnalyzer : public irs::analysis::analyzer {
  public:
-  DECLARE_ANALYZER_TYPE();
+  static constexpr irs::string_ref type_name() noexcept {
+    return "TestInsertAnalyzer";
+  }
 
   static ptr make(irs::string_ref const& args) {
     PTR_NAMED(TestAnalyzer, ptr, args);
@@ -123,48 +121,58 @@ class TestAnalyzer : public irs::analysis::analyzer {
   }
 
   TestAnalyzer(irs::string_ref const& value)
-      : irs::analysis::analyzer(TestAnalyzer::type()) {
-    _attrs.emplace(_inc);  // required by field_data::invert(...)
-    _attrs.emplace(_term);
+      : irs::analysis::analyzer(irs::type<TestAnalyzer>::get()) {
 
     auto slice = arangodb::iresearch::slice(value);
     auto arg = slice.get("args").copyString();
 
     if (arg == "X") {
-      _attrs.emplace(_x);
+      _px = &_x;
     } else if (arg == "Y") {
-      _attrs.emplace(_y);
+      _py = &_y;
     }
   }
 
-  virtual irs::attribute_view const& attributes() const NOEXCEPT override {
-    return _attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (type == irs::type<TestAttributeX>::id()) {
+      return _px;
+    }
+    if (type == irs::type<TestAttributeY>::id()) {
+      return _py;
+    }
+    if (type == irs::type<irs::increment>::id()) {
+      return &_inc;
+    }
+    if (type == irs::type<irs::term_attribute>::id()) {
+      return &_term;
+    }
+    return nullptr;
   }
 
   virtual bool next() override {
-    _term.value(_data);
+    _term.value = _data;
     _data = irs::bytes_ref::NIL;
 
-    return !_term.value().null();
+    return !_term.value.null();
   }
 
   virtual bool reset(irs::string_ref const& data) override {
     _data = irs::ref_cast<irs::byte_type>(data);
-    _term.value(irs::bytes_ref::NIL);
+    _term.value = irs::bytes_ref::NIL;
 
     return true;
   }
 
  private:
-  irs::attribute_view _attrs;
   irs::bytes_ref _data;
   irs::increment _inc;
-  TestTermAttribute _term;
+  irs::term_attribute _term;
   TestAttributeX _x;
   TestAttributeY _y;
+  irs::attribute* _px{};
+  irs::attribute* _py{};
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestInsertAnalyzer");
 REGISTER_ANALYZER_VPACK(TestAnalyzer, TestAnalyzer::make, TestAnalyzer::normalize);
 
 // -----------------------------------------------------------------------------
@@ -194,7 +202,9 @@ class IResearchIndexTest
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*_vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
@@ -818,7 +828,7 @@ TEST_F(IResearchIndexTest, test_async_index) {
   }
 }
 
-// test indexing selected fields will ommit non-indexed fields during query
+// test indexing selected fields will omit non-indexed fields during query
 TEST_F(IResearchIndexTest, test_fields) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
       "{ \"name\": \"testCollection0\" }");

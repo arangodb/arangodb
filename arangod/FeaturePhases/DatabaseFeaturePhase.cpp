@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,11 +26,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "MMFiles/MMFilesCompactionFeature.h"
-#include "MMFiles/MMFilesEngine.h"
-#include "MMFiles/MMFilesLogfileManager.h"
-#include "MMFiles/MMFilesPersistentIndexFeature.h"
-#include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/CheckVersionFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -42,7 +38,6 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "Transaction/ManagerFeature.h"
 
@@ -66,14 +61,8 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ApplicationServer& server)
   startsAfter<FlushFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<LockfileFeature>();
-  startsAfter<MMFilesCompactionFeature>();
-  startsAfter<MMFilesEngine>();
-  startsAfter<MMFilesLogfileManager>();
-  startsAfter<MMFilesPersistentIndexFeature>();
-  startsAfter<MMFilesWalRecoveryFeature>();
   startsAfter<ReplicationFeature>();
   startsAfter<RocksDBEngine>();
-  startsAfter<RocksDBOptionFeature>();
   startsAfter<RocksDBRecoveryManager>();
   startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();

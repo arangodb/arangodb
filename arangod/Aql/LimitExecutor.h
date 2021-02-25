@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,9 +30,9 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <iosfwd>
@@ -41,16 +42,13 @@ namespace arangodb {
 namespace aql {
 
 class InputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class LimitExecutorInfos : public ExecutorInfos {
+class LimitExecutorInfos {
  public:
-  LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                     std::unordered_set<RegisterId> registersToClear,
-                     std::unordered_set<RegisterId> registersToKeep,
-                     size_t offset, size_t limit, bool fullCount);
+  LimitExecutorInfos(size_t offset, size_t limit, bool fullCount);
 
   LimitExecutorInfos() = delete;
   LimitExecutorInfos(LimitExecutorInfos&&) = default;
@@ -95,89 +93,55 @@ class LimitExecutor {
   ~LimitExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
   /**
-   * @brief Custom skipRows() implementation. This is obligatory to increase
-   * _counter!
+   * @brief skip the next Row of Aql Values.
    *
-   * Semantically, we first skip until our local offset. We may not report the
-   * number of rows skipped this way. Second, we skip up to the number of rows
-   * requested; but at most up to our limit.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t toSkipRequested);
-
-  std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
   Infos const& infos() const noexcept { return _infos; };
 
-  size_t maxRowsLeftToFetch() const noexcept {
-    // counter should never exceed this count!
-    TRI_ASSERT(infos().getLimitPlusOffset() >= _counter);
-    return infos().getLimitPlusOffset() - _counter;
+  auto remainingOffset() const noexcept -> size_t {
+    auto const offset = infos().getOffset();
+
+    // Restricted value of _counter in [0, offset]
+    auto const boundedCounter = std::min(offset, _counter);
+    TRI_ASSERT(boundedCounter <= offset);
+
+    return offset - boundedCounter;
   }
 
-  size_t maxRowsLeftToSkip() const noexcept {
-    // should not be called after skipping the offset!
-    TRI_ASSERT(infos().getOffset() >= _counter);
-    return infos().getOffset() - _counter;
+  auto remainingLimit() const noexcept -> size_t {
+    auto const offset = infos().getOffset();
+    auto const limitPlusOffset = infos().getLimitPlusOffset();
+
+    // Restricted value of _counter in [offset, limitPlusOffset]
+    auto const boundedCounter = std::min(limitPlusOffset, std::max(offset, _counter));
+    TRI_ASSERT(offset <= boundedCounter);
+    TRI_ASSERT(boundedCounter <= limitPlusOffset);
+    return limitPlusOffset - boundedCounter;
   }
 
-  enum class LimitState {
-    // state is SKIPPING until the offset is reached
-    SKIPPING,
-    // state is RETURNING until the limit is reached
-    RETURNING,
-    // state is RETURNING_LAST_ROW if we've seen the second to last row before
-    // the limit is reached
-    RETURNING_LAST_ROW,
-    // state is COUNTING when the limit is reached and fullcount is enabled
-    COUNTING,
-    // state is LIMIT_REACHED only if fullCount is disabled, and we've seen all
-    // rows up to limit
-    LIMIT_REACHED,
-  };
+  [[nodiscard]] auto limitFulfilled() const noexcept -> bool;
 
-  /**
-   * @brief Returns the current state of the executor, based on _counter (i.e.
-   * number of lines seen), limit, offset and fullCount.
-   * @return See LimitState comments for a description.
-   */
-  LimitState currentState() const noexcept {
-    // Note that not only offset, but also limit can be zero. Thus the order
-    // of all following checks is important, even the first two!
-
-    if (_counter < infos().getOffset()) {
-      return LimitState::SKIPPING;
-    }
-    if (_counter + 1 == infos().getLimitPlusOffset()) {
-      return LimitState::RETURNING_LAST_ROW;
-    }
-    if (_counter < infos().getLimitPlusOffset()) {
-      return LimitState::RETURNING;
-    }
-    if (infos().isFullCountEnabled()) {
-      return LimitState::COUNTING;
-    }
-
-    return LimitState::LIMIT_REACHED;
-  }
-
-  std::pair<ExecutionState, Stats> skipOffset();
-  std::pair<ExecutionState, Stats> skipRestForFullCount();
+  auto calculateUpstreamCall(const AqlCall& clientCall) const -> AqlCall;
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _lastRowToOutput;
-  ExecutionState _stateOfLastRowToOutput;
   // Number of input lines seen
   size_t _counter = 0;
+  bool _didProduceRows = false;
 };
 
 }  // namespace aql

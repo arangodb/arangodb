@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,9 +27,11 @@
 #ifndef ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 #define ARANGOD_AQL_ENUMERATECOLLECTION_EXECUTOR_H
 
+#include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Transaction/Methods.h"
+#include "Aql/RegisterInfos.h"
 #include "DocumentProducingHelper.h"
 
 #include <memory>
@@ -37,65 +40,61 @@
 #include <vector>
 
 namespace arangodb {
-struct OperationCursor;
+class IndexIterator;
 namespace transaction {
 class Methods;
 }
 namespace aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 struct Collection;
 class EnumerateCollectionStats;
 class ExecutionEngine;
-class ExecutorInfos;
+class RegisterInfos;
 class Expression;
 class InputAqlItemRow;
 class OutputAqlItemRow;
+class Projections;
+class QueryContext;
 struct Variable;
 
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateCollectionExecutorInfos : public ExecutorInfos {
+class EnumerateCollectionExecutorInfos {
  public:
-  EnumerateCollectionExecutorInfos(
-      RegisterId outputRegister, RegisterId nrInputRegisters,
-      RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-      std::unordered_set<RegisterId> registersToKeep, ExecutionEngine* engine,
-      Collection const* collection, Variable const* outVariable, bool produceResult,
-      Expression* filter,
-      std::vector<std::string> const& projections,
-      std::vector<size_t> const& coveringIndexAttributePositions,
-      bool useRawDocumentPointers, bool random);
+  EnumerateCollectionExecutorInfos(RegisterId outputRegister, aql::QueryContext& query,
+                                   Collection const* collection, Variable const* outVariable,
+                                   bool produceResult, Expression* filter,
+                                   arangodb::aql::Projections projections,
+                                   bool random, bool count);
 
   EnumerateCollectionExecutorInfos() = delete;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos&&) = default;
   EnumerateCollectionExecutorInfos(EnumerateCollectionExecutorInfos const&) = delete;
   ~EnumerateCollectionExecutorInfos() = default;
 
-  ExecutionEngine* getEngine();
   Collection const* getCollection() const;
   Variable const* getOutVariable() const;
-  Query* getQuery() const;
-  transaction::Methods* getTrxPtr() const;
-  Expression* getFilter() const;
-  std::vector<std::string> const& getProjections() const noexcept;
-  std::vector<size_t> const& getCoveringIndexAttributePositions() const noexcept;
-  bool getProduceResult() const;
-  bool getUseRawDocumentPointers() const;
-  bool getRandom() const;
+  QueryContext& getQuery() const;
+  Expression* getFilter() const noexcept;
+  arangodb::aql::Projections const& getProjections() const noexcept;
+  bool getProduceResult() const noexcept;
+  bool getRandom() const noexcept;
+  bool getCount() const noexcept;
   RegisterId getOutputRegisterId() const;
 
  private:
-  ExecutionEngine* _engine;
+  aql::QueryContext& _query;
   Collection const* _collection;
   Variable const* _outVariable;
   Expression* _filter;
-  std::vector<std::string> const& _projections;
-  std::vector<size_t> const& _coveringIndexAttributePositions;
+  arangodb::aql::Projections _projections;
   RegisterId _outputRegisterId;
-  bool _useRawDocumentPointers;
   bool _produceResult;
   bool _random;
+  bool _count;
 };
 
 /**
@@ -115,41 +114,55 @@ class EnumerateCollectionExecutor {
   using Stats = EnumerateCollectionStats;
 
   EnumerateCollectionExecutor() = delete;
-  EnumerateCollectionExecutor(EnumerateCollectionExecutor&&) = default;
+  EnumerateCollectionExecutor(EnumerateCollectionExecutor&&) = delete;
   EnumerateCollectionExecutor(EnumerateCollectionExecutor const&) = delete;
   EnumerateCollectionExecutor(Fetcher& fetcher, Infos&);
   ~EnumerateCollectionExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief Will fetch a new InputRow if necessary and store their local state
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return bool done in case we do not have any input and upstreamState is done
    */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+  
+  /**
+   * @brief This Executor in some cases knows how many rows it will produce and most by itself
+   */
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
-  std::tuple<ExecutionState, EnumerateCollectionStats, size_t> skipRows(size_t atMost);
+  /**
+   * @brief produce the next Rows of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
+
+  uint64_t skipEntries(size_t toSkip, EnumerateCollectionStats& stats);
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
   void initializeCursor();
 
  private:
-  bool waitForSatellites(ExecutionEngine* engine, Collection const* collection) const;
-
-  void setAllowCoveringIndexOptimization(bool allowCoveringIndexOptimization);
-
-  /// @brief whether or not we are allowed to use the covering index
-  /// optimization in a callback
-  bool getAllowCoveringIndexOptimization() const noexcept;
-
- private:
+  transaction::Methods _trx;
   Infos& _infos;
-  Fetcher& _fetcher;
   IndexIterator::DocumentCallback _documentProducer;
   IndexIterator::DocumentCallback _documentSkipper;
   DocumentProducingFunctionContext _documentProducingFunctionContext;
   ExecutionState _state;
+  ExecutorState _executorState;
   bool _cursorHasMore;
-  InputAqlItemRow _input;
-  std::unique_ptr<OperationCursor> _cursor;
+  InputAqlItemRow _currentRow;
+  ExecutorState _currentRowState;
+  std::unique_ptr<IndexIterator> _cursor;
 };
 
 }  // namespace aql

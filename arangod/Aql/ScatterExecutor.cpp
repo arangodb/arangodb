@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,168 +23,117 @@
 
 #include "ScatterExecutor.h"
 
+#include "Aql/AqlCallStack.h"
+#include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/IdExecutor.h"
 #include "Basics/Exceptions.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
+ScatterExecutorInfos::ScatterExecutorInfos(std::vector<std::string> clientIds)
+    : ClientsExecutorInfos(std::move(clientIds)) {}
+
+
+ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
+                                                  ExecutionNode const* node,
+                                                  RegisterInfos const& registerInfos)
+    : _queue{}, _executor(nullptr), _executorHasMore{false} {
+  // We only get shared ptrs to const data. so we need to copy here...
+  IdExecutorInfos executorInfos(false, RegisterId(0), "", false);
+  auto idExecutorRegisterInfos =
+    RegisterInfos{{},
+                  {},
+                  registerInfos.numberOfInputRegisters(),
+                  registerInfos.numberOfOutputRegisters(),
+                  registerInfos.registersToClear(),
+                  registerInfos.registersToKeep()};
+  // NOTE: Do never change this type! The execute logic below requires this and only this type.
+  _executor = std::make_unique<ExecutionBlockImpl<IdExecutor<ConstFetcher>>>(
+      &engine, node, std::move(idExecutorRegisterInfos), std::move(executorInfos));
+}
+
+auto ScatterExecutor::ClientBlockData::clear() -> void {
+  _queue.clear();
+  _executorHasMore = false;
+}
+
+auto ScatterExecutor::ClientBlockData::addBlock(SharedAqlItemBlockPtr block,
+                                                SkipResult skipped) -> void {
+  // NOTE:
+  // The given ItemBlock will be reused in all requesting blocks.
+  // However, the next following block could be passthrough.
+  // If it is, it will modify that data stored in block.
+  // If now another client requests the same block, it is not
+  // the original any more, but a modified version.
+  // For Instance in calculation we assert that the place we write to
+  // is empty. If another peer-calculation has written to this value
+  // this assertion does not hold true anymore.
+  // Hence we are required to do an indepth cloning here.
+  if (block == nullptr) {
+    _queue.emplace_back(block, skipped);
+  } else {
+    _queue.emplace_back(block->cloneDataAndMoveShadow(), skipped);
+  }
+}
+
+auto ScatterExecutor::ClientBlockData::hasDataFor(AqlCall const& call) -> bool {
+  return _executorHasMore || !_queue.empty();
+}
+
+auto ScatterExecutor::ClientBlockData::execute(AqlCallStack callStack, ExecutionState upstreamState)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  TRI_ASSERT(_executor != nullptr);
+
+  // Make sure we actually have data before you call execute
+  TRI_ASSERT(hasDataFor(callStack.peek()));
+  if (!_executorHasMore) {
+    // This cast is guaranteed, we create this a couple lines above and only
+    // this executor is used here.
+    // Unfortunately i did not get a version compiled were i could only
+    // forward declare the templates in header.
+    auto casted =
+        static_cast<ExecutionBlockImpl<IdExecutor<ConstFetcher>>*>(_executor.get());
+    TRI_ASSERT(casted != nullptr);
+    auto& [block, skipResult] = _queue.front();
+    casted->injectConstantBlock(std::move(block), std::move(skipResult));
+    _queue.pop_front();
+    _executorHasMore = true;
+  }
+  auto [state, skipped, result] = _executor->execute(callStack);
+  // We have all data locally cannot wait here.
+  TRI_ASSERT(state != ExecutionState::WAITING);
+
+  if (state == ExecutionState::DONE) {
+    // This executor is finished, including shadowrows
+    // We are going to reset it on next call
+    _executorHasMore = false;
+
+    // Also we need to adjust the return states
+    // as this state only represents one single block
+    if (!_queue.empty()) {
+      state = ExecutionState::HASMORE;
+    } else {
+      state = upstreamState;
+    }
+  }
+  return {state, std::move(skipped), std::move(result)};
+}
+
+ScatterExecutor::ScatterExecutor(Infos const&) {}
+
+auto ScatterExecutor::distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
+                                      std::unordered_map<std::string, ClientBlockData>& blockMap) const
+    -> void {
+  // Scatter returns every block on every client as is.
+  for (auto& [id, list] : blockMap) {
+    list.addBlock(block, skipped);
+  }
+}
+
 ExecutionBlockImpl<ScatterExecutor>::ExecutionBlockImpl(ExecutionEngine* engine,
                                                         ScatterNode const* node,
-                                                        ExecutorInfos&& infos,
-                                                        std::vector<std::string> const& shardIds)
-    : BlocksWithClients(engine, node, shardIds),
-      _infos(std::move(infos)),
-      _query(*engine->getQuery()) {
-  _shardIdMap.reserve(_nrClients);
-  for (size_t i = 0; i < _nrClients; i++) {
-    _shardIdMap.emplace(std::make_pair(shardIds[i], i));
-  }
-}
-
-/// @brief initializeCursor
-std::pair<ExecutionState, Result> ExecutionBlockImpl<ScatterExecutor>::initializeCursor(
-    InputAqlItemRow const& input) {
-  // local clean up
-  _posForClient.clear();
-
-  for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.emplace_back(0, 0);
-  }
-
-  return ExecutionBlock::initializeCursor(input);
-}
-
-/// @brief getSomeForShard
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ScatterExecutor>::getSomeForShard(
-    size_t atMost, std::string const& shardId) {
-  traceGetSomeBegin(atMost);
-  auto result = getSomeForShardWithoutTrace(atMost, shardId);
-  return traceGetSomeEnd(result.first, std::move(result.second));
-}
-std::pair<ExecutionState, SharedAqlItemBlockPtr> ExecutionBlockImpl<ScatterExecutor>::getSomeForShardWithoutTrace(
-    size_t atMost, std::string const& shardId) {
-  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
-  size_t skipped = 0;
-  SharedAqlItemBlockPtr result = nullptr;
-  auto out = getOrSkipSomeForShard(atMost, false, result, skipped, shardId);
-  if (out.first == ExecutionState::WAITING) {
-    return {out.first, nullptr};
-  }
-  if (!out.second.ok()) {
-    THROW_ARANGO_EXCEPTION(out.second);
-  }
-  return {out.first, std::move(result)};
-}
-
-/// @brief skipSomeForShard
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShard(
-    size_t atMost, std::string const& shardId) {
-  traceSkipSomeBegin(atMost);
-  auto result = skipSomeForShardWithoutTrace(atMost, shardId);
-  return traceSkipSomeEnd(result.first, result.second);
-}
-
-std::pair<ExecutionState, size_t> ExecutionBlockImpl<ScatterExecutor>::skipSomeForShardWithoutTrace(
-    size_t atMost, std::string const& shardId) {
-  // NOTE: We do not need to retain these, the getOrSkipSome is required to!
-  size_t skipped = 0;
-  SharedAqlItemBlockPtr result = nullptr;
-  auto out = getOrSkipSomeForShard(atMost, true, result, skipped, shardId);
-  if (out.first == ExecutionState::WAITING) {
-    return {out.first, 0};
-  }
-  TRI_ASSERT(result == nullptr);
-  if (!out.second.ok()) {
-    THROW_ARANGO_EXCEPTION(out.second);
-  }
-  return {out.first, skipped};
-}
-
-/// @brief getOrSkipSomeForShard
-std::pair<ExecutionState, arangodb::Result> ExecutionBlockImpl<ScatterExecutor>::getOrSkipSomeForShard(
-    size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
-    size_t& skipped, std::string const& shardId) {
-  TRI_ASSERT(result == nullptr && skipped == 0);
-  TRI_ASSERT(atMost > 0);
-
- size_t const clientId = getClientId(shardId);
-
-  if (!hasMoreForClientId(clientId)) {
-    return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-  }
-
-  TRI_ASSERT(_posForClient.size() > clientId);
-  std::pair<size_t, size_t>& pos = _posForClient[clientId];
-
-  // pull more blocks from dependency if necessary . . .
-  if (pos.first >= _buffer.size()) {
-    auto res = getBlock(atMost);
-    if (res.first == ExecutionState::WAITING) {
-      return {res.first, TRI_ERROR_NO_ERROR};
-    }
-    if (!res.second) {
-      TRI_ASSERT(res.first == ExecutionState::DONE);
-      return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-    }
-  }
-
-  auto& blockForClient = _buffer[pos.first];
-
-  size_t available = blockForClient->size() - pos.second;
-  // available should be non-zero
-
-  skipped = (std::min)(available, atMost);  // nr rows in outgoing block
-
-  if (!skipping) {
-    result = blockForClient->slice(pos.second, pos.second + skipped);
-  }
-
-  // increment the position . . .
-  pos.second += skipped;
-
-  // check if we're done at current block in buffer . . .
-  if (pos.second == blockForClient->size()) {
-    pos.first++;     // next block
-    pos.second = 0;  // reset the position within a block
-
-    // check if we can pop the front of the buffer . . .
-    bool popit = true;
-    for (size_t i = 0; i < _nrClients; i++) {
-      if (_posForClient[i].first == 0) {
-        popit = false;
-        break;
-      }
-    }
-    if (popit) {
-      _buffer.pop_front();
-      // update the values in first coord of _posForClient
-      for (size_t i = 0; i < _nrClients; i++) {
-        _posForClient[i].first--;
-      }
-    }
-  }
-
-  return {getHasMoreStateForClientId(clientId), TRI_ERROR_NO_ERROR};
-}
-
-bool ExecutionBlockImpl<ScatterExecutor>::hasMoreForClientId(size_t clientId) const {
-  TRI_ASSERT(_nrClients != 0);
-
-  TRI_ASSERT(clientId < _posForClient.size());
-  std::pair<size_t, size_t> pos = _posForClient.at(clientId);
-  // (i, j) where i is the position in _buffer, and j is the position in
-  // _buffer[i] we are sending to <clientId>
-
-  if (pos.first <= _buffer.size()) {
-    return true;
-  }
-  return _upstreamState == ExecutionState::HASMORE;
-}
-
-ExecutionState ExecutionBlockImpl<ScatterExecutor>::getHasMoreStateForClientId(size_t clientId) const {
-  if (hasMoreForClientId(clientId)) {
-    return ExecutionState::HASMORE;
-  }
-  return ExecutionState::DONE;
-}
+                                                        RegisterInfos registerInfos,
+                                                        ScatterExecutor::Infos&& executorInfos)
+    : BlocksWithClientsImpl(engine, node, std::move(registerInfos), std::move(executorInfos)) {}

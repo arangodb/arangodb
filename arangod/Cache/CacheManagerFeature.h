@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H
 #define ARANGOD_CACHE_CACHE_MANAGER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
 
@@ -33,9 +32,6 @@ namespace arangodb {
 
 class CacheManagerFeature final : public application_features::ApplicationFeature {
  public:
-  // note that the cache is optional and that MANAGER can be a nullptr!
-  static cache::Manager* MANAGER;
-
   explicit CacheManagerFeature(application_features::ApplicationServer& server);
   ~CacheManagerFeature();
 
@@ -44,15 +40,17 @@ class CacheManagerFeature final : public application_features::ApplicationFeatur
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
-  void unprepare() override final;
+
+  /// @brief Pointer to global instance; Can be null if cache is disabled
+  cache::Manager* manager();
 
  private:
-  static const uint64_t minRebalancingInterval;
+  static constexpr uint64_t minRebalancingInterval = 500 * 1000;
 
   std::unique_ptr<cache::Manager> _manager;
   std::unique_ptr<CacheRebalancerThread> _rebalancer;
-  uint64_t _cacheSize;
-  uint64_t _rebalancingInterval;
+  std::uint64_t _cacheSize;
+  std::uint64_t _rebalancingInterval;
 };
 
 }  // namespace arangodb

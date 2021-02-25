@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
 #include "Replication/SyncerId.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -39,13 +41,13 @@ namespace tests {
 namespace replication {
 
 class ReplicationClientsProgressTrackerTest_SingleClient
-    : public ::testing::TestWithParam<std::pair<SyncerId, TRI_server_id_t>> {
+    : public ::testing::TestWithParam<std::pair<SyncerId, ServerId>> {
  protected:
   ReplicationClientsProgressTracker testee{};
   SyncerId syncerId{};
-  TRI_server_id_t clientId{};
+  ServerId clientId{};
 
-  virtual void SetUp() {
+  virtual void SetUp() override {
     auto const& parm = GetParam();
     syncerId = parm.first;
     clientId = parm.second;
@@ -260,19 +262,19 @@ class ReplicationClientsProgressTrackerTest_MultiClient : public ::testing::Test
 
   struct Client {
     SyncerId const syncerId;
-    TRI_server_id_t const clientId;
+    ServerId const clientId;
     bool operator==(Client const& other) const noexcept {
       return syncerId == other.syncerId && clientId == other.clientId;
     }
   };
-  Client const clientA{SyncerId{42}, 0};
-  Client const clientB{SyncerId{0}, 23};
+  Client const clientA{SyncerId{42}, ServerId{0}};
+  Client const clientB{SyncerId{0}, ServerId{23}};
   // should not clash with clientB, as the syncerId should have preference!
-  Client const clientC{SyncerId{69}, 23};
+  Client const clientC{SyncerId{69}, ServerId{23}};
   // all clientD*s should behave the same, as clientId should be ignored iff syncerId != 0.
-  Client const clientD1{SyncerId{23}, 0};
-  Client const clientD2{SyncerId{23}, 27};
-  Client const clientD3{SyncerId{23}, 3};
+  Client const clientD1{SyncerId{23}, ServerId{0}};
+  Client const clientD2{SyncerId{23}, ServerId{27}};
+  Client const clientD3{SyncerId{23}, ServerId{3}};
 
   uint64_t tickOfA{UINT64_MAX}, tickOfB{UINT64_MAX}, tickOfC{UINT64_MAX},
       tickOfD{UINT64_MAX};
@@ -356,7 +358,7 @@ TEST_F(ReplicationClientsProgressTrackerTest_MultiClient,
 }
 
 TEST_F(ReplicationClientsProgressTrackerTest_MultiClient, test_ignored_clients) {
-  Client ignoredClient{SyncerId{0}, 0};
+  Client ignoredClient{SyncerId{0}, ServerId{0}};
 
   ASSERT_EQ(UINT64_MAX, testee.lowestServedValue());
 

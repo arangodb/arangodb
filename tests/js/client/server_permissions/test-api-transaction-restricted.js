@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -29,17 +29,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
+  return {
+    'server.allow-use-database': 'false',
+    'javascript.endpoints-denylist': '^.*$',
+    'javascript.files-allowlist': '^$',
+    'runSetup': true
+  };
+}
+
+if (runSetup === true) {
   let users = require("@arangodb/users");
-  
+
   users.save("test_rw", "testi");
   users.grantDatabase("test_rw", "_system", "rw");
 
-  return {
-    'server.allow-use-database': 'false',
-    'javascript.endpoints-blacklist': '^.*$',
-    'javascript.files-whitelist': '^$',
-  };
+  return true;
 }
+
 var jsunity = require('jsunity');
 
 function testSuite() {
@@ -51,8 +57,8 @@ function testSuite() {
     setUp: function() {
       try {
         db._dropDatabase("UnitTestsApiTest");
-      } catch (err) {} 
-      
+      } catch (err) {}
+
       db._createDatabase("UnitTestsApiTest");
       db._useDatabase("UnitTestsApiTest");
       db._create("UnitTestsCollection");
@@ -80,7 +86,7 @@ function testSuite() {
       assertEqual(403, result.code);
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
     testReadArbitraryFiles : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
 
@@ -98,7 +104,7 @@ function testSuite() {
       assertEqual(403, result.code);
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
     testDownload : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
 
@@ -114,7 +120,7 @@ function testSuite() {
       assertEqual(403, result.code);
       assertEqual(errors.ERROR_FORBIDDEN.code, result.errorNum);
     },
-    
+
   };
 }
 jsunity.run(testSuite);

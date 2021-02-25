@@ -85,6 +85,7 @@
       PASSWORD: 'password',
       SELECT: 'select',
       SELECT2: 'select2',
+      JSONEDITOR: 'jsoneditor',
       CHECKBOX: 'checkbox'
     },
 
@@ -201,6 +202,14 @@
     createSelect2Entry: function (
       id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
       var obj = createTextStub(this.tables.SELECT2, label, value, info, placeholder,
+        mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
+      obj.id = id;
+      return obj;
+    },
+
+    createJsonEditor: function (
+      id, label, value, info, placeholder, mandatory, addDelete, addAdd, maxEntrySize, tags) {
+      var obj = createTextStub(this.tables.JSONEDITOR, 'Document body', value, '', placeholder,
         mandatory, undefined, addDelete, addAdd, maxEntrySize, tags);
       obj.id = id;
       return obj;

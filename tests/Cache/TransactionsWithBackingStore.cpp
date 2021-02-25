@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::TransactionalCache with backing store
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,26 +18,51 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Cache/Manager.h"
-#include "Cache/Rebalancer.h"
-#include "Random/RandomGenerator.h"
-
-#include "MockScheduler.h"
-#include "TransactionalStore.h"
 #include "gtest/gtest.h"
 
-#include <stdint.h>
 #include <chrono>
+#include <cstdint>
+#include <memory>
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "Cache/Manager.h"
+#include "Cache/Rebalancer.h"
+#include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
+
+#include "Mocks/Servers.h"
+#include "MockScheduler.h"
+#include "TransactionalStore.h"
+
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
+
+struct ThreadGuard {
+  ThreadGuard(ThreadGuard&& other) noexcept = default;
+  ThreadGuard& operator=(ThreadGuard&& other) noexcept = default;
+
+  ThreadGuard(std::unique_ptr<std::thread> thread)
+      : thread(std::move(thread)) {}
+  ~ThreadGuard() {
+    join();
+  }
+
+  void join() {
+    if (thread != nullptr) {
+      thread->join();
+      thread.reset();
+    }
+  }
+
+  std::unique_ptr<std::thread> thread;
+};
 
 // long-running
 
@@ -80,23 +102,25 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_readonly_hotset_workload_LongR
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 16 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   TransactionalStore store(&manager);
-  uint64_t totalDocuments = 1000000;
-  uint64_t hotsetSize = 50000;
-  size_t threadCount = 4;
-  uint64_t lookupsPerThread = 1000000;
+  std::uint64_t totalDocuments = 1000000;
+  std::uint64_t hotsetSize = 50000;
+  std::size_t threadCount = 4;
+  std::uint64_t lookupsPerThread = 1000000;
 
   // initial fill
-  for (uint64_t i = 1; i <= totalDocuments; i++) {
+  for (std::uint64_t i = 1; i <= totalDocuments; i++) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
   auto worker = [&store, hotsetSize, totalDocuments, lookupsPerThread]() -> void {
-    for (uint64_t i = 0; i < lookupsPerThread; i++) {
-      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99));
-      uint64_t choice = (r >= 90) ? RandomGenerator::interval(totalDocuments)
-                                  : RandomGenerator::interval(hotsetSize);
+    for (std::uint64_t i = 0; i < lookupsPerThread; i++) {
+      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99));
+      std::uint64_t choice = (r >= 90) ? RandomGenerator::interval(totalDocuments)
+                                       : RandomGenerator::interval(hotsetSize);
       if (choice == 0) {
         choice = 1;
       }
@@ -106,21 +130,18 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_readonly_hotset_workload_LongR
     }
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch threads
-  for (size_t i = 0; i < threadCount; i++) {
-    threads.push_back(new std::thread(worker));
+  for (std::size_t i = 0; i < threadCount; i++) {
+    threads.emplace_back(std::make_unique<std::thread>(worker));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   auto hitRates = manager.globalHitRates();
-  EXPECT_TRUE(hitRates.first >= 15.0);
-  EXPECT_TRUE(hitRates.second >= 30.0);
+  EXPECT_GE(hitRates.first, 15.0);
+  EXPECT_GE(hitRates.second, 30.0);
 
   RandomGenerator::shutdown();
 }
@@ -132,39 +153,46 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 256 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024);
   TransactionalStore store(&manager);
-  uint64_t totalDocuments = 1000000;
-  uint64_t batchSize = 1000;
-  size_t readerCount = 4;
-  size_t writerCount = 2;
-  std::atomic<size_t> writersDone(0);
+  std::uint64_t totalDocuments = 1000000;
+  std::uint64_t batchSize = 1000;
+  std::size_t readerCount = 4;
+  std::size_t writerCount = 2;
+  std::atomic<std::size_t> documentsRead(0);
+  std::atomic<std::size_t> writersDone(0);
   auto writeWaitInterval = std::chrono::milliseconds(10);
 
   // initial fill
-  for (uint64_t i = 1; i <= totalDocuments; i++) {
+  for (std::uint64_t i = 1; i <= totalDocuments; i++) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
-  auto readWorker = [&store, &writersDone, writerCount, totalDocuments]() -> void {
+  auto readWorker = [&store, &writersDone, &documentsRead, writerCount,
+                     totalDocuments]() -> void {
+    std::size_t localRead = 0;
     while (writersDone.load() < writerCount) {
-      uint64_t choice = RandomGenerator::interval(totalDocuments);
+      std::uint64_t choice = RandomGenerator::interval(totalDocuments);
       if (choice == 0) {
         choice = 1;
       }
 
       auto d = store.lookup(nullptr, choice);
+      ++localRead;
       TRI_ASSERT(!d.empty());
     }
+    documentsRead += localRead;
   };
 
   auto writeWorker = [&store, &writersDone, batchSize,
-                      &writeWaitInterval](uint64_t lower, uint64_t upper) -> void {
-    uint64_t batches = (upper + 1 - lower) / batchSize;
-    uint64_t choice = lower;
-    for (uint64_t batch = 0; batch < batches; batch++) {
+                      &writeWaitInterval](std::uint64_t lower, std::uint64_t upper) -> void {
+    std::uint64_t batches = (upper + 1 - lower) / batchSize;
+    std::uint64_t choice = lower;
+    for (std::uint64_t batch = 0; batch < batches; batch++) {
       auto tx = store.beginTransaction(false);
-      for (uint64_t i = 0; i < batchSize; i++) {
+      for (std::uint64_t i = 0; i < batchSize; i++) {
         auto d = store.lookup(tx, choice);
         TRI_ASSERT(!d.empty());
         d.advance();
@@ -179,28 +207,30 @@ TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch reader threads
-  for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+  for (std::size_t i = 0; i < readerCount; i++) {
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
-  uint64_t chunkSize = totalDocuments / writerCount;
-  for (size_t i = 0; i < writerCount; i++) {
-    uint64_t lower = (i * chunkSize) + 1;
-    uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+  std::uint64_t chunkSize = totalDocuments / writerCount;
+  for (std::size_t i = 0; i < writerCount; i++) {
+    std::uint64_t lower = (i * chunkSize) + 1;
+    std::uint64_t upper = ((i + 1) * chunkSize);
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   auto hitRates = manager.globalHitRates();
-  EXPECT_TRUE(hitRates.first >= 0.1);
-  EXPECT_TRUE(hitRates.second >= 2.5);
+  double expected =
+      (static_cast<double>(documentsRead.load()) / static_cast<double>(totalDocuments)) - 2.0;
+  if (expected < 0.0) {
+    expected = 0.01;
+  }
+  EXPECT_GE(hitRates.first, expected);
+  EXPECT_GE(hitRates.second, expected);
 
   RandomGenerator::shutdown();
 }
@@ -212,18 +242,20 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 256 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 256 * 1024 * 1024);
   TransactionalStore store(&manager);
-  uint64_t totalDocuments = 1000000;
-  uint64_t writeBatchSize = 1000;
-  uint64_t readBatchSize = 10000;
-  size_t readerCount = 4;
-  size_t writerCount = 2;
-  std::atomic<size_t> writersDone(0);
+  std::uint64_t totalDocuments = 1000000;
+  std::uint64_t writeBatchSize = 1000;
+  std::uint64_t readBatchSize = 10000;
+  std::size_t readerCount = 4;
+  std::size_t writerCount = 2;
+  std::atomic<std::size_t> writersDone(0);
   auto writeWaitInterval = std::chrono::milliseconds(10);
 
   // initial fill
-  for (uint64_t i = 1; i <= totalDocuments; i++) {
+  for (std::uint64_t i = 1; i <= totalDocuments; i++) {
     store.insert(nullptr, TransactionalStore::Document(i));
   }
 
@@ -231,10 +263,10 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
                      readBatchSize]() -> void {
     while (writersDone.load() < writerCount) {
       auto tx = store.beginTransaction(true);
-      uint64_t start = static_cast<uint64_t>(
+      std::uint64_t start = static_cast<std::uint64_t>(
           std::chrono::steady_clock::now().time_since_epoch().count());
-      for (uint64_t i = 0; i < readBatchSize; i++) {
-        uint64_t choice = RandomGenerator::interval(totalDocuments);
+      for (std::uint64_t i = 0; i < readBatchSize; i++) {
+        std::uint64_t choice = RandomGenerator::interval(totalDocuments);
         if (choice == 0) {
           choice = 1;
         }
@@ -249,12 +281,12 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
   };
 
   auto writeWorker = [&store, &writersDone, writeBatchSize,
-                      &writeWaitInterval](uint64_t lower, uint64_t upper) -> void {
-    uint64_t batches = (upper + 1 - lower) / writeBatchSize;
-    uint64_t choice = lower;
-    for (uint64_t batch = 0; batch < batches; batch++) {
+                      &writeWaitInterval](std::uint64_t lower, std::uint64_t upper) -> void {
+    std::uint64_t batches = (upper + 1 - lower) / writeBatchSize;
+    std::uint64_t choice = lower;
+    for (std::uint64_t batch = 0; batch < batches; batch++) {
       auto tx = store.beginTransaction(false);
-      for (uint64_t i = 0; i < writeBatchSize; i++) {
+      for (std::uint64_t i = 0; i < writeBatchSize; i++) {
         auto d = store.lookup(tx, choice);
         TRI_ASSERT(!d.empty());
         d.advance();
@@ -269,24 +301,21 @@ TEST(CacheWithBackingStoreTest, test_transactionality_for_mixed_workload_LongRun
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
+  std::vector<ThreadGuard> threads;
   // dispatch reader threads
-  for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+  for (std::size_t i = 0; i < readerCount; i++) {
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
-  uint64_t chunkSize = totalDocuments / writerCount;
-  for (size_t i = 0; i < writerCount; i++) {
-    uint64_t lower = (i * chunkSize) + 1;
-    uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+  std::uint64_t chunkSize = totalDocuments / writerCount;
+  for (std::size_t i = 0; i < writerCount; i++) {
+    std::uint64_t lower = (i * chunkSize) + 1;
+    std::uint64_t upper = ((i + 1) * chunkSize);
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   RandomGenerator::shutdown();
 }
@@ -298,18 +327,20 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 16 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 16 * 1024 * 1024);
   Rebalancer rebalancer(&manager);
   TransactionalStore store1(&manager);
   TransactionalStore store2(&manager);
-  uint64_t totalDocuments = 1000000;
-  uint64_t writeBatchSize = 1000;
-  uint64_t readBatchSize = 100;
-  size_t readerCount = 4;
-  size_t writerCount = 2;
-  std::atomic<size_t> writersDone(0);
+  std::uint64_t totalDocuments = 1000000;
+  std::uint64_t writeBatchSize = 1000;
+  std::uint64_t readBatchSize = 100;
+  std::size_t readerCount = 4;
+  std::size_t writerCount = 2;
+  std::atomic<std::size_t> writersDone(0);
   auto writeWaitInterval = std::chrono::milliseconds(50);
-  uint32_t storeBias;
+  std::uint32_t storeBias;
 
   bool doneRebalancing = false;
   auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
@@ -322,10 +353,11 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
       }
     }
   };
-  auto rebalancerThread = new std::thread(rebalanceWorker);
+
+  ThreadGuard rebalancerThread(std::make_unique<std::thread>(rebalanceWorker));
 
   // initial fill
-  for (uint64_t i = 1; i <= totalDocuments; i++) {
+  for (std::uint64_t i = 1; i <= totalDocuments; i++) {
     store1.insert(nullptr, TransactionalStore::Document(i));
     store2.insert(nullptr, TransactionalStore::Document(i));
   }
@@ -333,13 +365,13 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   auto readWorker = [&store1, &store2, &storeBias, &writersDone, writerCount,
                      totalDocuments, readBatchSize]() -> void {
     while (writersDone.load() < writerCount) {
-      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
+      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
       TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
       auto tx = store->beginTransaction(true);
-      uint64_t start = static_cast<uint64_t>(
+      std::uint64_t start = static_cast<std::uint64_t>(
           std::chrono::steady_clock::now().time_since_epoch().count());
-      for (uint64_t i = 0; i < readBatchSize; i++) {
-        uint64_t choice = RandomGenerator::interval(totalDocuments);
+      for (std::uint64_t i = 0; i < readBatchSize; i++) {
+        std::uint64_t choice = RandomGenerator::interval(totalDocuments);
         if (choice == 0) {
           choice = 1;
         }
@@ -354,14 +386,14 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   };
 
   auto writeWorker = [&store1, &store2, &storeBias, &writersDone, writeBatchSize,
-                      &writeWaitInterval](uint64_t lower, uint64_t upper) -> void {
-    uint64_t batches = (upper + 1 - lower) / writeBatchSize;
-    uint64_t choice = lower;
-    for (uint64_t batch = 0; batch < batches; batch++) {
-      uint32_t r = RandomGenerator::interval(static_cast<uint32_t>(99UL));
+                      &writeWaitInterval](std::uint64_t lower, std::uint64_t upper) -> void {
+    std::uint64_t batches = (upper + 1 - lower) / writeBatchSize;
+    std::uint64_t choice = lower;
+    for (std::uint64_t batch = 0; batch < batches; batch++) {
+      std::uint32_t r = RandomGenerator::interval(static_cast<std::uint32_t>(99UL));
       TransactionalStore* store = (r <= storeBias) ? &store1 : &store2;
       auto tx = store->beginTransaction(false);
-      for (uint64_t i = 0; i < writeBatchSize; i++) {
+      for (std::uint64_t i = 0; i < writeBatchSize; i++) {
         auto d = store->lookup(tx, choice);
         TRI_ASSERT(!d.empty());
         d.advance();
@@ -376,60 +408,51 @@ TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
     writersDone++;
   };
 
-  std::vector<std::thread*> threads;
-
   // bias toward first store
   storeBias = 80;
 
   // dispatch reader threads
-  for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+  std::vector<ThreadGuard> threads;
+  for (std::size_t i = 0; i < readerCount; i++) {
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
-  uint64_t chunkSize = totalDocuments / writerCount;
-  for (size_t i = 0; i < writerCount; i++) {
-    uint64_t lower = (i * chunkSize) + 1;
-    uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+  std::uint64_t chunkSize = totalDocuments / writerCount;
+  for (std::size_t i = 0; i < writerCount; i++) {
+    std::uint64_t lower = (i * chunkSize) + 1;
+    std::uint64_t upper = ((i + 1) * chunkSize);
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
     std::this_thread::yield();
   }
-  threads.clear();
 
   // bias toward second store
   storeBias = 20;
 
   // dispatch reader threads
-  for (size_t i = 0; i < readerCount; i++) {
-    threads.push_back(new std::thread(readWorker));
+  for (std::size_t i = 0; i < readerCount; i++) {
+    threads.emplace_back(std::make_unique<std::thread>(readWorker));
   }
   // dispatch writer threads
-  for (size_t i = 0; i < writerCount; i++) {
-    uint64_t lower = (i * chunkSize) + 1;
-    uint64_t upper = ((i + 1) * chunkSize);
-    threads.push_back(new std::thread(writeWorker, lower, upper));
+  for (std::size_t i = 0; i < writerCount; i++) {
+    std::uint64_t lower = (i * chunkSize) + 1;
+    std::uint64_t upper = ((i + 1) * chunkSize);
+    threads.emplace_back(std::make_unique<std::thread>(writeWorker, lower, upper));
   }
 
   // join threads
-  for (auto t : threads) {
-    t->join();
-    delete t;
-  }
+  threads.clear();
 
   while (store1.cache()->isResizing() || store2.cache()->isResizing()) {
     std::this_thread::yield();
   }
   doneRebalancing = true;
-  rebalancerThread->join();
-  delete rebalancerThread;
+  rebalancerThread.join();
 
   RandomGenerator::shutdown();
 }

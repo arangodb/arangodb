@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,20 +24,29 @@
 #ifndef ARANGOD_AQL_COLLECTIONS_H
 #define ARANGOD_AQL_COLLECTIONS_H 1
 
+#include "Aql/types.h"
+#include "Aql/Collection.h"
 #include "VocBase/AccessMode.h"
 
+#include <functional>
 #include <map>
+#include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace aql {
-struct Collection;
 
 class Collections {
  public:
+  Collections(Collections const& other) = delete;
   Collections& operator=(Collections const& other) = delete;
 
   explicit Collections(TRI_vocbase_t*);
@@ -45,22 +54,22 @@ class Collections {
   ~Collections();
 
  public:
-  Collection* get(std::string const& name) const;
+  Collection* get(std::string_view name) const;
 
-  Collection* add(std::string const& name, AccessMode::Type accessType);
+  Collection* add(std::string const& name, AccessMode::Type accessType, Collection::Hint hint);
 
   std::vector<std::string> collectionNames() const;
 
-  std::map<std::string, Collection*>* collections();
-
-  std::map<std::string, Collection*> const* collections() const;
-
   bool empty() const;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
+  
+  void visit(std::function<bool(std::string const&, Collection&)> const& visitor) const;
 
  private:
   TRI_vocbase_t* _vocbase;
 
-  std::map<std::string, Collection*> _collections;
+  std::map<std::string, std::unique_ptr<aql::Collection>, std::less<>> _collections;
 
   static size_t const MaxCollections = 2048;
 };

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,44 +25,36 @@
 #define ARANGOD_AQL_MODIFICATION_OPTIONS_H 1
 
 #include "Basics/Common.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+class Slice;
+}
+
 namespace aql {
 
 /// @brief ModificationOptions
-struct ModificationOptions {
+struct ModificationOptions : OperationOptions {
   /// @brief constructor, using default values
   explicit ModificationOptions(arangodb::velocypack::Slice const&);
 
-  ModificationOptions()
-      : ignoreErrors(false),
-        waitForSync(false),
-        nullMeansRemove(false),
-        mergeObjects(true),
+  ModificationOptions() 
+      : OperationOptions(),
+        ignoreErrors(false),
         ignoreDocumentNotFound(false),
         readCompleteInput(true),
-        useIsRestore(false),
         consultAqlWriteFilter(false),
-        exclusive(false),
-        overwrite(false),
-        ignoreRevs(true) {}
+        exclusive(false) {}
 
   void toVelocyPack(arangodb::velocypack::Builder&) const;
 
   bool ignoreErrors;
-  bool waitForSync;
-  bool nullMeansRemove;
-  bool mergeObjects;
   bool ignoreDocumentNotFound;
   bool readCompleteInput;
-  bool useIsRestore;
   bool consultAqlWriteFilter;
   bool exclusive;
-  bool overwrite;
-  bool ignoreRevs;
 };
 
 }  // namespace aql

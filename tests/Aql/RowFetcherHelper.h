@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,11 +33,11 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VelocyPackHelper.h"
+#include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 
-#include <Basics/Common.h>
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -56,7 +57,7 @@ namespace aql {
 /**
  * @brief Mock for SingleRowFetcher
  */
-template<::arangodb::aql::BlockPassthrough passBlocksThrough>
+template <::arangodb::aql::BlockPassthrough passBlocksThrough>
 class SingleRowFetcherHelper
     : public arangodb::aql::SingleRowFetcher<passBlocksThrough> {
  public:
@@ -71,26 +72,11 @@ class SingleRowFetcherHelper
 
   virtual ~SingleRowFetcherHelper();
 
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
-
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = arangodb::aql::ExecutionBlock::DefaultBatchSize()) override;
-
   uint64_t nrCalled() { return _nrCalled; }
   uint64_t nrReturned() { return _nrReturned; }
   uint64_t nrItems() { return _nrItems; }
 
   size_t totalSkipped() const { return _totalSkipped; }
-
-  std::pair<arangodb::aql::ExecutionState, size_t> skipRows(size_t atMost) override;
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlockForPassthrough(
-      size_t atMost) override;
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> fetchBlock(size_t atMost) override;
 
   arangodb::aql::AqlItemBlockManager& itemBlockManager() {
     return _itemBlockManager;
@@ -148,17 +134,12 @@ class AllRowsFetcherHelper : public arangodb::aql::AllRowsFetcher {
                        bool returnsWaiting);
   ~AllRowsFetcherHelper();
 
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::AqlItemMatrix const*> fetchAllRows() override;
-
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;
   arangodb::velocypack::Slice _data;
-  bool _returnedDone = false;
-  bool _returnsWaiting;
   uint64_t _nrItems;
   arangodb::aql::RegisterCount _nrRegs;
-  uint64_t _nrCalled;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   std::unique_ptr<arangodb::aql::AqlItemMatrix> _matrix;
 };
@@ -168,8 +149,6 @@ class ConstFetcherHelper : public arangodb::aql::ConstFetcher {
   ConstFetcherHelper(arangodb::aql::AqlItemBlockManager& itemBlockManager,
                      std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> vPackBuffer);
   virtual ~ConstFetcherHelper();
-
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::InputAqlItemRow> fetchRow(size_t atMost = 1) override;
 
  private:
   std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> _vPackBuffer;

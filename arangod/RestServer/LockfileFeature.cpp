@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LockfileFeature.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/application-exit.h"
@@ -49,7 +52,7 @@ void LockfileFeature::start() {
 
   TRI_ASSERT(!_lockFilename.empty());
 
-  int res = TRI_VerifyLockFile(_lockFilename.c_str());
+  auto res = TRI_VerifyLockFile(_lockFilename.c_str());
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string otherPID;

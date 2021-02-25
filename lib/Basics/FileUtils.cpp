@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,6 +52,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -170,7 +171,7 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 
 static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
+  auto res = TRI_errno();
 
   std::string message("read failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
@@ -184,7 +185,7 @@ static void fillStringBuffer(int fd, std::string const& filename,
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    ssize_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
+    TRI_read_return_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
 
     if (n == 0) {
       break;
@@ -235,7 +236,7 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
 
   if (fd == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
     std::string message("read failed for file '" + filename + "': " + strerror(res));
     LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
     return {TRI_ERROR_SYS_ERROR, message};
@@ -262,7 +263,8 @@ Result slurp(std::string const& filename, std::string& result) {
 static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("write failed for file '" + filename + "': " + TRI_last_error());
+  auto message = StringUtils::concatT("write failed for file '", filename,
+                                      "': ", TRI_last_error());
   LOG_TOPIC("a8930", TRACE, arangodb::Logger::FIXME) << "" << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -317,30 +319,31 @@ bool remove(std::string const& fileName, int* errorNumber) {
   return (result != 0) ? false : true;
 }
 
-bool createDirectory(std::string const& name, int* errorNumber) {
+bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
   return createDirectory(name, 0777, errorNumber);
 }
 
-bool createDirectory(std::string const& name, int mask, int* errorNumber) {
+bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber) {
   if (errorNumber != nullptr) {
-    *errorNumber = 0;
+    *errorNumber = TRI_ERROR_NO_ERROR;
   }
 
-  int result = TRI_MKDIR(name.c_str(), mask);
+  auto result = TRI_MKDIR(name.c_str(), static_cast<mode_t>(mask));
 
-  int res = errno;
-  if (result != 0 && res == EEXIST && isDirectory(name)) {
-    result = 0;
-  } else if (res != 0) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  if (errorNumber != nullptr) {
-    *errorNumber = res;
+  if (result != 0) {
+    int res = errno;
+    if (res == EEXIST && isDirectory(name)) {
+      result = 0;
+    } else {
+      auto errorCode = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      if (errorNumber != nullptr) {
+        *errorNumber = errorCode;
+      }
+    }
   }
 
   return (result != 0) ? false : true;
@@ -361,23 +364,6 @@ bool copyRecursive(std::string const& source, std::string const& target,
   return copyRecursive(source, target, lambda, error);
 
 } // copyRecursive (bool filter())
-
-
-/// @brief will not copy files/directories for which the filter function
-/// returns true (now wrapper for version below with TRI_copy_recursive_e filter)
-bool copyDirectoryRecursive(std::string const& source, std::string const& target,
-                   std::function<bool(std::string const&)> const& filter,
-                   std::string& error) {
-
-  // "auto lambda" will not work here
-  std::function<TRI_copy_recursive_e(std::string const&)> lambda =
-    [&filter] (std::string const& pathname) -> TRI_copy_recursive_e {
-    return filter(pathname) ? TRI_COPY_IGNORE : TRI_COPY_COPY;
-  };
-
-  return copyDirectoryRecursive(source, target, lambda, error);
-
-} // copyDirectoryRecursive (bool filter())
 
 
 /// @brief will not copy files/directories for which the filter function
@@ -432,9 +418,9 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
   std::string rcs;
   std::string flt = source + "\\*";
 
-  UnicodeString f(flt.c_str());
+  icu::UnicodeString f(flt.c_str());
 
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     error = "directory " + source + " not found";
@@ -443,7 +429,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 #else
@@ -538,12 +524,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   std::string rcs;
 
   std::string filter = directory + "\\*";
-  UnicodeString f(filter.c_str());
-  handle = _wfindfirst(f.getTerminatedBuffer(), &oneItem);
+  icu::UnicodeString f(filter.c_str());
+  handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
 
     std::string message("failed to enumerate files in directory '" + directory +
                         "': " + strerror(res));
@@ -552,7 +538,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   do {
     rcs.clear();
-    UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
+    icu::UnicodeString d((wchar_t*)oneItem.name, static_cast<int32_t>(wcslen(oneItem.name)));
     d.toUTF8String<std::string>(rcs);
     fn = (char*)rcs.c_str();
 
@@ -571,7 +557,7 @@ std::vector<std::string> listFiles(std::string const& directory) {
 
   if (d == nullptr) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    int res = TRI_errno();
+    auto res = TRI_errno();
 
     std::string message("failed to enumerate files in directory '" + directory +
                         "': " + strerror(res));
@@ -721,7 +707,7 @@ void makePathAbsolute(std::string& path) {
 
 static void throwProgramError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  int res = TRI_errno();
+  auto res = TRI_errno();
 
   std::string message("open failed for file '" + filename + "': " + strerror(res));
   LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;
@@ -731,8 +717,8 @@ static void throwProgramError(std::string const& filename) {
 
 std::string slurpProgram(std::string const& program) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif
@@ -765,8 +751,8 @@ std::string slurpProgram(std::string const& program) {
 
 int slurpProgramWithExitcode(std::string const& program, std::string& output) {
 #ifdef _WIN32
-  UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
-  FILE* fp = _wpopen(uprog.getTerminatedBuffer(), L"r");
+  icu::UnicodeString uprog(program.c_str(), static_cast<int32_t>(program.length()));
+  FILE* fp = _wpopen(reinterpret_cast<wchar_t const*>(uprog.getTerminatedBuffer()), L"r");
 #else
   FILE* fp = popen(program.c_str(), "r");
 #endif

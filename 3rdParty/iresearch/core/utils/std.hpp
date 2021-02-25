@@ -18,46 +18,65 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STD_H
 #define IRESEARCH_STD_H
 
-#include "shared.hpp"
-
 #include <iterator>
 #include <algorithm>
 
-NS_ROOT
+#include "shared.hpp"
 
-NS_BEGIN(irstd)
+namespace iresearch {
+namespace irstd {
+
+template<typename In, typename Out>
+struct adjust_const {
+  typedef Out value_type;
+  typedef Out& reference;
+  typedef Out* pointer;
+};
+
+template<typename In, typename Out>
+struct adjust_const<const In, Out> {
+  typedef const Out value_type;
+  typedef const Out& reference;
+  typedef const Out* pointer;
+};
 
 // constexpr versions of min/max functions (for prior c++14 environments)
 template<typename T> 
-CONSTEXPR const T& (max)(const T& a, const T& b) { 
+constexpr const T& (max)(const T& a, const T& b) { 
   return a < b ? b : a; 
 }
 
 template<typename T> 
-CONSTEXPR const T& (min)(const T& a, const T& b) { 
+constexpr const T& (min)(const T& a, const T& b) { 
   return a < b ? a : b; 
 }
 
 // converts reverse iterator to corresponding forward iterator
 // the function does not accept containers "end"
 template<typename ReverseIterator>
-CONSTEXPR typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
+constexpr typename ReverseIterator::iterator_type to_forward(ReverseIterator it) {
   return --(it.base());
 }
 
 template<typename Iterator>
-CONSTEXPR std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
+constexpr std::reverse_iterator<Iterator> make_reverse_iterator(Iterator it) {
   return std::reverse_iterator<Iterator>(it);
 }
 
-NS_BEGIN(heap)
-NS_BEGIN(detail)
+template<typename Container, typename Iterator>
+void swap_remove(Container& cont, Iterator it) {
+  assert(!cont.empty());
+  std::swap(*it, cont.back());
+  cont.pop_back();
+}
+
+namespace heap {
+namespace detail {
 
 template<typename RandomAccessIterator, typename Diff, typename Func >
 inline void _for_each_top(
@@ -91,7 +110,7 @@ inline void _for_each_if(
   }
 }
 
-NS_END // detail
+} // detail
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief calls func for each element in a heap equals to top
@@ -132,7 +151,7 @@ inline void for_each_top(
     func);
 }
 
-NS_END // heap
+} // heap
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief checks that all values in the specified range are equals 
@@ -148,9 +167,14 @@ inline bool all_equal(ForwardIterator begin, ForwardIterator end) {
 /// @brief provide in place construction capabilities for stl algorithms 
 ////////////////////////////////////////////////////////////////////////////
 template<typename Container>
-class back_emplace_iterator : public std::iterator<std::output_iterator_tag, void, void, void, void> {
+class back_emplace_iterator {
  public:
-  typedef Container container_type;
+  using container_type = Container;
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
   explicit back_emplace_iterator(Container& cont) 
     : cont_(std::addressof(cont)) {
@@ -181,25 +205,30 @@ inline back_emplace_iterator<Container> back_emplacer(Container& cont) {
 ///        characters into underlying stream
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
-class output_stream_iterator
-    : public std::iterator<std::output_iterator_tag, void, void, void, void> {
-  public:
-   explicit output_stream_iterator(Stream& strm) NOEXCEPT
-     : strm_(&strm) {
-   }
+class output_stream_iterator {
+public:
+  using iterator_category = std::output_iterator_tag;
+  using value_type = void;
+  using pointer = void;
+  using reference = void;
+  using difference_type = void;
 
-    output_stream_iterator& operator*() NOEXCEPT { return *this; }
-    output_stream_iterator& operator++() NOEXCEPT { return *this; }
-    output_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+  explicit output_stream_iterator(Stream& strm) noexcept
+    : strm_(&strm) {
+  }
 
-    template<typename T>
-    output_stream_iterator& operator=(const T& value) {
-      strm_->put(value);
-      return *this;
-    }
+  output_stream_iterator& operator*() noexcept { return *this; }
+  output_stream_iterator& operator++() noexcept { return *this; }
+  output_stream_iterator& operator++(int) noexcept { return *this; }
 
-  private:
-   Stream* strm_;
+  template<typename T>
+  output_stream_iterator& operator=(const T& value) {
+    strm_->put(value);
+    return *this;
+  }
+
+private:
+  Stream* strm_;
 };
 
 template<typename Stream>
@@ -213,24 +242,27 @@ output_stream_iterator<Stream> make_ostream_iterator(Stream& strm) {
 ///        characters from underlying stream
 //////////////////////////////////////////////////////////////////////////////
 template<typename Stream>
-class input_stream_iterator
-    : public std::iterator<std::input_iterator_tag, typename Stream::char_type> {
-  public:
-   typedef typename Stream::int_type int_type;
+class input_stream_iterator {
+public:
+  using iterator_category = std::input_iterator_tag;
+  using value_type = typename Stream::char_type;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
 
-   explicit input_stream_iterator(Stream& strm) NOEXCEPT
-     : strm_(&strm) {
-   }
+  explicit input_stream_iterator(Stream& strm) noexcept
+    : strm_(&strm) {
+  }
 
-    int_type operator*() const NOEXCEPT {
-      return strm_->get();
-    }
+  typename Stream::int_type operator*() const noexcept {
+    return strm_->get();
+  }
 
-    input_stream_iterator& operator++() NOEXCEPT { return *this; }
-    input_stream_iterator& operator++(int) NOEXCEPT { return *this; }
+  input_stream_iterator& operator++() noexcept { return *this; }
+  input_stream_iterator& operator++(int) noexcept { return *this; }
 
-  private:
-   Stream* strm_;
+private:
+  Stream* strm_;
 }; // input_stream_iterator
 
 template<typename Stream>
@@ -238,7 +270,72 @@ input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {
   return input_stream_iterator<Stream>(strm);
 }
 
-NS_END
-NS_END
+namespace detail {
+
+template<typename Builder, size_t Size>
+struct initializer {
+  using type = typename Builder::type;
+
+  static constexpr auto Idx = Size - 1;
+
+  template<typename Array>
+  constexpr initializer(Array& cache) : init_(cache) {
+    cache[Idx] = []() -> const type& {
+      static const typename Builder::type INSTANCE
+        = Builder::make(Idx);
+      return INSTANCE;
+    };
+  }
+
+  initializer<Builder, Size - 1> init_;
+};
+
+template<typename Builder>
+struct initializer<Builder, 1> {
+  using type = typename Builder::type;
+
+  static constexpr auto Idx = 0;
+
+  template<typename Array>
+  constexpr initializer(Array& cache) {
+    cache[Idx] = []() -> const type& {
+      static const typename Builder::type INSTANCE
+        = Builder::make(Idx);
+      return INSTANCE;
+    };
+  }
+};
+
+template<typename Builder>
+struct initializer<Builder, 0>;
+
+} // detail
+
+template<typename Builder, size_t Size>
+class static_lazy_array {
+ public:
+  using type = typename Builder::type;
+
+  static const type& at(size_t i) {
+    static const static_lazy_array INSTANCE;
+    return INSTANCE.cache_[std::min(i, Size)]();
+  }
+
+ private:
+  constexpr static_lazy_array() : init_{cache_} {
+    cache_[Size] = []() -> const type& {
+      static const type INSTANCE;
+      return INSTANCE;
+    };
+  }
+
+  using func = const type&(*)();
+
+  func cache_[Size+1];
+  detail::initializer<Builder, Size> init_;
+};
+
+} // irstd
+} // ROOT
 
 #endif

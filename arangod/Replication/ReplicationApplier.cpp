@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplier.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
@@ -42,6 +44,7 @@
 #include "RestServer/ServerIdFeature.h"
 
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 /// @brief common replication applier
 struct ApplierThread : public Thread {
@@ -80,7 +83,6 @@ struct ApplierThread : public Thread {
 
     {
       MUTEX_LOCKER(locker, _syncerMutex);
-      // will make the syncer remove its barrier too
       _syncer->setAborted(false);
       _syncer.reset();
     }
@@ -122,13 +124,11 @@ struct FullApplierThread final : public ApplierThread {
     if (r.fail() || initSync->isAborted()) {
       return r;
     }
-    // steal the barrier from the syncer
-    TRI_voc_tick_t barrierId = initSync->stealBarrier();
     TRI_voc_tick_t lastLogTick = initSync->getLastLogTick();
 
     {
       MUTEX_LOCKER(locker, _syncerMutex);
-      auto tailer = _applier->buildTailingSyncer(lastLogTick, true, barrierId);
+      auto tailer = _applier->buildTailingSyncer(lastLogTick, true);
       _syncer.reset();
       _syncer = std::move(tailer);
     }
@@ -254,8 +254,9 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
 
   if (_state._preventStart) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_LOCKED, std::string("cannot start replication applier for ") +
-                              _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
+        TRI_ERROR_LOCKED,
+        StringUtils::concatT("cannot start replication applier for ", _databaseName,
+                             ": ", TRI_errno_string(TRI_ERROR_LOCKED)));
   }
 
   if (_state.isActive()) {
@@ -353,8 +354,7 @@ void ReplicationApplier::startReplication() {
 }
 
 /// @brief start the replication applier
-void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
-                                      TRI_voc_tick_t barrierId) {
+void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick) {
   if (!applies()) {
     return;
   }
@@ -364,7 +364,7 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick, bool useTick,
             << "requesting replication applier start for " << _databaseName
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
-            buildTailingSyncer(initialTick, useTick, barrierId);
+            buildTailingSyncer(initialTick, useTick);
         _thread.reset(new TailingApplierThread(_configuration._server, this,
                                                std::move(syncer)));
       },
@@ -428,7 +428,7 @@ void ReplicationApplier::removeState() {
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("87a61", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -454,7 +454,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("2914f", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result{res, std::string("unable to remove replication state file '") + filename + "'"};
@@ -551,7 +551,8 @@ bool ReplicationApplier::loadStateNoLock() {
   if (!serverId.isString()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
   }
-  _state._serverId = arangodb::basics::StringUtils::uint64(serverId.copyString());
+  _state._serverId =
+      ServerId(arangodb::basics::StringUtils::uint64(serverId.copyString()));
 
   // read the ticks
   readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);
@@ -639,7 +640,7 @@ void ReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) con
   // add server info
   result.add("server", VPackValue(VPackValueType::Object));
   result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId().id())));
   result.close();  // server
 
   if (!configuration._endpoint.empty()) {

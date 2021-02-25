@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <unordered_map>
@@ -39,13 +37,15 @@ using namespace arangodb::velocypack;
 ValueLength const Collection::NotFound = UINT64_MAX;
   
 // fully append an array to the builder
-static void appendArray(Builder& builder, Slice const& slice) {
+Builder& Collection::appendArray(Builder& builder, Slice const& slice) {
   ArrayIterator it(slice);
 
   while (it.valid()) {
     builder.add(it.value());
     it.next();
   }
+
+  return builder;
 }
 
 // convert a vector of strings into an unordered_set of strings

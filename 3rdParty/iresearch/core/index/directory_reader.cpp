@@ -30,15 +30,14 @@
 #include "directory_reader.hpp"
 #include "segment_reader.hpp"
 
-NS_LOCAL
+namespace {
 
 MSVC_ONLY(__pragma(warning(push)))
 MSVC_ONLY(__pragma(warning(disable:4457))) // variable hides function param
 irs::index_file_refs::ref_t load_newest_index_meta(
-  irs::index_meta& meta,
-  const irs::directory& dir,
-  const irs::format* codec
-) NOEXCEPT {
+    irs::index_meta& meta,
+    const irs::directory& dir,
+    const irs::format* codec) noexcept {
   // if a specific codec was specified
   if (codec) {
     try {
@@ -69,8 +68,15 @@ irs::index_file_refs::ref_t load_newest_index_meta(
       }
 
       return ref;
+    } catch (const std::exception& e) {
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s', error '%s'",
+        codec->type().name().c_str(),
+        e.what());
     } catch (...) {
-      IR_LOG_EXCEPTION();
+      IR_FRMT_ERROR(
+        "Caught exception while reading index meta with codec '%s'",
+        codec->type().name().c_str());
 
       return nullptr;
     }
@@ -141,17 +147,20 @@ irs::index_file_refs::ref_t load_newest_index_meta(
     newest.reader->read(dir, meta, *(newest.ref));
 
     return newest.ref;
+  } catch (const std::exception& e) {
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta, error '%s'",
+                  e.what());
   } catch (...) {
-    IR_LOG_EXCEPTION();
+    IR_FRMT_ERROR("Caught exception while loading the newest index meta");
   }
 
   return nullptr;
 }
 MSVC_ONLY(__pragma(warning(pop)))
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -------------------------------------------------------------------
 // directory_reader
@@ -160,13 +169,11 @@ NS_ROOT
 class directory_reader_impl :
   public composite_reader<segment_reader> {
  public:
-  DECLARE_SHARED_PTR(directory_reader_impl); // required for NAMED_PTR(...)
-
-  const directory& dir() const NOEXCEPT {
+  const directory& dir() const noexcept {
     return dir_;
   }
 
-  const directory_meta& meta() const NOEXCEPT { return meta_; }
+  const directory_meta& meta() const noexcept { return meta_; }
 
   // open a new directory reader
   // if codec == nullptr then use the latest file for all known codecs
@@ -195,16 +202,16 @@ class directory_reader_impl :
   directory_meta meta_;
 }; // directory_reader_impl
 
-directory_reader::directory_reader(impl_ptr&& impl) NOEXCEPT
+directory_reader::directory_reader(impl_ptr&& impl) noexcept
   : impl_(std::move(impl)) {
 }
 
-directory_reader::directory_reader(const directory_reader& other) NOEXCEPT {
+directory_reader::directory_reader(const directory_reader& other) noexcept {
   *this = other;
 }
 
 directory_reader& directory_reader::operator=(
-    const directory_reader& other) NOEXCEPT {
+    const directory_reader& other) noexcept {
   if (this != &other) {
     // make a copy
     impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
@@ -363,8 +370,4 @@ directory_reader_impl::directory_reader_impl(
   return reader;
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

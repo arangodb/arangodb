@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
     case EN::TRAVERSAL:
     case EN::K_SHORTEST_PATHS:
     case EN::SHORTEST_PATH:
-    case EN::ENUMERATE_IRESEARCH_VIEW: {
+    case EN::ENUMERATE_IRESEARCH_VIEW:
+    case EN::WINDOW: {
       // in these cases we simply ignore the intermediate nodes, note
       // that we have taken care of nodes that could throw exceptions
       // above.
@@ -106,7 +107,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_COLLECTION: {
       auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
-      if (_changes->find(node->id()) != _changes->end()) {
+      if (_changes.find(node->id()) != _changes.end()) {
         // already optimized this node
         break;
       }
@@ -126,18 +127,18 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       std::vector<transaction::Methods::IndexHandle> usedIndexes;
-      auto canUseIndex = condition->findIndexes(node, usedIndexes, sortCondition.get());
+      auto [filtering, sorting] = condition->findIndexes(node, usedIndexes, sortCondition.get());
 
-      if (canUseIndex.first /*filtering*/ || canUseIndex.second /*sorting*/) {
+      if (filtering || sorting) {
         bool descending = false;
-        if (canUseIndex.second && sortCondition->isUnidirectional()) {
+        if (sorting && sortCondition->isUnidirectional()) {
           descending = sortCondition->isDescending();
         }
 
-        if (!canUseIndex.first) {
+        if (!filtering) {
           // index cannot be used for filtering, but only for sorting
           // remove the condition now
-          TRI_ASSERT(canUseIndex.second);
+          TRI_ASSERT(sorting);
           condition.reset(new Condition(_plan->getAst()));
           condition->normalize(_plan);
         }
@@ -153,16 +154,18 @@ bool ConditionFinder::before(ExecutionNode* en) {
         }
 
         // We keep this node's change
-        _changes->try_emplace(
+        _changes.try_emplace(
             node->id(),
             arangodb::lazyConstruct([&]{
-              return new IndexNode(_plan, _plan->nextId(), node->collection(),
-                          node->outVariable(), usedIndexes, std::move(condition), opts);
+              IndexNode* idx = new IndexNode(_plan, _plan->nextId(), node->collection(),
+                                             node->outVariable(), usedIndexes, std::move(condition), opts);
+              // if the enumerate collection node had the counting flag
+              // set, we can copy it over to the index node as well
+              idx->copyCountFlag(node);
+              return idx;
             })
         );
-
       }
-
       break;
     }
 
@@ -236,7 +239,7 @@ bool ConditionFinder::handleFilterCondition(ExecutionNode* en,
       auto noRes = new NoResultsNode(_plan, _plan->nextId());
       _plan->registerNode(noRes);
       _plan->insertDependency(x, noRes);
-      *_hasEmptyResult = true;
+      _producesEmptyResult = true;
     }
     return false;
   }
@@ -266,11 +269,8 @@ void ConditionFinder::handleSortCondition(ExecutionNode* en, Variable const* out
 }
 
 ConditionFinder::ConditionFinder(ExecutionPlan* plan,
-                                 std::unordered_map<size_t, ExecutionNode*>* changes,
-                                 bool* hasEmptyResult, bool viewMode)
+                                 std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes)
     : _plan(plan),
       _variableDefinitions(),
-      _filters(),
-      _sorts(),
       _changes(changes),
-      _hasEmptyResult(hasEmptyResult) {}
+      _producesEmptyResult(false) {}

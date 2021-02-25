@@ -31,7 +31,9 @@
 #include "utils/version_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+using namespace std::chrono_literals;
+
+namespace {
 
 irs::format* codec0;
 irs::format* codec1;
@@ -39,7 +41,7 @@ irs::format* codec1;
 irs::format::ptr get_codec0() { return irs::format::ptr(codec0, [](irs::format*)->void{}); }
 irs::format::ptr get_codec1() { return irs::format::ptr(codec1, [](irs::format*)->void{}); }
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                           Composite index reader
@@ -86,10 +88,10 @@ TEST(directory_reader_test, open_newest_index) {
   class test_format: public irs::format {
    public:
     mutable test_index_meta_reader index_meta_reader;
-    test_format(const irs::format::type_id& type): irs::format(type) {}
+    test_format(const irs::type_info& type): irs::format(type) {}
     virtual irs::index_meta_writer::ptr get_index_meta_writer() const override { return nullptr; }
     virtual irs::index_meta_reader::ptr get_index_meta_reader() const override {
-      return irs::memory::make_managed<irs::index_meta_reader, false>(&index_meta_reader);
+      return irs::memory::to_managed<irs::index_meta_reader, false>(&index_meta_reader);
     }
     virtual irs::segment_meta_writer::ptr get_segment_meta_writer() const override { return nullptr; }
     virtual irs::segment_meta_reader::ptr get_segment_meta_reader() const override { return nullptr; }
@@ -102,12 +104,14 @@ TEST(directory_reader_test, open_newest_index) {
     virtual irs::columnstore_writer::ptr get_columnstore_writer() const override { return nullptr; }
     virtual irs::columnstore_reader::ptr get_columnstore_reader() const override { return nullptr; }
   };
-  irs::format::type_id test_format0_type("test_format0");
-  irs::format::type_id test_format1_type("test_format1");
-  test_format test_codec0(test_format0_type);
-  test_format test_codec1(test_format1_type);
-  irs::format_registrar test_format0_registrar(test_format0_type, &get_codec0);
-  irs::format_registrar test_format1_registrar(test_format1_type, &get_codec1);
+
+  struct test_format0 { };
+  struct test_format1 { };
+
+  test_format test_codec0(irs::type<test_format0>::get());
+  test_format test_codec1(irs::type<test_format1>::get());
+  irs::format_registrar test_format0_registrar(irs::type<test_format0>::get(), irs::string_ref::NIL, &get_codec0);
+  irs::format_registrar test_format1_registrar(irs::type<test_format1>::get(), irs::string_ref::NIL, &get_codec1);
   test_index_meta_reader& test_reader0 = test_codec0.index_meta_reader;
   test_index_meta_reader& test_reader1 = test_codec1.index_meta_reader;
   codec0 = &test_codec0;
@@ -121,7 +125,7 @@ TEST(directory_reader_test, open_newest_index) {
 
   ASSERT_FALSE(!dir.create(codec0_file0));
   ASSERT_FALSE(!dir.create(codec1_file0));
-  irs::sleep_ms(1000); // wait 1 sec to ensure index file timestamps differ
+  std::this_thread::sleep_for(1s); // wait 1 sec to ensure index file timestamps differ
   ASSERT_FALSE(!dir.create(codec0_file1));
   ASSERT_FALSE(!dir.create(codec1_file1));
 
@@ -543,6 +547,7 @@ TEST(segment_reader_test, open) {
       ASSERT_TRUE(it->next());
       ASSERT_EQ(5, it->value());
       ASSERT_FALSE(it->next());
+      ASSERT_FALSE(it->next());
     }
 
     // check field metadata
@@ -598,6 +603,7 @@ TEST(segment_reader_test, open) {
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(2, docs->value());
             ASSERT_FALSE(docs->next());
+            ASSERT_FALSE(docs->next());
           }
         }
 
@@ -611,6 +617,7 @@ TEST(segment_reader_test, open) {
             auto docs = term->postings(irs::flags::empty_instance());
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(3, docs->value());
+            ASSERT_FALSE(docs->next());
             ASSERT_FALSE(docs->next());
           }
         }
@@ -626,6 +633,7 @@ TEST(segment_reader_test, open) {
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
             ASSERT_FALSE(docs->next());
+            ASSERT_FALSE(docs->next());
           }
         }
 
@@ -639,6 +647,7 @@ TEST(segment_reader_test, open) {
             auto docs = term->postings(irs::flags::empty_instance());
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(5, docs->value());
+            ASSERT_FALSE(docs->next());
             ASSERT_FALSE(docs->next());
           }
         }
@@ -692,6 +701,7 @@ TEST(segment_reader_test, open) {
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(5, docs->value());
             ASSERT_FALSE(docs->next());
+            ASSERT_FALSE(docs->next());
           }
         }
 
@@ -727,6 +737,7 @@ TEST(segment_reader_test, open) {
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(5, docs->value());
             ASSERT_FALSE(docs->next());
+            ASSERT_FALSE(docs->next());
           }
         }
 
@@ -742,6 +753,7 @@ TEST(segment_reader_test, open) {
             ASSERT_EQ(2, docs->value());
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(3, docs->value());
+            ASSERT_FALSE(docs->next());
             ASSERT_FALSE(docs->next());
           }
         }
@@ -776,6 +788,7 @@ TEST(segment_reader_test, open) {
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(1, docs->value());
             ASSERT_FALSE(docs->next());
+            ASSERT_FALSE(docs->next());
           }
         }
 
@@ -789,6 +802,7 @@ TEST(segment_reader_test, open) {
             auto docs = term->postings(irs::flags::empty_instance());
             ASSERT_TRUE(docs->next());
             ASSERT_EQ(4, docs->value());
+            ASSERT_FALSE(docs->next());
             ASSERT_FALSE(docs->next());
           }
         }
@@ -804,7 +818,3 @@ TEST(segment_reader_test, open) {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

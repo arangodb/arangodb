@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_IO_UTILS_H
@@ -34,7 +33,7 @@ struct auto_##method : std::default_delete<T> \
   typedef T type; \
   typedef std::default_delete<type> base; \
   typedef std::unique_ptr< type, auto_##method<type> > ptr; \
-  void operator()(type* p) const NOEXCEPT \
+  void operator()(type* p) const noexcept \
   { \
     if (p) { \
       try { \
@@ -54,14 +53,14 @@ struct auto_##method : std::default_delete<T> \
   } \
 }
 
-NS_ROOT
-NS_BEGIN(io_utils)
+namespace iresearch {
+namespace io_utils {
 
 MAKE_DELETER(close);
 MAKE_DELETER(unlock);
 
-NS_END
-NS_END
+}
+}
 
 #define DECLARE_IO_PTR(class_name, method) \
   typedef iresearch::io_utils::auto_##method< class_name >::ptr ptr

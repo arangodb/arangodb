@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,15 +44,14 @@ namespace transaction {
 /// same TransactionState instance will be used across shards on the same server.
 class SmartContext : public Context {
  public:
-
-  SmartContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId,
-               TransactionState* state);
+  SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
+               std::shared_ptr<TransactionState> state);
     
   /// @brief destroy the context
   ~SmartContext();
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
@@ -62,71 +62,60 @@ class SmartContext : public Context {
   }
   
   /// @brief locally persisted transaction ID
-  TRI_voc_tid_t generateId() const override final;
+  TransactionId generateId() const override final;
+  
+  bool isStateSet() const noexcept {
+    return _state != nullptr;
+  }
+  
+  void setState(std::shared_ptr<arangodb::TransactionState> const& state) noexcept {
+    _state = state;
+  }
   
  protected:
   /// @brief ID of the transaction to use
-  TRI_voc_tid_t const _globalId;
-  arangodb::TransactionState* _state;
+  TransactionId const _globalId;
+  std::shared_ptr<arangodb::TransactionState> _state;
 };
   
 /// @brief Acquire a transaction from the Manager
 struct ManagedContext final : public SmartContext {
   
-  ManagedContext(TRI_voc_tid_t globalId, TransactionState* state,
-                 AccessMode::Type mode);
+  ManagedContext(TransactionId globalId, std::shared_ptr<TransactionState> state,
+                 bool responsibleForCommit, bool cloned = false);
   
   ~ManagedContext();
   
-  /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
-
-  /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override {
-    TRI_ASSERT(false);
-  }
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
   
+  std::shared_ptr<Context> clone() const override;
+  
 private:
-  AccessMode::Type _mode;
+  const bool _responsibleForCommit;
+  const bool _cloned;
 };
 
 /// Used for a standalone AQL query. Always creates the state first.
 /// Registers the TransactionState with the manager
 struct AQLStandaloneContext final : public SmartContext {
-  
-  AQLStandaloneContext(TRI_vocbase_t& vocbase, TRI_voc_tid_t globalId)
-    : SmartContext(vocbase, globalId, nullptr) {}
+  AQLStandaloneContext(TRI_vocbase_t& vocbase, TransactionId globalId)
+      : SmartContext(vocbase, globalId, nullptr) {}
 
-  /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
-
-  /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override;
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
 
   /// @brief unregister the transaction
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<Context> clone() const override;
 };
   
-/// Can be used to reuse transaction state between multiple
-/// transaction::Methods instances. Mainly for legacy clients
-/// that do not send the transaction ID header
-struct StandaloneSmartContext final : public SmartContext {
-  
-  explicit StandaloneSmartContext(TRI_vocbase_t& vocbase);
-  
-  /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
-  
-  /// @brief register the transaction,
-  void registerTransaction(TransactionState*) override;
-  
-  /// @brief unregister the transaction
-  void unregisterTransaction() noexcept override;
-};
-
 }  // namespace transaction
 }  // namespace arangodb
 

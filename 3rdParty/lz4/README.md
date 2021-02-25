@@ -2,17 +2,24 @@ LZ4 - Extremely fast compression
 ================================
 
 LZ4 is lossless compression algorithm,
-providing compression speed at 400 MB/s per core,
+providing compression speed > 500 MB/s per core,
 scalable with multi-cores CPU.
 It features an extremely fast decoder,
 with speed in multiple GB/s per core,
 typically reaching RAM speed limits on multi-core systems.
 
 Speed can be tuned dynamically, selecting an "acceleration" factor
-which trades compression ratio for more speed up.
+which trades compression ratio for faster speed.
 On the other end, a high compression derivative, LZ4_HC, is also provided,
 trading CPU time for improved compression ratio.
 All versions feature the same decompression speed.
+
+LZ4 is also compatible with [dictionary compression](https://github.com/facebook/zstd#the-case-for-small-data-compression),
+both at [API](https://github.com/lz4/lz4/blob/v1.8.3/lib/lz4frame.h#L481) and [CLI](https://github.com/lz4/lz4/blob/v1.8.3/programs/lz4.1.md#operation-modifiers) levels.
+It can ingest any input file as dictionary, though only the final 64KB are used.
+This capability can be combined with the [Zstandard Dictionary Builder](https://github.com/facebook/zstd/blob/v1.3.5/programs/zstd.1.md#dictionary-builder),
+in order to drastically improve compression performance on small files.
+
 
 LZ4 library is provided as open-source software using BSD 2-Clause license.
 
@@ -43,33 +50,32 @@ Benchmarks
 -------------------------
 
 The benchmark uses [lzbench], from @inikep
-compiled with GCC v6.2.0 on Linux 64-bits.
-The reference system uses a Core i7-3930K CPU @ 4.5GHz.
+compiled with GCC v8.2.0 on Linux 64-bits (Ubuntu 4.18.0-17).
+The reference system uses a Core i7-9700K CPU @ 4.9GHz (w/ turbo boost).
 Benchmark evaluates the compression of reference [Silesia Corpus]
 in single-thread mode.
 
 [lzbench]: https://github.com/inikep/lzbench
 [Silesia Corpus]: http://sun.aei.polsl.pl/~sdeor/index.php?page=silesia
 
-|  Compressor            | Ratio   | Compression | Decompression |
-|  ----------            | -----   | ----------- | ------------- |
-|  memcpy                |  1.000  | 7300 MB/s   |   7300 MB/s   |
-|**LZ4 fast 8  (v1.7.3)**|  1.799  |**911 MB/s** | **3360 MB/s** |
-|**LZ4 default (v1.7.3)**|**2.101**|**625 MB/s** | **3220 MB/s** |
-|  LZO 2.09              |  2.108  |  620 MB/s   |    845 MB/s   |
-|  QuickLZ 1.5.0         |  2.238  |  510 MB/s   |    600 MB/s   |
-|  Snappy 1.1.3          |  2.091  |  450 MB/s   |   1550 MB/s   |
-|  LZF v3.6              |  2.073  |  365 MB/s   |    820 MB/s   |
-|  [Zstandard] 1.1.1 -1  |  2.876  |  330 MB/s   |    930 MB/s   |
-|  [Zstandard] 1.1.1 -3  |  3.164  |  200 MB/s   |    810 MB/s   |
-| [zlib] deflate 1.2.8 -1|  2.730  |  100 MB/s   |    370 MB/s   |
-|**LZ4 HC -9 (v1.7.3)**  |**2.720**|   34 MB/s   | **3240 MB/s** |
-| [zlib] deflate 1.2.8 -6|  3.099  |   33 MB/s   |    390 MB/s   |
+|  Compressor             | Ratio   | Compression | Decompression |
+|  ----------             | -----   | ----------- | ------------- |
+|  memcpy                 |  1.000  | 13700 MB/s  |  13700 MB/s   |
+|**LZ4 default (v1.9.0)** |**2.101**| **780 MB/s**| **4970 MB/s** |
+|  LZO 2.09               |  2.108  |   670 MB/s  |    860 MB/s   |
+|  QuickLZ 1.5.0          |  2.238  |   575 MB/s  |    780 MB/s   |
+|  Snappy 1.1.4           |  2.091  |   565 MB/s  |   1950 MB/s   |
+| [Zstandard] 1.4.0 -1    |  2.883  |   515 MB/s  |   1380 MB/s   |
+|  LZF v3.6               |  2.073  |   415 MB/s  |    910 MB/s   |
+| [zlib] deflate 1.2.11 -1|  2.730  |   100 MB/s  |    415 MB/s   |
+|**LZ4 HC -9 (v1.9.0)**   |**2.721**|    41 MB/s  | **4900 MB/s** |
+| [zlib] deflate 1.2.11 -6|  3.099  |    36 MB/s  |    445 MB/s   |
 
 [zlib]: http://www.zlib.net/
 [Zstandard]: http://www.zstd.net/
 
-LZ4 is also compatible and well optimized for x32 mode, for which it provides an additional +10% speed performance.
+LZ4 is also compatible and optimized for x32 mode,
+for which it provides additional speed performance.
 
 
 Installation
@@ -77,7 +83,7 @@ Installation
 
 ```
 make
-make install     # this command may require root access
+make install     # this command may require root permissions
 ```
 
 LZ4's `Makefile` supports standard [Makefile conventions],
@@ -95,10 +101,10 @@ Documentation
 
 The raw LZ4 block compression format is detailed within [lz4_Block_format].
 
-To compress an arbitrarily long file or data stream, multiple blocks are required.
-Organizing these blocks and providing a common header format to handle their content
-is the purpose of the Frame format, defined into [lz4_Frame_format].
-Interoperable versions of LZ4 must respect this frame format.
+Arbitrarily long files or data streams are compressed using multiple blocks,
+for streaming requirements. These blocks are organized into a frame,
+defined into [lz4_Frame_format].
+Interoperable versions of LZ4 must also respect the frame format.
 
 [lz4_Block_format]: doc/lz4_Block_format.md
 [lz4_Frame_format]: doc/lz4_Frame_format.md

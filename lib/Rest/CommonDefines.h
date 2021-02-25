@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,13 +79,14 @@ enum class ContentType {
 };
 
 std::string contentTypeToString(ContentType type);
+ContentType stringToContentType(std::string const& input, ContentType def);
 
 enum class EncodingType {
   DEFLATE,
   UNSET
 };
 
-enum class AuthenticationMethod { BASIC, JWT, NONE };
+enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 
 enum class ResponseCode {
   CONTINUE = 100,

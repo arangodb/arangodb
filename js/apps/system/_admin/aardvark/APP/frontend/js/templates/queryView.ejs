@@ -1,0 +1,91 @@
+
+    <div class="arangoToolbar arangoToolbarTop">
+      <div class="pull-left">
+        <button id="toggleQueries1" class="button-primary"><i class="fa fa-star-o"></i>Queries</button>
+        <button id="toggleQueries2" class="button-primary" style="display: none"><i class="fa fa-star"></i>Queries</button>
+        <button id="createNewQuery" class="button-warning">New</button>
+        <button id="updateCurrentQuery" class="button-success" style="display: none"><i class="fa fa-save"></i>Save</button>
+        <button id="saveCurrentQuery" class="button-success"><i class="fa fa-save"></i>Save as</button>
+      </div>
+
+      <div class="pull-right">
+        <span id="querySpotlight" class="action"><i class="fa fa-magic"></i></span>
+        <div class="styled-select">
+          <select id="querySize" class="query-size"></select>
+        </div>
+      </div>
+    </div>
+
+    <div class="inputEditorWrapper">
+      <div class="aqlEditorWrapper" class="arangoEditor">
+        <span id="clearQuery" class="aceAction"><i class="fa fa-times-circle"></i></span>
+        <div id="aqlEditor"></div>
+        <div id="queryTable" style="display: none"></div>
+      </div>
+
+      <div class="bindParamEditorWrapper" class="arangoEditor">
+        <span id="switchTypes" class="aceAction type">JSON</span>
+        <div id="bindParamEditor"></div>
+        <div id="bindParamAceEditor" style="display: none"></div>
+
+        <div id="previewWrapper" class="previewWrapper" style="display: none">
+          <div id="previewBar" class="previewBar">
+            <span>Preview</span>
+          </div>
+          <div id="queryPreview"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="arangoToolbar arangoToolbarBottom">
+      <div class="pull-right">
+        <button id="exportQuery" class="button-success query-button" style="display:none">Export Queries</button>
+        <button id="importQuery" class="button-success query-button" style="display:none">Import Queries</button>
+        <button id="executeQuery" class="button-success query-button">Execute</button>
+        <button id="explainQuery" class="button-info query-button">Explain</button>
+        <button id="profileQuery" class="button-info query-button">Profile</button>
+        <button id="debugQuery" class="button-warning query-button">Create Debug Package</button>
+        <button id="removeResults" class="button-close query-button" style="display: none">Remove all results</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="outputEditors" class="outputEditors">
+  </div>
+
+  <div id="queryImportDialog" class="modal hide fade in" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="false" style="display: none;">
+    <div class="modal-header">
+      <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+      <a class="arangoHeader">Import custom queries</a>
+    </div>
+
+    <div class="modal-body">
+      <table>
+        <tbody>
+          <tr class="tableRow">
+            <th class="collectionTh">Format:</th>
+            <th class="collectionTh" colspan="2">
+<pre><code>JSON documents embedded into a list:
+
+[{
+  "name": "Query Name",
+  "value": "Query Definition",
+  "parameter": "Query Bind Parameter as Object"
+}]</code></code>
+            </th>
+          </tr>
+          <tr class="tableRow">
+            <th class="collectionTh">File:</th>
+            <th class="collectionTh" colspan="2">
+              <input id="importQueries" name="importQueries" type="file" style="border: 0" />
+            </th>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="modal-footer">
+      <button id="confirmQueryImport" class="button-success disabled" style="float:right">Import</button>
+      <button id="closeQueryModal" class="button-close">Cancel</button>

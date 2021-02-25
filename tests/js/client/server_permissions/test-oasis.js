@@ -34,15 +34,15 @@ if (getOptions === true) {
     'server.authentication': 'true',
     'server.jwt-secret': 'abc123',
 
-    'javascript.startup-options-blacklist': [ '.*' ],
-    'javascript.endpoints-whitelist' : [
+    'javascript.startup-options-allowlist': [ '.*' ],
+    'javascript.endpoints-allowlist' : [
       //'ssl://arangodb.com:443'
       'arangodb.com'
     ],
-    'javascript.files-whitelist' : [
+    'javascript.files-allowlist' : [
       '^$'
     ],
-    'javascript.environment-variables-whitelist' : [
+    'javascript.environment-variables-allowlist' : [
       '^HOSTNAME$',
       '^PATH$',
     ],

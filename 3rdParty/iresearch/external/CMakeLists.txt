@@ -27,14 +27,8 @@ add_library(
   ${MurMurHash_sources}
 )
 
-# setup CRT
-if(MSVC)
-  add_library(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    OBJECT
-    ${MurMurHash_sources}
-  )
-endif()
+set_ipo(${IResearch_TARGET_NAME}-murmurhash)
+
 
 target_compile_features(
   ${IResearch_TARGET_NAME}-murmurhash
@@ -43,27 +37,8 @@ target_compile_features(
   cxx_variadic_templates
 )
 
-# setup CRT
-if(MSVC)
-  target_compile_features(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
 
-if (MSVC)
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-else()
+if (NOT MSVC)
   target_compile_options(
     ${IResearch_TARGET_NAME}-murmurhash
     PRIVATE "-Wno-all"
@@ -77,18 +52,16 @@ target_include_directories(
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
 )
 
-# setup CRT
-if(MSVC)
-  target_include_directories(
-    ${IResearch_TARGET_NAME}-murmurhash-scrt
-    SYSTEM
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
-  )
-endif()
+################################################################################
+### OpenFST + Kaldi library
+################################################################################
 
-################################################################################
-### OpenFST library
-################################################################################
+# We build OpenFST extensions provided by Kaldi as a part of OpenFST
+set(Kaldi_sources
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/io-funcs.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-error.cc
+  ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src/base/kaldi-utils.cc
+)
 
 set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/compat.cc
@@ -101,6 +74,7 @@ set(OpenFST_sources
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/symbol-table-ops.cc
   ${CMAKE_CURRENT_SOURCE_DIR}/openfst/util.cc
+  ${Kaldi_sources}
 )
 
 add_library(
@@ -109,27 +83,13 @@ add_library(
   ${OpenFST_sources}
 )
 
-# setup CRT
-if(MSVC)
-  add_library(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    OBJECT
-    ${OpenFST_sources}
-  )
-endif()
+set_ipo(${IResearch_TARGET_NAME}-ofst)
+
 
 target_compile_definitions(
   ${IResearch_TARGET_NAME}-ofst
   PUBLIC "FST_NO_DYNAMIC_LINKING"
 )
-
-# setup CRT
-if(MSVC)
-  target_compile_definitions(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PUBLIC "FST_NO_DYNAMIC_LINKING"
-  )
-endif()
 
 target_compile_features(
   ${IResearch_TARGET_NAME}-ofst
@@ -138,20 +98,12 @@ target_compile_features(
   cxx_variadic_templates
 )
 
-# setup CRT
-if(MSVC)
-  target_compile_features(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    PRIVATE
-    cxx_final
-    cxx_variadic_templates
-  )
-endif()
-
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
+    # MSVC2015-2017 require "/bigobj" to compile debug build
+    PRIVATE "$<$<CONFIG:Debug>:/bigobj>"
     # MSVC requires listing each warning code individually
     # /W0 and /w cannot be used because the produce a single warning themselves
     PRIVATE "/wd4018"
@@ -167,27 +119,6 @@ if (MSVC)
     PRIVATE "/wd4512"
     PRIVATE "/wd4610"
     PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MDd>$<$<NOT:$<CONFIG:Debug>>:/MD>"
-  )
-
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    # MSVC requires listing each warning code individually
-    # /W0 and /w cannot be used because the produce a single warning themselves
-    PRIVATE "/wd4018"
-    PRIVATE "/wd4100"
-    PRIVATE "/wd4127"
-    PRIVATE "/wd4244"
-    PRIVATE "/wd4245"
-    PRIVATE "/wd4267"
-    PRIVATE "/wd4291"
-    PRIVATE "/wd4305"
-    PRIVATE "/wd4389"
-    PRIVATE "/wd4510"
-    PRIVATE "/wd4512"
-    PRIVATE "/wd4610"
-    PRIVATE "/wd4706"
-    PRIVATE "$<$<CONFIG:Debug>:/MTd>$<$<NOT:$<CONFIG:Debug>>:/MT>"
   )
 else()
   target_compile_options(
@@ -201,16 +132,8 @@ target_include_directories(
   ${IResearch_TARGET_NAME}-ofst
   SYSTEM
   PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
+  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/kaldi/src
 )
-
-# setup CRT
-if(MSVC)
-  target_include_directories(
-    ${IResearch_TARGET_NAME}-ofst-scrt
-    SYSTEM
-    PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/openfst
-  )
-endif()
 
 ################################################################################
 ### RapidJSON library
@@ -232,3 +155,24 @@ target_include_directories(
 ################################################################################
 
 add_subdirectory(simdcomp)
+
+################################################################################
+### utfcpp library
+################################################################################
+
+add_library(
+  ${IResearch_TARGET_NAME}-utfcpp
+  INTERFACE
+)
+
+target_include_directories(
+  ${IResearch_TARGET_NAME}-utfcpp
+  SYSTEM
+  INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/utfcpp
+)
+
+################################################################################
+### frozen library
+################################################################################
+
+set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)

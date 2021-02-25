@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +27,16 @@
 
 #include <memory>
 
+#include <utils/type_id.hpp>
 #include "Basics/Result.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
 class LogicalCollection;  // forward declaration
 class LogicalView;        // forward declaration
@@ -54,23 +61,25 @@ struct IResearchLinkHelper {
   /// @brief return a reference to a static VPackSlice of an empty index
   ///        definition
   //////////////////////////////////////////////////////////////////////////////
-  static velocypack::Slice const& emptyIndexSlice();
+  static arangodb::velocypack::Builder emptyIndexSlice(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief compare two link definitions for equivalience if used to create a
   ///        link instance
   //////////////////////////////////////////////////////////////////////////////
-  static bool equal( // equal definition
-    arangodb::velocypack::Slice const& lhs, // left hand side
-    arangodb::velocypack::Slice const& rhs // right hand side
+  static bool equal(  // equal definition
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& lhs,  // left hand side
+      arangodb::velocypack::Slice const& rhs,   // right hand side
+      irs::string_ref const& dbname
   );
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief finds link between specified collection and view with the given id
   //////////////////////////////////////////////////////////////////////////////
-  static std::shared_ptr<IResearchLink> find( // find link
-    arangodb::LogicalCollection const& collection, // collection to search
-    TRI_idx_iid_t id // index to find
+  static std::shared_ptr<IResearchLink> find(         // find link
+      arangodb::LogicalCollection const& collection,  // collection to search
+      IndexId id                                      // index to find
   );
 
   //////////////////////////////////////////////////////////////////////////////
@@ -94,8 +103,10 @@ struct IResearchLinkHelper {
     bool isCreation, // definition for index creation
     TRI_vocbase_t const& vocbase, // index vocbase
     IResearchViewSort const* primarySort = nullptr,
+    irs::type_info::type_id const* primarySortCompression = nullptr,
     IResearchViewStoredValues const* storedValues = nullptr,
-    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice() // id for normalized
+    arangodb::velocypack::Slice idSlice = arangodb::velocypack::Slice(), // id for normalized
+    irs::string_ref collectionName = irs::string_ref::NIL
   );
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -132,11 +143,11 @@ struct IResearchLinkHelper {
   /// @param links the link modification definitions, null link == link removal
   /// @param stale links to remove if there is no creation definition in 'links'
   //////////////////////////////////////////////////////////////////////////////
-  static arangodb::Result updateLinks( // update links
-      std::unordered_set<TRI_voc_cid_t>& modified, // odified cids
-      arangodb::LogicalView& view, // modified view
-      arangodb::velocypack::Slice const& links, // link definitions to apply
-      std::unordered_set<TRI_voc_cid_t> const& stale = {} //stale view links
+  static arangodb::Result updateLinks(             // update links
+      std::unordered_set<DataSourceId>& modified,  // modified cids
+      arangodb::LogicalView& view,                 // modified view
+      arangodb::velocypack::Slice const& links,    // link definitions to apply
+      std::unordered_set<DataSourceId> const& stale = {}  // stale view links
   );
 
  private:

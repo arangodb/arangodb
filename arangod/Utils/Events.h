@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -37,6 +38,10 @@ class GeneralRequest;
 class GeneralResponse;
 struct OperationResult;
 
+namespace aql {
+class Query;
+}
+
 namespace events {
 void UnknownAuthenticationMethod(GeneralRequest const&);
 void CredentialsMissing(GeneralRequest const&);
@@ -47,28 +52,32 @@ void Authenticated(GeneralRequest const&, rest::AuthenticationMethod);
 void NotAuthorized(GeneralRequest const&);
 void CreateCollection(std::string const& db, std::string const& name, int result);
 void DropCollection(std::string const& db, std::string const& name, int result);
-void TruncateCollection(std::string const& db, std::string const& name, int result);
-void CreateDatabase(std::string const& name, int result);
-void DropDatabase(std::string const& name, int result);
+void PropertyUpdateCollection(std::string const& db, std::string const& collectionName,
+                              OperationResult const&);
+void TruncateCollection(std::string const& db, std::string const& name,
+                        OperationResult const& result);
+void CreateDatabase(std::string const& name, Result const& result, ExecContext const& context);
+void DropDatabase(std::string const& name, Result const& result, ExecContext const& context);
 void CreateIndex(std::string const& db, std::string const& col, VPackSlice const&, int result);
 void DropIndex(std::string const& db, std::string const& col,
                std::string const& idx, int result);
 void CreateView(std::string const& db, std::string const& name, int result);
 void DropView(std::string const& db, std::string const& name, int result);
 void CreateDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void DeleteDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void ReadDocument(std::string const& db, std::string const& collection,
-                  VPackSlice const& document, OperationOptions const& options, int);
+                  VPackSlice const& document, OperationOptions const& options, int code);
 void ReplaceDocument(std::string const& db, std::string const& collection,
-                     VPackSlice const& document, OperationOptions const& options, int);
+                     VPackSlice const& document, OperationOptions const& options, int code);
 void ModifyDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int);
+                    VPackSlice const& document, OperationOptions const& options, int code);
 void IllegalDocumentOperation(GeneralRequest const&, int result);
-void QueryDocument(std::string const& db, std::string const&, std::string const&, int code);
-void QueryDocument(std::string const& db, VPackSlice const&, int code);
-void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&);
+void AqlQuery(aql::Query const& query);
+void CreateHotbackup(std::string const& id, int result);
+void RestoreHotbackup(std::string const& id, int result);
+void DeleteHotbackup(std::string const& id, int result);
 }  // namespace events
 }  // namespace arangodb
 

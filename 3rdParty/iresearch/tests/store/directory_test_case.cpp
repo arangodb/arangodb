@@ -42,7 +42,7 @@
 #include <algorithm>
 #include <fstream>
 
-NS_LOCAL
+namespace {
 
 using namespace iresearch;
 
@@ -124,12 +124,39 @@ class directory_test_case : public tests::directory_test_case_base {
       EXPECT_EQ(0, file->file_pointer());
       EXPECT_EQ(file->length(), it->size());
 
+      auto dup_file = file->dup();
+      ASSERT_FALSE(!dup_file);
+      ASSERT_EQ(0, dup_file->file_pointer());
+      EXPECT_FALSE(dup_file->eof());
+      EXPECT_EQ(dup_file->length(), it->size());
+      auto reopened_file = file->reopen();
+      ASSERT_FALSE(!reopened_file);
+      ASSERT_EQ(0, reopened_file->file_pointer());
+      EXPECT_FALSE(reopened_file->eof());
+      EXPECT_EQ(reopened_file->length(), it->size());
+
       const auto checksum = file->checksum(file->length());
 
       buf.resize(it->size());
       const auto read = file->read_bytes(&(buf[0]), it->size());
       ASSERT_EQ(read, it->size());
       ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = dup_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
 
       crc.process_bytes(buf.c_str(), buf.size());
 
@@ -231,6 +258,103 @@ class directory_test_case : public tests::directory_test_case_base {
   }
 };
 
+TEST_P(directory_test_case, rename) {
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    auto stream0 = dir_->create("foo");
+    ASSERT_NE(nullptr, stream0);
+    stream0->write_byte(0);
+    stream0->flush();
+    auto stream1 = dir_->create("bar");
+    ASSERT_NE(nullptr, stream1);
+    stream1->write_int(2);
+    stream1->flush();
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_TRUE(res);
+  }
+
+  ASSERT_TRUE(dir_->rename("foo", "foo1"));
+  ASSERT_TRUE(dir_->rename("bar", "bar1"));
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "foo"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "bar1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    auto stream0 = dir_->open("foo1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream0);
+    ASSERT_EQ(1, stream0->length());
+    ASSERT_EQ(0, stream0->read_byte());
+    auto stream1 = dir_->open("bar1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream1);
+    ASSERT_EQ(4, stream1->length());
+    ASSERT_EQ(2, stream1->read_int());
+  }
+
+  ASSERT_FALSE(dir_->rename("invalid", "foo1"));
+  ASSERT_TRUE(dir_->rename("bar1", "foo1"));
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
+  }
+
+  {
+    bool res = true;
+    ASSERT_TRUE(dir_->exists(res, "bar1"));
+    ASSERT_FALSE(res);
+  }
+
+  {
+    auto stream1 = dir_->open("foo1", irs::IOAdvice::NORMAL);
+    ASSERT_NE(nullptr, stream1);
+    ASSERT_EQ(4, stream1->length());
+    ASSERT_EQ(2, stream1->read_int());
+  }
+}
+
 TEST_P(directory_test_case, lock_obtain_release) {
   {
     // single lock
@@ -295,6 +419,33 @@ TEST_P(directory_test_case, lock_obtain_release) {
     ASSERT_TRUE(lock1->is_locked(locked) && !locked);
   }
 }
+
+#ifdef _MSC_VER
+TEST_P(directory_test_case, create_many_files) {
+  std::vector<index_output::ptr> openedFiles;
+  std::vector<std::string> names;
+  constexpr size_t count = 2048;
+  names.reserve(count);
+
+  for (size_t i = 0; i < count; ++i) {
+    std::string name = "t";
+    name += std::to_string(i);
+    names.push_back(std::move(name));
+  }
+
+  openedFiles.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    SCOPED_TRACE(testing::Message("File count ") << i);
+    auto out = dir_->create(names[i]);
+    ASSERT_FALSE(!out);
+    openedFiles.push_back(std::move(out));
+  }
+  openedFiles.clear();
+  for (size_t i = 0; i < count; ++i) {
+    dir_->remove(names[i]);
+  }
+}
+#endif
 
 TEST_P(directory_test_case, read_multiple_streams) {
   // write data
@@ -1386,8 +1537,4 @@ TEST(memory_directory_test, file_reset_allocator) {
   ASSERT_NE(buf0.data, buf1.data);
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

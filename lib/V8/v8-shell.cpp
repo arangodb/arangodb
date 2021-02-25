@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
+  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,14 +95,14 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
+  (*array)->Set(TRI_IGETC, (uint32_t)column, TRI_V8_STRING(isolate, field)).FromMaybe(false);
 
   v8::Handle<v8::Function>* cb =
       reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
   v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);
 
   v8::Handle<v8::Value> args[] = {*array, r};
-  (*cb)->Call(*cb, 2, args);
+  (*cb)->Call(TRI_IGETC, *cb, 2, args).FromMaybe(v8::Local<v8::Value>());
 }
 
 }  // namespace
@@ -148,8 +148,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -172,7 +172,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // separator
     if (TRI_HasProperty(context, isolate, options, separatorKey)) {
-      separator = TRI_ObjectToString(isolate, options->Get(separatorKey));
+      separator = TRI_ObjectToString(context, isolate, options->Get(context, separatorKey));
 
       if (separator.size() != 1) {
         TRI_V8_THROW_TYPE_ERROR(
@@ -182,7 +182,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // quote
     if (TRI_HasProperty(context, isolate, options, quoteKey)) {
-      quote = TRI_ObjectToString(isolate, options->Get(quoteKey));
+      quote = TRI_ObjectToString(context, isolate, options->Get(context, quoteKey));
 
       if (quote.length() > 1) {
         TRI_V8_THROW_TYPE_ERROR(
@@ -217,7 +217,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   char buffer[10240];
 
   while (true) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    TRI_read_return_t n = TRI_READ(fd, buffer, static_cast<TRI_read_t>(sizeof(buffer)));
 
     if (n < 0) {
       TRI_DestroyCsvParser(&parser);
@@ -270,8 +270,8 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToAccessPath(isolate, *filename, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -323,7 +323,7 @@ static void JS_ProcessJsonFile(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);
       v8::Handle<v8::Value> args[] = {object, r};
-      cb->Call(cb, 2, args);
+      cb->Call(TRI_IGETC, cb, 2, args).FromMaybe(v8::Local<v8::Value>());
 
       row++;
     }

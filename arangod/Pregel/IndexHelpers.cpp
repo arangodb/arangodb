@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,9 +23,12 @@
 
 #include "IndexHelpers.h"
 
+#include "Aql/OptimizerUtils.h"
 #include "Cluster/ClusterMethods.h"
+#include "Indexes/Index.h"
+#include "Indexes/IndexIterator.h"
 #include "Transaction/Methods.h"
-#include "Utils/OperationCursor.h"
+#include "VocBase/AccessMode.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -38,36 +42,32 @@ EdgeCollectionInfo::EdgeCollectionInfo(transaction::Methods* trx,
   if (!trx->isEdgeCollection(collectionName)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID);
   }
+ 
+  _trx->addCollectionAtRuntime(_collectionName, AccessMode::Type::READ);
+  auto doc = _trx->documentCollection(_collectionName);
+  
+  for (std::shared_ptr<arangodb::Index> const& idx : doc->getIndexes()) {
+    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
+      auto const& fields = idx->fieldNames();
+      if (fields.size() == 1 && fields[0].size() == 1 &&
+          fields[0][0] == StaticStrings::FromString) {
+        _index = idx;
+        break;
+      }
+    }
+  }
+  TRI_ASSERT(_index != nullptr);  // We always have an edge Index
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Get edges for the given direction and start vertex.
-////////////////////////////////////////////////////////////////////////////////
-
-std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
-                                         std::string const& vertexId) {
-  
-  /// @brief index used for iteration
-  transaction::Methods::IndexHandle indexId;
-  
-  auto var = _searchBuilder.getVariable();
-  auto cond = _searchBuilder.getOutboundCondition();
-  bool worked = _trx->getBestIndexHandleForFilterCondition(_collectionName, cond,
-                                                           var, 1000, aql::IndexHint(), indexId);
-  TRI_ASSERT(worked);  // We always have an edge Index
-  
+std::unique_ptr<arangodb::IndexIterator> EdgeCollectionInfo::getEdges(std::string const& vertexId) {  
   _searchBuilder.setVertexId(vertexId);
   IndexIteratorOptions opts;
   opts.enableCache = false;
-  return std::make_unique<OperationCursor>(_trx->indexScanForCondition(indexId,
-                                                                       _searchBuilder.getOutboundCondition(),
-                                                                       _searchBuilder.getVariable(), opts));
+  return _trx->indexScanForCondition(_index, _searchBuilder.getOutboundCondition(), _searchBuilder.getVariable(), opts);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Return name of the wrapped collection
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& EdgeCollectionInfo::getName() const {
   return _collectionName;
 }

@@ -37,27 +37,6 @@ function runSetup () {
   'use strict';
   internal.debugClearFailAt();
 
-  if (engine === "mmfiles") {
-    internal.debugSetFailAt('CreateCollection::tempDirectory');
-    try {
-      db._create('UnitTestsRecovery1');
-      fail();
-    } catch (err) {}
-
-    internal.debugClearFailAt();
-    internal.debugSetFailAt('CreateCollection::tempFile');
-    try {
-      db._create('UnitTestsRecovery2');
-      fail();
-    } catch (err) {}
-
-    internal.debugClearFailAt();
-    internal.debugSetFailAt('CreateCollection::renameDirectory');
-    try {
-      db._create('UnitTestsRecovery3');
-      fail();
-    } catch (err) {}
-  }
   internal.debugClearFailAt();
   db._create('UnitTestsRecovery3'); // must work now
   db._create('UnitTestsRecovery4');
@@ -82,10 +61,6 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testCreateCollectionFail: function () {
-      if (engine === "mmfiles") {
-        assertNull(db._collection('UnitTestsRecovery1'));
-        assertNull(db._collection('UnitTestsRecovery2'));
-      }
       assertNotNull(db._collection('UnitTestsRecovery3'));
       assertNotNull(db._collection('UnitTestsRecovery4'));
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
@@ -54,7 +55,7 @@ class SortNode : public ExecutionNode {
   static std::string const& sorterTypeName(SorterType);
 
  public:
-  SortNode(ExecutionPlan* plan, size_t id, SortElementVector const& elements, bool stable)
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector const& elements, bool stable)
       : ExecutionNode(plan, id),
         _reinsertInCluster(true),
         _elements(elements),
@@ -94,7 +95,7 @@ class SortNode : public ExecutionNode {
   CostEstimate estimateCost() const override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override final {
+  void getVariablesUsedHere(VarSet& vars) const override final {
     for (auto& p : _elements) {
       vars.emplace(p.var);
     }
@@ -121,8 +122,11 @@ class SortNode : public ExecutionNode {
 
   SorterType sorterType() const;
 
-  // reinsert node when building gather node - this is used e.g for the
-  // geo-index
+  /// @brief if this node is needed on DBServers in cluster.
+  /// if set to false that means some optimizer rule
+  /// has already included sorting in some other node and
+  /// this node is left in plan only in sake of GatherNode 
+  /// to properly handle merging.
   bool _reinsertInCluster;
 
  private:

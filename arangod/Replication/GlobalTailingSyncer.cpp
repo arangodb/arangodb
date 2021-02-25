@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalTailingSyncer.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -37,22 +40,32 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 
 GlobalTailingSyncer::GlobalTailingSyncer(ReplicationApplierConfiguration const& configuration,
-                                         TRI_voc_tick_t initialTick,
-                                         bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
-                    configuration, initialTick, useTick, barrierId),
+                                         TRI_voc_tick_t initialTick, bool useTick)
+    : TailingSyncer(configuration._server.getFeature<ReplicationFeature>().globalReplicationApplier(),
+                    configuration, initialTick, useTick),
       _queriedTranslations(false) {
   _ignoreDatabaseMarkers = false;
-  _state.databaseName = TRI_VOC_SYSTEM_DATABASE;
+  _state.databaseName = StaticStrings::SystemDatabase;
+}
+
+std::shared_ptr<GlobalTailingSyncer> GlobalTailingSyncer::create(ReplicationApplierConfiguration const& configuration,
+                                                                 TRI_voc_tick_t initialTick, bool useTick) {
+  // enable make_shared on a class with a private constructor
+  struct Enabler final : GlobalTailingSyncer {
+    Enabler(ReplicationApplierConfiguration const& configuration,
+           TRI_voc_tick_t initialTick, bool useTick) 
+      : GlobalTailingSyncer(configuration, initialTick, useTick) {}
+  };
+
+  return std::make_shared<Enabler>(configuration, initialTick, useTick);
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
-  TRI_ASSERT(!_state.master.endpoint.empty());
-  TRI_ASSERT(_state.master.serverId != 0);
-  TRI_ASSERT(_state.master.majorVersion != 0);
+  TRI_ASSERT(!_state.leader.endpoint.empty());
+  TRI_ASSERT(_state.leader.serverId.isSet());
+  TRI_ASSERT(_state.leader.majorVersion != 0);
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     std::string err =
         "You need >= 3.3 to perform the replication of an entire server";
     LOG_TOPIC("75fa1", ERR, Logger::REPLICATION) << err;
@@ -76,24 +89,23 @@ bool GlobalTailingSyncer::skipMarker(VPackSlice const& slice) {
     return false;
   }
 
-  if (_state.master.majorVersion < 3 ||
-      (_state.master.majorVersion == 3 && _state.master.minorVersion <= 2)) {
+  if (_state.leader.version() < 30300) {
     // globallyUniqueId only exists in 3.3 and higher
     return false;
   }
 
   if (!_queriedTranslations) {
-    // no translations yet... query master inventory to find names of all
+    // no translations yet... query leader inventory to find names of all
     // collections
     try {
-      GlobalInitialSyncer init(_state.applier);
+      auto syncer = GlobalInitialSyncer::create(_state.applier);
       VPackBuilder inventoryResponse;
-      Result res = init.getInventory(inventoryResponse);
+      Result res = syncer->getInventory(inventoryResponse);
       _queriedTranslations = true;
 
       if (res.fail()) {
         LOG_TOPIC("e25ae", ERR, Logger::REPLICATION)
-            << "got error while fetching master inventory for collection name "
+            << "got error while fetching leader inventory for collection name "
                "translations: "
             << res.errorMessage();
         return false;

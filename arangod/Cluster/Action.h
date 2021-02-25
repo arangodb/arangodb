@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -77,9 +77,6 @@ class Action {
 
   /// @brief is object in a usable condition
   bool ok() const { return (nullptr != _action.get() && _action->ok()); };
-
-  /// @brief kill action with signal
-  arangodb::Result kill(Signal const& signal);
 
   /// @brief check progress
   arangodb::Result progress(double& progress);
@@ -178,6 +175,14 @@ class Action {
   /// @brief When object finished executing
   std::chrono::system_clock::time_point getDoneTime() const {
     return _action->getDoneTime();
+  }
+
+  auto getRunDuration() const {
+    return _action->getDoneTime() - _action->getStartTime();
+  }
+
+  auto getQueueDuration() const {
+    return _action->getStartTime() - _action->getCreateTime();
   }
 
   /// @brief fastTrack

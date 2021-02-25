@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,8 +25,13 @@
 #ifndef ARANGOD_AQL_OPTIMIZER_RULES_H
 #define ARANGOD_AQL_OPTIMIZER_RULES_H 1
 
+#include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
+#include "ClusterNodes.h"
+#include "Containers/SmallUnorderedMap.h"
+#include "ExecutionNode.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
@@ -34,10 +39,12 @@ class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
 
-class Query;
+class QueryContext;
 struct Collection;
 /// Helper
-Collection* addCollectionToQuery(Query* query, std::string const& cname, bool assert = true);
+Collection* addCollectionToQuery(QueryContext& query, std::string const& cname, char const* context);
+
+void insertDistributeInputCalculation(ExecutionPlan& plan);
 
 /// @brief adds a SORT operation for IN right-hand side operands
 void sortInValuesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -130,6 +137,17 @@ void substituteClusterSingleDocumentOperationsRule(Optimizer* opt,
 void clusterOneShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
 
+#ifdef USE_ENTERPRISE
+void clusterLiftConstantsForDisjointGraphNodes(Optimizer* opt,
+                                               std::unique_ptr<ExecutionPlan> plan,
+                                               OptimizerRule const& rule);
+#endif
+
+#ifdef USE_ENTERPRISE
+void clusterPushSubqueryToDBServer(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                                   OptimizerRule const& rule);
+#endif
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -145,14 +163,21 @@ void distributeInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                              OptimizerRule const&);
 
 #ifdef USE_ENTERPRISE
-ExecutionNode* distributeInClusterRuleSmartEdgeCollection(ExecutionPlan*, SubqueryNode* snode,
+ExecutionNode* distributeInClusterRuleSmart(ExecutionPlan*, SubqueryNode* snode,
                                                           ExecutionNode* node,
-                                                          ExecutionNode* originalParent,
                                                           bool& wasModified);
 
-/// @brief remove scatter/gather and remote nodes for satellite collections
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
+void scatterSatelliteGraphRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                               OptimizerRule const&);
+
+/// @brief remove scatter/gather and remote nodes for SatelliteCollections
 void removeSatelliteJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                               OptimizerRule const&);
+
+/// @brief remove distribute/gather and remote nodes if possible
+void removeDistributeNodesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                             OptimizerRule const&);
 
 void smartJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 #endif
@@ -164,8 +189,8 @@ void restrictToSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 /// @brief move collect to the DB servers in cluster
 void collectInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
-void distributeFilternCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
-                                        OptimizerRule const&);
+void distributeFilterCalcToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                       OptimizerRule const&);
 
 void distributeSortToClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                  OptimizerRule const&);
@@ -218,6 +243,12 @@ void removeRedundantOrRule(Optimizer*, std::unique_ptr<ExecutionPlan>, Optimizer
 void removeDataModificationOutVariablesRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                             OptimizerRule const&);
 
+// replace inaccessible EnumerateCollectionNode with NoResult nodes
+#ifdef USE_ENTERPRISE
+void skipInaccessibleCollectionsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const& rule);
+#endif
+
 /// @brief patch UPDATE statement on single collection that iterates over the
 /// entire collection to operate in batches
 void patchUpdateStatementsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
@@ -237,10 +268,6 @@ void removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_ptr<ExecutionPl
 /// `removeFiltersCoveredByTraversal`. Should significantly reduce overhead
 void removeTraversalPathVariable(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                                  OptimizerRule const&);
-
-/// @brief prepares traversals for execution (hidden rule)
-void prepareTraversalsRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-                           OptimizerRule const&);
 
 /// @brief moves simple subqueries one level higher
 void inlineSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
@@ -262,11 +289,45 @@ void replaceNearWithinFulltextRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void moveFiltersIntoEnumerateRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                   OptimizerRule const&);
 
+/// @brief turns LENGTH(FOR doc IN collection) subqueries into an optimized count operation
+void optimizeCountRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
 /// @brief parallelize Gather nodes (cluster-only)
 void parallelizeGatherRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
 
 //// @brief splice in subqueries
 void spliceSubqueriesRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const&);
+
+//// @brief reduces a sorted gather to an unsorted gather if only one shard is involved
+void decayUnnecessarySortedGather(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                  OptimizerRule const&);
+
+void createScatterGatherSnippet(ExecutionPlan& plan, TRI_vocbase_t* vocbase,
+                                ExecutionNode* node, bool isRootNode,
+                                std::vector<ExecutionNode*> const& nodeDependencies,
+                                std::vector<ExecutionNode*> const& nodeParents,
+                                SortElementVector const& elements, size_t numberOfShards,
+                                std::unordered_map<ExecutionNode*, ExecutionNode*> const& subqueries,
+                                Collection const* collection);
+
+//// @brief enclose a node in SCATTER/GATHER
+void insertScatterGatherSnippet(
+    ExecutionPlan& plan, ExecutionNode* at,
+    containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries);
+
+//// @brief find all subqueries in a plan and store a map from subqueries to nodes
+void findSubqueriesInPlan(ExecutionPlan& plan,
+                          containers::SmallUnorderedMap<ExecutionNode*, ExecutionNode*>& subqueries);
+
+//// @brief create a DistributeNode for the given ExecutionNode
+auto createDistributeNodeFor(ExecutionPlan& plan, ExecutionNode* node) -> DistributeNode*;
+
+//// @brief create a gather node matching the given DistributeNode
+auto createGatherNodeFor(ExecutionPlan& plan, DistributeNode* node) -> GatherNode*;
+
+//// @brief enclose a node in DISTRIBUTE/GATHER
+auto insertDistributeGatherSnippet(ExecutionPlan& plan, ExecutionNode* at, SubqueryNode* snode)
+    -> DistributeNode*;
 
 }  // namespace aql
 }  // namespace arangodb

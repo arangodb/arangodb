@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +31,8 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+
+#include <Containers/HashSet.h>
 
 namespace arangodb {
 namespace tests {
@@ -96,7 +99,8 @@ class PatternTestWrapper {
 
  private:
   ResourceMonitor _monitor;
-  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> _dependencyProxyMock{_monitor, 1};
+  RegIdSet inputRegisters;
+  DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> _dependencyProxyMock{_monitor, inputRegisters, 1};
   AqlItemBlockManager _itemBlockManager{&_monitor, SerializationFormat::SHADOWROWS};
 
  protected:

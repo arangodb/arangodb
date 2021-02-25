@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "RestEndpointHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/EndpointFeature.h"
 #include "VocBase/vocbase.h"
 

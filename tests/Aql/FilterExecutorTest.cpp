@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,16 +24,20 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
+#include "AqlExecutorTestCase.h"
+#include "AqlItemBlockHelper.h"
+#include "RowFetcherHelper.h"
+
+#include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -44,303 +49,144 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class FilterExecutorTest : public ::testing::Test {
+using FilterExecutorTestHelper = ExecutorTestHelper<2, 2>;
+using FilterExecutorSplitType = FilterExecutorTestHelper::SplitType;
+using FilterExecutorInputParam = std::tuple<FilterExecutorSplitType>;
+
+class FilterExecutorTest : public AqlExecutorTestCaseWithParam<FilterExecutorInputParam> {
  protected:
   ExecutionState state;
-  ResourceMonitor monitor;
+  arangodb::ResourceMonitor monitor;
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>>& registersToKeep;
+  RegIdSet outputRegisters;
   FilterExecutorInfos infos;
 
   FilterExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(make_shared_unordered_set()),
-        registersToKeep(outputRegisters),
-        infos(0, 1, 1, {}, {}) {}
+        outputRegisters(),
+        infos(0) {}
+
+  auto getSplit() -> FilterExecutorSplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildRegisterInfos() -> RegisterInfos {
+    return RegisterInfos(RegIdSet{0}, {}, 2, 2, {}, {RegIdSet{0, 1}});
+  }
+  auto buildExecutorInfos() -> FilterExecutorInfos {
+    return FilterExecutorInfos{0};
+  }
 };
 
-TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_does_not_wait) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
+template <size_t... vs>
+const FilterExecutorSplitType splitIntoBlocks =
+    FilterExecutorSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const FilterExecutorSplitType splitStep = FilterExecutorSplitType{step};
 
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+TEST_P(FilterExecutorTest, empty_input) {
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  makeExecutorTestHelper()
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .setInputValue({})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_no_rows_upstream_the_producer_waits) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
+TEST_P(FilterExecutorTest, values) {
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{0, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{0, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{0, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 0}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_does_not_wait) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 2);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_FALSE(row.produced());
+TEST_P(FilterExecutorTest, odd_values) {
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
+  AqlCall call{};
+  ExecutionStats{};
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{1, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{1, 2},
+                                             RowBuilder<2>{1, 4}, RowBuilder<2>{1, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest, there_are_rows_in_the_upstream_the_producer_waits) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  /*
-  1  produce => WAIT                 RES1
-  2  produce => HASMORE, Row 1     RES1
-  3  => WAIT                         RES2
-  4  => WAIT                         RES2
-  5   => HASMORE, Row 3            RES2
-  6   => WAIT,                       RES3
-  7   => WAIT,                       RES3
-  8   => WAIT,                       RES3
-  9   => DONE, Row 6               RES3
-  */
-
-  // 1
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 2
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 3
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 4
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  // We have one filter here
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 5
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 6
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  // 7
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 7
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(row.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  // 8
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(row.produced());
-  row.advanceRow();
-  ASSERT_EQ(stats.getFiltered(), 0);
+TEST_P(FilterExecutorTest, skip_and_odd_values) {
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
+  AqlCall call{3};
+  ExecutionStats{};
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{RowBuilder<2>{1, 0}, RowBuilder<2>{0, 1},
+                                      RowBuilder<2>{1, 2}, RowBuilder<2>{0, 3},
+                                      RowBuilder<2>{1, 4}, RowBuilder<2>{0, 5},
+                                      RowBuilder<2>{1, 6}, RowBuilder<2>{0, 7}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{RowBuilder<2>{1, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(FilterExecutorTest,
-       there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_does_not_wait) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow row(std::move(block), outputRegisters, registersToKeep,
-                       infos.registersToClear());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_EQ(stats.getFiltered(), 2);
-  ASSERT_TRUE(row.produced());
-
-  row.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 1);
-  ASSERT_FALSE(row.produced());
-
-  std::tie(state, stats) = testee.produceRows(row);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_EQ(stats.getFiltered(), 0);
-  ASSERT_FALSE(row.produced());
-}
-
-TEST_F(FilterExecutorTest,
-       there_are_rows_in_the_upstream_and_the_last_one_has_to_be_filtered_the_producer_waits) {
-  auto input = VPackParser::fromJson(
-      "[ [true], [false], [true], [false], [false], [true], [false] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  FilterExecutor testee(fetcher, infos);
-  FilterStats stats{};
-
-  OutputAqlItemRow result(std::move(block), outputRegisters, registersToKeep,
-                          infos.registersToClear());
-
-  /*
-  produce => WAIT                  RES1
-  produce => HASMORE, Row 1        RES1
-  => WAIT                          RES2
-  => WAIT                          RES2
-   => HASMORE, Row 3               RES2
-   => WAIT,                        RES3
-   => WAIT,                        RES3
-   => WAIT,                        RES3
-   => HASMORE, Row 6               RES3
-   => WAITING,                     RES3
-   => DONE, no output!             RES3
-    */
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(stats.getFiltered(), 1);
-}
+TEST_P(FilterExecutorTest, hard_limit) {
+  auto registerInfos = buildRegisterInfos();
+  auto executorInfos = buildExecutorInfos();
+  AqlCall call{};
+  call.hardLimit = 0u;
+  call.fullCount = true;
+  ExecutionStats{};
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<FilterExecutor>(std::move(registerInfos), std::move(executorInfos))
+      .setInputValue(MatrixBuilder<2>{})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1}, MatrixBuilder<2>{})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}  // namespace aql
 
 }  // namespace aql
 }  // namespace tests

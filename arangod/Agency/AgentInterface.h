@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,12 @@ class AgentInterface {
         : _discardStartup(d), _privileged(p) {}
     bool privileged() const { return _privileged; }
     bool discardStartup() const { return _discardStartup; }
+    bool operator==(WriteMode const& other) const {
+      return other._discardStartup == _discardStartup && other._privileged == _privileged;
+    }
+    bool operator!=(WriteMode const& other) const {
+      return other._discardStartup != _discardStartup || other._privileged != _privileged;
+    }
   };
 
   /// @brief Attempt write

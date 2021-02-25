@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,8 @@
 
 #include "HotBackup.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
@@ -42,10 +45,10 @@ HotBackup::HotBackup(application_features::ApplicationServer& server)
 #endif
   if (ServerState::instance()->isCoordinator()) {
     _engine = BACKUP_ENGINE::CLUSTER;
-  } else if (EngineSelectorFeature::isRocksDB()) {
+  } else if (server.getFeature<EngineSelectorFeature>().isRocksDB()) {
     _engine = BACKUP_ENGINE::ROCKSDB;
   } else {
-    _engine = BACKUP_ENGINE::MMFILES;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
   }
 }
 
@@ -54,16 +57,14 @@ arangodb::Result HotBackup::execute (
   std::string const& command, VPackSlice const payload, VPackBuilder& report) {
 
   switch (_engine) {
-  case BACKUP_ENGINE::ROCKSDB:
-    return executeRocksDB(command, payload, report);
-  case BACKUP_ENGINE::MMFILES:
-    return executeMMFiles(command, payload, report);
-  case BACKUP_ENGINE::CLUSTER:
-    return executeCoordinator(command, payload, report);
+    case BACKUP_ENGINE::ROCKSDB:
+      return executeRocksDB(command, payload, report);
+    case BACKUP_ENGINE::CLUSTER:
+      return executeCoordinator(command, payload, report);
   }
 
-  return arangodb::Result();
-
+  return arangodb::Result(
+    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented for this storage engine");
 }
 
 
@@ -79,11 +80,12 @@ arangodb::Result HotBackup::executeRocksDB(
     operation->execute();
   } // if
 
+  operation->doAuditLog();
+
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(
-      operation->restResponseError(), operation->errorMessage());
-  } // if
+    return arangodb::Result(operation->restResponseError(), operation->errorMessage());
+  }
 #endif
 
   return arangodb::Result();
@@ -118,13 +120,6 @@ arangodb::Result HotBackup::executeCoordinator(
 
   // We'll never get here
   return arangodb::Result();
-
-}
-
-arangodb::Result HotBackup::executeMMFiles(
-  std::string const& command, VPackSlice const payload, VPackBuilder& report) {
-  return arangodb::Result(
-    TRI_ERROR_NOT_IMPLEMENTED, "hot backup not implemented on MMFiles");
 }
 
 }

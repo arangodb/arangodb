@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
@@ -111,8 +112,6 @@ void ScriptLoader::defineScript(std::string const& name, char const** script) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const& ScriptLoader::findScript(std::string const& name) {
-  static std::string empty = "";
-
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _scripts.find(name);
@@ -142,7 +141,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
     }
   }
 
-  return empty;
+  return StaticStrings::Empty;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

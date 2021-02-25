@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,8 +50,8 @@ struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
-  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition, uint64_t planVersion)
-      : arangodb::LogicalView(vocbase, definition, planVersion) {}
+  TestView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& definition)
+      : arangodb::LogicalView(vocbase, definition) {}
   virtual arangodb::Result appendVelocyPackImpl(
       arangodb::velocypack::Builder& builder,
       Serialization) const override {
@@ -84,9 +85,8 @@ struct ViewFactory : public arangodb::ViewFactory {
 
   virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
                                        TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice const& definition,
-                                       uint64_t planVersion) const override {
-    view = std::make_shared<TestView>(vocbase, definition, planVersion);
+                                       arangodb::velocypack::Slice const& definition) const override {
+    view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
   }
@@ -142,13 +142,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -251,13 +250,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -364,13 +362,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -525,13 +522,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -752,13 +748,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+  
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -901,13 +896,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });
@@ -1052,13 +1046,12 @@ TEST_F(RestViewHandlerTest, test_auth) {
       ExecContext()
           : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
-                                  arangodb::auth::Level::NONE) {}
+                                  arangodb::auth::Level::NONE, false) {}
     } execContext;
     arangodb::ExecContextScope execContextScope(&execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-    arangodb::aql::QueryRegistry queryRegistry(0);  // required for UserManager::loadFromDB()
-    userManager->setQueryRegistry(&queryRegistry);
+    
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager,
         [](arangodb::auth::UserManager* ptr) -> void { ptr->removeAllUsers(); });

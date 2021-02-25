@@ -1,0 +1,20 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    Countries{
+        BR{"Brazil"}
+        CN{"Tsina"}
+        DE{"Alemanya"}
+        FR{"Pransiya"}
+        GB{"Hiniusang Gingharian"}
+        IN{"India"}
+        IT{"Italya"}
+        JP{"Hapon"}
+        MK{"Amihanang Macedonia"}
+        PH{"Pilipinas"}
+        RU{"Russia"}
+        US{"Estados Unidos"}
+        ZZ{"Wala-mailhing Rehiyon"}
+    }
+    Version{"2.1.49.82"}
+}

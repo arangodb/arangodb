@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+kl{
+    Languages{
+        kl{"kalaallisut"}
+    }
+    Version{"2.1.47.82"}
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

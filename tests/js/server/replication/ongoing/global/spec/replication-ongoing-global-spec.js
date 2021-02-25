@@ -40,7 +40,7 @@ const internal = require("internal");
 const time = internal.time;
 
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const username = "root";
 const password = "";
@@ -452,7 +452,7 @@ describe('Global Replication on a fresh boot', function () {
         let c = db._collection(docColName);
         let oIdx = c.getIndexes();
 
-        c.truncate();
+        c.truncate({ compact: false });
         let docs = [];
         for(let i = 1; i <= 10000; i++) {
           docs.push({value2 : i});

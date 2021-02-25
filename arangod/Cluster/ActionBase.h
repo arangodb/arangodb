@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +82,6 @@ class ActionBase {
   bool fastTrack() const;
 
   void notify();
-
-  virtual arangodb::Result kill(Signal const& signal);
 
   virtual arangodb::Result progress(double& progress);
 
@@ -184,9 +182,7 @@ class ActionBase {
   std::string const static FAST_TRACK;
 
   /// @brief return priority, inherited from ActionDescription
-  int priority() const {
-    return _priority;
-  }
+  int priority() const { return _priority; }
 
  protected:
   /// @brief common initialization for all constructors
@@ -227,8 +223,8 @@ class ActionBase {
 
 }  // namespace maintenance
 
-Result actionError(int errorCode, std::string const& errorMessage);
-Result actionWarn(int errorCode, std::string const& errorMessage);
+Result actionError(ErrorCode errorCode, std::string const& errorMessage);
+Result actionWarn(ErrorCode errorCode, std::string const& errorMessage);
 
 }  // namespace arangodb
 

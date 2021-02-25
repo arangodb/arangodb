@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,16 +29,17 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/Variable.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "Basics/StringUtils.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestEdgesHandler::RestEdgesHandler(application_features::ApplicationServer& server,
@@ -112,11 +113,11 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   bindParameters->add("@collection", VPackValue(cname));
   bindParameters->add("vertex", VPackValue(vertexId));
   bindParameters->close();
-  auto options = std::make_shared<VPackBuilder>();
 
-  arangodb::aql::Query query(false, vocbase, aql::QueryString(queryString(dir)),
-                             bindParameters, options, arangodb::aql::PART_MAIN);
-  return query.executeSync(QueryRegistryFeature::registry());
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
+                             aql::QueryString(queryString(dir)),
+                             bindParameters);
+  return query.executeSync();
 }
 }  // namespace
 
@@ -144,7 +145,7 @@ bool RestEdgesHandler::readEdges() {
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expected GET " + EDGES_PATH +
-                      "/<collection-identifier>?vertex=<vertex-handle>&"
+                      "/<collection-identifier>?vertex=<vertex-id>&"
                       "direction=<direction>");
     return false;
   }
@@ -177,8 +178,8 @@ bool RestEdgesHandler::readEdges() {
       return false;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                   "Error executing edges query " +
-                                       queryResult.result.errorMessage());
+        StringUtils::concatT("Error executing edges query ",
+                             queryResult.result.errorMessage()));
   }
 
   VPackSlice edges = queryResult.data->slice();
@@ -266,8 +267,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
         return false;
       }
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.result.errorNumber(),
-                                     "Error executing edges query " +
-                                         queryResult.result.errorMessage());
+          StringUtils::concatT("Error executing edges query ",
+                               queryResult.result.errorMessage()));
     }
 
     VPackSlice edges = queryResult.data->slice();

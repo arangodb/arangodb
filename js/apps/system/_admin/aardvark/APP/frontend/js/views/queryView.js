@@ -150,7 +150,7 @@
         }
         this.setCachedQuery(this.aqlEditor.getValue(), JSON.stringify(this.bindParamTableObj));
       } else {
-        arangoHelper.arangoError('Bind parameter', 'Could not parse bind parameter');
+        arangoHelper.arangoError('Bind parameters', 'Could not parse bind parameters');
       }
       this.resize();
     },
@@ -165,7 +165,11 @@
 
     initQueryImport: function () {
       var self = this;
-      self.allowUpload = false;
+
+      if (self.allowUpload) {
+        $('#confirmQueryImport').removeClass('disabled');
+      }
+
       $('#importQueries').change(function (e) {
         self.files = e.target.files || e.dataTransfer.files;
         self.file = self.files[0];
@@ -184,8 +188,6 @@
               self.updateLocalQueries();
               self.updateQueryTable();
               self.resize();
-              self.allowUpload = false;
-              $('#confirmQueryImport').addClass('disabled');
               $('#queryImportDialog').modal('hide');
             },
             error: function (data) {
@@ -244,20 +246,23 @@
     },
 
     exportCustomQueries: function () {
-      var name;
       var self = this;
 
-      $.ajax('whoAmI?_=' + Date.now()).success(function (data) {
-        name = data.user;
+      $.ajax({
+        type: 'GET',
+        url: 'whoAmI?_=' + Date.now(),
+        success: function (data) {
+          var name = data.user;
 
-        if (name === null || name === false) {
-          name = 'root';
-        }
-        if (frontendConfig.ldapEnabled) {
-          self.collection.downloadLocalQueries();
-        } else {
-          var url = 'query/download/' + encodeURIComponent(name);
-          arangoHelper.download(url);
+          if (name === null || name === false) {
+            name = 'root';
+          }
+          if (frontendConfig.ldapEnabled) {
+            self.collection.downloadLocalQueries();
+          } else {
+            var url = 'query/download/' + encodeURIComponent(name);
+            arangoHelper.download(url);
+          }
         }
       });
     },
@@ -638,14 +643,10 @@
         queryData = this.readQueryData();
       }
 
-      if (queryData === 'false') {
-        return;
-      }
-
-      $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
-      this.execPending = false;
-
       if (queryData) {
+        $('#outputEditorWrapper' + counter + ' .queryExecutionTime').text('');
+        this.execPending = false;
+
         var afterResult = function () {
           $('#outputEditorWrapper' + counter + ' #spinner').remove();
           $('#outputEditor' + counter).css('opacity', '1');
@@ -663,7 +664,7 @@
         $.ajax({
           type: 'POST',
           url: url,
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -1756,7 +1757,6 @@
     },
 
     readQueryData: function (selected, forExecute, forProfile) {
-      // var selectedText = this.aqlEditor.session.getTextRange(this.aqlEditor.getSelectionRange())
       var data = {};
 
       if (!forProfile) {
@@ -1774,7 +1774,7 @@
         } else {
           arangoHelper.arangoError('Query', 'Your query is empty!');
         }
-        data = false;
+        return false;
       } else {
         var bindVars = {};
         if (Object.keys(this.bindParamTableObj).length > 0) {
@@ -1797,17 +1797,13 @@
         }
       }
 
-      return JSON.stringify(data);
+      return data;
     },
 
     fillResult: function (counter, selected) {
       var self = this;
 
       var queryData = this.readQueryData(selected, true);
-
-      if (queryData === 'false') {
-        return;
-      }
 
       if (queryData) {
         $.ajax({
@@ -1816,7 +1812,7 @@
           headers: {
             'x-arango-async': 'store'
           },
-          data: queryData,
+          data: JSON.stringify(queryData),
           contentType: 'application/json',
           processData: false,
           success: function (data, textStatus, xhr) {
@@ -2063,7 +2059,7 @@
             // fallback
             if (result.fallback && (result.fallback === 'geo' || result.fallback === 'geotable')) {
               $('#geo-switch').addClass('disabled').css('display', 'inline').css('opacity', '0.5');
-              $('#geo-switch').addClass('tippy').attr('title', 'No internet collection. Map is not available.');
+              $('#geo-switch').addClass('tippy').attr('title', 'No internet connection. Map is not available.');
               arangoHelper.createTooltips();
             }
           }
@@ -2145,13 +2141,6 @@
             url = arangoHelper.databaseUrl('/_api/cursor/' + encodeURIComponent(data.id));
           }
         }
-
-        /*
-        if (!data.complete) {
-          // TODO notify user?
-          // console.log('result was cutted down - more result avail - change limit');
-        }
-        */
 
         if (url) {
           $.ajax({
@@ -2605,12 +2594,16 @@
                   geojson++;
                 }
               } else if (obj.hasOwnProperty('geometry')) {
-                if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
-                  if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
-                    obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
-                    obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
-                    geojson++;
+                try {
+                  if (obj.geometry.hasOwnProperty('coordinates') && obj.geometry.hasOwnProperty('type')) {
+                    if (obj.geometry.type === 'Point' || obj.geometry.type === 'MultiPoint' ||
+                      obj.geometry.type === 'Polygon' || obj.geometry.type === 'MultiPolygon' ||
+                      obj.geometry.type === 'LineString' || obj.geometry.type === 'MultiLineString') {
+                      geojson++;
+                    }
                   }
+                } catch (err) {
+                 // happens e.g. if doc.geomotry === null
                 }
               }
             }

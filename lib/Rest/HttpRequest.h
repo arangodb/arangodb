@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,37 +36,14 @@ class Builder;
 struct Options;
 }  // namespace velocypack
 
-enum class ProtocolVersion : char { HTTP_1_0, HTTP_1_1, UNKNOWN };
-  
 class HttpRequest final : public GeneralRequest {
   friend class RestBatchHandler; // TODO remove
 
  public:
-  HttpRequest(ConnectionInfo const&, char const*, size_t, bool);
+  HttpRequest(ConnectionInfo const&, uint64_t mid, bool allowMethodOverride);
 
- private:
-  // HACK HACK HACK
-  // This should only be called by createFakeRequest in ClusterComm
-  // as the Request is not fully constructed. This 2nd constructor
-  // avoids the need of a additional FakeRequest class.
-  HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-              std::unordered_map<std::string, std::string> const& headers);
-
- public:
   HttpRequest(HttpRequest&&) = default;
   ~HttpRequest() = default;
-
- public:
-  // HTTP protocol version is 1.0
-  bool isHttp10() const { return _version == ProtocolVersion::HTTP_1_0; }
-
-  // HTTP protocol version is 1.1
-  bool isHttp11() const { return _version == ProtocolVersion::HTTP_1_1; }
-  
-  ProtocolVersion protocolVersion() const { return _version; }
-  
-  // translate the HTTP protocol version
-  static std::string translateVersion(ProtocolVersion);
 
  public:
   arangodb::Endpoint::TransportType transportType() override {
@@ -83,12 +60,16 @@ class HttpRequest final : public GeneralRequest {
     _contentType = rest::ContentType::JSON;
   }
   /// @brief the body content length
-  size_t contentLength() const override { return _contentLength; }
+  size_t contentLength() const override { return _payload.size(); }
   // Payload
   arangodb::velocypack::StringRef rawPayload() const override;
-  arangodb::velocypack::Slice payload(arangodb::velocypack::Options const*) override;
+  arangodb::velocypack::Slice payload(bool strictValidation) override;
+  void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override {
+    _payload = std::move(buffer);
+  }
+
   arangodb::velocypack::Buffer<uint8_t>& body() {
-    return _body;
+    return _payload;
   }
 
   /// @brief sets a key/value header
@@ -99,34 +80,31 @@ class HttpRequest final : public GeneralRequest {
   void setHeader(char const* key, size_t keyLength, char const* value, size_t valueLength);
   /// @brief sets a key-only header
   void setHeader(char const* key, size_t keyLength);
-  
-  /// @brief parse an existing url
+
+  /// @brief parse an existing path
   void parseUrl(char const* start, size_t len);
   void setHeaderV2(std::string&& key, std::string&& value);
-  
-  static HttpRequest* createHttpRequest(ContentType contentType,
-                                        char const* body, int64_t contentLength,
-                                        std::unordered_map<std::string, std::string> const& headers);
-  
+
  protected:
-  void setValue(char* key, char* value);
   void setArrayValue(char const* key, size_t length, char const* value);
 
  private:
+
+  /// used by RestBatchHandler (an API straight from hell)
   void parseHeader(char* buffer, size_t length);
   void setValues(char* buffer, char* end);
   void setCookie(char* key, size_t length, char const* value);
+
   void parseCookies(char const* buffer, size_t length);
 
  private:
-  velocypack::Buffer<uint8_t> _body;
   std::unordered_map<std::string, std::string> _cookies;
-  int64_t _contentLength;
-  std::shared_ptr<velocypack::Builder> _vpackBuilder;
-  ProtocolVersion _version;
   //  whether or not overriding the HTTP method via custom headers
   // (x-http-method, x-method-override or x-http-method-override) is allowed
-  bool _allowMethodOverride;
+  bool const _allowMethodOverride = false;
+
+  /// @brief was VPack payload validated
+  bool _validatedPayload = false;
 };
 }  // namespace arangodb
 

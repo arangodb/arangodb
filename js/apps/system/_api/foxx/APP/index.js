@@ -194,6 +194,7 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.optional())
 .queryParam('teardown', schemas.flag.default(false))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
@@ -213,6 +214,7 @@ serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   res.json(serviceToJson(service));
 })
 .body(schemas.service, ['application/javascript', 'application/zip', 'multipart/form-data', 'application/json'])
+.queryParam('development', schemas.flag.default(false))
 .queryParam('teardown', schemas.flag.default(true))
 .queryParam('setup', schemas.flag.default(true))
 .queryParam('legacy', schemas.flag.default(false))
@@ -262,6 +264,7 @@ configRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -282,6 +285,7 @@ configRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -311,6 +315,7 @@ depsRouter.patch((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -331,6 +336,7 @@ depsRouter.put((req, res) => {
   } else {
     if (warnings) {
       for (const key of Object.keys(warnings)) {
+        if (!values[key]) continue;
         values[key].warning = warnings[key];
       }
     }
@@ -381,16 +387,22 @@ instanceRouter.post('/tests', (req, res) => {
   const filter = req.queryParams.filter || null;
   const reporter = req.queryParams.reporter || null;
   const result = FoxxManager.runTests(service.mount, {filter, reporter});
-  if (reporter === 'stream' && (idiomatic || req.accepts(LDJSON, 'json') === LDJSON)) {
+  if (reporter === 'stream' && idiomatic !== false && (
+    idiomatic || req.accepts(LDJSON, 'json') === LDJSON
+  )) {
     res.type(LDJSON);
     for (const row of result) {
       res.write(JSON.stringify(row) + '\r\n');
     }
-  } else if (reporter === 'xunit' && (idiomatic || req.accepts('xml', 'json') === 'xml')) {
+  } else if (reporter === 'xunit' && idiomatic !== false && (
+    idiomatic || req.accepts('xml', 'json') === 'xml'
+  )) {
     res.type('xml');
     res.write('<?xml version="1.0" encoding="utf-8"?>\n');
     res.write(jsonml2xml(result) + '\n');
-  } else if (reporter === 'tap' && (idiomatic || req.accepts('text', 'json') === 'text')) {
+  } else if (reporter === 'tap' && idiomatic !== false && (
+    idiomatic || req.accepts('text', 'json') === 'text'
+  )) {
     res.type('text');
     for (const row of result) {
       res.write(row + '\n');
@@ -401,7 +413,7 @@ instanceRouter.post('/tests', (req, res) => {
 })
 .queryParam('filter', joi.string().allow("").optional())
 .queryParam('reporter', joi.only(...Object.keys(reporters)).optional())
-.queryParam('idiomatic', schemas.flag.default(false))
+.queryParam('idiomatic', schemas.flag.optional())
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
 instanceRouter.post('/download', (req, res) => {

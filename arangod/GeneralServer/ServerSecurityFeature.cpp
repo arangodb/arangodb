@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -50,10 +51,18 @@ void ServerSecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> optio
 
   options->addSection("foxx", "Configure Foxx");
   options->addOption("--foxx.api", "enables Foxx management REST APIs",
-                     new BooleanParameter(&_enableFoxxApi))
+                     new BooleanParameter(&_enableFoxxApi),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle))
                      .setIntroducedIn(30500);
   options->addOption("--foxx.store", "enables Foxx store in web interface",
-                     new BooleanParameter(&_enableFoxxStore))
+                     new BooleanParameter(&_enableFoxxStore),
+                     arangodb::options::makeFlags(
+                     arangodb::options::Flags::DefaultNoComponents,
+                     arangodb::options::Flags::OnCoordinator,
+                     arangodb::options::Flags::OnSingle))
                      .setIntroducedIn(30500);
 
 }

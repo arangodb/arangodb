@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_NGRAM_TOKEN_STREAM_H
@@ -26,18 +25,20 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class ngram_token_stream
 /// @brief produces ngram from a specified input in a range of 
-//         [min_gram;max_gram]. Can optionally preserve the original input.
+///         [min_gram;max_gram]. Can optionally preserve the original input.
 ////////////////////////////////////////////////////////////////////////////////
-
-class ngram_token_stream_base : public analyzer, util::noncopyable {
+class ngram_token_stream_base
+  : public frozen_attributes<3, analyzer>,
+    private util::noncopyable {
  public:
    enum class InputType {
      Binary, // input is treaten as generic bytes 
@@ -47,7 +48,7 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
    struct Options {
      Options() noexcept
        : min_gram(0), max_gram(0),
-         stream_bytes_type(InputType::Binary) ,
+         stream_bytes_type(InputType::Binary),
          preserve_original(true) { 
      }
      Options(size_t min, size_t max, bool original)
@@ -58,8 +59,8 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
      Options(size_t min, size_t max,
              bool original,
              InputType stream_type,
-             const irs::bytes_ref start,
-             const irs::bytes_ref end)
+             const irs::bytes_ref& start,
+             const irs::bytes_ref& end)
          : start_marker(start),
            end_marker(end),
            min_gram(min), max_gram(max),
@@ -74,15 +75,11 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
      InputType stream_bytes_type;
      bool preserve_original; // emit input data as a token
    };
-   DECLARE_ANALYZER_TYPE();
 
+   static constexpr string_ref type_name() noexcept { return "ngram"; }
    static void init(); // for trigering registration in a static build
 
-   ngram_token_stream_base(const Options& options);
-
-   virtual const attribute_view& attributes() const noexcept override {
-     return attrs_;
-   }
+   explicit ngram_token_stream_base(const Options& options);
 
    virtual bool reset(const string_ref& data) noexcept override;
 
@@ -93,13 +90,7 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
  protected:
    void emit_original() noexcept;
 
-   class term_attribute final : public irs::term_attribute {
-   public:
-     void value(const bytes_ref& value) { value_ = value; }
-   };
-
    Options options_;
-   attribute_view attrs_;
    bytes_ref data_; // data to process
    increment inc_;
    offset offset_;
@@ -131,11 +122,9 @@ class ngram_token_stream_base : public analyzer, util::noncopyable {
    bool end_marker_empty_;
 };
 
-
 template<ngram_token_stream_base::InputType StreamType>
 class ngram_token_stream: public ngram_token_stream_base {
  public:
-  
   DECLARE_FACTORY(const ngram_token_stream_base::Options& options);
 
   ngram_token_stream(const ngram_token_stream_base::Options& options);
@@ -146,8 +135,14 @@ class ngram_token_stream: public ngram_token_stream_base {
   inline bool next_symbol(const byte_type*& it) const noexcept;
 }; // ngram_token_stream
 
+}
 
-NS_END
-NS_END
+// use ngram_token_stream_base type for ancestors
+template<analysis::ngram_token_stream_base::InputType StreamType>
+struct type<analysis::ngram_token_stream<StreamType>>
+    : type<analysis::ngram_token_stream_base> {
+};
+
+}
 
 #endif // IRESEARCH_NGRAM_TOKEN_STREAM_H

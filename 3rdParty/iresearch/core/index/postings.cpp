@@ -26,7 +26,7 @@
 #include "utils/type_limits.hpp"
 #include "postings.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           postings implementation
@@ -75,10 +75,10 @@ postings::emplace_result postings::emplace(const bytes_ref& term) {
   // replace original reference to 'term' provided by the caller
   // with a reference to the cached copy in 'writer_'
   return map_utils::try_emplace_update_key(
-    map_,                                     // container
-    generator,                                // key generator
-    make_hashed_ref(term, std::hash<irs::bytes_ref>()) // key
+    map_,                  // container
+    generator,             // key generator
+    make_hashed_ref(term)  // key
   );
 }
 
-NS_END
+}

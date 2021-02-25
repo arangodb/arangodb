@@ -18,24 +18,24 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_INDEX_READER_H
 #define IRESEARCH_INDEX_READER_H
 
-#include "store/directory.hpp"
-#include "store/directory_attributes.hpp"
-#include "utils/string.hpp"
-#include "formats/formats.hpp"
-#include "utils/memory.hpp"
-#include "utils/iterator.hpp"
-
 #include <vector>
 #include <numeric>
 #include <functional>
 
-NS_ROOT
+#include "index/field_meta.hpp"
+#include "formats/formats.hpp"
+#include "store/directory.hpp"
+#include "store/directory_attributes.hpp"
+#include "utils/iterator.hpp"
+#include "utils/memory.hpp"
+#include "utils/string.hpp"
+
+namespace iresearch {
 
 struct sub_reader;
 
@@ -44,48 +44,48 @@ struct sub_reader;
 /// @brief generic interface for accessing an index
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API index_reader {
-  class reader_iterator
-      : public std::iterator<std::forward_iterator_tag, const sub_reader> {
+  class reader_iterator {
    public:
-    typedef std::iterator<std::forward_iterator_tag, const sub_reader> iterator_t;
+    using iterator_category = std::forward_iterator_tag;
+    using value_type = const sub_reader;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using difference_type = void;
 
-    iterator_t::reference operator*() const {
-      // can't mark NOEXCEPT because of virtual operator[]
+    reference operator*() const {
+      // can't mark noexcept because of virtual operator[]
       assert(i_ < reader_->size());
       return (*reader_)[i_];
     }
 
-    iterator_t::pointer operator->() const {
+    pointer operator->() const {
       return &(**this);
     }
 
-    reader_iterator& operator++() NOEXCEPT {
+    reader_iterator& operator++() noexcept {
       ++i_;
       return *this;
     }
 
-    reader_iterator operator++(int) NOEXCEPT {
+    reader_iterator operator++(int) noexcept {
       auto it = *this;
       ++(*this);
       return it;
     }
 
-    bool operator==(const reader_iterator& rhs) const NOEXCEPT {
+    bool operator==(const reader_iterator& rhs) const noexcept {
       assert(reader_ == rhs.reader_);
       return i_ == rhs.i_;
     }
 
-    bool operator!=(const reader_iterator& rhs) const NOEXCEPT {
+    bool operator!=(const reader_iterator& rhs) const noexcept {
       return !(*this == rhs);
     }
 
    private:
     friend struct index_reader;
 
-    explicit reader_iterator(
-        const index_reader& reader,
-        size_t i = 0
-    ) NOEXCEPT
+    explicit reader_iterator(const index_reader& reader, size_t i = 0) noexcept
       : reader_(&reader), i_(i) {
     }
 
@@ -93,8 +93,7 @@ struct IRESEARCH_API index_reader {
     size_t i_;
   }; // reader_iterator
 
-  DECLARE_SHARED_PTR(const index_reader);
-  DEFINE_FACTORY_INLINE(index_reader)
+  using ptr = std::shared_ptr<const index_reader>;
 
   virtual ~index_reader() = default;
 
@@ -111,7 +110,7 @@ struct IRESEARCH_API index_reader {
   virtual size_t size() const = 0;
 
   // first sub-segment
-  reader_iterator begin() const {
+  reader_iterator begin() const noexcept {
     return reader_iterator(*this, 0);
   }
 
@@ -126,10 +125,9 @@ struct IRESEARCH_API index_reader {
 /// @brief generic interface for accessing an index segment
 ////////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API sub_reader : index_reader {
-  DECLARE_SHARED_PTR(const sub_reader);
-  DEFINE_FACTORY_INLINE(sub_reader)
+  using ptr = std::shared_ptr<const sub_reader>;
 
-  static const sub_reader& empty() NOEXCEPT;
+  static const sub_reader& empty() noexcept;
 
   // returns iterator over the live documents in current segment
   virtual doc_iterator::ptr docs_iterator() const = 0;
@@ -141,9 +139,7 @@ struct IRESEARCH_API sub_reader : index_reader {
   }
 
   // returns corresponding term_reader by the specified field
-  virtual const term_reader* field(
-    const string_ref& field
-  ) const = 0;
+  virtual const term_reader* field(const string_ref& field) const = 0;
 
   virtual column_iterator::ptr columns() const = 0;
 
@@ -156,8 +152,29 @@ struct IRESEARCH_API sub_reader : index_reader {
   const columnstore_reader::column_reader* column_reader(const string_ref& field) const;
 }; // sub_reader
 
-NS_END
+template<typename Visitor, typename FilterVisitor>
+void visit(const index_reader& index, const string_ref& field,
+           const flags& required, const FilterVisitor& field_visitor,
+           Visitor& visitor) {
+  for (auto& segment : index) {
+    const auto* reader = segment.field(field);
 
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::doc_id_t)>;) // sub_reader::value_visitor_f
+    if (!reader || (!required.empty() && !required.is_subset_of(reader->meta().features))) {
+      continue;
+    }
+
+    field_visitor(segment, *reader, visitor);
+  }
+}
+
+template<typename Visitor, typename FilterVisitor>
+void visit(const index_reader& index, const string_ref& field,
+           const FilterVisitor& field_visitor, Visitor& visitor) {
+  visit(index, field, flags::empty_instance(), field_visitor, visitor);
+}
+
+}
+
+MSVC_ONLY(template class IRESEARCH_API std::function<bool(irs::doc_id_t)>;) // sub_reader::value_visitor_f
 
 #endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,8 +33,6 @@
 namespace arangodb {
 class RestBatchHandler;
 
-enum class ConnectionType { C_NONE, C_KEEP_ALIVE, C_CLOSE };
-
 class HttpResponse : public GeneralResponse {
   friend class RestBatchHandler;  // TODO must be removed
 
@@ -42,12 +40,9 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code,
-                        std::unique_ptr<basics::StringBuffer> leased);
-  ~HttpResponse();
-
- public:
-  bool isHeadResponse() const { return _isHeadResponse; }
+  HttpResponse(ResponseCode code, uint64_t mid,
+               std::unique_ptr<basics::StringBuffer> = nullptr);
+  ~HttpResponse() = default;
 
  public:
   void setCookie(std::string const& name, std::string const& value,
@@ -70,6 +65,10 @@ class HttpResponse : public GeneralResponse {
   }
   size_t bodySize() const;
 
+  void sealBody() {
+    _bodySize = _body->length();
+  }
+
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
@@ -78,24 +77,19 @@ class HttpResponse : public GeneralResponse {
 
   void addPayload(velocypack::Slice const&,
                   velocypack::Options const* = nullptr,
-                  bool resolve_externals = true) override;
+                  bool resolve_externals = true) override final;
   void addPayload(velocypack::Buffer<uint8_t>&&,
                   velocypack::Options const* = nullptr,
-                  bool resolve_externals = true) override;
-  void addRawPayload(velocypack::StringRef payload) override;
+                  bool resolve_externals = true) override final;
+  void addRawPayload(velocypack::StringRef payload) override final;
 
-  bool isResponseEmpty() const override {
+  bool isResponseEmpty() const override final {
     return _body->empty();
   }
 
-  /// used for head-responses
-  bool setGenerateBody(bool generateBody) override final {
-    return _generateBody = generateBody;
-  }
+  ErrorCode reservePayload(std::size_t size) override final { return _body->reserve(size); }
 
-  int reservePayload(std::size_t size) override { return _body->reserve(size); }
-
-  arangodb::Endpoint::TransportType transportType() override {
+  arangodb::Endpoint::TransportType transportType() override final {
     return arangodb::Endpoint::TransportType::HTTP;
   }
 
@@ -110,14 +104,13 @@ class HttpResponse : public GeneralResponse {
     return _body->deflate(size);
   }
 
-  void addPayloadInternal(velocypack::Slice, size_t, velocypack::Options const*, bool);
+  void addPayloadInternal(uint8_t const* data, size_t length, 
+                          velocypack::Options const* options, bool resolveExternals);
   
  private:
-  bool _isHeadResponse;
   std::vector<std::string> _cookies;
   std::unique_ptr<basics::StringBuffer> _body;
   size_t _bodySize;
-
 };
 }  // namespace arangodb
 

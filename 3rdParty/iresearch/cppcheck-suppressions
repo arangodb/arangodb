@@ -1,0 +1,4 @@
+shiftNegative:*bit_packing.cpp
+shiftTooManyBits:*bit_packing.cpp
+signConversion:*bit_packing.cpp
+knownConditionTrueFalse:*bit_packing.cpp

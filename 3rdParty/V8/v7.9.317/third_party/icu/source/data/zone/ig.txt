@@ -1,0 +1,63 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ig{
+    Version{"2.1.48.45"}
+    zoneStrings{
+        "Etc:UTC"{
+            ls{"Nhazi Oge Ụwa Niile"}
+        }
+        "Etc:Unknown"{
+            ec{"Obodo Amaghị"}
+        }
+        "meta:America_Central"{
+            ld{"Oge Ihe Mpaghara Etiti"}
+            lg{"Oge Mpaghara Etiti"}
+            ls{"Oge Izugbe Mpaghara Etiti"}
+        }
+        "meta:America_Eastern"{
+            ld{"Oge Ihe Mpaghara Ọwụwa Anyanwụ"}
+            lg{"Oge Mpaghara Ọwụwa Anyanwụ"}
+            ls{"Oge Izugbe Mpaghara Ọwụwa Anyanwụ"}
+        }
+        "meta:America_Mountain"{
+            ld{"Oge Ihe Mpaghara Ugwu"}
+            lg{"Oge Mpaghara Ugwu"}
+            ls{"Oge Izugbe Mpaghara Ugwu"}
+        }
+        "meta:America_Pacific"{
+            ld{"Oge Ihe Mpaghara Pacific"}
+            lg{"Oge Mpaghara Pacific"}
+            ls{"Oge Izugbe Mpaghara Pacific"}
+        }
+        "meta:Atlantic"{
+            ld{"Oge Ihe Mpaghara Atlantic"}
+            lg{"Oge Mpaghara Atlantic"}
+            ls{"Oge Izugbe Mpaghara Atlantic"}
+        }
+        "meta:Europe_Central"{
+            ld{"Oge Okpomọkụ Mpaghara Etiti Europe"}
+            lg{"Oge Mpaghara Etiti Europe"}
+            ls{"Oge Izugbe Mpaghara Etiti Europe"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Oge Okpomọkụ Mpaghara Ọwụwa Anyanwụ Europe"}
+            lg{"Oge Mpaghara Ọwụwa Anyanwụ Europe"}
+            ls{"Oge Izugbe Mpaghara Ọwụwa Anyanwụ Europe"}
+        }
+        "meta:Europe_Western"{
+            ld{"Oge Okpomọkụ Mpaghara Ọdịda Anyanwụ Europe"}
+            lg{"Oge Mpaghara Ọdịda Anyanwụ Europe"}
+            ls{"Oge Izugbe Mpaghara Ọdịda Anyanwụ Europe"}
+        }
+        "meta:GMT"{
+            ls{"Oge Mpaghara Greemwich Mean"}
+        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Oge {0}"}
+        regionFormatDaylight{"Oge Ihe {0}"}
+        regionFormatStandard{"Oge Izugbe {0}"}
+    }
+}

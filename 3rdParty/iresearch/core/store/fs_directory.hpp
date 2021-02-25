@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FILE_SYSTEM_DIRECTORY_H
@@ -26,9 +25,9 @@
 
 #include "directory.hpp"
 #include "utils/string.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
@@ -39,38 +38,38 @@ class IRESEARCH_API fs_directory : public directory {
 
   using directory::attributes;
 
-  virtual attribute_store& attributes() NOEXCEPT override;
+  virtual attribute_store& attributes() noexcept override;
 
-  virtual index_output::ptr create(const std::string& name) NOEXCEPT override;
+  virtual index_output::ptr create(const std::string& name) noexcept override;
 
-  const std::string& directory() const NOEXCEPT;
+  const std::string& directory() const noexcept;
 
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual index_lock::ptr make_lock(const std::string& name) NOEXCEPT override;
+  virtual index_lock::ptr make_lock(const std::string& name) noexcept override;
 
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
   virtual index_input::ptr open(
     const std::string& name,
     IOAdvice advice
-  ) const NOEXCEPT override;
+  ) const noexcept override;
 
-  virtual bool remove(const std::string& name) NOEXCEPT override;
+  virtual bool remove(const std::string& name) noexcept override;
 
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT override;
+  ) noexcept override;
 
-  virtual bool sync(const std::string& name) NOEXCEPT override;
+  virtual bool sync(const std::string& name) noexcept override;
 
   virtual bool visit(const visitor_f& visitor) const override;
 
@@ -81,6 +80,6 @@ class IRESEARCH_API fs_directory : public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory
 
-NS_END
+}
 
 #endif

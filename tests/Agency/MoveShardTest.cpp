@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case for FailedLeader job
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -48,6 +45,7 @@ const std::string COLLECTION = "collection";
 const std::string SHARD = "s99";
 const std::string SHARD_LEADER = "leader";
 const std::string SHARD_FOLLOWER1 = "follower1";
+const std::string SHARD_FOLLOWER2 = "follower2";
 const std::string FREE_SERVER = "free";
 const std::string FREE_SERVER2 = "free2";
 
@@ -671,8 +669,8 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
     EXPECT_EQ(writes.get(sourceKey).get("op").copyString(), "delete");
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).copyString() ==
                 "1");
-    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).copyString() ==
-                "1");
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-lock"));
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("by").isEqualString("1"));
     EXPECT_TRUE(writes.get("/arango/Plan/Version").get("op").copyString() ==
                 "increment");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Pending/1").typeName()) ==
@@ -710,8 +708,8 @@ TEST_F(MoveShardTest, the_job_should_be_moved_to_pending_when_everything_is_ok) 
                     .copyString() == "GOOD");
     EXPECT_TRUE(
         preconditions.get("/arango/Supervision/DBServers/" + FREE_SERVER)
-            .get("oldEmpty")
-            .getBool() == true);
+            .get("can-read-lock")
+            .isEqualString("1"));
     EXPECT_TRUE(
         preconditions.get("/arango/Supervision/Shards/" + SHARD).get("oldEmpty").getBool() == true);
     EXPECT_TRUE(preconditions
@@ -972,6 +970,71 @@ TEST_F(MoveShardTest, if_the_job_is_too_old_it_should_be_aborted_to_prevent_a_de
             builder->add(VPackValue(SHARD_LEADER));
             builder->add(VPackValue(SHARD_FOLLOWER1));
             builder->add(VPackValue(FREE_SERVER));
+            builder->close();
+          } else {
+            builder->add(s);
+          }
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  Node agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
+  Mock<Job> spy(moveShard);
+  Fake(Method(spy, abort));
+
+  Job& spyMoveShard = spy.get();
+  spyMoveShard.run(aborts);
+
+  Verify(Method(spy, abort));
+}
+
+TEST_F(MoveShardTest, if_the_to_server_no_longer_replica_we_should_abort) {
+  std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
+      [&](VPackSlice const& s, std::string const& path) {
+        std::unique_ptr<VPackBuilder> builder;
+        builder.reset(new VPackBuilder());
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.copyString(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob = createJob(COLLECTION, SHARD_LEADER, SHARD_FOLLOWER1);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated", VPackValue("2015-01-03T20:00:00Z"));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          builder->close();
+        } else {
+          if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/shards/" + SHARD) {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER1));
+            builder->add(VPackValue(SHARD_FOLLOWER2));
+            builder->close();
+          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+                          COLLECTION + "/" + SHARD + "/servers") {
+            builder->add(VPackValue(VPackValueType::Array));
+            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_FOLLOWER2));
             builder->close();
           } else {
             builder->add(s);
@@ -1287,8 +1350,7 @@ TEST_F(MoveShardTest, if_the_job_is_done_it_should_properly_finish_itself) {
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
 
     auto preconditions = q->slice()[0][1];
     EXPECT_TRUE(preconditions
@@ -1736,8 +1798,7 @@ TEST_F(MoveShardTest, a_pending_moveshard_job_should_also_put_the_original_serve
                 "delete");
     EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes
@@ -2023,8 +2084,7 @@ TEST_F(MoveShardTest, aborting_the_job_while_a_leader_transition_is_in_progress_
                 "delete");
     EXPECT_EQ(q->slice()[0].length(), 2);  // Precondition: to Server not leader yet
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes
@@ -2115,16 +2175,10 @@ TEST_F(MoveShardTest, aborting_the_job_while_the_new_leader_is_already_in_place_
     auto writes = q->slice()[0][0];
     EXPECT_EQ(writes.get("/arango/Target/Pending/1").get("op").copyString(), "delete");
     EXPECT_EQ(q->slice()[0].length(), 2); // Precondition: to Server not leader yet
-    EXPECT_EQ(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString(), "delete");
     EXPECT_EQ(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString(), "delete");
-    EXPECT_EQ(std::string(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).typeName()), "array");
+    EXPECT_TRUE(writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     // well apparently this job is not responsible to cleanup its mess
-    EXPECT_TRUE(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD).length() >= 3);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[0].copyString(), SHARD_LEADER);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[1].copyString(), SHARD_FOLLOWER1);
-    EXPECT_EQ(writes.get("/arango/Plan/Collections/" + DATABASE + "/" + COLLECTION + "/shards/" + SHARD)[2].copyString(), FREE_SERVER);
     EXPECT_EQ(std::string(writes.get("/arango/Target/Failed/1").typeName()), "object");
-
     return fakeWriteResult;
   });
   AgentInterface& agent = mockAgent.get();
@@ -2311,14 +2365,14 @@ TEST_F(MoveShardTest, if_the_new_leader_took_over_finish_the_job) {
   When(Method(mockAgent, waitFor)).AlwaysReturn();
   When(Method(mockAgent, write)).Do([&](query_t const& q, consensus::AgentInterface::WriteMode w) -> write_ret_t {
     auto writes = q->slice()[0][0];
-    EXPECT_EQ(writes.length(), 4);
+
+    EXPECT_EQ(writes.length(), 5);
     EXPECT_TRUE(writes.get("/arango/Target/Pending/1").get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes.get("/arango/Target/Finished/1").typeName()) ==
                 "object");
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
 
@@ -2489,8 +2543,7 @@ TEST_F(MoveShardTest, when_aborting_a_moveshard_job_that_is_moving_stuff_away_fr
     EXPECT_TRUE(preconditions.get("/arango/Plan/Collections/" + DATABASE +
                                      "/" + COLLECTION).get("oldEmpty").isFalse());
     EXPECT_TRUE(
-        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").copyString() ==
-        "delete");
+        writes.get("/arango/Supervision/DBServers/" + FREE_SERVER).get("op").isEqualString("read-unlock"));
     EXPECT_TRUE(writes.get("/arango/Supervision/Shards/" + SHARD).get("op").copyString() ==
                 "delete");
     EXPECT_TRUE(std::string(writes

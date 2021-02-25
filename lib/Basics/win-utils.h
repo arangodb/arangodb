@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,6 @@
 
 typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
-  TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;
@@ -45,12 +44,6 @@ int initializeWindows(const TRI_win_initialize_e, char const*);
 
 void ADB_WindowsEntryFunction();
 void ADB_WindowsExitFunction(int exitCode, void* data);
-
-// .............................................................................
-// windows does not have a function called getpagesize -- create one here
-// .............................................................................
-
-int getpagesize(void);
 
 // .............................................................................
 // This function uses the CreateFile windows method rather than _open which
@@ -64,6 +57,7 @@ int TRI_createFile(char const* filename, int openFlags, int modeFlags);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_OPEN_WIN32(char const* filename, int openFlags);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a Windows error to a *nix system error
@@ -131,6 +125,12 @@ bool terminalKnowsANSIColors();
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef _WINDEF_
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mimics TRI_ReadPointer with a nonblocking windows handle
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length);
+
 std::string getFileNameFromHandle(HANDLE fileHandle);
 #endif
 

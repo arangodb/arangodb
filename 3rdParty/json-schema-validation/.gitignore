@@ -1,0 +1,10 @@
+test-arango-validation
+build
+.clang-format
+.gitignore
+.gitmodules
+.travis.yml
+external_libs/
+format
+tests/
+

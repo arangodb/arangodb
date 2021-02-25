@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,51 +24,41 @@
 #ifndef ARANGOD_AQL_LIMIT_STATS_H
 #define ARANGOD_AQL_LIMIT_STATS_H
 
-#include <cstddef>
 #include "ExecutionStats.h"
 
+#include <cstddef>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class LimitStats {
  public:
-  LimitStats() noexcept : _fullCount(0) {}
-
+  LimitStats() noexcept = default;
   LimitStats(LimitStats const&) = default;
-  LimitStats& operator=(LimitStats const&) = default;
-
   // It is relied upon that other._fullcount is zero after the move!
-  LimitStats(LimitStats&& other) noexcept : _fullCount(other._fullCount) {
-    other._fullCount = 0;
+  LimitStats(LimitStats&& other) noexcept;
+
+  auto operator=(LimitStats const&) -> LimitStats& = default;
+  auto operator=(LimitStats&& other) noexcept -> LimitStats&;
+
+  void incrFullCount() noexcept;
+  void incrFullCountBy(size_t amount) noexcept;
+
+  [[nodiscard]] auto getFullCount() const noexcept -> std::size_t;
+  
+  auto operator+=(LimitStats const& other) noexcept -> void {
+    incrFullCountBy(other.getFullCount());
   }
-  LimitStats& operator=(LimitStats&& other) noexcept {
-    _fullCount = other._fullCount;
-    other._fullCount = 0;
-    return *this;
-  };
-
-  void incrFullCount() noexcept { _fullCount++; }
-  void incrFullCountBy(size_t amount) noexcept { _fullCount += amount; }
-
-  std::size_t getFullCount() const noexcept { return _fullCount; }
 
  private:
-  std::size_t _fullCount;
+  std::size_t _fullCount{0};
+  // Don't forget to update operator== when adding new members!
 };
 
-inline ExecutionStats& operator+=(ExecutionStats& executionStats,
-                           LimitStats const& limitStats) noexcept {
-  executionStats.fullCount += limitStats.getFullCount();
-  return executionStats;
-}
+auto operator+=(ExecutionStats& executionStats, LimitStats const& limitStats) noexcept
+    -> ExecutionStats&;
 
-inline LimitStats& operator+=(LimitStats& limitStats, LimitStats const& other) noexcept {
-  limitStats.incrFullCountBy(other.getFullCount());
-  return limitStats;
-}
+auto operator==(LimitStats const&, LimitStats const&) noexcept -> bool;
 
-}
-}
+}  // namespace arangodb::aql
 
-#endif // ARANGOD_AQL_LIMIT_STATS_H
+#endif  // ARANGOD_AQL_LIMIT_STATS_H

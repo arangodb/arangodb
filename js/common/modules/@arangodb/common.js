@@ -1,30 +1,33 @@
+/* global arango:true, ArangoClusterInfo */
+
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief JavaScript base module
-// /
-// / @file
-// /
-// / DISCLAIMER
-// /
-// / Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
-// /
-// / @author Dr. Frank Celler
-// / @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// ////////////////////////////////////////////////////////////////////////////
+// @brief JavaScript base module
+//
+// @file
+//
+// DISCLAIMER
+//
+// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is triAGENS GmbH, Cologne, Germany
+//
+// @author Dr. Frank Celler
+// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
@@ -522,66 +525,118 @@ exports.checkParameter = function(usage, descs, vars) {
 // / @brief generate info message for newer version(s) available
 // //////////////////////////////////////////////////////////////////////////////
 
-exports.checkAvailableVersions = function(version) {
+exports.checkAvailableVersions = function() {
+  var version = internal.version;
+  var isServer = require('@arangodb').isServer;
   var console = require('console');
   var log;
 
-  if (require('@arangodb').isServer) {
+  if (isServer) {
     log = console.info;
   } else {
     log = internal.print;
   }
 
-  if (version === undefined) {
-    version = internal.version;
-  }
-
+  let isStable = true;
   if (version.match(/beta|alpha|preview|milestone|devel/) !== null) {
-    log(
-      "You are using a milestone/alpha/beta/preview version ('" +
-        version +
-        "') of ArangoDB"
-    );
+    isStable = false;
+    if (internal.quiet !== true) {
+      log(
+        "You are using a milestone/alpha/beta/preview version ('" +
+          version +
+          "') of ArangoDB"
+      );
+    }
+  } 
+
+  if (isServer && internal.isEnterprise()) {
+    // don't check for version updates in arangod in Enterprise Edition
     return;
   }
-  
-  if (require('@arangodb').isServer || internal.isEnterprise()) {
-    // don't check for version updates in the server
-    // nor in the enterprise version
+  if (!isServer && internal.isEnterprise() && isStable) {
+    // don't check for version updates in arangosh in stable Enterprise Edition
     return;
   }
   
   try {
+    var hash = "A" + Math.random();
+    var engine = "unknown";
+    var platform = internal.platform;
+    var license = (internal.isEnterprise() ? "enterprise" : "community");
+
+    if (isServer) {
+      engine = internal.db._engine().name;
+      var role = global.ArangoServerState.role();
+
+      if (role === "COORDINATOR") {
+        try {
+          var c = ArangoClusterInfo.getCoordinators().length.toString(16).toUpperCase();
+          var d = ArangoClusterInfo.getDBServers().length.toString(16).toUpperCase();
+        } catch (err) {
+          hash = "1-FFFF-0001-arangod";
+        }
+        hash = "1-" + c + "-" + d + "-" + global.ArangoServerState.id();
+      } else if (role === "PRIMARY") {
+        hash = "1-FFFF-0002-arangod";
+      } else if (role === "AGENT") {
+        hash = "1-FFFF-0003-arangod";
+      } else if (role === "SINGLE") {
+        hash = "1-FFFF-0004-arangod";
+      } else {
+        hash = "1-FFFF-0005-arangod";
+      }
+
+      hash = internal.base64Encode(hash);
+    } else {
+      try {
+        var result = arango.GET('/_admin/status?overview=true');
+        version = result.version;
+        hash = result.hash;
+        engine = result.engine;
+        platform = result.platform;
+        license = result.license;
+      } catch (err) {
+        if (console && console.debug) {
+          console.debug('cannot check for newer version: ', err.stack);
+        }
+      }
+    }
+
     var u =
-      'https://www.arangodb.com/repositories/versions.php?version=' +
-      version +
-      '&os=' +
-      internal.platform;
-    var d = internal.download(u, '', {timeout: 5});
-    var v = JSON.parse(d.body);
+      'https://www.arangodb.com/versions.php?'
+        + 'version=' + encodeURIComponent(version)
+        + '&platform=' + encodeURIComponent(platform)
+        + '&engine=' + encodeURIComponent(engine)
+        + '&license=' + encodeURIComponent(license)
+        + '&source=' + (isServer ? "arangod" : "arangosh")
+        + '&hash=' + encodeURIComponent(hash);
+    var d2 = internal.download(u, '', {timeout: 3});
+    var v = JSON.parse(d2.body);
 
-    if (v.hasOwnProperty('bugfix')) {
-      log(
-        "Please note that a new bugfix version '" +
-          v.bugfix.version +
-          "' is available"
-      );
-    }
+    if (!isServer && internal.quiet !== true) {
+      if (v.hasOwnProperty('bugfix')) {
+        log(
+          "Please note that a new bugfix version '" +
+            v.bugfix.version +
+            "' is available"
+        );
+      }
 
-    if (v.hasOwnProperty('minor')) {
-      log(
-        "Please note that a new minor version '" +
-          v.minor.version +
-          "' is available"
-      );
-    }
+      if (v.hasOwnProperty('minor')) {
+        log(
+          "Please note that a new minor version '" +
+            v.minor.version +
+            "' is available"
+        );
+      }
 
-    if (v.hasOwnProperty('major')) {
-      log(
-        "Please note that a new major version '" +
-          v.major.version +
-          "' is available"
-      );
+      if (v.hasOwnProperty('major')) {
+        log(
+          "Please note that a new major version '" +
+            v.major.version +
+            "' is available"
+        );
+      }
     }
   } catch (err) {
     if (console && console.debug) {
@@ -591,5 +646,12 @@ exports.checkAvailableVersions = function(version) {
 };
 
 exports.query = function query (strings, ...args) {
+  if (!Array.isArray(strings)) {
+    const options = strings;
+    const extra = args;
+    return function queryWithOptions(strings, ...args) {
+      return internal.db._query(exports.aql(strings, ...args), options, ...extra);
+    };
+  }
   return internal.db._query(exports.aql(strings, ...args));
 };

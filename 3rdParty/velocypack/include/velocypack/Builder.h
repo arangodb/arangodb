@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_BUILDER_H
@@ -42,9 +40,14 @@
 #include "velocypack/Options.h"
 #include "velocypack/Serializable.h"
 #include "velocypack/Slice.h"
+#include "velocypack/SmallVector.h"
 #include "velocypack/StringRef.h"
 #include "velocypack/Value.h"
 #include "velocypack/ValueType.h"
+
+#if __cplusplus >= 201703L
+#include "velocypack/SharedSlice.h"
+#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -77,31 +80,55 @@ class Builder {
   // object(s).
 
  private:
-  std::shared_ptr<Buffer<uint8_t>> _buffer;  // Here we collect the result
-  Buffer<uint8_t>* _bufferPtr;      // used for quicker access than shared_ptr
-  uint8_t* _start;                  // Always points to the start of _buffer
-  ValueLength _pos;                 // the append position
-  std::vector<ValueLength> _stack;  // Start positions of
-                                    // open objects/arrays
-  std::vector<std::vector<ValueLength>> _index;  // Indices for starts
-                                                 // of subindex
-  bool _keyWritten;  // indicates that in the current object the key
-                     // has been written but the value not yet
+  // Here we collect the result
+  std::shared_ptr<Buffer<uint8_t>> _buffer;
+  // used for quicker access than shared_ptr
+  Buffer<uint8_t>* _bufferPtr;
+  // Always points to the start of _buffer
+  uint8_t* _start;
+  // the append position
+  ValueLength _pos;
+
+  struct CompoundInfo {
+    ValueLength startPos;
+    ValueLength indexStartPos;
+  };
+
+  // Start positions of open objects/arrays
+  // we are using a SmallVector here, so we can stuff the first few
+  // levels into the vector without making any allocations
+  SmallVector<CompoundInfo, 64>::allocator_type::arena_type _arena;
+  SmallVector<CompoundInfo, 64> _stack;
+
+  // Indices for starts of subindex
+  std::vector<ValueLength> _indexes;
+  // indicates that in the current object the key has been written but the value not yet
+  bool _keyWritten;
 
  public:
   Options const* options;
 
+  // create an empty Builder, using default Options
+  Builder();
+
   // create an empty Builder, using Options
-  explicit Builder(Options const* options = &Options::Defaults);
-  
-  // create an empty Builder, using an existing buffer
-  explicit Builder(std::shared_ptr<Buffer<uint8_t>> const& buffer,
-                   Options const* options = &Options::Defaults);
+  explicit Builder(Options const* options);
+
+  // create an empty Builder, using an existing buffer and default Options
+  explicit Builder(std::shared_ptr<Buffer<uint8_t>> buffer);
+
+  // create an empty Builder, using an existing buffer and Options
+  explicit Builder(std::shared_ptr<Buffer<uint8_t>> buffer,
+                   Options const* options);
+
+  // create a Builder that uses an existing Buffer and default Options.
+  // the Builder will not claim ownership for its Buffer
+  explicit Builder(Buffer<uint8_t>& buffer) noexcept;
 
   // create a Builder that uses an existing Buffer. the Builder will not
   // claim ownership for this Buffer
   explicit Builder(Buffer<uint8_t>& buffer,
-                   Options const* options = &Options::Defaults);
+                   Options const* options);
 
   // populate a Builder from a Slice
   explicit Builder(Slice slice, Options const* options = &Options::Defaults);
@@ -116,15 +143,15 @@ class Builder {
   // get a reference to the Builder's Buffer object
   // note: this object may be a nullptr if the buffer was already stolen
   // from the Builder, or if the Builder has no ownership for the Buffer
-  std::shared_ptr<Buffer<uint8_t>> const& buffer() const { 
-    return _buffer; 
+  std::shared_ptr<Buffer<uint8_t>> const& buffer() const {
+    return _buffer;
   }
 
-  Buffer<uint8_t>& bufferRef() const { 
+  Buffer<uint8_t>& bufferRef() const {
     if (_bufferPtr == nullptr) {
       throw Exception(Exception::InternalError, "Builder has no Buffer");
     }
-    return *_bufferPtr; 
+    return *_bufferPtr;
   }
 
   // steal the Builder's Buffer object. afterwards the Builder
@@ -141,7 +168,7 @@ class Builder {
 
   uint8_t const* data() const noexcept {
     VELOCYPACK_ASSERT(_bufferPtr != nullptr);
-    return _bufferPtr->data(); 
+    return _bufferPtr->data();
   }
 
   std::string toString() const;
@@ -183,7 +210,7 @@ class Builder {
   void clear() noexcept {
     _pos = 0;
     _stack.clear();
-    _index.clear();
+    _indexes.clear();
     if (_bufferPtr != nullptr) {
       _bufferPtr->reset();
       _start = _bufferPtr->data();
@@ -207,6 +234,42 @@ class Builder {
     return Slice(start());
   }
 
+#if __cplusplus >= 201703L
+  // Return a SharedSlice of the result (makes a copy of the slice)
+  [[nodiscard]] SharedSlice sharedSlice() const& {
+    if (isEmpty()) {
+      return SharedSlice{};
+    }
+    if (isClosed()) {
+      return SharedSlice{*_buffer};
+    }
+
+    throw Exception(Exception::BuilderNotSealed);
+  }
+
+  // Steal the buffer and return a SharedSlice created from it.
+  // Afterwards the Builder is unusable.
+  // If the Builder is not responsible for its buffer, a copy is created.
+  [[nodiscard]] SharedSlice sharedSlice()&& {
+    if (isEmpty()) {
+      return SharedSlice{};
+    }
+    if (VELOCYPACK_UNLIKELY(!isClosed())) {
+      throw Exception(Exception::BuilderNotSealed);
+    }
+    if (_buffer == nullptr) {
+      // We're not responsible for the buffer, we need to copy.
+      return SharedSlice{*_bufferPtr};
+    }
+    auto rv = SharedSlice{std::move(*_buffer)};
+    _buffer = nullptr;
+    _bufferPtr = nullptr;
+    _start = nullptr;
+    clear();
+    return rv;
+  }
+#endif
+
   // Compute the actual size here, but only when sealed
   ValueLength size() const {
     if (!isClosed()) {
@@ -223,16 +286,16 @@ class Builder {
     if (_stack.empty()) {
       return false;
     }
-    ValueLength const tos = _stack.back();
-    return _start[tos] == 0x06 || _start[tos] == 0x13;
+    ValueLength const pos = _stack.back().startPos;
+    return _start[pos] == 0x06 || _start[pos] == 0x13;
   }
 
   bool isOpenObject() const noexcept {
     if (_stack.empty()) {
       return false;
     }
-    ValueLength const tos = _stack.back();
-    return _start[tos] == 0x0b || _start[tos] == 0x14;
+    ValueLength const pos = _stack.back().startPos;
+    return _start[pos] == 0x0b || _start[pos] == 0x14;
   }
 
   inline void openArray(bool unindexed = false) {
@@ -245,21 +308,18 @@ class Builder {
 
   template <typename T>
   uint8_t* addUnchecked(char const* attrName, std::size_t attrLength, T const& sub) {
-    bool haveReported = false;
-    if (!_stack.empty()) {
-      reportAdd();
-      haveReported = true;
+    if (_stack.empty()) {
+      set(ValuePair(attrName, attrLength, ValueType::String));
+      return writeValue(sub);
     }
 
+    reportAdd();
     try {
       set(ValuePair(attrName, attrLength, ValueType::String));
-      _keyWritten = true;
-      return set(sub);
+      return writeValue(sub);
     } catch (...) {
       // clean up in case of an exception
-      if (haveReported) {
-        cleanupAdd();
-      }
+      cleanupAdd();
       throw;
     }
   }
@@ -268,12 +328,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Value const& sub) {
     return addInternal<Value>(attrName, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, Value const& sub) {
     return addInternal<Value>(attrName, sub);
   }
+
   inline uint8_t* add(char const* attrName, Value const& sub) {
-    return addInternal<Value>(attrName, sub);
+#if __cplusplus >= 201703
+    return addInternal<Value>(attrName, std::char_traits<char>::length(attrName), sub);
+#else
+    return addInternal<Value>(attrName, std::strlen(attrName), sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Value const& sub) {
     return addInternal<Value>(attrName, attrLength, sub);
   }
@@ -282,12 +349,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, Slice const& sub) {
     return addInternal<Slice>(attrName, sub);
   }
+
   inline uint8_t* add(char const* attrName, Slice const& sub) {
-    return addInternal<Slice>(attrName, sub);
+#if __cplusplus >= 201703
+    return addInternal<Slice>(attrName, std::char_traits<char>::length(attrName), sub);
+#else
+    return addInternal<Slice>(attrName, std::strlen(attrName), sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Slice const& sub) {
     return addInternal<Slice>(attrName, attrLength, sub);
   }
@@ -296,12 +370,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
+
   inline uint8_t* add(StringRef const& attrName, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, sub);
   }
+
   inline uint8_t* add(char const* attrName, ValuePair const& sub) {
-    return addInternal<ValuePair>(attrName, sub);
+#if __cplusplus >= 201703
+    return addInternal<ValuePair>(attrName, std::char_traits<char>::length(attrName), sub);
+#else
+    return addInternal<ValuePair>(attrName, strlen(attrName), sub);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, ValuePair const& sub) {
     return addInternal<ValuePair>(attrName, attrLength, sub);
   }
@@ -310,12 +391,19 @@ class Builder {
   inline uint8_t* add(std::string const& attrName, Serialize const& sub) {
     return addInternal<Serializable>(attrName, sub._sable);
   }
+
   inline uint8_t* add(StringRef const& attrName, Serialize const& sub) {
     return addInternal<Serializable>(attrName, sub._sable);
   }
+
   inline uint8_t* add(char const* attrName, Serialize const& sub) {
-    return addInternal<Serializable>(attrName, sub._sable);
+#if __cplusplus >= 201703
+    return addInternal<Serializable>(attrName, std::char_traits<char>::length(attrName), sub._sable);
+#else
+    return addInternal<Serializable>(attrName, std::strlen(attrName), sub._sable);
+#endif
   }
+
   inline uint8_t* add(char const* attrName, std::size_t attrLength, Serialize const& sub) {
     return addInternal<Serializable>(attrName, attrLength, sub._sable);
   }
@@ -338,6 +426,110 @@ class Builder {
   // Add a subvalue into an array from a Serializable:
   inline uint8_t* add(Serialize const& sub) {
     return addInternal<Serializable>(sub._sable);
+  }
+
+  // Add a subvalue into an object from a Value:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Value const& sub) {
+    return addInternalTagged<Value>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Value const& sub) {
+    return addInternalTagged<Value>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Value const& sub) {
+#if __cplusplus >= 201703
+    return addInternalTagged<Value>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternalTagged<Value>(attrName, std::strlen(attrName), tag, sub);
+#endif
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Value const& sub) {
+    return addInternalTagged<Value>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a Slice:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Slice const& sub) {
+    return addInternalTagged<Slice>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Slice const& sub) {
+    return addInternalTagged<Slice>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Slice const& sub) {
+#if __cplusplus >= 201703
+    return addInternalTagged<Slice>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternalTagged<Slice>(attrName, std::strlen(attrName), tag, sub);
+#endif
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Slice const& sub) {
+    return addInternalTagged<Slice>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a ValuePair:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, ValuePair const& sub) {
+    return addInternalTagged<ValuePair>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, ValuePair const& sub) {
+    return addInternalTagged<ValuePair>(attrName, tag, sub);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, ValuePair const& sub) {
+#if __cplusplus >= 201703
+    return addInternalTagged<ValuePair>(attrName, std::char_traits<char>::length(attrName), tag, sub);
+#else
+    return addInternalTagged<ValuePair>(attrName, std::strlen(attrName), tag, sub);
+#endif
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, ValuePair const& sub) {
+    return addInternalTagged<ValuePair>(attrName, attrLength, tag, sub);
+  }
+
+  // Add a subvalue into an object from a Serializable:
+  inline uint8_t* addTagged(std::string const& attrName, uint64_t tag, Serialize const& sub) {
+    return addInternalTagged<Serializable>(attrName, tag, sub._sable);
+  }
+
+  inline uint8_t* addTagged(StringRef const& attrName, uint64_t tag, Serialize const& sub) {
+    return addInternalTagged<Serializable>(attrName, tag, sub._sable);
+  }
+
+  inline uint8_t* addTagged(char const* attrName, uint64_t tag, Serialize const& sub) {
+#if __cplusplus >= 201703
+    return addInternalTagged<Serializable>(attrName, std::char_traits<char>::length(attrName), tag, sub._sable);
+#else
+    return addInternalTagged<Serializable>(attrName, std::strlen(attrName), tag, sub._sable);
+#endif
+  }
+
+  inline uint8_t* addTagged(char const* attrName, std::size_t attrLength, uint64_t tag, Serialize const& sub) {
+    return addInternalTagged<Serializable>(attrName, attrLength, tag, sub._sable);
+  }
+
+  // Add a subvalue into an array from a Value:
+  inline uint8_t* addTagged(uint64_t tag, Value const& sub) {
+    return addInternalTagged<Value>(tag, sub);
+  }
+
+  // Add a slice to an array
+  inline uint8_t* addTagged(uint64_t tag, Slice const& sub) {
+    return addInternalTagged<Slice>(tag, sub);
+  }
+
+  // Add a subvalue into an array from a ValuePair:
+  inline uint8_t* addTagged(uint64_t tag, ValuePair const& sub) {
+    return addInternalTagged<ValuePair>(tag, sub);
+  }
+
+  // Add a subvalue into an array from a Serialize:
+  inline uint8_t* addTagged(uint64_t tag, Serialize const& sub) {
+    return addInternalTagged<Serializable>(tag, sub._sable);
   }
 
   // Add an External slice to an array
@@ -439,30 +631,40 @@ class Builder {
   }
 
  private:
+  void closeLevel() noexcept;
+
   void sortObjectIndexShort(uint8_t* objBase,
-                            std::vector<ValueLength>& offsets) const;
+                            std::vector<ValueLength>::iterator indexStart,
+                            std::vector<ValueLength>::iterator indexEnd) const;
 
   void sortObjectIndexLong(uint8_t* objBase,
-                           std::vector<ValueLength>& offsets);
+                           std::vector<ValueLength>::iterator indexStart,
+                           std::vector<ValueLength>::iterator indexEnd) const;
 
   void sortObjectIndex(uint8_t* objBase,
-                       std::vector<ValueLength>& offsets) {
-    if (offsets.size() > 32) {
-      sortObjectIndexLong(objBase, offsets);
+                       std::vector<ValueLength>::iterator indexStart,
+                       std::vector<ValueLength>::iterator indexEnd) {
+    std::size_t const n = std::distance(indexStart, indexEnd);
+
+    if (n > 32) {
+      sortObjectIndexLong(objBase, indexStart, indexEnd);
     } else {
-      sortObjectIndexShort(objBase, offsets);
+      sortObjectIndexShort(objBase, indexStart, indexEnd);
     }
   }
 
   // close for the empty case:
-  Builder& closeEmptyArrayOrObject(ValueLength tos, bool isArray);
+  Builder& closeEmptyArrayOrObject(ValueLength pos, bool isArray);
 
   // close for the compact case:
-  bool closeCompactArrayOrObject(ValueLength tos, bool isArray,
-                                 std::vector<ValueLength> const& index);
+  bool closeCompactArrayOrObject(ValueLength pos, bool isArray,
+                                 std::vector<ValueLength>::iterator indexStart,
+                                 std::vector<ValueLength>::iterator indexEnd);
 
   // close for the array case:
-  Builder& closeArray(ValueLength tos, std::vector<ValueLength>& index);
+  Builder& closeArray(ValueLength pos,
+                      std::vector<ValueLength>::iterator indexStart,
+                      std::vector<ValueLength>::iterator indexEnd);
 
   void addNull() {
     appendByte(0x18);
@@ -511,6 +713,45 @@ class Builder {
     }
   }
 
+  void addBCD(int8_t sign, int32_t exponent, char* mantissa, uint64_t mantissaLength) {
+    if (options->disallowBCD) {
+      // BCD values explicitly disallowed
+      throw Exception(Exception::BuilderBCDDisallowed);
+    }
+
+    bool isOdd = mantissaLength % 2 != 0;
+    uint64_t byteLen = mantissaLength / 2 + (isOdd ? 1 : 0);
+
+    uint64_t n = 0;
+    for (uint64_t x = byteLen; x != 0; x >>= 8) {
+      n++;
+    }
+
+    reserve(1 + n + 4 + byteLen);
+
+    appendByte(static_cast<uint8_t>((sign >= 0 ? 0xc8 : 0xd0) + n - 1));
+
+    uint64_t v = byteLen;
+    for (uint64_t i = 0; i < n; ++i) {
+      appendByteUnchecked(v & 0xff);
+      v >>= 8;
+    }
+
+    appendLengthUnchecked<4>(static_cast<ValueLength>(exponent));
+
+    uint64_t i = 0;
+    while (i < mantissaLength) {
+      if (isOdd && i == 0) {
+        appendByte(mantissa[i]);
+        i++;
+        continue;
+      }
+
+      appendByte((mantissa[i] << 4) | mantissa[i+1]);
+      i += 2;
+    }
+  }
+
   void addUTCDate(int64_t v) {
     constexpr uint8_t vSize = sizeof(int64_t);  // is always 8
     reserve(1 + vSize);
@@ -518,10 +759,12 @@ class Builder {
     appendLengthUnchecked<vSize>(toUInt64(v));
   }
 
+  void appendTag(uint64_t tag);
+
   inline void checkKeyIsString(bool isString) {
     if (!_stack.empty()) {
-      ValueLength const& tos = _stack.back();
-      if (_start[tos] == 0x0b || _start[tos] == 0x14) {
+      ValueLength const pos = _stack.back().startPos;
+      if (_start[pos] == 0x0b || _start[pos] == 0x14) {
         if (VELOCYPACK_UNLIKELY(!_keyWritten && !isString)) {
           throw Exception(Exception::BuilderKeyMustBeString);
         }
@@ -532,8 +775,8 @@ class Builder {
 
   inline void checkKeyIsString(Slice const& item) {
     if (!_stack.empty()) {
-      ValueLength const& tos = _stack.back();
-      if (_start[tos] == 0x0b || _start[tos] == 0x14) {
+      ValueLength const pos = _stack.back().startPos;
+      if (_start[pos] == 0x0b || _start[pos] == 0x14) {
         if (VELOCYPACK_UNLIKELY(!_keyWritten && !item.isString())) {
           throw Exception(Exception::BuilderKeyMustBeString);
         }
@@ -550,22 +793,46 @@ class Builder {
     addCompoundValue(unindexed ? 0x14 : 0x0b);
   }
 
+  // add without a tag
   template <typename T>
   uint8_t* addInternal(T const& sub) {
-    bool haveReported = false;
-    if (!_stack.empty()) {
-      if (!_keyWritten) {
-        reportAdd();
-        haveReported = true;
-      }
+    if (_stack.empty() || std::is_same<T, Serializable>::value) {
+      return set(sub);
+    }
+
+    if (!_keyWritten) {
+      reportAdd();
     }
     try {
       return set(sub);
     } catch (...) {
       // clean up in case of an exception
-      if (haveReported) {
-        cleanupAdd();
+      cleanupAdd();
+      throw;
+    }
+  }
+
+  // add with a tag
+  template <typename T>
+  uint8_t* addInternalTagged(uint64_t tag, T const& sub) {
+    if (_stack.empty()) {
+      if (tag != 0) {
+        appendTag(tag);
       }
+      return set(sub);
+    }
+
+    if (!_keyWritten) {
+      reportAdd();
+    }
+    try {
+      if (tag != 0) {
+        appendTag(tag);
+      }
+      return set(sub);
+    } catch (...) {
+      // clean up in case of an exception
+      cleanupAdd();
       throw;
     }
   }
@@ -581,15 +848,10 @@ class Builder {
   }
 
   template <typename T>
-  uint8_t* addInternal(char const* attrName, T const& sub) {
-    return addInternal<T>(attrName, strlen(attrName), sub);
-  }
-
-  template <typename T>
   uint8_t* addInternal(char const* attrName, std::size_t attrLength, T const& sub) {
     bool haveReported = false;
     if (!_stack.empty()) {
-      ValueLength const to = _stack.back();
+      ValueLength const to = _stack.back().startPos;
       if (VELOCYPACK_UNLIKELY(_start[to] != 0x0b && _start[to] != 0x14)) {
         throw Exception(Exception::BuilderNeedOpenObject);
       }
@@ -612,15 +874,13 @@ class Builder {
           reserve(l);
           memcpy(_start + _pos, translated, checkOverflow(l));
           advance(l);
-          _keyWritten = true;
-          return set(sub);
+          return writeValue(sub);
         }
         // otherwise fall through to regular behavior
       }
 
       set(ValuePair(attrName, attrLength, ValueType::String));
-      _keyWritten = true;
-      return set(sub);
+      return writeValue(sub);
     } catch (...) {
       // clean up in case of an exception
       if (haveReported) {
@@ -628,43 +888,103 @@ class Builder {
       }
       throw;
     }
+  }
+
+  template <typename T>
+  uint8_t* addInternalTagged(std::string const& attrName, uint64_t tag, T const& sub) {
+    return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
+  }
+
+  template <typename T>
+  uint8_t* addInternalTagged(StringRef const& attrName, uint64_t tag, T const& sub) {
+    return addInternalTagged<T>(attrName.data(), attrName.size(), tag, sub);
+  }
+
+  template <typename T>
+  uint8_t* addInternalTagged(char const* attrName, std::size_t attrLength, uint64_t tag, T const& sub) {
+    bool haveReported = false;
+    if (!_stack.empty()) {
+      ValueLength const to = _stack.back().startPos;
+      if (VELOCYPACK_UNLIKELY(_start[to] != 0x0b && _start[to] != 0x14)) {
+        throw Exception(Exception::BuilderNeedOpenObject);
+      }
+      if (VELOCYPACK_UNLIKELY(_keyWritten)) {
+        throw Exception(Exception::BuilderKeyAlreadyWritten);
+      }
+      reportAdd();
+      haveReported = true;
+    }
+
+    try {
+      if (options->attributeTranslator != nullptr) {
+        // check if a translation for the attribute name exists
+        uint8_t const* translated =
+            options->attributeTranslator->translate(attrName, attrLength);
+
+        if (translated != nullptr) {
+          Slice item(translated);
+          ValueLength const l = item.byteSize();
+          reserve(l);
+          memcpy(_start + _pos, translated, checkOverflow(l));
+          advance(l);
+          return writeValueTagged(tag, sub);
+        }
+        // otherwise fall through to regular behavior
+      }
+
+      set(ValuePair(attrName, attrLength, ValueType::String));
+      return writeValueTagged(tag, sub);
+    } catch (...) {
+      // clean up in case of an exception
+      if (haveReported) {
+        cleanupAdd();
+      }
+      throw;
+    }
+  }
+
+  template <typename T>
+  inline uint8_t* writeValue(T const& sub) {
+    _keyWritten = true;
+    return set(sub);
+  }
+
+  template <typename T>
+  inline uint8_t* writeValueTagged(uint64_t tag, T const& sub) {
+    _keyWritten = true;
+    if (VELOCYPACK_UNLIKELY(tag != 0)) {
+      appendTag(tag);
+    }
+    return set(sub);
   }
 
   void addCompoundValue(uint8_t type) {
     reserve(9);
     // an Array or Object is started:
-    _stack.push_back(_pos);
-    while (_stack.size() > _index.size()) {
-      _index.emplace_back();
-    }
-    _index[_stack.size() - 1].clear();
+    _stack.push_back(CompoundInfo{_pos, _indexes.size()});
     appendByteUnchecked(type);
-    memset(_start + _pos, 0, 8);
+    std::memset(_start + _pos, 0, 8);
     advance(8);  // Will be filled later with bytelength and nr subs
   }
 
   void openCompoundValue(uint8_t type) {
-    bool haveReported = false;
-    if (!_stack.empty()) {
-      ValueLength const to = _stack.back();
-      if (!_keyWritten) {
-        if (VELOCYPACK_UNLIKELY(_start[to] != 0x06 && _start[to] != 0x13)) {
-          throw Exception(Exception::BuilderNeedOpenArray);
-        }
-        reportAdd();
-        haveReported = true;
-      } else {
-        _keyWritten = false;
-      }
-    }
-    try {
+    if (_stack.empty()) {
       addCompoundValue(type);
-    } catch (...) {
-      // clean up in case of an exception
-      if (haveReported) {
-        cleanupAdd();
+    } else if (_keyWritten) {
+      _keyWritten = false;
+      addCompoundValue(type);
+    } else {
+      ValueLength const to = _stack.back().startPos;
+      if (VELOCYPACK_UNLIKELY(_start[to] != 0x06 && _start[to] != 0x13)) {
+        throw Exception(Exception::BuilderNeedOpenArray);
       }
-      throw;
+      reportAdd();
+      try {
+        addCompoundValue(type);
+      } catch (...) {
+        cleanupAdd();
+        throw;
+      }
     }
   }
 
@@ -676,26 +996,14 @@ class Builder {
 
   uint8_t* set(Serializable const& sable) {
     auto const oldPos = _pos;
+
     sable.toVelocyPack(*this);
     return _start + oldPos;
   }
 
-  void cleanupAdd() noexcept {
-    std::size_t depth = _stack.size() - 1;
-    VELOCYPACK_ASSERT(!_index[depth].empty());
-    _index[depth].pop_back();
-  }
+  void cleanupAdd() noexcept;
 
-  inline void reportAdd() {
-    std::size_t depth = _stack.size() - 1;
-    _index[depth].push_back(_pos - _stack[depth]);
-  }
-
-  template <uint64_t n>
-  void appendLength(ValueLength v) {
-    reserve(n);
-    appendLengthUnchecked<n>(v);
-  }
+  void reportAdd();
 
   template <uint64_t n>
   void appendLengthUnchecked(ValueLength v) {

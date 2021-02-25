@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,7 +44,7 @@ class S2MultiPolyline : public S2Region {
   // vertices should be unit length.
   void Init(std::vector<S2Polyline>&& lines);
 
-  ~S2MultiPolyline() {}
+  ~S2MultiPolyline() = default;
 
   size_t num_lines() const { return lines_.size(); }
   S2Polyline const& line(size_t k) const {

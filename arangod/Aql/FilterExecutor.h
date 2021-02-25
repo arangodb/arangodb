@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,26 +28,25 @@
 #define ARANGOD_AQL_FILTER_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
 
 namespace arangodb::aql {
 
+struct AqlCall;
+class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 class FilterStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class FilterExecutorInfos : public ExecutorInfos {
+class FilterExecutorInfos {
  public:
-  FilterExecutorInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                      RegisterId nrOutputRegisters,
-                      std::unordered_set<RegisterId> registersToClear,
-                      std::unordered_set<RegisterId> registersToKeep);
+  explicit FilterExecutorInfos(RegisterId inputRegister);
 
   FilterExecutorInfos() = delete;
   FilterExecutorInfos(FilterExecutorInfos&&) = default;
@@ -82,17 +82,26 @@ class FilterExecutor {
   ~FilterExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  [[nodiscard]] std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& input, OutputAqlItemRow& output);
 
-  [[nodiscard]] std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
 };
 
 }  // namespace arangodb::aql

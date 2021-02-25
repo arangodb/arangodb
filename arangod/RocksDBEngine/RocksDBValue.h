@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,16 +25,19 @@
 #ifndef ARANGO_ROCKSDB_ROCKSDB_VALUE_H
 #define ARANGO_ROCKSDB_ROCKSDB_VALUE_H 1
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
-
 #include <rocksdb/slice.h>
+
 #include <s2/s2point.h>
+
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
+
+#include "Basics/Common.h"
+#include "Basics/debugging.h"
+#include "RocksDBEngine/RocksDBTypes.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
 
@@ -48,7 +51,7 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, TRI_voc_rid_t revision);
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId, RevisionId revision);
   static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
@@ -78,9 +81,9 @@ class RocksDBValue {
   ///
   /// May be called only on PrimaryIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_rid_t revisionId(RocksDBValue const&);    // throwing
-  static TRI_voc_rid_t revisionId(rocksdb::Slice const&);  // throwing
-  static bool revisionId(rocksdb::Slice const&, TRI_voc_rid_t& id);
+  static RevisionId revisionId(RocksDBValue const&);    // throwing
+  static RevisionId revisionId(rocksdb::Slice const&);  // throwing
+  static bool revisionId(rocksdb::Slice const&, RevisionId& id);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the vertex _to or _from ID (`_key`) from a value
@@ -129,7 +132,8 @@ class RocksDBValue {
       : _type(other._type), _buffer(std::move(other._buffer)) {}
 
   RocksDBValue& operator=(RocksDBValue&& other) noexcept {
-    TRI_ASSERT(_type == other._type);
+    TRI_ASSERT(_type == other._type || _type == RocksDBEntryType::Placeholder);
+    _type = other._type;
     _buffer = std::move(other._buffer);
     return *this;
   }
@@ -137,7 +141,7 @@ class RocksDBValue {
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, TRI_voc_rid_t revision);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
   explicit RocksDBValue(S2Point const&);
@@ -150,7 +154,7 @@ class RocksDBValue {
   static uint64_t keyValue(char const* data, size_t size);
 
  private:
-  RocksDBEntryType const _type;
+  RocksDBEntryType _type;
   std::string _buffer;
 };
 

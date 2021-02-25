@@ -145,60 +145,11 @@ function optimizerCollectMethodsTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief expect hash COLLECT
-////////////////////////////////////////////////////////////////////////////////
-
-    testHashedWithNonSortedIndexMMFiles : function () {
-      if (db._engine().name !== "mmfiles") {
-        return;
-      }
-      
-      c.ensureIndex({ type: "hash", fields: [ "group" ] }); 
-      c.ensureIndex({ type: "hash", fields: [ "group", "value" ] }); 
-
-      var queries = [
-        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.haxe RETURN value", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group RETURN value", 10 ],
-        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value RETURN [ value1, value2 ]", 1500 ],
-        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l RETURN [ value, l ]", 10 ],
-        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l RETURN [ value1, value2, l ]", 1500 ]
-      ];
-
-      queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-
-        var aggregateNodes = 0;
-        var sortNodes = 0;
-        plan.nodes.map(function(node) {
-          if (node.type === "CollectNode") {
-            ++aggregateNodes;
-            assertEqual("hash", node.collectOptions.method);
-          }
-          if (node.type === "SortNode") {
-            ++sortNodes;
-          }
-        });
-        
-        assertEqual(isCluster ? 2 : 1, aggregateNodes);
-        assertEqual(1, sortNodes);
-
-        var results = AQL_EXECUTE(query[0]);
-        assertEqual(query[1], results.json.length);
-      });
-    },
-    
-    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief expect hash COLLECT
     ////////////////////////////////////////////////////////////////////////////////
     
     testHashedWithNonSortedIndexRocksDB : function () {
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-      
       c.ensureIndex({ type: "hash", fields: [ "group" ] });
       c.ensureIndex({ type: "hash", fields: [ "group", "value" ] });
       
@@ -415,7 +366,7 @@ function optimizerCollectMethodsTestSuite () {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual(query[1], node.collectOptions.method, query);
-            if (node.outVariable && !node.count) {
+            if (node.outVariable) {
               hasInto = true;
             }
           }
@@ -454,7 +405,7 @@ function optimizerCollectMethodsTestSuite () {
           if (node.type === "CollectNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.collectOptions.method);
-            if (node.outVariable && !node.count) {
+            if (node.outVariable) {
               hasInto = true;
             }
           }
@@ -497,7 +448,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
    
     testManyCollects : function () {
-      c.truncate();
+      c.truncate({ compact: false });
       c.insert({ value: 3 });
       var q = "", g = [];
       for (var i = 0; i < 10; ++i) {
@@ -529,7 +480,7 @@ function optimizerCollectMethodsTestSuite () {
         if (node.type === "CollectNode") {
           ++aggregateNodes;
           assertEqual("sorted", node.collectOptions.method);
-          if (node.outVariable && !node.count) {
+          if (node.outVariable) {
             hasInto = true;
           }
         }
@@ -539,7 +490,76 @@ function optimizerCollectMethodsTestSuite () {
       
       var result = AQL_EXECUTE(query).json;
       assertEqual([ 1001, 1002 ], result);
-    }
+    },
+  
+////////////////////////////////////////////////////////////////////////////////
+/// @brief regression test external memory management
+////////////////////////////////////////////////////////////////////////////////
+ 
+    testRegressionMemoryManagementInHashedCollect : function () {
+      // This query triggers the following case:
+      // We have large input documents in `doc` which require
+      // non-inlined AQL values.
+      // Now we go above batch sizes with other values
+      // This way we have external management that needs
+      // to be manged accross different input and output blocks of AQL
+      const query = `
+        FOR doc IN ${c.name()}
+          LIMIT 2
+          FOR other IN 1..1001
+            COLLECT d = doc, o = other
+            RETURN 1`;
+      const res = db._query(query).toArray();
+      // We do not care for the result,
+      // ASAN would figure out invalid memory access here.
+      assertEqual(2002, res.length);
+    },
+
+    testRegressionMemoryManagementInSortedCollect : function () {
+      // This query triggers the following case:
+      // We have large input documents in `doc` which require
+      // non-inlined AQL values.
+      // Now we go above batch sizes with other values
+      // This way we have external management that needs
+      // to be manged accross different input and output blocks of AQL
+      const query = `
+        FOR doc IN ${c.name()}
+          LIMIT 2
+          FOR other IN 1..1001
+            SORT doc, other
+            COLLECT d = doc, o = other
+            RETURN 1`;
+      const res = db._query(query).toArray();
+      // We do not care for the result,
+      // ASAN would figure out invalid memory access here.
+      assertEqual(2002, res.length);
+    },
+
+    // Regression test. There was a bug where the sorted collect returned
+    // [ { "n" : undefined }, { "n" : "testi" } ]
+    // instead of
+    // [ { "n" : null }, { "n" : "testi" } ].
+    testNullVsUndefinedInSortedCollect : function () {
+      const query = `
+        FOR doc IN [ {_key:"foo"}, {_key:"bar", name:"testi"} ]
+        COLLECT n = doc.name OPTIONS { method: "sorted" }
+        RETURN { n }
+      `;
+      const res = db._query(query).toArray();
+      assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
+    },
+
+    // Just for the sake of completeness, a version of the regression test above
+    // for the hashed collect variant.
+    testNullVsUndefinedInHashedCollect : function () {
+      const query = `
+        FOR doc IN [ {_key:"foo"}, {_key:"bar", name:"testi"} ]
+        COLLECT n = doc.name OPTIONS { method: "hash" }
+        RETURN { n }
+      `;
+      const res = db._query(query).toArray();
+      assertEqual([ { "n" : null }, { "n" : "testi" } ], res);
+    },
   
   };
 }

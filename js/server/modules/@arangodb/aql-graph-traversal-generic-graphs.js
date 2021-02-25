@@ -28,12 +28,14 @@
 const tryRequire = (module) => {
   try {
     return require(module);
-  } catch(e) {}
+  } catch (e) {
+  }
 };
 
 const internal = require("internal");
 const db = internal.db;
 const sgm = tryRequire("@arangodb/smart-graph");
+const satgm = tryRequire("@arangodb/satellite-graph");
 const cgm = require("@arangodb/general-graph");
 const _ = require("lodash");
 const assert = require("jsunity").jsUnity.assertions;
@@ -43,10 +45,14 @@ const TestVariants = Object.freeze({
   SingleServer: 1,
   GeneralGraph: 2,
   SmartGraph: 3,
+  SatelliteGraph: 4,
+  DisjointSmartGraph: 5
 });
 
+const graphWeightAttribute = 'distance';
+
 class TestGraph {
-  constructor (graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
+  constructor(graphName, edges, eRel, vn, en, protoSmartSharding, testVariant, numberOfShards) {
     this.graphName = graphName;
     this.edges = edges;
     this.eRel = eRel;
@@ -77,6 +83,23 @@ class TestGraph {
         sgm._create(this.name(), [this.eRel], [], options);
         break;
       }
+      case TestVariants.DisjointSmartGraph: {
+        const options = {
+          numberOfShards: this.numberOfShards,
+          smartGraphAttribute: ProtoGraph.smartAttr(),
+          isSmart: true,
+          isDisjoint: true
+        };
+        sgm._create(this.name(), [this.eRel], [], options);
+        break;
+      }
+      case TestVariants.SatelliteGraph: {
+        const options = {
+          replicationFactor: 'satellite'
+        };
+        satgm._create(this.name(), [this.eRel], [], options);
+        break;
+      }
     }
 
     if (this.testVariant === TestVariants.SingleServer) {
@@ -90,6 +113,10 @@ class TestGraph {
 
   name() {
     return this.graphName;
+  }
+
+  weightAttribute() {
+    return graphWeightAttribute;
   }
 
   vertex(name) {
@@ -131,7 +158,16 @@ class TestGraph {
     for (const edge of edges) {
       let v = verticesByName[edge[0]];
       let w = verticesByName[edge[1]];
-      ec.save(v, w, {});
+
+      // check if our edge also has a weight defined and is a number
+      if (edge[2] && typeof edge[2] === 'number') {
+        // if found, add attribute "distance" as weightAttribute to the edge document
+        let document = {};
+        document[graphWeightAttribute] = edge[2];
+        ec.save(v, w, document);
+      } else {
+        ec.save(v, w, {});
+      }
     }
     return verticesByName;
   }
@@ -144,12 +180,12 @@ class TestGraph {
 
     const done = () => !
       _.values(exampleAttributeByShard)
-      .includes(null);
+        .includes(null);
     let i = 0;
     // const key = this.enterprise ? ProtoGraph.smartAttr() : "_key";
     const key = "_key";
     while (!done()) {
-      const value = this.enterprise ? i.toString() + ":" : i.toString() ;
+      const value = this.enterprise ? i.toString() + ":" : i.toString();
       const doc = {[key]: value};
 
       let shard;
@@ -170,9 +206,11 @@ class TestGraph {
 }
 
 class ProtoGraph {
-  static smartAttr() { return "smart"; }
+  static smartAttr() {
+    return "smart";
+  }
 
-  constructor (name, edges, generalShardings, smartShardings) {
+  constructor(name, edges, generalShardings, smartShardings) {
     this.protoGraphName = name;
     this.edges = edges;
     this.generalShardings = generalShardings;
@@ -193,7 +231,7 @@ class ProtoGraph {
   }
 
   prepareGeneralGraphs() {
-    return this.generalShardings.map(numberOfShards =>  {
+    return this.generalShardings.map(numberOfShards => {
       const suffix = `_${numberOfShards}shards`;
       const vn = this.protoGraphName + '_Vertex' + suffix;
       const en = this.protoGraphName + '_Edge' + suffix;
@@ -206,7 +244,7 @@ class ProtoGraph {
   }
 
   prepareSmartGraphs() {
-    return this.smartShardings.map((sharding, idx) =>  {
+    return this.smartShardings.map((sharding, idx) => {
       const {numberOfShards, vertexSharding} = sharding;
       const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
 
@@ -220,6 +258,40 @@ class ProtoGraph {
     });
   }
 
+  prepareDisjointSmartGraphs() {
+    return this.smartShardings.map((sharding, idx) => {
+      const {numberOfShards, vertexSharding} = sharding;
+      const suffix = ProtoGraph._buildSmartSuffix(sharding, idx);
+
+      // All tests are based on fully connected graphs.
+      // So just place all vertices on the same shard, no matter what.
+      for (const pair of vertexSharding) {
+        pair[1] = numberOfShards - 1;
+      }
+
+      const vn = this.protoGraphName + '_Vertex' + suffix;
+      const en = this.protoGraphName + '_Edge' + suffix;
+      const gn = this.protoGraphName + '_Graph' + suffix;
+
+      const eRel = sgm._relation(en, vn, vn);
+
+      return new TestGraph(gn, this.edges, eRel, vn, en, vertexSharding, TestVariants.DisjointSmartGraph, numberOfShards);
+    });
+  }
+
+  prepareSatelliteGraphs() {
+    // We're not able to test multiple shards in a SatelliteGraph as a SatelliteGraph has only one shard by default
+    const suffix = '_satellite';
+    const numberOfShards = 1;
+    const vn = this.protoGraphName + '_Vertex' + suffix;
+    const en = this.protoGraphName + '_Edge' + suffix;
+    const gn = this.protoGraphName + '_Graph' + suffix;
+
+    const eRel = cgm._relation(en, vn, vn);
+
+    return [new TestGraph(gn, this.edges, eRel, vn, en, [], TestVariants.SatelliteGraph, numberOfShards)];
+  }
+
   static _buildSmartSuffix({numberOfShards, vertexSharding, name}, shardingIndex) {
     if (name) {
       return `_${name}`;
@@ -231,7 +303,7 @@ class ProtoGraph {
     //   "_2shards_s0-AB_s1-C"
     let suffix = `_${numberOfShards}shards_` +
       _.toPairs(
-        _.groupBy(vertexSharding, ([,s]) => s)
+        _.groupBy(vertexSharding, ([, s]) => s)
       ).map(
         ([s, vs]) => 's' + s + '-' + vs.map(([v,]) => v).join('')
       ).join('_');
@@ -257,12 +329,12 @@ const protoGraphs = {};
  *       C       F
  */
 protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
-    ["A", "B"],
-    ["A", "C"],
-    ["B", "D"],
-    ["C", "D"],
-    ["D", "E"],
-    ["D", "F"],
+    ["A", "B", 100],
+    ["A", "C", 1],
+    ["B", "D", 1],
+    ["C", "D", 1],
+    ["D", "E", 1],
+    ["D", "F", 1],
   ],
   [1, 2, 5],
   [
@@ -337,10 +409,10 @@ protoGraphs.openDiamond = new ProtoGraph("openDiamond", [
  *       D
  */
 protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "A"]
+    ["A", "B", 1],
+    ["B", "C", 1],
+    ["C", "D", 1],
+    ["D", "A", 1]
   ],
   [1, 2, 5],
   [
@@ -385,26 +457,26 @@ protoGraphs.smallCircle = new ProtoGraph("smallCircle", [
  *        D
  */
 protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
-    ["A", "B"],
-    ["A", "C"],
-    ["A", "D"],
-    ["A", "E"],
-    ["B", "A"],
-    ["B", "C"],
-    ["B", "D"],
-    ["B", "E"],
-    ["C", "A"],
-    ["C", "B"],
-    ["C", "D"],
-    ["C", "E"],
-    ["D", "A"],
-    ["D", "B"],
-    ["D", "C"],
-    ["D", "E"],
-    ["E", "A"],
-    ["E", "B"],
-    ["E", "C"],
-    ["E", "D"]
+    ["A", "B", 2],
+    ["A", "C", 5],
+    ["A", "D", 5],
+    ["A", "E", 1],
+    ["B", "A", 1],
+    ["B", "C", 2],
+    ["B", "D", 5],
+    ["B", "E", 5],
+    ["C", "A", 5],
+    ["C", "B", 1],
+    ["C", "D", 2],
+    ["C", "E", 5],
+    ["D", "A", 5],
+    ["D", "B", 5],
+    ["D", "C", 2],
+    ["D", "E", 2],
+    ["E", "A", 2],
+    ["E", "B", 5],
+    ["E", "C", 5],
+    ["E", "D", 1]
   ],
   [1, 2, 5],
   [
@@ -452,15 +524,15 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
  *
  */
 protoGraphs.easyPath = new ProtoGraph("easyPath", [
-    ["A", "B"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "E"],
-    ["E", "F"],
-    ["F", "G"],
-    ["G", "H"],
-    ["H", "I"],
-    ["I", "J"]
+    ["A", "B", 1],
+    ["B", "C", 2],
+    ["C", "D", 3],
+    ["D", "E", 4],
+    ["E", "F", 5],
+    ["F", "G", 6],
+    ["G", "H", 7],
+    ["H", "I", 8],
+    ["I", "J", 9]
   ],
   [1, 2, 5],
   [
@@ -539,16 +611,16 @@ protoGraphs.easyPath = new ProtoGraph("easyPath", [
  *
  */
 protoGraphs.advancedPath = new ProtoGraph("advancedPath", [
-    ["A", "B"],
-    ["A", "D"],
-    ["B", "C"],
-    ["C", "D"],
-    ["D", "E"],
-    ["E", "F"],
-    ["E", "H"],
-    ["F", "G"],
-    ["G", "H"],
-    ["H", "I"],
+    ["A", "B", 1],
+    ["A", "D", 10],
+    ["B", "C", 1],
+    ["C", "D", 1],
+    ["D", "E", 1],
+    ["E", "F", 1],
+    ["E", "H", 10],
+    ["F", "G", 1],
+    ["G", "H", 1],
+    ["H", "I", 1],
   ],
   [1, 2, 5],
   [
@@ -694,9 +766,9 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   assert.assertEqual('v510', vertices[vertices.length - 1]);
 
   const vi = (v) => Number(v.match(/^v(\d+)$/)[1]);
-  const vertexLevel = (v) => Math.floor(Math.log2(vi(v)+1));
+  const vertexLevel = (v) => Math.floor(Math.log2(vi(v) + 1));
   const parent = (v) => 'v' + parentIdx(vi(v));
-  const ancestor = (v, i) => i === 0 ? v : ancestor(parent(v), i-1);
+  const ancestor = (v, i) => i === 0 ? v : ancestor(parent(v), i - 1);
 
   // when splitting the tree into perfect subtrees of depth 3 (this is
   // non-ambiguous), these helper functions return, for a given vertex,
@@ -723,7 +795,7 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
       { // one shard per three levels
         name: "oneShardPerThreeLevels",
         numberOfShards: 3,
-        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v)/3)]),
+        vertexSharding: vertices.map(v => [v, Math.floor(vertexLevel(v) / 3)]),
       },
       { // one shard per level
         name: "oneShardPerLevel",
@@ -748,7 +820,8 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
         //  ...
         name: "diagonalCutSharding",
         numberOfShards: 2,
-        vertexSharding: vertices.map(v => [v, [2,4,8,16,32,64,128,256].includes(vi(v)) ? 1 : 0]),},
+        vertexSharding: vertices.map(v => [v, [2, 4, 8, 16, 32, 64, 128, 256].includes(vi(v)) ? 1 : 0]),
+      },
       { // perfect subtrees of depth 3, each in different shards
         name: "perfectSubtreeSharding",
         numberOfShards: 73,

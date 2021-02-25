@@ -1,64 +1,52 @@
 'use strict';
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief initialize a new database
-// /
-// / @file
-// /
-// / DISCLAIMER
-// /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
-// /
-// / Licensed under the Apache License, Version 2.0 (the "License")
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     http://www.apache.org/licenses/LICENSE-2.0
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-// / @author Dr. Frank Celler
-// / @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-// //////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
+// @brief initialize a new database
+//
+// @file
+//
+// DISCLAIMER
+//
+// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+//
+// Licensed under the Apache License, Version 2.0 (the "License")
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// Copyright holder is ArangoDB GmbH, Cologne, Germany
+//
+// @author Dr. Frank Celler
+// @author Copyright 2014-2020, ArangoDB GmbH, Cologne, Germany
+///////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief initialize a new database
-// //////////////////////////////////////////////////////////////////////////////
-
+/// initializes a coordinator. will be called once per V8 context, on all coordinators
 (function () {
   const internal = require('internal');
-  const errors = require('@arangodb').errors;
 
-  // autoload all modules and reload routing information in all threads
-  internal.loadStartup('server/bootstrap/autoload.js').startup();
-  internal.loadStartup('server/bootstrap/routing.js').startup();
+  // autoload all modules
+  // this functionality is deprecated and will be removed in 3.9
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
+    // check and load all modules in all databases from _modules
+    // this can be expensive, so it is guarded by a flag.
+    internal.loadStartup('server/bootstrap/autoload.js').startup();
+  }
+
+  // the function name reloadRouting is misleading here, as it actually
+  // only initializes/clears the local routing map, but doesn't rebuild
+  // it.
+  require('@arangodb/actions').reloadRouting();
 
   if (internal.threadNumber === 0) {
     try {
       require('@arangodb/foxx/manager')._startup();
-      try {
-        require('@arangodb/tasks').register({
-          id: 'self-heal',
-          isSystem: true,
-          period: 5 * 60, // secs
-          command: function () {
-            const FoxxManager = require('@arangodb/foxx/manager');
-            FoxxManager.healAll();
-          }
-        });
-      } catch (ee) {
-        if (ee.errorNum !== errors.ERROR_TASK_DUPLICATE_ID.code) {
-          // a "duplicate task id" error is actually allowed here, because
-          // the bootstrap function may be called repeatedly by the BootstrapFeature
-          throw ee;
-        }
-      }
       // start the queue manager once
       require('@arangodb/foxx/queues/manager').run();
       const systemCollectionsCreated = global.ArangoAgency.get('SystemCollectionsCreated');
@@ -74,6 +62,7 @@
         }
       }
       console.info('bootstrapped coordinator %s', global.ArangoServerState.id());
+      require('@arangodb').checkAvailableVersions();
     } catch (e) {
       console.error(e);
       return false;

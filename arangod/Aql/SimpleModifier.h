@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -103,15 +104,15 @@ class SimpleModifier {
   explicit SimpleModifier(ModificationExecutorInfos& infos)
       : _infos(infos),
         _completion(infos),
-        _accumulator(nullptr),
-        _resultsIterator(VPackSlice::emptyArraySlice()),
-        _batchSize(ExecutionBlock::DefaultBatchSize()) {}
+        _results(Result(), infos._options),
+        _resultsIterator(VPackArrayIterator::Empty{}),
+        _batchSize(ExecutionBlock::DefaultBatchSize) {}
   ~SimpleModifier() = default;
 
   void reset();
 
   Result accumulate(InputAqlItemRow& row);
-  void transact();
+  void transact(transaction::Methods& trx);
 
   // The two numbers below may not be the same: Operations
   // can skip or ignore documents.
@@ -139,7 +140,7 @@ class SimpleModifier {
   ModifierCompletion _completion;
 
   std::vector<ModOp> _operations;
-  std::unique_ptr<ModificationExecutorAccumulator> _accumulator;
+  ModificationExecutorAccumulator _accumulator;
 
   OperationResult _results;
 

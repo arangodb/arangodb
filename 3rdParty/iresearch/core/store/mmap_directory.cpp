@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "mmap_directory.hpp"
@@ -27,7 +26,7 @@
 #include "utils/mmap_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_LOCAL
+namespace {
 
 using irs::mmap_utils::mmap_handle;
 
@@ -68,7 +67,7 @@ class mmap_index_input : public irs::bytes_ref_input {
  public:
   static irs::index_input::ptr open(
       const file_path_t file,
-      irs::IOAdvice advice) NOEXCEPT {
+      irs::IOAdvice advice) noexcept {
     assert(file);
 
     mmap_handle_ptr handle;
@@ -76,7 +75,6 @@ class mmap_index_input : public irs::bytes_ref_input {
     try {
       handle = irs::memory::make_shared<mmap_handle>();
     } catch (...) {
-      IR_LOG_EXCEPTION();
       return nullptr;
     }
 
@@ -94,15 +92,14 @@ class mmap_index_input : public irs::bytes_ref_input {
     handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
 
     try {
-      return mmap_index_input::make<mmap_index_input>(std::move(handle));
+      return ptr(new mmap_index_input(std::move(handle)));
     } catch (...) {
-      IR_LOG_EXCEPTION();
       return nullptr;
     }
   }
 
   virtual ptr dup() const override {
-    return mmap_index_input::make<mmap_index_input>(*this);
+    return ptr(new mmap_index_input(*this));
   }
 
   virtual ptr reopen() const override {
@@ -110,9 +107,7 @@ class mmap_index_input : public irs::bytes_ref_input {
   }
 
  private:
-  DEFINE_FACTORY_INLINE(index_input)
-
-  mmap_index_input(mmap_handle_ptr&& handle) NOEXCEPT
+  mmap_index_input(mmap_handle_ptr&& handle) noexcept
     : handle_(std::move(handle)) {
     if (handle_) {
       const auto* begin = reinterpret_cast<irs::byte_type*>(handle_->addr());
@@ -120,7 +115,7 @@ class mmap_index_input : public irs::bytes_ref_input {
     }
   }
 
-  mmap_index_input(const mmap_index_input& rhs) NOEXCEPT
+  mmap_index_input(const mmap_index_input& rhs) noexcept
     : bytes_ref_input(rhs),
       handle_(rhs.handle_) {
   }
@@ -130,9 +125,9 @@ class mmap_index_input : public irs::bytes_ref_input {
   mmap_handle_ptr handle_;
 }; // mmap_index_input
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     mmap_directory implementation
@@ -144,21 +139,16 @@ mmap_directory::mmap_directory(const std::string& path)
 
 index_input::ptr mmap_directory::open(
     const std::string& name,
-    IOAdvice advice) const NOEXCEPT {
+    IOAdvice advice) const noexcept {
   utf8_path path;
 
   try {
     (path/=directory())/=name;
   } catch(...) {
-    IR_LOG_EXCEPTION();
     return nullptr;
   }
 
   return mmap_index_input::open(path.c_str(), advice);
 }
 
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

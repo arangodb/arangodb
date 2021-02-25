@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -244,12 +244,12 @@ class RandomDeviceDirect : public RandomDevice {
 
  private:
   void fillBuffer() {
-    size_t n = sizeof(buffer);
+    auto n = static_cast<TRI_read_t>(sizeof(buffer));
 
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
+      TRI_read_return_t r = TRI_READ(fd, ptr, n);
 
       if (r == 0) {
         LOG_TOPIC("7153b", FATAL, arangodb::Logger::FIXME)
@@ -330,11 +330,11 @@ class RandomDeviceCombined : public RandomDevice {
 
  private:
   void fillBuffer() {
-    size_t n = sizeof(buffer);
+    auto n = static_cast<TRI_read_t>(sizeof(buffer));
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
+      TRI_read_return_t r = TRI_READ(fd, ptr, n);
 
       if (r == 0) {
         LOG_TOPIC("71bae", FATAL, arangodb::Logger::FIXME)

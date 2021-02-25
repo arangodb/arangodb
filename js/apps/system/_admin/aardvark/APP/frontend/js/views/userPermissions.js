@@ -47,7 +47,7 @@
       if ($(e.target).parent().hasClass('noAction')) {
         return;
       }
-      if ($(e.target).hasClass('inner') || $(e.target).is('span')) {
+      if ($(e.target).hasClass('inner') || $(e.target).is('span') || $(e.target).hasClass('fa-info-circle')) {
         return;
       }
       var visible = $(e.currentTarget).find('.collection-row').is(':visible');
@@ -142,6 +142,7 @@
     },
 
     rollbackInputButton: function (name, error) {
+      // this method will refetch server permission state and re-render everything again from scratch
       var open;
       _.each($('.collection-row'), function (elem, key) {
         if ($(elem).is(':visible')) {
@@ -169,11 +170,13 @@
           contentType: 'application/json',
           data: JSON.stringify({
             grant: value
-          })
-        }).success(function (e) {
-          self.styleDefaultRadios(null, true);
-        }).error(function (e) {
-          self.rollbackInputButton(null, e);
+          }),
+          success: function () {
+            self.rollbackInputButton(null);
+          },
+          error: function (e) {
+            self.rollbackInputButton(null, e);
+          }
         });
       }
     },
@@ -184,11 +187,13 @@
       $.ajax({
         type: 'DELETE',
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
-        contentType: 'application/json'
-      }).success(function (e) {
-        self.styleDefaultRadios(null, true);
-      }).error(function (e) {
-        self.rollbackInputButton(null, e);
+        contentType: 'application/json',
+        success: function (e) {
+          self.rollbackInputButton(null, e);
+        },
+        error: function (e) {
+          self.rollbackInputButton(null, e);
+        }
       });
     },
 
@@ -204,11 +209,13 @@
           contentType: 'application/json',
           data: JSON.stringify({
             grant: value
-          })
-        }).success(function (e) {
-          self.styleDefaultRadios(null, true);
-        }).error(function (e) {
-          self.rollbackInputButton(null, e);
+          }),
+          success: function () {
+            self.rollbackInputButton(null);
+          },
+          error: function (e) {
+            self.rollbackInputButton(null, e);
+          }
         });
       }
     },
@@ -219,11 +226,13 @@
       $.ajax({
         type: 'DELETE',
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
-        contentType: 'application/json'
-      }).success(function (e) {
-        self.styleDefaultRadios(null, true);
-      }).error(function (e) {
-        self.rollbackInputButton(null, e);
+        contentType: 'application/json',
+        success: function (e) {
+          self.rollbackInputButton(null, e);
+        },
+        error: function (e) {
+          self.rollbackInputButton(null, e);
+        }
       });
     },
 
@@ -286,7 +295,42 @@
     },
 
     styleDefaultRadios: function (permissions, refresh) {
+      var serverLevelDefaultPermission;
+        try {
+          serverLevelDefaultPermission = permissions['*'].permission;
+        } catch (ignore) {
+          // just ignore, not part of the response
+        }
       var self = this;
+
+      var getMaxPermissionAccess = function (databaseLevel, collectionLevel, serverLevel) {
+        // will return max permission level
+        if (databaseLevel === 'undefined' && collectionLevel === 'undefined' && serverLevel !== 'undefined') {
+          return serverLevel;
+        } else if (collectionLevel === 'undefined' || collectionLevel === 'none') {
+          // means - use default is selected here
+          if (serverLevel === 'rw' || databaseLevel === 'rw') {
+            return 'rw';
+          } else if (serverLevel === 'ro' || databaseLevel === 'ro') {
+            return 'ro';
+          } else if (serverLevel === 'none' || databaseLevel === 'none') {
+            return 'none';
+          } else {
+            return 'undefined';
+          }
+        } else if (serverLevel === 'rw' || databaseLevel === 'rw' || collectionLevel === 'rw') {
+          return 'rw';
+        } else if (serverLevel === 'ro' || databaseLevel === 'ro' || collectionLevel === 'ro') {
+          return 'ro';
+        } else if (databaseLevel === 'none' || collectionLevel === 'none') {
+          if (serverLevel !== 'undefined') {
+            return serverLevel;
+          }
+          return 'none';
+        } else {
+          return 'undefined';
+        }
+      };
 
       var someFunction = function (permissions) {
         $('.db-row input').css('box-shadow', 'none');
@@ -294,15 +338,34 @@
         var cssShadow = 'rgba(0, 0, 0, 0.3) 0px 1px 4px 4px';
         _.each(permissions, function (perms, database) {
           if (perms.collections) {
-            var defValue = perms.collections['*'];
+            // Default Database Permission (wildcard)
+            var databaseLevelDefaultPermission = perms.permission;
+            // Default Collection Permission (wildcard)
+            var collectionLevelDefaultPermission = perms.collections['*'];
+
+            if (databaseLevelDefaultPermission === 'undefined') {
+              if (serverLevelDefaultPermission) {
+                if (serverLevelDefaultPermission === 'rw') {
+                  $('#' + database + '-db .mid > .readWrite').first().css('box-shadow', cssShadow);
+                } else if (serverLevelDefaultPermission === 'ro') {
+                  $('#' + database + '-db .mid > .readOnly').first().css('box-shadow', cssShadow);
+                } else if (serverLevelDefaultPermission === 'none') {
+                  $('#' + database + '-db .mid > .noAccess').first().css('box-shadow', cssShadow);
+                }
+              }
+            }
+
             _.each(perms.collections, function (access, collection) {
               if (collection.charAt(0) !== '_' && collection.charAt(0) !== '*') {
                 if (access === 'undefined') {
-                  if (defValue === 'rw') {
+                  // This means, we have no specific value set, we need now to compare if collection level wildcard is set and
+                  // if database level wildcard is set and choose the max of it to display.
+                  var calculatedCollectionPermission = getMaxPermissionAccess(databaseLevelDefaultPermission, collectionLevelDefaultPermission, serverLevelDefaultPermission);
+                  if (calculatedCollectionPermission === 'rw') {
                     $('#' + database + '-db #' + collection + '-collection .readWrite').css('box-shadow', cssShadow);
-                  } else if (defValue === 'ro') {
+                  } else if (calculatedCollectionPermission === 'ro') {
                     $('#' + database + '-db #' + collection + '-collection .readOnly').css('box-shadow', cssShadow);
-                  } else if (defValue === 'none') {
+                  } else if (calculatedCollectionPermission === 'none') {
                     $('#' + database + '-db #' + collection + '-collection .noAccess').css('box-shadow', cssShadow);
                   }
                 }

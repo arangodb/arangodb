@@ -1,44 +1,44 @@
 @startDocuBlock delete_api_analyzer
-@brief removes an analyzer configuration
+@brief removes an Analyzer configuration
 
-@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an analyzer, RestAnalyzerHandler:Delete}
+@RESTHEADER{DELETE /_api/analyzer/{analyzer-name}, Remove an Analyzer, RestAnalyzerHandler:Delete}
 
 @RESTURLPARAMETERS
 
 @RESTURLPARAM{analyzer-name,string,required}
-The name of the analyzer to remove.
+The name of the Analyzer to remove.
 
 @RESTQUERYPARAMETERS
 
 @RESTQUERYPARAM{force,boolean,optional}
-The analyzer configuration should be removed even if it is in-use.
+The Analyzer configuration should be removed even if it is in-use.
 The default value is *false*.
 
 @RESTDESCRIPTION
-Removes an analyzer configuration identified by *analyzer-name*.
+Removes an Analyzer configuration identified by *analyzer-name*.
 
-If the analyzer definition was successfully dropped, an object is returned with
+If the Analyzer definition was successfully dropped, an object is returned with
 the following attributes:
 - *error*: *false*
-- *name*: The name of the removed analyzer
+- *name*: The name of the removed Analyzer
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-The analyzer configuration was removed successfully.
+The Analyzer configuration was removed successfully.
 
 @RESTRETURNCODE{400}
 The *analyzer-name* was not supplied or another request parameter was not
 valid.
 
 @RESTRETURNCODE{403}
-The user does not have permission to remove this analyzer configuration.
+The user does not have permission to remove this Analyzer configuration.
 
 @RESTRETURNCODE{404}
-Such an analyzer configuration does not exist.
+Such an Analyzer configuration does not exist.
 
 @RESTRETURNCODE{409}
-The specified analyzer configuration is still in use and *force* was omitted or
+The specified Analyzer configuration is still in use and *force* was omitted or
 *false* specified.
 
 @EXAMPLES
@@ -68,7 +68,7 @@ Removing with *force*:
   var analyzerName = "testAnalyzer";
   analyzers.save(analyzerName, "identity");
 
-  // create analyzer reference
+  // create Analyzer reference
   var url = "/_api/collection";
   var body = { name: "testCollection" };
   var response = logCurlRequest('POST', url, body);

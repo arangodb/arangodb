@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include <atomic>
+#include <limits>
 
 namespace arangodb {
 namespace transaction {
@@ -46,29 +47,30 @@ enum class CountType {
 };
 
 /// @brief a simple cache for the "number of documents in a collection" value
-/// the cache is initially populated with a count value of -1
+/// the cache is initially populated with a count value of UINT64_MAX
 /// this indicates that no count value has been queried/stored yet
-/// the cache values have a 15 second ttl by default. this is currently
-/// hard-coded
 struct CountCache {
-  static constexpr int64_t NotPopulated = -1;
-  static constexpr double Ttl = 15.0;  // seconds
+  static constexpr uint64_t NotPopulated = std::numeric_limits<uint64_t>::max();
 
-  CountCache();
+  /// @brief construct a cache with the specified TTL value
+  explicit CountCache(double ttl);
 
-  /// @brief get current value from cache, regardless if expired or not
-  int64_t get() const;
+  /// @brief get current value from cache, regardless if expired or not.
+  /// will return whatever has been stored. if nothing was stored yet, will
+  /// return NotPopulated.
+  uint64_t get() const;
 
-  /// @brief get current value from cache
-  /// if expired, returns NotPopulated
-  int64_t get(double ttl) const;
+  /// @brief get current value from cache if not yet expired
+  /// if expired or never populated, returns NotPopulated
+  uint64_t getWithTtl() const;
 
-  /// @brief stores value in the cache and sets the ttl to 15 seconds
-  /// in the future
-  void store(int64_t value);
+  /// @brief stores value in the cache and bumps the TTL into the future
+  void store(uint64_t value);
 
-  std::atomic<int64_t> count;
-  std::atomic<double> timestamp;
+ private:
+  std::atomic<uint64_t> count;
+  std::atomic<double> expireStamp;
+  double const ttl;
 };
 
 }  // namespace transaction

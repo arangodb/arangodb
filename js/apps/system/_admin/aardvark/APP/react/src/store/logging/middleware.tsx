@@ -3,7 +3,7 @@ import { Dispatch } from "react";
 
 
 const middleware : Middleware = (_: MiddlewareAPI) => (next: Dispatch<Action>) => (action : Action) => {
-  console.log(Date.now(), "Redux Log:", action);
+  /* console.log(Date.now(), "Redux Log:", action); */
   return next(action);
 };
 

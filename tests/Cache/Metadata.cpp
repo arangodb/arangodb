@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::Metadata
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,27 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-#include "Basics/Common.h"
-#include "Cache/Metadata.h"
-#include "Cache/PlainCache.h"
-#include "Cache/Table.h"
 
 #include "gtest/gtest.h"
 
 #include <stdint.h>
 #include <memory>
 
+#include "Basics/SpinLocker.h"
+#include "Cache/Metadata.h"
+#include "Cache/PlainCache.h"
+#include "Cache/Table.h"
+
 using namespace arangodb::cache;
+using SpinLocker = ::arangodb::basics::SpinLocker;
 
 TEST(CacheMetadataTest, test_basic_constructor) {
-  uint64_t usageLimit = 1024;
-  uint64_t fixed = 128;
-  uint64_t table = Table::allocationSize(Table::minLogSize);
-  uint64_t max = UINT64_MAX;
+  std::uint64_t usageLimit = 1024;
+  std::uint64_t fixed = 128;
+  std::uint64_t table = Table::allocationSize(Table::minLogSize);
+  std::uint64_t max = UINT64_MAX;
   Metadata metadata(usageLimit, fixed, table, max);
 
   ASSERT_EQ(metadata.fixedSize, fixed);
@@ -56,10 +54,10 @@ TEST(CacheMetadataTest, test_basic_constructor) {
 }
 
 TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly) {
-  uint64_t overhead = 80;
+  std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 0, 2048 + overhead);
 
-  metadata.writeLock();
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
 
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
   ASSERT_TRUE(metadata.adjustUsageIfAllowed(512));
@@ -88,15 +86,13 @@ TEST(CacheMetadataTest, verify_usage_limits_are_adjusted_and_enforced_correctly)
 
   ASSERT_FALSE(metadata.adjustLimits(2049, 2049));
   ASSERT_EQ(metadata.allocatedSize, 1024 + overhead);
-
-  metadata.writeUnlock();
 }
 
 TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
-  uint64_t overhead = 80;
+  std::uint64_t overhead = 80;
   Metadata metadata(1024, 0, 512, 2048 + overhead);
 
-  metadata.writeLock();
+  SpinLocker guard(SpinLocker::Mode::Write, metadata.lock());
 
   ASSERT_FALSE(metadata.migrationAllowed(1024));
   ASSERT_EQ(2048 + overhead, metadata.adjustDeserved(2048 + overhead));
@@ -111,6 +107,4 @@ TEST(CacheMetadataTest, verify_table_methods_work_correctly) {
   metadata.changeTable(512);
   ASSERT_EQ(metadata.tableSize, 512);
   ASSERT_EQ(metadata.allocatedSize, 1536 + overhead);
-
-  metadata.writeUnlock();
 }

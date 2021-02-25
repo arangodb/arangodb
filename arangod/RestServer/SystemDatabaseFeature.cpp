@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@
 
 #include "SystemDatabaseFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -54,7 +57,7 @@ SystemDatabaseFeature::SystemDatabaseFeature(application_features::ApplicationSe
 void SystemDatabaseFeature::start() {
   if (server().hasFeature<arangodb::DatabaseFeature>()) {
     auto& feature = server().getFeature<arangodb::DatabaseFeature>();
-    _vocbase.store(feature.lookupDatabase(TRI_VOC_SYSTEM_DATABASE));
+    _vocbase.store(feature.lookupDatabase(StaticStrings::SystemDatabase));
 
     return;
   }

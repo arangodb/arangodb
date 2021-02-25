@@ -29,8 +29,8 @@
 #include "shared.hpp"
 #include "string.hpp"
 
-NS_ROOT
-NS_BEGIN( locale_utils )
+namespace iresearch {
+namespace locale_utils {
 
 /**
  * @brief provide a common way to access the codecvt facet of a locale
@@ -49,7 +49,7 @@ const std::codecvt<T, char, mbstate_t>& codecvt(std::locale const& locale) {
   IRESEARCH_API const std::codecvt<char32_t, char, mbstate_t>& codecvt(
     std::locale const& locale
   );
-#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+#elif defined(_MSC_VER) && _MSC_VER <= 1924 // MSVC2015/MSVC2017/MSVC2019
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -129,7 +129,7 @@ bool append_internal(
   auto* to_buf_end = to_buf + to_buf_size;
   auto* to_buf_next = to_buf;
   std::codecvt_base::result result;
-
+  buf.reserve(buf.size() + value.size());
   do {
     result = cvt.in(
       state,
@@ -183,7 +183,13 @@ IRESEARCH_API const irs::string_ref& language(std::locale const& locale);
  **/
 IRESEARCH_API const std::string& name(std::locale const& locale);
 
-NS_END
-NS_END
+/**
+* @brief extract if locale is UTF8 locale
+* @param locale the locale from which to extract info
+**/
+IRESEARCH_API bool is_utf8(std::locale const& locale);
+
+}
+}
 
 #endif

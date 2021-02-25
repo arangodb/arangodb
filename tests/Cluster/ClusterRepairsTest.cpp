@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <iostream>
+#include <string_view>
 #include <typeinfo>
 
 #include "gtest/gtest.h"
@@ -34,15 +36,18 @@
 #include "Agency/AddFollower.h"
 #include "Agency/FailedLeader.h"
 #include "Agency/MoveShard.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ClusterRepairs.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::cluster_repairs;
+using namespace std::string_view_literals;
 
 namespace arangodb {
 
@@ -232,20 +237,6 @@ class ClusterRepairsTestBrokenDistribution
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL>,
       public tests::LogSuppressor<Logger::FIXME, LogLevel::FATAL> {
- protected:
-  // save old manager (may be null)
-  std::unique_ptr<AgencyCommManager> oldManager;
-
-  ClusterRepairsTestBrokenDistribution()
-      : oldManager(std::move(AgencyCommManager::MANAGER)) {
-    // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
-  }
-
-  ~ClusterRepairsTestBrokenDistribution() {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
-  }
 };
 
 TEST_F(ClusterRepairsTestBrokenDistribution,
@@ -274,8 +265,8 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
       operationResultByCollectionId.at("11111111");
 
   ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-  ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                          "not enough (healthy) db servers"));
+  ASSERT_EQ(TRI_errno_string(collectionResult.errorNumber()),
+            "not enough (healthy) db servers"sv);
   ASSERT_TRUE(collectionResult.fail());
 }
 
@@ -297,8 +288,8 @@ TEST_F(ClusterRepairsTestBrokenDistribution,
       operationResultByCollectionId.at("11111111");
 
   ASSERT_EQ(collectionResult.errorNumber(), TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY);
-  ASSERT_TRUE(0 == strcmp(TRI_errno_string(collectionResult.errorNumber()),
-                          "not enough (healthy) db servers"));
+  ASSERT_EQ(TRI_errno_string(collectionResult.errorNumber()),
+            "not enough (healthy) db servers"sv);
   ASSERT_TRUE(collectionResult.fail());
 }
 
@@ -442,9 +433,9 @@ class ClusterRepairsTestOperations
     : public ClusterRepairsTest,
       public tests::LogSuppressor<Logger::CLUSTER, LogLevel::FATAL> {
  protected:
-  std::unique_ptr<AgencyCommManager> oldManager;
   std::string const oldServerId;
   RepairOperationToTransactionVisitor conversionVisitor;
+  arangodb::application_features::ApplicationServer server;
 
   static uint64_t mockJobIdGenerator() {
     EXPECT_TRUE(false);
@@ -456,18 +447,12 @@ class ClusterRepairsTestOperations
     return std::chrono::system_clock::now();
   }
 
-  ClusterRepairsTestOperations()
-      : oldManager(std::move(AgencyCommManager::MANAGER)),
+  ClusterRepairsTestOperations() :
         oldServerId(ServerState::instance()->getId()),
-        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator) {
-    // get a new manager
-    AgencyCommManager::initialize("testArangoAgencyPrefix");
-  }
+        conversionVisitor(mockJobIdGenerator, mockJobCreationTimestampGenerator),
+        server{nullptr, nullptr} {}
 
-  ~ClusterRepairsTestOperations() {
-    // restore old manager
-    AgencyCommManager::MANAGER = std::move(oldManager);
-  }
+  ~ClusterRepairsTestOperations() = default;
 };
 
 TEST_F(ClusterRepairsTestOperations,

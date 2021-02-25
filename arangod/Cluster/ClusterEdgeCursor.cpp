@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "ClusterEdgeCursor.h"
 
+#include "Basics/Result.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTraverser.h"
 #include "Graph/ClusterTraverserCache.h"
@@ -37,42 +38,17 @@ using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-// Traverser variant
-ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, uint64_t depth,
-                                     graph::BaseOptions* opts)
+ClusterEdgeCursor::ClusterEdgeCursor(graph::BaseOptions const* opts) 
     : _position(0),
-      _resolver(opts->trx()->resolver()),
       _opts(opts),
       _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
       _httpRequests(0) {
   TRI_ASSERT(_cache != nullptr);
-  auto trx = _opts->trx();
-  transaction::BuilderLeaser leased(trx);
-  transaction::BuilderLeaser b(trx);
 
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), depth,
-                        _cache->cache(), _edgeList, _cache->datalake(),
-                        _cache->filteredDocuments(), _cache->insertedDocuments());
-  _httpRequests += _cache->engines()->size();
-}
-
-// ShortestPath variant
-ClusterEdgeCursor::ClusterEdgeCursor(arangodb::velocypack::StringRef vertexId, bool backward, graph::BaseOptions* opts)
-    : _position(0),
-      _resolver(opts->trx()->resolver()),
-      _opts(opts),
-      _cache(static_cast<ClusterTraverserCache*>(opts->cache())),
-      _httpRequests(0) {
-  TRI_ASSERT(_cache != nullptr);
-  auto trx = _opts->trx();
-  transaction::BuilderLeaser leased(trx);
-  transaction::BuilderLeaser b(trx);
-
-  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), backward, _cache->cache(),
-                        _edgeList, _cache->datalake(), _cache->insertedDocuments());
-  _httpRequests += _cache->engines()->size();
+  if (_cache == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "no cache present for cluster edge cursor");
+  }
 }
 
 bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback) {
@@ -89,4 +65,46 @@ void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   for (VPackSlice const& edge : _edgeList) {
     callback(EdgeDocumentToken(edge), edge, _position);
   }
+}
+  
+ClusterTraverserEdgeCursor::ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts)
+    : ClusterEdgeCursor(opts) {}
+
+traverser::TraverserOptions const* ClusterTraverserEdgeCursor::traverserOptions() const {
+  TRI_ASSERT(dynamic_cast<traverser::TraverserOptions const*>(_opts) != nullptr);
+  return dynamic_cast<traverser::TraverserOptions const*>(_opts);
+}
+
+void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId, uint64_t depth) {
+  _edgeList.clear();
+  _position = 0;
+
+  auto trx = _opts->trx();
+  TRI_ASSERT(trx != nullptr);
+  TRI_ASSERT(_cache != nullptr);
+
+  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions(), vertexId, depth, _edgeList);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  _httpRequests += _cache->engines()->size();
+}
+
+ClusterShortestPathEdgeCursor::ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward)
+    : ClusterEdgeCursor(opts),
+      _backward(backward) {}
+
+void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId, uint64_t /*depth*/) {
+  _edgeList.clear();
+  _position = 0;
+
+  auto trx = _opts->trx();
+  transaction::BuilderLeaser b(trx);
+
+  b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+  Result res = fetchEdgesFromEngines(*trx, *_cache, b->slice(), _backward, _edgeList, _cache->insertedDocuments());
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  _httpRequests += _cache->engines()->size();
 }

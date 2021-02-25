@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_FORMATS_10_H
@@ -26,8 +25,8 @@
 
 #include "formats.hpp"
 
-NS_ROOT
-NS_BEGIN(version10)
+namespace iresearch {
+namespace version10 {
 
 void init();
 
@@ -40,10 +39,10 @@ class IRESEARCH_PLUGIN format : public irs::format {
   virtual postings_reader::ptr get_postings_reader() const = 0;
 
  protected:
-  explicit format(const irs::format::type_id& type) NOEXCEPT;
+  explicit format(const type_info& type) noexcept;
 }; // format
 
-NS_END // version10
-NS_END // ROOT
+} // version10
+} // ROOT
 
 #endif

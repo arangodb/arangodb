@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,7 +24,7 @@
 
 #include "RocksDBKeyBounds.h"
 #include "Basics/Exceptions.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
@@ -52,6 +52,12 @@ RocksDBKeyBounds RocksDBKeyBounds::CollectionDocuments(uint64_t collectionObject
   return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::CollectionDocumentRange(uint64_t collectionObjectId,
+                                                           std::size_t min,
+                                                           std::size_t max) {
+  return RocksDBKeyBounds(RocksDBEntryType::Document, collectionObjectId, min, max);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::PrimaryIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::PrimaryIndexValue, indexId);
 }
@@ -65,12 +71,12 @@ RocksDBKeyBounds RocksDBKeyBounds::EdgeIndexVertex(uint64_t indexId,
   return RocksDBKeyBounds(RocksDBEntryType::EdgeIndexValue, indexId, vertexId);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, bool reverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, reverse);
 }
 
-RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId) {
-  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId);
+RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, bool reverse) {
+  return RocksDBKeyBounds(RocksDBEntryType::UniqueVPackIndexValue, indexId, reverse);
 }
 
 RocksDBKeyBounds RocksDBKeyBounds::FulltextIndex(uint64_t indexId) {
@@ -142,7 +148,7 @@ RocksDBKeyBounds RocksDBKeyBounds::FulltextIndexPrefix(uint64_t objectId,
 
   uint64ToPersistent(internals.buffer(), objectId);
   internals.buffer().append(word.data(), word.length());
-  internals.push_back(0xFFU);
+  internals.push_back(static_cast<char>(0xFFU));
   // 0xFF is higher than any valud utf-8 character
   return b;
 }
@@ -204,21 +210,21 @@ uint64_t RocksDBKeyBounds::objectId() const {
 rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
   switch (_type) {
     case RocksDBEntryType::Placeholder:
-      return RocksDBColumnFamily::invalid();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid);
     case RocksDBEntryType::Document:
-      return RocksDBColumnFamily::documents();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents);
     case RocksDBEntryType::PrimaryIndexValue:
-      return RocksDBColumnFamily::primary();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex);
     case RocksDBEntryType::EdgeIndexValue:
-      return RocksDBColumnFamily::edge();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex);
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue:
-      return RocksDBColumnFamily::vpack();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex);
     case RocksDBEntryType::FulltextIndexValue:
-      return RocksDBColumnFamily::fulltext();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-      return RocksDBColumnFamily::geo();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::CounterValue:
@@ -226,8 +232,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::ReplicationApplierConfig:
     case RocksDBEntryType::IndexEstimateValue:
     case RocksDBEntryType::KeyGeneratorValue:
+    case RocksDBEntryType::RevisionTreeValue:
     case RocksDBEntryType::View:
-      return RocksDBColumnFamily::definitions();
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_TYPE_ERROR);
 }
@@ -277,7 +284,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 
       _internals.separate();
       _internals.push_back(static_cast<char>(_type));
-      _internals.push_back(0xFFU);
+      _internals.push_back(static_cast<char>(0xFFU));
       break;
     }
     case RocksDBEntryType::CounterValue:
@@ -305,36 +312,6 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type) : _type(type) {
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
     : _type(type) {
   switch (_type) {
-    case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::UniqueVPackIndexValue: {
-      // Unique VPack index values are stored as follows:
-      // 7 + 8-byte object ID of index + VPack array with index value(s) ....
-      // prefix is the same for non-unique indexes
-      // static slices with an array with one entry
-      uint8_t const minSlice[] = { 0x02, 0x03, 0x1e }; // [minSlice]
-      uint8_t const maxSlice[] = { 0x02, 0x03, 0x1f }; // [maxSlice]
-      VPackSlice min(minSlice);
-      VPackSlice max(maxSlice);
-      _internals.reserve(2 * sizeof(uint64_t) + min.byteSize() + max.byteSize());
-
-      uint64ToPersistent(_internals.buffer(), first);
-      _internals.buffer().append((char*)(min.begin()), min.byteSize());
-
-      _internals.separate();
-
-      if (rocksDBEndianness == RocksDBEndianness::Big) {
-        // if we are in big-endian mode, we can cheat a bit...
-        // for the upper bound we can use the object id + 1, which will always compare higher in a
-        // bytewise comparison
-        uint64ToPersistent(_internals.buffer(), first + 1);
-        _internals.buffer().append((char*)(min.begin()), min.byteSize());
-      } else {
-        uint64ToPersistent(_internals.buffer(), first);
-        _internals.buffer().append((char*)(max.begin()), max.byteSize());
-      }
-      break;
-    }
-
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::View: {
       // Collections are stored as follows:
@@ -388,6 +365,38 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         if (type == RocksDBEntryType::EdgeIndexValue) {
           _internals.push_back(_stringSeparator);
         }
+      }
+      break;
+    }
+
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second)
+    : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue: {
+      uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};
+      VPackSlice max(maxSlice);
+
+      _internals.reserve(2 * sizeof(uint64_t) + (second ? max.byteSize() : 0));
+      uint64ToPersistent(_internals.buffer(), first);
+      _internals.separate();
+
+      if (second) {
+        // in case of reverse iteration, this is our starting point, so it must
+        // be in the same prefix, otherwise we'll get no results; so here we
+        // use the same objectId and the max vpack slice to make sure we find
+        // everything
+        uint64ToPersistent(_internals.buffer(), first);
+        _internals.buffer().append((char const*)(max.begin()), max.byteSize());
+      } else {
+        // in case of forward iteration, we can use the next objectId as a quick
+        // termination case, as it will be in the next prefix
+        uint64ToPersistent(_internals.buffer(), first + 1);
       }
       break;
     }
@@ -482,6 +491,17 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                                    uint64_t second, uint64_t third)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::Document: {
+      // Documents are stored as follows:
+      // Key: 8-byte object ID of collection + 8-byte document revision ID
+      _internals.reserve(4 * sizeof(uint64_t));
+      uint64ToPersistent(_internals.buffer(), first);   // objectid
+      uint64ToPersistent(_internals.buffer(), second);  // min revision
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first);  // objectid
+      uint64ToPersistent(_internals.buffer(), third);  // max revision
+      break;
+    }
     case RocksDBEntryType::GeoIndexValue: {
       _internals.reserve(sizeof(uint64_t) * 3 * 2);
       uint64ToPersistent(_internals.buffer(), first);
@@ -501,7 +521,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
 namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKeyBounds const& bounds) {
-  stream << "[bounds cf: " << RocksDBColumnFamily::columnFamilyName(bounds.columnFamily())
+  stream << "[bounds cf: " << RocksDBColumnFamilyManager::name(bounds.columnFamily())
          << " type: " << arangodb::rocksDBEntryTypeName(bounds.type()) << " ";
 
   auto dump = [&stream](rocksdb::Slice const& slice) {

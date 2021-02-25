@@ -18,42 +18,75 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BITSET_DOC_ITERATOR_H
 #define IRESEARCH_BITSET_DOC_ITERATOR_H
 
-#include "cost.hpp"
-#include "search/score_doc_iterators.hpp"
+#include "analysis/token_attributes.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-class bitset_doc_iterator final: public basic_doc_iterator_base, util::noncopyable {
+class bitset_doc_iterator
+  : public doc_iterator,
+    private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set);
-
   bitset_doc_iterator(
-    const sub_reader& reader,
-    const byte_type* stats,
-    const bitset& set,
-    const order::prepared& order,
-    boost_t boost
-  );
+      const bitset::word_t* begin,
+      const bitset::word_t* end) noexcept
+    : cost_(bitset::count(begin, end)),
+      doc_(cost_.estimate()
+        ? doc_limits::invalid()
+        : doc_limits::eof()),
+      begin_(begin),
+      end_(end) {
+    reset();
+  }
 
-  virtual bool next() NOEXCEPT override;
-  virtual doc_id_t seek(doc_id_t target) NOEXCEPT override;
-  virtual doc_id_t value() const NOEXCEPT override { return doc_.value; }
+  virtual bool next() noexcept override final;
+  virtual doc_id_t seek(doc_id_t target) noexcept override final;
+  virtual doc_id_t value() const noexcept override final { return doc_.value; }
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override;
+
+ protected:
+  explicit bitset_doc_iterator(cost::cost_t cost) noexcept
+    : cost_(cost),
+      doc_(doc_limits::invalid()),
+      begin_(nullptr),
+      end_(nullptr) {
+    reset();
+  }
+
+  virtual bool refill(const bitset::word_t** /*begin*/,
+                      const bitset::word_t** /*end*/) {
+    return false;
+  }
 
  private:
+  // assume begin_, end_ are set
+  void reset() noexcept {
+    next_ = begin_;
+    word_ = 0;
+    base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
+    assert(begin_ <= end_);
+  }
+
+  using word_t = bitset::word_t;
+
+  cost cost_;
   document doc_;
-  const bitset::word_t* begin_;
-  const bitset::word_t* end_;
-  size_t size_;
+  const word_t* begin_;
+  const word_t* end_;
+  const word_t* next_;
+  word_t word_;
+  doc_id_t base_;
 }; // bitset_doc_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_BITSET_DOC_ITERATOR_H

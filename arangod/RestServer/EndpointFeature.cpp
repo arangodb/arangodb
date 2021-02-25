@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,11 +70,11 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--tcp.reuse-address", "try to reuse TCP port(s)",
                      new BooleanParameter(&_reuseAddress),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--tcp.backlog-size", "listen backlog size",
                      new UInt64Parameter(&_backlogSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void EndpointFeature::validateOptions(std::shared_ptr<ProgramOptions>) {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,9 @@
 #include <string>
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace stats {
 
 enum RequestStatisticsSource {
@@ -74,7 +78,7 @@ struct Figure {
 
 class Descriptions final {
  public:
-  Descriptions();
+  explicit Descriptions(application_features::ApplicationServer&);
 
   std::vector<stats::Group> const& groups() const { return _groups; }
 
@@ -86,6 +90,8 @@ class Descriptions final {
   void processStatistics(velocypack::Builder&) const;
 
  private:
+  application_features::ApplicationServer& _server;
+
   std::vector<double> _requestTimeCuts;
   std::vector<double> _connectionTimeCuts;
   std::vector<double> _bytesSendCuts;

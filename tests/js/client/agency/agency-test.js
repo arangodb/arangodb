@@ -379,6 +379,146 @@ function agencyTestSuite () {
 /// @brief Test transact interface
 ////////////////////////////////////////////////////////////////////////////////
 
+    testPoll : function () {
+      var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      var ret, result, log, ci, job, wr;
+
+      ret = request({url: agencyLeader + "/_api/agency/poll",
+                         method: "GET", followRedirect: true});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      ci = result.commitIndex;
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=0",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("readDB"));
+      assertEqual(result.readDB, {});
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertEqual(result.commitIndex, ci);
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, 0);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=1",
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, 1);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + ci,
+                     method: "GET", followRedirect: true});
+      if (ret.statusCode === 200) {
+        ret.bodyParsed = JSON.parse(ret.body);
+      }
+      assertTrue(ret.bodyParsed.hasOwnProperty("result"));
+      result = ret.bodyParsed.result;
+      assertTrue(result.hasOwnProperty("log"));
+      log = result.log;
+      assertEqual(log.length, 1);
+      assertTrue(Array.isArray(log));
+      assertEqual(result.commitIndex, ci);
+      assertEqual(result.firstIndex, ci);
+
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", headers: {"X-arango-async": "store"}});
+
+      assertEqual(ret.statusCode, 202);
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      let tries = 0;
+      while (++tries <60) {
+        // jobs are processed asynchronously, so we need to poll here
+        // until the job has been processed
+        ret = request({url: agencyLeader + "/_api/job/" + job,
+                       method: "GET", followRedirect: true});
+        if (ret.statusCode !== 204) {
+          break;
+        }
+        wait(0.5);
+      }
+      assertEqual(ret.statusCode, 200);
+      ret = request({url: agencyLeader + "/_api/job/" + job, method: "PUT"});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+
+      assertTrue(result.hasOwnProperty("log"));
+      assertTrue(result.hasOwnProperty("commitIndex"));
+      assertTrue(result.hasOwnProperty("firstIndex"));
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+1);
+
+      // Multiple writes
+      ci = result.commitIndex;
+      ret = request({url: agencyLeader + "/_api/agency/poll?index=" + (ci + 1),
+                     method: "GET", followRedirect: true, headers: {"X-arango-async": "store"}});
+      assertTrue(ret.headers.hasOwnProperty("x-arango-async-id"));
+      job = ret.headers["x-arango-async-id"];
+      wr = accessAgency("write",[[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}],[{"/": {"op":"delete"}}]]).
+          bodyParsed.results[0];
+      ret = request({url: agencyLeader + "/_api/job/" + job,
+                     method: "PUT", followRedirect: true, body: {}});
+      assertEqual(ret.statusCode, 200);
+      ret.bodyParsed = JSON.parse(ret.body);
+      result = ret.bodyParsed.result;
+      assertEqual(result.firstIndex, ci+1);
+      assertEqual(result.commitIndex, ci+3);
+      ci = result.commitIndex;
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Test transact interface
+////////////////////////////////////////////////////////////////////////////////
+
     testTransact : function () {
 
       var cur = accessAgency("write",[[{"/": {"op":"delete"}}]]).
@@ -590,6 +730,29 @@ function agencyTestSuite () {
         assertEqual(res.statusCode, 412);
       }
 
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":""}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":12},{"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,"Pi"]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["Pi",false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":[false,false,false]}}]]);
+      assertEqual(res.statusCode, 412);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"intersectionEmpty":["pi",3.1415926535]}}]]);
+      assertEqual(res.statusCode, 200);
+      res = accessAgency("write", [[{"a":[12,"Pi",3.14159265359,true,false]},
+                                    {"a":{"instersectionEmpty":[]}}]]);
+      assertEqual(res.statusCode, 412);
+
     },
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -742,21 +905,21 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/y"]]), [{"a":{"y":12}}]);
       wait(1.1);
       assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
-      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 1}}]]);
+      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]]);
       assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(1.1);
+      wait(3.1);
       assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
                   [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
-      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":1}}]]);
-      wait(1.1);
+      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]]);
+      wait(3.1);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 2}}]]);
+      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 3}}]]);
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":25}}]);
       writeAndCheck([[{"a/u":{"op":"set","new":26}}]]);
       assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
@@ -830,6 +993,16 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"push", "new":"hello"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,6 +1037,16 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"prepend","new":1.25}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"world"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["world","hello"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -879,6 +1062,15 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["world"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -895,6 +1087,15 @@ function agencyTestSuite () {
       writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
+
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
+      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -997,6 +1198,14 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:1}]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
+      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:13}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1009,6 +1218,14 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
+      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
+      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:11}}]);
+      wait(3.1);
+      assertEqual(readAndCheck([["version"]]), [{}]);
+      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
+      assertEqual(readAndCheck([["version"]]), [{version:{c:-1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

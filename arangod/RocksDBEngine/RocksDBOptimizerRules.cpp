@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "RocksDBOptimizerRules.h"
 
+#include "Aql/AttributeNamePath.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -49,7 +50,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-std::vector<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
+std::initializer_list<ExecutionNode::NodeType> const reduceExtractionToProjectionTypes = {
     ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
 
 }  // namespace
@@ -80,10 +81,15 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
   plan->findNodesOfType(nodes, ::reduceExtractionToProjectionTypes, true);
 
   bool modified = false;
-  ::arangodb::containers::HashSet<Variable const*> vars;
-  std::unordered_set<std::string> attributes;
+  VarSet vars;
+  std::unordered_set<arangodb::aql::AttributeNamePath> attributes;
 
   for (auto& n : nodes) {
+    // isDeterministic is false for EnumerateCollectionNodes when the "random" flag is set.
+    bool const isRandomOrder = 
+      (n->getType() == EN::ENUMERATE_COLLECTION && 
+       !ExecutionNode::castTo<EnumerateCollectionNode*>(n)->isDeterministic());
+
     bool stop = false;
     bool optimize = false;
     attributes.clear();
@@ -102,7 +108,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         RemoveNode const* removeNode = ExecutionNode::castTo<RemoveNode const*>(current);
         if (removeNode->inVariable() == v) {
           // FOR doc IN collection REMOVE doc IN ...
-          attributes.emplace(StaticStrings::KeyString);
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
@@ -114,7 +120,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (modificationNode->inKeyVariable() == v &&
             modificationNode->inDocVariable() != v) {
           // FOR doc IN collection UPDATE/REPLACE doc IN ...
-          attributes.emplace(StaticStrings::KeyString);
+          attributes.emplace(arangodb::aql::AttributeNamePath(StaticStrings::KeyString));
           optimize = true;
         } else {
           doRegularCheck = true;
@@ -128,7 +134,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           current->getVariablesUsedHere(vars);
 
           if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
               stop = true;
               break;
             }
@@ -146,9 +152,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               stop = true;
               break;
             }
-            // insert 0th level of attribute name into the set of attributes
-            // that we need for our projection
-            attributes.emplace(it.attributePath[0]);
+            // insert attribute name into the set of attributes that we need for our projection
+            attributes.emplace(AttributeNamePath(it.attributePath));
           }
         }
       } else if (current->getType() == EN::INDEX) {
@@ -161,7 +166,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           current->getVariablesUsedHere(vars);
 
           if (vars.find(v) != vars.end()) {
-            if (!Ast::getReferencedAttributes(node, v, attributes)) {
+            if (!Ast::getReferencedAttributesRecursive(node, v, attributes)) {
               stop = true;
               break;
             }
@@ -191,29 +196,28 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       current = current->getFirstParent();
     }
 
+    Projections projections(attributes);
+
     // projections are currently limited (arbitrarily to 5 attributes)
-    if (optimize && !stop && !attributes.empty() && attributes.size() <= 5) {
-      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION &&
-          std::find(attributes.begin(), attributes.end(), StaticStrings::IdString) ==
-              attributes.end()) {
+    if (optimize && !stop && !projections.empty() && projections.size() <= 5) {
+      if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION && !isRandomOrder) {
         // the node is still an EnumerateCollection... now check if we should
-        // turn it into an index scan we must never have a projection on _id, as
-        // producing _id is not supported yet by the primary index iterator
+        // turn it into an index scan
         EnumerateCollectionNode const* en =
             ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        auto trx = plan->getAst()->query()->trx();
+        auto& trx = plan->getAst()->query().trxForOptimization();
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
-        if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+        if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
           indexes = en->collection()->getCollection()->getIndexes();
         }
 
         auto selectIndexIfPossible =
-            [&picked, &attributes](std::shared_ptr<Index> const& idx) -> bool {
-          if (!idx->hasCoveringIterator() || !idx->covers(attributes)) {
+            [&picked, &projections](std::shared_ptr<Index> const& idx) -> bool {
+          if (!idx->hasCoveringIterator() || !idx->covers(projections)) {
             // index doesn't cover the projection
             return false;
           }
@@ -222,6 +226,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX &&
               idx->type() != arangodb::Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
             // only the above index types are supported
+            return false;
+          }
+
+          if (idx->sparse()) {
+            // we cannot safely substitute a full collection scan with a sparse index scan,
+            // as the sparse index may be missing some documents
             return false;
           }
 
@@ -256,7 +266,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           // we have already proven that we can use the covering index optimization,
           // so force it - if we wouldn't force it here it would mean that for a
           // FILTER-less query we would be a lot less efficient for some indexes
-          opts.forceProjection = true;
           auto inode = new IndexNode(plan.get(), plan->nextId(),
                                      en->collection(), en->outVariable(),
                                      std::vector<transaction::Methods::IndexHandle>{picked},
@@ -281,16 +290,19 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         }
       }
 
-      // store projections in DocumentProducingNode
-      e->projections(std::move(attributes));
-
       if (n->getType() == ExecutionNode::INDEX) {
-        // need to update _indexCoversProjections value in an IndexNode
-        ExecutionNode::castTo<IndexNode*>(n)->initIndexCoversProjections();
+        // need to update covering index support in an IndexNode
+        ExecutionNode::castTo<IndexNode*>(n)->setProjections(std::move(projections));
+      } else {
+        // store projections in DocumentProducingNode
+        e->setProjections(std::move(projections));
       }
 
       modified = true;
-    } else if (!stop && attributes.empty() && n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+    } else if (!stop && 
+               projections.empty() && 
+               n->getType() == ExecutionNode::ENUMERATE_COLLECTION && 
+               !isRandomOrder) {
       // replace collection access with primary index access (which can be
       // faster given the fact that keys and values are stored together in
       // RocksDB, but average values are much bigger in the documents column
@@ -299,10 +311,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
       EnumerateCollectionNode* en = ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      auto trx = plan->getAst()->query()->trx();
+      auto& trx = plan->getAst()->query().trxForOptimization();
       std::shared_ptr<Index> picked;
       std::vector<std::shared_ptr<Index>> indexes;
-      if (!trx->isInaccessibleCollection(en->collection()->getCollection()->name())) {
+      if (!trx.isInaccessibleCollection(en->collection()->getCollection()->name())) {
         indexes = en->collection()->getCollection()->getIndexes();
       }
 

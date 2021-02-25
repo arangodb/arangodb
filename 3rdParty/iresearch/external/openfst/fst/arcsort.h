@@ -26,7 +26,7 @@ class ArcSortMapper {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
 
-  ArcSortMapper(const Fst<Arc> &fst, const Compare &comp)
+  constexpr ArcSortMapper(const Fst<Arc> &fst, const Compare &comp)
       : fst_(fst), comp_(comp), i_(0) {}
 
   // Allows updating Fst argument; pass only if changed.
@@ -169,13 +169,14 @@ class ArcIterator<ArcSortFst<Arc, Compare>>
 template <class Arc>
 class ILabelCompare {
  public:
-  ILabelCompare() {}
+  constexpr ILabelCompare() {}
 
-  bool operator()(const Arc &arc1, const Arc &arc2) const {
-    return arc1.ilabel < arc2.ilabel;
+  constexpr bool operator()(const Arc &lhs, const Arc &rhs) const {
+    return std::forward_as_tuple(lhs.ilabel, lhs.olabel) <
+           std::forward_as_tuple(rhs.ilabel, rhs.olabel);
   }
 
-  uint64 Properties(uint64 props) const {
+  constexpr uint64 Properties(uint64 props) const {
     return (props & kArcSortProperties) | kILabelSorted |
            (props & kAcceptor ? kOLabelSorted : 0);
   }
@@ -185,13 +186,14 @@ class ILabelCompare {
 template <class Arc>
 class OLabelCompare {
  public:
-  OLabelCompare() {}
+  constexpr OLabelCompare() {}
 
-  bool operator()(const Arc &arc1, const Arc &arc2) const {
-    return arc1.olabel < arc2.olabel;
+  constexpr bool operator()(const Arc &lhs, const Arc &rhs) const {
+    return std::forward_as_tuple(lhs.olabel, lhs.ilabel) <
+           std::forward_as_tuple(rhs.olabel, rhs.ilabel);
   }
 
-  uint64 Properties(uint64 props) const {
+  constexpr uint64 Properties(uint64 props) const {
     return (props & kArcSortProperties) | kOLabelSorted |
            (props & kAcceptor ? kILabelSorted : 0);
   }
@@ -199,16 +201,8 @@ class OLabelCompare {
 
 // Useful aliases when using StdArc.
 
-#if defined _MSC_VER && _MSC_VER < 1900
-template<class C> class StdArcSortFst : public ArcSortFst<StdArc, C> {
- public:
-  typedef StdArc Arc;
-  typedef C Compare;
-};
-#else
 template <class Compare>
 using StdArcSortFst = ArcSortFst<StdArc, Compare>;
-#endif
 
 using StdILabelCompare = ILabelCompare<StdArc>;
 

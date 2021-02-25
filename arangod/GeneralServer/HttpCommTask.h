@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,7 +24,6 @@
 #ifndef ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H
 #define ARANGOD_GENERAL_SERVER_HTTP_COMM_TASK_H 1
 
-#include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
 #include <llhttp.h>
@@ -43,27 +43,19 @@ template <SocketType T>
 class HttpCommTask final : public GeneralCommTask<T> {
  public:
   HttpCommTask(GeneralServer& server, ConnectionInfo, std::unique_ptr<AsioSocket<T>> so);
-  ~HttpCommTask();
-  
+  ~HttpCommTask() noexcept;
+
   void start() override;
 
  protected:
-  
-  bool allowDirectHandling() const override {
-    return this->_protocol->context.clients() <= 1;
-  }
-  
-  /// @brief send error response including response body
-  void addSimpleResponse(rest::ResponseCode, rest::ContentType, uint64_t messageId,
-                         velocypack::Buffer<uint8_t>&&) override;
-  
   bool readCallback(asio_ns::error_code ec) override;
-  
+  void setIOTimeout() override;
+
   void sendResponse(std::unique_ptr<GeneralResponse> response,
-                    RequestStatistics* stat) override;
-  
+                    RequestStatistics::Item stat) override;
+
   std::unique_ptr<GeneralResponse> createResponse(rest::ResponseCode, uint64_t messageId) override;
-  
+
  private:
   static int on_message_began(llhttp_t* p);
   static int on_url(llhttp_t* p, const char* at, size_t len);
@@ -74,35 +66,26 @@ class HttpCommTask final : public GeneralCommTask<T> {
   static int on_body(llhttp_t* p, const char* at, size_t len);
   static int on_message_complete(llhttp_t* p);
 
-private:
-
+ private:
   void checkVSTPrefix();
-  
-  bool checkHttpUpgrade();
 
   void processRequest();
-  
-  /// handle an OPTIONS request
-  void processCorsOptions();
-  /// check authentication headers
-  ResponseCode handleAuthHeader(HttpRequest& request);
-  /// decompress content
-  bool handleContentEncoding(HttpRequest&);
-  
-  // called on IO context thread
-  void writeResponse(RequestStatistics* stat);
 
- private:
+  // called on IO context thread
+  void writeResponse(RequestStatistics::Item stat);
+
+  std::string const& url();
+
   /// the node http-parser
   llhttp_t _parser;
   llhttp_settings_t _parserSettings;
-  
+
   velocypack::Buffer<uint8_t> _header;
 
   // ==== parser state ====
   std::string _lastHeaderField;
   std::string _lastHeaderValue;
-  std::string _origin;  // value of the HTTP origin header the client sent (if
+  std::string _origin;  // value of the HTTP origin header the client sent
   std::unique_ptr<HttpRequest> _request;
   std::unique_ptr<basics::StringBuffer> _response;
   bool _lastHeaderWasValue;

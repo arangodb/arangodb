@@ -33,8 +33,12 @@
 #include "search/term_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/tfidf.hpp"
+#include "search/cost.hpp"
+#include "search/score.hpp"
 
 #include "utils/bit_utils.hpp"
+#include "utils/automaton_utils.hpp"
+#include "utils/fstext/fst_table_matcher.hpp"
 
 #include "store/data_output.hpp"
 
@@ -43,7 +47,7 @@
 #include <iostream>
 #include <cassert>
 
-NS_BEGIN(tests)
+namespace tests {
 
 position::position(
     uint32_t pos, uint32_t start,
@@ -57,12 +61,12 @@ posting::posting(irs::doc_id_t id)
   : id_(id) {
 }
 
-void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs) {
-  auto& offs = attrs.get<irs::offset>();
-  auto& pay = attrs.get<irs::payload>();
+void posting::add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs) {
+  auto* offs = irs::get<irs::offset>(attrs);
+  auto* pay = irs::get<irs::payload>(attrs);
 
-  uint32_t start = irs::offset::INVALID_OFFSET;
-  uint32_t end = irs::offset::INVALID_OFFSET;
+  uint32_t start = std::numeric_limits<uint32_t>::max();
+  uint32_t end = std::numeric_limits<uint32_t>::max();
   if (offs) {
     start = offs_start + offs->start;
     end = offs_start + offs->end;
@@ -92,7 +96,7 @@ field::field(
   this->features = features;
 }
 
-field::field(field&& rhs) NOEXCEPT
+field::field(field&& rhs) noexcept
   : field_meta(std::move(rhs)),
     terms( std::move(rhs.terms)),
     docs(std::move(rhs.docs)),
@@ -120,13 +124,13 @@ size_t field::remove(const irs::bytes_ref& t) {
 
 index_segment::index_segment() : count_( 0 ) {}
 
-index_segment::index_segment(index_segment&& rhs) NOEXCEPT
+index_segment::index_segment(index_segment&& rhs) noexcept
   : fields_( std::move( rhs.fields_)),
     count_( rhs.count_) {
   rhs.count_ = 0;
 }
 
-index_segment& index_segment::operator=(index_segment&& rhs) NOEXCEPT {
+index_segment& index_segment::operator=(index_segment&& rhs) noexcept {
   if ( this != &rhs ) {
     fields_ = std::move( rhs.fields_ );
     count_ = rhs.count_;
@@ -158,20 +162,20 @@ void index_segment::add(const ifield& f) {
 
   auto& stream = f.get_tokens();
 
-  auto& attrs = stream.attributes();
-  auto& term = attrs.get<irs::term_attribute>();
-  auto& inc = attrs.get<irs::increment>();
-  auto& offs = attrs.get<irs::offset>();
+  auto* term = irs::get<irs::term_attribute>(stream);
+  assert(term);
+  auto* inc = irs::get<irs::increment>(stream);
+  assert(inc);
+  auto* offs = irs::get<irs::offset>(stream);
 
   bool empty = true;
   auto doc_id = irs::doc_id_t((irs::doc_limits::min)() + count_);
 
   while (stream.next()) {
-    tests::term& trm = fld.add(term->value());
+    tests::term& trm = fld.add(term->value);
     tests::posting& pst = trm.add(doc_id);
-
-    pst.add(fld.pos, fld.offs, attrs);
     fld.pos += inc->value;
+    pst.add(fld.pos, fld.offs, stream);
     empty = false;
   }
 
@@ -184,22 +188,19 @@ void index_segment::add(const ifield& f) {
   }
 }
 
-std::string index_meta_writer::filename(
-  const irs::index_meta& meta
-) const {
+std::string index_meta_writer::filename(const irs::index_meta& meta) const {
   return std::string();
 }
 
 bool index_meta_writer::prepare(
-  irs::directory& dir,
-  irs::index_meta& meta
-) {
+    irs::directory& dir,
+    irs::index_meta& meta) {
   return true;
 }
 
 bool index_meta_writer::commit() { return true; }
 
-void index_meta_writer::rollback() NOEXCEPT { }
+void index_meta_writer::rollback() noexcept { }
 
 /* -------------------------------------------------------------------
  * index_meta_reader
@@ -327,26 +328,22 @@ void field_writer::end() { }
  * field_reader
  * ------------------------------------------------------------------*/
 
-NS_BEGIN( detail )
-
-class pos_iterator;
-
 class doc_iterator : public irs::doc_iterator {
  public:
-   doc_iterator(const irs::flags& features,
-                      const tests::term& data );
+  doc_iterator(const irs::flags& features, const tests::term& data);
 
   irs::doc_id_t value() const override {
     return doc_.value;
   }
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
+  irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    const auto it = attrs_.find(type);
+    return it == attrs_.end() ? nullptr : it->second;
   }
 
   virtual bool next() override {
     if (next_ == data_.postings.end()) {
-      doc_.value = irs::type_limits<irs::type_t::doc_id_t>::invalid();
+      doc_.value = irs::doc_limits::eof();
       return false;
     }
 
@@ -363,7 +360,7 @@ class doc_iterator : public irs::doc_iterator {
 
     if ( it == data_.postings.end() ) {
       prev_ = next_ = it;
-      return irs::type_limits<irs::type_t::doc_id_t>::eof();
+      return irs::doc_limits::eof();
     }
 
     prev_ = it;
@@ -375,29 +372,41 @@ class doc_iterator : public irs::doc_iterator {
   }
 
  private:
-  class pos_iterator: public irs::position {
+  class pos_iterator final : public irs::position {
    public:
     pos_iterator(const doc_iterator& owner, const irs::flags& features)
-      : irs::position(2), // offset + payload
-        owner_(owner) {
+      : owner_(owner) {
       if (features.check<irs::offset>()) {
-        attrs_.emplace(offs_);
+        poffs_ = &offs_;
       }
 
       if (features.check<irs::payload>()) {
-        attrs_.emplace(pay_);
+        ppay_ = &pay_;
       }
     }
 
-    void clear() override {
+    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      if (irs::type<irs::offset>::id() == type) {
+        return poffs_;
+      }
+
+      if (irs::type<irs::payload>::id() == type) {
+        return ppay_;
+      }
+
+      return nullptr;
+    }
+
+    void clear() {
       next_ = owner_.prev_->positions().begin();
       value_ = irs::type_limits<irs::type_t::pos_t>::invalid();
       offs_.clear();
-      pay_.clear();
+      pay_.value = irs::bytes_ref::NIL;
     }
 
     bool next() override {
-      if ( next_ == owner_.prev_->positions().end() ) {
+      if (next_ == owner_.prev_->positions().end()) {
+        value_ = irs::type_limits<irs::type_t::pos_t>::eof();
         return false;
       }
 
@@ -410,49 +419,59 @@ class doc_iterator : public irs::doc_iterator {
       return true;
     }
 
+    virtual void reset() override {
+      assert(false); // unsupported
+    }
+
    private:
     std::set<tests::position>::const_iterator next_;
     irs::offset offs_;
     irs::payload pay_;
+    irs::offset* poffs_{};
+    irs::payload* ppay_{};
     const doc_iterator& owner_;
   };
 
-  irs::attribute_view attrs_;
+  const tests::term& data_;
+  std::map<irs::type_info::type_id, irs::attribute*> attrs_;
   irs::document doc_;
   irs::frequency freq_;
+  irs::cost cost_;
+  irs::score score_;
   pos_iterator pos_;
-  const irs::flags& features_;
-  const tests::term& data_;
   std::set<posting>::const_iterator prev_;
   std::set<posting>::const_iterator next_;
 };
 
 doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
-  : features_( features ),
-    data_(data),
+  : data_(data),
     pos_(*this, features) {
   next_ = data_.postings.begin();
 
-  attrs_.emplace(doc_);
+  cost_.value(data_.postings.size());
+  attrs_[irs::type<irs::cost>::id()] = &cost_;
+
+  attrs_[irs::type<irs::document>::id()] = &doc_;
+  attrs_[irs::type<irs::score>::id()] = &score_;
 
   if (features.check<irs::frequency>()) {
-    attrs_.emplace(freq_);
+    attrs_[irs::type<irs::frequency>::id()] = &freq_;
   }
 
-  if (features.check< irs::position >()) {
-    attrs_.emplace(pos_);
+  if (features.check<irs::position>()) {
+    attrs_[irs::type<irs::position>::id()] = &pos_;
   }
 }
 
-class term_iterator : public irs::seek_term_iterator {
+class term_iterator final : public irs::seek_term_iterator {
  public:
-  term_iterator( const tests::field& data ) 
-    : data_( data ) {
+  explicit term_iterator(const tests::field& data) noexcept
+    : data_(data) {
     next_ = data_.terms.begin();
   }
 
-  const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
+  irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
   }
 
   const irs::bytes_ref& value() const override {
@@ -509,13 +528,12 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
   virtual doc_iterator::ptr postings(const irs::flags& features) const override {
-    return doc_iterator::make< detail::doc_iterator >( features, *prev_ );
+    return irs::memory::make_managed<doc_iterator>(data_.features & features, *prev_);
   }
 
   virtual bool seek(
       const irs::bytes_ref& term,
-      const irs::seek_term_iterator::seek_cookie& cookie
-  ) override {
+      const irs::seek_term_iterator::seek_cookie& cookie) override {
     return false;
   }
 
@@ -524,44 +542,19 @@ class term_iterator : public irs::seek_term_iterator {
   }
 
  private:
-  irs::attribute_view attrs_;
   const tests::field& data_;
-  std::set< tests::term >::const_iterator prev_;
-  std::set< tests::term >::const_iterator next_;
+  std::set<tests::term>::const_iterator prev_;
+  std::set<tests::term>::const_iterator next_;
   irs::bytes_ref value_;
 };
 
-size_t term_reader::size() const {
-  return data_.terms.size();
-}
-
-uint64_t term_reader::docs_count() const {
-  return data_.docs.size();
-}
-
-const irs::bytes_ref& (term_reader::min)() const {
-  return min_;
-}
-
-const irs::bytes_ref& (term_reader::max)() const {
-  return max_;
-}
-
 irs::seek_term_iterator::ptr term_reader::iterator() const {
-  return irs::seek_term_iterator::ptr(
-    new detail::term_iterator( data_ )
-  );
+  return irs::memory::make_managed<term_iterator>(data_);
 }
 
-const irs::field_meta& term_reader::meta() const {
-  return data_;
+irs::seek_term_iterator::ptr term_reader::iterator(irs::automaton_table_matcher& matcher) const {
+  return irs::memory::make_managed<irs::automaton_term_iterator>(matcher.GetFst(), iterator());
 }
-
-const irs::attribute_view& term_reader::attributes() const NOEXCEPT {
-  return irs::attribute_view::empty_instance();
-}
-
-NS_END
 
 field_reader::field_reader(const index_segment& data)
   : data_(data) {
@@ -569,11 +562,11 @@ field_reader::field_reader(const index_segment& data)
   readers_.reserve(data.fields().size());
 
   for (const auto& pair : data_.fields()) {
-    readers_.emplace_back(irs::term_reader::make<detail::term_reader>(pair.second));
+    readers_.emplace_back(irs::memory::make_unique<term_reader>(pair.second));
   }
 }
 
-field_reader::field_reader(field_reader&& other) NOEXCEPT
+field_reader::field_reader(field_reader&& other) noexcept
   : readers_(std::move(other.readers_)), data_(std::move(other.data_)) {
 }
 
@@ -615,28 +608,28 @@ format::format(const index_segment& data):
 }
 
 irs::index_meta_writer::ptr format::get_index_meta_writer() const {
-  return irs::index_meta_writer::make<index_meta_writer>();
+  return irs::memory::make_unique<index_meta_writer>();
 }
 
 irs::index_meta_reader::ptr format::get_index_meta_reader() const {
   // can reuse stateless reader
   static index_meta_reader reader;
 
-  return irs::memory::make_managed<irs::index_meta_reader, false>(&reader);
+  return irs::memory::to_managed<irs::index_meta_reader, false>(&reader);
 }
 
 irs::segment_meta_writer::ptr format::get_segment_meta_writer() const {
   // can reuse stateless writer
   static segment_meta_writer writer;
 
-  return irs::memory::make_managed<irs::segment_meta_writer, false>(&writer);
+  return irs::memory::to_managed<irs::segment_meta_writer, false>(&writer);
 }
 
 irs::segment_meta_reader::ptr format::get_segment_meta_reader() const {
   // can reuse stateless reader
   static segment_meta_reader reader;
 
-  return irs::memory::make_managed<irs::segment_meta_reader, false>(&reader);
+  return irs::memory::to_managed<irs::segment_meta_reader, false>(&reader);
 }
 
 irs::document_mask_reader::ptr format::get_document_mask_reader() const {
@@ -644,15 +637,15 @@ irs::document_mask_reader::ptr format::get_document_mask_reader() const {
 }
 
 irs::document_mask_writer::ptr format::get_document_mask_writer() const {
-  return irs::document_mask_writer::make<tests::document_mask_writer>(data_);
+  return irs::memory::make_managed<tests::document_mask_writer>(data_);
 }
 
 irs::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
-  return irs::field_writer::make<tests::field_writer>(data_);
+  return irs::memory::make_unique<tests::field_writer>(data_);
 }
 
 irs::field_reader::ptr format::get_field_reader() const {
-  return irs::field_reader::make<tests::field_reader>(data_);
+  return irs::memory::make_unique<tests::field_reader>(data_);
 }
 
 irs::column_meta_writer::ptr format::get_column_meta_writer() const {
@@ -671,7 +664,6 @@ irs::columnstore_reader::ptr format::get_columnstore_reader() const {
   return nullptr;
 }
 
-DEFINE_FORMAT_TYPE_NAMED(tests::format, "iresearch_format_tests")
 REGISTER_FORMAT(tests::format);
 
 /*static*/ irs::format::ptr format::make() {
@@ -682,12 +674,14 @@ REGISTER_FORMAT(tests::format);
 void assert_term(
     const irs::term_iterator& expected_term,
     const irs::term_iterator& actual_term,
-    const irs::flags& features) {
+    const irs::flags& requested_features) {
   ASSERT_EQ(expected_term.value(), actual_term.value());
 
-  const irs::doc_iterator::ptr expected_docs = expected_term.postings(features);
-  const irs::doc_iterator::ptr actual_docs = actual_term.postings(features);
+  const irs::doc_iterator::ptr expected_docs = expected_term.postings(requested_features);
+  const irs::doc_iterator::ptr actual_docs = actual_term.postings(requested_features);
 
+  ASSERT_TRUE(!irs::doc_limits::valid(expected_docs->value()));
+  ASSERT_TRUE(!irs::doc_limits::valid(actual_docs->value()));
   // check docs
   for (; expected_docs->next();) {
     ASSERT_TRUE(actual_docs->next());
@@ -695,32 +689,29 @@ void assert_term(
 
     // check document attributes
     {
-      auto& expected_attrs = expected_docs->attributes();
-      auto& actual_attrs = actual_docs->attributes();
-      ASSERT_EQ(expected_attrs.features(), actual_attrs.features());
-
-      auto& expected_freq = expected_attrs.get<irs::frequency>();
-      auto& actual_freq = actual_attrs.get<irs::frequency>();
+      auto* expected_freq = irs::get<irs::frequency>(*expected_docs);
+      auto* actual_freq = irs::get<irs::frequency>(*actual_docs);
 
       if (expected_freq) {
         ASSERT_FALSE(!actual_freq);
         ASSERT_EQ(expected_freq->value, actual_freq->value);
       }
 
-      auto& expected_pos = expected_attrs.get< irs::position >();
-      auto& actual_pos = actual_attrs.get< irs::position >();
+      auto* expected_pos = irs::get_mutable<irs::position>(expected_docs.get());
+      auto* actual_pos = irs::get_mutable<irs::position>(actual_docs.get());
 
       if (expected_pos) {
         ASSERT_FALSE(!actual_pos);
 
-        auto& expected_offs = expected_pos->attributes().get<irs::offset>();
-        auto& actual_offs = actual_pos->attributes().get<irs::offset>();
+        auto* expected_offs = irs::get<irs::offset>(*expected_pos);
+        auto* actual_offs = irs::get<irs::offset>(*actual_pos);
         if (expected_offs) ASSERT_FALSE(!actual_offs);
 
-        auto& expected_pay = expected_pos->attributes().get<irs::payload>();
-        auto& actual_pay = actual_pos->attributes().get<irs::payload>();
+        auto* expected_pay = irs::get<irs::payload>(*expected_pos);
+        auto* actual_pay = irs::get<irs::payload>(*actual_pos);
         if (expected_pay) ASSERT_FALSE(!actual_pay);
-
+        ASSERT_TRUE(!irs::pos_limits::valid(expected_pos->value()));
+        ASSERT_TRUE(!irs::pos_limits::valid(actual_pos->value()));
         for (; expected_pos->next();) {
           ASSERT_TRUE(actual_pos->next());
           ASSERT_EQ(expected_pos->value(), actual_pos->value());
@@ -734,35 +725,32 @@ void assert_term(
             ASSERT_EQ(expected_pay->value, actual_pay->value);
           }
         }
-
         ASSERT_FALSE(actual_pos->next());
+        ASSERT_TRUE(irs::pos_limits::eof(expected_pos->value()));
+        ASSERT_TRUE(irs::pos_limits::eof(actual_pos->value()));
       }
     }
   }
-
   ASSERT_FALSE(actual_docs->next());
+  ASSERT_TRUE(irs::doc_limits::eof(expected_docs->value()));
+  ASSERT_TRUE(irs::doc_limits::eof(actual_docs->value()));
 }
 
 void assert_terms_next(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
-    const irs::flags& features) {
-  // check term reader
-  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
-  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
-  ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
-  ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
-
+    const irs::flags& features,
+    irs::automaton_table_matcher* matcher) {
   irs::bytes_ref actual_min{ irs::bytes_ref::NIL };
   irs::bytes_ref actual_max{ irs::bytes_ref::NIL };
   irs::bstring actual_min_buf;
   irs::bstring actual_max_buf;
   size_t actual_size = 0;
 
-  auto expected_term = expected_term_reader.iterator();
-  auto actual_term = actual_term_reader.iterator();
-  for (; actual_term->next(); ++actual_size) {
-    ASSERT_TRUE(expected_term->next());
+  auto expected_term = matcher ? expected_term_reader.iterator(*matcher) : expected_term_reader.iterator();
+  auto actual_term = matcher ? actual_term_reader.iterator(*matcher) : actual_term_reader.iterator();
+  for (; expected_term->next(); ++actual_size) {
+    ASSERT_TRUE(actual_term->next());
 
     assert_term(*expected_term, *actual_term, features);
 
@@ -774,26 +762,25 @@ void assert_terms_next(
     actual_max_buf = actual_term->value();
     actual_max = actual_max_buf;
   }
+  //ASSERT_FALSE(actual_term->next()); // FIXME
+  //ASSERT_FALSE(actual_term->next());
 
   // check term reader
-  ASSERT_EQ(expected_term_reader.size(), actual_size);
-  ASSERT_EQ((expected_term_reader.min)(), actual_min);
-  ASSERT_EQ((expected_term_reader.max)(), actual_max);
+  if (!matcher) {
+    ASSERT_EQ(expected_term_reader.size(), actual_size);
+    ASSERT_EQ((expected_term_reader.min)(), actual_min);
+    ASSERT_EQ((expected_term_reader.max)(), actual_max);
+  }
 }
 
 void assert_terms_seek(
     const irs::term_reader& expected_term_reader,
     const irs::term_reader& actual_term_reader,
     const irs::flags& features,
+    irs::automaton_table_matcher* matcher,
     size_t lookahead /* = 10 */) {
-  // check term reader
-  ASSERT_EQ((expected_term_reader.min)(), (actual_term_reader.min)());
-  ASSERT_EQ((expected_term_reader.max)(), (actual_term_reader.max)());
-  ASSERT_EQ(expected_term_reader.size(), actual_term_reader.size());
-  ASSERT_EQ(expected_term_reader.docs_count(), actual_term_reader.docs_count());
-
-  auto expected_term = expected_term_reader.iterator();
-  auto actual_term_with_state = actual_term_reader.iterator();
+  auto expected_term = matcher ? expected_term_reader.iterator(*matcher) : expected_term_reader.iterator();
+  auto actual_term_with_state = matcher ? actual_term_reader.iterator(*matcher) : actual_term_reader.iterator();
   for (; expected_term->next();) {
     // seek with state
     {
@@ -897,11 +884,11 @@ void assert_terms_seek(
 }
 
 void assert_index(
-  const index_t& expected_index,
-  const irs::index_reader& actual_index_reader,
-  const irs::flags& features,
-  size_t skip /*= 0*/
-) {
+    const index_t& expected_index,
+    const irs::index_reader& actual_index_reader,
+    const irs::flags& features,
+    size_t skip /*= 0*/,
+    irs::automaton_table_matcher* matcher /*=nullptr*/) {
   // check number of segments
   ASSERT_EQ(expected_index.size(), actual_index_reader.size());
   size_t i = 0;
@@ -913,20 +900,20 @@ void assert_index(
       continue;
     }
 
-    /* setting up test reader/writer */
+    // setting up test reader/writer
     const tests::index_segment& expected_segment = expected_index[i];
     tests::field_reader expected_reader(expected_segment);
 
-    /* get field name iterators */
+    // get field name iterators
     auto& expected_fields = expected_segment.fields();
     auto expected_fields_begin = expected_fields.begin();
     auto expected_fields_end = expected_fields.end();
 
     auto actual_fields = actual_sub_reader.fields();
 
-    /* iterate over fields */
+    // iterate over fields
     for (;actual_fields->next(); ++expected_fields_begin) {
-      /* check field name */
+      // check field name
       ASSERT_EQ(expected_fields_begin->first, actual_fields->value().meta().name);
 
       // check field terms
@@ -937,12 +924,28 @@ void assert_index(
 
       const irs::field_meta* expected_field = expected_segment.find(expected_fields_begin->first);
       ASSERT_NE(nullptr, expected_field);
-      auto features_to_check = features & expected_field->features;
 
-      assert_terms_next(*expected_term_reader, *actual_term_reader, features_to_check);
-      assert_terms_seek(*expected_term_reader, *actual_term_reader, features_to_check);
+      // check term reader
+      ASSERT_EQ((expected_term_reader->min)(), (actual_term_reader->min)());
+      ASSERT_EQ((expected_term_reader->max)(), (actual_term_reader->max)());
+      ASSERT_EQ(expected_term_reader->size(), actual_term_reader->size());
+      ASSERT_EQ(expected_term_reader->docs_count(), actual_term_reader->docs_count());
+      ASSERT_EQ(expected_term_reader->meta(), actual_term_reader->meta());
+
+      auto* expected_freq = irs::get<irs::frequency>(*expected_term_reader);
+      auto* actual_freq = irs::get<irs::frequency>(*actual_term_reader);
+      if (expected_freq) {
+        ASSERT_NE(nullptr, actual_freq);
+        ASSERT_EQ(expected_freq->value, actual_freq->value);
+      } else {
+        ASSERT_EQ(nullptr, actual_freq);
+      }
+
+      assert_terms_next(*expected_term_reader, *actual_term_reader, features, matcher);
+      assert_terms_seek(*expected_term_reader, *actual_term_reader, features, matcher);
     }
     ++i;
+    ASSERT_EQ(expected_fields_end, expected_fields_begin);
   }
 }
 
@@ -951,14 +954,19 @@ void assert_index(
     irs::format::ptr codec,
     const index_t& expected_index,
     const irs::flags& features,
-    size_t skip /*= 0*/) {
+    size_t skip /*= 0*/,
+    irs::automaton_table_matcher* matcher /*= nullptr*/) {
   auto actual_index_reader = irs::directory_reader::open(dir, codec);
 
-  assert_index(expected_index, actual_index_reader, features, skip);
+  assert_index(expected_index, actual_index_reader, features, skip, matcher);
 }
 
-NS_END // tests
+} // tests
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+namespace iresearch {
+
+// use base irs::position type for ancestors
+template<>
+struct type<tests::doc_iterator::pos_iterator> : type<irs::position> { };
+
+}

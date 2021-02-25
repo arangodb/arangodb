@@ -46,16 +46,28 @@ class format_test_case : public index_test_base {
  public:  
   class postings;
 
-  class position: public irs::position {
+  class position final : public irs::position {
    public:
-    position(const irs::flags& features): irs::position(2) {
+    explicit position(const irs::flags& features) {
       if (features.check<irs::offset>()) {
-        attrs_.emplace(offs_);
+        poffs_ = &offs_;
       }
 
       if (features.check<irs::payload>()) {
-        attrs_.emplace(pay_);
+        ppay_ = &pay_;
       }
+    }
+
+    attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      if (irs::type<irs::offset>::id() == type) {
+        return poffs_;
+      }
+
+      if (irs::type<irs::payload>::id() == type) {
+        return ppay_;
+      }
+
+      return nullptr;
     }
 
     bool next() override {
@@ -75,17 +87,23 @@ class format_test_case : public index_test_base {
       return true;
     }
 
-    void clear() override {
-      pay_.clear();
+    void clear() {
+      pay_.value = irs::bytes_ref::NIL;
       offs_.clear();
+    }
+
+    virtual void reset() override {
+      assert(false); // unsupported
     }
 
    private:
     friend class postings;
 
     uint32_t end_;
-    irs::offset offs_{};
-    irs::payload pay_{};
+    irs::offset offs_;
+    irs::payload pay_;
+    irs::offset* poffs_{};
+    irs::payload* ppay_{};
     char pay_data_[21]; // enough to hold numbers up to max of uint64_t
   };
 
@@ -97,22 +115,25 @@ class format_test_case : public index_test_base {
     postings(
         const docs_t::const_iterator& begin,
         const docs_t::const_iterator& end,
-        const irs::flags& features = irs::flags::empty_instance()
-    )
+        const irs::flags& features = irs::flags::empty_instance())
       : next_(begin), end_(end), pos_(features) {
+      attrs_[irs::type<irs::attribute_provider_change>::id()] = &callback_;
       if (features.check<irs::frequency>()) {
         freq_.value = 10;
-        attrs_.emplace<irs::frequency>(freq_);
-
+        attrs_[irs::type<irs::frequency>::id()] = &freq_;
         if (features.check<irs::position>()) {
-          attrs_.emplace(pos_);
+          attrs_[irs::type<irs::position>::id()] = &pos_;
         }
       }
     }
 
     bool next() override {
+      if (!irs::doc_limits::valid(doc_)) {
+        callback_(*this);
+      }
+
       if (next_ == end_) {
-        doc_ = irs::type_limits<irs::type_t::doc_id_t>::eof();
+        doc_ = irs::doc_limits::eof();
         return false;
       }
 
@@ -134,17 +155,19 @@ class format_test_case : public index_test_base {
       return value();
     }
 
-    const irs::attribute_view& attributes() const NOEXCEPT override {
-      return attrs_;
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+      const auto it = attrs_.find(type);
+      return it == attrs_.end() ? nullptr : it->second;
     }
 
    private:
-    irs::attribute_view attrs_;
+    std::map<irs::type_info::type_id, irs::attribute*> attrs_;
     docs_t::const_iterator next_;
     docs_t::const_iterator end_;
     irs::frequency freq_;
+    irs::attribute_provider_change callback_;
     tests::format_test_case::position pos_;
-    irs::doc_id_t doc_{ irs::type_limits<irs::type_t::doc_id_t>::invalid() };
+    irs::doc_id_t doc_{ irs::doc_limits::invalid() };
   }; // postings 
 
   template<typename Iterator>
@@ -157,8 +180,7 @@ class format_test_case : public index_test_base {
 
     terms(const Iterator& begin, const Iterator& end,
         std::vector<irs::doc_id_t>::const_iterator doc_begin,
-        std::vector<irs::doc_id_t>::const_iterator doc_end
-    )
+        std::vector<irs::doc_id_t>::const_iterator doc_end)
       : docs_(doc_begin, doc_end), next_(begin), end_(end) {
     }
 
@@ -176,16 +198,15 @@ class format_test_case : public index_test_base {
       return val_;
     }
 
-    irs::doc_iterator::ptr postings(const irs::flags& features) const {
-      return irs::doc_iterator::make<format_test_case::postings>(
-        docs_.begin(), docs_.end()
-      );
+    irs::doc_iterator::ptr postings(const irs::flags& /*features*/) const {
+      return irs::memory::make_managed<format_test_case::postings>(
+        docs_.begin(), docs_.end());
     }
 
     void read() { }
 
-    const irs::attribute_view& attributes() const NOEXCEPT {
-      return irs::attribute_view::empty_instance();
+    irs::attribute* get_mutable(irs::type_info::type_id) noexcept {
+      return nullptr;
     }
 
    private:
@@ -196,10 +217,9 @@ class format_test_case : public index_test_base {
   }; // terms
 
   void assert_no_directory_artifacts(
-    const iresearch::directory& dir,
-    const iresearch::format& codec,
-    const std::unordered_set<std::string>& expect_additional = std::unordered_set<std::string> ()
-  ) {
+      const iresearch::directory& dir,
+      const iresearch::format& codec,
+      const std::unordered_set<std::string>& expect_additional = {}) {
     std::vector<std::string> dir_files;
     auto visitor = [&dir_files] (std::string& file) {
       // ignore lock file present in fs_directory
@@ -237,5 +257,13 @@ class format_test_case : public index_test_base {
 }; // format_test_case
 
 } // tests
+
+namespace iresearch {
+
+// use base irs::position type for ancestors
+template<>
+struct type<tests::format_test_case::position> : type<irs::position> { };
+
+}
 
 #endif // IRESEARCH_FORMAT_TEST_CASE_BASE

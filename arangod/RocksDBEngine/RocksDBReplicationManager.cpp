@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,13 +26,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/system-functions.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -46,7 +48,7 @@ static constexpr size_t maxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager()
+RocksDBReplicationManager::RocksDBReplicationManager(RocksDBEngine& engine)
     : _lock(), _contexts(), _isShuttingDown(false) {
   _contexts.reserve(64);
 }
@@ -98,9 +100,16 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, SyncerId const syncerId, TRI_server_id_t const clientId) {
-  auto context = std::make_unique<RocksDBReplicationContext>(ttl, syncerId, clientId);
-  TRI_ASSERT(context != nullptr);
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(
+    RocksDBEngine& engine, double ttl, SyncerId const syncerId, ServerId const clientId,
+    std::string const& patchCount) {
+  // patchCount should only be set on single servers or DB servers
+  TRI_ASSERT(patchCount.empty() ||
+             (ServerState::instance()->isSingleServer() || ServerState::instance()->isDBServer())); 
+ 
+  auto context =
+      std::make_unique<RocksDBReplicationContext>(engine, ttl, syncerId, clientId);
+
   TRI_ASSERT(context->isUsed());
 
   RocksDBReplicationId const id = context->id();
@@ -111,6 +120,30 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl, 
     if (_isShuttingDown) {
       // do not accept any further contexts when we are already shutting down
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    if (!patchCount.empty()) {
+      // patchCount was set. this is happening only during the getting-in-sync
+      // protocol. now check if any other context has the same patchCount
+      // value set. in this case, the other context is responsible for applying
+      // count patches, and we have to drop ours
+      
+      // note: it is safe here to access the patchCount() method of any context,
+      // as the only place that modifies a context's _patchCount instance variable,
+      // is the call to setPatchcount() a few lines below. there is no concurrency
+      // here, as this method here is executed under a mutex. in addition, _contexts
+      // is only modified under this same mutex, 
+      bool foundOther = 
+        _contexts.end() != std::find_if(_contexts.begin(), _contexts.end(), [&patchCount](decltype(_contexts)::value_type const& entry) {
+          return entry.second->patchCount() == patchCount;
+        });
+      if (!foundOther) {
+        // no other context exists that has "leadership" for patching counts to the
+        // same collection/shard
+        context->setPatchCount(patchCount);
+      }
+      // if we found a different context here, then the other context is responsible
+      // for applying count patches.
     }
 
     _contexts.try_emplace(id, context.get());
@@ -207,8 +240,8 @@ RocksDBReplicationContext* RocksDBReplicationManager::find(RocksDBReplicationId 
 /// populates clientId
 //////////////////////////////////////////////////////////////////////////////
 
-ResultT<std::tuple<SyncerId, TRI_server_id_t, std::string>>
-RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
+ResultT<std::tuple<SyncerId, ServerId, std::string>> RocksDBReplicationManager::extendLifetime(
+    RocksDBReplicationId id, double ttl) {
   MUTEX_LOCKER(mutexLocker, _lock);
 
   auto it = _contexts.find(id);
@@ -217,6 +250,9 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
     // not found
     return {TRI_ERROR_CURSOR_NOT_FOUND};
   }
+
+  LOG_TOPIC("71234", TRACE, Logger::REPLICATION)
+      << "extending lifetime of replication context " << id;
 
   RocksDBReplicationContext* context = it->second;
   TRI_ASSERT(context != nullptr);
@@ -228,7 +264,7 @@ RocksDBReplicationManager::extendLifetime(RocksDBReplicationId id, double ttl) {
 
   // populate clientId
   SyncerId const syncerId = context->syncerId();
-  TRI_server_id_t const clientId = context->replicationClientServerId();
+  ServerId const clientId = context->replicationClientServerId();
   std::string const& clientInfo = context->clientInfo();
 
   context->extendLifetime(ttl);
@@ -291,6 +327,8 @@ bool RocksDBReplicationManager::containsUsedContext() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase != nullptr);
+
   LOG_TOPIC("ce3b0", TRACE, Logger::REPLICATION)
       << "dropping all replication contexts for database " << vocbase->name();
 
@@ -303,6 +341,30 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
   }
 
   garbageCollect(false);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drop contexts by collection (at least mark them as deleted)
+////////////////////////////////////////////////////////////////////////////////
+
+void RocksDBReplicationManager::drop(LogicalCollection* collection) {
+  TRI_ASSERT(collection != nullptr);
+
+  LOG_TOPIC("fe4bb", TRACE, Logger::REPLICATION)
+      << "dropping all replication contexts for collection " << collection->name();
+
+  bool found = false;
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    for (auto& context : _contexts) {
+      found |= context.second->removeCollection(*collection);
+    }
+  }
+
+  if (found) {
+    garbageCollect(false);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

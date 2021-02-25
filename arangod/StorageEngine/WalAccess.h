@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ namespace arangodb {
 struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
+  WalAccessResult(ErrorCode code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : _result(code),
         _fromTickIncluded(ft),
@@ -56,7 +56,7 @@ struct WalAccessResult {
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
                          TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;
@@ -70,7 +70,7 @@ struct WalAccessResult {
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
   void reset(Result const& other) { _result.reset(); }
 
   // access methods
@@ -92,12 +92,12 @@ class WalAccess {
   WalAccess& operator=(WalAccess const&) = delete;
 
  protected:
-  WalAccess() {}
+  WalAccess() = default;
   virtual ~WalAccess() = default;
 
  public:
   struct Filter {
-    Filter() {}
+    Filter() = default;
 
     /// tick last scanned by the last iteration
     /// is used to find batches in rocksdb
@@ -119,17 +119,17 @@ class WalAccess {
     TRI_voc_tick_t vocbase = 0;
     /// Only output data from this collection
     /// FIXME: make a set of collections
-    TRI_voc_cid_t collection = 0;
+    DataSourceId collection = DataSourceId::none();
 
     /// only include these transactions, up to
     /// (not including) firstRegularTick
-    std::unordered_set<TRI_voc_tid_t> transactionIds;
+    std::unordered_set<TransactionId> transactionIds;
     /// @brief starting from this tick ignore transactionIds
     TRI_voc_tick_t firstRegularTick = 0;
   };
 
   typedef std::function<void(TRI_vocbase_t*, velocypack::Slice const&)> MarkerCallback;
-  typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;
+  typedef std::function<void(TransactionId, TransactionId)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
@@ -150,15 +150,15 @@ class WalAccess {
                                            TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(Filter const& filter, size_t chunkSize,
-                               TRI_voc_tid_t barrierId,
                                MarkerCallback const&) const = 0;
 };
 
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
-      : _filter(filter), _callback(c), _responseSize(0) {}
+  WalAccessContext(application_features::ApplicationServer& server,
+                   WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
+      : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() = default;
 
@@ -166,22 +166,19 @@ struct WalAccessContext {
   bool shouldHandleDB(TRI_voc_tick_t dbid) const;
 
   /// @brief check if view should be handled, might already be deleted
-  bool shouldHandleView(TRI_voc_tick_t dbid, TRI_voc_cid_t vid) const;
+  bool shouldHandleView(TRI_voc_tick_t dbid, DataSourceId vid) const;
 
   /// @brief Check if collection is in filter, will load collection
   /// and prevent deletion
-  bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  bool shouldHandleCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
 
-  LogicalCollection* loadCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
 
-  /// @brief get global unique id
-  /*std::string const& cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
-
-  /// @brief cid to collection name
-  std::string cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);*/
+ private:
+  application_features::ApplicationServer& _server;
 
  public:
   /// @brief arbitrary collection filter (inclusive)
@@ -199,7 +196,7 @@ struct WalAccessContext {
   std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
 
   // @brief collection replication UUID cache
-  std::map<TRI_voc_cid_t, CollectionGuard> _collectionCache;
+  std::map<DataSourceId, CollectionGuard> _collectionCache;
 };
 
 }  // namespace arangodb

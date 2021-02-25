@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
 #include "Basics/system-functions.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/vocbase.h"
 
@@ -159,6 +160,24 @@ void QueryCacheResultEntry::toVelocyPack(VPackBuilder& builder) const {
   builder.close();
 
   builder.close();
+}
+
+bool QueryCacheResultEntry::currentUserHasPermissions() const {
+  ExecContext const& exec = ExecContext::current();
+
+  // got a result from the query cache
+  if (!exec.isSuperuser()) {
+    for (auto& dataSource : _dataSources) {
+      auto const& dataSourceName = dataSource.second;
+
+      if (!exec.canUseCollection(dataSourceName, auth::Level::RO)) {
+        // cannot use query cache result because of permissions
+        return false;
+      }
+    }
+  }
+  
+  return true;
 }
 
 /// @brief create a database-specific cache
@@ -444,7 +463,7 @@ void QueryCacheDatabaseEntry::link(QueryCacheResultEntry* e) {
 }
 
 /// @brief create the query cache
-QueryCache::QueryCache() {}
+QueryCache::QueryCache() = default;
 
 /// @brief destroy the query cache
 QueryCache::~QueryCache() {
@@ -636,7 +655,7 @@ void QueryCache::store(TRI_vocbase_t* vocbase, std::shared_ptr<QueryCacheResultE
     return;
   }
 
-  // set insertion time
+  // set insertion time (wall-clock time, only used for displaying it later)
   e->_stamp = TRI_microtime();
 
   // get the right part of the cache to store the result in

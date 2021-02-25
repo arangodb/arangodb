@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -48,8 +50,11 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     std::tie(queued, workItem) =
         arangodb::basics::function_utils::retryUntilTimeout<arangodb::Scheduler::WorkHandle>(
             [&gcfunc]() -> std::pair<bool, arangodb::Scheduler::WorkHandle> {
-              auto off = std::chrono::seconds(1);
-              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::INTERNAL_LOW,
+              auto off = std::chrono::seconds(2);
+              // The RequestLane needs to be something which is `HIGH` priority, otherwise
+              // all threads executing this might be blocking, waiting for a lock to be
+              // released.
+              return arangodb::SchedulerFeature::SCHEDULER->queueDelay(arangodb::RequestLane::CLUSTER_INTERNAL,
                                                                        off, gcfunc);
             },
             arangodb::Logger::TRANSACTIONS,
@@ -70,13 +75,18 @@ namespace transaction {
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, "TransactionManager"), _workItem(nullptr), _gcfunc() {
+    : ApplicationFeature(server, "TransactionManager"),
+      _workItem(nullptr),
+      _gcfunc(),
+      _streamingLockTimeout(8.0),
+      _numExpiredTransactions(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_transactions_expired", 0, "Total number of expired transactions")) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-
   startsAfter<EngineSelectorFeature>();
+  startsAfter<MetricsFeature>();
   startsAfter<SchedulerFeature>();
-
   startsBefore<DatabaseFeature>();
 
   _gcfunc = [this] (bool canceled) {
@@ -90,6 +100,16 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc);
     }
   };
+}
+
+void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("transaction", "Transaction features");
+
+  options->addOption("--transaction.streaming-lock-timeout", "lock timeout in seconds "
+		     "in case of parallel access to the same streaming transaction",
+                     new DoubleParameter(&_streamingLockTimeout),
+		     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+    .setIntroducedIn(30605).setIntroducedIn(30701);
 }
 
 void ManagerFeature::prepare() {
@@ -144,6 +164,12 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() {
   MANAGER.reset();
+}
+
+void ManagerFeature::trackExpired(uint64_t numExpired) {
+  if (numExpired > 0) {
+    _numExpiredTransactions.count(numExpired);
+  }
 }
 
 }  // namespace transaction

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -31,7 +30,7 @@
 #include "utils/math_utils.hpp"
 #include "utils/std.hpp"
 
-NS_LOCAL
+namespace {
 
 // returns maximum number of skip levels needed to store specified
 // count of objects for skip list with
@@ -39,22 +38,22 @@ NS_LOCAL
 inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
   size_t levels = 0;
   if (skip_0 < count) {
-    levels = 1 + iresearch::math::log(count/skip_0, skip_n);
+    levels = 1 + irs::math::log(count/skip_0, skip_n);
   }
   return levels;
 }
 
-const size_t UNDEFINED = iresearch::integer_traits<size_t>::const_max;
+const size_t UNDEFINED = irs::integer_traits<size_t>::const_max;
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                       skip_writer implementation
 // ----------------------------------------------------------------------------
 
-skip_writer::skip_writer(size_t skip_0, size_t skip_n) NOEXCEPT
+skip_writer::skip_writer(size_t skip_0, size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
@@ -140,7 +139,7 @@ void skip_writer::flush(index_output& out) {
   });
 }
 
-void skip_writer::reset() NOEXCEPT {
+void skip_writer::reset() noexcept {
   for(auto& level : levels_) {
     level.stream.reset();
   }
@@ -158,7 +157,7 @@ skip_reader::level::level(
     uint64_t child /*= 0*/,
     size_t skipped /*= 0*/,
     doc_id_t doc /*= doc_limits::invalid()*/
-) NOEXCEPT
+) noexcept
   : stream(std::move(stream)), // thread-safe input
     begin(begin), 
     end(end),
@@ -166,16 +165,6 @@ skip_reader::level::level(
     step(step),
     skipped(skipped),
     doc(doc) {
-}
-
-skip_reader::level::level(skip_reader::level&& rhs) NOEXCEPT 
-  : stream(std::move(rhs.stream)),
-    begin(rhs.begin),
-    end(rhs.end),
-    child(rhs.child),
-    step(rhs.step), 
-    skipped(rhs.skipped),
-    doc(rhs.doc) {
 }
 
 index_input::ptr skip_reader::level::dup() const {
@@ -188,9 +177,8 @@ index_input::ptr skip_reader::level::dup() const {
     throw io_error("failed to duplicate document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 byte_type skip_reader::level::read_byte() {
@@ -212,9 +200,8 @@ index_input::ptr skip_reader::level::reopen() const {
     throw io_error("failed to reopen document input");
   }
 
-  return index_input::make<skip_reader::level>(
-    std::move(clone), step, begin, end, child, skipped, doc
-  );
+  return memory::make_unique<skip_reader::level>(
+    std::move(clone), step, begin, end, child, skipped, doc);
 }
 
 size_t skip_reader::level::file_pointer() const {
@@ -242,7 +229,7 @@ int64_t skip_reader::level::checksum(size_t offset) const {
 
 skip_reader::skip_reader(
     size_t skip_0, 
-    size_t skip_n) NOEXCEPT
+    size_t skip_n) noexcept
   : skip_0_(skip_0), skip_n_(skip_n) {
 }
 
@@ -393,8 +380,4 @@ void skip_reader::prepare(index_input::ptr&& in, const read_f& read /* = nop */)
   read_ = read;
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

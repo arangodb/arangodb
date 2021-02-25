@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,6 @@
 #include "Graph/TraverserOptions.h"
 
 namespace arangodb {
-class CollectionNameResolver;
 
 namespace graph {
 struct BaseOptions;
@@ -41,10 +40,7 @@ class Traverser;
 
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
-  // Traverser Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, uint64_t, graph::BaseOptions*);
-  // ShortestPath Variant
-  ClusterEdgeCursor(arangodb::velocypack::StringRef vid, bool isBackward, graph::BaseOptions*);
+  explicit ClusterEdgeCursor(graph::BaseOptions const* opts);
 
   ~ClusterEdgeCursor() = default;
 
@@ -55,15 +51,36 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   /// @brief number of HTTP requests performed.
   size_t httpRequests() const override { return _httpRequests; }
 
- private:
+ protected:
   std::vector<arangodb::velocypack::Slice> _edgeList;
 
   size_t _position;
-  CollectionNameResolver const* _resolver;
-  arangodb::graph::BaseOptions* _opts;
+  arangodb::graph::BaseOptions const* _opts;
   arangodb::graph::ClusterTraverserCache* _cache;
   size_t _httpRequests;
 };
+
+class ClusterTraverserEdgeCursor final : public ClusterEdgeCursor {
+ public:
+
+  explicit ClusterTraverserEdgeCursor(traverser::TraverserOptions const* opts);
+  
+  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+
+  traverser::TraverserOptions const* traverserOptions() const;
+};
+
+class ClusterShortestPathEdgeCursor final : public ClusterEdgeCursor {
+ public:
+
+  explicit ClusterShortestPathEdgeCursor(graph::BaseOptions const* opts, bool backward);
+  
+  void rearm(arangodb::velocypack::StringRef vid, uint64_t depth) override;
+
+ private:
+  bool const _backward;
+};
+
 }  // namespace traverser
 }  // namespace arangodb
 

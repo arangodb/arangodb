@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,19 +23,14 @@
 
 #include "LogThread.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
-arangodb::basics::ConditionVariable* LogThread::CONDITION = nullptr;
-boost::lockfree::queue<LogMessage*>* LogThread::MESSAGES = nullptr;
-
 LogThread::LogThread(application_features::ApplicationServer& server, std::string const& name)
-    : Thread(server, name), _messages(0) {
-  MESSAGES = &_messages;
-  CONDITION = &_condition;
-}
+    : Thread(server, name), _messages(64) {}
 
 LogThread::~LogThread() {
   Logger::_threaded = false;
@@ -44,61 +39,88 @@ LogThread::~LogThread() {
   shutdown();
 }
 
-bool LogThread::log(std::unique_ptr<LogMessage>& message) {
-  if (MESSAGES->push(message.get())) {
-    // only release message if adding to the queue succeeded
-    // otherwise we would leak here
-    message.release();
+bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
+  TRI_ASSERT(message != nullptr);
+
+  TRI_IF_FAILURE("LogThread::log") {
+    // simulate a successful logging, but actually don't log anything
     return true;
   }
-  return false;
+
+  bool const isDirectLogLevel =
+             (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR || message->_level == LogLevel::WARN);
+
+  if (!_messages.push({&group, message.get()})) {
+    return false;
+  }
+
+  // only release message if adding to the queue succeeded
+  // otherwise we would leak here
+  message.release();
+
+  if (isDirectLogLevel) {
+    this->flush();
+  }
+  return true;
 }
 
-void LogThread::flush() {
+void LogThread::flush() noexcept {
   int tries = 0;
 
-  while (++tries < 500) {
-    if (MESSAGES->empty()) {
-      break;
-    }
-
-    // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
-    guard.signal();
+  while (++tries < 5 && hasMessages()) {
+    wakeup();
   }
 }
 
-void LogThread::wakeup() {
+void LogThread::wakeup() noexcept {
+#ifdef ARANGODB_SHOW_LOCK_TIME
   // cppcheck-suppress redundantPointerOp
-  CONDITION_LOCKER(guard, *CONDITION);
+  basics::ConditionLocker guard(_condition, __FILE__, __LINE__, false);
+#else
+  // cppcheck-suppress redundantPointerOp
+  CONDITION_LOCKER(guard, _condition);
+#endif
   guard.signal();
 }
 
-bool LogThread::hasMessages() { return (!MESSAGES->empty()); }
+bool LogThread::hasMessages() const noexcept { return !_messages.empty(); }
 
 void LogThread::run() {
-  LogMessage* msg;
+  constexpr uint64_t initialWaitTime = 25 * 1000;
+  constexpr uint64_t maxWaitTime = 100 * 1000;
 
+  uint64_t waitTime = initialWaitTime;
   while (!isStopping() && Logger::_active.load()) {
-    while (_messages.pop(msg)) {
-      try {
-        LogAppender::log(msg);
-      } catch (...) {
-      }
-
-      delete msg;
+    bool worked = processPendingMessages();
+    if (worked) {
+      waitTime = initialWaitTime;
+    } else {
+      waitTime *= 2;
+      waitTime = std::min(maxWaitTime, waitTime);
     }
 
     // cppcheck-suppress redundantPointerOp
-    CONDITION_LOCKER(guard, *CONDITION);
-    guard.wait(25 * 1000);
+    CONDITION_LOCKER(guard, _condition);
+    guard.wait(waitTime);
   }
 
-  while (_messages.pop(msg)) {
+  processPendingMessages();
+}
+
+bool LogThread::processPendingMessages() {
+  bool worked = false;
+  MessageEnvelope env{nullptr, nullptr};
+
+  while (_messages.pop(env)) {
+    worked = true;
+    TRI_ASSERT(env.group != nullptr);
+    TRI_ASSERT(env.msg != nullptr);
     try {
-      LogAppender::log(msg);
+      LogAppender::log(*env.group, *env.msg);
     } catch (...) {
     }
-    delete msg;
+
+    delete env.msg;
   }
+  return worked;
 }

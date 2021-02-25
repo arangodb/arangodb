@@ -18,68 +18,74 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COST_H
 #define IRESEARCH_COST_H
 
-#include "utils/attributes.hpp"
 #include <functional>
 
-NS_ROOT
+#include "utils/attribute_provider.hpp"
+#include "utils/attributes.hpp"
+
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class cost
 /// @brief represents an estimated cost of the query execution
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API cost : public attribute {
+class IRESEARCH_API cost final : public attribute {
  public:
-  typedef uint64_t cost_t;
-  typedef std::function<cost_t()> cost_f;
+  using cost_t = uint64_t;
+  using cost_f = std::function<cost_t()> ;
 
-  static const cost_t MAX = integer_traits<cost_t>::const_max;
+  static constexpr string_ref type_name() noexcept {
+    return "iresearch::cost";
+  }
+
+  static constexpr cost_t MAX = integer_traits<cost_t>::const_max;
+
+  cost() = default;
+
+  explicit cost(cost_t value) noexcept
+    : value_(value),
+      init_(true) {
+  }
+
+  explicit cost(cost_f&& func) noexcept(std::is_nothrow_move_constructible_v<cost_f>)
+    : func_(std::move(func)),
+      init_(false) {
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @returns a value of the "cost" attribute in the specified "src"
   /// collection, or "def" value if there is no "cost" attribute in "src"
   //////////////////////////////////////////////////////////////////////////////
-  static cost_t extract(const attribute_view& src, cost_t def = MAX) NOEXCEPT {
+  template<typename Provider>
+  static cost_t extract(const Provider& src, cost_t def = MAX) noexcept {
     cost::cost_t est = def;
-    auto& attr = src.get<iresearch::cost>();
+    auto* attr = irs::get<irs::cost>(src);
     if (attr) {
       est = attr->estimate();
     }
     return est;
   }
 
-  DECLARE_ATTRIBUTE_TYPE();
-  cost() = default;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @returns the estimation rule 
-  //////////////////////////////////////////////////////////////////////////////
-  const cost_f& rule() const {
-    return func_;
-  }
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation value 
   //////////////////////////////////////////////////////////////////////////////
-  cost& value(cost_t value) {
-    func_ = [value](){ return value; };
+  void value(cost_t value) noexcept {
     value_ = value;
     init_ = true;
-    return *this;
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief sets the estimation rule
   //////////////////////////////////////////////////////////////////////////////
-  cost& rule(const cost_f& eval) {
-    func_ = eval;
+  void rule(cost_f&& eval) {
+    assert(eval);
+    func_ = std::move(eval);
     init_ = false;
-    return *this;
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -87,15 +93,6 @@ class IRESEARCH_API cost : public attribute {
   /// @return estimated cost
   //////////////////////////////////////////////////////////////////////////////
   cost_t estimate() const {
-    return const_cast<cost*>(this)->estimate_impl();
-  }
-
-  void clear() {
-    init_ = false;
-  }
-
- private:
-  cost_t estimate_impl() {
     if (!init_) {
       assert(func_);
       value_ = func_();
@@ -104,14 +101,14 @@ class IRESEARCH_API cost : public attribute {
     return value_;
   }
 
+ private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  /* evaluation function */
-  cost_f func_;
-  cost_t value_ { 0 };
-  bool init_{ false };
+  cost_f func_{[]{ return 0; }}; // evaluation function
+  mutable cost_t value_{ 0 };
+  mutable bool init_{ true };
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // cost
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COST_H

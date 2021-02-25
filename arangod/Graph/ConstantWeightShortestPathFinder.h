@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 
 #include <velocypack/StringRef.h>
 #include <deque>
+#include <memory>
 
 namespace arangodb {
 
@@ -38,7 +39,7 @@ class Slice;
 }
 
 namespace graph {
-
+class EdgeCursor;
 struct ShortestPathOptions;
 
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
@@ -62,15 +63,18 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
                     arangodb::velocypack::Slice const& end,
                     arangodb::graph::ShortestPathResult& result) override;
 
+  void clear() override;
+
  private:
   void expandVertex(bool backward, arangodb::velocypack::StringRef vertex);
 
   void clearVisited();
 
-  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets,
-                     Snippets& targetSnippets, bool direction, arangodb::velocypack::StringRef& result);
+  bool expandClosure(Closure& sourceClosure, Snippets& sourceSnippets, Snippets& targetSnippets,
+                     bool direction, arangodb::velocypack::StringRef& result);
 
-  void fillResult(arangodb::velocypack::StringRef& n, arangodb::graph::ShortestPathResult& result);
+  void fillResult(arangodb::velocypack::StringRef& n,
+                  arangodb::graph::ShortestPathResult& result);
 
  private:
   Snippets _leftFound;
@@ -83,6 +87,9 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
 
   std::vector<arangodb::velocypack::StringRef> _neighbors;
   std::vector<graph::EdgeDocumentToken> _edges;
+
+  std::unique_ptr<EdgeCursor> _forwardCursor;
+  std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph

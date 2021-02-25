@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
 #include "Basics/asio_ns.h"
+
+#include <atomic>
 
 namespace arangodb {
 namespace application_features {
@@ -57,7 +59,7 @@ class IoContext {
  private:
   application_features::ApplicationServer& _server;
   IoThread _thread;
-  asio_ns::io_context::work _asioWork;
+  asio_ns::executor_work_guard<asio_ns::io_context::executor_type> _work;
   std::atomic<unsigned> _clients;
 
  public:
@@ -65,7 +67,7 @@ class IoContext {
   explicit IoContext(IoContext const&);
   ~IoContext();
   
-  int clients() const noexcept {
+  unsigned clients() const noexcept {
     return _clients.load(std::memory_order_acquire);
   }
 

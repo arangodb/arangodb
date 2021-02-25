@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,48 +25,32 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
 
-#include "AgencyCommManagerMock.h"
-
 #include "Basics/debugging.h"
+#include "Cluster/AgencyCache.h"
+#include "Network/ConnectionPool.h"
+#include "RestServer/MetricsFeature.h"
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::fuerte {
+inline namespace v1 {
+class ConnectionBuilder;
+}
+}
 
-class Store;
+struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool {
 
-} // consensus
-} // arangod
+  explicit AsyncAgencyStorePoolMock(
+    arangodb::application_features::ApplicationServer& server, ConnectionPool::Config const& config)
+    : ConnectionPool(config), _server(server), _index(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief specialization of GeneralClientConnectionMock returning results from
-///        underlying agency store
-////////////////////////////////////////////////////////////////////////////////
-class GeneralClientConnectionAgencyMock: public GeneralClientConnectionMock {
- public:
-  explicit GeneralClientConnectionAgencyMock(
-      arangodb::consensus::Store& store,
-      bool trace = false
-  ) noexcept: _store(&store), _trace(trace) {
-  }
+  explicit AsyncAgencyStorePoolMock(arangodb::application_features::ApplicationServer& server)
+    : ConnectionPool(server.getFeature<arangodb::MetricsFeature>()), _server(server), _index(0) {}
 
- protected:
-  virtual void response(arangodb::basics::StringBuffer& buffer) override;
-  virtual void request(char const* data, size_t length) override;
+  std::shared_ptr<arangodb::fuerte::Connection> createConnection(
+    arangodb::fuerte::ConnectionBuilder&) override;
 
- private:
-  std::string const& action() {
-    TRI_ASSERT(_path.size() == 4);
-    return _path[3];
-  }
+  arangodb::application_features::ApplicationServer& _server;
+  arangodb::consensus::index_t _index;
 
-  void handleRead(arangodb::basics::StringBuffer& buffer);
-  void handleWrite(arangodb::basics::StringBuffer& buffer);
-
-  arangodb::consensus::Store* _store;
-  std::vector<std::string> _path;
-  std::string _url;
-  std::string _body;
-  bool _trace;
-}; // GeneralClientConnectionAgencyMock
+};
 
 #endif

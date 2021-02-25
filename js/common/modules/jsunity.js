@@ -193,6 +193,18 @@ jsUnity.results.endTeardownAll = function(index) {
   TOTALTEARDOWNS += RESULTS.teardownAllDuration;
 };
 
+function MatchesTestFilter(key) {
+  if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
+    return true;
+  }
+  if (typeof testFilter === 'string') {
+    return key === testFilter;
+  }
+  if (Array.isArray(testFilter)) {
+    return testFilter.includes(key);
+  }
+  return false;
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs a test with context
 // //////////////////////////////////////////////////////////////////////////////
@@ -231,12 +243,13 @@ function Run (testsuite) {
   let nonMatchedTests = [];
 
   for (var key in definition) {
-    if ((testFilter !== "undefined" && testFilter !== undefined && testFilter !== null) && (key !== testFilter)) {
-      // print(`test "${key}" doesn't match "${testFilter}", skipping`);
-      nonMatchedTests.push(key);
-      continue;
-    }
     if (key.indexOf('test') === 0) {
+      if (!MatchesTestFilter(key)) {
+        // print(`test "${key}" doesn't match "${testFilter}", skipping`);
+        nonMatchedTests.push(key);
+        continue;
+      }
+
       var test = { name: key, fn: definition[key]};
 
       tests.push(test);
@@ -378,7 +391,7 @@ function RunTest (path, outputReply, filter) {
 
   content = fs.read(path);
 
-  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const getOptions = false;  ${content} }());
+  content = `(function(){ require('jsunity').jsUnity.attachAssertions(); return (function() { require('jsunity').setTestFilter(${JSON.stringify(filter)}); const runSetup = false; const getOptions = false; ${content} }());
 });`;
   f = internal.executeScript(content, undefined, path);
 

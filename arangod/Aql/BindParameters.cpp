@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -107,9 +107,9 @@ void BindParameters::stripCollectionNames(VPackSlice const& keys,
 }
 
 BindParameters::BindParameters()
-    : _builder(nullptr), _parameters(), _processed(false) {}
+    : _parameters(), _processed(false) {}
 
-BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder>  builder)
+BindParameters::BindParameters(std::shared_ptr<arangodb::velocypack::Builder> builder)
     : _builder(std::move(builder)), _parameters(), _processed(false) {}
 
 BindParametersType& BindParameters::get() {

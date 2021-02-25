@@ -1,0 +1,34 @@
+
+<div class="filterSelectBox">
+  <div class="filterLabel"><%=name%><span><i class="fa fa-close" id="closeFilter"></i></span></div>
+
+  <div class="filterInput">
+    <input type="text" id="<%=name%>-filter" placeholder="Filter <%=name%>" aria-label="Filter labels" autocomplete="off">
+  </div>
+
+  <div class="filterOptions">
+    <div id="showAll"><strong>Show all</strong></div>
+    <% var cssClass; %>
+    <% _.each(options, function (option) { %>
+      <% if (option.active) { %>
+      <%  cssClass = 'active'; %>
+      <% } else { %> 
+      <% cssClass = 'inactive'; %>
+      <% } %>
+      <div class="<%=cssClass%>" name="<%=option.name%>" id="<%=option.name%>-option">
+        <% var color = option.color || '#f6f8fa'; %>
+     
+        <% if (cssClass === 'active') { %>
+          <span class="marked"><i class="fa fa-check"></i></span>
+        <% } else { %>
+          <span style="visibility: hidden;" class="marked"><i class="fa fa-check"></i></span>
+        <% } %>
+
+        <span class="color" style="background-color: <%=color%>">&nbsp;</span>
+        <span class="name"><%=option.name%></span>
+      </div>
+    <% }); %>
+  </div>
+
+</div>
+

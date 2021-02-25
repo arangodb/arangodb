@@ -1,0 +1,20 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_UY{
+    %%Parent{"es_419"}
+    Currencies{
+        USD{
+            "US$",
+            "dólar estadounidense",
+        }
+        UYU{
+            "$",
+            "peso uruguayo",
+        }
+        UYW{
+            "UP",
+            "unidad previsional uruguayo",
+        }
+    }
+    Version{"2.1.47.70"}
+}

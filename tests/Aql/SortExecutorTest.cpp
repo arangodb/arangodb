@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,23 +26,26 @@
 
 #include "gtest/gtest.h"
 
-#include "fakeit.hpp"
+#include "AqlExecutorTestCase.h"
+#include "TestLambdaExecutor.h"
 
 #include "RowFetcherHelper.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SortExecutor.h"
-#include "Aql/ConstrainedSortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/Stats.h"
+#include "Aql/SubqueryStartExecutor.h"
 #include "Aql/Variable.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "AqlItemBlockHelper.h"
 #include "search/sort.hpp"
 
 #include <velocypack/Builder.h>
@@ -52,148 +56,218 @@ using namespace arangodb::aql;
 
 namespace arangodb::tests::aql {
 
-class SortExecutorTest : public ::testing::Test {
+using SortTestHelper = ExecutorTestHelper<1, 1>;
+using SortSplitType = SortTestHelper::SplitType;
+using SortInputParam = std::tuple<SortSplitType>;
+
+class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
  protected:
-  ExecutionState state;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-
-  velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
-
-  Variable sortVar;
-  SortElement sl;
-  SortRegister sortReg;
-  std::vector<SortRegister> sortRegisters;
-
-  SortExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        sortVar("mySortVar", 0),
-        sl(&sortVar, true),
-        sortReg(0, sl) {
-    sortRegisters.emplace_back(std::move(sortReg));
+  auto getSplit() -> SortSplitType {
+    auto const& [split] = GetParam();
+    return split;
   }
+
+  auto makeRegisterInfos(size_t nestingLevel = 1) -> RegisterInfos {
+    SortElement sl{&sortVar, true};
+    SortRegister sortReg{0, sl};
+    std::vector<SortRegister> sortRegisters;
+    sortRegisters.emplace_back(std::move(sortReg));
+    TRI_ASSERT(nestingLevel > 0);
+    RegIdSetStack toKeepStack{};
+    for (size_t i = 0; i < nestingLevel; ++i) {
+      toKeepStack.emplace_back(RegIdSet{0});
+    }
+    return RegisterInfos(RegIdSet{sortReg.reg}, {}, 1, 1, {}, std::move(toKeepStack));
+  }
+
+  auto makeExecutorInfos() -> SortExecutorInfos {
+    SortElement sl{&sortVar, true};
+    SortRegister sortReg{0, sl};
+    std::vector<SortRegister> sortRegisters;
+    sortRegisters.emplace_back(std::move(sortReg));
+    return SortExecutorInfos(1, 1, {}, std::move(sortRegisters),
+                             /*limit (ignored for default sort)*/ 0, manager(),
+                             vpackOptions, monitor, false);
+  }
+
+  auto makeSubqueryRegisterInfos(size_t nestingLevel) -> RegisterInfos {
+    TRI_ASSERT(nestingLevel > 0);
+    RegIdSetStack toKeepStack{};
+    for (size_t i = 0; i < nestingLevel; ++i) {
+      toKeepStack.emplace_back(RegIdSet{0});
+    }
+    return RegisterInfos(RegIdSet{0}, {}, 1, 1, {}, std::move(toKeepStack));
+  }
+
+  auto dropAllLambdaExecutorInfos() -> TestLambdaSkipExecutor::Infos {
+    auto dropAll = [](AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+        -> std::tuple<ExecutorState, TestLambdaSkipExecutor::Stats, AqlCall> {
+      while (input.hasDataRow() && !output.isFull()) {
+        auto const [state, row] = input.nextDataRow();
+        // Just drop!
+      }
+      NoStats stats{};
+      // Fetch all
+      AqlCall call{};
+      return {input.upstreamState(), stats, call};
+    };
+    auto dropSkipAll = [](AqlItemBlockInputRange& input, AqlCall& inCall)
+        -> std::tuple<ExecutorState, TestLambdaSkipExecutor::Stats, size_t, AqlCall> {
+      while (input.hasDataRow()) {
+        auto const [state, row] = input.nextDataRow();
+        // Just drop!
+      }
+      NoStats stats{};
+      AqlCall call{};
+
+      return {input.upstreamState(), stats, 0, call};
+    };
+    return TestLambdaSkipExecutor::Infos{dropAll, dropSkipAll};
+  }
+
+ private:
+  velocypack::Options const* vpackOptions{&velocypack::Options::Defaults};
+  Variable sortVar{"mySortVar", 0, false};
 };
 
-TEST_F(SortExecutorTest, no_rows_upstream_producer_doesnt_wait) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-                          /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
-  VPackBuilder input;
-  AllRowsFetcherHelper fetcher(input.steal(), false);
-  SortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
+template <size_t... vs>
+const SortSplitType splitIntoBlocks = SortSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const SortSplitType splitStep = SortSplitType{step};
 
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+INSTANTIATE_TEST_CASE_P(SortExecutorTest, SortExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>,
+                                          splitStep<1>, splitStep<2>));
+
+TEST_P(SortExecutorTest, does_sort_all) {
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{1}, {2}, {3}, {4}, {5}})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-TEST_F(SortExecutorTest, no_rows_upstream_producer_waits) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-                          /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
-  VPackBuilder input;
-  AllRowsFetcherHelper fetcher(input.steal(), true);
-  SortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::WAITING);
-  ASSERT_FALSE(result.produced());
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
+TEST_P(SortExecutorTest, no_input) {
+  AqlCall call{};          // unlimited produce
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({})
+      .expectOutput({0}, {})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
-
-TEST_F(SortExecutorTest, rows_upstream_we_are_waiting_for_list_of_numbers) {
-  SortExecutorInfos infos(std::move(sortRegisters),
-                          /*limit (ignored for default sort)*/ 0,
-                          itemBlockManager, 1, 1, {}, {0}, vpackOptions, false);
-  std::shared_ptr<VPackBuilder> input =
-      VPackParser::fromJson("[[5],[3],[1],[2],[4]]");
-  AllRowsFetcherHelper fetcher(input->steal(), true);
-  SortExecutor testee(fetcher, infos);
-  // Use this instead of std::ignore, so the tests will be noticed and
-  // updated when someone changes the stats type in the return value of
-  // EnumerateListExecutor::produceRows().
-  NoStats stats{};
-
-  OutputAqlItemRow result{std::move(block), infos.getOutputRegisters(),
-                          infos.registersToKeep(), infos.registersToClear()};
-  // Wait, 5, Wait, 3, Wait, 1, Wait, 2, Wait, 4, HASMORE
-  for (size_t i = 0; i < 5; ++i) {
-    std::tie(state, stats) = testee.produceRows(result);
-    ASSERT_EQ(state, ExecutionState::WAITING);
-    ASSERT_FALSE(result.produced());
-  }
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::HASMORE);
-  ASSERT_TRUE(result.produced());
-
-  result.advanceRow();
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_TRUE(result.produced());
-
-  block = result.stealBlock();
-  AqlValue v = block->getValue(0, 0);
-  ASSERT_TRUE(v.isNumber());
-  int64_t number = v.toInt64();
-  ASSERT_EQ(number, 1);
-
-  v = block->getValue(1, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(number, 2);
-
-  v = block->getValue(2, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(number, 3);
-
-  v = block->getValue(3, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(number, 4);
-
-  v = block->getValue(4, 0);
-  ASSERT_TRUE(v.isNumber());
-  number = v.toInt64();
-  ASSERT_EQ(number, 5);
+TEST_P(SortExecutorTest, skip) {
+  AqlCall call{2};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{3}, {4}, {5}})
+      .setCall(call)
+      .expectSkipped(2)
+      .expectedState(ExecutionState::DONE)
+      .run();
 }
 
+TEST_P(SortExecutorTest, hard_limit) {
+  AqlCall call{0, false, 2, AqlCall::LimitType::HARD};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{1}, {2}})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, soft_limit) {
+  AqlCall call{0, false, 2, AqlCall::LimitType::SOFT};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{1}, {2}})
+      .setCall(call)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::HASMORE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, fullcount) {
+  AqlCall call{0, true, 2, AqlCall::LimitType::HARD};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{1}, {2}})
+      .setCall(call)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, skip_produce_fullcount) {
+  AqlCall call{2, true, 2, AqlCall::LimitType::HARD};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {{3}, {4}})
+      .setCall(call)
+      .expectSkipped(3)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, skip_too_much) {
+  AqlCall call{10, false};
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SortExecutor>(makeRegisterInfos(), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputSplitType(getSplit())
+      .setInputValue({{5}, {3}, {1}, {2}, {4}})
+      .expectOutput({0}, {})
+      .setCall(call)
+      .expectSkipped(5)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(SortExecutorTest, skip_nested_subquery_no_data) {
+  // Take a double nested subquery-fetch all Stack
+  AqlCallStack callStack{AqlCallList{AqlCall{}}};
+  callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+  callStack.pushCall(AqlCallList{AqlCall{}, AqlCall{}});
+
+  ExecutionStats stats{};  // No stats here
+  makeExecutorTestHelper()
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(2), makeSubqueryRegisterInfos(2), ExecutionNode::SUBQUERY_START)
+      .addConsumer<TestLambdaSkipExecutor>(makeSubqueryRegisterInfos(2), dropAllLambdaExecutorInfos(), ExecutionNode::FILTER)
+      .addConsumer<SubqueryStartExecutor>(makeSubqueryRegisterInfos(3), makeSubqueryRegisterInfos(3), ExecutionNode::SUBQUERY_START)
+      .addConsumer<SortExecutor>(makeRegisterInfos(3), makeExecutorInfos(), ExecutionNode::SORT)
+      .setInputValue({{1}})
+      .expectOutput({0}, {{1}}, {{0, 1}})
+      .setCallStack(callStack)
+      .expectSkipped(0, 0, 0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
 }  // namespace arangodb::tests::aql

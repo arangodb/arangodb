@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,13 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
-#include <iomanip>
-#include <sstream>
+#include <string>
 #include <unordered_map>
 
 #include "LogTimeFormat.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
@@ -48,6 +48,19 @@ std::unordered_map<std::string, arangodb::LogTimeFormats::TimeFormat> const form
 };
 
 std::chrono::time_point<std::chrono::system_clock> const startTime = std::chrono::system_clock::now();
+    
+void appendNumber(uint64_t value, std::string& out, size_t size) {
+  char buffer[22];
+  size_t len = arangodb::basics::StringUtils::itoa(value, &buffer[0]);
+  while (len < size) {
+    // zero-padding at the beginning of the output buffer, because
+    // we haven't yet written our number into it
+    out.push_back('0');
+    --size;
+  }
+  // now, after zero-padding, write our number into the output
+  out.append(&buffer[0], len);
+}
 
 }
 
@@ -57,6 +70,14 @@ namespace LogTimeFormats {
 /// @brief whether or not the specified format is a local one
 bool isLocalFormat(TimeFormat format) {
   return format == TimeFormat::LocalDateString; 
+}
+
+/// @brief whether or not the specified format produces string outputs
+/// (in contrast to numeric outputs)
+bool isStringFormat(TimeFormat format) {
+  return format == TimeFormat::UTCDateString ||
+         format == TimeFormat::UTCDateStringMillis ||
+         format == TimeFormat::LocalDateString;
 }
 
 /// @brief return the name of the default log time format
@@ -86,49 +107,74 @@ TimeFormat formatFromName(std::string const& name) {
   return (*it).second;
 }
   
-void writeTime(std::ostream& out, TimeFormat format) {
-  std::chrono::system_clock::time_point tp = std::chrono::system_clock::now();
+void writeTime(std::string& out, 
+               TimeFormat format, 
+               std::chrono::system_clock::time_point tp,
+               std::chrono::system_clock::time_point startTp) {
+  using namespace date;
+  using namespace std::chrono;
 
-  if (format == TimeFormat::Uptime) {
+  if (format == TimeFormat::Uptime ||
+      format == TimeFormat::UptimeMillis ||
+      format == TimeFormat::UptimeMicros) {
+    if (startTp == system_clock::time_point()) {
+      // if startTp is not set by caller, we will use the recorded start time.
+      // this way it can be overriden easily from tests
+      startTp = ::startTime;
+    }
     // integral uptime value
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp - ::startTime).count();
-  } else if (format == TimeFormat::UptimeMillis) {
-    // uptime with millisecond precision
-    std::chrono::system_clock::time_point tp2(std::chrono::duration_cast<std::chrono::seconds>(tp - ::startTime));
-    std::chrono::system_clock::time_point tp3(std::chrono::duration_cast<std::chrono::milliseconds>(tp - ::startTime));
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp2.time_since_epoch()).count() << '.' 
-        << std::setfill('0') << std::setw(3) 
-        << std::chrono::duration_cast<std::chrono::milliseconds>(tp3 - tp2).count();
-  } else if (format == TimeFormat::UptimeMicros) {
-    // uptime with microsecond precision
-    std::chrono::system_clock::time_point tp2(std::chrono::duration_cast<std::chrono::seconds>(tp - ::startTime));
-    std::chrono::system_clock::time_point tp3(std::chrono::duration_cast<std::chrono::microseconds>(tp - ::startTime));
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp2.time_since_epoch()).count() << '.' 
-        << std::setfill('0') << std::setw(6) 
-        << std::chrono::duration_cast<std::chrono::microseconds>(tp3 - tp2).count();
+    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp - startTp).count()), out);
+    if (format == TimeFormat::UptimeMillis) {
+      // uptime with millisecond precision
+      out.push_back('.');
+      appendNumber(uint64_t(duration_cast<milliseconds>(tp - startTp).count() % 1000), out, 3);
+    } else if (format == TimeFormat::UptimeMicros) {
+      // uptime with microsecond precision
+      out.push_back('.');
+      appendNumber(uint64_t(duration_cast<microseconds>(tp - startTp).count() % 1000000), out, 6);
+    }
   } else if (format == TimeFormat::UnixTimestamp) {
     // integral unix timestamp
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()).count();
+    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp.time_since_epoch()).count()), out);
   } else if (format == TimeFormat::UnixTimestampMillis) {
     // unix timestamp with millisecond precision
-    std::chrono::system_clock::time_point tp2(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()));
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp2.time_since_epoch()).count() << '.'
-        << std::setfill('0') << std::setw(3) 
-        << std::chrono::duration_cast<std::chrono::milliseconds>(tp - tp2).count();
+    system_clock::time_point tp2(duration_cast<seconds>(tp.time_since_epoch()));
+    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
+    out.push_back('.');
+    appendNumber(uint64_t(duration_cast<milliseconds>(tp - tp2).count()), out, 3);
   } else if (format == TimeFormat::UnixTimestampMicros) {
     // unix timestamp with microsecond precision
-    std::chrono::system_clock::time_point tp2(std::chrono::duration_cast<std::chrono::seconds>(tp.time_since_epoch()));
-    out << std::chrono::duration_cast<std::chrono::seconds>(tp2.time_since_epoch()).count() << '.'
-        << std::setfill('0') << std::setw(6) 
-        << std::chrono::duration_cast<std::chrono::microseconds>(tp - tp2).count();
+    system_clock::time_point tp2(duration_cast<seconds>(tp.time_since_epoch()));
+    arangodb::basics::StringUtils::itoa(uint64_t(duration_cast<seconds>(tp2.time_since_epoch()).count()), out);
+    out.push_back('.');
+    appendNumber(uint64_t(duration_cast<microseconds>(tp - tp2).count()), out, 6);
   } else {
     // all date-string variants handled here
-    if (format == TimeFormat::UTCDateString) {
+    if (format == TimeFormat::UTCDateString ||
+        format == TimeFormat::UTCDateStringMillis) {
       // UTC datestring
-      out << arangodb::basics::formatDate("%yyyy-%mm-%ddT%hh:%ii:%ssZ", tp_sys_clock_ms(std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch())));
-    } else if (format == TimeFormat::UTCDateStringMillis) {
       // UTC datestring with milliseconds
-      out << arangodb::basics::formatDate("%yyyy-%mm-%ddT%hh:%ii:%ss.%fffZ", tp_sys_clock_ms(std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch())));
+      arangodb::tp_sys_clock_ms secs(duration_cast<milliseconds>(tp.time_since_epoch()));
+      auto days = floor<date::days>(secs);
+      auto ymd = year_month_day(days);
+      appendNumber(uint64_t(static_cast<int>(ymd.year())), out, 4);
+      out.push_back('-');
+      appendNumber(uint64_t(static_cast<unsigned>(ymd.month())), out, 2);
+      out.push_back('-');
+      appendNumber(uint64_t(static_cast<unsigned>(ymd.day())), out, 2);
+      out.push_back('T');
+      auto day_time = make_time(secs - days);
+      appendNumber(uint64_t(day_time.hours().count()), out, 2);
+      out.push_back(':');
+      appendNumber(uint64_t(day_time.minutes().count()), out, 2);
+      out.push_back(':');
+      appendNumber(uint64_t(day_time.seconds().count()), out, 2);
+        
+      if (format == TimeFormat::UTCDateStringMillis) {
+        out.push_back('.');
+        appendNumber(uint64_t(day_time.subseconds().count()), out, 3);
+      }
+      out.push_back('Z');
     } else if (format == TimeFormat::LocalDateString) {
       // local datestring
       time_t tt = time(nullptr);
@@ -137,7 +183,7 @@ void writeTime(std::ostream& out, TimeFormat format) {
       TRI_localtime(tt, &tb);
       char buffer[32];
       strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &tb);
-      out << std::string(&buffer[0]);
+      out.append(&buffer[0]);
     }
   }
 }

@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -29,7 +28,63 @@
 #include "utils/string_utils.hpp"
 #include "utils/memory.hpp"
 
-NS_ROOT
+namespace {
+
+using namespace irs;
+
+constexpr size_t BLOCK_SIZE = 128;
+
+FORCE_INLINE void pack_block(
+    const uint32_t* RESTRICT decoded,
+    uint32_t* RESTRICT encoded,
+    const uint32_t bits) noexcept {
+  assert(encoded);
+  assert(decoded);
+
+  packed::pack_block(decoded, encoded, bits);
+  packed::pack_block(decoded + packed::BLOCK_SIZE_32, encoded + bits, bits);
+  packed::pack_block(decoded + 2*packed::BLOCK_SIZE_32, encoded + 2*bits, bits);
+  packed::pack_block(decoded + 3*packed::BLOCK_SIZE_32, encoded + 3*bits, bits);
+}
+
+FORCE_INLINE void unpack_block(
+    uint32_t* RESTRICT decoded,
+    const uint32_t* RESTRICT encoded,
+    const uint32_t bits) noexcept {
+  assert(encoded);
+  assert(decoded);
+
+  packed::unpack_block(encoded, decoded, bits);
+  packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_32, bits);
+  packed::unpack_block(encoded + 2*bits, decoded + 2*packed::BLOCK_SIZE_32, bits);
+  packed::unpack_block(encoded + 3*bits, decoded + 3*packed::BLOCK_SIZE_32, bits);
+}
+
+FORCE_INLINE void pack_block(
+    const uint64_t* RESTRICT decoded,
+    uint64_t* RESTRICT encoded,
+    const uint32_t bits) noexcept {
+  assert(encoded);
+  assert(decoded);
+
+  packed::pack_block(decoded, encoded, bits);
+  packed::pack_block(decoded + packed::BLOCK_SIZE_64, encoded + bits, bits);
+}
+
+FORCE_INLINE void unpack_block(
+    uint64_t* RESTRICT decoded,
+    const uint64_t* RESTRICT encoded,
+    const uint64_t bits) noexcept {
+  assert(encoded);
+  assert(decoded);
+
+  packed::unpack_block(encoded, decoded, bits);
+  packed::unpack_block(encoded + bits, decoded + packed::BLOCK_SIZE_64, bits);
+}
+
+}
+
+namespace iresearch {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                               read/write helpers
@@ -116,35 +171,12 @@ double_t read_zvdouble(data_input& in) {
   );
 }
 
-/* -------------------------------------------------------------------
-* skip helpers 
-* ------------------------------------------------------------------*/
-
-void skip(data_input& in, size_t to_skip,
-          byte_type* skip_buf, size_t skip_buf_size) {
-  assert(skip_buf);
-
-  while (to_skip) {
-    const auto step = std::min(skip_buf_size, to_skip);
-
-#ifdef IRESEARCH_DEBUG
-    const auto read = in.read_bytes(skip_buf, step);
-    assert(read == step);
-    UNUSED(read);
-#else
-    in.read_bytes(skip_buf, step);
-#endif // IRESEARCH_DEBUG
-
-    to_skip -= step;
-  }
-}
-
 // ----------------------------------------------------------------------------
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(encode)
-NS_BEGIN(bitpack)
+namespace encode {
+namespace bitpack {
 
 void skip_block32(index_input& in, uint32_t size) {
   assert(size);
@@ -181,23 +213,69 @@ void read_block(
   if (ALL_EQUAL == bits) {
     std::fill(decoded, decoded + size, in.read_vint());
   } else {
-    const size_t reqiured = packed::bytes_required_32(size, bits);
+    const size_t required = packed::bytes_required_32(size, bits);
+
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      packed::unpack(
+        decoded, decoded + size,
+        reinterpret_cast<const uint32_t*>(buf), bits);
+
+      return;
+    }
 
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
-    );
-    assert(read == reqiured);
+      required);
+    assert(read == required);
     UNUSED(read);
 #else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
-    );
+      required);
 #endif // IRESEARCH_DEBUG
 
     packed::unpack(decoded, decoded + size, encoded, bits);
+  }
+}
+
+void read_block(
+    data_input& in,
+    uint32_t* RESTRICT encoded,
+    uint32_t* RESTRICT decoded) {
+  assert(encoded);
+  assert(decoded);
+  constexpr size_t BLOCK_SIZE = packed::BLOCK_SIZE_32*4;
+
+  const uint32_t bits = in.read_vint();
+  if (ALL_EQUAL == bits) {
+    std::fill(decoded, decoded + BLOCK_SIZE, in.read_vint());
+  } else {
+    const size_t required = packed::bytes_required_32(BLOCK_SIZE, bits);
+
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      ::unpack_block(decoded, reinterpret_cast<const uint32_t*>(buf), bits);
+
+      return;
+    }
+
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+    assert(read == required);
+    UNUSED(read);
+#else
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+#endif // IRESEARCH_DEBUG
+
+    ::unpack_block(decoded, encoded, bits);
   }
 }
 
@@ -214,23 +292,67 @@ void read_block(
   if (ALL_EQUAL == bits) {
     std::fill(decoded, decoded + size, in.read_vlong());
   } else {
-    const auto reqiured = packed::bytes_required_64(size, bits);
+    const auto required = packed::bytes_required_64(size, bits);
+
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      packed::unpack(decoded, decoded + size,
+                     reinterpret_cast<const uint64_t*>(buf), bits);
+      return;
+    }
 
 #ifdef IRESEARCH_DEBUG
     const auto read = in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured 
-    );
-    assert(read == reqiured);
+      required);
+    assert(read == required);
     UNUSED(read);
 #else
     in.read_bytes(
       reinterpret_cast<byte_type*>(encoded),
-      reqiured
-    );
+      required);
 #endif // IRESEARCH_DEBUG
 
     packed::unpack(decoded, decoded + size, encoded, bits);
+  }
+}
+
+void read_block(
+    data_input& in,
+    uint64_t* RESTRICT encoded,
+    uint64_t* RESTRICT decoded) {
+  assert(encoded);
+  assert(decoded);
+  constexpr size_t BLOCK_SIZE = packed::BLOCK_SIZE_64*2;
+
+  const uint32_t bits = in.read_vint();
+  if (ALL_EQUAL == bits) {
+    std::fill(decoded, decoded + BLOCK_SIZE, in.read_vlong());
+  } else {
+    const auto required = packed::bytes_required_64(BLOCK_SIZE, bits);
+
+    const auto* buf = in.read_buffer(required, BufferHint::NORMAL);
+
+    if (buf) {
+      ::unpack_block(decoded, reinterpret_cast<const uint64_t*>(buf), bits);
+
+      return;
+    }
+
+#ifdef IRESEARCH_DEBUG
+    const auto read = in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+    assert(read == required);
+    UNUSED(read);
+#else
+    in.read_bytes(
+      reinterpret_cast<byte_type*>(encoded),
+      required);
+#endif // IRESEARCH_DEBUG
+
+    unpack_block(decoded, encoded, bits);
   }
 }
 
@@ -267,6 +389,31 @@ uint32_t write_block(
 
 uint32_t write_block(
     data_output& out,
+    const uint32_t* RESTRICT decoded,
+    uint32_t* RESTRICT encoded) {
+  assert(encoded);
+  assert(decoded);
+  if (irstd::all_equal(decoded, decoded + BLOCK_SIZE)) {
+    out.write_vint(ALL_EQUAL);
+    out.write_vint(*decoded);
+    return ALL_EQUAL;
+  }
+
+  const auto bits = packed::bits_required_32(decoded, decoded + BLOCK_SIZE);
+
+  std::memset(encoded, 0, sizeof(uint32_t) * BLOCK_SIZE);
+  ::pack_block(decoded, encoded, bits);
+
+  out.write_vint(bits);
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(encoded),
+    packed::bytes_required_32(BLOCK_SIZE, bits));
+
+  return bits;
+}
+
+uint32_t write_block(
+    data_output& out,
     const uint64_t* RESTRICT decoded,
     uint64_t size,
     uint64_t* RESTRICT encoded) {
@@ -281,8 +428,7 @@ uint32_t write_block(
   }
 
   const auto bits = packed::bits_required_64(
-    decoded, decoded + size
-  );
+    decoded, decoded + size);
 
   std::memset(encoded, 0, sizeof(uint64_t) * size);
   packed::pack(decoded, decoded + size, encoded, bits);
@@ -290,14 +436,40 @@ uint32_t write_block(
   out.write_vint(bits);
   out.write_bytes(
     reinterpret_cast<const byte_type*>(encoded),
-    packed::bytes_required_64(size, bits)
-  );
+    packed::bytes_required_64(size, bits));
 
   return bits;
 }
 
-NS_END // bitpack
-NS_END // encode
+uint32_t write_block(
+    data_output& out,
+    const uint64_t* RESTRICT decoded,
+    uint64_t* RESTRICT encoded) {
+  assert(encoded);
+  assert(decoded);
+  constexpr size_t BLOCK_SIZE = packed::BLOCK_SIZE_64*2;
+
+  if (irstd::all_equal(decoded, decoded + BLOCK_SIZE)) {
+    out.write_vint(ALL_EQUAL);
+    out.write_vlong(*decoded);
+    return ALL_EQUAL;
+  }
+
+  const auto bits = packed::bits_required_64(decoded, decoded + BLOCK_SIZE);
+
+  std::memset(encoded, 0, sizeof(uint64_t) * BLOCK_SIZE);
+  ::pack_block(decoded, encoded, bits);
+
+  out.write_vint(bits);
+  out.write_bytes(
+    reinterpret_cast<const byte_type*>(encoded),
+    packed::bytes_required_64(BLOCK_SIZE, bits));
+
+  return bits;
+}
+
+} // bitpack
+} // encode
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                   bytes_ref_input implementation
@@ -308,12 +480,11 @@ bytes_ref_input::bytes_ref_input(const bytes_ref& ref)
 }
 
 size_t bytes_ref_input::read_bytes(byte_type* b, size_t size) {
-    size = std::min(size, size_t(std::distance(pos_, data_.end())));
-    std::memcpy(b, pos_, sizeof(byte_type) * size);
-    pos_ += size;
-    return size;
-    //assert( pos_ + size <= data_.size() );
-  }
+  size = std::min(size, size_t(std::distance(pos_, data_.end())));
+  std::memcpy(b, pos_, sizeof(byte_type) * size);
+  pos_ += size;
+  return size;
+}
 
 // append to buf
 void bytes_ref_input::read_bytes(bstring& buf, size_t size) {
@@ -338,94 +509,4 @@ int64_t bytes_ref_input::checksum(size_t offset) const {
   return crc.checksum();
 }
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                       bytes_input implementation
-// ----------------------------------------------------------------------------
-
-bytes_input::bytes_input(const bytes_ref& data)
-  : buf_(data.c_str(), data.size()),
-    pos_(this->buf_.c_str()) {
-  this->data_ = buf_.data();
-  this->size_ = data.size();
 }
-
-bytes_input::bytes_input(bytes_input&& other) NOEXCEPT
-  : buf_(std::move(other.buf_)),
-    pos_(other.pos_) {
-  this->data_ = buf_.data();
-  this->size_ = other.size();
-  other.pos_ = other.buf_.c_str();
-  other.size_ = 0;
-}
-
-bytes_input& bytes_input::operator=(const bytes_ref& data) {
-  if (this != &data) {
-    buf_.assign(data.c_str(), data.size());
-    pos_ = this->buf_.c_str();
-    this->data_ = buf_.data();
-    this->size_ = data.size();
-  }
-
-  return *this;
-}
-
-bytes_input& bytes_input::operator=(bytes_input&& other) NOEXCEPT {
-  if (this != &other) {
-    buf_ = std::move(other.buf_);
-    pos_ = buf_.c_str();
-    this->data_ = buf_.data();
-    this->size_ = other.size();
-    other.pos_ = other.buf_.c_str();
-    other.size_ = 0;
-  }
-
-  return *this;
-}
-
-void bytes_input::read_bytes(bstring& buf, size_t size) {
-  auto used = buf.size();
-
-  buf.resize(used + size);
-
-  #ifdef IRESEARCH_DEBUG
-    const auto read = read_bytes(&(buf[0]) + used, size);
-    assert(read == size);
-    UNUSED(read);
-  #else
-    read_bytes(&(buf[0]) + used, size);
-  #endif // IRESEARCH_DEBUG
-}
-
-void bytes_input::read_from(data_input& in, size_t size) {
-  if (!size) {
-    /* nothing to read*/
-    return;
-  }
-
-  string_utils::oversize(buf_, size);
-#ifdef IRESEARCH_DEBUG
-  const auto read = in.read_bytes(&(buf_[0]), size);
-  assert(read == size);
-  UNUSED(read);
-#else
-  in.read_bytes(&(buf_[0]), size);
-#endif // IRESEARCH_DEBUG
-
-  this->data_ = buf_.data();
-  this->size_ = size;
-  pos_ = this->data_;
-}
-
-size_t bytes_input::read_bytes(byte_type* b, size_t size) {
-  assert(pos_ + size <= this->end());
-  size = std::min(size, size_t(std::distance(pos_, this->end())));
-  std::memcpy(b, pos_, sizeof(byte_type) * size);
-  pos_ += size;
-  return size;
-}
-
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

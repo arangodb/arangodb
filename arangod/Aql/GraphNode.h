@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,14 @@
 #ifndef ARANGOD_AQL_GRAPH_NODE_H
 #define ARANGOD_AQL_GRAPH_NODE_H 1
 
+#include "Aql/types.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/GraphNode.h"
+#include "Aql/Graphs.h"
 #include "Cluster/ClusterTypes.h"
-#include "Cluster/TraverserEngineRegistry.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -49,28 +54,62 @@ namespace aql {
 //        * graph info parsing
 //        * traverser-engine creation
 //        * option preparation
-//        * Smart Graph Handling
+//        * SmartGraph Handling
+class ExecutionEngine;
 
 class GraphNode : public ExecutionNode {
  public:
+  struct InputVertex {
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
+    // TODO make the following two a union instead
+    RegisterId reg;
+    std::string value;
+
+    // cppcheck-suppress passedByValue
+    explicit InputVertex(std::string value)
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
+    explicit InputVertex(RegisterId reg)
+        : type(Type::REGISTER), reg(reg), value("") {}
+  };
+
+ protected:
   /// @brief constructor with a vocbase and a collection name
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase, AstNode const* direction,
-            AstNode const* graph, std::unique_ptr<graph::BaseOptions> options);
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            AstNode const* direction, AstNode const* graph,
+            std::unique_ptr<graph::BaseOptions> options);
 
   GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
 
+ public:
+  bool isUsedAsSatellite() const;
+  bool isLocalGraphNode() const;
+  void waitForSatelliteIfRequired(ExecutionEngine const* engine) const;
+
+  bool isEligibleAsSatelliteTraversal() const;
+
  protected:
   /// @brief Internal constructor to clone the node.
-  GraphNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-            std::vector<std::unique_ptr<Collection>> const& edgeColls,
-            std::vector<std::unique_ptr<Collection>> const& vertexColls,
-            std::vector<TRI_edge_direction_e> const& directions,
+  GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+            std::vector<Collection*> const& edgeColls,
+            std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+            std::vector<TRI_edge_direction_e> directions,
+            std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph);
+
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  GraphNode(ExecutionPlan& plan, GraphNode const& other,
             std::unique_ptr<graph::BaseOptions> options);
+
+  struct THIS_THROWS_WHEN_CALLED {};
+  explicit GraphNode(THIS_THROWS_WHEN_CALLED);
 
   std::string const& collectionToShardName(std::string const& collName) const;
 
  public:
-  ~GraphNode() override;
+  ~GraphNode() override = default;
 
   void toVelocyPackHelper(arangodb::velocypack::Builder& nodes, unsigned flags,
                           std::unordered_set<ExecutionNode const*>& seen) const override;
@@ -78,8 +117,11 @@ class GraphNode : public ExecutionNode {
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 
-  /// @brief flag, if smart traversal (enterprise edition only!) is done
+  /// @brief flag, if smart traversal (Enterprise Edition only!) is done
   bool isSmart() const;
+
+  /// @brief flag, if the graph is a Disjoint SmartGraph (Enterprise Edition only!)
+  bool isDisjoint() const;
 
   /// @brief return the database
   TRI_vocbase_t* vocbase() const;
@@ -88,7 +130,7 @@ class GraphNode : public ExecutionNode {
   Variable const* vertexOutVariable() const;
 
   /// @brief checks if the vertex out variable is used
-  bool usesVertexOutVariable() const;
+  bool isVertexOutVariableUsedLater() const;
 
   /// @brief set the vertex out variable
   void setVertexOutput(Variable const* outVar);
@@ -97,7 +139,7 @@ class GraphNode : public ExecutionNode {
   Variable const* edgeOutVariable() const;
 
   /// @brief checks if the edge out variable is used
-  bool usesEdgeOutVariable() const;
+  bool isEdgeOutVariableUsedLater() const;
 
   /// @brief set the edge out variable
   void setEdgeOutput(Variable const* outVar);
@@ -117,32 +159,57 @@ class GraphNode : public ExecutionNode {
 
   /// @brief Add a traverser engine Running on a DBServer to this node.
   ///        The block will communicate with them (CLUSTER ONLY)
-  void addEngine(traverser::TraverserEngineID const&, ServerID const&);
+  void addEngine(aql::EngineId, ServerID const&);
 
   /// @brief enhance the TraversalEngine with all necessary info
   ///        to be send to DBServers (CLUSTER ONLY)
   void enhanceEngineInfo(arangodb::velocypack::Builder&) const;
 
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const;
+  std::unordered_map<ServerID, aql::EngineId> const* engines() const;
 
-  std::vector<std::unique_ptr<aql::Collection>> const& edgeColls() const;
+  /// @brief Clears the graph Engines. (CLUSTER ONLY)
+  /// NOTE: Use with care, if you do not refill
+  /// the engines this graph node cannot communicate.
+  /// and will yield no results.
+  void clearEngines();
 
-  std::vector<std::unique_ptr<aql::Collection>> const& vertexColls() const;
+  std::vector<aql::Collection*> const& edgeColls() const;
+
+  std::vector<aql::Collection*> const& vertexColls() const;
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
-  /// @brief return any of the collections
+  /// @brief return any of the collections.
+  /// Note that GraphNode::collection() is different from
+  /// LocalGraphNode::collection(), which comes from
+  /// CollectionAccessingNode::collection(). It may return a different
+  /// collection!
   Collection const* collection() const;
 
-  void injectVertexCollection(aql::Collection const* other);
+  void injectVertexCollection(aql::Collection& other);
 
-  std::vector<aql::Collection const*> const collections() const;
-  void setCollectionToShard(std::map<std::string, std::string> const& map) { _collectionToShard = map; }
-  void addCollectionToShard(std::string const& coll, std::string const& shard) { _collectionToShard.emplace(coll,shard); }
+  std::vector<aql::Collection const*> collections() const;
+  void setCollectionToShard(std::map<std::string, std::string> const& map) {
+    _collectionToShard = map;
+  }
+  void addCollectionToShard(std::string const& coll, std::string const& shard) {
+    // NOTE: Do not replace this by emplace or insert.
+    // This is also used to overwrite the existing entry.
+    _collectionToShard[coll] = shard;
+  }
+
+ public:
+  graph::Graph const* graph() const noexcept;
 
  private:
-  void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collections const& collections, std::string const& name, TRI_edge_direction_e dir);
+  void addEdgeCollection(aql::Collection& collection, TRI_edge_direction_e dir);
+  void addVertexCollection(aql::Collections const& collections, std::string const& name);
+  void addVertexCollection(aql::Collection& collection);
+
+  void setGraphInfoAndCopyColls(std::vector<Collection*> const& edgeColls,
+                                std::vector<Collection*> const& vertexColls);
 
  protected:
   /// @brief the database
@@ -170,13 +237,24 @@ class GraphNode : public ExecutionNode {
   arangodb::velocypack::Builder _graphInfo;
 
   /// @brief the edge collection names
-  std::vector<std::unique_ptr<aql::Collection>> _edgeColls;
+  std::vector<aql::Collection*> _edgeColls;
 
-  /// @brief the vertex collection names
-  std::vector<std::unique_ptr<aql::Collection>> _vertexColls;
+  /// @brief the vertex collection names (can also be edge collections
+  /// as an edge can also point to another edge, instead of a vertex).
+  std::vector<aql::Collection*> _vertexColls;
 
   /// @brief The default direction given in the query
-  TRI_edge_direction_e _defaultDirection;
+  TRI_edge_direction_e const _defaultDirection;
+
+  /// @brief Flag if the options have been built.
+  /// Afterwards this class is not copyable anymore.
+  bool _optionsBuilt;
+
+  /// @brief flag, if graph is smart (Enterprise Edition only!)
+  bool _isSmart;
+
+  /// @brief flag, if graph is smart *and* disjoint (Enterprise Edition only!)
+  bool _isDisjoint;
 
   /// @brief The directions edges are followed
   std::vector<TRI_edge_direction_e> _directions;
@@ -184,18 +262,10 @@ class GraphNode : public ExecutionNode {
   /// @brief Options for traversals
   std::unique_ptr<graph::BaseOptions> _options;
 
-  /// @brief Pseudo string value node to hold the last visited vertex id.
-  /// @brief Flag if the options have been build.
-  /// Afterwards this class is not copyable anymore.
-  bool _optionsBuilt;
-
   /// @brief The list of traverser engines grouped by server.
-  std::unordered_map<ServerID, traverser::TraverserEngineID> _engines;
+  std::unordered_map<ServerID, aql::EngineId> _engines;
 
-  /// @brief flag, if graph is smart (enterprise edition only!)
-  bool _isSmart;
-
-  /// @brief list of shards involved, requried for one-shard-databases
+  /// @brief list of shards involved, required for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
 };
 

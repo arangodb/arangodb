@@ -259,11 +259,6 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_DOWNLOAD;
   }
 
-  if (global.SYS_CLUSTER_DOWNLOAD) {
-    exports.clusterDownload = global.SYS_CLUSTER_DOWNLOAD;
-    delete global.SYS_CLUSTER_DOWNLOAD;
-  }
-
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief executeScript
   // //////////////////////////////////////////////////////////////////////////////
@@ -1667,19 +1662,19 @@ global.DEFINE_MODULE('internal', (function () {
   // / @brief isArangod - find out if we are in arangod or arangosh
   // //////////////////////////////////////////////////////////////////////////////
   exports.isArangod = function() {
-    return (typeof ArangoClusterComm === "object");
+    return (typeof ArangoClusterInfo === "object");
   };
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief isArangod - find out if we are in a cluster setup or not
   // //////////////////////////////////////////////////////////////////////////////
   exports.isCluster = function() {
-    if(exports.isArangod()) {
+    if (exports.isArangod()) {
       return require("@arangodb/cluster").isCluster();
     } else {
       // ask remote it is a coordinator
       const response = exports.arango.GET('/_admin/server/role');
-      if(response.error === true) {
+      if (response.error === true) {
         throw new exports.ArangoError(response);
       }
       return (response.role === "COORDINATOR");
@@ -1731,6 +1726,15 @@ global.DEFINE_MODULE('internal', (function () {
     delete global.SYS_OPTIONS;
   }
   
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief options
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (typeof ENCRYPTION_KEY_RELOAD !== 'undefined') {
+    exports.encryptionKeyReload = global.ENCRYPTION_KEY_RELOAD;
+    delete global.ENCRYPTION_KEY_RELOAD;
+  }
+
   let testsBasePaths = {};
   exports.pathForTesting = function(path, prefix = 'js') {
     let fs = require('fs');

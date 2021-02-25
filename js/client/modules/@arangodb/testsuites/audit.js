@@ -36,7 +36,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const fs = require('fs');
-const tu = require('@arangodb/test-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -92,7 +92,7 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
   // turn off test by default.
   opts['skipAudit'] = true;
 
-  // only enable them in enterprise version
+  // only enable them in Enterprise Edition
   let version = {};
   if (global.ARANGODB_CLIENT_VERSION) {
     version = global.ARANGODB_CLIENT_VERSION(true);

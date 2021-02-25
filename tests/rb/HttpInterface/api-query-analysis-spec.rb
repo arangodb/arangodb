@@ -53,14 +53,14 @@ describe ArangoDB do
   end
   
   def wait_for_query (query, type, maxWait)
-    if type == "slow"
-      doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
-    elsif type == "current"
-      doc = ArangoDB.log_get("#{@prefix}-current", @current)
-    end
-    doc.code.should eq(200)
-   
     while true
+      if type == "slow"
+        doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
+      elsif type == "current"
+        doc = ArangoDB.log_get("#{@prefix}-current", @current)
+      end
+      doc.code.should eq(200)
+   
       found = contains_query doc.body, query
       if found 
         return found

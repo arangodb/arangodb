@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,28 +30,6 @@
 
 namespace arangodb {
 
-// String to number conversions:
-
-template <class T>
-struct sto;
-
-template <>
-struct sto<uint64_t> {
-  static uint64_t convert(std::string const& s) { return std::stoull(s); }
-};
-template <>
-struct sto<int64_t> {
-  static uint64_t convert(std::string const& s) { return std::stoll(s); }
-};
-template <>
-struct sto<int32_t> {
-  static long convert(std::string const& s) { return std::stol(s); }
-};
-template <>
-struct sto<uint32_t> {
-  static uint64_t convert(std::string const& s) { return std::stoul(s); }
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief REST handler for private agency communication
 ///        (vote, appendentries, notify)
@@ -72,30 +50,6 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-  template <class T>
-  inline bool readValue(char const* name, T& val) const {
-    bool found = true;
-    std::string const& val_str = _request->value(name, found);
-
-    if (!found) {
-      LOG_TOPIC("f4732", WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
-      return false;
-    } else {
-      try {
-        val = sto<T>::convert(val_str);
-      } catch (std::invalid_argument const&) {
-        LOG_TOPIC("c7aeb", WARN, Logger::AGENCY) << "Value for query string "
-                                        << name << " cannot be converted to integral type";
-        return false;
-      } catch (std::out_of_range const&) {
-        LOG_TOPIC("59881", WARN, Logger::AGENCY)
-            << "Value for query string " << name
-            << " does not fit into range of integral type";
-        return false;
-      }
-    }
-    return true;
-  }
 
   RestStatus reportErrorEmptyRequest();
   RestStatus reportTooManySuffices();
@@ -109,16 +63,6 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
   consensus::Agent* _agent;
 };
 
-template <>
-inline bool RestAgencyPrivHandler::readValue(char const* name, std::string& val) const {
-  bool found = true;
-  val = _request->value(name, found);
-  if (!found) {
-    LOG_TOPIC("69758", WARN, Logger::AGENCY) << "Mandatory query string " << name << " missing.";
-    return false;
-  }
-  return true;
-}
 }  // namespace arangodb
 
 #endif

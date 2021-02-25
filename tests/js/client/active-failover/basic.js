@@ -90,7 +90,7 @@ function getClusterEndpoints() {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -108,7 +108,7 @@ function getLoggerState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -123,7 +123,7 @@ function getApplierState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -144,6 +144,8 @@ function checkInSync(leader, servers, ignore) {
     }
 
     let applier = getApplierState(endpoint);
+
+    print("Checking endpoint ", endpoint, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
     return applier.state.running && applier.endpoint === leader &&
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
@@ -163,6 +165,12 @@ function checkInSync(leader, servers, ignore) {
 
 function checkData(server, allowDirty = false) {
   print("Checking data of ", server);
+  // Async agency cache should have received it's data
+  let trickleDown = request.get({ 
+    url: getUrl(server) + "/_api/cluster/agency-cache", auth: { bearer: jwtRoot },
+    headers: { "X-Arango-Allow-Dirty-Read": allowDirty }, timeout: 3 
+  });
+  require('internal').wait(2.0);
   let res = request.get({
     url: getUrl(server) + "/_api/collection/" + cname + "/count",
     auth: {
@@ -171,7 +179,7 @@ function checkData(server, allowDirty = false) {
     headers: {
       "X-Arango-Allow-Dirty-Read": allowDirty
     },
-    timeout: 300 
+    timeout: 300
   });
 
   assertTrue(res instanceof request.Response);
@@ -190,7 +198,7 @@ function readAgencyValue(path) {
       bearer: jwtSuperuser,
     },
     body: JSON.stringify([[path]]),
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -219,7 +227,7 @@ function checkForFailover(leader) {
   print("Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
-  let i = 5; // 5 * 5s == 25s
+  let i = 24; // 24 * 5s == 120s
   do {
     let res = readAgencyValue("/arango/Supervision/Health");
     let srvHealth = res[0].arango.Supervision.Health;
@@ -325,13 +333,22 @@ function ActiveFailoverSuite() {
 
       assertTrue(checkInSync(currentLead, servers));
 
-      internal.wait(5); // settle down
+      let i = 100;
+      do {
+        let endpoints = getClusterEndpoints();
+        if (endpoints.length === servers.length && endpoints[0] === currentLead) {
+          db._collection(cname).truncate({ compact: false });
+          return ;
+        }
+        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        internal.wait(1); // settle down
+      } while(i --> 0);
 
       let endpoints = getClusterEndpoints();
+      print("endpoints: ", endpoints, " servers: ", servers);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
-
-      db._collection(cname).truncate();
+      db._collection(cname).truncate({ compact: false });
     },
 
     tearDownAll: function () {
@@ -350,7 +367,7 @@ function ActiveFailoverSuite() {
       assertEqual(checkData(currentLead), 10000);
     },
 
-    // Simple failover case: Leader is suspended, slave needs to 
+    // Simple failover case: Leader is suspended, slave needs to
     // take over within a reasonable amount of time
     testFailover: function () {
 
@@ -472,6 +489,7 @@ function ActiveFailoverSuite() {
       // await failover and check that follower get in sync
       let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
+      assertNotEqual(currentLead, oldLead);
 
       let cc = checkData(currentLead);
       assertTrue(cc >= atLeast, "The new Leader has too few documents");
@@ -513,7 +531,9 @@ function ActiveFailoverSuite() {
       });
 
       // await failover and check that follower get in sync
+      let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
+      assertNotEqual(currentLead, oldLead);
       assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,6 +43,7 @@ class Acceptor {
  public:
   virtual void open() = 0;
   virtual void close() = 0;
+  virtual void cancel() = 0;
 
   /// start accepting connections
   virtual void asyncAccept() = 0;

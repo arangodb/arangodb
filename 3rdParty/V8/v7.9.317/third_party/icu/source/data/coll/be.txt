@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+be{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "[reorder Cyrl]"
+                "&Е<ё<<<Ё"
+                "&у<ў<<<Ў"
+            }
+            Version{"35.1"}
+        }
+    }
+}

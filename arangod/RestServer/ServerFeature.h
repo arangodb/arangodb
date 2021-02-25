@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,6 +44,7 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
   void start() override final;
   void stop() override final;
   void beginShutdown() override final;
@@ -65,10 +67,11 @@ class ServerFeature final : public application_features::ApplicationFeature {
 
   bool _console = false;
   bool _restServer = true;
+  bool _validateUtf8Strings = true;
+  bool _isStopping = false;
   std::vector<std::string> _scripts;
   int* _result;
   OperationMode _operationMode;
-  bool _isStopping = false;
 #if _WIN32
   uint16_t _codePage;
   uint16_t _originalCodePage;

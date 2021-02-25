@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,19 +25,22 @@
 #define ARANGOD_GRAPH_BASE_OPTIONS_H 1
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "Transaction/Methods.h"
 
+#include <memory>
+
 namespace arangodb {
+struct ResourceMonitor;
 
 namespace aql {
 struct AstNode;
 class ExecutionPlan;
 class Expression;
-class Query;
+class QueryContext;
 
 }  // namespace aql
 
@@ -49,10 +52,11 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
+class SingleServerEdgeCursor;
 class TraverserCache;
 
 struct BaseOptions {
- protected:
+ public:
   struct LookupInfo {
     // This struct does only take responsibility for the expression
     // NOTE: The expression can be nullptr!
@@ -70,7 +74,8 @@ struct BaseOptions {
     LookupInfo(LookupInfo const&);
     LookupInfo& operator=(LookupInfo const&) = delete;
 
-    LookupInfo(arangodb::aql::Query*, arangodb::velocypack::Slice const&,
+    LookupInfo(arangodb::aql::QueryContext&,
+               arangodb::velocypack::Slice const&,
                arangodb::velocypack::Slice const&);
 
     /// @brief Build a velocypack containing all relevant information
@@ -82,16 +87,21 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      arangodb::aql::Query* query, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::QueryContext& query,
+      arangodb::velocypack::Slice const& definition);
 
-  explicit BaseOptions(arangodb::aql::Query* query);
+  explicit BaseOptions(arangodb::aql::QueryContext& query);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
-  explicit BaseOptions(BaseOptions const&);
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works
+  ///        after the planning phase; however, the options have to be prepared
+  ///        again (see GraphNode::prepareOptions() and its overrides)
+  BaseOptions(BaseOptions const&, bool allowAlreadyBuiltCopy = false);
   BaseOptions& operator=(BaseOptions const&) = delete;
 
-  BaseOptions(arangodb::aql::Query*, arangodb::velocypack::Slice, arangodb::velocypack::Slice);
+  BaseOptions(aql::QueryContext&,
+              arangodb::velocypack::Slice, arangodb::velocypack::Slice);
 
   virtual ~BaseOptions();
 
@@ -102,7 +112,8 @@ struct BaseOptions {
   void setVariable(aql::Variable const*);
 
   void addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
-                     std::string const& attributeName, aql::AstNode* condition);
+                     std::string const& attributeName, aql::AstNode* condition,
+                     bool onlyEdgeIndexes = false);
 
   void clearVariableValues();
 
@@ -110,38 +121,71 @@ struct BaseOptions {
 
   void serializeVariables(arangodb::velocypack::Builder&) const;
 
-  void setCollectionToShard(std::map<std::string, std::string>const&);
+  void setCollectionToShard(std::map<std::string, std::string> const&);
+
+  bool produceVertices() const { return _produceVertices; }
+
+  bool produceEdges() const { return _produceEdges; }
+
+  void setProduceVertices(bool value) { _produceVertices = value; }
+
+  void setProduceEdges(bool value) { _produceEdges = value; }
 
   transaction::Methods* trx() const;
-
-  aql::Query* query() const;
-
-  TraverserCache* cache() const;
+  
+  aql::QueryContext& query() const;
 
   /// @brief Build a velocypack for cloning in the plan.
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
 
-  // Creates a complete Object containing all index information
-  // in the given builder.
+  /// @brief Creates a complete Object containing all index information
+  /// in the given builder.
   virtual void toVelocyPackIndexes(arangodb::velocypack::Builder&) const;
 
   /// @brief Estimate the total cost for this operation
   virtual double estimateCost(size_t& nrItems) const = 0;
 
+  /// @brief whether or not an edge collection shall be excluded
+  /// this can be overridden in TraverserOptions
+  virtual bool shouldExcludeEdgeCollection(std::string const& name) const {
+    return false;
+  }
+  
+  arangodb::ResourceMonitor& resourceMonitor() const;
+
   TraverserCache* cache();
+  TraverserCache* cache() const;
+  void ensureCache();
 
   void activateCache(bool enableDocumentCache,
-                     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines);
+                     std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   std::map<std::string, std::string> const& collectionToShard() const { return _collectionToShard; }
+  
+  aql::AqlFunctionsInternalCache& aqlFunctionsInternalCache() { return _aqlFunctionsInternalCache; }
+
+  virtual auto estimateDepth() const noexcept -> uint64_t = 0;
+  
+  void setParallelism(size_t p) noexcept {
+    _parallelism = p;
+  }
+
+  size_t parallelism() const { return _parallelism; }
+  
+  void isQueryKilledCallback() const;
+
+  void setRefactor(bool r) noexcept {
+    _refactor = r;
+  }
+
+  bool refactor() const {
+    return _refactor;
+  }
+
+  aql::Variable const* tmpVar(); // TODO check public
 
  protected:
   double costForLookupInfoList(std::vector<LookupInfo> const& list, size_t& createItems) const;
-
-  // Requires an open Object in the given builder an
-  // will inject index information into it.
-  // Does not close the builder.
-  void injectVelocyPackIndexes(arangodb::velocypack::Builder&) const;
 
   // Requires an open Object in the given builder an
   // will inject EngineInfo into it.
@@ -150,35 +194,49 @@ struct BaseOptions {
 
   aql::Expression* getEdgeExpression(size_t cursorId, bool& needToInjectVertex) const;
 
-  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue) const;
+  bool evaluateExpression(aql::Expression*, arangodb::velocypack::Slice varValue);
 
   void injectLookupInfoInList(std::vector<LookupInfo>&, aql::ExecutionPlan* plan,
-                              std::string const& collectionName,
-                              std::string const& attributeName, aql::AstNode* condition);
-
-  EdgeCursor* nextCursorLocal(arangodb::velocypack::StringRef vid,
-                              std::vector<LookupInfo> const&);
+                              std::string const& collectionName, std::string const& attributeName,
+                              aql::AstNode* condition, bool onlyEdgeIndexes = false);
 
   void injectTestCache(std::unique_ptr<TraverserCache>&& cache);
 
  protected:
-  aql::Query* _query;
+  
+  mutable arangodb::transaction::Methods _trx;
 
-  aql::FixedVarExpressionContext* _ctx;
-
-  transaction::Methods* _trx;
+  arangodb::aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache; // needed for expression evaluation
+  arangodb::aql::FixedVarExpressionContext _expressionCtx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions
   std::vector<LookupInfo> _baseLookupInfos;
+  
+  aql::QueryContext& _query;
 
   aql::Variable const* _tmpVar;
-  bool const _isCoordinator;
 
   /// @brief the traverser cache
   std::unique_ptr<TraverserCache> _cache;
 
   // @brief - translations for one-shard-databases
   std::map<std::string, std::string> _collectionToShard;
+  
+  /// @brief a value of 1 (which is the default) means "no parallelism"
+  size_t _parallelism;
+  
+  /// @brief whether or not the traversal will produce vertices
+  bool _produceVertices;
+
+  /// @brief whether or not the traversal will produce edges
+  bool _produceEdges{true};
+
+  /// @brief whether or not we are running on a coordinator
+  bool const _isCoordinator;
+
+  /// @brief whether or not we are running the refactored version
+  /// TODO: This must be removed prior release - (is currently needed for the refactoring)
+  bool _refactor;
 };
 
 }  // namespace graph

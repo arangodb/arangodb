@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,7 +34,6 @@
 #include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -52,58 +52,61 @@ static bool isValidId(VPackSlice id) {
 }  // namespace
 
 ShortestPathExecutorInfos::ShortestPathExecutorInfos(
-    std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-    std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters, RegisterId nrInputRegisters,
-    RegisterId nrOutputRegisters, std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
     std::unique_ptr<graph::ShortestPathFinder>&& finder,
     std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
     InputVertex&& source, InputVertex&& target)
-    : ExecutorInfos(std::move(inputRegisters), std::move(outputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _finder(std::move(finder)),
+    : _finder(std::move(finder)),
       _registerMapping(std::move(registerMapping)),
       _source(std::move(source)),
       _target(std::move(target)) {}
-
-ShortestPathExecutorInfos::ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) = default;
-ShortestPathExecutorInfos::~ShortestPathExecutorInfos() = default;
 
 arangodb::graph::ShortestPathFinder& ShortestPathExecutorInfos::finder() const {
   TRI_ASSERT(_finder);
   return *_finder.get();
 }
 
-bool ShortestPathExecutorInfos::useRegisterForInput(bool isTarget) const {
-  if (isTarget) {
-    return _target.type == InputVertex::REGISTER;
-  }
-  return _source.type == InputVertex::REGISTER;
+bool ShortestPathExecutorInfos::useRegisterForSourceInput() const {
+  return _source.type == InputVertex::Type::REGISTER;
 }
 
-RegisterId ShortestPathExecutorInfos::getInputRegister(bool isTarget) const {
-  TRI_ASSERT(useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.reg;
-  }
+bool ShortestPathExecutorInfos::useRegisterForTargetInput() const {
+  return _target.type == InputVertex::Type::REGISTER;
+}
+
+RegisterId ShortestPathExecutorInfos::getSourceInputRegister() const {
+  TRI_ASSERT(useRegisterForSourceInput());
   return _source.reg;
 }
 
-std::string const& ShortestPathExecutorInfos::getInputValue(bool isTarget) const {
-  TRI_ASSERT(!useRegisterForInput(isTarget));
-  if (isTarget) {
-    return _target.value;
-  }
+RegisterId ShortestPathExecutorInfos::getTargetInputRegister() const {
+  TRI_ASSERT(useRegisterForTargetInput());
+  return _target.reg;
+}
+
+std::string const& ShortestPathExecutorInfos::getSourceInputValue() const {
+  TRI_ASSERT(!useRegisterForSourceInput());
   return _source.value;
+}
+
+std::string const& ShortestPathExecutorInfos::getTargetInputValue() const {
+  TRI_ASSERT(!useRegisterForTargetInput());
+  return _target.value;
 }
 
 bool ShortestPathExecutorInfos::usesOutputRegister(OutputName type) const {
   return _registerMapping.find(type) != _registerMapping.end();
 }
 
+ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getSourceVertex() const noexcept {
+  return _source;
+}
+
+ShortestPathExecutorInfos::InputVertex ShortestPathExecutorInfos::getTargetVertex() const noexcept {
+  return _target;
+}
+
 static std::string typeToString(ShortestPathExecutorInfos::OutputName type) {
-  switch(type) {
+  switch (type) {
     case ShortestPathExecutorInfos::VERTEX:
       return std::string{"VERTEX"};
     case ShortestPathExecutorInfos::EDGE:
@@ -117,8 +120,8 @@ RegisterId ShortestPathExecutorInfos::findRegisterChecked(OutputName type) const
   auto const& it = _registerMapping.find(type);
   if (ADB_UNLIKELY(it == _registerMapping.end())) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL,
-      "Logic error: requested unused register type " + typeToString(type));
+        TRI_ERROR_INTERNAL,
+        "Logic error: requested unused register type " + typeToString(type));
   }
   return it->second;
 }
@@ -132,123 +135,194 @@ graph::TraverserCache* ShortestPathExecutorInfos::cache() const {
   return _finder->options().cache();
 }
 
-ShortestPathExecutor::ShortestPathExecutor(Fetcher& fetcher, Infos& infos)
+ShortestPathExecutor::ShortestPathExecutor(Fetcher&, Infos& infos)
     : _infos(infos),
-      _fetcher(fetcher),
-      _input{CreateInvalidInputRowHint{}},
-      _rowState(ExecutionState::HASMORE),
+      _inputRow{CreateInvalidInputRowHint{}},
       _finder{infos.finder()},
       _path{new arangodb::graph::ShortestPathResult{}},
-      _posInPath(1),
+      _posInPath(0),
       _sourceBuilder{},
       _targetBuilder{} {
-  if (!_infos.useRegisterForInput(false)) {
-    _sourceBuilder.add(VPackValue(_infos.getInputValue(false)));
+  if (!_infos.useRegisterForSourceInput()) {
+    _sourceBuilder.add(VPackValue(_infos.getSourceInputValue()));
   }
-  if (!_infos.useRegisterForInput(true)) {
-    _targetBuilder.add(VPackValue(_infos.getInputValue(true)));
+  if (!_infos.useRegisterForTargetInput()) {
+    _targetBuilder.add(VPackValue(_infos.getTargetInputValue()));
   }
+  // Make sure the finder does not contain any leftovers in case of
+  // the executor being reconstructed.
+  _finder.clear();
 }
 
-ShortestPathExecutor::~ShortestPathExecutor() = default;
-
-// Shutdown query
-std::pair<ExecutionState, Result> ShortestPathExecutor::shutdown(int errorCode) {
-  _finder.destroyEngines();
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
-}
-
-std::pair<ExecutionState, NoStats> ShortestPathExecutor::produceRows(OutputAqlItemRow& output) {
-  NoStats s;
-
-  // Can be length 0 but never nullptr.
-  TRI_ASSERT(_path);
-  while (true) {
-    if (_posInPath < _path->length()) {
-      if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
-        AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
-        AqlValueGuard guard{vertex, true};
-        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
-                             _input, guard);
-      }
-      if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
-        AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
-        AqlValueGuard guard{edge, true};
-        output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
-                             _input, guard);
-      }
-      _posInPath++;
-      return {computeState(), s};
+auto ShortestPathExecutor::doOutputPath(OutputAqlItemRow& output) -> void {
+  while (!output.isFull() && _posInPath < _path->length()) {
+    if (_infos.usesOutputRegister(ShortestPathExecutorInfos::VERTEX)) {
+      AqlValue vertex = _path->vertexToAqlValue(_infos.cache(), _posInPath);
+      AqlValueGuard guard{vertex, true};
+      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::VERTEX),
+                           _inputRow, guard);
     }
-    TRI_ASSERT(_posInPath >= _path->length());
-    if (!fetchPath()) {
-      TRI_ASSERT(_posInPath >= _path->length());
-      // Either WAITING or DONE
-      return {_rowState, s};
+    if (_infos.usesOutputRegister(ShortestPathExecutorInfos::EDGE)) {
+      AqlValue edge = _path->edgeToAqlValue(_infos.cache(), _posInPath);
+      AqlValueGuard guard{edge, true};
+      output.moveValueInto(_infos.getOutputRegister(ShortestPathExecutorInfos::EDGE),
+                           _inputRow, guard);
     }
-    TRI_ASSERT(_posInPath < _path->length());
+    output.advanceRow();
+    _posInPath++;
   }
 }
 
-bool ShortestPathExecutor::fetchPath() {
-  VPackSlice start;
-  VPackSlice end;
-  do {
-    // Make sure we have a valid start *and* end vertex
-    do {
-      std::tie(_rowState, _input) = _fetcher.fetchRow();
-      if (!_input.isInitialized()) {
-        // Either WAITING or DONE and nothing produced.
-        TRI_ASSERT(_rowState == ExecutionState::WAITING || _rowState == ExecutionState::DONE);
-        return false;
-      }
-    } while (!getVertexId(false, start) || !getVertexId(true, end));
-    TRI_ASSERT(start.isString());
-    TRI_ASSERT(end.isString());
-    _path->clear();
-  } while (!_finder.shortestPath(start, end, *_path));
+auto ShortestPathExecutor::doSkipPath(AqlCall& call) -> size_t {
+  auto skip = size_t{0};
+
+  // call.getOffset() > 0 means we're in SKIP mode
+  if (call.getOffset() > 0) {
+    if (call.getOffset() < pathLengthAvailable()) {
+      skip = call.getOffset();
+    } else {
+      skip = pathLengthAvailable();
+    }
+  } else {
+    // call.getOffset() == 0, we might be in SKIP, PRODUCE, or
+    // FASTFORWARD/FULLCOUNT, but we only FASTFORWARD/FULLCOUNT if
+    // call.getLimit() == 0 as well.
+    if (call.needsFullCount() && call.getLimit() == 0) {
+      skip = pathLengthAvailable();
+    }
+  }
+  _posInPath += skip;
+  call.didSkip(skip);
+  return skip;
+}
+
+auto ShortestPathExecutor::fetchPath(AqlItemBlockInputRange& input) -> bool {
+  // We only want to call fetchPath if we don't have a path currently available
+  TRI_ASSERT(pathLengthAvailable() == 0);
+  _finder.clear();
+  _path->clear();
   _posInPath = 0;
-  return true;
-}
 
-ExecutionState ShortestPathExecutor::computeState() const {
-  if (_rowState == ExecutionState::HASMORE || _posInPath < _path->length()) {
-    return ExecutionState::HASMORE;
+  while (input.hasDataRow()) {
+    auto source = VPackSlice{};
+    auto target = VPackSlice{};
+    std::tie(std::ignore, _inputRow) = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(_inputRow.isInitialized());
+
+    // Ordering important here.
+    // Read source and target vertex, then try to find a shortest path (if both worked).
+    if (getVertexId(_infos.getSourceVertex(), _inputRow, _sourceBuilder, source) &&
+        getVertexId(_infos.getTargetVertex(), _inputRow, _targetBuilder, target) &&
+        _finder.shortestPath(source, target, *_path)) {
+      return true;
+    }
   }
-  return ExecutionState::DONE;
+  // Note that we only return false if
+  // the input does not have a data row, so if we return false
+  // here, we are DONE (we cannot produce any output anymore).
+  return false;
+}
+auto ShortestPathExecutor::pathLengthAvailable() -> size_t {
+  // Subtraction must not undeflow
+  TRI_ASSERT(_posInPath <= _path->length());
+  return _path->length() - _posInPath;
 }
 
-bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
-  if (_infos.useRegisterForInput(isTarget)) {
-    // The input row stays valid until the next fetchRow is executed.
-    // So the slice can easily point to it.
-    RegisterId reg = _infos.getInputRegister(isTarget);
-    AqlValue const& in = _input.getValue(reg);
-    if (in.isObject()) {
-      try {
-        auto idString = _finder.options().trx()->extractIdString(in.slice());
-        if (isTarget) {
-          _targetBuilder.clear();
-          _targetBuilder.add(VPackValue(idString));
-          id = _targetBuilder.slice();
+auto ShortestPathExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  while (true) {
+    if (pathLengthAvailable() > 0) {
+      // TODO maybe have doOutput report whether output is full?
+      doOutputPath(output);
+      if (output.isFull()) {
+        if (pathLengthAvailable() > 0) {
+          return {ExecutorState::HASMORE, NoStats{}, AqlCall{}};
         } else {
-          _sourceBuilder.clear();
-          _sourceBuilder.add(VPackValue(idString));
-          id = _sourceBuilder.slice();
+          // We don't have rows available for output. If
+          // upstream is DONE, we will not be able to produce more
+          // if upstream HASMORE, we do not know, so we say HASMORE.
+          return {input.upstreamState(), NoStats{}, AqlCall{}};
         }
-        // Guranteed by extractIdValue
-        TRI_ASSERT(::isValidId(id));
-      } catch (...) {
-        // _id or _key not present... ignore this error and fall through
-        // returning no path
+      }
+    } else {
+      // If fetchPath fails, this means that input has not given us a dataRow
+      // that yielded a path.
+      // If upstream is DONE, we are done too, and if upstream
+      // HASMORE, we can potentially make more.
+      if (!fetchPath(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), NoStats{}, AqlCall{}};
+      }
+    }
+  }
+}
+
+auto ShortestPathExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  auto skipped = size_t{0};
+
+  while (true) {
+    skipped += doSkipPath(call);
+
+    if (pathLengthAvailable() == 0) {
+      if (!fetchPath(input)) {
+        TRI_ASSERT(!input.hasDataRow());
+        return {input.upstreamState(), NoStats{}, skipped, AqlCall{}};
+      }
+    } else {
+      // if we end up here there is path available, but
+      // we have skipped as much as we were asked to.
+      TRI_ASSERT(call.getOffset() == 0);
+      return {ExecutorState::HASMORE, NoStats{}, skipped, AqlCall{}};
+    }
+  }
+}
+
+bool ShortestPathExecutor::getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                                       InputAqlItemRow& row,
+                                       VPackBuilder& builder, VPackSlice& id) {
+  switch (vertex.type) {
+    case ShortestPathExecutorInfos::InputVertex::Type::REGISTER: {
+      AqlValue const& in = row.getValue(vertex.reg);
+      if (in.isObject()) {
+        try {
+          auto idString = _finder.options().trx()->extractIdString(in.slice());
+          builder.clear();
+          builder.add(VPackValue(idString));
+          id = builder.slice();
+          // Guranteed by extractIdValue
+          TRI_ASSERT(::isValidId(id));
+        } catch (...) {
+          // _id or _key not present... ignore this error and fall through
+          // returning no path
+          return false;
+        }
+        return true;
+      } else if (in.isString()) {
+        id = in.slice();
+        // Validation
+        if (!::isValidId(id)) {
+          _finder.options().query().warnings().registerWarning(
+              TRI_ERROR_BAD_PARAMETER,
+              "Invalid input for Shortest Path: "
+              "Only id strings or objects with "
+              "_id are allowed");
+          return false;
+        }
+        return true;
+      } else {
+        _finder.options().query().warnings().registerWarning(
+            TRI_ERROR_BAD_PARAMETER,
+            "Invalid input for Shortest Path: "
+            "Only id strings or objects with "
+            "_id are allowed");
         return false;
       }
-      return true;
-    } else if (in.isString()) {
-      id = in.slice();
-      // Validation
+    }
+    case ShortestPathExecutorInfos::InputVertex::Type::CONSTANT: {
+      id = builder.slice();
       if (!::isValidId(id)) {
-        _finder.options().query()->registerWarning(
+        _finder.options().query().warnings().registerWarning(
             TRI_ERROR_BAD_PARAMETER,
             "Invalid input for Shortest Path: "
             "Only id strings or objects with "
@@ -256,28 +330,7 @@ bool ShortestPathExecutor::getVertexId(bool isTarget, VPackSlice& id) {
         return false;
       }
       return true;
-    } else {
-      _finder.options().query()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for Shortest Path: "
-          "Only id strings or objects with "
-          "_id are allowed");
-      return false;
     }
-  } else {
-    if (isTarget) {
-      id = _targetBuilder.slice();
-    } else {
-      id = _sourceBuilder.slice();
-    }
-    if (!::isValidId(id)) {
-      _finder.options().query()->registerWarning(
-          TRI_ERROR_BAD_PARAMETER,
-          "Invalid input for Shortest Path: "
-          "Only id strings or objects with "
-          "_id are allowed");
-      return false;
-    }
-    return true;
   }
+  return false;
 }

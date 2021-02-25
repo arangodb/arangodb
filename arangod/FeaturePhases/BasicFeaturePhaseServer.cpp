@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +29,6 @@
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "ApplicationFeatures/NonceFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
@@ -58,11 +58,12 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
   startsAfter<DaemonFeature>();
   startsAfter<DatabasePathFeature>();
   startsAfter<EnvironmentFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<NonceFeature>();
-  startsAfter<PageSizeFeature>();
   startsAfter<PrivilegeFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ShardingFeature>();

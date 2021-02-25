@@ -1,0 +1,195 @@
+
+routines (
+           prelude postlude mark_regions
+           RV R1 R2
+           attached_pronoun
+           standard_suffix
+           verb_suffix
+           vowel_suffix
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v AEIO CG )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a'   '{U+00E1}'
+stringdef a`   '{U+00E0}'
+stringdef e'   '{U+00E9}'
+stringdef e`   '{U+00E8}'
+stringdef i'   '{U+00ED}'
+stringdef i`   '{U+00EC}'
+stringdef o'   '{U+00F3}'
+stringdef o`   '{U+00F2}'
+stringdef u'   '{U+00FA}'
+stringdef u`   '{U+00F9}'
+
+define v 'aeiou{a`}{e`}{i`}{o`}{u`}'
+
+define prelude as (
+    test repeat (
+        [substring] among(
+            '{a'}' (<- '{a`}')
+            '{e'}' (<- '{e`}')
+            '{i'}' (<- '{i`}')
+            '{o'}' (<- '{o`}')
+            '{u'}' (<- '{u`}')
+            'qu'   (<- 'qU')
+            ''     (next)
+        )
+    )
+    repeat goto (
+        v [ ('u' ] v <- 'U') or
+            ('i' ] v <- 'I')
+    )
+)
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit // defaults
+
+    do (
+        ( v (non-v gopast v) or (v gopast non-v) )
+        or
+        ( non-v (non-v gopast v) or (v next) )
+        setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define postlude as repeat (
+
+    [substring] among(
+        'I'  (<- 'i')
+        'U'  (<- 'u')
+        ''   (next)
+    )
+
+)
+
+backwardmode (
+
+    define RV as $pV <= cursor
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define attached_pronoun as (
+        [substring] among(
+            'ci' 'gli' 'la' 'le' 'li' 'lo'
+            'mi' 'ne' 'si'  'ti' 'vi'
+            // the compound forms are:
+            'sene' 'gliela' 'gliele' 'glieli' 'glielo' 'gliene'
+            'mela' 'mele' 'meli' 'melo' 'mene'
+            'tela' 'tele' 'teli' 'telo' 'tene'
+            'cela' 'cele' 'celi' 'celo' 'cene'
+            'vela' 'vele' 'veli' 'velo' 'vene'
+        )
+        among( (RV)
+            'ando' 'endo'   (delete)
+            'ar' 'er' 'ir'  (<- 'e')
+        )
+    )
+
+    define standard_suffix as (
+        [substring] among(
+
+            'anza' 'anze' 'ico' 'ici' 'ica' 'ice' 'iche' 'ichi' 'ismo'
+            'ismi' 'abile' 'abili' 'ibile' 'ibili' 'ista' 'iste' 'isti'
+            'ist{a`}' 'ist{e`}' 'ist{i`}' 'oso' 'osi' 'osa' 'ose' 'mente'
+            'atrice' 'atrici'
+            'ante' 'anti' // Note 1
+               ( R2 delete )
+            'azione' 'azioni' 'atore' 'atori'
+               ( R2 delete
+                 try ( ['ic'] R2 delete )
+               )
+            'logia' 'logie'
+               ( R2 <- 'log' )
+            'uzione' 'uzioni' 'usione' 'usioni'
+               ( R2 <- 'u' )
+            'enza' 'enze'
+               ( R2 <- 'ente' )
+            'amento' 'amenti' 'imento' 'imenti'
+               ( RV delete )
+            'amente' (
+                R1 delete
+                try (
+                    [substring] R2 delete among(
+                        'iv' ( ['at'] R2 delete )
+                        'os' 'ic' 'abil'
+                    )
+                )
+            )
+            'it{a`}' (
+                R2 delete
+                try (
+                    [substring] among(
+                        'abil' 'ic' 'iv' (R2 delete)
+                    )
+                )
+            )
+            'ivo' 'ivi' 'iva' 'ive' (
+                R2 delete
+                try ( ['at'] R2 delete ['ic'] R2 delete )
+            )
+        )
+    )
+
+    define verb_suffix as setlimit tomark pV for (
+        [substring] among(
+            'ammo' 'ando' 'ano' 'are' 'arono' 'asse' 'assero' 'assi'
+            'assimo' 'ata' 'ate' 'ati' 'ato' 'ava' 'avamo' 'avano' 'avate'
+            'avi' 'avo' 'emmo' 'enda' 'ende' 'endi' 'endo' 'er{a`}' 'erai'
+            'eranno' 'ere' 'erebbe' 'erebbero' 'erei' 'eremmo' 'eremo'
+            'ereste' 'eresti' 'erete' 'er{o`}' 'erono' 'essero' 'ete'
+            'eva' 'evamo' 'evano' 'evate' 'evi' 'evo' 'Yamo' 'iamo' 'immo'
+            'ir{a`}' 'irai' 'iranno' 'ire' 'irebbe' 'irebbero' 'irei'
+            'iremmo' 'iremo' 'ireste' 'iresti' 'irete' 'ir{o`}' 'irono'
+            'isca' 'iscano' 'isce' 'isci' 'isco' 'iscono' 'issero' 'ita'
+            'ite' 'iti' 'ito' 'iva' 'ivamo' 'ivano' 'ivate' 'ivi' 'ivo'
+            'ono' 'uta' 'ute' 'uti' 'uto'
+
+            'ar' 'ir' // but 'er' is problematical
+                (delete)
+        )
+    )
+
+    define AEIO 'aeio{a`}{e`}{i`}{o`}'
+    define CG 'cg'
+
+    define vowel_suffix as (
+        try (
+            [AEIO] RV delete
+            ['i'] RV delete
+        )
+        try (
+            ['h'] CG RV delete
+        )
+    )
+)
+
+define stem as (
+    do prelude
+    do mark_regions
+    backwards (
+        do attached_pronoun
+        do (standard_suffix or verb_suffix)
+        do vowel_suffix
+    )
+    do postlude
+)
+
+/*
+    Note 1: additions of 15 Jun 2005
+*/
+

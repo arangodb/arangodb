@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,9 +27,10 @@
 #ifndef ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 #define ARANGOD_AQL_EMPTY_TEST_EXECUTOR_H
 
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -41,19 +43,6 @@ class InputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class TestEmptyExecutorHelperInfos : public ExecutorInfos {
- public:
-  TestEmptyExecutorHelperInfos(RegisterId inputRegister, RegisterId nrInputRegisters,
-                               RegisterId nrOutputRegisters,
-                               std::unordered_set<RegisterId> registersToClear,
-                               std::unordered_set<RegisterId> registersToKeep);
-
-  TestEmptyExecutorHelperInfos() = delete;
-  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos&&) = default;
-  TestEmptyExecutorHelperInfos(TestEmptyExecutorHelperInfos const&) = delete;
-  ~TestEmptyExecutorHelperInfos() = default;
-};
-
 class TestEmptyExecutorHelper {
  public:
   struct Properties {
@@ -62,14 +51,14 @@ class TestEmptyExecutorHelper {
     static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = FilterStats;
 
   TestEmptyExecutorHelper() = delete;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper&&) = default;
   TestEmptyExecutorHelper(TestEmptyExecutorHelper const&) = delete;
   TestEmptyExecutorHelper(Fetcher&, Infos&);
-  ~TestEmptyExecutorHelper();
+  ~TestEmptyExecutorHelper() = default;
 
   /**
    * @brief produce the next Row of Aql Values.

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,6 +33,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
@@ -42,9 +44,8 @@ namespace options {
 class ProgramOptions;
 }
 namespace application_features {
-class ApplicationFeature;
 
-// the following phases exists:
+// the following phases exist:
 //
 // `collectOptions`
 //
@@ -127,14 +128,12 @@ class ApplicationServer {
     std::function<void(State, std::string const& featureName)> _feature;
    };
 
-   static ApplicationServer& server();
-
    static std::atomic<bool> CTRL_C;
 
   public:
    ApplicationServer(std::shared_ptr<options::ProgramOptions>, char const* binaryPath);
 
-   TEST_VIRTUAL ~ApplicationServer();
+   TEST_VIRTUAL ~ApplicationServer() = default;
 
    std::string helpSection() const { return _helpSection; }
    bool helpShown() const { return !_helpSection.empty(); }
@@ -167,10 +166,10 @@ class ApplicationServer {
    bool isPrepared();
 
    /// @brief whether or not the server has made it as least as far as the IN_SHUTDOWN state
-   bool isStopping();
+   bool isStopping() const;
 
    /// @brief whether or not state is the shutting down state or further (i.e. stopped, aborted etc.)
-   bool isStoppingState(State state);
+   bool isStoppingState(State state) const;
 
    // this method will initialize and validate options
    // of all feature, start them and wait for a shutdown
@@ -216,7 +215,7 @@ class ApplicationServer {
    }
 
 #ifdef TEST_VIRTUAL
-   void setStateUnsafe(State ss) { server()._state = ss; }
+   void setStateUnsafe(State ss) { _state = ss; }
 #endif
 
    // adds a feature to the application server. the application server
@@ -232,6 +231,7 @@ class ApplicationServer {
          _features.try_emplace(std::type_index(typeid(As)),
                            std::make_unique<Type>(*this, std::forward<Args>(args)...));
      TRI_ASSERT(result.second);
+     result.first->second->setRegistration(std::type_index(typeid(As)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
      auto obj = dynamic_cast<As*>(result.first->second.get());
      TRI_ASSERT(obj != nullptr);
@@ -359,8 +359,6 @@ class ApplicationServer {
    void reportFeatureProgress(State, std::string const&);
 
   private:
-   static ApplicationServer* INSTANCE;
-
    // the current state
    std::atomic<State> _state;
 

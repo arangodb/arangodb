@@ -11,9 +11,9 @@ for easy existence checks.
 No error will be thrown if the sought document or collection does not
 exist.
 Still this method will throw an error if used improperly, e.g. when called
-with a non-document handle.
+with a non-document identifier.
 
-`db._exists(document-handle)`
+`db._exists(document-id)`
 
-As before, but instead of a document a document-handle can be passed.
+As before, but instead of a document a document identifier can be passed.
 

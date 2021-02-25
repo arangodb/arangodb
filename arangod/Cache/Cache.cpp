@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <list>
+#include <thread>
+
 #include "Cache/Cache.h"
-#include "Basics/Common.h"
-#include "Basics/SharedPRNG.h"
+
+#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "Basics/SpinLocker.h"
+#include "Basics/SpinUnlocker.h"
+#include "Basics/cpu-relax.h"
 #include "Basics/fasthash.h"
+#include "Basics/voc-errors.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
@@ -32,25 +44,20 @@
 #include "Cache/Table.h"
 #include "Random/RandomGenerator.h"
 
-#include <stdint.h>
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <list>
-#include <thread>
+namespace arangodb::cache {
 
-using namespace arangodb::cache;
+using SpinLocker = ::arangodb::basics::SpinLocker;
+using SpinUnlocker = ::arangodb::basics::SpinUnlocker;
 
-const uint64_t Cache::minSize = 16384;
-const uint64_t Cache::minLogSize = 14;
+const std::uint64_t Cache::minSize = 16384;
+const std::uint64_t Cache::minLogSize = 14;
 
-uint64_t Cache::_findStatsCapacity = 16384;
+std::uint64_t Cache::_findStatsCapacity = 16384;
 
-Cache::ConstructionGuard::ConstructionGuard() {}
-
-Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
+Cache::Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
              Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
-             std::function<Table::BucketClearer(Metadata*)> bucketClearer, size_t slotsPerBucket)
+             std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+             std::size_t slotsPerBucket)
     : _taskLock(),
       _shutdown(false),
       _enableWindowedStats(enableWindowedStats),
@@ -72,7 +79,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
   _tableShrdPtr->enable();
   if (_enableWindowedStats) {
     try {
-      _findStats.reset(new StatBuffer(_findStatsCapacity));
+      _findStats.reset(new StatBuffer(manager->sharedPRNG(), _findStatsCapacity));
     } catch (std::bad_alloc const&) {
       _findStats.reset(nullptr);
       _enableWindowedStats = false;
@@ -80,40 +87,31 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
   }
 }
 
-uint64_t Cache::size() const {
+std::uint64_t Cache::size() const {
   if (isShutdown()) {
     return 0;
   }
 
-  _metadata.readLock();
-  uint64_t size = _metadata.allocatedSize;
-  _metadata.readUnlock();
-
-  return size;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.allocatedSize;
 }
 
-uint64_t Cache::usageLimit() const {
+std::uint64_t Cache::usageLimit() const {
   if (isShutdown()) {
     return 0;
   }
 
-  _metadata.readLock();
-  uint64_t limit = _metadata.softUsageLimit;
-  _metadata.readUnlock();
-
-  return limit;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.softUsageLimit;
 }
 
-uint64_t Cache::usage() const {
+std::uint64_t Cache::usage() const {
   if (isShutdown()) {
     return false;
   }
 
-  _metadata.readLock();
-  uint64_t usage = _metadata.usage;
-  _metadata.readUnlock();
-
-  return usage;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.usage;
 }
 
 void Cache::sizeHint(uint64_t numElements) {
@@ -121,11 +119,11 @@ void Cache::sizeHint(uint64_t numElements) {
     return;
   }
 
-  uint64_t numBuckets = static_cast<uint64_t>(
+  std::uint64_t numBuckets = static_cast<std::uint64_t>(
       static_cast<double>(numElements) /
       (static_cast<double>(_slotsPerBucket) * Table::idealUpperRatio));
-  uint32_t requestedLogSize = 0;
-  for (; (static_cast<uint64_t>(1) << requestedLogSize) < numBuckets; requestedLogSize++) {
+  std::uint32_t requestedLogSize = 0;
+  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets; requestedLogSize++) {
   }
   requestMigrate(requestedLogSize);
 }
@@ -134,8 +132,8 @@ std::pair<double, double> Cache::hitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  uint64_t currentMisses = _findMisses.value(std::memory_order_relaxed);
-  uint64_t currentHits = _findHits.value(std::memory_order_relaxed);
+  std::uint64_t currentMisses = _findMisses.value(std::memory_order_relaxed);
+  std::uint64_t currentHits = _findHits.value(std::memory_order_relaxed);
   if (currentMisses + currentHits > 0) {
     lifetimeRate = 100 * (static_cast<double>(currentHits) /
                           static_cast<double>(currentHits + currentMisses));
@@ -144,13 +142,13 @@ std::pair<double, double> Cache::hitRates() {
   if (_enableWindowedStats && _findStats) {
     auto stats = _findStats->getFrequencies();
     if (stats.size() == 1) {
-      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
+      if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
         windowedRate = 100.0;
       } else {
         windowedRate = 0.0;
       }
     } else if (stats.size() == 2) {
-      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
+      if (stats[0].first == static_cast<std::uint8_t>(Stat::findHit)) {
         currentHits = stats[0].second;
         currentMisses = stats[1].second;
       } else {
@@ -172,11 +170,8 @@ bool Cache::isResizing() {
     return false;
   }
 
-  _metadata.readLock();
-  bool resizing = _metadata.isResizing();
-  _metadata.readUnlock();
-
-  return resizing;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.isResizing();
 }
 
 bool Cache::isMigrating() {
@@ -184,11 +179,8 @@ bool Cache::isMigrating() {
     return false;
   }
 
-  _metadata.readLock();
-  bool migrating = _metadata.isMigrating();
-  _metadata.readUnlock();
-
-  return migrating;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.isMigrating();
 }
 
 bool Cache::isBusy() {
@@ -196,15 +188,31 @@ bool Cache::isBusy() {
     return false;
   }
 
-  _metadata.readLock();
-  bool busy = _metadata.isResizing() || _metadata.isMigrating();
-  _metadata.readUnlock();
-
-  return busy;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return _metadata.isResizing() || _metadata.isMigrating();
 }
 
-void Cache::destroy(std::shared_ptr<Cache> cache) {
-  if (cache) {
+Cache::Inserter::Inserter(Cache& cache, void const* key, std::size_t keySize,
+                          void const* value, std::size_t valueSize,
+                          std::function<bool(Result const&)> retry) {
+  std::unique_ptr<CachedValue> cv{CachedValue::construct(key, keySize, value, valueSize)};
+  if (!cv) {
+    status.reset(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  status = cache.insert(cv.get());
+  while (status.fail() && retry(status)){
+    basics::cpu_relax();
+    status = cache.insert(cv.get());
+  }
+
+  if (status.ok()) {
+    cv.release();
+  }
+}
+
+void Cache::destroy(std::shared_ptr<Cache> const& cache) {
+  if (cache != nullptr) {
     cache->shutdown();
   }
 }
@@ -216,43 +224,46 @@ void Cache::requestGrow() {
     return;
   }
 
-  if (_taskLock.writeLock(Cache::triesSlow)) {
+  SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock,
+                       static_cast<std::size_t>(Cache::triesSlow));
+  if (taskGuard.isLocked()) {
     if (std::chrono::steady_clock::now().time_since_epoch().count() >
         _resizeRequestTime.load()) {
-      _metadata.readLock();
-      bool ok = !_metadata.isResizing();
-      _metadata.readUnlock();
+      bool ok = false;
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+        ok = !_metadata.isResizing();
+      }
       if (ok) {
         auto result = _manager->requestGrow(this);
         _resizeRequestTime.store(result.second.time_since_epoch().count());
       }
     }
-    _taskLock.writeUnlock();
   }
 }
 
-void Cache::requestMigrate(uint32_t requestedLogSize) {
+void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   // fail fast if inside banned window
   if (isShutdown() || std::chrono::steady_clock::now().time_since_epoch().count() <=
                           _migrateRequestTime.load()) {
     return;
   }
 
-  if (_taskLock.writeLock(Cache::triesGuarantee)) {
-    if (std::chrono::steady_clock::now().time_since_epoch().count() >
-        _migrateRequestTime.load()) {
-      cache::Table* table = _table.load(std::memory_order_relaxed);
-      TRI_ASSERT(table != nullptr);
+  SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
+  if (std::chrono::steady_clock::now().time_since_epoch().count() >
+      _migrateRequestTime.load()) {
+    cache::Table* table = _table.load(std::memory_order_relaxed);
+    TRI_ASSERT(table != nullptr);
 
-      _metadata.readLock();
-      bool ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
-      _metadata.readUnlock();
-      if (ok) {
-        auto result = _manager->requestMigrate(this, requestedLogSize);
-        _migrateRequestTime.store(result.second.time_since_epoch().count());
-      }
+    bool ok = false;
+    {
+      SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+      ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
     }
-    _taskLock.writeUnlock();
+    if (ok) {
+      auto result = _manager->requestMigrate(this, requestedLogSize);
+      _migrateRequestTime.store(result.second.time_since_epoch().count());
+    }
   }
 }
 
@@ -264,21 +275,18 @@ void Cache::freeValue(CachedValue* value) {
   delete value;
 }
 
-bool Cache::reclaimMemory(uint64_t size) {
-  _metadata.readLock();
-  _metadata.adjustUsageIfAllowed(-static_cast<int64_t>(size));
-  bool underLimit = (_metadata.softUsageLimit >= _metadata.usage);
-  _metadata.readUnlock();
-
-  return underLimit;
+bool Cache::reclaimMemory(std::uint64_t size) {
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  _metadata.adjustUsageIfAllowed(-static_cast<std::int64_t>(size));
+  return (_metadata.softUsageLimit >= _metadata.usage);
 }
 
-uint32_t Cache::hashKey(void const* key, size_t keySize) const {
-  return (std::max)(static_cast<uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
+std::uint32_t Cache::hashKey(void const* key, std::size_t keySize) const {
+  return (std::max)(static_cast<std::uint32_t>(1), fasthash32(key, keySize, 0xdeadbeefUL));
 }
 
 void Cache::recordStat(Stat stat) {
-  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) != 0) {
+  if ((_manager->sharedPRNG().rand() & static_cast<unsigned long>(7)) != 0) {
     return;
   }
 
@@ -286,7 +294,7 @@ void Cache::recordStat(Stat stat) {
     case Stat::findHit: {
       _findHits.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats) {
-        _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
+        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findHit));
       }
       _manager->reportHitStat(Stat::findHit);
       break;
@@ -294,7 +302,7 @@ void Cache::recordStat(Stat stat) {
     case Stat::findMiss: {
       _findMisses.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats) {
-        _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
+        _findStats->insertRecord(static_cast<std::uint8_t>(Stat::findMiss));
       }
       _manager->reportHitStat(Stat::findMiss);
       break;
@@ -309,10 +317,11 @@ bool Cache::reportInsert(bool hadEviction) {
     _insertEvictions.add(1, std::memory_order_relaxed);
   }
   _insertsTotal.add(1, std::memory_order_relaxed);
-  if ((basics::SharedPRNG::rand() & _evictionMask) == 0) {
-    uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
-    uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
-    if ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold) {
+  if ((_manager->sharedPRNG().rand() & _evictionMask) == 0) {
+    std::uint64_t total = _insertsTotal.value(std::memory_order_relaxed);
+    std::uint64_t evictions = _insertEvictions.value(std::memory_order_relaxed);
+    if (total > 0 && total > evictions &&
+        ((static_cast<double>(evictions) / static_cast<double>(total)) > _evictionRateThreshold)) {
       shouldMigrate = true;
       cache::Table* table = _table.load(std::memory_order_relaxed);
       TRI_ASSERT(table != nullptr);
@@ -325,50 +334,48 @@ bool Cache::reportInsert(bool hadEviction) {
   return shouldMigrate;
 }
 
-Metadata* Cache::metadata() { return &_metadata; }
+Metadata& Cache::metadata() { return _metadata; }
 
 std::shared_ptr<Table> Cache::table() const {
   return std::atomic_load(&_tableShrdPtr);
 }
 
 void Cache::shutdown() {
-  _taskLock.writeLock();
+  SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   auto handle = shared_from_this();  // hold onto self-reference to prevent
                                      // pre-mature shared_ptr destruction
   TRI_ASSERT(handle.get() == this);
   if (!_shutdown.exchange(true)) {
-    _metadata.readLock();
     while (true) {
-      if (!_metadata.isMigrating() && !_metadata.isResizing()) {
-        break;
+      {
+        SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+        if (!_metadata.isMigrating() && !_metadata.isResizing()) {
+          break;
+        }
       }
-      _metadata.readUnlock();
-      _taskLock.writeUnlock();
+
+      SpinUnlocker taskUnguard(SpinUnlocker::Mode::Write, _taskLock);
       std::this_thread::sleep_for(std::chrono::microseconds(10));
-      _taskLock.writeLock();
-      _metadata.readLock();
     }
-    _metadata.readUnlock();
 
     cache::Table* table = _table.load(std::memory_order_relaxed);
     if (table != nullptr) {
       std::shared_ptr<Table> extra = table->setAuxiliary(std::shared_ptr<Table>(nullptr));
       if (extra) {
         extra->clear();
-        _manager->reclaimTable(extra);
+        _manager->reclaimTable(extra, false);
       }
       table->clear();
     }
 
-    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr));
-    _metadata.writeLock();
-    _metadata.changeTable(0);
-    _metadata.writeUnlock();
+    _manager->reclaimTable(std::atomic_load(&_tableShrdPtr), false);
+    {
+      SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+      _metadata.changeTable(0);
+    }
     _manager->unregisterCache(_id);
     _table.store(nullptr, std::memory_order_relaxed);
   }
-
-  _taskLock.writeUnlock();
 }
 
 bool Cache::canResize() {
@@ -376,14 +383,8 @@ bool Cache::canResize() {
     return false;
   }
 
-  bool allowed = true;
-  _metadata.readLock();
-  if (_metadata.isResizing() || _metadata.isMigrating()) {
-    allowed = false;
-  }
-  _metadata.readUnlock();
-
-  return allowed;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return !(_metadata.isResizing() || _metadata.isMigrating());
 }
 
 bool Cache::canMigrate() {
@@ -391,27 +392,34 @@ bool Cache::canMigrate() {
     return false;
   }
 
-  bool allowed = true;
-  _metadata.readLock();
-  if (_metadata.isMigrating()) {
-    allowed = false;
-  }
-  _metadata.readUnlock();
-
-  return allowed;
+  SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
+  return !_metadata.isMigrating();
 }
 
+/// TODO Improve freeing algorithm
+/// Currently we pick a bucket at random, free something if possible, then
+/// repeat. In a table with a low fill ratio, this will inevitably waste a lot
+/// of time visiting empty buckets. If we get unlucky, we can go an arbitrarily
+/// long time without fixing anything. We may wish to make the walk a bit more
+/// like visiting the buckets in the order of a fixed random permutation. This
+/// should be achievable by picking a random start bucket S, and a suitably
+/// large number P co-prime to the size of the table N to use as a constant
+/// offset for each subsequent step. (The sequence of numbers S, ((S + P) % N)),
+/// ((S + 2P) % N)... (S + (N-1)P) % N should form a permuation of [1, N].
+/// That way we still visit the buckets in a sufficiently random order, but we
+/// are guaranteed to make progress in a finite amount of time.
 bool Cache::freeMemory() {
   if (isShutdown()) {
     return false;
   }
 
   bool underLimit = reclaimMemory(0ULL);
-  uint64_t failures = 0;
+  std::uint64_t failures = 0;
   while (!underLimit) {
     // pick a random bucket
-    uint32_t randomHash = RandomGenerator::interval(UINT32_MAX);
-    uint64_t reclaimed = freeMemoryFrom(randomHash);
+    std::uint32_t randomHash =
+        RandomGenerator::interval(std::numeric_limits<std::uint32_t>::max());
+    std::uint64_t reclaimed = freeMemoryFrom(randomHash);
 
     if (reclaimed > 0) {
       failures = 0;
@@ -444,27 +452,33 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   table->setAuxiliary(newTable);
 
   // do the actual migration
-  for (uint32_t i = 0; i < table->size(); i++) {
-    migrateBucket(table->primaryBucket(i), table->auxiliaryBuckets(i), newTable);
+  for (std::uint64_t i = 0; i < table->size(); i++) {  // need uint64 for end condition
+    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+                  table->auxiliaryBuckets(static_cast<uint32_t>(i)), newTable);
   }
 
   // swap tables
-  _taskLock.writeLock();
-  _table.store(newTable.get(), std::memory_order_relaxed);
-  std::shared_ptr<Table> oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
-  std::shared_ptr<Table> confirm =
-      oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
-  _taskLock.writeUnlock();
+  std::shared_ptr<Table> oldTable;
+  {
+    SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
+    _table.store(newTable.get(), std::memory_order_relaxed);
+    oldTable = std::atomic_exchange(&_tableShrdPtr, newTable);
+    std::shared_ptr<Table> confirm =
+        oldTable->setAuxiliary(std::shared_ptr<Table>(nullptr));
+  }
 
   // clear out old table and release it
   oldTable->clear();
-  _manager->reclaimTable(oldTable);
+  _manager->reclaimTable(oldTable, false);
 
   // unmarking migrating flag
-  _metadata.writeLock();
-  _metadata.changeTable(table->memoryUsage());
-  _metadata.toggleMigrating();
-  _metadata.writeUnlock();
+  {
+    SpinLocker metaGuard(SpinLocker::Mode::Write, _metadata.lock());
+    _metadata.changeTable(table->memoryUsage());
+    _metadata.toggleMigrating();
+  }
 
   return true;
 }
+
+}  // namespace arangodb::cache

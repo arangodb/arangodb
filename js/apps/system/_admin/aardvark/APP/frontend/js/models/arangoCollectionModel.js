@@ -31,6 +31,21 @@
         }
       });
     },
+    getShards: function (callback) {
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/shards?details=true'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function () {
+          callback(true);
+        }
+      });
+    },
     getFigures: function (callback) {
       $.ajax({
         type: 'GET',
@@ -45,6 +60,28 @@
           callback(true);
         }
       });
+    },
+    getFiguresCombined: function (callback, isCluster) {
+      var self = this;
+      var shardsCallback = function (error, data) {
+        if (error) {
+          callback(true);
+        } else {
+          var figures = data;
+          if (isCluster) {
+            self.getShards(function (error, data) {
+              if (error) {
+                callback(true);
+              } else {
+                callback(false, Object.assign(figures, { shards: data.shards }));
+              }
+            });
+          } else {
+            callback(false, figures);
+          }
+        }
+      };
+      this.getFigures(shardsCallback);
     },
     getRevision: function (callback, figures) {
       $.ajax({
@@ -150,32 +187,6 @@
         url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/truncate'),
         success: function () {
           arangoHelper.arangoNotification('Collection truncated.');
-
-          // after we are done with the truncation, we flush the WAL to move out all
-          // remove operations
-          $.ajax({
-            cache: false,
-            type: 'PUT',
-            url: arangoHelper.databaseUrl('/_admin/wal/flush?waitForSync=true&waitForCollector=true'),
-            success: function () {
-              // after the WAL flush, we rotate the collection's active journals, so they can be
-              // compacted
-              $.ajax({
-                cache: false,
-                type: 'PUT',
-                url: arangoHelper.databaseUrl('/_api/collection/' + self.get('id') + '/rotate'),
-                success: function () {},
-                error: function () {
-                  // we dispatched the operation as an invisible background action, so we will
-                  // intentionally ignore all errors here
-                }
-              });
-            },
-            error: function () {
-              // we dispatched the operation as an invisible background action, so we will
-              // intentionally ignore all errors here
-            }
-          });
         },
         error: function (err) {
           arangoHelper.arangoError('Collection error: ' + err.responseJSON.errorMessage);
@@ -247,7 +258,7 @@
       });
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, writeConcern, callback) {
+    changeCollection: function (wfs, replicationFactor, writeConcern, callback) {
       var result = false;
       if (wfs === 'true') {
         wfs = true;
@@ -255,9 +266,7 @@
         wfs = false;
       }
       var data = {
-        waitForSync: wfs,
-        journalSize: parseInt(journalSize, 10),
-        indexBuckets: parseInt(indexBuckets, 10)
+        waitForSync: wfs
       };
 
       if (replicationFactor) {
@@ -267,6 +276,33 @@
         // not an error. writeConcern is stored in minReplicationFactor for historical reasons
         data.minReplicationFactor = parseInt(writeConcern, 10);
       }
+
+      $.ajax({
+        cache: false,
+        type: 'PUT',
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/properties'),
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        processData: false,
+        success: function () {
+          callback(false);
+        },
+        error: function (data) {
+          callback(true, data);
+        }
+      });
+      return result;
+    },
+
+    changeValidation: function (validation, callback) {
+      var result = false;
+      if (!validation) {
+        validation = null;
+      }
+
+      var data = {
+        schema: validation
+      };
 
       $.ajax({
         cache: false,

@@ -25,7 +25,7 @@
 #include "formats_test_case_base.hpp"
 #include "store/directory_attributes.hpp"
 
-NS_LOCAL
+namespace {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          format 11 specific tests
@@ -47,7 +47,7 @@ TEST_P(format_11_test_case, read_zero_block_encryption) {
 
   // write segment with format10
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_1", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -57,7 +57,7 @@ TEST_P(format_11_test_case, read_zero_block_encryption) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // replace encryption
@@ -81,7 +81,7 @@ TEST_P(format_11_test_case, write_zero_block_encryption) {
   dir().attributes().emplace<tests::rot13_encryption>(0);
 
   // write segment with format10
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
   auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
   ASSERT_NE(nullptr, writer);
@@ -119,7 +119,7 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
   field.name = "field";
   field.norm = 5;
 
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
 
@@ -160,7 +160,7 @@ TEST_P(format_11_test_case, fields_read_write_wrong_encryption) {
 }
 
 TEST_P(format_11_test_case, column_meta_read_write_wrong_encryption) {
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
 
   ASSERT_TRUE(dir().attributes().contains<tests::rot13_encryption>());
@@ -208,7 +208,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
 
   // write segment with format10
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_1", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -218,7 +218,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_wrong_encryption) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // can't open encrypted index with wrong encryption
@@ -239,7 +239,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_1", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -249,7 +249,7 @@ TEST_P(format_11_test_case, open_ecnrypted_with_non_encrypted) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // remove encryption
@@ -271,7 +271,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_1", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_CREATE);
     ASSERT_NE(nullptr, writer);
@@ -281,7 +281,7 @@ TEST_P(format_11_test_case, open_non_ecnrypted_with_encrypted) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // add cipher
@@ -341,11 +341,11 @@ TEST_P(format_11_test_case, open_10_with_11) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check index
-  auto codec = irs::formats::get("1_1");
+  auto codec = irs::formats::get("1_1", "1_0");
   ASSERT_NE(nullptr, codec);
   auto index = irs::directory_reader::open(dir(), codec);
   ASSERT_TRUE(index);
@@ -401,12 +401,12 @@ TEST_P(format_11_test_case, formats_10_11) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // write segment with format11
   {
-    auto codec = irs::formats::get("1_1");
+    auto codec = irs::formats::get("1_1", "1_0");
     ASSERT_NE(nullptr, codec);
     auto writer = irs::index_writer::make(dir(), codec, irs::OM_APPEND);
     ASSERT_NE(nullptr, writer);
@@ -416,7 +416,7 @@ TEST_P(format_11_test_case, formats_10_11) {
       doc2->stored.begin(), doc2->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check index
@@ -511,9 +511,9 @@ INSTANTIATE_TEST_CASE_P(
 //      &tests::rot13_cipher_directory<&tests::fs_directory, 0>,
 //      &tests::rot13_cipher_directory<&tests::mmap_directory, 0>
     ),
-    ::testing::Values("1_1")
+    ::testing::Values(tests::format_info{"1_1", "1_0"})
   ),
   tests::to_string
 );
 
-NS_END
+}

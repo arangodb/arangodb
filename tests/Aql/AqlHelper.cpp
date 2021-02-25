@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,14 +37,14 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, ExecutionStats con
 
 std::ostream& arangodb::aql::operator<<(std::ostream& stream, AqlItemBlock const& block) {
   stream << "[";
-  for (size_t row = 0; row < block.size(); row++) {
+  for (size_t row = 0; row < block.numRows(); row++) {
     if (row > 0) {
       stream << ",";
     }
     stream << " ";
     VPackBuilder builder{};
     builder.openArray();
-    for (RegisterId reg = 0; reg < block.getNrRegs(); reg++) {
+    for (RegisterId::value_t reg = 0; reg < block.numRegisters(); reg++) {
       if (reg > 0) {
         stream << ",";
       }
@@ -59,12 +60,12 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, AqlItemBlock const
 
 bool arangodb::aql::operator==(arangodb::aql::ExecutionStats const& left,
                                arangodb::aql::ExecutionStats const& right) {
-  TRI_ASSERT(left.nodes.empty());
-  TRI_ASSERT(right.nodes.empty());
-  TRI_ASSERT(left.executionTime == 0.0);
-  TRI_ASSERT(right.executionTime == 0.0);
-  TRI_ASSERT(left.peakMemoryUsage == 0);
-  TRI_ASSERT(right.peakMemoryUsage == 0);
+  // The below information is only set on profiling in AQL
+  // They are not included on purpose as they will never be equal.
+  // * nodes
+  // * executionTime
+  // * peakMemeoryUsage
+
   // clang-format off
   return left.writesExecuted == right.writesExecuted
       && left.writesIgnored == right.writesIgnored
@@ -78,16 +79,16 @@ bool arangodb::aql::operator==(arangodb::aql::ExecutionStats const& left,
 }
 bool arangodb::aql::operator==(arangodb::aql::AqlItemBlock const& left,
                                arangodb::aql::AqlItemBlock const& right) {
-  if (left.size() != right.size()) {
+  if (left.numRows() != right.numRows()) {
     return false;
   }
-  if (left.getNrRegs() != right.getNrRegs()) {
+  if (left.numRegisters() != right.numRegisters()) {
     return false;
   }
-  size_t const rows = left.size();
-  RegisterCount const regs = left.getNrRegs();
+  size_t const rows = left.numRows();
+  RegisterCount const regs = left.numRegisters();
   for (size_t row = 0; row < rows; row++) {
-    for (RegisterId reg = 0; reg < regs; reg++) {
+    for (RegisterId::value_t reg = 0; reg < regs; reg++) {
       AqlValue const& l = left.getValueReference(row, reg);
       AqlValue const& r = right.getValueReference(row, reg);
       // Doesn't work for docvecs or ranges

@@ -32,8 +32,8 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
@@ -53,18 +53,51 @@ const testPaths = {
 function runArangodRecovery (params) {
   let useEncryption = false;
 
-  if (params && params.options.storageEngine === 'rocksdb' && global.ARANGODB_CLIENT_VERSION) {
+  if (global.ARANGODB_CLIENT_VERSION) {
     let version = global.ARANGODB_CLIENT_VERSION(true);
     if (version.hasOwnProperty('enterprise-version')) {
       useEncryption = true;
     }
   }
 
+  let additionalParams= {
+    'log.foreground-tty': 'true',
+    'database.ignore-datafile-errors': 'false', // intentionally false!
+  };
+
+  if (useEncryption) {
+    // randomly turn on or off hardware-acceleration for encryption for both
+    // setup and the actual test. given enough tests, this will ensure that we run
+    // a good mix of accelerated and non-accelerated encryption code. in addition,
+    // we shuffle between the setup and the test phase, so if there is any
+    // incompatibility between the two modes, this will likely find it
+    additionalParams['rocksdb.encryption-hardware-acceleration'] = (Math.random() * 100 >= 50) ? "true" : "false";
+  }
+
   let argv = [];
 
   let binary = pu.ARANGOD_BIN;
+  let crashLogDir = fs.join(fs.getTempPath(), 'crash');
+  fs.makeDirectoryRecursive(crashLogDir);
+  pu.cleanupDBDirectoriesAppend(crashLogDir);
+
+  let crashLog = fs.join(crashLogDir, 'crash.log');
 
   if (params.setup) {
+    additionalParams['javascript.script-parameter'] = 'setup';
+    try {
+      // clean up crash log before next test
+      fs.remove(crashLog);
+    } catch (err) {}
+
+
+    // special handling for crash-handler recovery tests
+    if (params.script.match(/crash-handler/)) {
+      // forcefully enable crash handler, even if turned off globally
+      // during testing
+      require('internal').env["ARANGODB_OVERRIDE_CRASH_HANDLER"] = "on";
+    }
+
     params.options.disableMonitor = true;
     params.testDir = fs.join(params.tempDir, `${params.count}`);
     pu.cleanupDBDirectoriesAppend(params.testDir);
@@ -83,44 +116,51 @@ function runArangodRecovery (params) {
     }
     args = Object.assign(args, params.options.extraArgs);
     args = Object.assign(args, {
-      'wal.reserve-logfiles': 1,
       'rocksdb.wal-file-timeout-initial': 10,
       'database.directory': fs.join(dataDir + 'db'),
       'server.rest-server': 'false',
       'replication.auto-start': 'true',
       'javascript.script': params.script
     });
+      
+    args['log.output'] = 'file://' + crashLog;
 
     if (useEncryption) {
-      args['rocksdb.encryption-keyfile'] = tu.pathForTesting('server/recovery/encryption-keyfile');
+      let keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
+      }
+      pu.cleanupDBDirectoriesAppend(keyDir);
+        
+      const key = '01234567890123456789012345678901';
+      
+      let keyfile = fs.join(keyDir, 'rocksdb-encryption-keyfile');
+      fs.write(keyfile, key);
+
+      // special handling for encryption-keyfolder tests
+      if (params.script.match(/encryption-keyfolder/)) {
+        args['rocksdb.encryption-keyfolder'] = keyDir;
+        process.env["rocksdb-encryption-keyfolder"] = keyDir;
+      } else {
+        args['rocksdb.encryption-keyfile'] = keyfile;
+        process.env["rocksdb-encryption-keyfile"] = keyfile;
+      }
     }
 
     params.args = args;
 
-    argv = toArgv(
-      Object.assign(params.args,
-                    {
-                      'log.foreground-tty': 'true',
-                      'javascript.script-parameter': 'setup'
-                    }
-                   )
-    );
+    argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
-    argv = toArgv(
-      Object.assign(params.args,
-                    {
-                      'log.foreground-tty': 'true',
-                      'wal.ignore-logfile-errors': 'true',
-                      'database.ignore-datafile-errors': 'false', // intentionally false!
-                      'javascript.script-parameter': 'recovery'
-                    }
-                   )
-    );
+    additionalParams['javascript.script-parameter'] = 'recory';
+    argv = toArgv(Object.assign(params.args, additionalParams));
+    
     if (params.options.rr) {
       binary = 'rr';
       argv.unshift(pu.ARANGOD_BIN);
     }
   }
+    
+  process.env["crash-log"] = crashLog;
   params.instanceInfo.pid = pu.executeAndWait(
     binary,
     argv,

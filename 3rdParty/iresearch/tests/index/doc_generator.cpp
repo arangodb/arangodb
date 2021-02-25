@@ -26,7 +26,6 @@
 #include "index/field_data.hpp"
 #include "analysis/token_streams.hpp"
 #include "store/store_utils.hpp"
-#include "unicode/utf8.h"
 #include "utils/file_utils.hpp"
 
 #include <sstream>
@@ -37,13 +36,21 @@
 #include <rapidjson/reader.h>
 #include <rapidjson/istreamwrapper.h>
 
+#include <utf8.h>
+
 namespace utf8 {
 namespace unchecked {
 
 template<typename octet_iterator>
-class break_iterator : public std::iterator<std::forward_iterator_tag, std::string> {
-  public:
-  typedef unchecked::iterator<octet_iterator> utf8iterator;
+class break_iterator {
+ public:
+  using utf8iterator = unchecked::iterator<octet_iterator>;
+
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = std::string;
+  using pointer = value_type*;
+  using reference = value_type&;
+  using difference_type = void;
 
   break_iterator(utf8::uint32_t delim, const octet_iterator& begin, const octet_iterator& end)
     : delim_(delim), wbegin_(begin), wend_(begin), end_(end) {
@@ -104,13 +111,13 @@ class break_iterator : public std::iterator<std::forward_iterator_tag, std::stri
 } // unchecked
 } // utf8
 
-NS_BEGIN(tests)
+namespace tests {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           document implementation
 // -----------------------------------------------------------------------------
 
-document::document(document&& rhs) NOEXCEPT
+document::document(document&& rhs) noexcept
   : indexed(std::move(rhs.indexed)), 
     stored(std::move(rhs.stored)),
     sorted(std::move(rhs.sorted)) {
@@ -120,14 +127,14 @@ document::document(document&& rhs) NOEXCEPT
 // --SECTION--                                         field_base implementation
 // -----------------------------------------------------------------------------
 
-field_base::field_base(field_base&& rhs) NOEXCEPT
+field_base::field_base(field_base&& rhs) noexcept
   : features_(std::move(rhs.features_)),
     name_(std::move(rhs.name_)) {
 }
 
-field_base& field_base::operator=(field_base&& rhs) NOEXCEPT {
+field_base& field_base::operator=(field_base&& rhs) noexcept {
   if (this != &rhs) {
-    features_ = std::move(features_);
+    features_ = std::move(rhs.features_);
     name_ = std::move(rhs.name_);
   }
 
@@ -153,8 +160,8 @@ bool long_field::write(irs::data_output& out) const {
 // -----------------------------------------------------------------------------
 
 irs::token_stream& int_field::get_tokens() const {
-  stream_.reset(value_);
-  return stream_;
+  stream_->reset(value_);
+  return *stream_;
 }
 
 bool int_field::write(irs::data_output& out) const {
@@ -208,11 +215,11 @@ bool binary_field::write(irs::data_output& out) const {
 // --SECTION--                                           particle implementation
 // -----------------------------------------------------------------------------
 
-particle::particle(particle&& rhs) NOEXCEPT
+particle::particle(particle&& rhs) noexcept
   : fields_(std::move(rhs.fields_)) {
 }
 
-particle& particle::operator=(particle&& rhs) NOEXCEPT {
+particle& particle::operator=(particle&& rhs) noexcept {
   if (this != &rhs) {
     fields_ = std::move(rhs.fields_);
   }
@@ -310,10 +317,11 @@ void delim_doc_generator::reset() {
 // -----------------------------------------------------------------------------
 
 csv_doc_generator::csv_doc_generator(
-    const irs::utf8_path& file, doc_template& doc
-): doc_(doc),
-   ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
-   stream_(irs::analysis::analyzers::get("delimiter", irs::text_format::text, ",")) {
+    const irs::utf8_path& file,
+    doc_template& doc)
+  : doc_(doc),
+    ifs_(file.native(), std::ifstream::in | std::ifstream::binary),
+    stream_(irs::analysis::analyzers::get("delimiter", irs::type<irs::text_format::text>::get(), ",")) {
   doc_.init();
   doc_.reset();
 }
@@ -323,14 +331,14 @@ const tests::document* csv_doc_generator::next() {
     return nullptr;
   }
 
-  auto& term = stream_->attributes().get<irs::term_attribute>();
+  auto* term = irs::get<irs::term_attribute>(*stream_);
 
   if (!term || !stream_->reset(line_)) {
     return nullptr;
   }
 
   for (size_t i = 0; stream_->next(); ++i) {
-    doc_.value(i, irs::ref_cast<char>(term->value()));
+    doc_.value(i, irs::ref_cast<char>(term->value));
   }
 
   return &doc_;
@@ -485,7 +493,22 @@ json_doc_generator::json_doc_generator(
   next_ = docs_.begin();
 }
 
-json_doc_generator::json_doc_generator(json_doc_generator&& rhs) NOEXCEPT
+json_doc_generator::json_doc_generator(
+    const char* data,
+    const json_doc_generator::factory_f& factory) {
+  assert(data);
+
+  rapidjson::StringStream stream(data);
+  parse_json_handler handler(factory, docs_);
+  rapidjson::Reader reader;
+
+  const auto res = reader.Parse(stream, handler);
+  assert(!res.IsError());
+
+  next_ = docs_.begin();
+}
+
+json_doc_generator::json_doc_generator(json_doc_generator&& rhs) noexcept
   : docs_(std::move(rhs.docs_)), 
     prev_(std::move(rhs.prev_)), 
     next_(std::move(rhs.next_)) {
@@ -504,8 +527,4 @@ void json_doc_generator::reset() {
   next_ = docs_.begin();
 }
 
-NS_END // tests
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // tests

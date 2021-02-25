@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -32,7 +33,7 @@
 
 #include <velocypack/Iterator.h>
 
-NS_LOCAL
+namespace {
 
 static const char* collectionName1 = "collection_1";
 static const char* collectionName2 = "collection_2";
@@ -50,7 +51,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
   void addLinkToCollection(std::shared_ptr<arangodb::iresearch::IResearchView>& view) {
     auto updateJson = VPackParser::fromJson(
       std::string("{") +
-        "\"links\": {" +
+        "\"links\": {"
         "\"" + collectionName1 + "\": {\"includeAllFields\": true},"
         "\"" + collectionName2 + "\": {\"includeAllFields\": true}"
       "}}");
@@ -66,7 +67,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
     EXPECT_TRUE(slice.isObject());
     EXPECT_TRUE(slice.get("type").copyString() ==
                 arangodb::iresearch::DATA_SOURCE_TYPE.name());
-    EXPECT_TRUE(slice.get("deleted").isNone());  // no system properties
+    EXPECT_TRUE(slice.get("deleted").isNone()); // no system properties
     auto tmpSlice = slice.get("links");
     EXPECT_TRUE(tmpSlice.isObject() && 2 == tmpSlice.length());
   }
@@ -148,7 +149,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
           auto const res =
-              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt, false);
+              logicalCollection1->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -169,7 +170,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
         for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
           insertedDocs.emplace_back();
           auto const res =
-              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt, false);
+              logicalCollection2->insert(&trx, doc, insertedDocs.back(), opt);
           EXPECT_TRUE(res.ok());
         }
       }
@@ -223,7 +224,7 @@ class IResearchQueryLateMaterializationTest : public IResearchQueryTest {
   }
 };
 
-NS_END
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

@@ -168,6 +168,78 @@ function CollectionSuite () {
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test revision id
+////////////////////////////////////////////////////////////////////////////////
+
+    testRevision2: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      var r1 = c1.revision();
+      c1.save({_key: "abc"});
+      var r2 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r2, r1));
+
+      c1.save({_key: "123"});
+      c1.save({_key: "456"});
+      c1.save({_key: "789"});
+
+      var r3 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r3, r2));
+
+      c1.remove("123");
+      var r4 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r4, r3));
+
+      c1.truncate({ compact: false });
+      var r5 = c1.revision();
+      assertEqual(1, testHelper.compareStringIds(r5, r4));
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r6 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r6, r5));
+
+      for (var i = 0; i < 10; ++i) {
+        c1.save({_key: "test" + i});
+        assertEqual(1, testHelper.compareStringIds(c1.revision(), r6));
+        r6 = c1.revision();
+      }
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r7 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r7, r6));
+
+      c1.truncate({ compact: false });
+      var r8 = c1.revision();
+
+      // unload
+      c1.unload();
+      c1 = null;
+      internal.wait(5);
+
+      // compare rev
+      c1 = db._collection(cn);
+      var r9 = c1.revision();
+      assertEqual(0, testHelper.compareStringIds(r9, r8));
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create with id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -534,6 +606,30 @@ function CollectionSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check that properties include syncByRevision
+////////////////////////////////////////////////////////////////////////////////
+
+    testSyncByRevision: function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      assertTypeOf("string", c1._id);
+      assertEqual(cn, c1.name());
+      assertTypeOf("number", c1.status());
+      assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
+      assertTypeOf("number", c1.type());
+
+      var p = c1.properties();
+
+      assertEqual(true, p.hasOwnProperty("syncByRevision"));
+      assertEqual(true, p.syncByRevision);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief drop new-born
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -747,7 +843,222 @@ function CollectionSuite () {
       catch (err1) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksum : function () {
+      var cn = "example";
+
+      db._drop(cn);
+      var c1 = db._create(cn);
+
+      // empty collection, checksum should be 0
+      var r1 = c1.checksum(true);
+      assertTypeOf("string", r1.revision);
+      assertTrue(r1.revision !== "");
+      assertTypeOf("string", r1.checksum);
+      assertEqual("0", r1.checksum);
+
+      // inserting a doc, checksum should change
+      c1.save({ a : 1 });
+      var r2 = c1.checksum(true);
+      assertNotEqual(r1.revision, r2.revision);
+      assertTypeOf("string", r2.revision);
+      assertTrue(r2.revision !== "");
+      assertTypeOf("string", r2.checksum);
+      assertNotEqual("0", r2.checksum);
+
+      // inserting another doc, checksum should change
+      c1.save({ a : 2 });
+      var r3 = c1.checksum(true);
+      assertNotEqual(r1.revision, r3.revision);
+      assertNotEqual(r2.revision, r3.revision);
+      assertTypeOf("string", r3.revision);
+      assertTrue(r3.revision !== "");
+      assertTypeOf("string", r3.checksum);
+      assertNotEqual("0", r3.checksum);
+      assertNotEqual(r2.checksum, r3.checksum);
+
+      // test after unloading
+      c1.unload();
+      var r4 = c1.checksum(true);
+      assertTypeOf("string", r4.revision);
+      assertEqual(r3.revision, r4.revision);
+      assertTypeOf("string", r4.checksum);
+      assertNotEqual("0", r4.checksum);
+      assertEqual(r3.checksum, r4.checksum);
+
+      // test withData
+      var r5 = c1.checksum(true, true);
+      assertTypeOf("string", r5.revision);
+      assertEqual(r4.revision, r5.revision);
+      assertTypeOf("string", r5.checksum);
+      assertNotEqual("0", r5.checksum);
+      assertNotEqual(r4.checksum, r5.checksum);
+
+      // test after truncation
+      c1.truncate({ compact: false });
+      var r6 = c1.checksum(true);
+      assertTypeOf("string", r6.revision);
+      assertTypeOf("string", r6.checksum);
+      assertEqual("0", r6.checksum);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksumEdge : function () {
+      var cn = "example";
+      var vn = "example2";
+
+      db._drop(cn);
+      db._drop(vn);
+      db._create(vn);
+      var c1 = db._createEdgeCollection(cn);
+
+      var r1 = c1.checksum(true);
+      assertTypeOf("string", r1.revision);
+      assertTrue(r1.revision !== "");
+      assertTypeOf("string", r1.checksum);
+      assertEqual("0", r1.checksum);
+
+      c1.save(vn + "/1", vn + "/2", { a : 1 });
+      var r2 = c1.checksum(true);
+      assertNotEqual(r1.revision, r2.revision);
+      assertTypeOf("string", r2.revision);
+      assertTrue(r2.revision !== "");
+      assertTypeOf("string", r2.checksum);
+      assertNotEqual("0", r2.checksum);
+
+      c1.save(vn + "/1", vn + "/2", { a : 2 });
+      var r3 = c1.checksum(true);
+      assertNotEqual(r1.revision, r3.revision);
+      assertNotEqual(r2.revision, r3.revision);
+      assertTypeOf("string", r3.revision);
+      assertTrue(r3.revision !== "");
+      assertTypeOf("string", r3.checksum);
+      assertNotEqual("0", r3.checksum);
+      assertNotEqual(r2.checksum, r3.checksum);
+
+      c1.unload();
+      var r4 = c1.checksum(true);
+      assertTypeOf("string", r4.revision);
+      assertEqual(r3.revision, r4.revision);
+      assertTypeOf("string", r4.checksum);
+      assertEqual(r3.checksum, r4.checksum);
+
+      // test withData
+      var r5 = c1.checksum(true, true);
+      assertTypeOf("string", r5.revision);
+      assertEqual(r4.revision, r5.revision);
+      assertTypeOf("string", r5.checksum);
+      assertNotEqual("0", r5.checksum);
+      assertNotEqual(r4.checksum, r5.checksum);
+
+      // test after truncation
+      c1.truncate({ compact: false });
+      var r6 = c1.checksum(true);
+      assertTypeOf("string", r6.revision);
+      assertTypeOf("string", r6.checksum);
+      assertEqual("0", r6.checksum);
+
+      db._drop(cn);
+      db._drop(vn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test checksum two different collections
+////////////////////////////////////////////////////////////////////////////////
+
+    testChecksumDifferent : function () {
+      var cn1 = "example";
+      var cn2 = "example2";
+
+      db._drop(cn1);
+      db._drop(cn2);
+      var c1 = db._create(cn1);
+      var c2 = db._create(cn2);
+
+      // collections are empty, checksums are identical
+      var cs1 = c1.checksum().checksum;
+      var cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+
+      c1.save({ _key: "foobar", value: 123 });
+      c2.save({ _key: "foobar", value: 123 });
+
+      // keys are the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+
+      // data is the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertEqual(cs1, cs2);
+
+      // revisions are different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+
+      assertNotEqual(cs1, cs2);
+
+      // revisions are still different
+      cs1 = c1.checksum(true, true).checksum;
+      cs2 = c2.checksum(true, true).checksum;
+
+      assertNotEqual(cs1, cs2);
+
+      // update document in c1, keep data
+      c1.replace("foobar", { value: 123 });
+
+      // keys are still the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+
+      // data is still the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertEqual(cs1, cs2);
+
+      // revisions are still different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+
+      // update document in c1, changing data
+      c1.replace("foobar", { value: 124 });
+
+      // keys are still the same
+      cs1 = c1.checksum().checksum;
+      cs2 = c2.checksum().checksum;
+
+      assertEqual(cs1, cs2);
+
+      // data is not the same
+      cs1 = c1.checksum(false, true).checksum;
+      cs2 = c2.checksum(false, true).checksum;
+
+      assertNotEqual(cs1, cs2);
+
+      // revisions are still different
+      cs1 = c1.checksum(true, false).checksum;
+      cs2 = c2.checksum(true, false).checksum;
+
+      db._drop(cn1);
+      db._drop(cn2);
+    },
 
   };
 }
@@ -958,6 +1269,47 @@ function CollectionDbSuite () {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection caches
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionCacheSuite () {
+  const cn = "UnitTestsClusterCache";
+  return {
+
+    tearDown : function () {
+      try {
+        db._drop(cn);
+      }
+      catch (err) {
+      }
+    },
+    
+    testCollectionCache : function () {
+      let c = db._create(cn, {cacheEnabled:true});
+      let p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+    }
+  };
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
@@ -966,5 +1318,6 @@ function CollectionDbSuite () {
 jsunity.run(CollectionSuiteErrorHandling);
 jsunity.run(CollectionSuite);
 jsunity.run(CollectionDbSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

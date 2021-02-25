@@ -30,7 +30,7 @@
   #include "delta_compression.hpp"
 #endif
 
-NS_LOCAL
+namespace {
 
 struct value{
   explicit value(
@@ -40,16 +40,16 @@ struct value{
       decompressor_factory_(decompressor_factory) {
   }
 
-  bool empty() const NOEXCEPT {
+  bool empty() const noexcept {
     return !compressor_factory_ || !decompressor_factory_;
   }
 
-  bool operator==(const value& other) const NOEXCEPT {
+  bool operator==(const value& other) const noexcept {
     return compressor_factory_ == other.compressor_factory_ &&
            decompressor_factory_ == other.decompressor_factory_;
   }
 
-  bool operator!=(const value& other) const NOEXCEPT {
+  bool operator!=(const value& other) const noexcept {
     return !(*this == other);
   }
 
@@ -82,13 +82,13 @@ class compression_register
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(compression)
+namespace iresearch {
+namespace compression {
 
 compression_registrar::compression_registrar(
-    const type_id& type,
+    const type_info& type,
     compressor_factory_f compressor_factory,
     decompressor_factory_f decompressor_factory,
     const char* source /*= nullptr*/) {
@@ -130,8 +130,6 @@ compression_registrar::compression_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
@@ -142,27 +140,25 @@ bool exists(const string_ref& name, bool load_library /*= true*/ ) {
 compressor::ptr get_compressor(
     const string_ref& name,
     const options& opts,
-    bool load_library /*= true*/) NOEXCEPT {
+    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance().get(name, load_library).compressor_factory_;
 
     return factory ? factory(opts) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
 }
 
-decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) NOEXCEPT {
+decompressor::ptr get_decompressor(const string_ref& name, bool load_library /*= true*/) noexcept {
   try {
     auto* factory = compression_register::instance().get(name, load_library).decompressor_factory_;
 
     return factory ? factory() : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -172,7 +168,7 @@ void init() {
 #ifndef IRESEARCH_DLL
   lz4::init();
   delta::init();
-  raw::init();
+  none::init();
 #endif
 }
 
@@ -192,16 +188,14 @@ bool visit(const std::function<bool(const string_ref&)>& visitor) {
 // --SECTION--                                                raw implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ void raw::init() {
+/*static*/ void none::init() {
 #ifndef IRESEARCH_DLL
   // match registration below
-  REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
+  REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 #endif
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::raw);
+REGISTER_COMPRESSION(none, &none::compressor, &none::decompressor);
 
-REGISTER_COMPRESSION(raw, &raw::compressor, &raw::decompressor);
-
-NS_END // compression
-NS_END
+} // compression
+}

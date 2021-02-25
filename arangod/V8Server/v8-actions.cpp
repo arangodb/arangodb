@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -39,20 +40,20 @@
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/GeneralRequest.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "StorageEngine/HotBackup.h"
 #include "Utils/ExecContext.h"
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-vocbase.h"
@@ -79,7 +80,8 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t*, v8::Isolate*,
 
 class v8_action_t final : public TRI_action_t {
  public:
-  v8_action_t() : TRI_action_t(), _callbacks(), _callbacksLock() {}
+  explicit v8_action_t(ActionFeature const& actionFeature)
+      : TRI_action_t(), _actionFeature(actionFeature), _callbacks(), _callbacksLock() {}
 
   void visit(void* data) override {
     v8::Isolate* isolate = static_cast<v8::Isolate*>(data);
@@ -116,7 +118,7 @@ class v8_action_t final : public TRI_action_t {
     TRI_action_result_t result;
 
     // allow use database execution in rest calls?
-    bool allowUseDatabase = _allowUseDatabase || ActionFeature::ACTION->allowUseDatabase();
+    bool allowUseDatabase = _allowUseDatabase || _actionFeature.allowUseDatabase();
 
     // get a V8 context
     V8ContextGuard guard(vocbase, _isSystem ?
@@ -195,6 +197,8 @@ class v8_action_t final : public TRI_action_t {
   }
 
  private:
+  ActionFeature const& _actionFeature;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief callback dictionary
   //////////////////////////////////////////////////////////////////////////////
@@ -214,11 +218,11 @@ class v8_action_t final : public TRI_action_t {
 
 static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
                                TRI_action_t* action, v8::Handle<v8::Object> options) {
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto context = TRI_IGETC;
   TRI_GET_GLOBAL_STRING(PrefixKey);
   // check the "prefix" field
   if (TRI_HasProperty(context, isolate, options, PrefixKey)) {
-    action->_isPrefix = TRI_ObjectToBoolean(isolate, options->Get(PrefixKey));
+    action->_isPrefix = TRI_ObjectToBoolean(isolate, options->Get(context, PrefixKey).FromMaybe(v8::Local<v8::Value>()));
   } else {
     action->_isPrefix = false;
   }
@@ -227,7 +231,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
   TRI_GET_GLOBAL_STRING(AllowUseDatabaseKey);
   if (TRI_HasProperty(context, isolate, options, AllowUseDatabaseKey)) {
     action->_allowUseDatabase =
-        TRI_ObjectToBoolean(isolate, options->Get(AllowUseDatabaseKey));
+      TRI_ObjectToBoolean(isolate, options->Get(context, AllowUseDatabaseKey).FromMaybe(v8::Local<v8::Value>()));
   } else {
     action->_allowUseDatabase = false;
   }
@@ -235,7 +239,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
   TRI_GET_GLOBAL_STRING(IsSystemKey);
   if (TRI_HasProperty(context, isolate, options, IsSystemKey)) {
     action->_isSystem =
-        TRI_ObjectToBoolean(isolate, options->Get(IsSystemKey));
+      TRI_ObjectToBoolean(isolate, options->Get(context, IsSystemKey).FromMaybe(v8::Local<v8::Value>()));
   } else {
     action->_isSystem = false;
   }
@@ -247,7 +251,7 @@ static void ParseActionOptions(v8::Isolate* isolate, TRI_v8_global_t* v8g,
 
 static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                       HttpResponse* response, v8::Handle<v8::Object> data) {
-  v8::Local<v8::Context> context = isolate->GetCurrentContext();
+  auto context = TRI_IGETC;
   std::string name;
   std::string value;
   int lifeTimeSeconds = 0;
@@ -258,7 +262,7 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   TRI_GET_GLOBAL_STRING(NameKey);
   if (TRI_HasProperty(context, isolate, data, NameKey)) {
-    v8::Handle<v8::Value> v = data->Get(NameKey);
+    v8::Handle<v8::Value> v = data->Get(context, NameKey).FromMaybe(v8::Handle<v8::Value>());
     name = TRI_ObjectToString(isolate, v);
   } else {
     // something is wrong here
@@ -266,7 +270,7 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   }
   TRI_GET_GLOBAL_STRING(ValueKey);
   if (TRI_HasProperty(context, isolate, data, ValueKey)) {
-    v8::Handle<v8::Value> v = data->Get(ValueKey);
+    v8::Handle<v8::Value> v = data->Get(context, ValueKey).FromMaybe(v8::Local<v8::Value>());
     value = TRI_ObjectToString(isolate, v);
   } else {
     // something is wrong here
@@ -274,27 +278,27 @@ static void AddCookie(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   }
   TRI_GET_GLOBAL_STRING(LifeTimeKey);
   if (TRI_HasProperty(context, isolate, data, LifeTimeKey)) {
-    v8::Handle<v8::Value> v = data->Get(LifeTimeKey);
+    v8::Handle<v8::Value> v = data->Get(context, LifeTimeKey).FromMaybe(v8::Local<v8::Value>());
     lifeTimeSeconds = (int)TRI_ObjectToInt64(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(PathKey);
-  if (TRI_HasProperty(context, isolate, data, PathKey) && !data->Get(PathKey)->IsUndefined()) {
-    v8::Handle<v8::Value> v = data->Get(PathKey);
+  if (TRI_HasProperty(context, isolate, data, PathKey) && !data->Get(context, PathKey).FromMaybe(v8::Local<v8::Value>())->IsUndefined()) {
+    v8::Handle<v8::Value> v = data->Get(context, PathKey).FromMaybe(v8::Handle<v8::Value>());
     path = TRI_ObjectToString(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(DomainKey);
-  if (TRI_HasProperty(context, isolate, data, DomainKey) && !data->Get(DomainKey)->IsUndefined()) {
-    v8::Handle<v8::Value> v = data->Get(DomainKey);
+  if (TRI_HasProperty(context, isolate, data, DomainKey) && !data->Get(context, DomainKey).FromMaybe(v8::Local<v8::Value>())->IsUndefined()) {
+    v8::Handle<v8::Value> v = data->Get(context, DomainKey).FromMaybe(v8::Local<v8::Value>());
     domain = TRI_ObjectToString(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(SecureKey);
   if (TRI_HasProperty(context, isolate, data, SecureKey)) {
-    v8::Handle<v8::Value> v = data->Get(SecureKey);
+    v8::Handle<v8::Value> v = data->Get(context, SecureKey).FromMaybe(v8::Local<v8::Value>());
     secure = TRI_ObjectToBoolean(isolate, v);
   }
   TRI_GET_GLOBAL_STRING(HttpOnlyKey);
   if (TRI_HasProperty(context, isolate, data, HttpOnlyKey)) {
-    v8::Handle<v8::Value> v = data->Get(HttpOnlyKey);
+    v8::Handle<v8::Value> v = data->Get(context, HttpOnlyKey).FromMaybe(v8::Local<v8::Value>());
     httpOnly = TRI_ObjectToBoolean(isolate, v);
   }
 
@@ -311,7 +315,7 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
                                           TRI_action_t const* action) {
   // setup the request
   v8::Handle<v8::Object> req = v8::Object::New(isolate);
-
+  auto context = TRI_IGETC;
   // Example:
   //      {
   //        path : "/full/path/suffix1/suffix2",
@@ -345,9 +349,9 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(AuthorizedKey);
   if (request->authenticated()) {
-    req->Set(AuthorizedKey, v8::True(isolate));
+    req->Set(context, AuthorizedKey, v8::True(isolate)).FromMaybe(false);
   } else {
-    req->Set(AuthorizedKey, v8::False(isolate));
+    req->Set(context, AuthorizedKey, v8::False(isolate)).FromMaybe(false);
   }
 
   // create user or null
@@ -355,21 +359,21 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
 
   TRI_GET_GLOBAL_STRING(UserKey);
   if (user.empty()) {
-    req->Set(UserKey, v8::Null(isolate));
+    req->Set(context, UserKey, v8::Null(isolate)).FromMaybe(false);
   } else {
-    req->Set(UserKey, TRI_V8_STD_STRING(isolate, user));
+    req->Set(context, UserKey, TRI_V8_STD_STRING(isolate, user)).FromMaybe(false);
   }
 
   TRI_GET_GLOBAL_STRING(IsAdminUser);
   if (request->authenticated()) {
     if (user.empty() || ExecContext::current().isAdminUser()) {
-      req->Set(IsAdminUser, v8::True(isolate));
+      req->Set(context, IsAdminUser, v8::True(isolate)).FromMaybe(false);
     } else {
-      req->Set(IsAdminUser, v8::False(isolate));
+      req->Set(context, IsAdminUser, v8::False(isolate)).FromMaybe(false);
     }
   } else {
-    req->Set(IsAdminUser, ExecContext::isAuthEnabled() ? v8::False(isolate)
-                                                       : v8::True(isolate));
+    req->Set(context, IsAdminUser, ExecContext::isAuthEnabled() ? v8::False(isolate)
+                                                       : v8::True(isolate)).FromMaybe(false);;
   }
 
   // create database attribute
@@ -377,34 +381,37 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   TRI_ASSERT(!database.empty());
 
   TRI_GET_GLOBAL_STRING(DatabaseKey);
-  req->Set(DatabaseKey, TRI_V8_STD_STRING(isolate, database));
+  req->Set(context, DatabaseKey, TRI_V8_STD_STRING(isolate, database)).FromMaybe(false);
 
   // set the full url
   std::string const& fullUrl = request->fullUrl();
   TRI_GET_GLOBAL_STRING(UrlKey);
-  req->Set(UrlKey, TRI_V8_STD_STRING(isolate, fullUrl));
+  req->Set(context, UrlKey, TRI_V8_STD_STRING(isolate, fullUrl)).FromMaybe(false);
 
   // set the protocol
   TRI_GET_GLOBAL_STRING(ProtocolKey);
   if (request->transportType() == Endpoint::TransportType::HTTP) {
-    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "http"));
+    req->Set(context, ProtocolKey, TRI_V8_ASCII_STRING(isolate, "http")).FromMaybe(false);
   } else if (request->transportType() == Endpoint::TransportType::VST) {
-    req->Set(ProtocolKey, TRI_V8_ASCII_STRING(isolate, "vst"));
+    req->Set(context, ProtocolKey, TRI_V8_ASCII_STRING(isolate, "vst")).FromMaybe(false);
   }
 
   // set the connection info
-  const ConnectionInfo& info = request->connectionInfo();
+  ConnectionInfo const& info = request->connectionInfo();
 
   v8::Handle<v8::Object> serverArray = v8::Object::New(isolate);
   TRI_GET_GLOBAL_STRING(AddressKey);
-  serverArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.serverAddress));
+  serverArray->Set(context, AddressKey, TRI_V8_STD_STRING(isolate, info.serverAddress)).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(PortKey);
-  serverArray->Set(PortKey, v8::Number::New(isolate, info.serverPort));
+  serverArray->Set(context, PortKey, v8::Number::New(isolate, info.serverPort)).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(EndpointKey);
-  serverArray->Set(EndpointKey,
-                   TRI_V8_STD_STRING(isolate, Endpoint::uriForm(info.endpoint)));
+  serverArray->Set(context,
+                   EndpointKey,
+                   TRI_V8_STD_STRING(isolate, Endpoint::uriForm(info.endpoint))).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(ServerKey);
-  req->Set(ServerKey, serverArray);
+  req->Set(context,
+           ServerKey,
+           serverArray).FromMaybe(false);
 
   TRI_GET_GLOBAL_STRING(PortTypeKey);
   req->DefineOwnProperty(TRI_IGETC, PortTypeKey,
@@ -413,40 +420,86 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       .FromMaybe(false);  // ignoring return value
 
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
-  clientArray->Set(AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress));
-  clientArray->Set(PortKey, v8::Number::New(isolate, info.clientPort));
+  clientArray->Set(context, AddressKey, TRI_V8_STD_STRING(isolate, info.clientAddress)).FromMaybe(false);
+  clientArray->Set(context, PortKey, v8::Number::New(isolate, info.clientPort)).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(IdKey);
-  clientArray->Set(IdKey, TRI_V8_STD_STRING(isolate, std::string("0")));
+  clientArray->Set(context, IdKey, TRI_V8_STD_STRING(isolate, std::string("0"))).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(ClientKey);
-  req->Set(ClientKey, clientArray);
+  req->Set(context, ClientKey, clientArray).FromMaybe(false);
 
-  req->Set(TRI_V8_ASCII_STRING(isolate, "internals"), v8::External::New(isolate, request));
+  req->Set(context, TRI_V8_ASCII_STRING(isolate, "internals"), v8::External::New(isolate, request)).FromMaybe(false);
 
   // copy prefix
   std::string path = request->prefix();
   TRI_GET_GLOBAL_STRING(PrefixKey);
-  req->Set(PrefixKey, TRI_V8_STD_STRING(isolate, path));
+  req->Set(context, PrefixKey, TRI_V8_STD_STRING(isolate, path)).FromMaybe(false);
 
   // copy header fields
   v8::Handle<v8::Object> headerFields = v8::Object::New(isolate);
   // intentional copy, as we will modify the headers later
   auto headers = request->headers();
 
+  std::string const& acceptPlain = request->contentTypeResponsePlain();
+
+  if (!acceptPlain.empty()) {
+    headers.emplace(StaticStrings::Accept, acceptPlain);
+  } else {
+    switch (request->contentTypeResponse()) {
+      case ContentType::UNSET:
+      case ContentType::CUSTOM:  // use Content-Type from _headers
+        break;
+      case ContentType::JSON:    // application/json
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeJson);
+        break;
+      case ContentType::VPACK:   // application/x-velocypack
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeVPack);
+        break;
+      case ContentType::TEXT:    // text/plain
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeText);
+        break;
+      case ContentType::HTML:    // text/html
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeHtml);
+        break;
+      case ContentType::DUMP:    // application/x-arango-dump
+        headers.emplace(StaticStrings::Accept, StaticStrings::MimeTypeDump);
+        break;
+    }
+  }
+
+  switch (request->contentType()) {
+    case ContentType::UNSET:
+    case ContentType::CUSTOM:  // use Content-Type from _headers
+      break;
+    case ContentType::JSON:    // application/json
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeJson);
+      break;
+    case ContentType::VPACK:   // application/x-velocypack
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeVPack);
+      break;
+    case ContentType::TEXT:    // text/plain
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeText);
+      break;
+    case ContentType::HTML:    // text/html
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeHtml);
+      break;
+    case ContentType::DUMP:    // application/x-arango-dump
+      headers.emplace(StaticStrings::ContentTypeHeader, StaticStrings::MimeTypeDump);
+      break;
+  }
+
   TRI_GET_GLOBAL_STRING(HeadersKey);
-  req->Set(HeadersKey, headerFields);
+  req->Set(context, HeadersKey, headerFields).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(RequestTypeKey);
   TRI_GET_GLOBAL_STRING(RequestBodyKey);
 
   auto setRequestBodyJsonOrVPack = [&]() {
     if (rest::ContentType::UNSET == request->contentType()) {
-      bool digesteable = false;
+      bool digestable = false;
       try {
-        VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-        optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-        auto parsed = request->payload(&optionsWithUniquenessCheck);
+        auto parsed = request->payload(true);
         if (parsed.isObject() || parsed.isArray()) {
           request->setDefaultContentType();
-          digesteable = true;
+          digestable = true;
         }
       } catch ( ... ) {}
       // ok, no json/vpack after all ;-)
@@ -456,29 +509,29 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
       auto bufObj = v8::Local<v8::Object>::New(isolate, buffer->_handle);
       TRI_GET_GLOBAL_STRING(RawRequestBodyKey);
-      req->Set(RawRequestBodyKey, bufObj);
-      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size()));
-      if (!digesteable) {
+      req->Set(context, RawRequestBodyKey, bufObj).FromMaybe(false);
+      req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, raw.data(), raw.size())).FromMaybe(false);
+      if (!digestable) {
         return;
       }
     }
 
     if (rest::ContentType::JSON == request->contentType()) {
       VPackStringRef body = request->rawPayload();
-      req->Set(RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size()));
+      req->Set(context, RequestBodyKey, TRI_V8_PAIR_STRING(isolate, body.data(), body.size())).FromMaybe(false);
       headers[StaticStrings::ContentLength] =
           StringUtils::itoa(request->contentLength());
     } else if (rest::ContentType::VPACK == request->contentType()) {
       // the VPACK is passed as it is to to JavaScript
       // FIXME not every VPack can be converted to JSON
-      VPackSlice slice = request->payload();
+      VPackSlice slice = request->payload(true);
       std::string jsonString = slice.toJson();
 
       LOG_TOPIC("8afce", DEBUG, Logger::COMMUNICATION)
           << "json handed into v8 request:\n"
           << jsonString;
 
-      req->Set(RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString));
+      req->Set(context, RequestBodyKey, TRI_V8_STD_STRING(isolate, jsonString)).FromMaybe(false);
       headers[StaticStrings::ContentLength] = StringUtils::itoa(jsonString.size());
       headers[StaticStrings::ContentTypeHeader] = StaticStrings::MimeTypeJson;
     }
@@ -488,58 +541,61 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   switch (request->requestType()) {
     case rest::RequestType::POST: {
       TRI_GET_GLOBAL_STRING(PostConstant);
-      req->Set(RequestTypeKey, PostConstant);
+      req->Set(context, RequestTypeKey, PostConstant).FromMaybe(false);
       setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PUT: {
       TRI_GET_GLOBAL_STRING(PutConstant);
-      req->Set(RequestTypeKey, PutConstant);
+      req->Set(context, RequestTypeKey, PutConstant).FromMaybe(false);
       setRequestBodyJsonOrVPack();
       break;
     }
 
     case rest::RequestType::PATCH: {
       TRI_GET_GLOBAL_STRING(PatchConstant);
-      req->Set(RequestTypeKey, PatchConstant);
+      req->Set(context, RequestTypeKey, PatchConstant).FromMaybe(false);
       setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::OPTIONS: {
       TRI_GET_GLOBAL_STRING(OptionsConstant);
-      req->Set(RequestTypeKey, OptionsConstant);
+      req->Set(context, RequestTypeKey, OptionsConstant).FromMaybe(false);
       break;
     }
     case rest::RequestType::DELETE_REQ: {
       TRI_GET_GLOBAL_STRING(DeleteConstant);
-      req->Set(RequestTypeKey, DeleteConstant);
+      req->Set(context, RequestTypeKey, DeleteConstant).FromMaybe(false);
+      setRequestBodyJsonOrVPack();
       break;
     }
     case rest::RequestType::HEAD: {
       TRI_GET_GLOBAL_STRING(HeadConstant);
-      req->Set(RequestTypeKey, HeadConstant);
+      req->Set(context, RequestTypeKey, HeadConstant).FromMaybe(false);
       break;
     }
     case rest::RequestType::GET:
     default: {
       TRI_GET_GLOBAL_STRING(GetConstant);
-      req->Set(RequestTypeKey, GetConstant);
+      req->Set(context, RequestTypeKey, GetConstant).FromMaybe(false);
       break;
     }
   }
 
   for (auto const& it : headers) {
-    headerFields->Set(TRI_V8_STD_STRING(isolate, it.first),
-                      TRI_V8_STD_STRING(isolate, it.second));
+    headerFields->Set(context,
+                      TRI_V8_STD_STRING(isolate, it.first),
+                      TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
   }
 
   // copy request parameter
   v8::Handle<v8::Object> valuesObject = v8::Object::New(isolate);
 
   for (auto& it : request->values()) {
-    valuesObject->Set(TRI_V8_STD_STRING(isolate, it.first),
-                      TRI_V8_STD_STRING(isolate, it.second));
+    valuesObject->Set(context,
+                      TRI_V8_STD_STRING(isolate, it.first),
+                      TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
   }
 
   // copy request array parameter (a[]=1&a[]=2&...)
@@ -550,14 +606,14 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
     v8::Handle<v8::Array> list = v8::Array::New(isolate, static_cast<int>(v.size()));
 
     for (size_t i = 0; i < v.size(); ++i) {
-      list->Set((uint32_t)i, TRI_V8_STD_STRING(isolate, v[i]));
+      list->Set(context, (uint32_t)i, TRI_V8_STD_STRING(isolate, v[i])).FromMaybe(false);
     }
 
-    valuesObject->Set(TRI_V8_STD_STRING(isolate, k), list);
+    valuesObject->Set(context, TRI_V8_STD_STRING(isolate, k), list).FromMaybe(false);
   }
 
   TRI_GET_GLOBAL_STRING(ParametersKey);
-  req->Set(ParametersKey, valuesObject);
+  req->Set(context, ParametersKey, valuesObject).FromMaybe(false);
 
   // copy cookie -- only for http protocol
   if (request->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
@@ -570,12 +626,13 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
                                      "invalid request type");
     } else {
       for (auto& it : httpRequest->cookieValues()) {
-        cookiesObject->Set(TRI_V8_STD_STRING(isolate, it.first),
-                           TRI_V8_STD_STRING(isolate, it.second));
+        cookiesObject->Set(context,
+                           TRI_V8_STD_STRING(isolate, it.first),
+                           TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
       }
     }
     TRI_GET_GLOBAL_STRING(CookiesKey);
-    req->Set(CookiesKey, cookiesObject);
+    req->Set(context, CookiesKey, cookiesObject).FromMaybe(false);
   }
 
   // copy suffix, which comes from the action:
@@ -592,8 +649,8 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
       v8::Array::New(isolate, static_cast<int>(n - action->_urlParts));
 
   for (size_t s = action->_urlParts; s < n; ++s) {
-    suffixArray->Set(index, TRI_V8_STD_STRING(isolate, suffixes[s]));
-    rawSuffixArray->Set(index, TRI_V8_STD_STRING(isolate, rawSuffixes[s]));
+    suffixArray->Set(context, index, TRI_V8_STD_STRING(isolate, suffixes[s])).FromMaybe(false);
+    rawSuffixArray->Set(context, index, TRI_V8_STD_STRING(isolate, rawSuffixes[s])).FromMaybe(false);
     ++index;
 
     path += sep + suffixes[s];
@@ -601,13 +658,13 @@ v8::Handle<v8::Object> TRI_RequestCppToV8(v8::Isolate* isolate,
   }
 
   TRI_GET_GLOBAL_STRING(SuffixKey);
-  req->Set(SuffixKey, suffixArray);
+  req->Set(context, SuffixKey, suffixArray).FromMaybe(false);
   TRI_GET_GLOBAL_STRING(RawSuffixKey);
-  req->Set(RawSuffixKey, rawSuffixArray);
+  req->Set(context, RawSuffixKey, rawSuffixArray).FromMaybe(false);
 
   // copy full path
   TRI_GET_GLOBAL_STRING(PathKey);
-  req->Set(PathKey, TRI_V8_STD_STRING(isolate, path));
+  req->Set(context, PathKey, TRI_V8_STD_STRING(isolate, path)).FromMaybe(false);
 
   return req;
 }
@@ -623,25 +680,33 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   TRI_ASSERT(request != nullptr);
 
-  rest::ResponseCode code = rest::ResponseCode::OK;
-
   using arangodb::Endpoint;
 
   // set response code
   TRI_GET_GLOBAL_STRING(ResponseCodeKey);
   if (TRI_HasProperty(context, isolate, res, ResponseCodeKey)) {
-    // Windows has issues with converting from a double to an enumeration type
-    code = (rest::ResponseCode)(
-        (int)(TRI_ObjectToDouble(isolate, res->Get(ResponseCodeKey))));
+    uint64_t foxxcode = TRI_ObjectToInt64(isolate,
+                                          res->Get(context,
+                                                   ResponseCodeKey
+                                                   ).FromMaybe(v8::Local<v8::Value>()));
+    if (GeneralResponse::isValidResponseCode(foxxcode)) {
+      response->setResponseCode(static_cast<rest::ResponseCode>(foxxcode));
+    } else {
+      response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
+      LOG_TOPIC("37d37", ERR, Logger::V8)
+        << "invalid http status code specified " << foxxcode
+        << " diverting to 500";
+    }
+  } else {
+    response->setResponseCode(rest::ResponseCode::OK);
   }
-  response->setResponseCode(code);
 
   // string should not be used
   std::string contentType = StaticStrings::MimeTypeJsonNoEncoding;
   bool autoContent = true;
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (TRI_HasProperty(context, isolate, res, ContentTypeKey)) {
-    contentType = TRI_ObjectToString(isolate, res->Get(ContentTypeKey));
+    contentType = TRI_ObjectToString(isolate, res->Get(context, ContentTypeKey).FromMaybe(v8::Local<v8::Value>()));
 
     if ((contentType.find(StaticStrings::MimeTypeJsonNoEncoding) == std::string::npos) &&
         (contentType.find(StaticStrings::MimeTypeVPack) == std::string::npos)) {
@@ -683,7 +748,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
     // putting a list of transformations into the res.transformations
     // array, e.g. res.transformations = [ "base64encode" ]
     TRI_GET_GLOBAL_STRING(TransformationsKey);
-    v8::Handle<v8::Value> transformArray = res->Get(TransformationsKey);
+    v8::Handle<v8::Value> transformArray = res->Get(context, TransformationsKey).FromMaybe(v8::Local<v8::Value>());
 
     switch (response->transportType()) {
       case Endpoint::TransportType::HTTP: {
@@ -693,12 +758,12 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         if (transformArray->IsArray()) {
           TRI_GET_GLOBAL_STRING(BodyKey);
-          std::string out(TRI_ObjectToString(isolate, res->Get(BodyKey)));
+          std::string out(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
           v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
             v8::Handle<v8::Value> transformator =
-                transformations->Get(v8::Integer::New(isolate, i));
+              transformations->Get(context, v8::Integer::New(isolate, i)).FromMaybe(v8::Local<v8::Value>());
             std::string name = TRI_ObjectToString(isolate, transformator);
 
             // check available transformations
@@ -717,30 +782,34 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
           // what type is out? always json?
           httpResponse->body().appendText(out);
+          httpResponse->sealBody();
         } else {
           TRI_GET_GLOBAL_STRING(BodyKey);
-          v8::Handle<v8::Value> b = res->Get(BodyKey);
+          v8::Handle<v8::Value> b = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
           if (V8Buffer::hasInstance(isolate, b)) {
             // body is a Buffer
             auto obj = b.As<v8::Object>();
             httpResponse->body().appendText(V8Buffer::data(isolate, obj),
                                             V8Buffer::length(isolate, obj));
+            httpResponse->sealBody();
           } else if (autoContent && request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
-              std::string json = TRI_ObjectToString(isolate, res->Get(BodyKey));
+              std::string json = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));
               VPackBuffer<uint8_t> buffer;
               VPackBuilder builder(buffer);
               VPackParser parser(builder);
               parser.parse(json);
               httpResponse->setContentType(rest::ContentType::VPACK);
-              httpResponse->setPayload(std::move(buffer), true);
+              httpResponse->setPayload(std::move(buffer));
             } catch (...) {
-              httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(BodyKey)));
+              httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+              httpResponse->sealBody();
             }
           } else {
             // treat body as a string
-            httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(BodyKey)));
+            httpResponse->body().appendText(TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>())));
+            httpResponse->sealBody();
           }
         }
       } break;
@@ -749,19 +818,19 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         VPackBuffer<uint8_t> buffer;
         VPackBuilder builder(buffer);
 
-        v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
+        v8::Handle<v8::Value> v8Body = res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>());
         std::string out;
 
         // decode and set out
         if (transformArray->IsArray()) {
           TRI_GET_GLOBAL_STRING(BodyKey);
-          out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // there is one case where
+          out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // there is one case where
                                                                  // we do not need a string
           v8::Handle<v8::Array> transformations = transformArray.As<v8::Array>();
 
           for (uint32_t i = 0; i < transformations->Length(); i++) {
             v8::Handle<v8::Value> transformator =
-                transformations->Get(v8::Integer::New(isolate, i));
+              transformations->Get(context, v8::Integer::New(isolate, i)).FromMaybe(v8::Local<v8::Value>());
             std::string name = TRI_ObjectToString(isolate, transformator);
 
             // we do not decode in the vst case
@@ -776,7 +845,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         if (out.empty()) {
           if (autoContent && !V8Buffer::hasInstance(isolate, v8Body)) {
             if (v8Body->IsString()) {
-              out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // should get moved
+              out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // should get moved
             } else {
               TRI_V8ToVPack(isolate, builder, v8Body, false);
               response->setContentType(rest::ContentType::VPACK);
@@ -788,7 +857,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
             auto obj = v8Body.As<v8::Object>();
             out = std::string(V8Buffer::data(isolate, obj), V8Buffer::length(isolate, obj));
           } else {  // body is text - does not contain json
-            out = TRI_ObjectToString(isolate, res->Get(BodyKey));  // should get moved
+            out = TRI_ObjectToString(isolate, res->Get(context, BodyKey).FromMaybe(v8::Local<v8::Value>()));  // should get moved
           }
         }
 
@@ -817,7 +886,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           }
         }
 
-        response->setPayload(std::move(buffer), true);
+        response->setPayload(std::move(buffer));
         break;
       }
 
@@ -831,7 +900,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
   TRI_GET_GLOBAL_STRING(BodyFromFileKey);
   if (!bodySet && TRI_HasProperty(context, isolate, res, BodyFromFileKey)) {
-    TRI_Utf8ValueNFC filename(isolate, res->Get(BodyFromFileKey));
+    TRI_Utf8ValueNFC filename(isolate, res->Get(context, BodyFromFileKey).FromMaybe(v8::Local<v8::Value>()));
     size_t length;
     char* content = TRI_SlurpFile(*filename, &length);
 
@@ -846,6 +915,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
         TRI_FreeString(content);
+        httpResponse->sealBody();
       }
       break;
 
@@ -856,8 +926,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         TRI_FreeString(content);
 
         // create vpack from file
-        response->setContentType(rest::ContentType::TEXT);
-        response->setPayload(std::move(buffer), true);
+        response->setContentType(rest::ContentType::VPACK);
+        response->setPayload(std::move(buffer));
       }
       break;
 
@@ -874,16 +944,16 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   TRI_GET_GLOBAL_STRING(HeadersKey);
 
   if (TRI_HasProperty(context, isolate, res, HeadersKey)) {
-    v8::Handle<v8::Value> val = res->Get(HeadersKey);
+    v8::Handle<v8::Value> val = res->Get(context, HeadersKey).FromMaybe(v8::Local<v8::Value>());
     v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
     if (v8Headers->IsObject()) {
-      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
+      v8::Handle<v8::Array> props = v8Headers->GetPropertyNames(TRI_IGETC).FromMaybe(v8::Local<v8::Array>());
 
       for (uint32_t i = 0; i < props->Length(); i++) {
-        v8::Handle<v8::Value> key = props->Get(v8::Integer::New(isolate, i));
+        v8::Handle<v8::Value> key = props->Get(context, v8::Integer::New(isolate, i)).FromMaybe(v8::Local<v8::Value>());
         response->setHeader(TRI_ObjectToString(isolate, key),
-                            TRI_ObjectToString(isolate, v8Headers->Get(key)));
+                            TRI_ObjectToString(isolate, v8Headers->Get(context, key).FromMaybe(v8::Local<v8::Value>())));
       }
     }
   }
@@ -894,7 +964,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
 
   TRI_GET_GLOBAL_STRING(CookiesKey);
   if (TRI_HasProperty(context, isolate, res, CookiesKey)) {
-    v8::Handle<v8::Value> val = res->Get(CookiesKey);
+    v8::Handle<v8::Value> val = res->Get(context, CookiesKey).FromMaybe(v8::Local<v8::Value>());
     v8::Handle<v8::Object> v8Cookies = val.As<v8::Object>();
 
     switch (response->transportType()) {
@@ -904,7 +974,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
           v8::Handle<v8::Array> v8Array = v8Cookies.As<v8::Array>();
 
           for (uint32_t i = 0; i < v8Array->Length(); i++) {
-            v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
+            v8::Handle<v8::Value> v8Cookie = v8Array->Get(context, i).FromMaybe(v8::Local<v8::Value>());
             if (v8Cookie->IsObject()) {
               AddCookie(isolate, v8g, httpResponse, v8Cookie.As<v8::Object>());
             }
@@ -955,11 +1025,11 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
   v8::Handle<v8::Value> args[2] = {req, res};
 
   // handle C++ exceptions that happen during dynamic script execution
-  int errorCode;
+  ErrorCode errorCode = TRI_ERROR_NO_ERROR;
   std::string errorMessage;
 
   try {
-    callback->Call(callback, 2, args);
+    callback->Call(TRI_IGETC, callback, 2, args).FromMaybe(v8::Local<v8::Value>());;
     errorCode = TRI_ERROR_NO_ERROR;
   } catch (arangodb::basics::Exception const& ex) {
     errorCode = ex.code();
@@ -988,11 +1058,10 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       errorMessage = TRI_errno_string(errorCode);
     }
 
-    // TODO (obi)
-    if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-      ((HttpResponse*)response)->body().appendText(errorMessage);
-    }
-
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder b(buffer);
+    b.add(VPackValue(errorMessage));
+    response->addPayload(std::move(buffer));
   }
 
   else if (v8g->_canceled) {
@@ -1008,10 +1077,9 @@ static TRI_action_result_t ExecuteActionVocbase(TRI_vocbase_t* vocbase, v8::Isol
       LOG_TOPIC("b8286", WARN, arangodb::Logger::V8)
           << "Caught an error while executing an action: " << jsError;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      // TODO how to generalize this?
-      if (response->transportType() == Endpoint::TransportType::HTTP) {  // FIXME
-        ((HttpResponse*)response)->body().appendText(TRI_StringifyV8Exception(isolate, &tryCatch));
-      }
+      VPackBuilder b;
+      b.add(VPackValue(TRI_StringifyV8Exception(isolate, &tryCatch)));
+      response->addPayload(b.slice());
 #endif
     } else {
       v8g->_canceled = true;
@@ -1043,8 +1111,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "defineAction(<name>, <callback>, <parameter>)");
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  V8SecurityFeature& v8security = server.getFeature<V8SecurityFeature>();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
   if (!v8security.isAllowedToDefineHttpAction(isolate)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "operation only allowed for internal scripts");
@@ -1076,7 +1143,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // create an action with the given options
-  auto action = std::make_shared<v8_action_t>();
+  auto action = std::make_shared<v8_action_t>(v8g->_server.getFeature<ActionFeature>());
   ParseActionOptions(isolate, v8g, action.get(), options);
 
   // store an action with the given name
@@ -1120,8 +1187,9 @@ static void JS_ExecuteGlobalContextFunction(v8::FunctionCallbackInfo<v8::Value> 
 
   std::string const def = std::string(*utf8def, utf8def.length());
 
+  TRI_GET_GLOBALS();
   // and pass it to the V8 contexts
-  if (!V8DealerFeature::DEALER->addGlobalContextMethod(def)) {
+  if (!v8g->_server.getFeature<V8DealerFeature>().addGlobalContextMethod(def)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid action definition");
   }
@@ -1158,6 +1226,7 @@ static void JS_GetCurrentRequest(v8::FunctionCallbackInfo<v8::Value> const& args
 static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("rawRequestBody(req)");
@@ -1167,7 +1236,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (current->IsObject()) {
     v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(current);
     v8::Handle<v8::Value> property =
-        obj->Get(TRI_V8_ASCII_STRING(isolate, "internals"));
+      obj->Get(context, TRI_V8_ASCII_STRING(isolate, "internals")).FromMaybe(v8::Local<v8::Value>());
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
 
@@ -1187,7 +1256,9 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
               buffer = V8Buffer::New(isolate, raw.data(), raw.size());
             }
 
-            TRI_V8_RETURN(buffer->_handle);
+            v8::Local<v8::Object> bufferObject =
+              v8::Local<v8::Object>::New(isolate, buffer->_handle);
+            TRI_V8_RETURN(bufferObject);
           }
         } break;
 
@@ -1195,7 +1266,9 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
           if (request != nullptr) {
             auto raw = request->rawPayload();
             V8Buffer* buffer = V8Buffer::New(isolate, raw.data(), raw.size());
-            TRI_V8_RETURN(buffer->_handle);
+            v8::Local<v8::Object> bufferObject =
+              v8::Local<v8::Object>::New(isolate, buffer->_handle);
+            TRI_V8_RETURN(bufferObject);
           }
         } break;
       }
@@ -1217,6 +1290,7 @@ static void JS_RawRequestBody(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("requestParts(req)");
@@ -1226,7 +1300,7 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (current->IsObject()) {
     v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(current);
     v8::Handle<v8::Value> property =
-        obj->Get(TRI_V8_ASCII_STRING(isolate, "internals"));
+      obj->Get(context, TRI_V8_ASCII_STRING(isolate, "internals")).FromMaybe(v8::Local<v8::Value>());
     if (property->IsExternal()) {
       v8::Handle<v8::External> e = v8::Handle<v8::External>::Cast(property);
       auto request = static_cast<arangodb::HttpRequest*>(e->Value());
@@ -1343,8 +1417,9 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
             --q;
           }
 
-          headersObject->Set(TRI_V8_PAIR_STRING(isolate, ptr, (int)(p - ptr)),
-                             TRI_V8_PAIR_STRING(isolate, colon, (int)(eol - colon)));
+          headersObject->Set(context,
+                             TRI_V8_PAIR_STRING(isolate, ptr, (int)(p - ptr)),
+                             TRI_V8_PAIR_STRING(isolate, colon, (int)(eol - colon))).FromMaybe(false);
 
           ptr = eol;
           if (*ptr == '\r') {
@@ -1360,15 +1435,16 @@ static void JS_RequestParts(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
 
         v8::Handle<v8::Object> partObject = v8::Object::New(isolate);
-        partObject->Set(TRI_V8_ASCII_STRING(isolate, "headers"), headersObject);
+        partObject->Set(context,
+                        TRI_V8_ASCII_STRING(isolate, "headers"), headersObject).FromMaybe(false);
 
         // cppcheck-suppress nullPointerArithmetic ; cannot get here, if data is nullptr
         V8Buffer* buffer = V8Buffer::New(isolate, data, end - data);
         auto localHandle = v8::Local<v8::Object>::New(isolate, buffer->_handle);
 
-        partObject->Set(TRI_V8_ASCII_STRING(isolate, "data"), localHandle);
+        partObject->Set(context, TRI_V8_ASCII_STRING(isolate, "data"), localHandle).FromMaybe(false);
 
-        result->Set(j++, partObject);
+        result->Set(context, j++, partObject).FromMaybe(false);
       }
 
       TRI_V8_RETURN(result);
@@ -1438,14 +1514,15 @@ void TRI_InitV8Actions(v8::Isolate* isolate) {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-static int clusterSendToAllServers(std::string const& dbname,
-                                   std::string const& path,  // Note: Has to be properly encoded!
-                                   arangodb::rest::RequestType const& method,
-                                   std::string const& body) {
-  auto& server = application_features::ApplicationServer::server();
-  network::ConnectionPool* pool = server.getFeature<NetworkFeature>().pool();
+static ErrorCode clusterSendToAllServers(v8::Isolate* isolate, std::string const& dbname,
+                                         std::string const& path,  // Note: Has to be properly encoded!
+                                         arangodb::rest::RequestType const& method,
+                                         std::string const& body) {
+  TRI_GET_GLOBALS();
+  network::ConnectionPool* pool = v8g->_server.getFeature<NetworkFeature>().pool();
   if (!pool || !pool->config().clusterInfo) {
-    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION) << "Network pool unavailable.";
+    LOG_TOPIC("98fc7", ERR, Logger::COMMUNICATION)
+        << "Network pool unavailable.";
     return TRI_ERROR_SHUTTING_DOWN;
   }
   ClusterInfo& ci = *pool->config().clusterInfo;
@@ -1455,8 +1532,10 @@ static int clusterSendToAllServers(std::string const& dbname,
   fuerte::RestVerb verb = network::arangoRestVerbToFuerte(method);
 
   network::RequestOptions reqOpts;
+
   reqOpts.database = dbname;
   reqOpts.timeout = network::Timeout(3600);
+  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
 
   std::vector<futures::Future<network::Response>> futures;
   futures.reserve(DBServers.size());
@@ -1472,7 +1551,7 @@ static int clusterSendToAllServers(std::string const& dbname,
 
   for (auto& f : futures) {
     network::Response const& res = f.get();  // throws exceptions upwards
-    int commError = network::fuerteToArangoErrorCode(res);
+    auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;
     }
@@ -1540,9 +1619,9 @@ static void JS_DebugSetFailAt(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_AddFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res = clusterSendToAllServers(dbname,
-                                      "_admin/debug/failat/" + StringUtils::urlEncode(point),
-                                      arangodb::rest::RequestType::PUT, "");
+    auto res = clusterSendToAllServers(isolate, dbname,
+                                       "_admin/debug/failat/" + StringUtils::urlEncode(point),
+                                       arangodb::rest::RequestType::PUT, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1615,8 +1694,9 @@ static void JS_DebugRemoveFailAt(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_RemoveFailurePointDebugging(point.c_str());
 
   if (ServerState::instance()->isCoordinator()) {
-    int res =
-        clusterSendToAllServers(dbname, "_admin/debug/failat/" + StringUtils::urlEncode(point),
+    auto res =
+        clusterSendToAllServers(isolate, dbname,
+                                "_admin/debug/failat/" + StringUtils::urlEncode(point),
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1657,8 +1737,8 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
     }
     std::string dbname(v8g->_vocbase->name());
 
-    int res =
-        clusterSendToAllServers(dbname, "_admin/debug/failat",
+    auto res =
+        clusterSendToAllServers(isolate, dbname, "_admin/debug/failat",
                                 arangodb::rest::RequestType::DELETE_REQ, "");
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1675,8 +1755,8 @@ static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxApiDisabled());
 
   TRI_V8_TRY_CATCH_END
@@ -1686,8 +1766,8 @@ static void JS_IsFoxxStoreDisabled(v8::FunctionCallbackInfo<v8::Value> const& ar
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  TRI_GET_GLOBALS();
+  ServerSecurityFeature& security = v8g->_server.getFeature<ServerSecurityFeature>();
   TRI_V8_RETURN_BOOL(security.isFoxxStoreDisabled());
 
   TRI_V8_TRY_CATCH_END
@@ -1723,10 +1803,43 @@ static void JS_RunInRestrictedContext(v8::FunctionCallbackInfo<v8::Value> const&
 
     v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
     v8::Handle<v8::Value> callArgs[] = {v8::Null(isolate)};
-    v8::Handle<v8::Value> rv = action->Call(current, 0, callArgs);
+    v8::Handle<v8::Value> rv = action->Call(TRI_IGETC, current, 0, callArgs).FromMaybe(v8::Local<v8::Value>());
     TRI_V8_RETURN(rv);
   }
 
+  TRI_V8_TRY_CATCH_END
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hotbackup
+//////////////////////////////////////////////////////////////////////////////
+
+static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsObject()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createHotbackup(obj)");
+  }
+  VPackBuilder obj;
+  try {
+    TRI_V8ToVPack(isolate, obj, args[0], false, true);
+  } catch(std::exception const& e) {
+    TRI_V8_THROW_EXCEPTION_USAGE(std::string("createHotbackup(obj): could not convert body to object: ") + e.what());
+  }
+
+  VPackBuilder result;
+#if USE_ENTERPRISE
+  TRI_GET_GLOBALS();
+  HotBackup h(v8g->_server);
+  auto r = h.execute("create", obj.slice(), result);
+  if (r.fail()) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+  }
+#else
+  result.add(obj.slice());
+#endif
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1737,6 +1850,11 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_STORE_DISABLED"), JS_IsFoxxStoreDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_RUN_IN_RESTRICTED_CONTEXT"), JS_RunInRestrictedContext, true);
+  
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_CREATE_HOTBACKUP"),
+                               JS_CreateHotbackup);
 
   // debugging functions
   TRI_AddGlobalFunctionVocbase(isolate,
@@ -1762,13 +1880,21 @@ void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
 #endif
 
   // poll interval for Foxx queues
-  auto& server = application_features::ApplicationServer::server();
-  FoxxQueuesFeature& foxxQueuesFeature = server.getFeature<FoxxQueuesFeature>();
+  TRI_GET_GLOBALS();
+  FoxxFeature& foxxFeature = v8g->_server.getFeature<FoxxFeature>();
 
   isolate->GetCurrentContext()
       ->Global()
       ->DefineOwnProperty(
           TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "FOXX_QUEUES_POLL_INTERVAL"),
-          v8::Number::New(isolate, foxxQueuesFeature.pollInterval()), v8::ReadOnly)
+          v8::Number::New(isolate, foxxFeature.pollInterval()), v8::ReadOnly)
+      .FromMaybe(false);  // ignore result
+
+  isolate->GetCurrentContext()
+      ->Global()
+      ->DefineOwnProperty(
+          TRI_IGETC,
+          TRI_V8_ASCII_STRING(isolate, "FOXX_STARTUP_WAIT_FOR_SELF_HEAL"),
+          v8::Boolean::New(isolate, foxxFeature.startupWaitForSelfHeal()), v8::ReadOnly)
       .FromMaybe(false);  // ignore result
 }

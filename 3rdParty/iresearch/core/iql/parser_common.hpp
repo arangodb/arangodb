@@ -101,10 +101,10 @@ namespace iresearch {
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, const fn_branch_t& fnBranch);
       function_arg(fn_args_t&& fnArgs, const bytes_ref& value, fn_branch_t&& fnBranch);
       function_arg(const bytes_ref& value);
-      function_arg(function_arg&& other) NOEXCEPT;
+      function_arg(function_arg&& other) noexcept;
       function_arg(const function_arg& other) = delete; // to avoid having multipe copies of args
       function_arg();
-      function_arg& operator=(function_arg&& other) NOEXCEPT;
+      function_arg& operator=(function_arg&& other) noexcept;
       function_arg& operator=(const function_arg& other) = delete; // to avoid having multipe copies of args
       bool branch(proxy_filter& buf, const std::locale& locale, void* const& cookie) const;
       bool value(bstring& buf, bool& bNil, const std::locale& locale, void* const& cookie) const;

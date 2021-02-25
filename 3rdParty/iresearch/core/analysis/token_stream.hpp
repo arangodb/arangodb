@@ -24,18 +24,20 @@
 #ifndef IRESEARCH_TOKEN_STREAM_H
 #define IRESEARCH_TOKEN_STREAM_H
 
-#include "utils/attributes.hpp"
-#include "utils/attributes_provider.hpp"
+#include <memory>
 
-NS_ROOT
+#include "utils/attribute_provider.hpp"
 
-class IRESEARCH_API token_stream: public util::const_attribute_view_provider {
+namespace iresearch {
+
+class IRESEARCH_API token_stream : public attribute_provider {
  public:
-  DECLARE_UNIQUE_PTR(token_stream);
+  using ptr = std::unique_ptr<token_stream>;
+
   virtual ~token_stream() = default;
   virtual bool next() = 0;
 };
 
-NS_END
+}
 
 #endif

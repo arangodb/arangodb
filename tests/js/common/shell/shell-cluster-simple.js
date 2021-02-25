@@ -38,8 +38,7 @@ var createCollection = function (properties) {
   'use strict';
   try {
     db._drop("UnitTestsClusterCrud");
-  }
-  catch (err) {
+  } catch (err) {
   }
 
   if (properties === undefined) {
@@ -48,8 +47,6 @@ var createCollection = function (properties) {
 
   return db._create("UnitTestsClusterCrud", properties);
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -73,8 +70,7 @@ function ClusterCrudSimpleSuite () {
     while (result.hasNext()) {
       if (cb !== undefined) {
         cb(result.next());
-      }
-      else {
+      } else {
         result.next();
       }
       count++;
@@ -95,10 +91,12 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeAll = function (c) {
-    var i, n = 6000;
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : i, value2 : "test" + i });
+    const n = 6000;
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : i, value2 : "test" + i });
     }
+    c.insert(docs);
 
     checkQuery(c.all().limit(20), 20, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
@@ -124,10 +122,12 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeByExample = function (c) {
-    var i, n = 6000;
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    const n = 6000;
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     checkQuery(c.byExample({ }).limit(20), 20, function (r0) {
       assertTrue(r0.hasOwnProperty("_id"));
@@ -201,10 +201,12 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeFirstExample = function (c) {
-    var i, n = 1000;
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    const n = 1000;
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     var r0 = c.firstExample({ _key : "test35" });
     assertTrue(r0.hasOwnProperty("_id"));
@@ -251,10 +253,12 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeCount = function (c) {
-    var i, n = 1000;
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    const n = 1000;
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     assertEqual(n, c.count());
 
@@ -282,13 +286,15 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeAny = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
     assertNull(c.any());
 
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     var doc = c.any();
     assertTrue(doc.hasOwnProperty("_id"));
@@ -300,7 +306,7 @@ function ClusterCrudSimpleSuite () {
     assertEqual(doc._key, doc.value2);
     assertEqual(1, doc.value3);
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertNull(c.any());
   };
 
@@ -309,24 +315,26 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeTruncate = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     assertEqual(n, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
 
     c.save({ _key : "foo" });
     assertEqual(1, c.count());
 
-    c.truncate();
+    c.truncate({ compact: false });
     assertEqual(0, c.count());
   };
 
@@ -335,11 +343,13 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeRemoveByExample = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     assertEqual(n, c.count());
 
@@ -374,13 +384,15 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeReplaceByExample = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
     assertEqual(0, c.replaceByExample({ value3 : 1 }, { value9 : 17 }));
 
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     assertEqual(n, c.count());
 
@@ -414,19 +426,20 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeReplaceByExampleShardKeys = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
-    for (i = 0; i < n; ++i) {
-      c.save({ a : (i % 10), b : (i % 100) });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ a : (i % 10), b : (i % 100) });
     }
+    c.insert(docs);
 
     assertEqual(0, c.replaceByExample({ a : 11 }, { a : 11, b : 13, c : 1 }));
 
     try {
       c.replaceByExample({ a : 1, b : 1 }, { a : 12542, b : 13239, c : 1 });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err1.errorNum) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err1.errorNum);
       }
@@ -435,8 +448,7 @@ function ClusterCrudSimpleSuite () {
     try {
       c.replaceByExample({ a : 2 }, { a : 2, b : 13, c : 1 });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err2.errorNum) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err2.errorNum);
       }
@@ -445,8 +457,7 @@ function ClusterCrudSimpleSuite () {
     try {
       c.replaceByExample({ a : 2 }, { a : 2, c : 1 });
       fail();
-    }
-    catch (err3) {
+    } catch (err3) {
       if (ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code !== err3.errorNum) {
         assertEqual(ERRORS.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, err3.errorNum);
       }
@@ -462,13 +473,15 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeUpdateByExample = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
     assertEqual(0, c.updateByExample({ value3 : 1 }, { value9 : 17 }));
 
-    for (i = 0; i < n; ++i) {
-      c.save({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ _key: "test" + i, value1 : (i % 10), value2 : "test" + i, value3 : 1 });
     }
+    c.insert(docs);
 
     assertEqual(0, c.updateByExample({ value1 : 11 }, { value1 : 17 }));
 
@@ -502,11 +515,13 @@ function ClusterCrudSimpleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   var executeUpdateByExampleShardKeys = function (c) {
-    var i, n = 1000;
+    const n = 1000;
 
-    for (i = 0; i < n; ++i) {
-      c.save({ a : (i % 10), b : (i % 100) });
+    let docs = [];
+    for (let i = 0; i < n; ++i) {
+      docs.push({ a : (i % 10), b : (i % 100) });
     }
+    c.insert(docs);
 
     assertEqual(0, c.updateByExample({ a : 11 }, { a : 17 }));
     assertEqual(0, c.updateByExample({ foobar : "baz" }, { a : 17 }));
@@ -516,8 +531,7 @@ function ClusterCrudSimpleSuite () {
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2, b : 1 });
       fail();
-    }
-    catch (err1) {
+    } catch (err1) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err1.errorNum);
     }
 
@@ -526,28 +540,19 @@ function ClusterCrudSimpleSuite () {
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2, d : 4 });
       fail();
-    }
-    catch (err2) {
+    } catch (err2) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err2.errorNum);
     }
 
     try {
       c.updateByExample({ a : 1, b : 1 }, { a : 2 });
       fail();
-    }
-    catch (err3) {
+    } catch (err3) {
       assertEqual(ERRORS.ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES.code, err3.errorNum);
     }
   };
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
@@ -556,8 +561,7 @@ function ClusterCrudSimpleSuite () {
     tearDown : function () {
       try {
         db._drop("UnitTestsClusterCrud");
-      }
-      catch (err) {
+      } catch (err) {
       }
     },
 
@@ -762,7 +766,6 @@ function ClusterCrudSimpleSuite () {
   };
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -770,4 +773,3 @@ function ClusterCrudSimpleSuite () {
 jsunity.run(ClusterCrudSimpleSuite);
 
 return jsunity.done();
-

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,19 +42,24 @@ namespace aql {
 //
 class ModificationExecutorAccumulator {
  public:
-  ModificationExecutorAccumulator() { _accumulator.openArray(); };
+  ModificationExecutorAccumulator() { reset(); }
 
   VPackSlice closeAndGetContents() {
     _accumulator.close();
     return _accumulator.slice();
-  };
+  }
 
   void add(VPackSlice const& doc) {
     TRI_ASSERT(_accumulator.isOpenArray());
     _accumulator.add(doc);
-  };
+  }
 
-  size_t nrOfDocuments() const { return _accumulator.slice().length(); };
+  void reset() {
+    _accumulator.clear();
+    _accumulator.openArray();
+  }
+
+  size_t nrOfDocuments() const { return _accumulator.slice().length(); }
 
  private:
   VPackBuilder _accumulator;

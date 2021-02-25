@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,34 +28,33 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+namespace transaction {
+  
+StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
+  : SmartContext(vocbase, Context::makeTransactionId(), nullptr) {}
 
-/// @brief create the context
-transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t& vocbase)
-    : Context(vocbase) {}
-
-/// @brief order a custom type handler for the collection
-std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::StandaloneContext::orderCustomTypeHandler() {
-  if (_customTypeHandler == nullptr) {
-    _customTypeHandler.reset(
-        transaction::Context::createCustomTypeHandler(_vocbase, resolver()));
-    _options.customTypeHandler = _customTypeHandler.get();
-    _dumpOptions.customTypeHandler = _customTypeHandler.get();
+/// @brief get transaction state, determine commit responsibility
+/*virtual*/ std::shared_ptr<TransactionState> StandaloneContext::acquireState(transaction::Options const& options,
+                                                                              bool& responsibleForCommit) {
+  if (_state) {
+    responsibleForCommit = false;
+  } else {
+    responsibleForCommit = true;
+    _state = transaction::Context::createState(options);
   }
-
-  TRI_ASSERT(_customTypeHandler != nullptr);
-
-  return _customTypeHandler;
+  return _state;
 }
 
-/// @brief return the resolver
-CollectionNameResolver const& transaction::StandaloneContext::resolver() {
-  if (_resolver == nullptr) {
-    createResolver();
-  }
+/// @brief unregister the transaction
+void StandaloneContext::unregisterTransaction() noexcept {
+  TRI_ASSERT(_state != nullptr);
+  _state = nullptr;
+}
 
-  TRI_ASSERT(_resolver != nullptr);
-
-  return *_resolver;
+std::shared_ptr<Context> StandaloneContext::clone() const {
+  auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  clone->setState(_state);
+  return clone;
 }
 
 /// @brief create a context, returned in a shared ptr
@@ -63,4 +62,5 @@ CollectionNameResolver const& transaction::StandaloneContext::resolver() {
   return std::make_shared<transaction::StandaloneContext>(vocbase);
 }
 
+}  // namespace transaction
 }  // namespace arangodb

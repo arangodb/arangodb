@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #define ARANGOD_REST_HANDLER_REST_ANALYZER_HANDLER_H 1
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
+#include "utils/string.hpp"
 
 namespace arangodb {
 namespace iresearch {

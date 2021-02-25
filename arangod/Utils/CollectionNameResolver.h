@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 
 enum TRI_col_type_e : uint32_t;
@@ -49,6 +50,14 @@ class CollectionNameResolver {
       : _vocbase(vocbase),
         _serverRole(ServerState::instance()->getRole()) {}
 
+  // copy an existing resolver
+  CollectionNameResolver(CollectionNameResolver const& other);
+
+  // every other copy/move operation is disallowed
+  CollectionNameResolver& operator=(CollectionNameResolver const& other) = delete;
+  CollectionNameResolver(CollectionNameResolver&& other) = delete;
+  CollectionNameResolver& operator=(CollectionNameResolver&& other) = delete;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy the resolver
   //////////////////////////////////////////////////////////////////////////////
@@ -59,7 +68,7 @@ class CollectionNameResolver {
   /// @return the local collection on dbserver / standalone
   ///         the cluster collection on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalCollection> getCollection(TRI_voc_cid_t id) const;
+  std::shared_ptr<LogicalCollection> getCollection(DataSourceId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection struct for a
@@ -74,7 +83,7 @@ class CollectionNameResolver {
   /// use this if you know you are on a single server or on a DBserver
   /// and need to look up a local collection name (or shard name).
   //////////////////////////////////////////////////////////////////////////////
-  TRI_voc_cid_t getCollectionIdLocal(std::string const& name) const;
+  DataSourceId getCollectionIdLocal(std::string const& name) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster collection id for a cluster collection name,
@@ -82,7 +91,7 @@ class CollectionNameResolver {
   /// cases the name is resolved as a cluster wide collection name and the
   /// cluster wide collection id is returned.
   //////////////////////////////////////////////////////////////////////////////
-  TRI_voc_cid_t getCollectionIdCluster(std::string const& name) const;
+  DataSourceId getCollectionIdCluster(std::string const& name) const;
 
   std::shared_ptr<LogicalCollection> getCollectionStructCluster(std::string const& name) const;
 
@@ -92,20 +101,20 @@ class CollectionNameResolver {
   /// single server or DBserver it will use the local lookup and on a
   /// coordinator it will use the cluster wide lookup.
   //////////////////////////////////////////////////////////////////////////////
-  TRI_voc_cid_t getCollectionId(std::string const& name) const;
-  
+  DataSourceId getCollectionId(std::string const& name) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a collection name for a collection id, this implements
   /// some magic in the cluster case: a DBserver in a cluster will automatically
   /// translate the local collection ID into a cluster wide collection name.
   //////////////////////////////////////////////////////////////////////////////
-  std::string getCollectionName(TRI_voc_cid_t cid) const;
+  std::string getCollectionName(DataSourceId cid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a cluster-wide collection name for a cluster-wide
   /// collection id
   //////////////////////////////////////////////////////////////////////////////
-  std::string getCollectionNameCluster(TRI_voc_cid_t cid) const;
+  std::string getCollectionNameCluster(DataSourceId cid) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return collection name if given string is either the name or
@@ -119,7 +128,7 @@ class CollectionNameResolver {
   /// @return the local data-source on dbserver / standalone
   ///         the cluster data-source on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalDataSource> getDataSource(TRI_voc_cid_t id) const;
+  std::shared_ptr<LogicalDataSource> getDataSource(DataSourceId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a data-source struct for a
@@ -134,7 +143,7 @@ class CollectionNameResolver {
   /// @return the local view on dbserver / standalone
   ///         the cluster view on coordinator
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<LogicalView> getView(TRI_voc_cid_t id) const;
+  std::shared_ptr<LogicalView> getView(DataSourceId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief look up a view struct for a
@@ -154,13 +163,10 @@ class CollectionNameResolver {
   /// @return visitation was successful
   //////////////////////////////////////////////////////////////////////////////
   bool visitCollections(std::function<bool(LogicalCollection&)> const& visitor,
-                        TRI_voc_cid_t id) const;
+                        DataSourceId id) const;
 
  private:
-  mutable std::unordered_map<TRI_voc_cid_t, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
-  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
-
-  std::string lookupName(TRI_voc_cid_t cid) const;
+  std::string lookupName(DataSourceId cid) const;
 
   /// @brief vocbase base pointer
   TRI_vocbase_t& _vocbase;
@@ -168,11 +174,14 @@ class CollectionNameResolver {
   /// @brief role of server in cluster
   ServerState::RoleEnum const _serverRole;
 
-  /// @brief lock protecting _resolvedIds
-  mutable basics::ReadWriteLock _idLock;
+  /// @brief lock protecting caches
+  mutable basics::ReadWriteLock _lock;
 
   /// @brief collection id => collection name map
-  mutable std::unordered_map<TRI_voc_cid_t, std::string> _resolvedIds;
+  mutable std::unordered_map<DataSourceId, std::string> _resolvedIds;
+
+  mutable std::unordered_map<DataSourceId, std::shared_ptr<LogicalDataSource>> _dataSourceById;  // cached data-source by id
+  mutable std::unordered_map<std::string, std::shared_ptr<LogicalDataSource>> _dataSourceByName;  // cached data-source by name
 };
 
 }  // namespace arangodb

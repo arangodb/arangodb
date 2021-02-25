@@ -87,35 +87,35 @@ namespace fst {
 
 // Look-ahead flags.
 // Matcher is a lookahead matcher when match_type is MATCH_INPUT.
-FST_CONSTEXPR const uint32 kInputLookAheadMatcher = 0x00000010;
+constexpr uint32 kInputLookAheadMatcher = 0x00000010;
 
 // Matcher is a lookahead matcher when match_type is MATCH_OUTPUT.
-FST_CONSTEXPR const uint32 kOutputLookAheadMatcher = 0x00000020;
+constexpr uint32 kOutputLookAheadMatcher = 0x00000020;
 
 // Is a non-trivial implementation of LookAheadWeight() method defined and
 // if so, should it be used?
-FST_CONSTEXPR const uint32 kLookAheadWeight = 0x00000040;
+constexpr uint32 kLookAheadWeight = 0x00000040;
 
 // Is a non-trivial implementation of LookAheadPrefix() method defined and
 // if so, should it be used?
-FST_CONSTEXPR const uint32 kLookAheadPrefix = 0x00000080;
+constexpr uint32 kLookAheadPrefix = 0x00000080;
 
 // Look-ahead of matcher FST non-epsilon arcs?
-FST_CONSTEXPR const uint32 kLookAheadNonEpsilons = 0x00000100;
+constexpr uint32 kLookAheadNonEpsilons = 0x00000100;
 
 // Look-ahead of matcher FST epsilon arcs?
-FST_CONSTEXPR const uint32 kLookAheadEpsilons = 0x00000200;
+constexpr uint32 kLookAheadEpsilons = 0x00000200;
 
 // Ignore epsilon paths for the lookahead prefix? This gives correct results in
 // composition only with an appropriate composition filter since it depends on
 // the filter blocking the ignored paths.
-FST_CONSTEXPR const uint32 kLookAheadNonEpsilonPrefix = 0x00000400;
+constexpr uint32 kLookAheadNonEpsilonPrefix = 0x00000400;
 
 // For LabelLookAheadMatcher, save relabeling data to file?
-FST_CONSTEXPR const uint32 kLookAheadKeepRelabelData = 0x00000800;
+constexpr uint32 kLookAheadKeepRelabelData = 0x00000800;
 
 // Flags used for lookahead matchers.
-FST_CONSTEXPR const uint32 kLookAheadFlags = 0x00000ff0;
+constexpr uint32 kLookAheadFlags = 0x00000ff0;
 
 // LookAhead Matcher interface, templated on the Arc definition; used
 // for lookahead matcher specializations that are returned by the
@@ -286,22 +286,22 @@ class ArcLookAheadMatcher : public LookAheadMatcherBase<typename M::FST::Arc> {
 
   MatchType Type(bool test) const override { return matcher_.Type(test); }
 
-  void SetState(StateId s) final {
+  void SetState(StateId s) override final {
     state_ = s;
     matcher_.SetState(s);
   }
 
-  bool Find(Label label) final { return matcher_.Find(label); }
+  bool Find(Label label) override final { return matcher_.Find(label); }
 
-  bool Done() const final { return matcher_.Done(); }
+  bool Done() const override final { return matcher_.Done(); }
 
-  const Arc &Value() const final { return matcher_.Value(); }
+  const Arc &Value() const override final { return matcher_.Value(); }
 
-  void Next() final { matcher_.Next(); }
+  void Next() override final { matcher_.Next(); }
 
-  Weight Final(StateId s) const final { return matcher_.Final(s); }
+  Weight Final(StateId s) const override final { return matcher_.Final(s); }
 
-  ssize_t Priority(StateId s) final { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) override final { return matcher_.Priority(s); }
 
   const FST &GetFst() const override { return fst_; }
 
@@ -330,7 +330,7 @@ class ArcLookAheadMatcher : public LookAheadMatcherBase<typename M::FST::Arc> {
   // at (state_, s).
   bool LookAheadFst(const Fst<Arc> &, StateId) final;
 
-  bool LookAheadLabel(Label label) const final { return matcher_.Find(label); }
+  bool LookAheadLabel(Label label) const override final { return matcher_.Find(label); }
 
  private:
   mutable M matcher_;
@@ -483,14 +483,14 @@ class LabelLookAheadMatcher
 
   MatchType Type(bool test) const override { return matcher_.Type(test); }
 
-  void SetState(StateId s) final {
+  void SetState(StateId s) override final {
     if (state_ == s) return;
     state_ = s;
     match_set_state_ = false;
     reach_set_state_ = false;
   }
 
-  bool Find(Label label) final {
+  bool Find(Label label) override final {
     if (!match_set_state_) {
       matcher_.SetState(state_);
       match_set_state_ = true;
@@ -498,15 +498,15 @@ class LabelLookAheadMatcher
     return matcher_.Find(label);
   }
 
-  bool Done() const final { return matcher_.Done(); }
+  bool Done() const override final { return matcher_.Done(); }
 
-  const Arc &Value() const final { return matcher_.Value(); }
+  const Arc &Value() const override final { return matcher_.Value(); }
 
-  void Next() final { matcher_.Next(); }
+  void Next() override final { matcher_.Next(); }
 
-  Weight Final(StateId s) const final { return matcher_.Final(s); }
+  Weight Final(StateId s) const override final { return matcher_.Final(s); }
 
-  ssize_t Priority(StateId s) final { return matcher_.Priority(s); }
+  ssize_t Priority(StateId s) override final { return matcher_.Priority(s); }
 
   const FST &GetFst() const override { return matcher_.GetFst(); }
 
@@ -542,7 +542,7 @@ class LabelLookAheadMatcher
   bool LookAheadFst(const LFST &fst, StateId s);
 
   // Required to make class concrete.
-  bool LookAheadFst(const Fst<Arc> &fst, StateId s) final {
+  bool LookAheadFst(const Fst<Arc> &fst, StateId s) override final {
     return LookAheadFst<Fst<Arc>>(fst, s);
   }
 
@@ -563,7 +563,7 @@ class LabelLookAheadMatcher
     }
   }
 
-  bool LookAheadLabel(Label label) const final {
+  bool LookAheadLabel(Label label) const override final {
     if (label == 0) return true;
     if (label_reachable_) {
       if (!reach_set_state_) {
@@ -687,6 +687,9 @@ inline LabelLookAheadRelabeler<Arc, Data>::LabelLookAheadRelabeler(
   const bool is_mutable = fst.Properties(kMutable, false);
   std::unique_ptr<MutableFst<Arc>> mfst;
   if (is_mutable) {
+    // Borrow pointer from fst without increasing ref count; it will
+    // be released below. We do not want to call Copy() since that would
+    // do a deep copy when the Fst is modified.
     mfst.reset(static_cast<MutableFst<Arc> *>(&fst));
   } else {
     mfst.reset(new VectorFst<Arc>(fst));
@@ -708,7 +711,10 @@ inline LabelLookAheadRelabeler<Arc, Data>::LabelLookAheadRelabeler(
       WriteLabelPairs(FLAGS_save_relabel_opairs, pairs);
     }
   }
-  if (!is_mutable) {
+  if (is_mutable) {
+    // Pointer was just borrowed, don't delete it.
+    mfst.release();
+  } else {
     *impl = std::make_shared<Impl>(*mfst, name);
     (*impl)->SetAddOn(data);
   }

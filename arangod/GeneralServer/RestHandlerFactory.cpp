@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Rest/GeneralRequest.h"
-#include "RestHandler/RestBaseHandler.h"
+#include "Rest/GeneralResponse.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,9 +41,9 @@ static std::string const ROOT_PATH = "/";
 /// @brief creates a new handler
 ////////////////////////////////////////////////////////////////////////////////
 
-RestHandler* RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
-                                               std::unique_ptr<GeneralRequest> req,
-                                               std::unique_ptr<GeneralResponse> res) const {
+std::shared_ptr<RestHandler> RestHandlerFactory::createHandler(application_features::ApplicationServer& server,
+                                                               std::unique_ptr<GeneralRequest> req,
+                                                               std::unique_ptr<GeneralResponse> res) const {
   std::string const& path = req->requestPath();
 
   auto it = _constructors.find(path);

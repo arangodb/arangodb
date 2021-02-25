@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,6 +47,8 @@ std::string const config_t::waitForSyncStr = "wait for sync";
 std::string const config_t::supervisionFrequencyStr = "supervision frequency";
 std::string const config_t::supervisionGracePeriodStr =
     "supervision grace period";
+std::string const config_t::supervisionOkThresholdStr =
+    "supervision ok threshold";
 std::string const config_t::compactionStepSizeStr = "compaction step size";
 std::string const config_t::compactionKeepSizeStr = "compaction keep size";
 std::string const config_t::defaultEndpointStr = "tcp://localhost:8529";
@@ -67,6 +69,7 @@ config_t::config_t()
       _compactionStepSize(1000),
       _compactionKeepSize(50000),
       _supervisionGracePeriod(15.0),
+      _supervisionOkThreshold(5.0),
       _cmdLineTimings(false),
       _version(0),
       _startup("origin"),
@@ -76,7 +79,7 @@ config_t::config_t()
 config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
                    double maxp, std::string const& e,
                    std::vector<std::string> const& g, bool s, bool st, bool w,
-                   double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
+                   double f, uint64_t c, uint64_t k, double p, double o, bool t, size_t a)
     : _recoveryId(rid),
       _agencySize(as),
       _poolSize(ps),
@@ -92,6 +95,7 @@ config_t::config_t(std::string const& rid, size_t as, size_t ps, double minp,
       _compactionStepSize(c),
       _compactionKeepSize(k),
       _supervisionGracePeriod(p),
+      _supervisionOkThreshold(o),
       _cmdLineTimings(t),
       _version(0),
       _startup("origin"),
@@ -124,6 +128,7 @@ config_t& config_t::operator=(config_t const& other) {
   _compactionStepSize = other._compactionStepSize;
   _compactionKeepSize = other._compactionKeepSize;
   _supervisionGracePeriod = other._supervisionGracePeriod;
+  _supervisionOkThreshold = other._supervisionOkThreshold;
   _cmdLineTimings = other._cmdLineTimings;
   _version = other._version;
   _startup = other._startup;
@@ -151,6 +156,7 @@ config_t& config_t::operator=(config_t&& other) {
   _compactionStepSize = std::move(other._compactionStepSize);
   _compactionKeepSize = std::move(other._compactionKeepSize);
   _supervisionGracePeriod = std::move(other._supervisionGracePeriod);
+  _supervisionOkThreshold = std::move(other._supervisionOkThreshold);
   _cmdLineTimings = std::move(other._cmdLineTimings);
   _version = std::move(other._version);
   _startup = std::move(other._startup);
@@ -171,6 +177,11 @@ bool config_t::cmdLineTimings() const {
 double config_t::supervisionGracePeriod() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionGracePeriod;
+}
+
+double config_t::supervisionOkThreshold() const {
+  READ_LOCKER(readLocker, _lock);
+  return _supervisionOkThreshold;
 }
 
 double config_t::minPing() const {
@@ -261,17 +272,6 @@ bool config_t::supervision() const {
 double config_t::supervisionFrequency() const {
   READ_LOCKER(readLocker, _lock);
   return _supervisionFrequency;
-}
-
-bool config_t::activePushBack(std::string const& id) {
-  WRITE_LOCKER(writeLocker, _lock);
-  if (_active.size() < _agencySize &&
-      std::find(_active.begin(), _active.end(), id) == _active.end()) {
-    _active.push_back(id);
-    ++_version;
-    return true;
-  }
-  return false;
 }
 
 std::unordered_set<std::string> config_t::gossipPeers() const {
@@ -468,6 +468,7 @@ void config_t::toBuilder(VPackBuilder& builder) const {
     builder.add(compactionStepSizeStr, VPackValue(_compactionStepSize));
     builder.add(compactionKeepSizeStr, VPackValue(_compactionKeepSize));
     builder.add(supervisionGracePeriodStr, VPackValue(_supervisionGracePeriod));
+    builder.add(supervisionOkThresholdStr, VPackValue(_supervisionOkThreshold));
     builder.add(versionStr, VPackValue(_version));
     builder.add(startupStr, VPackValue(_startup));
   }
@@ -721,6 +722,9 @@ void config_t::updateConfiguration(VPackSlice const& other) {
   }
   if (other.hasKey(supervisionGracePeriodStr)) {
     _supervisionGracePeriod = other.get(supervisionGracePeriodStr).getNumber<double>();
+  }
+  if (other.hasKey(supervisionOkThresholdStr)) {
+    _supervisionOkThreshold = other.get(supervisionOkThresholdStr).getNumber<double>();
   }
   if (other.hasKey(compactionStepSizeStr)) {
     _compactionStepSize = other.get(compactionStepSizeStr).getNumber<uint64_t>();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,7 @@
 #include <cstdint>
 #include <mutex>
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 /// @brief read-write lock, slow but just using CPP11
 /// This class has two other advantages:
@@ -52,33 +51,37 @@ class ReadWriteLock {
   ReadWriteLock() : _state(0) {}
 
   /// @brief locks for writing
-  void writeLock();
+  void lockWrite();
 
   /// @brief locks for writing within microsecond timeout
-  bool writeLock(uint64_t timeout) {
+  [[nodiscard]] bool lockWrite(uint64_t timeout) {
     std::chrono::microseconds ms(timeout);
-    return writeLock(ms);
+    return lockWrite(ms);
   }
 
-  bool writeLock(std::chrono::microseconds timeout);
+  [[nodiscard]] bool lockWrite(std::chrono::microseconds timeout);
 
   /// @brief locks for writing, but only tries
-  bool tryWriteLock();
+  [[nodiscard]] bool tryLockWrite() noexcept;
 
   /// @brief locks for reading
-  void readLock();
+  void lockRead();
 
   /// @brief locks for reading, tries only
-  bool tryReadLock();
+  [[nodiscard]] bool tryLockRead() noexcept;
 
   /// @brief releases the read-lock or write-lock
-  void unlock();
+  void unlock() noexcept;
 
   /// @brief releases the read-lock
-  void unlockRead();
+  void unlockRead() noexcept;
 
   /// @brief releases the write-lock
-  void unlockWrite();
+  void unlockWrite() noexcept;
+  
+  [[nodiscard]] bool isLocked() const noexcept;
+  [[nodiscard]] bool isLockedRead() const noexcept;
+  [[nodiscard]] bool isLockedWrite() const noexcept;
 
  private:
   /// @brief mutex for _readers_bell cv
@@ -118,7 +121,6 @@ class ReadWriteLock {
                     (QUEUED_WRITER_MASK & (QUEUED_WRITER_INC >> 1)) == 0,
                 "QUEUED_WRITER_INC must be first bit in QUEUED_WRITER_MASK");
 };
-}  // namespace basics
-}  // namespace arangodb
+}  // namespace arangodb::basics
 
 #endif

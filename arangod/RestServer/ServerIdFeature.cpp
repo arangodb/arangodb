@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ServerIdFeature.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
@@ -42,7 +44,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-TRI_server_id_t ServerIdFeature::SERVERID = 0;
+ServerId ServerIdFeature::SERVERID{0};
 
 ServerIdFeature::ServerIdFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ServerId") {
@@ -62,7 +64,7 @@ void ServerIdFeature::start() {
 
   // read the server id or create a new one
   bool const checkVersion = database.checkVersion();
-  int res = determineId(checkVersion);
+  auto res = determineId(checkVersion);
 
   if (res == TRI_ERROR_ARANGO_EMPTY_DATADIR) {
     if (checkVersion) {
@@ -85,23 +87,23 @@ void ServerIdFeature::start() {
 
 /// @brief generates a new server id
 void ServerIdFeature::generateId() {
-  TRI_ASSERT(SERVERID == 0);
+  TRI_ASSERT(SERVERID.empty());
 
   do {
-    SERVERID = RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL));
+    SERVERID = ServerId(RandomGenerator::interval(static_cast<uint64_t>(0x0000FFFFFFFFFFFFULL)));
 
-  } while (SERVERID == 0);
+  } while (SERVERID.empty());
 
-  TRI_ASSERT(SERVERID != 0);
+  TRI_ASSERT(SERVERID.isSet());
 }
 
 /// @brief reads server id from file
-int ServerIdFeature::readId() {
+ErrorCode ServerIdFeature::readId() {
   if (!TRI_ExistsFile(_idFilename.c_str())) {
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  TRI_server_id_t foundId;
+  ServerId foundId;
   try {
     VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
     VPackSlice content = builder.slice();
@@ -112,15 +114,16 @@ int ServerIdFeature::readId() {
     if (!idSlice.isString()) {
       return TRI_ERROR_INTERNAL;
     }
-    foundId = basics::StringUtils::uint64(idSlice.copyString());
+    foundId = ServerId(basics::StringUtils::uint64(idSlice.copyString()));
   } catch (...) {
     // Nothing to free
     return TRI_ERROR_INTERNAL;
   }
 
-  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME) << "using existing server id: " << foundId;
+  LOG_TOPIC("281bf", TRACE, arangodb::Logger::FIXME)
+      << "using existing server id: " << foundId;
 
-  if (foundId == 0) {
+  if (foundId.empty()) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -130,14 +133,14 @@ int ServerIdFeature::readId() {
 }
 
 /// @brief writes server id to file
-int ServerIdFeature::writeId() {
+ErrorCode ServerIdFeature::writeId() {
   // create a VelocyPack Object
   VPackBuilder builder;
   try {
     builder.openObject();
 
-    TRI_ASSERT(SERVERID != 0);
-    builder.add("serverId", VPackValue(std::to_string(SERVERID)));
+    TRI_ASSERT(SERVERID.isSet());
+    builder.add("serverId", VPackValue(std::to_string(SERVERID.id())));
 
     time_t tt = time(nullptr);
     struct tm tb;
@@ -172,8 +175,8 @@ int ServerIdFeature::writeId() {
 }
 
 /// @brief read / create the server id on startup
-int ServerIdFeature::determineId(bool checkVersion) {
-  int res = readId();
+ErrorCode ServerIdFeature::determineId(bool checkVersion) {
+  auto res = readId();
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     if (checkVersion) {

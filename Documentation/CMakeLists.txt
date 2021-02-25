@@ -20,7 +20,6 @@ set(MAN_NAMES
   man1/arangosh.1
   man8/rcarangod.8
   man8/arangod.8
-  man8/arango-dfdb.8
   man8/foxx-manager.8
   )
 
@@ -42,6 +41,11 @@ foreach (m IN LISTS MAN_NAMES)
   list(APPEND MAN_FILES ${mdst})
 endforeach ()
 set(ARANGO_MAN_DIR "${CMAKE_CURRENT_BINARY_DIR}/man" PARENT_SCOPE)
+
+# avoid deleting README on "make clean"...
+set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+# ...but still delete man files
+set_property(DIRECTORY APPEND PROPERTY ADDITIONAL_MAKE_CLEAN_FILES ${MAN_FILES})
 
 add_custom_command(
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

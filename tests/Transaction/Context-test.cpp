@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for transaction Manager
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,6 +15,8 @@
 /// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,8 +59,8 @@ class TransactionContextTest : public ::testing::Test {
 
 TEST_F(TransactionContextTest, StandaloneContext) {
   transaction::StandaloneContext ctx(vocbase);
-  EXPECT_FALSE(ctx.isEmbeddable());
-  EXPECT_EQ(ctx.getParentTransaction(), nullptr);
+  EXPECT_TRUE(ctx.isEmbeddable());
+  EXPECT_FALSE(ctx.isStateSet());
 
   std::vector<std::string*> strings;
   for (int i = 0; i < 10; i++) {
@@ -99,7 +98,7 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
       "{ \"name\": \"testCollection\" }");
   vocbase.createCollection(params->slice());
 
-  auto ctx = std::make_shared<transaction::StandaloneSmartContext>(vocbase);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(vocbase);
   transaction::Options trxOpts;
   transaction::Methods trx{ctx, {}, std::vector<std::string>{cname}, {}, trxOpts};
 
@@ -130,12 +129,11 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   bindVars->close();
 
   {
-    arangodb::aql::Query query(false, vocbase, queryString, bindVars, nullptr,
-                               arangodb::aql::PART_DEPENDENT);
-    query.setTransactionContext(ctx);  // shares the same transaction
+    arangodb::aql::Query query(ctx, queryString, bindVars);
 
-    auto qres = query.executeSync(QueryRegistryFeature::registry());
+    auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());
+    ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
     ASSERT_EQ(aqlSlice.length(), 2);
@@ -147,12 +145,11 @@ TEST_F(TransactionContextTest, StandaloneSmartContext) {
   ASSERT_TRUE(result2.ok());
 
   {
-    arangodb::aql::Query query(false, vocbase, queryString, bindVars, nullptr,
-                               arangodb::aql::PART_DEPENDENT);
-    query.setTransactionContext(ctx);  // shares the same transaction
+    arangodb::aql::Query query(ctx, queryString, bindVars);
 
-    auto qres = query.executeSync(QueryRegistryFeature::registry());
+    auto qres = query.executeSync();
     ASSERT_TRUE(qres.ok());
+    ASSERT_NE(nullptr, qres.data);
     VPackSlice aqlSlice = qres.data->slice();
     ASSERT_TRUE(aqlSlice.isArray());
     ASSERT_EQ(aqlSlice.length(), 1);

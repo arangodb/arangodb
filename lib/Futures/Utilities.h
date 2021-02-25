@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -161,6 +162,99 @@ template <class Collection>
 auto collectAll(Collection&& c) -> decltype(collectAll(std::begin(c), std::end(c))) {
   return collectAll(std::begin(c), std::end(c));
 }
+
+
+namespace detail{
+namespace gather {
+
+template<typename C, typename... Ts, std::size_t... I>
+void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (std::move(ts).thenFinal([&](Try<Ts> &&t) { std::get<I>(c->results) = std::move(t); }),...);
+}
+}
+}
+
+// like collectAll but uses a tuple instead and works with different types
+// returns a Future<std::tuple<Try<Ts>>...>
+template<typename... Ts>
+auto gather(Future<Ts>&&... r) {
+
+  using try_tuple = std::tuple<Try<Ts>...>;
+
+  struct Context {
+    ~Context() { p.setValue(std::move(results)); }
+    try_tuple results;
+    Promise<try_tuple> p;
+  };
+
+  auto ctx = std::make_shared<Context>();
+  detail::gather::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
+  return ctx->p.getFuture();
+};
+
+template<typename T>
+T gather(T t) { return t; };
+
+
+
+namespace detail {
+namespace collect {
+
+template<typename C, typename... Ts, std::size_t... I>
+void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+
+  (std::move(ts).thenFinal([c](Try<Ts>&& t) {
+    if (t.hasException()) {
+      if (c->hadError.exchange(true, std::memory_order_release) == false) {
+        c->p.setException(std::move(t).exception());
+      }
+    } else {
+      std::get<I>(c->results) = std::move(t);
+    }
+  }), ...);
+}
+
+template<typename... Ts, std::size_t... I>
+auto unpackAll(std::tuple<Try<Ts>...> &c, std::index_sequence<I...>) -> std::tuple<Ts...> {
+  return std::make_tuple(std::move(std::get<I>(c)).get()...);
+}
+
+template<typename... Ts>
+auto unpackAll(std::tuple<Try<Ts>...> &c) -> std::tuple<Ts...> {
+  return unpackAll(c, std::index_sequence_for<Ts...>{});
+}
+
+
+}
+}
+
+// like collectAll but uses a tuple instead and works with different types
+// returns a Future<Try<std::tuple<Ts>>...>
+template<typename... Ts>
+auto collect(Future<Ts>&&... r) {
+  using try_tuple = std::tuple<Try<Ts>...>;
+  using value_tuple = std::tuple<Ts...>;
+
+  struct Context {
+    Context() : hadError(false) {}
+    ~Context() {
+      if (hadError.load(std::memory_order_acquire) == false) {
+        p.setValue(detail::collect::unpackAll(results));
+      }
+    }
+    try_tuple results;
+    Promise<value_tuple> p;
+    std::atomic<bool> hadError;
+  };
+
+  auto ctx = std::make_shared<Context>();
+  detail::collect::thenFinalAll(ctx, std::index_sequence_for<Ts...>{}, std::forward<Future<Ts>>(r)...);
+  return ctx->p.getFuture();
+}
+
+template<typename T>
+T collect(T t) { return t; }
+
 
 }  // namespace futures
 }  // namespace arangodb

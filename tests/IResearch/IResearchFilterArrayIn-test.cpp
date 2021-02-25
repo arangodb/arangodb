@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -63,7 +64,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
@@ -102,8 +102,9 @@ class IResearchFilterArrayInTest
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -115,8 +116,9 @@ class IResearchFilterArrayInTest
         arangodb::aql::Function::makeFlags(
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -128,7 +130,9 @@ class IResearchFilterArrayInTest
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*_vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
@@ -147,9 +151,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] ANY IN d.a RETURN d", expected);
@@ -166,9 +182,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] ALL IN d.a RETURN d", expected);
@@ -185,9 +213,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] NONE IN d.a RETURN d", expected);
@@ -204,9 +244,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] ANY IN d[1] RETURN d", expected);
@@ -228,9 +280,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] ALL IN d[1] RETURN d", expected);
@@ -252,9 +316,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(), "FOR d IN collection FILTER ['1','2','3'] NONE IN d[1] RETURN d", expected);
@@ -277,15 +353,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -313,15 +395,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -349,15 +437,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -387,15 +481,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -424,15 +524,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -460,15 +566,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c[412].e.f"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c[412].e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -497,15 +609,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -533,15 +651,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -569,15 +693,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[412].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[412].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -605,18 +735,34 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -646,18 +792,34 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -687,18 +849,34 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -787,15 +965,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -818,15 +1002,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -849,15 +1039,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -960,23 +1156,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
   // reference in array ANY
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -988,23 +1196,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   }
   // reference in array ALL
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -1016,23 +1236,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   }
   // reference in array NONE
   {
-    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::Variable var("c", 0, /*isDataFromColl*/ false);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
     arangodb::aql::AqlValueGuard guard(value, true);
 
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace(var.name, value);
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -1051,7 +1283,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -1059,13 +1291,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1087,7 +1327,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -1095,13 +1335,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1123,7 +1371,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -1131,13 +1379,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1197,7 +1453,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   auto checkAny = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::Or&>(*actual.begin());
-    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -1205,7 +1461,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   auto checkAll = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
-    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -1214,7 +1470,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     EXPECT_EQ(1, actual.size());
     auto& notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
-    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -1238,10 +1494,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1284,10 +1538,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
-        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+        arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast,
+          &exprCtx, &irs::sub_reader::empty(), ref
+        };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1297,14 +1556,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -1313,7 +1573,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -1338,10 +1599,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1379,7 +1638,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -1390,10 +1649,17 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
+
 
         irs::Or actual;
-        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+        arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast,
+          &exprCtx, &irs::sub_reader::empty(), ref
+        };
+
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1403,14 +1669,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -1419,7 +1686,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -1444,10 +1712,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1485,7 +1751,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -1497,9 +1763,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
 
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
+        
         irs::Or actual;
-        arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+        arangodb::iresearch::QueryContext const ctx{
+          &trx, dummyPlan.get(), ast,
+          &exprCtx, &irs::sub_reader::empty(), ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1509,14 +1779,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -1524,7 +1795,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           // 3rd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_TRUE(nullptr !=
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -1550,10 +1821,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -1591,7 +1860,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -1602,10 +1871,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx, &irs::sub_reader::empty(), ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -1615,14 +1887,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -1631,7 +1904,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -1678,20 +1952,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -1736,20 +2026,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -1794,20 +2100,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -1944,9 +2266,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1966,9 +2300,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -1988,9 +2334,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("a")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2010,9 +2368,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2026,9 +2396,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2042,9 +2424,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("1");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("2");
-    root.add<irs::by_term>().field(mangleStringIdentity("[1]")).term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("[1]");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2059,15 +2453,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2105,15 +2505,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2151,15 +2557,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c[323].e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c[323].e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2197,18 +2609,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -2237,18 +2666,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -2277,18 +2723,35 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(1.5);
-    root.add<irs::by_term>()
-        .field(mangleString("quick.brown.fox", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNull("quick.brown.fox")).term(irs::null_token_stream::value_null());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_true());
-    root.add<irs::by_term>().field(mangleBool("quick.brown.fox")).term(irs::boolean_token_stream::value_false());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("quick.brown.fox", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("quick.brown.fox");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
     {
       irs::numeric_token_stream stream;
-      auto& term = stream.attributes().get<irs::term_attribute>();
+      auto* term = irs::get<irs::term_attribute>(stream);
       stream.reset(2.);
       EXPECT_TRUE(stream.next());
-      root.add<irs::by_term>().field(mangleNumeric("quick.brown.fox")).term(term->value());
+
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("quick.brown.fox");
+      filter.mutable_options()->term = term->value;
     }
 
     assertFilterSuccess(
@@ -2325,15 +2788,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2362,15 +2831,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2399,15 +2874,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("2");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("2"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2504,7 +2985,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -2512,13 +2993,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(3.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2551,7 +3040,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -2559,13 +3048,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(3.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2598,7 +3095,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(2.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     ExpressionContextMock ctx;
     ctx.vars.emplace("x", value);
@@ -2606,13 +3103,21 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(3.5);
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("1");
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>()
-        .field(mangleString("a.b.c.e.f", "test_analyzer"))
-        .term("3");
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleString("a.b.c.e.f", "test_analyzer");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
+    }
 
     assertFilterSuccess(
         vocbase(),
@@ -2641,7 +3146,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(1, actual.size());
     auto & notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::And&>(*notFilter.filter());
-    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -2650,7 +3155,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     EXPECT_EQ(1, actual.size());
     auto & notFilter = dynamic_cast<irs::Not&>(*actual.begin());
     auto& root = dynamic_cast<const irs::Or&>(*notFilter.filter());
-    EXPECT_EQ(irs::Or::type(), root.type());
+    EXPECT_EQ(irs::type<irs::Or>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -2658,7 +3163,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   auto checkNotNone = [](irs::Or& actual, iresearch::boost_t boost) {
     EXPECT_EQ(1, actual.size());
     auto& root = dynamic_cast<const irs::And&>(*actual.begin());
-    EXPECT_EQ(irs::And::type(), root.type());
+    EXPECT_EQ(irs::type<irs::And>::id(), root.type());
     EXPECT_EQ(3, root.size());
     EXPECT_EQ(boost, root.boost());
     return root.begin();
@@ -2680,10 +3185,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -2721,7 +3224,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -2732,10 +3235,13 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                     &exprCtx, &irs::sub_reader::empty(), ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2745,14 +3251,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -2761,7 +3268,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -2787,10 +3295,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -2828,7 +3334,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -2839,10 +3345,14 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx,
+                                                    &irs::sub_reader::empty(), ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2852,14 +3362,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -2868,7 +3379,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -2894,10 +3406,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
 
-      auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-      arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(queryString),
-        nullptr, options, arangodb::aql::PART_MAIN);
+      arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),
+        nullptr);
 
       auto const parseResult = query.parse();
       ASSERT_TRUE(parseResult.result.ok());
@@ -2935,7 +3445,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
 
       // supportsFilterCondition
       {
-        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, ref };
+        arangodb::iresearch::QueryContext const ctx{ nullptr, nullptr, nullptr, nullptr, nullptr, ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode).ok()));
       }
@@ -2946,10 +3456,14 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {}, {}, {}, arangodb::transaction::Options());
 
         auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+        
+        ExpressionContextMock exprCtx;
+        exprCtx.setTrx(&trx);
 
         irs::Or actual;
         arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), ast,
-                                                    &ExpressionContextMock::EMPTY, ref };
+                                                    &exprCtx,
+                                                    &irs::sub_reader::empty(), ref };
         EXPECT_TRUE(
           (arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode).ok()));
 
@@ -2959,14 +3473,15 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           // 1st filter
           {
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("1");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
             EXPECT_EQ(expected, *begin);
           }
 
           // 2nd filter
           {
             ++begin;
-            EXPECT_EQ(arangodb::iresearch::ByExpression::type(), begin->type());
+            EXPECT_EQ(irs::type<arangodb::iresearch::ByExpression>::id(), begin->type());
             EXPECT_NE(nullptr,
               dynamic_cast<arangodb::iresearch::ByExpression const*>(&*begin));
           }
@@ -2975,7 +3490,8 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
           {
             ++begin;
             irs::by_term expected;
-            expected.field(mangleStringIdentity("a.b.c.e.f")).term("3");
+            *expected.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+            expected.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("3"));
             EXPECT_EQ(expected, *begin);
           }
         }
@@ -2994,18 +3510,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -3036,18 +3570,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::Not>().filter<irs::Or>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(
@@ -3078,18 +3630,36 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
     irs::numeric_token_stream stream;
     stream.reset(3.);
     EXPECT_TRUE(stream.next());
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(2.5);
-    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
-    root.add<irs::by_term>()
-        .field(mangleStringIdentity("a.b.c.e.f"))
-        .term("str");
-    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
-    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
-    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("1"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleStringIdentity("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::string_ref("str"));
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleBool("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false());
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNumeric("a.b.c.e.f");
+      filter.mutable_options()->term = term->value;
+    }
+    {
+      auto& filter = root.add<irs::by_term>();
+      *filter.mutable_field() = mangleNull("a.b.c.e.f");
+      filter.mutable_options()->term = irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null());
+    }
 
     // not a constant in array
     assertFilterSuccess(

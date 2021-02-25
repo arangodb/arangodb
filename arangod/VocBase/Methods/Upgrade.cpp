@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Upgrade.h"
-#include "Basics/Common.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Utils/ExecContext.h"
-#include "Logger/LogMacros.h"
 #include "VocBase/Methods/UpgradeTasks.h"
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
@@ -139,7 +141,12 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   switch (vinfo.status) {
     case VersionResult::INVALID:
       TRI_ASSERT(false);  // never returned by Version::check
+      break;
     case VersionResult::VERSION_MATCH:
+      if (isUpgrade) {
+        dbflag = Flags::DATABASE_UPGRADE; // forcing the upgrade as server is in 
+                                          // upgrade state with some features disabled
+      }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
@@ -159,16 +166,6 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
             << "  --database.auto-upgrade true";
         LOG_TOPIC("13414", ERR, Logger::STARTUP)
             << "option to upgrade the data in the database directory.";
-
-        LOG_TOPIC("7421a", ERR, Logger::STARTUP)
-            << "Normally you can use the control "
-               "script to upgrade your database'";
-        LOG_TOPIC("fb665", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb stop";
-        LOG_TOPIC("6753e", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb upgrade";
-        LOG_TOPIC("f7b06", ERR, Logger::STARTUP)
-            << "  /etc/init.d/arangodb start";
         LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
                "-------'";
@@ -244,10 +241,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*system*/ Flags::DATABASE_EXCEPT_SYSTEM,
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
           /*database*/ DATABASE_INIT, &UpgradeTasks::addDefaultUserOther);
-  addTask(upgradeFeature, "persistLocalDocumentIds", "convert collection data from old format",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
-          /*database*/ DATABASE_UPGRADE, &UpgradeTasks::persistLocalDocumentIds);
   addTask(upgradeFeature, "renameReplicationApplierStateFiles",
           "rename replication applier state files",
           /*system*/ Flags::DATABASE_ALL,
@@ -318,8 +311,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     // check that the database occurs in the database list
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
-      // an upgrade-only task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
+      // an one-shot task can be viewed as executed.
+      if (isLocal && dbFlag == DATABASE_INIT && (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)

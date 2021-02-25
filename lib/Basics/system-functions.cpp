@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,6 @@
 #include "system-functions.h"
 
 #include <chrono>
-#include <thread>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -128,29 +127,8 @@ time_t TRI_timegm(struct tm* tm) {
 #ifdef _WIN32
   return _mkgmtime(tm);
 #else
-#ifdef __sun
-  // This should work, but who knows? ti is any valid time_t value, since
-  // it is produced by mktime. Therefore gmtime_r and localtime_r compute
-  // two different split up time values gm and lo, which differ by the
-  // currently configured offset of local time and UTC. Note that DST
-  // will be factored into the lo result but not into gm, including the
-  // lo.tm_isdst field! Then we apply mktime to both gm and lo, and,
-  // whatever the currently configured offset of local time and UTC is,
-  // it will be expressed in time_t units by (mktime(&gm) - mktime(&lo)).
-  // Therefore, this is the correct fix for the result of mktime(tm)
-  // to actually interpret tm as universal time. Note that we set tm.isdst
-  // to 0 to make mktime behave exactly as for gm.
-  tm.isdst = 0;
-  time_t ti = mktime(tm);
-  struct tm gm;
-  gmtime_r(&ti, &gm);
-  struct tm lo;
-  localtime_r(&ti, &lo);
-  return ti - (mktime(&gm) - mktime(&lo));
-#else
   // Linux, OSX and BSD variants:
   return timegm(tm);
-#endif
 #endif
 }
 
@@ -158,22 +136,6 @@ double TRI_microtime() {
   return std::chrono::duration<double>(  // time since epoch in seconds
              std::chrono::system_clock::now().time_since_epoch())
       .count();
-}
-
-size_t TRI_numberProcessors() {
-#ifdef TRI_SC_NPROCESSORS_ONLN
-  auto n = sysconf(_SC_NPROCESSORS_ONLN);
-
-  if (n < 0) {
-    n = 0;
-  }
-
-  if (n > 0) {
-    return n;
-  }
-#endif
-
-  return static_cast<size_t>(std::thread::hardware_concurrency());
 }
 
 std::string arangodb::utilities::timeString(char sep, char fin) {

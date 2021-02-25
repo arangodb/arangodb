@@ -24,19 +24,17 @@
 #include "error/error.hpp"
 #include "directory_attributes.hpp"
 
-NS_LOCAL
+namespace {
 
 irs::memory_allocator GLOBAL_ALLOC(128);
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  memory_allocator
 // -----------------------------------------------------------------------------
-
-DEFINE_ATTRIBUTE_TYPE(memory_allocator)
 
 /*static*/ memory_allocator::buffer::ptr memory_allocator::buffer::make(
     size_t size
@@ -44,7 +42,7 @@ DEFINE_ATTRIBUTE_TYPE(memory_allocator)
   return memory::make_unique<byte_type[]>(size);
 }
 
-/*static*/ memory_allocator& memory_allocator::global() NOEXCEPT {
+/*static*/ memory_allocator& memory_allocator::global() noexcept {
   return GLOBAL_ALLOC;
 }
 
@@ -60,16 +58,15 @@ memory_allocator::memory_allocator(size_t pool_size)
 // --SECTION--                                                      fd_pool_size
 // -----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(fd_pool_size)
 DEFINE_FACTORY_DEFAULT(fd_pool_size)
 
 const size_t FD_POOL_DEFAULT_SIZE = 8;
 
-fd_pool_size::fd_pool_size() NOEXCEPT
-  : size(FD_POOL_DEFAULT_SIZE) { // arbitary size
+fd_pool_size::fd_pool_size() noexcept
+  : size(FD_POOL_DEFAULT_SIZE) { // arbitrary size
 }
 
-void fd_pool_size::clear() NOEXCEPT {
+void fd_pool_size::clear() noexcept {
   size = FD_POOL_DEFAULT_SIZE;
 }
 
@@ -77,7 +74,6 @@ void fd_pool_size::clear() NOEXCEPT {
 // --SECTION--                                                   index_file_refs
 // -----------------------------------------------------------------------------
 
-DEFINE_ATTRIBUTE_TYPE(index_file_refs)
 DEFINE_FACTORY_DEFAULT(index_file_refs)
 
 index_file_refs::ref_t index_file_refs::add(const std::string& key) {
@@ -98,8 +94,4 @@ void index_file_refs::clear() {
   }
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

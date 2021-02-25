@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -146,7 +147,7 @@ void SortedIndexAttributeMatcher::matchAttributes(
     std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
     size_t& postFilterConditions, size_t& values, 
     std::unordered_set<std::string>& nonNullAttributes, bool isExecution) {
-  // assert we have a proper formed conditions - nary conjunction
+  // assert we have a properly formed condition - nary conjunction
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
   // inspect the the conjuncts - allowed are binary comparisons and a contains check
@@ -285,14 +286,14 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     costs.supportsCondition = true;
 
     if (itemsInIndex > 0) {
-      costs.estimatedItems = static_cast<size_t>(estimatedItems * values);
+      estimatedItems = static_cast<double>(estimatedItems * values);
 
       // check if the index has a selectivity estimate ready
       if (idx->hasSelectivityEstimate() &&
           attributesCoveredByEquality == idx->fields().size()) {
         double estimate = idx->selectivityEstimate();
         if (estimate > 0.0) {
-          costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+          estimatedItems = static_cast<double>(1.0 / estimate * values);
         }
       } else if (attributesCoveredByEquality > 0) {
         TRI_ASSERT(attributesCovered > 0);
@@ -332,7 +333,7 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
             double estimate = other->selectivityEstimate();
             if (estimate > 0.0) {
               // reuse the estimate from the other index
-              costs.estimatedItems = static_cast<size_t>(1.0 / estimate * values);
+              estimatedItems = static_cast<double>(1.0 / estimate * values);
               break;
             }
           }
@@ -340,13 +341,13 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
       }
 
       // costs.estimatedItems is always set here, make it at least 1
-      costs.estimatedItems = std::max(size_t(1), costs.estimatedItems);
+      costs.estimatedItems = std::max(size_t(1), static_cast<size_t>(estimatedItems));
       
       // seek cost is O(log(n))
       costs.estimatedCosts = std::max(double(1.0),
                                       std::log2(double(itemsInIndex)) * values);
       // add per-document processing cost
-      costs.estimatedCosts += costs.estimatedItems * 0.05;
+      costs.estimatedCosts += estimatedItems * 0.05;
       // slightly prefer indexes that cover more attributes
       costs.estimatedCosts -= (attributesCovered - 1) * 0.02;
     
@@ -474,7 +475,7 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
   // must edit in place, no access to AST; TODO change so we can replace with
   // copy
   TEMPORARILY_UNLOCK_NODE(node);
-  node->removeMembers();
+  node->clearMembers();
 
   for (auto& it : children) {
     TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);

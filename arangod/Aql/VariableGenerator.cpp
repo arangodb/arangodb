@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,13 +33,15 @@
 using namespace arangodb::aql;
 
 /// @brief create the generator
-VariableGenerator::VariableGenerator() : _id(0) { _variables.reserve(8); }
-
-/// @brief destroy the generator
-VariableGenerator::~VariableGenerator() {
-  // free all variables
+VariableGenerator::VariableGenerator() 
+    : _id(0) { 
+  _variables.reserve(8); 
+}
+  
+/// @brief visit all variables
+void VariableGenerator::visit(std::function<void(Variable*)> const& visitor) {
   for (auto& it : _variables) {
-    delete it.second;
+    visitor(it.second.get());
   }
 }
 
@@ -60,29 +62,15 @@ std::unordered_map<VariableId, std::string const> VariableGenerator::variables(b
 }
 
 /// @brief generate a variable
-Variable* VariableGenerator::createVariable(char const* name, size_t length, bool isUserDefined) {
-  TRI_ASSERT(name != nullptr);
+Variable* VariableGenerator::createVariable(std::string name, bool isUserDefined) {
+  auto variable = std::make_unique<Variable>(std::move(name), nextId(), false);
 
-  auto variable = std::make_unique<Variable>(std::string(name, length), nextId());
+  TRI_ASSERT(!isUserDefined || variable->isUserDefined());
 
-  if (isUserDefined) {
-    TRI_ASSERT(variable->isUserDefined());
-  }
-
-  _variables.try_emplace(variable->id, variable.get());
-  return variable.release();
-}
-
-/// @brief generate a variable
-Variable* VariableGenerator::createVariable(std::string const& name, bool isUserDefined) {
-  auto variable = std::make_unique<Variable>(name, nextId());
-
-  if (isUserDefined) {
-    TRI_ASSERT(variable->isUserDefined());
-  }
-
-  _variables.try_emplace(variable->id, variable.get());
-  return variable.release();
+  VariableId const id = variable->id;
+  auto [it, inserted] = _variables.emplace(id, std::move(variable));
+  TRI_ASSERT(inserted);
+  return (*it).second.get();
 }
 
 Variable* VariableGenerator::createVariable(Variable const* original) {
@@ -90,29 +78,28 @@ Variable* VariableGenerator::createVariable(Variable const* original) {
   std::unique_ptr<Variable> variable(original->clone());
 
   // check if insertion into the table actually works.
-  auto inserted = _variables.try_emplace(variable->id, variable.get()).second;
+  VariableId const id = variable->id;
+  auto [it, inserted] = _variables.emplace(id, std::move(variable));
   if (!inserted) {
     // variable was already present. this is unexpected...
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "cloned AQL variable already present");
   }
   // variable was inserted, return the clone
-  return variable.release();
+  return (*it).second.get();
 }
 
 /// @brief generate a variable from VelocyPack
-Variable* VariableGenerator::createVariable(VPackSlice const slice) {
+Variable* VariableGenerator::createVariable(VPackSlice slice) {
   auto variable = std::make_unique<Variable>(slice);
+  VariableId const id = variable->id;
 
-  auto existing = getVariable(variable->id);
+  // make sure _id is at least as high as the highest variable id
+  // we get.
+  _id = std::max(id + 1, _id);
 
-  if (existing != nullptr) {
-    // variable already existed.
-    return existing;
-  }
-
-  _variables.try_emplace(variable->id, variable.get());
-  return variable.release();
+  auto it = _variables.try_emplace(id, std::move(variable)).first;
+  return (*it).second.get();
 }
 
 /// @brief generate a temporary variable
@@ -127,15 +114,13 @@ Variable* VariableGenerator::renameVariable(VariableId id) {
 
 /// @brief renames a variable (assigns the specified name
 Variable* VariableGenerator::renameVariable(VariableId id, std::string const& name) {
-  auto it = _variables.find(id);
+  Variable* v = getVariable(id);
 
-  if (it == _variables.end()) {
-    return nullptr;
+  if (v != nullptr) {
+    v->name = name;
   }
 
-  (*it).second->name = name;
-
-  return (*it).second;
+  return v;
 }
 
 /// @brief return a variable by id - this does not respect the scopes!
@@ -146,7 +131,7 @@ Variable* VariableGenerator::getVariable(VariableId id) const {
     return nullptr;
   }
 
-  return (*it).second;
+  return (*it).second.get();
 }
 
 /// @brief return the next temporary variable name
@@ -159,15 +144,18 @@ std::string VariableGenerator::nextName() {
 /// @brief export to VelocyPack
 void VariableGenerator::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
-  for (auto const& oneVariable : _variables) {
-    oneVariable.second->toVelocyPack(builder);
+  for (auto const& it : _variables) {
+    it.second->toVelocyPack(builder);
   }
 }
 
 /// @brief import from VelocyPack
-void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
-  VPackSlice allVariablesList = query.get("variables");
-
+void VariableGenerator::fromVelocyPack(VPackSlice const slice) {
+  VPackSlice allVariablesList = slice;
+  if (slice.isObject()) {
+    allVariablesList = slice.get("variables");
+  }
+  
   if (!allVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "variables needs to be an array");
@@ -179,4 +167,8 @@ void VariableGenerator::fromVelocyPack(VPackSlice const& query) {
   for (auto const& var : VPackArrayIterator(allVariablesList)) {
     createVariable(var);
   }
+}
+  
+VariableId VariableGenerator::nextId() noexcept {
+  return _id++; 
 }

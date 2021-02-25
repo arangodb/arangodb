@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,45 +55,53 @@ class TokenCache {
 
    public:
     explicit Entry(std::string const& username, bool a, double t)
-        : _username(username), _authenticated(a), _expiry(t), _allowedPaths() {}
+        : _username(username), _expiry(t), _authenticated(a) {}
 
     static Entry Unauthenticated() { return Entry("", false, 0); }
+    static Entry Superuser() { return Entry("", true, 0); }
 
     std::string const& username() const { return _username; }
     bool authenticated() const { return _authenticated; }
     void authenticated(bool value) { _authenticated = value; }
     void setExpiry(double expiry) { _expiry = expiry; }
     bool expired() const { return _expiry != 0 && _expiry < TRI_microtime(); }
+    std::vector<std::string> const& allowedPaths() const { return _allowedPaths; }
 
-   public:
+   private:
     /// username
     std::string _username;
-    /// User exists and password was checked
-    bool _authenticated;
-    /// expiration time (in seconds since epoch) of this entry
-    double _expiry;
     // paths that are valid for this token
     std::vector<std::string> _allowedPaths;
+    /// expiration time (in seconds since epoch) of this entry
+    double _expiry;
+    /// User exists and password was checked
+    bool _authenticated;
   };
 
  public:
+  
   TokenCache::Entry checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                         std::string const& secret);
 
   /// Clear the cache of username / password auth
   void invalidateBasicCache();
+  
+#ifdef USE_ENTERPRISE
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecrets(std::string const& active,
+                     std::vector<std::string> const& passive);
+#else
+  /// set new jwt secret, regenerate _jwtToken
+  void setJwtSecret(std::string const& active);
+#endif
 
-  /// set new jwt secret, regenerate _jetToken
-  void setJwtSecret(std::string const&);
-  std::string jwtSecret() const;
   /// Get the jwt token, which should be used for communication
   std::string const& jwtToken() const noexcept {
-    TRI_ASSERT(!_jwtToken.empty());
-    return _jwtToken;
+    TRI_ASSERT(!_jwtSuperToken.empty());
+    return _jwtSuperToken;
   }
-
-  std::string generateRawJwt(velocypack::Slice const&) const;
-  std::string generateJwt(velocypack::Slice const&) const;
+  
+  std::string jwtSecret() const;
 
  private:
   /// Check basic HTTP Authentication header
@@ -106,24 +114,30 @@ class TokenCache {
   bool validateJwtHMAC256Signature(std::string const&, std::string const&);
 
   std::shared_ptr<velocypack::Builder> parseJson(std::string const& str, char const* hint);
-
-  /// generate new _jwtToken
-  void generateJwtToken();
+  
+  /// generate new superuser jwtToken
+  void generateSuperToken();
 
  private:
   auth::UserManager* const _userManager;
-  /// Timeout in seconds
-  double const _authTimeout;
 
   mutable arangodb::basics::ReadWriteLock _basicLock;
-  std::atomic<uint64_t> _basicCacheVersion;
   std::unordered_map<std::string, TokenCache::Entry> _basicCache;
+  std::atomic<uint64_t> _basicCacheVersion{0};
 
-  std::string _jwtSecret;
-  std::string _jwtToken;
+  mutable arangodb::basics::ReadWriteLock _jwtSecretLock;
+    
+#ifdef USE_ENTERPRISE
+  std::vector<std::string> _jwtPassiveSecrets;
+#endif
+  std::string _jwtActiveSecret;
+  std::string _jwtSuperToken;  /// token for internal use
 
-  mutable arangodb::basics::ReadWriteLock _jwtLock;
+  mutable std::mutex _jwtCacheMutex;
   arangodb::basics::LruCache<std::string, TokenCache::Entry> _jwtCache;
+  
+  /// Timeout in seconds
+  double const _authTimeout;
 };
 }  // namespace auth
 }  // namespace arangodb

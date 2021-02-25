@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,7 +44,6 @@ RestJobHandler::RestJobHandler(application_features::ApplicationServer& server,
                                AsyncJobManager* jobManager)
     : RestBaseHandler(server, request, response), _jobManager(jobManager) {
   TRI_ASSERT(jobManager != nullptr);
-  _allowDirectExecution = true;
 }
 
 RestStatus RestJobHandler::execute() {
@@ -65,8 +65,7 @@ RestStatus RestJobHandler::execute() {
   } else if (type == rest::RequestType::DELETE_REQ) {
     deleteJob();
   } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
   return RestStatus::DONE;
@@ -79,8 +78,8 @@ void RestJobHandler::putJob() {
 
   AsyncJobResult::Status status;
   uint64_t messageId = _response->messageId();
-  std::unique_ptr<GeneralResponse> response;
-  response.reset(_jobManager->getJobResult(jobId, status, true));  // gets job and removes it from the manager
+  // gets job and removes it from the manager
+  std::unique_ptr<GeneralResponse> response(_jobManager->getJobResult(jobId, status, true));  
 
   if (status == AsyncJobResult::JOB_UNDEFINED) {
     // unknown or already fetched job

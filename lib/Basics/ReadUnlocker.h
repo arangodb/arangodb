@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,16 +36,7 @@
 /// number.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-#define READ_UNLOCKER(obj, lock) \
-  arangodb::basics::ReadUnlocker obj(&lock, __FILE__, __LINE__)
-
-#else
-
 #define READ_UNLOCKER(obj, lock) arangodb::basics::ReadUnlocker obj(&lock)
-
-#endif
 
 namespace arangodb {
 namespace basics {
@@ -68,21 +59,10 @@ class ReadUnlocker {
   /// The constructor unlocks the lock, the destructors acquires a read-lock.
   //////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-  ReadUnlocker(ReadWriteLock* readWriteLock, char const* file, int line)
-      : _readWriteLock(readWriteLock), _file(file), _line(line) {
-    _readWriteLock->unlockRead();
-  }
-
-#else
-
   explicit ReadUnlocker(ReadWriteLock* readWriteLock)
       : _readWriteLock(readWriteLock) {
     _readWriteLock->unlockRead();
   }
-
-#endif
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief unlocks the lock
@@ -95,7 +75,7 @@ class ReadUnlocker {
   /// @brief acquires the read-lock
   ////////////////////////////////////////////////////////////////////////////////
 
-  ~ReadUnlocker() { _readWriteLock->readLock(); }
+  ~ReadUnlocker() { _readWriteLock->lockRead(); }
 
  private:
   ////////////////////////////////////////////////////////////////////////////////
@@ -104,21 +84,6 @@ class ReadUnlocker {
 
   ReadWriteLock* _readWriteLock;
 
-#ifdef ARANGODB_SHOW_LOCK_TIME
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief file
-  ////////////////////////////////////////////////////////////////////////////////
-
-  char const* _file;
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief line number
-  ////////////////////////////////////////////////////////////////////////////////
-
-  int _line;
-
-#endif
 };
 }  // namespace basics
 }  // namespace arangodb

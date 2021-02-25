@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TRANSACTION_WINDOW_H
 #define ARANGODB_CACHE_TRANSACTION_WINDOW_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <cstdint>
+
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
-
-#include <stdint.h>
-#include <atomic>
 
 namespace arangodb {
 namespace cache {
@@ -41,7 +40,7 @@ namespace cache {
 /// identifier for the current window. If the identifier is even, there are no
 /// ongoing sensitive transactions, and it is safe to store any values retrieved
 /// from the backing store to transactional caches. If the identifier is odd,
-/// then some values may be blacklisted by transactional caches (if they have
+/// then some values may be banished by transactional caches (if they have
 /// been written to the backing store in the current window).
 ////////////////////////////////////////////////////////////////////////////////
 class TransactionManager {
@@ -68,17 +67,32 @@ class TransactionManager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return the current window identifier.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t term();
+  std::uint64_t term();
 
  private:
-  std::atomic<uint64_t> _openReads;
-  std::atomic<uint64_t> _openSensitive;
-  std::atomic<uint64_t> _openWrites;
-  std::atomic<uint64_t> _term;
-  std::atomic<bool> _lock;
+  /// In a previous version of the code, we maintained four separate uint64
+  /// values for each of these three counters and the term. All were updated
+  /// under a spin lock. In some workloads, we were spending up to 90% of our
+  /// time waiting on this spin lock. On x86, we can do a compare_and_exchange
+  /// on a 16-byte value without resorting to a lock, so by squeezing the
+  /// counters into 21 bits each and making the whole struct atomic, we can
+  /// make this logic lock-free and save ourselves a lot of cycles. The counters
+  /// shouldn't need any more than 21 bits: if we have more than 2 million open
+  /// transactions simultaneously, we are going to have a much bigger issue of
+  /// memory usage and server load elsewhere!
+  struct Counters {
+    uint64_t openReads : 21;
+    uint64_t openWrites : 21;
+    uint64_t openSensitive : 21;
+  };
+  static_assert(sizeof(Counters) == sizeof(uint64_t), "unexpected size");
 
-  void lock();
-  void unlock();
+  struct alignas(16) State {
+    Counters counters;
+    uint64_t term;
+  };
+
+  std::atomic<State> _state;
 };
 
 };  // end namespace cache

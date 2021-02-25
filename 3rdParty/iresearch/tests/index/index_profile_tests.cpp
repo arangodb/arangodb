@@ -161,7 +161,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              TRY_SCOPED_LOCK_NAMED(commit_mutex, commit_lock);
+              auto commit_lock = irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in progress
               if (!commit_lock) {
@@ -259,7 +259,9 @@ class index_profile_test_case : public tests::index_test_base {
               auto value_term = csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value();
               std::string updated_term(value_term.c_str(), value_term.size());
 
-              static_cast<irs::by_term&>(*filter).field(key_field).term(key_term);
+              auto& filter_impl = static_cast<irs::by_term&>(*filter);
+              *filter_impl.mutable_field() = key_field;
+              filter_impl.mutable_options()->term = irs::ref_cast<irs::byte_type>(key_term);
               updated_term.append(value_term.c_str(), value_term.size()); // double up term
               csv_doc_template.indexed.get<tests::templates::string_field>(value_field)->value(updated_term);
               csv_doc_template.insert(std::make_shared<tests::templates::string_field>("updated"));
@@ -273,7 +275,7 @@ class index_profile_test_case : public tests::index_test_base {
             }
 
             if (count >= writer_batch_size) {
-              TRY_SCOPED_LOCK_NAMED(commit_mutex, commit_lock);
+              auto commit_lock = irs::make_unique_lock(commit_mutex, std::try_to_lock);
 
               // break commit chains by skipping commit if one is already in progress
               if (!commit_lock) {
@@ -537,7 +539,3 @@ INSTANTIATE_TEST_CASE_P(
   ),
   tests::to_string
 );
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

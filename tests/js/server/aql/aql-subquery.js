@@ -28,13 +28,14 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-const { assertEqual, assertTrue } = jsunity.jsUnity.assertions;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var findExecutionNodes = helper.findExecutionNodes;
+const jsunity = require("jsunity");
+const { assertEqual, assertNotEqual, assertTrue } = jsunity.jsUnity.assertions;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const findExecutionNodes = helper.findExecutionNodes;
 const { db } = require("@arangodb");
 const isCoordinator = require('@arangodb/cluster').isCoordinator();
+const isEnterprise = require("internal").isEnterprise();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -181,12 +182,10 @@ function ahuacatlSubqueryTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSubqueryOutVariableName : function () {
-      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable",
-        {}, {optimizer: {rules: ['-splice-subqueries']}});
+      const explainResult = AQL_EXPLAIN("FOR u IN _users LET theLetVariable = (FOR j IN _users RETURN j) RETURN theLetVariable");
+      const subqueryNode = findExecutionNodes(explainResult, "SubqueryStartNode")[0];
 
-      const subqueryNode = findExecutionNodes(explainResult, "SubqueryNode")[0];
-
-      assertEqual(subqueryNode.outVariable.name, "theLetVariable");
+      assertEqual(subqueryNode.subqueryOutVariable.name, "theLetVariable");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -338,12 +337,11 @@ function ahuacatlSubqueryTestSuite () {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this tests a rather complex interna of AQL execution combinations
-/// A subquery should only be executed if it has an input row
-/// A count collect block will produce an output even if it does not get an input
-/// specifically it will rightfully count 0.
-/// The insert block will write into the collection if it gets an input.
-/// So the assertion here is, that if a subquery has no input, than all it's
-/// Parts do not have side-effects, but the subquery still prduces valid results
+/// A subquery should only be executed if it has an input row, a count is supposed
+/// to count empty subqueries (e.g. no data row arrived)
+/// However in this case, the entire subquery is not executed once,
+/// so the count should not be triggered, and should not write an output row
+/// hence the INSERT will not be executed and we will not write a document.
 ////////////////////////////////////////////////////////////////////////////////
     testCollectWithinEmptyNestedSubquery: function () {
       const colName = "UnitTestSubqueryCollection";
@@ -457,6 +455,50 @@ function ahuacatlSubqueryTestSuite () {
         }        
       } finally {
         db._drop(colName);
+      }
+    },
+
+    testOneShardDBAndSpliceSubquery: function () {
+      const dbName = "SingleShardDB";
+      const docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({foo: i});
+      }
+      const q = `
+        FOR x IN a
+          SORT x.foo ASC
+          LET subquery = (
+            FOR y IN b
+              FILTER x.foo == y.foo
+              RETURN y
+          )
+          RETURN {x, subquery}
+      `;
+      try {
+        db._createDatabase(dbName, {sharding: "single"});
+        db._useDatabase(dbName);
+        const a = db._create("a");
+        const b = db._create("b");
+        a.save(docs);
+        b.save(docs);
+        const statement = db._createStatement(q);
+        const rules = statement.explain().plan.rules;
+        if (isEnterprise && isCoordinator) {
+          // Has one shard rule
+          assertNotEqual(-1, rules.indexOf("cluster-one-shard"));
+        }
+        // Has one splice subquery rule
+        assertNotEqual(-1, rules.indexOf("splice-subqueries"));
+        // Result is as expected
+        const result = statement.execute().toArray();
+        for (let i = 0; i < 100; ++i) {
+          assertEqual(result[i].x.foo, i);
+          assertEqual(result[i].subquery.length, 1);
+          assertEqual(result[i].subquery[0].foo, i);
+        }
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
       }
     }
   }; 

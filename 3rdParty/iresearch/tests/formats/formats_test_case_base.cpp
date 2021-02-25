@@ -294,7 +294,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   class granular_double_field: public tests::double_field {
    public:
     const irs::flags& features() const {
-      static const irs::flags features{ irs::granularity_prefix::type() };
+      static const irs::flags features{ irs::type<irs::granularity_prefix>::get() };
       return features;
     }
   };
@@ -373,7 +373,7 @@ TEST_P(format_test_case, fields_seek_ge) {
   // seek_ge before every term
   {
     irs::numeric_token_stream stream;
-    auto& term = stream.attributes().get<irs::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
     ASSERT_NE(nullptr, term);
 
     auto it = field->iterator();
@@ -382,10 +382,10 @@ TEST_P(format_test_case, fields_seek_ge) {
     for (size_t begin = 74, end = 7000, step = 2; begin < end; begin += step) {
       stream.reset(double_t(begin));
       ASSERT_TRUE(stream.next());
-      ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(term->value()));
+      ASSERT_EQ(irs::SeekResult::NOT_FOUND, it->seek_ge(term->value));
 
       auto expected_it = std::lower_bound(
-        all_terms.begin(), all_terms.end(), term->value(),
+        all_terms.begin(), all_terms.end(), term->value,
         [](const irs::bstring& lhs, const irs::bytes_ref& rhs) {
           return lhs < rhs;
       });
@@ -457,6 +457,116 @@ TEST_P(format_test_case, fields_seek_ge) {
 }
 
 TEST_P(format_test_case, fields_read_write) {
+  /*
+    Term dictionary structure:
+      BLOCK|7|
+        TERM|aaLorem
+        TERM|abaLorem
+        BLOCK|36|abab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|adipiscing
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|cadipiscing
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdPraesent
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdenecaodio
+          TERM|cdesitaamet
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|consectetur
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+        TERM|abcaLorem
+        BLOCK|32|abcab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|adipiscing
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdPraesent
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+        TERM|abcdaLorem
+        BLOCK|30|abcdab
+          TERM|Integer
+          TERM|Lorem
+          TERM|Praesent
+          TERM|amet
+          TERM|cInteger
+          TERM|cLorem
+          TERM|cPraesent
+          TERM|camet
+          TERM|cdInteger
+          TERM|cdLorem
+          TERM|cdamet
+          TERM|cddolor
+          TERM|cdelit
+          TERM|cdipsum
+          TERM|cdnec
+          TERM|cdodio
+          TERM|cdolor
+          TERM|cdsit
+          TERM|celit
+          TERM|cipsum
+          TERM|cnec
+          TERM|codio
+          TERM|csit
+          TERM|dolor
+          TERM|elit
+          TERM|ipsum
+          TERM|libero
+          TERM|nec
+          TERM|odio
+          TERM|sit
+   */
+
   // create sorted && unsorted terms
   typedef std::set<irs::bytes_ref> sorted_terms_t;
   typedef std::vector<irs::bytes_ref> unsorted_terms_t;
@@ -552,17 +662,17 @@ TEST_P(format_test_case, fields_read_write) {
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto seeked_term = term_reader->iterator();
-           ASSERT_TRUE(seeked_term->seek(*expected_sorted_term, *cookie));
-           ASSERT_EQ(*expected_sorted_term, seeked_term->value());
+           auto sought_term = term_reader->iterator();
+           ASSERT_TRUE(sought_term->seek(*expected_sorted_term, *cookie));
+           ASSERT_EQ(*expected_sorted_term, sought_term->value());
 
-           // iterate to the end with seeked_term
+           // iterate to the end with sought_term
            auto copy_expected_sorted_term = expected_sorted_term;
-           for (++copy_expected_sorted_term; seeked_term->next(); ++copy_expected_sorted_term) {
-             ASSERT_EQ(*copy_expected_sorted_term, seeked_term->value());
+           for (++copy_expected_sorted_term; sought_term->next(); ++copy_expected_sorted_term) {
+             ASSERT_EQ(*copy_expected_sorted_term, sought_term->value());
            }
            ASSERT_EQ(sorted_terms.end(), copy_expected_sorted_term);
-           ASSERT_FALSE(seeked_term->next());
+           ASSERT_FALSE(sought_term->next());
          }
        }
        ASSERT_EQ(sorted_terms.end(), expected_sorted_term);
@@ -581,17 +691,17 @@ TEST_P(format_test_case, fields_read_write) {
          auto cookie = term->cookie();
          ASSERT_NE(nullptr, cookie);
          {
-           auto seeked_term = term_reader->iterator();
-           ASSERT_TRUE(seeked_term->seek(*sorted_term, *cookie));
-           ASSERT_EQ(*sorted_term, seeked_term->value());
+           auto sought_term = term_reader->iterator();
+           ASSERT_TRUE(sought_term->seek(*sorted_term, *cookie));
+           ASSERT_EQ(*sorted_term, sought_term->value());
 
-           // iterate to the end with seeked_term
+           // iterate to the end with sought_term
            auto copy_sorted_term = sorted_term;
-           for (++copy_sorted_term; seeked_term->next(); ++copy_sorted_term) {
-             ASSERT_EQ(*copy_sorted_term, seeked_term->value());
+           for (++copy_sorted_term; sought_term->next(); ++copy_sorted_term) {
+             ASSERT_EQ(*copy_sorted_term, sought_term->value());
            }
            ASSERT_EQ(sorted_terms.end(), copy_sorted_term);
-           ASSERT_FALSE(seeked_term->next());
+           ASSERT_FALSE(sought_term->next());
          }
        }
        ASSERT_EQ(unsorted_terms.end(), expected_term);
@@ -611,7 +721,7 @@ TEST_P(format_test_case, fields_read_write) {
        }
      }
 
-     /* check sorted terms in reverse order using multiple "seek"s on single iterator */
+     // check sorted terms in reverse order using multiple "seek"s on single iterator
      {
        auto expected_term = sorted_terms.rbegin();
        auto term = term_reader->iterator();
@@ -624,7 +734,7 @@ TEST_P(format_test_case, fields_read_write) {
        }
      }
 
-     /* check unsorted terms using multiple "seek"s on single iterator */
+     // check unsorted terms using multiple "seek"s on single iterator
      {
        auto expected_term = unsorted_terms.begin();
        auto term = term_reader->iterator();
@@ -636,6 +746,23 @@ TEST_P(format_test_case, fields_read_write) {
          ASSERT_EQ(*expected_term, term->value());
        }
      }
+
+    // ensure term is not invalidated during consequent unsuccessful seeks
+    {
+        constexpr std::pair<irs::string_ref, irs::string_ref> TERMS[] {
+          { "abcabamet", "abcabamet" },
+          { "abcabrit", "abcabsit" },
+          { "abcabzit", "abcabsit" },
+          { "abcabelit", "abcabelit" }
+        };
+
+       auto term = term_reader->iterator();
+       for (const auto& [seek_term, expected_term] : TERMS) {
+         ASSERT_EQ(seek_term == expected_term,
+                   term->seek(irs::ref_cast<irs::byte_type>(seek_term)));
+         ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_term), term->value());
+       }
+    }
 
      // seek to nil (the smallest possible term)
      {
@@ -755,7 +882,7 @@ TEST_P(format_test_case, segment_meta_read_write) {
     }
   }
 
-  // read broken meta (live_docs_count > docs_count)
+  // write broken meta (live_docs_count > docs_count)
   {
     irs::segment_meta meta;
     meta.name = "broken_meta_name";
@@ -774,7 +901,104 @@ TEST_P(format_test_case, segment_meta_read_write) {
     // write segment meta
     {
       auto writer = codec()->get_segment_meta_writer();
-      writer->write(dir(), filename, meta);
+      ASSERT_THROW(writer->write(dir(), filename, meta), irs::index_error);
+    }
+
+    // read segment meta
+    {
+      irs::segment_meta read_meta;
+      read_meta.name = meta.name;
+      read_meta.version = 100;
+
+      auto reader = codec()->get_segment_meta_reader();
+      ASSERT_THROW(reader->read(dir(), read_meta), irs::io_error);
+    }
+  }
+
+  // read broken meta (live_docs_count > docs_count)
+  {
+    class segment_meta_corrupting_directory : public irs::directory {
+     public:
+      segment_meta_corrupting_directory(irs::directory& dir, irs::segment_meta& meta)
+        : dir_(dir), meta_(meta) {
+      }
+
+      using directory::attributes;
+
+      virtual irs::attribute_store& attributes() noexcept override {
+        return dir_.attributes();
+      }
+
+      virtual irs::index_output::ptr create(const std::string& name) noexcept override {
+        // corrupt meta before writing it
+        meta_.docs_count = meta_.live_docs_count - 1;
+        return dir_.create(name);
+      }
+
+      virtual bool exists(bool& result, const std::string& name) const noexcept override {
+        return dir_.exists(result, name);
+      }
+
+      virtual bool length(uint64_t& result, const std::string& name) const noexcept override {
+        return dir_.length(result, name);
+      }
+
+      virtual irs::index_lock::ptr make_lock(const std::string& name) noexcept override {
+        return dir_.make_lock(name);
+      }
+
+      virtual bool mtime(std::time_t& result,
+                         const std::string& name) const noexcept override {
+        return dir_.mtime(result, name);
+      }
+
+      virtual irs::index_input::ptr open(const std::string& name,
+                                         irs::IOAdvice advice) const noexcept override {
+        return dir_.open(name, advice);
+      }
+
+      virtual bool remove(const std::string& name) noexcept override {
+        return dir_.remove(name);
+      }
+
+      virtual bool rename(const std::string& src,
+                          const std::string& dst) noexcept override {
+        return dir_.rename(src, dst);
+      }
+
+      virtual bool sync(const std::string& name) noexcept override {
+        return dir_.sync(name);
+      }
+
+      virtual bool visit(const irs::directory::visitor_f& visitor) const override {
+        return dir_.visit(visitor);
+      }
+
+     private:
+      irs::directory& dir_;
+      irs::segment_meta& meta_;
+    }; // directory_mock
+
+    irs::segment_meta meta;
+    meta.name = "broken_meta_name";
+    meta.docs_count = 1453;
+    meta.live_docs_count = 1345;
+    meta.size = 666;
+    meta.version = 100;
+
+    meta.files.emplace("file1");
+    meta.files.emplace("index_file2");
+    meta.files.emplace("file3");
+    meta.files.emplace("stored_file4");
+
+    std::string filename;
+
+    // write segment meta
+    {
+      auto writer = codec()->get_segment_meta_writer();
+
+      segment_meta_corrupting_directory currupting_dir(dir(), meta);
+      writer->write(currupting_dir, filename, meta);
     }
 
     // read segment meta
@@ -800,14 +1024,14 @@ TEST_P(format_test_case, columns_rw_sparse_column_dense_block) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
-      irs::compression::lz4::type(),
+      irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
       bool(irs::get_encryption(dir().attributes()))
     });
     column_id = column.first;
     auto& column_handler = column.second;
 
-    auto id = irs::type_limits<irs::type_t::doc_id_t>::min();
+    auto id = irs::doc_limits::min();
 
     for (; id <= 1024; ++id, ++seg.docs_count) {
       auto& stream = column_handler(id);
@@ -864,14 +1088,14 @@ TEST_P(format_test_case, columns_rw_dense_mask) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), seg);
     auto column = writer->push_column({
-      irs::compression::lz4::type(),
+      irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
       bool(irs::get_encryption(dir().attributes()))
     });
     column_id = column.first;
     auto& column_handler = column.second;
 
-    for (auto id = irs::type_limits<irs::type_t::doc_id_t>::min(); id <= MAX_DOC; ++id, ++seg.docs_count) {
+    for (auto id = irs::doc_limits::min(); id <= MAX_DOC; ++id, ++seg.docs_count) {
       column_handler(id);
     }
 
@@ -911,7 +1135,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
-      irs::compression::lz4::type(),
+      irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
       bool(irs::get_encryption(dir().attributes()))
     });
@@ -955,7 +1179,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(9, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
-      ASSERT_FALSE(mask(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value));
+      ASSERT_FALSE(mask(irs::doc_limits::eof(), actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
       ASSERT_TRUE(mask(2, actual_value));
       ASSERT_EQ(irs::bytes_ref::NIL, actual_value);
@@ -968,9 +1192,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::doc_id_t, irs::doc_id_t>> expected_values = {
@@ -978,9 +1202,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
         { 3, 4 }, { 4, 4 },
         { 5, 8 },
         { 9, 9 },
-        { 10, irs::type_limits<irs::type_t::doc_id_t>::eof() },
-        { 6, irs::type_limits<irs::type_t::doc_id_t>::eof() },
-        { 10, irs::type_limits<irs::type_t::doc_id_t>::eof() }
+        { 10, irs::doc_limits::eof() },
+        { 6, irs::doc_limits::eof() },
+        { 10, irs::doc_limits::eof() }
       };
 
       for (auto& pair : expected_values) {
@@ -992,7 +1216,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -1003,9 +1227,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<irs::doc_id_t> expected_values = {
@@ -1020,7 +1244,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }
@@ -1041,9 +1265,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<irs::doc_id_t> expected_values = {
@@ -1058,7 +1282,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -1092,9 +1316,9 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<irs::doc_id_t> expected_values = {
@@ -1109,7 +1333,7 @@ TEST_P(format_test_case, columns_rw_bit_mask) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }
@@ -1138,9 +1362,9 @@ TEST_P(format_test_case, columns_rw_empty) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), meta0);
 
-    column0_id = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column0_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
     ASSERT_EQ(0, column0_id);
-    column1_id = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
+    column1_id = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }).first;
     ASSERT_EQ(1, column1_id);
     ASSERT_FALSE(writer->commit()); // flush empty columns
   }
@@ -1206,7 +1430,7 @@ TEST_P(format_test_case, columns_rw_same_col_empty_repeat) {
 
         if (res.second) {
           res.first->second = writer->push_column({
-            irs::compression::lz4::type(),
+            irs::type<irs::compression::lz4>::get(),
             irs::compression::options(),
             bool(irs::get_encryption(dir().attributes()))
           });
@@ -1286,7 +1510,7 @@ TEST_P(format_test_case, columns_rw_big_document) {
     writer->prepare(dir(), segment);
 
     auto column = writer->push_column({
-      irs::compression::lz4::type(),
+      irs::type<irs::compression::lz4>::get(),
       irs::compression::options(),
       bool(irs::get_encryption(dir().attributes()))
     });
@@ -1350,9 +1574,9 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_TRUE(it->next());
@@ -1382,9 +1606,9 @@ TEST_P(format_test_case, columns_rw_big_document) {
       auto it = column->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_EQ(1, it->seek(0));
@@ -1453,7 +1677,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
         }
 
         auto& column = res.first->second.second;
@@ -1482,7 +1706,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
         }
 
         auto& column = res.first->second.second;
@@ -1509,7 +1733,7 @@ TEST_P(format_test_case, columns_rw_writer_reuse) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
         }
 
         auto& column = res.first->second.second;
@@ -1648,19 +1872,19 @@ TEST_P(format_test_case, columns_rw_typed) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::null_token_stream::value_null());
+      field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::boolean_token_stream::value_true());
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
       field.name(irs::string_ref(name));
-      field.value(irs::boolean_token_stream::value_true());
+      field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       values.emplace_back(field.name(), field.value());
     } else if (data.is_number()) {
       const double dValue = data.as_number<double_t>();
@@ -1698,7 +1922,7 @@ TEST_P(format_test_case, columns_rw_typed) {
         );
 
         if (res.second) {
-          res.first->second = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+          res.first->second = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
         }
 
         auto& column = res.first->second.second;
@@ -1797,14 +2021,14 @@ TEST_P(format_test_case, columns_rw_typed) {
           auto& it = res.first->second;
           it = column->iterator();
 
-          auto& payload = it->attributes().get<irs::payload>();
+          auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
-          ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+          ASSERT_EQ(irs::doc_limits::invalid(), it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         }
 
         auto& it = res.first->second;
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
 
         it->next();
@@ -1833,9 +2057,9 @@ TEST_P(format_test_case, columns_rw_typed) {
     for (auto& entry : readers) {
       auto& it = entry.second;
       ASSERT_FALSE(it->next());
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }
@@ -1871,14 +2095,14 @@ TEST_P(format_test_case, columns_rw_typed) {
 
           auto& it = res.first->second;
           it = column->iterator();
-          auto& payload = it->attributes().get<irs::payload>();
+          auto* payload = irs::get<irs::payload>(*it);
           ASSERT_FALSE(!payload);
-          ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+          ASSERT_EQ(irs::doc_limits::invalid(), it->value());
           ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
         }
 
         auto& it = res.first->second;
-        auto& payload = it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*it);
         ASSERT_FALSE(!payload);
 
         ASSERT_EQ(i, it->seek(i));
@@ -1907,9 +2131,9 @@ TEST_P(format_test_case, columns_rw_typed) {
     for (auto& entry : readers) {
       auto& it = entry.second;
       ASSERT_FALSE(it->next());
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }
@@ -1944,10 +2168,10 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     auto writer = codec()->get_columnstore_writer();
     writer->prepare(dir(), meta0);
 
-    dense_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
-    sparse_fixed_offset_column = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    dense_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
+    sparse_fixed_offset_column = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
 
-    irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
+    irs::doc_id_t doc = irs::doc_limits::min();
 
     // write first document
     {
@@ -1988,14 +2212,14 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values {
-      { irs::type_limits<irs::type_t::doc_id_t>::min(), irs::bytes_ref::NIL },
-      { irs::type_limits<irs::type_t::doc_id_t>::min()+1, keys_ref },
+      { irs::doc_limits::min(), irs::bytes_ref::NIL },
+      { irs::doc_limits::min()+1, keys_ref },
     };
 
     // check iterator
     {
       auto it = column->iterator();
-      auto payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
         ASSERT_TRUE(it->next());
@@ -2050,14 +2274,14 @@ TEST_P(format_test_case, columns_rw_sparse_dense_offset_column_border_case) {
     ASSERT_NE(nullptr, column);
 
     std::vector<std::pair<irs::doc_id_t, irs::bytes_ref>> expected_values {
-      { irs::type_limits<irs::type_t::doc_id_t>::min(), irs::bytes_ref::NIL },
-      { irs::type_limits<irs::type_t::doc_id_t>::min()+3, keys_ref },
+      { irs::doc_limits::min(), irs::bytes_ref::NIL },
+      { irs::doc_limits::min()+3, keys_ref },
     };
 
     // check iterator
     {
       auto it = column->iterator();
-      auto payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
 
       for (auto& expected_value : expected_values) {
         ASSERT_TRUE(it->next());
@@ -2141,26 +2365,26 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta0);
 
-    auto field0 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment0_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment0_field0_id);
-    auto field1 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment0_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment0_field1_id);
-    auto empty_field = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) }); // gap between filled columns
+    auto empty_field = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) }); // gap between filled columns
     segment0_empty_column_id = empty_field.first;
     ASSERT_EQ(2, segment0_empty_column_id);
-    auto field2 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment0_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(3, segment0_field2_id);
-    auto field3 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field3 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment0_field3_id = field3.first;
     auto& field3_writer = field3.second;
     ASSERT_EQ(4, segment0_field3_id);
-    auto field4 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field4 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment0_field4_id = field4.first;
     auto& field4_writer = field4.second;
     ASSERT_EQ(5, segment0_field4_id);
@@ -2240,15 +2464,15 @@ TEST_P(format_test_case, columns_rw) {
   {
     writer->prepare(dir(), meta1);
 
-    auto field0 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field0 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment1_field0_id = field0.first;
     auto& field0_writer = field0.second;
     ASSERT_EQ(0, segment1_field0_id);
-    auto field1 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field1 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment1_field1_id = field1.first;
     auto& field1_writer = field1.second;
     ASSERT_EQ(1, segment1_field1_id);
-    auto field2 = writer->push_column({ irs::compression::lz4::type(), {}, bool(irs::get_encryption(dir().attributes())) });
+    auto field2 = writer->push_column({ irs::type<irs::compression::lz4>::get(), {}, bool(irs::get_encryption(dir().attributes())) });
     segment1_field2_id = field2.first;
     auto& field2_writer = field2.second;
     ASSERT_EQ(2, segment1_field2_id);
@@ -2456,9 +2680,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
@@ -2478,7 +2702,7 @@ TEST_P(format_test_case, columns_rw) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2489,9 +2713,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
@@ -2510,7 +2734,7 @@ TEST_P(format_test_case, columns_rw) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2521,9 +2745,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<std::vector<irs::string_ref>, irs::doc_id_t>> expected_values = {
@@ -2546,7 +2770,7 @@ TEST_P(format_test_case, columns_rw) {
       }
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2557,9 +2781,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<std::vector<irs::string_ref>, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
@@ -2583,7 +2807,7 @@ TEST_P(format_test_case, columns_rw) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2612,7 +2836,7 @@ TEST_P(format_test_case, columns_rw) {
       ASSERT_FALSE(column(13, actual_value));
 
       // read by invalid key
-      ASSERT_FALSE(column(irs::type_limits<irs::type_t::doc_id_t>::eof(), actual_value));
+      ASSERT_FALSE(column(irs::doc_limits::eof(), actual_value));
     }
 
     // visit empty column
@@ -2636,14 +2860,14 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      ASSERT_TRUE(!it->attributes().get<irs::payload>());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_TRUE(!irs::get<irs::payload>(*it));
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
     }
 
     // visit field2 values (field after an the field)
@@ -2683,9 +2907,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
@@ -2703,7 +2927,7 @@ TEST_P(format_test_case, columns_rw) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2714,9 +2938,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
@@ -2733,7 +2957,7 @@ TEST_P(format_test_case, columns_rw) {
       }
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }
@@ -2756,9 +2980,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
@@ -2777,7 +3001,7 @@ TEST_P(format_test_case, columns_rw) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2788,9 +3012,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, std::pair<irs::doc_id_t, irs::doc_id_t>>> expected_values = {
@@ -2808,11 +3032,11 @@ TEST_P(format_test_case, columns_rw) {
         ASSERT_EQ(expected_value, actual_str_value);
       }
 
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->seek(13));
+      ASSERT_EQ(irs::doc_limits::eof(), it->seek(13));
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       ASSERT_FALSE(it->next());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
 
@@ -2836,9 +3060,9 @@ TEST_P(format_test_case, columns_rw) {
       auto it = column_reader->iterator();
       ASSERT_NE(nullptr, it);
 
-      auto& payload = it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*it);
       ASSERT_FALSE(!payload);
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::invalid(), it->value());
+      ASSERT_EQ(irs::doc_limits::invalid(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
 
       std::vector<std::pair<irs::string_ref, irs::doc_id_t>> expected_values = {
@@ -2857,7 +3081,7 @@ TEST_P(format_test_case, columns_rw) {
 
       ASSERT_FALSE(it->next());
       ASSERT_EQ(i, expected_values.size());
-      ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), it->value());
+      ASSERT_EQ(irs::doc_limits::eof(), it->value());
       ASSERT_EQ(irs::bytes_ref::NIL, payload->value);
     }
   }

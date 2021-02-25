@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "RestActionHandler.h"
 
 #include "Actions/actions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Statistics/RequestStatistics.h"
 #include "VocBase/vocbase.h"
@@ -39,13 +40,6 @@ RestActionHandler::RestActionHandler(application_features::ApplicationServer& se
       _data(nullptr) {}
 
 RestStatus RestActionHandler::execute() {
-  // check the request path
-  if (_request->databaseName() == TRI_VOC_SYSTEM_DATABASE) {
-    if (StringUtils::isPrefix(_request->requestPath(), "/_admin/aardvark")) {
-      RequestStatistics::SET_IGNORE(_statistics);
-    }
-  }
-
   // need an action
   if (_action == nullptr) {
     generateNotImplemented(_request->fullUrl());

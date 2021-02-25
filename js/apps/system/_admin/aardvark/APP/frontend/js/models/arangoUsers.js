@@ -64,8 +64,8 @@ window.Users = Backbone.Model.extend({
       data: JSON.stringify({'extra': {'name': name, 'img': img}}),
       contentType: 'application/json',
       processData: false,
-      success: function () {
-        callback(false);
+      success: function (data) {
+        callback(false, data);
       },
       error: function () {
         callback(true);

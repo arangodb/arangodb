@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -432,9 +433,6 @@ ResultT<std::map<CollectionID, ResultT<std::list<RepairOperation>>>> DistributeS
   LOG_TOPIC("8f26d", INFO, arangodb::Logger::CLUSTER)
       << "DistributeShardsLikeRepairer::repairDistributeShardsLike: "
       << "Starting to collect necessary repairs";
-
-  // Needed to build agency transactions
-  TRI_ASSERT(AgencyCommManager::MANAGER != nullptr);
 
   auto collectionMapResult = readCollections(planCollections);
   if (collectionMapResult.fail()) {

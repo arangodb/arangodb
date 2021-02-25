@@ -26,50 +26,42 @@
 
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
 struct sb_stemmer; // forward declaration
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @class text_token_stemming_stream
 /// @brief an analyser capable of stemming the text, treated as a single token,
 ///        for supported languages
 ////////////////////////////////////////////////////////////////////////////////
-class text_token_stemming_stream: public analyzer, util::noncopyable {
+class text_token_stemming_stream final
+  : public frozen_attributes<4, analyzer>,
+    private util::noncopyable {
  public:
-  DECLARE_ANALYZER_TYPE();
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const irs::string_ref& locale);
-
-  text_token_stemming_stream(const std::locale& locale);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
+  static constexpr string_ref type_name() noexcept { return "stem"; }
   static void init(); // for trigering registration in a static build
+  static ptr make(const irs::string_ref& locale);
+
+  explicit text_token_stemming_stream(const std::locale& locale);
   virtual bool next() override;
   virtual bool reset(const irs::string_ref& data) override;
 
   private:
-   class term_attribute final: public irs::term_attribute {
-    public:
-     using irs::term_attribute::value;
-     void value(const irs::bytes_ref& value) { value_ = value; }
-   };
-
-   irs::attribute_view attrs_;
-   irs::increment inc_;
+   increment inc_;
    std::locale locale_;
-   irs::offset offset_;
-   irs::payload payload_; // raw token value
+   offset offset_;
+   payload payload_; // raw token value
    std::shared_ptr<sb_stemmer> stemmer_;
    term_attribute term_; // token value with evaluated quotes
    std::string term_buf_; // buffer for the last evaluated term
    bool term_eof_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

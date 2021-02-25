@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,9 +31,7 @@
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/CommTask.h"
-#include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/SslServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -42,6 +40,7 @@
 
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -61,17 +60,16 @@ GeneralServer::GeneralServer(GeneralServerFeature& feature, uint64_t numIoThread
 GeneralServer::~GeneralServer() = default;
 
 void GeneralServer::registerTask(std::shared_ptr<CommTask> task) {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (_feature.server().isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   auto* t = task.get();
   LOG_TOPIC("29da9", TRACE, Logger::REQUESTS)
       << "registering CommTask with ptr " << t;
   {
-    auto* t = task.get();
+    auto* ptr = task.get();
     std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-    _commTasks.try_emplace(t, std::move(task));
+    _commTasks.try_emplace(ptr, std::move(task));
   }
   t->start();
 }
@@ -120,18 +118,38 @@ void GeneralServer::startListening() {
   }
 }
 
+/// stop accepting new connections
 void GeneralServer::stopListening() {
   for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
     acceptor->close();
   }
+}
 
+/// stop connections
+void GeneralServer::stopConnections() {
   // close connections of all socket tasks so the tasks will
   // eventually shut themselves down
   std::lock_guard<std::recursive_mutex> guard(_tasksLock);
-  _commTasks.clear();
+  for (auto const& pair : _commTasks) {
+    pair.second->stop();
+  }
 }
 
 void GeneralServer::stopWorking() {
+  auto const started {std::chrono::system_clock::now()};
+  constexpr auto timeout {std::chrono::seconds(5)};
+  do {
+    {
+      std::unique_lock<std::recursive_mutex> guard(_tasksLock);
+      if (_commTasks.empty())
+        break;
+    }
+    std::this_thread::yield();
+  } while((std::chrono::system_clock::now() - started) < timeout);
+  {
+    std::lock_guard<std::recursive_mutex> guard(_tasksLock);
+    _commTasks.clear();
+  }
   _acceptors.clear();
   _contexts.clear();  // stops threads
 }
@@ -152,26 +170,55 @@ bool GeneralServer::openEndpoint(IoContext& ioContext, Endpoint* endpoint) {
 }
 
 IoContext& GeneralServer::selectIoContext() {
-  uint64_t low = _contexts[0].clients();
-  size_t lowpos = 0;
-
-  for (size_t i = 1; i < _contexts.size(); ++i) {
-    uint64_t x = _contexts[i].clients();
-    if (x < low) {
-      low = x;
-      lowpos = i;
-    }
-  }
-
-  return _contexts[lowpos];
+  return *std::min_element(_contexts.begin(), _contexts.end(), 
+    [](auto const &a, auto const &b) { return a.clients() < b.clients(); });
 }
 
-asio_ns::ssl::context& GeneralServer::sslContext() {
+#ifdef USE_ENTERPRISE
+extern int clientHelloCallback(SSL* ssl, int* al, void* arg);
+#endif
+
+SslServerFeature::SslContextList GeneralServer::sslContexts() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
-  if (!_sslContext) {
-    _sslContext.reset(new asio_ns::ssl::context(SslServerFeature::SSL->createSslContext()));
+  if (!_sslContexts) {
+    _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
+#ifdef USE_ENTERPRISE
+    if (_sslContexts->size() > 0) {
+      // Set a client hello callback such that we have a chance to change the SSL context:
+      SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+    }
+#endif
   }
-  return *_sslContext;
+  return _sslContexts;
+}
+
+SSL_CTX* GeneralServer::getSSL_CTX(size_t index) {
+  std::lock_guard<std::mutex> guard(_sslContextMutex);
+  return (*_sslContexts)[index].native_handle();
+}
+
+Result GeneralServer::reloadTLS() {
+  try {
+    {
+      std::lock_guard<std::mutex> guard(_sslContextMutex);
+      _sslContexts = server().getFeature<SslServerFeature>().createSslContexts();
+#ifdef USE_ENTERPRISE
+      if (_sslContexts->size() > 0) {
+        // Set a client hello callback such that we have a chance to change the SSL context:
+        SSL_CTX_set_client_hello_cb((*_sslContexts)[0].native_handle(), &clientHelloCallback, (void*) this);
+      }
+#endif
+    }
+    // Now cancel every acceptor once, such that a new AsioSocket is generated which will
+    // use the new context. Otherwise, the first connection will still use the old certs:
+    for (auto& a : _acceptors) {
+      a->cancel();
+    }
+    return TRI_ERROR_NO_ERROR;
+  } catch(std::exception& e) {
+    LOG_TOPIC("feffe", ERR, Logger::SSL) << "Could not reload TLS context from files, got exception with this error: " << e.what();
+    return Result(TRI_ERROR_CANNOT_READ_FILE, "Could not reload TLS context from files.");
+  }
 }
 
 application_features::ApplicationServer& GeneralServer::server() const {

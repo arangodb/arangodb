@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,10 +24,12 @@
 #ifndef ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
 #define ARANGOD_AQL_PARALLEL_UNSORTED_GATHER_EXECUTOR_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ClusterNodes.h"
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb {
@@ -37,25 +40,14 @@ class Methods;
 
 namespace aql {
 
+struct AqlCall;
+class MultiAqlItemBlockInputRange;
 class MultiDependencySingleRowFetcher;
 class NoStats;
 class OutputAqlItemRow;
-struct SortRegister;
-
-class ParallelUnsortedGatherExecutorInfos : public ExecutorInfos {
- public:
-  ParallelUnsortedGatherExecutorInfos(RegisterId nrInOutRegisters,
-                                      std::unordered_set<RegisterId> registersToKeep,
-                                      std::unordered_set<RegisterId> registersToClear);
-  ParallelUnsortedGatherExecutorInfos() = delete;
-  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos&&) = default;
-  ParallelUnsortedGatherExecutorInfos(ParallelUnsortedGatherExecutorInfos const&) = delete;
-  ~ParallelUnsortedGatherExecutorInfos() = default;
-};
 
 class ParallelUnsortedGatherExecutor {
  public:
-
  public:
   struct Properties {
     static constexpr bool preservesOrder = true;
@@ -64,38 +56,44 @@ class ParallelUnsortedGatherExecutor {
   };
 
   using Fetcher = MultiDependencySingleRowFetcher;
-  using Infos = ParallelUnsortedGatherExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = NoStats;
 
   ParallelUnsortedGatherExecutor(Fetcher& fetcher, Infos& info);
   ~ParallelUnsortedGatherExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief Produce rows
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @param input DataRange delivered by the fetcher
+   * @param output place to write rows to
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(MultiAqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCallSet>;
 
-  std::tuple<ExecutionState, Stats, size_t> skipRows(size_t atMost);
-  
- private:
-  
-  void initDependencies();
-  
- private:
-  Fetcher& _fetcher;
-  // 64: default size of buffer; 8: Alignment size; computed to 4 but breaks in windows debug build.
-  ::arangodb::containers::SmallVector<ExecutionState, 64, 8>::allocator_type::arena_type _arena;
-  ::arangodb::containers::SmallVector<ExecutionState, 64, 8> _upstream{_arena};
+  /**
+   * @brief Skip rows
+   *
+   * @param input DataRange delivered by the fetcher
+   * @param call skip request form consumer
+   * @return std::tuple<ExecutorState, Stats, AqlCall, size_t>
+   *   ExecutorState: DONE or HASMORE (only within a subquery)
+   *   Stats: Stats gerenated here
+   *   size_t: Number of rows skipped
+   *   AqlCall: Request to upstream
+   *   size:t: Dependency to request
+   */
+  [[nodiscard]] auto skipRowsRange(MultiAqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCallSet>;
 
-  // Total Number of dependencies
-  size_t _numberDependencies;
-  
-  size_t _currentDependency;
-  
-  size_t _skipped;
+ private:
+  auto upstreamCallSkip(AqlCall const& clientCall) const noexcept -> AqlCall;
+  auto upstreamCallProduce(AqlCall const& clientCall) const noexcept -> AqlCall;
 };
 
 }  // namespace aql

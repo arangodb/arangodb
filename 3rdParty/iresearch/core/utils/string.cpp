@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <chrono>
@@ -31,9 +30,9 @@
 // --SECTION--                                                     hash function
 // -----------------------------------------------------------------------------
 
-NS_LOCAL
+namespace {
 
-inline uint32_t get_seed() {
+inline uint32_t get_seed() noexcept {
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::high_resolution_clock::now().time_since_epoch()
   );
@@ -42,7 +41,7 @@ inline uint32_t get_seed() {
 }
 
 template<typename T>
-inline size_t get_hash(const T* value, size_t size) {
+inline size_t get_hash(const T* value, size_t size) noexcept {
   static const auto seed = get_seed();
   size_t length = std::min(size, size_t(irs::integer_traits<int>::const_max));
   uint32_t code;
@@ -53,13 +52,13 @@ inline size_t get_hash(const T* value, size_t size) {
   return code;
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
-/* -------------------------------------------------------------------
- * basic_string_ref
- * ------------------------------------------------------------------*/
+// -----------------------------------------------------------------------------
+// --SECTION--                                   basic_string_ref implementation
+// -----------------------------------------------------------------------------
 
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
@@ -68,31 +67,31 @@ template class IRESEARCH_API basic_string_ref<byte_type>;
 
 #endif
 
-NS_BEGIN(hash_utils)
+namespace hash_utils {
 
-size_t hash(const std::string& value) {
+size_t hash(const std::string& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-size_t hash(const bstring& value) {
+size_t hash(const bstring& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-size_t hash(const char* value) {
+size_t hash(const char* value) noexcept {
   return get_hash(value, std::char_traits<char>::length(value) * sizeof(char));
 }
 
-size_t hash(const wchar_t* value) {
+size_t hash(const wchar_t* value) noexcept {
   return get_hash(value, std::char_traits<wchar_t>::length(value) * sizeof(wchar_t));
 }
 
-size_t hash(const bytes_ref& value) {
+size_t hash(const bytes_ref& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-size_t hash(const string_ref& value) {
+size_t hash(const string_ref& value) noexcept {
   return get_hash(value.c_str(), value.size());
 }
 
-NS_END // detail
-NS_END
+} // hash_utils
+}

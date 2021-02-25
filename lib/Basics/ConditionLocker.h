@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,7 +63,8 @@ class ConditionLocker {
 /// the condition variable
 #ifdef ARANGODB_SHOW_LOCK_TIME
 
-  ConditionLocker(ConditionVariable* conditionVariable, char const* file, int line);
+  ConditionLocker(ConditionVariable* conditionVariable, char const* file,
+                  int line, bool showLockTime = true);
 
 #else
 
@@ -115,6 +116,8 @@ class ConditionLocker {
 
   /// @brief line number
   int _line;
+
+  bool _showLockTime;
 
   /// @brief lock time
   double _time;

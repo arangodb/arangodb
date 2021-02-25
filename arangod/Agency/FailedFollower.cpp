@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 #include "Agency/Agent.h"
 #include "Agency/Job.h"
 #include "Agency/JobContext.h"
+#include "Basics/StaticStrings.h"
 
 using namespace arangodb::consensus;
 
@@ -166,10 +167,27 @@ bool FailedFollower::start(bool& aborts) {
     return false;
   }
 
-  // Get proper replacement
-  _to = randomIdleAvailableServer(_snapshot, planned);
+  // Exclude servers in failoverCandidates for some clone and those in Plan:
+  auto shardsLikeMe = clones(_snapshot, _database, _collection, _shard);
+  auto failoverCands = Job::findAllFailoverCandidates(
+      _snapshot, _database, shardsLikeMe);
+  std::vector<std::string> excludes;
+  for (const auto& s : VPackArrayIterator(planned)) {
+    if (s.isString()) {
+      std::string id = s.copyString();
+      if (failoverCands.find(id) == failoverCands.end()) {
+        excludes.push_back(s.copyString());
+      }
+    }
+  }
+  for (auto const& id : failoverCands) {
+    excludes.push_back(id);
+  }
+
+  // Get proper replacement:
+  _to = randomIdleAvailableServer(_snapshot, excludes);
   if (_to.empty()) {
-    // retry later
+    finish("", _shard, false, "No server available.");
     return false;
   }
 
@@ -237,7 +255,7 @@ bool FailedFollower::start(bool& aborts) {
         }
         addRemoveJobFromSomewhere(job, "ToDo", _jobId);
         // Plan change ------------
-        for (auto const& clone : clones(_snapshot, _database, _collection, _shard)) {
+        for (auto const& clone : shardsLikeMe) {
           job.add(planColPrefix + _database + "/" + clone.collection +
                       "/shards/" + clone.shard,
                   ns.slice());
@@ -254,7 +272,22 @@ bool FailedFollower::start(bool& aborts) {
           VPackObjectBuilder stillExists(&job);
           job.add("old", VPackValue("FAILED"));
         }
+        // Plan still as we see it:
         addPreconditionUnchanged(job, planPath, planned);
+        // Check that failoverCandidates are still as we inspected them:
+        doForAllShards(_snapshot, _database, shardsLikeMe,
+            [this, &job](Slice plan, Slice current,
+                             std::string& planPath,
+                             std::string& curPath) {
+              // take off "servers" from curPath and add
+              // "failoverCandidates":
+              std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
+              foCandsPath += StaticStrings::FailoverCandidates;
+              auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+              if (foCands.second) {
+                addPreconditionUnchanged(job, foCandsPath, foCands.first);
+              }
+            });
         // toServer not blocked
         addPreconditionServerNotBlocked(job, _to);
         // shard not blocked

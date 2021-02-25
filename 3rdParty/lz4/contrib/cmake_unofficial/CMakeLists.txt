@@ -12,6 +12,8 @@
 
 set(LZ4_TOP_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
 
+option(LZ4_BUILD_LEGACY_LZ4C "Build lz4c progam with legacy argument support" ON)
+
 # Parse version information
 file(STRINGS "${LZ4_TOP_SOURCE_DIR}/lib/lz4.h" LZ4_VERSION_MAJOR REGEX "^#define LZ4_VERSION_MAJOR +([0-9]+) +.*$")
 string(REGEX REPLACE "^#define LZ4_VERSION_MAJOR +([0-9]+) +.*$" "\\1" LZ4_VERSION_MAJOR "${LZ4_VERSION_MAJOR}")
@@ -122,14 +124,18 @@ else()
 endif()
 
 # lz4
+set(LZ4_PROGRAMS_BUILT lz4cli)
 add_executable(lz4cli ${LZ4_CLI_SOURCES})
 set_target_properties(lz4cli PROPERTIES OUTPUT_NAME lz4)
 target_link_libraries(lz4cli ${LZ4_LINK_LIBRARY})
 
 # lz4c
-add_executable(lz4c ${LZ4_CLI_SOURCES})
-set_target_properties(lz4c PROPERTIES COMPILE_DEFINITIONS "ENABLE_LZ4C_LEGACY_OPTIONS")
-target_link_libraries(lz4c ${LZ4_LINK_LIBRARY})
+if (LZ4_BUILD_LEGACY_LZ4C)
+  list(APPEND LZ4_PROGRAMS_BUILT lz4c)
+  add_executable(lz4c ${LZ4_CLI_SOURCES})
+  set_target_properties(lz4c PROPERTIES COMPILE_DEFINITIONS "ENABLE_LZ4C_LEGACY_OPTIONS")
+  target_link_libraries(lz4c ${LZ4_LINK_LIBRARY})
+endif()
 
 # Extra warning flags
 include (CheckCCompilerFlag)
@@ -165,7 +171,8 @@ endforeach (flag)
 if(NOT LZ4_BUNDLED_MODE)
   include(GNUInstallDirs)
 
-  install(TARGETS lz4cli lz4c
+  install(TARGETS ${LZ4_PROGRAMS_BUILT}
+    BUNDLE	DESTINATION "${CMAKE_INSTALL_BINDIR}"
     RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
   install(TARGETS ${LZ4_LIBRARIES_BUILT}
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"

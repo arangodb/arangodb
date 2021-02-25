@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,7 +35,10 @@ namespace arangodb {
 namespace aql {
 
 // no-op statistics for all Executors that don't have custom stats.
-class NoStats {};
+class NoStats {
+ public:
+  void operator+= (NoStats const&) {}
+};
 
 inline ExecutionStats& operator+=(ExecutionStats& stats, NoStats const&) {
   return stats;
@@ -51,6 +55,10 @@ class CountStats {
   void incrCounted() noexcept { _counted++; }
 
   std::size_t getCounted() const noexcept { return _counted; }
+  
+  void operator+= (CountStats const& stats) {
+    _counted += stats._counted;
+  }
 
  private:
   std::size_t _counted;
@@ -73,6 +81,10 @@ class FilterStats {
   void incrFiltered() noexcept { _filtered++; }
 
   std::size_t getFiltered() const noexcept { return _filtered; }
+  
+  void operator+= (FilterStats const& stats) {
+    _filtered += stats._filtered;
+  }
 
  private:
   std::size_t _filtered;
@@ -94,6 +106,11 @@ class EnumerateCollectionStats {
 
   std::size_t getScanned() const noexcept { return _scannedFull; }
   std::size_t getFiltered() const noexcept { return _filtered; }
+  
+  void operator+= (EnumerateCollectionStats const& stats) {
+    _scannedFull += stats._scannedFull;
+    _filtered += stats._filtered;
+  }
 
  private:
   std::size_t _scannedFull;
@@ -119,6 +136,11 @@ class IndexStats {
 
   std::size_t getScanned() const noexcept { return _scannedIndex; }
   std::size_t getFiltered() const noexcept { return _filtered; }
+  
+  void operator+= (IndexStats const& stats) {
+    _scannedIndex += stats._scannedIndex;
+    _filtered += stats._filtered;
+  }
 
  private:
   std::size_t _scannedIndex;
@@ -153,6 +175,11 @@ class ModificationStats {
   }
   void incrWritesIgnored() noexcept { _writesIgnored++; }
   std::size_t getWritesIgnored() const noexcept { return _writesIgnored; }
+  
+  void operator+= (ModificationStats const& stats) {
+    _writesExecuted += stats._writesExecuted;
+    _writesIgnored += stats._writesIgnored;
+  }
 
  private:
   std::size_t _writesExecuted;
@@ -197,6 +224,12 @@ class SingleRemoteModificationStats {
   }
   void incrScannedIndex() noexcept { _scannedIndex++; }
   std::size_t getScannedIndex() const noexcept { return _scannedIndex; }
+  
+  void operator+= (SingleRemoteModificationStats const& stats) {
+    _writesExecuted += stats._writesExecuted;
+    _writesIgnored += stats._writesIgnored;
+    _scannedIndex += stats._scannedIndex;
+  }
 
  private:
   std::size_t _writesExecuted;

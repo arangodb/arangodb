@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 
 #include "Aql/Query.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 
 #include <map>
 #include <set>
@@ -39,10 +39,15 @@ class DistributeConsumerNode;
 class ExecutionNode;
 class ExecutionPlan;
 class GatherNode;
+class RemoteNode;
 class ScatterNode;
 class ShardLocking;
 
+using MapNodeToColNameToShards = std::unordered_map<ExecutionNode*, std::unordered_map<std::string, std::set<ShardID>>>;
+
 class QuerySnippet {
+ public:
+  using Id = size_t;
  private:
   struct ExpansionInformation {
     ExecutionNode* node;
@@ -55,7 +60,7 @@ class QuerySnippet {
   };
 
  public:
-  QuerySnippet(GatherNode const* sinkNode, size_t idOfSinkRemoteNode, size_t id)
+  QuerySnippet(GatherNode const* sinkNode, ExecutionNodeId idOfSinkRemoteNode, Id id)
       : _sinkNode(sinkNode),
         _idOfSinkRemoteNode(idOfSinkRemoteNode),
         _madeResponsibleForShutdown(false),
@@ -63,30 +68,33 @@ class QuerySnippet {
         _globalScatter(nullptr),
         _id(id) {
     TRI_ASSERT(_sinkNode != nullptr);
-    TRI_ASSERT(_idOfSinkRemoteNode != 0);
+    TRI_ASSERT(_idOfSinkRemoteNode != ExecutionNodeId{0});
   }
 
   void addNode(ExecutionNode* node);
 
-  void serializeIntoBuilder(ServerID const& server, ShardLocking& shardMapping,
-                            std::unordered_map<size_t, size_t>& nodeAliases,
+  void serializeIntoBuilder(ServerID const& server,
+                            std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                            ShardLocking& shardMapping,
+                            std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
                             velocypack::Builder& infoBuilder);
 
   void useQueryIdAsInput(QueryId inputSnippet) { _inputSnippet = inputSnippet; }
 
-  size_t id() const { return _id; }
+  Id id() const { return _id; }
 
  private:
-  ResultT<std::unordered_map<ExecutionNode*, std::set<ShardID>>> prepareFirstBranch(
-      ServerID const& server, ShardLocking& shardLocking);
-
-  DistributeConsumerNode* createConsumerNode(ExecutionPlan* plan, ScatterNode* internalScatter,
-                                             std::string const& distributeId);
+  ResultT<MapNodeToColNameToShards> prepareFirstBranch(
+      ServerID const& server,
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      ShardLocking& shardLocking);
 
  private:
-  GatherNode const* _sinkNode;
+  GatherNode const* _sinkNode; // node that merges the results for all shards
 
-  size_t const _idOfSinkRemoteNode;
+  ExecutionNodeId const _idOfSinkRemoteNode;
+
+  RemoteNode * _remoteNode{nullptr};
 
   bool _madeResponsibleForShutdown;
 
@@ -98,7 +106,7 @@ class QuerySnippet {
 
   ScatterNode* _globalScatter;
 
-  size_t const _id;
+  Id const _id;
 };
 }  // namespace aql
 }  // namespace arangodb

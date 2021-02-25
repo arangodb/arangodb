@@ -58,7 +58,7 @@
 
 #include "locale_utils.hpp"
 
-NS_BEGIN(std)
+namespace std {
 
 // GCC < v5 does not explicitly define
 // std::codecvt<char16_t, char, mbstate_t>::id or std::codecvt<char32_t, char, mbstate_t>::id
@@ -69,9 +69,9 @@ NS_BEGIN(std)
   /*static*/ template<> locale::id codecvt<char32_t, char, mbstate_t>::id;
 #endif
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size of internal buffers, arbitrary size
@@ -103,15 +103,17 @@ std::string system_encoding() {
 ////////////////////////////////////////////////////////////////////////////////
 class converter_pool: private irs::util::noncopyable {
  public:
-  DECLARE_SHARED_PTR(UConverter);
+  using ptr = std::shared_ptr<UConverter>;
+
   converter_pool(std::string&& encoding)
     : encoding_(std::move(encoding)), pool_(POOL_SIZE) {}
   ptr get() { return pool_.emplace(encoding_).release(); }
-  const std::string& encoding() const NOEXCEPT { return encoding_; }
+  const std::string& encoding() const noexcept { return encoding_; }
 
  private:
   struct builder {
-    DECLARE_SHARED_PTR(UConverter);
+    using ptr = std::shared_ptr<UConverter>;
+
     static ptr make(const std::string& encoding) {
       UErrorCode status = U_ZERO_ERROR;
       ptr value(
@@ -135,7 +137,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
   static auto generator = [](
       const irs::hashed_string_ref& key,
       const converter_pool& pool
-  ) NOEXCEPT->irs::hashed_string_ref {
+  ) noexcept->irs::hashed_string_ref {
     // reuse hash but point ref at value in pool
     return irs::hashed_string_ref(key.hash(), pool.encoding());
   };
@@ -150,7 +152,7 @@ converter_pool& get_converter(const irs::string_ref& encoding) {
     key = tmp;
   }
 
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
 
   return irs::map_utils::try_emplace_update_key(
     encodings,
@@ -177,7 +179,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
 
  protected:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_;
 
@@ -195,15 +197,15 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
     return contexts_.emplace(converters_);
   }
 
-  const std::string& context_encoding() const NOEXCEPT {
+  const std::string& context_encoding() const noexcept {
     return converters_.encoding();
   }
 
-  virtual bool do_always_noconv() const NOEXCEPT final override {
+  virtual bool do_always_noconv() const noexcept final override {
     return false; // not an identity conversion
   }
 
-  virtual int do_encoding() const NOEXCEPT override = 0;
+  virtual int do_encoding() const noexcept override = 0;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -219,7 +221,7 @@ class codecvtu_base: public std::codecvt<InternType, char, mbstate_t> {
     const extern_type* from_end,
     std::size_t max
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override = 0;
+  virtual int do_max_length() const noexcept override = 0;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -288,9 +290,8 @@ std::codecvt_base::result codecvtu_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt16_facet final: public codecvtu_base<char16_t> {
  public:
-  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
-  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
-  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt16_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -298,7 +299,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -308,7 +309,7 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -320,9 +321,9 @@ class codecvt16_facet final: public codecvtu_base<char16_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2017 requires a static instance of an 'id' member
-MSVC2019_ONLY(/*static*/ std::locale::id codecvt16_facet::id;) // MSVC2019 requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt16_facet::id{
+  static_cast<size_t>(std::codecvt<char16_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
+
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
@@ -352,7 +353,7 @@ bool codecvt16_facet::append(
   #pragma GCC diagnostic pop
 #endif
 
-int codecvt16_facet::do_encoding() const NOEXCEPT {
+int codecvt16_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -429,7 +430,7 @@ std::codecvt_base::result codecvt16_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt16_facet::do_max_length() const NOEXCEPT {
+int codecvt16_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -508,9 +509,8 @@ std::codecvt_base::result codecvt16_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt32_facet final: public codecvtu_base<char32_t> {
  public:
-  MSVC2015_ONLY(static std::locale::id id;) // MSVC2015 requires a static instance of an 'id' member
-  MSVC2017_ONLY(static std::locale::id id;) // MSVC2017 requires a static instance of an 'id' member
-  MSVC2019_ONLY(static std::locale::id id;) // MSVC2019 requires a static instance of an 'id' member
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt32_facet(converter_pool& converters): codecvtu_base(converters) {}
 
   bool append(
@@ -518,7 +518,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT final override;
+  virtual int do_encoding() const noexcept final override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -528,7 +528,7 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -540,9 +540,8 @@ class codecvt32_facet final: public codecvtu_base<char32_t> {
   ) const override;
 };
 
-MSVC2015_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2015 requires a static instance of an 'id' member
-MSVC2017_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2017 requires a static instance of an 'id' member
-MSVC2019_ONLY(/*static*/ std::locale::id codecvt32_facet::id;) // MSVC2019 requires a static instance of an 'id' member
+MSVC_ONLY(/*static*/ std::locale::id codecvt32_facet::id {
+  static_cast<size_t>(std::codecvt<char32_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 bool codecvt32_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -575,7 +574,7 @@ bool codecvt32_facet::append(
   return false;
 }
 
-int codecvt32_facet::do_encoding() const NOEXCEPT {
+int codecvt32_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -724,7 +723,7 @@ std::codecvt_base::result codecvt32_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt32_facet::do_max_length() const NOEXCEPT {
+int codecvt32_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -873,7 +872,7 @@ class codecvt8u_facet: public codecvtu_base<char> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override { return 0; } // only non-zero for ASCII
+  virtual int do_encoding() const noexcept override { return 0; } // only non-zero for ASCII
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -883,7 +882,7 @@ class codecvt8u_facet: public codecvtu_base<char> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1059,7 +1058,7 @@ std::codecvt_base::result codecvt8u_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt8u_facet::do_max_length() const NOEXCEPT {
+int codecvt8u_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1232,11 +1231,11 @@ class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
   }
 
  protected:
-  virtual bool do_always_noconv() const NOEXCEPT override {
+  virtual bool do_always_noconv() const noexcept override {
     return impl_.always_noconv();
   }
 
-  virtual int do_encoding() const NOEXCEPT override {
+  virtual int do_encoding() const noexcept override {
     return impl_.encoding();
   }
 
@@ -1270,7 +1269,7 @@ class codecvtwu_facet: public std::codecvt<wchar_t, char, mbstate_t> {
     return impl_.length(state, from, from_end, max);
   }
 
-  virtual int do_max_length() const NOEXCEPT override {
+  virtual int do_max_length() const noexcept override {
     return impl_.max_length();
   }
 
@@ -1342,7 +1341,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
 
  protected:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<typename parent_t::intern_type> buf_;
     converter_pool::ptr converter_ext_;
     converter_pool::ptr converter_int_;
@@ -1367,19 +1366,19 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
     return contexts_.emplace(converters_int_, converters_ext_);
   }
 
-  const std::string& context_encoding_ext() const NOEXCEPT {
+  const std::string& context_encoding_ext() const noexcept {
     return converters_ext_.encoding();
   }
 
-  const std::string& context_encoding_int() const NOEXCEPT {
+  const std::string& context_encoding_int() const noexcept {
     return converters_int_.encoding();
   }
 
-  virtual bool do_always_noconv() const NOEXCEPT final override {
+  virtual bool do_always_noconv() const noexcept final override {
     return false; // not an identity conversion
   }
 
-  virtual int do_encoding() const NOEXCEPT override = 0;
+  virtual int do_encoding() const noexcept override = 0;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1395,7 +1394,7 @@ class codecvt_base: public std::codecvt<InternType, char, mbstate_t> {
     const extern_type* from_end,
     std::size_t max
   ) const final override;
-  virtual int do_max_length() const NOEXCEPT override = 0;
+  virtual int do_max_length() const noexcept override = 0;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1465,6 +1464,8 @@ std::codecvt_base::result codecvt_base<InternType>::do_unshift(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvt8_facet final: public codecvt_base<char> {
  public:
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvt8_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
@@ -1474,7 +1475,7 @@ class codecvt8_facet final: public codecvt_base<char> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1484,7 +1485,7 @@ class codecvt8_facet final: public codecvt_base<char> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1495,6 +1496,9 @@ class codecvt8_facet final: public codecvt_base<char> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC_ONLY(/*static*/ std::locale::id codecvt8_facet::id {
+  static_cast<size_t>(std::codecvt<char, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 
 bool codecvt8_facet::append(
@@ -1567,7 +1571,7 @@ bool codecvt8_facet::append(
   return false;
 }
 
-int codecvt8_facet::do_encoding() const NOEXCEPT {
+int codecvt8_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1700,7 +1704,7 @@ std::codecvt_base::result codecvt8_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvt8_facet::do_max_length() const NOEXCEPT {
+int codecvt8_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -1836,6 +1840,9 @@ std::codecvt_base::result codecvt8_facet::do_out(
 ////////////////////////////////////////////////////////////////////////////////
 class codecvtw_facet final: public codecvt_base<wchar_t> {
  public:
+
+  MSVC_ONLY(static std::locale::id id;) // MSVC requires a static instance of an 'id' member
+
   codecvtw_facet(converter_pool& pool_int, converter_pool& pool_ext)
     : codecvt_base(pool_int, pool_ext) {
   }
@@ -1845,7 +1852,7 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
   ) const;
 
  protected:
-  virtual int do_encoding() const NOEXCEPT override;
+  virtual int do_encoding() const noexcept override;
   virtual std::codecvt_base::result do_in(
     state_type& state,
     const extern_type* from,
@@ -1855,7 +1862,7 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
     intern_type* to_end,
     intern_type*& to_next
   ) const override;
-  virtual int do_max_length() const NOEXCEPT override;
+  virtual int do_max_length() const noexcept override;
   virtual std::codecvt_base::result do_out(
     state_type& state,
     const intern_type* from,
@@ -1866,6 +1873,9 @@ class codecvtw_facet final: public codecvt_base<wchar_t> {
     extern_type*& to_next
   ) const override;
 };
+
+MSVC_ONLY(/*static*/ std::locale::id codecvtw_facet::id {
+  static_cast<size_t>(std::codecvt<wchar_t, char, mbstate_t>::id)};) // MSVC requires a static instance of an 'id' member
 
 bool codecvtw_facet::append(
     std::basic_string<intern_type>& buf, const icu::UnicodeString& value
@@ -1994,7 +2004,7 @@ bool codecvtw_facet::append(
   return false;
 }
 
-int codecvtw_facet::do_encoding() const NOEXCEPT {
+int codecvtw_facet::do_encoding() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -2179,7 +2189,7 @@ std::codecvt_base::result codecvtw_facet::do_in(
   return std::codecvt_base::ok;
 }
 
-int codecvtw_facet::do_max_length() const NOEXCEPT {
+int codecvtw_facet::do_max_length() const noexcept {
   auto ctx = context();
 
   if (!ctx) {
@@ -2488,7 +2498,7 @@ class num_put_facet: public std::num_put<CharType> {
 
  private:
   struct context_t {
-    DECLARE_UNIQUE_PTR(context_t);
+    using ptr = std::unique_ptr<context_t>;
     std::basic_string<char_type> buf_;
     icu::UnicodeString icu_buf0_;
     icu::UnicodeString icu_buf1_;
@@ -2535,7 +2545,7 @@ class num_put_facet: public std::num_put<CharType> {
         return nullptr;
       }
 
-      return std::move(ctx);
+      return ctx;
     }
 
     void reset(const std::ios_base& str) {
@@ -3395,16 +3405,17 @@ class locale_info_facet: public std::locale::facet {
 
   locale_info_facet(const irs::string_ref& name);
   locale_info_facet(locale_info_facet const& other) = delete; // because of string_ref
-  locale_info_facet(locale_info_facet&& other) NOEXCEPT { *this = std::move(other); }
+  locale_info_facet(locale_info_facet&& other) noexcept { *this = std::move(other); }
   locale_info_facet& operator=(const locale_info_facet& other) = delete; // because of string_ref
-  locale_info_facet& operator=(locale_info_facet&& other) NOEXCEPT;
-  bool operator<(const locale_info_facet& other) const NOEXCEPT { return name_ < other.name_; }
-  const irs::string_ref& country() const NOEXCEPT { return country_; }
-  const irs::string_ref& encoding() const NOEXCEPT { return encoding_; }
-  const irs::string_ref& language() const NOEXCEPT { return language_; }
-  const std::string& name() const NOEXCEPT { return name_; }
-  bool unicode() const NOEXCEPT { return unicode_t::NONE != unicode_; }
-  const irs::string_ref& variant() const NOEXCEPT { return variant_; }
+  locale_info_facet& operator=(locale_info_facet&& other) noexcept;
+  bool operator<(const locale_info_facet& other) const noexcept { return name_ < other.name_; }
+  const irs::string_ref& country() const noexcept { return country_; }
+  const irs::string_ref& encoding() const noexcept { return encoding_; }
+  const irs::string_ref& language() const noexcept { return language_; }
+  const std::string& name() const noexcept { return name_; }
+  bool unicode() const noexcept { return unicode_t::NONE != unicode_; }
+  bool is_utf8() const noexcept { return unicode_t::UTF8 == unicode_; }
+  const irs::string_ref& variant() const noexcept { return variant_; }
 
  private:
   enum class unicode_t { NONE, UTF7, UTF8, UTF16, UTF32 };
@@ -3494,7 +3505,7 @@ locale_info_facet::locale_info_facet(const irs::string_ref& name)
 
 locale_info_facet& locale_info_facet::operator=(
     locale_info_facet&& other
-) NOEXCEPT {
+) noexcept {
   if (this != &other) {
     const char* start = &(other.name_[0]);
     const char* end = start + other.name_.size();
@@ -3550,7 +3561,7 @@ const std::locale& get_locale(
   struct less_t {
     bool operator()(
         const locale_info_facet* lhs, const locale_info_facet* rhs
-    ) const NOEXCEPT {
+    ) const noexcept {
       return (!lhs && rhs) || (lhs && rhs && *lhs < *rhs);
     }
   };
@@ -3562,7 +3573,7 @@ const std::locale& get_locale(
   static std::map<locale_info_facet*, std::locale, less_t> locales_u;
   auto& locales = unicodeSystem ? locales_u : locales_s;
   static std::mutex mutex;
-  SCOPED_LOCK(mutex);
+  auto lock = irs::make_lock_guard(mutex);
   auto itr = locales.find(&info);
 
   if (itr != locales.end()) {
@@ -3588,15 +3599,17 @@ const std::locale& get_locale(
   try {
     boost_locale = locale_genrator.generate(info.name());
   } catch(...) {
-    if (info.encoding().c_str() < info.name().c_str()
-        || info.encoding().c_str() >= info.name().c_str() + info.name().size()) {
+    auto* encoding = info.encoding().c_str();
+    auto* name = info.name().c_str();
+
+    if (encoding < name || encoding >= name + info.name().size()) {
       throw;
     }
 
     auto boost_locale_name = info.name();
 
     boost_locale_name.erase(
-      info.encoding().c_str() - info.name().c_str() - 1, // -1 for '_'
+      encoding - name - 1, // -1 for '_'
       info.encoding().size() + 1 // +1 for '_'
     ); // skip encoding
     boost_locale = locale_genrator.generate(boost_locale_name);
@@ -3607,7 +3620,6 @@ const std::locale& get_locale(
   auto* locale_info_ptr = locale_info.get();
   auto& converter = get_converter(locale_info->encoding());
   auto locale = std::locale(boost_locale, locale_info.release());
-
   locale = std::locale(
     locale, irs::memory::make_unique<codecvt16_facet>(converter).release()
   );
@@ -3649,10 +3661,10 @@ const std::locale& get_locale(
   return locales.emplace(locale_info_ptr, locale).first->second;
 }
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN( locale_utils )
+namespace iresearch {
+namespace locale_utils {
 
 #if defined(_MSC_VER) && _MSC_VER <= 1800 && defined(IRESEARCH_DLL) // MSVC2013
   // MSVC2013 does not properly export
@@ -3663,7 +3675,7 @@ NS_BEGIN( locale_utils )
   ) {
     return std::use_facet<std::codecvt<char32_t, char, mbstate_t>>(locale);
   }
-#elif defined(_MSC_VER) && _MSC_VER <= 1916 // MSVC2015/MSVC2017
+#elif defined(_MSC_VER) && _MSC_VER <= 1924// MSVC2015/MSVC2017/MSVC2019
   // MSVC2015/MSVC2017 implementations do not support char16_t/char32_t 'codecvt'
   // due to a missing export, as per their comment:
   //   This is an active bug in our database (VSO#143857), which we'll investigate
@@ -3713,6 +3725,16 @@ const irs::string_ref& language(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).language();
 }
 
+bool is_utf8(std::locale const& locale) {
+  auto* loc = &locale;
+
+  if (!std::has_facet<locale_info_facet>(*loc)) {
+    loc = &get_locale(loc->name());
+  }
+
+  return std::use_facet<locale_info_facet>(*loc).is_utf8();
+}
+
 std::locale locale(
     irs::string_ref const& name,
     irs::string_ref const& encodingOverride /*= irs::string_ref::NIL*/,
@@ -3750,9 +3772,5 @@ const std::string& name(std::locale const& locale) {
   return std::use_facet<locale_info_facet>(*loc).name();
 }
 
-NS_END // locale_utils
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // locale_utils
+}

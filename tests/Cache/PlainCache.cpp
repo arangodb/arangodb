@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for arangodb::cache::PlainCache
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,18 +18,10 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-#include "Basics/xoroshiro128plus.h"
-#include "Cache/Common.h"
-#include "Cache/Manager.h"
-#include "Cache/PlainCache.h"
-#include "Random/RandomGenerator.h"
-
-#include "MockScheduler.h"
 #include "gtest/gtest.h"
 
 #include <stdint.h>
@@ -40,14 +29,27 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
+#include "Basics/xoroshiro128plus.h"
+#include "Cache/Common.h"
+#include "Cache/Manager.h"
+#include "Cache/PlainCache.h"
+#include "Random/RandomGenerator.h"
+
+#include "Mocks/Servers.h"
+#include "MockScheduler.h"
+
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CachePlainCacheTest, test_basic_cache_creation) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024);
   auto cache1 = manager.createCache(CacheType::Plain, false, 256 * 1024);
   ASSERT_TRUE(true);
   auto cache2 = manager.createCache(CacheType::Plain, false, 512 * 1024);
@@ -62,46 +64,48 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
 }
 
 TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
-  uint64_t cacheLimit = 128 * 1024;
+  std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
-  for (uint64_t i = 0; i < 1024; i++) {
+  for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(&i, sizeof(uint64_t));
+      auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
       delete value;
     }
   }
 
-  for (uint64_t i = 0; i < 1024; i++) {
-    uint64_t j = 2 * i;
+  for (std::uint64_t i = 0; i < 1024; i++) {
+    std::uint64_t j = 2 * i;
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &j, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &j, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(&i, sizeof(uint64_t));
+      auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
-      ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(uint64_t)));
+      ASSERT_EQ(0, memcmp(f.value()->value(), &j, sizeof(std::uint64_t)));
     } else {
       delete value;
     }
   }
 
-  for (uint64_t i = 1024; i < 128 * 1024; i++) {
+  for (std::uint64_t i = 1024; i < 128 * 1024; i++) {
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(&i, sizeof(uint64_t));
+      auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
     } else {
       delete value;
@@ -113,57 +117,59 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
 }
 
 TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
-  uint64_t cacheLimit = 128 * 1024;
+  std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
-  for (uint64_t i = 0; i < 1024; i++) {
+  for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.ok()) {
-      auto f = cache->find(&i, sizeof(uint64_t));
+      auto f = cache->find(&i, sizeof(std::uint64_t));
       ASSERT_TRUE(f.found());
       ASSERT_NE(f.value(), nullptr);
-      ASSERT_TRUE(f.value()->sameKey(&i, sizeof(uint64_t)));
+      ASSERT_TRUE(f.value()->sameKey(&i, sizeof(std::uint64_t)));
     } else {
       delete value;
     }
   }
-  uint64_t inserted = 0;
-  for (uint64_t j = 0; j < 1024; j++) {
-    auto f = cache->find(&j, sizeof(uint64_t));
+  std::uint64_t inserted = 0;
+  for (std::uint64_t j = 0; j < 1024; j++) {
+    auto f = cache->find(&j, sizeof(std::uint64_t));
     if (f.found()) {
       inserted++;
       ASSERT_NE(f.value(), nullptr);
-      ASSERT_TRUE(f.value()->sameKey(&j, sizeof(uint64_t)));
+      ASSERT_TRUE(f.value()->sameKey(&j, sizeof(std::uint64_t)));
     }
   }
 
   // test removal of bogus keys
-  for (uint64_t i = 1024; i < 1088; i++) {
-    auto status = cache->remove(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 1024; i < 1088; i++) {
+    auto status = cache->remove(&i, sizeof(std::uint64_t));
     ASSERT_TRUE(status.ok());
     // ensure existing keys not removed
-    uint64_t found = 0;
-    for (uint64_t j = 0; j < 1024; j++) {
-      auto f = cache->find(&j, sizeof(uint64_t));
+    std::uint64_t found = 0;
+    for (std::uint64_t j = 0; j < 1024; j++) {
+      auto f = cache->find(&j, sizeof(std::uint64_t));
       if (f.found()) {
         found++;
         ASSERT_NE(f.value(), nullptr);
-        ASSERT_TRUE(f.value()->sameKey(&j, sizeof(uint64_t)));
+        ASSERT_TRUE(f.value()->sameKey(&j, sizeof(std::uint64_t)));
       }
     }
     ASSERT_EQ(inserted, found);
   }
 
   // remove actual keys
-  for (uint64_t i = 0; i < 1024; i++) {
-    auto status = cache->remove(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 0; i < 1024; i++) {
+    auto status = cache->remove(&i, sizeof(std::uint64_t));
     ASSERT_TRUE(status.ok());
-    auto f = cache->find(&i, sizeof(uint64_t));
+    auto f = cache->find(&i, sizeof(std::uint64_t));
     ASSERT_FALSE(f.found());
   }
 
@@ -176,13 +182,15 @@ TEST(CachePlainCacheTest, verify_that_cache_can_indeed_grow_when_it_runs_out_of_
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   auto cache = manager.createCache(CacheType::Plain);
-  uint64_t minimumUsage = cache->usageLimit() * 2;
+  std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
-  for (uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
+  for (std::uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cache->insert(value);
     if (status.fail()) {
@@ -203,22 +211,24 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
-  size_t threadCount = 4;
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
+  std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache = manager.createCache(CacheType::Plain);
 
-  uint64_t chunkSize = 16 * 1024 * 1024;
-  uint64_t initialInserts = 4 * 1024 * 1024;
-  uint64_t operationCount = 16 * 1024 * 1024;
-  std::atomic<uint64_t> hitCount(0);
-  std::atomic<uint64_t> missCount(0);
+  std::uint64_t chunkSize = 16 * 1024 * 1024;
+  std::uint64_t initialInserts = 4 * 1024 * 1024;
+  std::uint64_t operationCount = 16 * 1024 * 1024;
+  std::atomic<std::uint64_t> hitCount(0);
+  std::atomic<std::uint64_t> missCount(0);
   auto worker = [&cache, initialInserts, operationCount, &hitCount,
-                 &missCount](uint64_t lower, uint64_t upper) -> void {
+                 &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
     // fill with some initial data
-    for (uint64_t i = 0; i < initialInserts; i++) {
-      uint64_t item = lower + i;
-      CachedValue* value =
-          CachedValue::construct(&item, sizeof(uint64_t), &item, sizeof(uint64_t));
+    for (std::uint64_t i = 0; i < initialInserts; i++) {
+      std::uint64_t item = lower + i;
+      CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
+                                                  &item, sizeof(std::uint64_t));
       TRI_ASSERT(value != nullptr);
       auto status = cache->insert(value);
       if (status.fail()) {
@@ -227,45 +237,45 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
     }
 
     // initialize valid range for keys that *might* be in cache
-    uint64_t validLower = lower;
-    uint64_t validUpper = lower + initialInserts - 1;
+    std::uint64_t validLower = lower;
+    std::uint64_t validUpper = lower + initialInserts - 1;
 
     basics::xoroshiro128plus prng;
     prng.seed(RandomGenerator::interval(UINT64_MAX), RandomGenerator::interval(UINT64_MAX));
 
     // commence mixed workload
-    for (uint64_t i = 0; i < operationCount; i++) {
-      uint64_t r = prng.next() % 99;
+    for (std::uint64_t i = 0; i < operationCount; i++) {
+      std::uint64_t r = prng.next() % 99;
 
       if (r >= 99) {  // remove something
         if (validLower == validUpper) {
           continue;  // removed too much
         }
 
-        uint64_t item = validLower++;
+        std::uint64_t item = validLower++;
 
-        cache->remove(&item, sizeof(uint64_t));
+        cache->remove(&item, sizeof(std::uint64_t));
       } else if (r >= 95) {  // insert something
         if (validUpper == upper) {
           continue;  // already maxed out range
         }
 
-        uint64_t item = ++validUpper;
-        CachedValue* value =
-            CachedValue::construct(&item, sizeof(uint64_t), &item, sizeof(uint64_t));
+        std::uint64_t item = ++validUpper;
+        CachedValue* value = CachedValue::construct(&item, sizeof(std::uint64_t),
+                                                    &item, sizeof(std::uint64_t));
         TRI_ASSERT(value != nullptr);
         auto status = cache->insert(value);
         if (status.fail()) {
           delete value;
         }
       } else {  // lookup something
-        uint64_t item = (prng.next() % (validUpper + 1 - validLower)) + validLower;
+        std::uint64_t item = (prng.next() % (validUpper + 1 - validLower)) + validLower;
 
-        Finding f = cache->find(&item, sizeof(uint64_t));
+        Finding f = cache->find(&item, sizeof(std::uint64_t));
         if (f.found()) {
           hitCount++;
           TRI_ASSERT(f.value() != nullptr);
-          TRI_ASSERT(f.value()->sameKey(&item, sizeof(uint64_t)));
+          TRI_ASSERT(f.value()->sameKey(&item, sizeof(std::uint64_t)));
         } else {
           missCount++;
           TRI_ASSERT(f.value() == nullptr);
@@ -276,9 +286,9 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
 
   std::vector<std::thread*> threads;
   // dispatch threads
-  for (size_t i = 0; i < threadCount; i++) {
-    uint64_t lower = i * chunkSize;
-    uint64_t upper = ((i + 1) * chunkSize) - 1;
+  for (std::size_t i = 0; i < threadCount; i++) {
+    std::uint64_t lower = i * chunkSize;
+    std::uint64_t upper = ((i + 1) * chunkSize) - 1;
     threads.push_back(new std::thread(worker, lower, upper));
   }
 
@@ -293,30 +303,32 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
 }
 
 TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
-  uint64_t cacheLimit = 256 * 1024;
+  std::uint64_t cacheLimit = 256 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cacheMiss = manager.createCache(CacheType::Plain, true, cacheLimit);
   auto cacheHit = manager.createCache(CacheType::Plain, true, cacheLimit);
   auto cacheMixed = manager.createCache(CacheType::Plain, true, cacheLimit);
 
-  for (uint64_t i = 0; i < 1024; i++) {
+  for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value =
-        CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+        CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     auto status = cacheHit->insert(value);
     if (status.fail()) {
       delete value;
     }
 
-    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    value = CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     status = cacheMiss->insert(value);
     if (status.fail()) {
       delete value;
     }
 
-    value = CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
+    value = CachedValue::construct(&i, sizeof(std::uint64_t), &i, sizeof(std::uint64_t));
     TRI_ASSERT(value != nullptr);
     status = cacheMixed->insert(value);
     if (status.fail()) {
@@ -324,8 +336,8 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
     }
   }
 
-  for (uint64_t i = 0; i < 1024; i++) {
-    auto f = cacheHit->find(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 0; i < 1024; i++) {
+    auto f = cacheHit->find(&i, sizeof(std::uint64_t));
   }
   {
     auto cacheStats = cacheHit->hitRates();
@@ -336,8 +348,8 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
     ASSERT_TRUE(managerStats.second >= 40.0);
   }
 
-  for (uint64_t i = 1024; i < 2048; i++) {
-    auto f = cacheMiss->find(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 1024; i < 2048; i++) {
+    auto f = cacheMiss->find(&i, sizeof(std::uint64_t));
   }
   {
     auto cacheStats = cacheMiss->hitRates();
@@ -350,11 +362,11 @@ TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
     ASSERT_TRUE(managerStats.second < 60.0);
   }
 
-  for (uint64_t i = 0; i < 1024; i++) {
-    auto f = cacheMixed->find(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 0; i < 1024; i++) {
+    auto f = cacheMixed->find(&i, sizeof(std::uint64_t));
   }
-  for (uint64_t i = 1024; i < 2048; i++) {
-    auto f = cacheMixed->find(&i, sizeof(uint64_t));
+  for (std::uint64_t i = 1024; i < 2048; i++) {
+    auto f = cacheMixed->find(&i, sizeof(std::uint64_t));
   }
   {
     auto cacheStats = cacheMixed->hitRates();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,16 +28,13 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
-#include "Cluster/ResultT.h"
-
-struct TRI_vocbase_t;
 
 namespace arangodb {
-
 namespace aql {
 class ExecutionEngine;
-class Query;
+class ClusterQuery;
 
+/// manages cluster queries and engines
 class QueryRegistry {
  public:
   explicit QueryRegistry(double defTTL) : _defaultTTL(defTTL), _disallowInserts(false) {}
@@ -45,10 +42,12 @@ class QueryRegistry {
   TEST_VIRTUAL ~QueryRegistry();
 
  public:
-  /// @brief kills a query by id - returns true if the query was found and
-  /// false otherwise
-  bool kill(TRI_vocbase_t* vocbase, QueryId id);
-
+  
+  enum class EngineType : uint8_t {
+    Execution = 1,
+    Graph = 2
+  };
+  
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
   /// a query for this <vocbase> and <id> combination and an exception will
@@ -57,11 +56,12 @@ class QueryRegistry {
   /// With keepLease == true the query will be kept open and it is guaranteed
   /// that the caller can continue to use it exclusively.
   /// This is identical to an atomic sequence of insert();open();
-  TEST_VIRTUAL void insert(
-    QueryId id, Query* query, double ttl, bool isPrepare, bool keepLease,
-    std::unique_ptr<arangodb::cluster::CallbackGuard>&& = nullptr);
+  /// The callback guard needs to be stored with the query to prevent it from
+  /// firing. This is used for the RebootTracker to destroy the query when
+  /// the coordinator which created it restarts or fails.
+  TEST_VIRTUAL void insertQuery(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
 
-  /// @brief open, find a query in the registry, if none is found, a nullptr
+  /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
   /// caller, however, the registry retains the entry and will open will
   /// succeed only once. If an already open query with the given id is
@@ -70,12 +70,19 @@ class QueryRegistry {
   /// Note that an open query will not expire, so users should please
   /// protect against leaks. If an already open query is found, an exception
   /// is thrown.
-  Query* open(TRI_vocbase_t* vocbase, QueryId id);
+  void* openEngine(EngineId eid, EngineType type);
+  ExecutionEngine* openExecutionEngine(EngineId eid) {
+    return static_cast<ExecutionEngine*>(openEngine(eid, EngineType::Execution));
+  }
+
+  traverser::BaseEngine* openGraphEngine(EngineId eid) {
+    return static_cast<traverser::BaseEngine*>(openEngine(eid, EngineType::Graph));
+  }
 
   /// @brief close, return a query to the registry, if the query is not found,
   /// an exception is thrown. If the ttl is negative (the default is), the
   /// original ttl is taken again.
-  void close(TRI_vocbase_t* vocbase, QueryId id, double ttl = -1.0);
+  void closeEngine(EngineId eId);
 
   /// @brief destroy, this removes the entry from the registry and calls
   /// delete on the Query*. It is allowed to call this regardless of whether
@@ -87,13 +94,15 @@ class QueryRegistry {
   /// and removed regardless if it is in use by anything else. this is only
   /// safe to call if the current thread is currently using the query itself
   // cppcheck-suppress virtualCallInConstructor
-  TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode, bool ignoreOpened);
+  std::unique_ptr<ClusterQuery> destroyQuery(std::string const& vocbase, QueryId qId,
+                                             int errorCode);
+  
+  /// used for a legacy shutdown
+  bool destroyEngine(EngineId qId, int errorCode);
 
   /// @brief destroy all queries for the specified database. this can be used
   /// when the database gets dropped  
   void destroy(std::string const& vocbase);
-
-  ResultT<bool> isQueryInUse(TRI_vocbase_t* vocbase, QueryId id);
 
   /// @brief expireQueries, this deletes all expired queries from the registry
   void expireQueries();
@@ -106,44 +115,60 @@ class QueryRegistry {
 
   /// @brief from here on, disallow entering new queries into the registry
   void disallowInserts();
+  
+  /// use on coordinator to register snippets
+  void registerSnippets(SnippetList const&);
+  void unregisterSnippets(SnippetList const&) noexcept;
 
   /// @brief return the default TTL value
   TEST_VIRTUAL double defaultTTL() const { return _defaultTTL; }
 
  private:
-  /**
-   * @brief Set the thread-local _noLockHeaders variable
-   *
-   * @param engine The Query engine that contains the no-lock-header
-   *        information.
-   */
-  void setNoLockHeaders(ExecutionEngine* engine) const;
   
- private:
   /// @brief a struct for all information regarding one query in the registry
-  struct QueryInfo {
-    QueryInfo(QueryInfo const&) = delete;
-    QueryInfo& operator=(QueryInfo const&) = delete;
-
-    QueryInfo(QueryId id, Query* query, double ttl, bool isPrepared,
-              std::unique_ptr<arangodb::cluster::CallbackGuard>&& rebootGuard = nullptr);
+  struct QueryInfo final {
+    QueryInfo(std::unique_ptr<ClusterQuery> query, double ttl, cluster::CallbackGuard guard);
     ~QueryInfo();
 
-    TRI_vocbase_t* _vocbase;  // the vocbase
-    QueryId _id;              // id of the query
-    Query* _query;            // the actual query pointer
-    bool _isOpen;             // flag indicating whether or not the query
-                              // is in use
-    bool _isPrepared;
-    double _timeToLive;  // in seconds
+    std::unique_ptr<ClusterQuery> _query;  // the actual query pointer
+    
+    const double _timeToLive;  // in seconds
     double _expires;     // UNIX UTC timestamp of expiration
-    std::unique_ptr<arangodb::cluster::CallbackGuard> _rebootGuard;
-                         // Callback to remove query, when rebootId changes
+    size_t _numEngines; // used for legacy shutdown
+    size_t _numOpen;
+
+    cluster::CallbackGuard _rebootTrackerCallbackGuard;
   };
 
+  struct EngineInfo final {
+    EngineInfo(EngineInfo const&) = delete;
+    EngineInfo& operator=(EngineInfo const&) = delete;
+    
+    EngineInfo(EngineInfo&& other)
+      : _engine(std::move(other._engine)),
+        _queryInfo(std::move(other._queryInfo)),
+        _type(other._type),
+        _isOpen(other._isOpen) {}
+    EngineInfo& operator=(EngineInfo&& other) = delete;
+    
+    EngineInfo(ExecutionEngine* en, QueryInfo* qi)
+      : _engine(en), _queryInfo(qi),
+        _type(EngineType::Execution), _isOpen(false) {}
+    EngineInfo(traverser::BaseEngine* en, QueryInfo* qi)
+      : _engine(en), _queryInfo(qi),
+        _type(EngineType::Graph), _isOpen(false) {}
+
+    void* _engine;
+    QueryInfo* _queryInfo;
+    const EngineType _type;
+    bool _isOpen;
+  };
+  
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries
   std::unordered_map<std::string, std::unordered_map<QueryId, std::unique_ptr<QueryInfo>>> _queries;
+  
+  std::unordered_map<EngineId, EngineInfo> _engines;
 
   /// @brief _lock, the read/write lock for access
   basics::ReadWriteLock _lock;

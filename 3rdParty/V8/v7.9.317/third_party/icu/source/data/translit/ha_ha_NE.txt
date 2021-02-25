@@ -1,0 +1,12 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: ha_ha_NE.txt
+# Generated from CLDR
+#
+
+:: [yYƴƳʼ] ;
+:: NFC ;
+ʼy→ƴ ;
+ʼY→Ƴ ;
+

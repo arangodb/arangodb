@@ -41,31 +41,28 @@
 namespace tests {
   class test_sort: public iresearch::sort {
    public:
-    DECLARE_SORT_TYPE();
     DECLARE_FACTORY();
 
-    class prepared : sort::prepared {
+    class prepared : public sort::prepared {
      public:
-      DEFINE_FACTORY_INLINE(prepared)
       prepared() { }
       virtual void collect(
         irs::byte_type*,
-        const irs::index_reader& index,
-        const irs::sort::field_collector* field,
-        const irs::sort::term_collector* term
-      ) const override {
+        const irs::index_reader&,
+        const irs::sort::field_collector*,
+        const irs::sort::term_collector*) const override {
         // do not need to collect stats
       }
       virtual irs::sort::field_collector::ptr prepare_field_collector() const override {
         return nullptr; // do not need to collect stats
       }
-      virtual std::pair<score_ctx::ptr, irs::score_f> prepare_scorer(
+      virtual irs::score_function prepare_scorer(
           const iresearch::sub_reader&,
           const iresearch::term_reader&,
-          const irs::byte_type* query_attrs,
-          const irs::attribute_view& doc_attrs,
-          irs::boost_t
-      ) const override {
+          const irs::byte_type*,
+          irs::byte_type*,
+          const irs::attribute_provider&,
+          irs::boost_t) const override {
         return { nullptr, nullptr };
       }
       virtual irs::sort::term_collector::ptr prepare_term_collector() const override {
@@ -74,10 +71,9 @@ namespace tests {
       virtual const iresearch::flags& features() const override { 
         return iresearch::flags::empty_instance();
       }
-      virtual void prepare_score(iresearch::byte_type* score) const override {}
-      virtual void prepare_stats(irs::byte_type*) const override { }
-      virtual void add(iresearch::byte_type* dst, const iresearch::byte_type* src) const override {}
-      virtual bool less(const iresearch::byte_type* lhs, const iresearch::byte_type* rhs) const override { throw std::bad_function_call(); }
+      virtual bool less(const iresearch::byte_type*, const iresearch::byte_type*) const override {
+        throw std::bad_function_call();
+      }
       std::pair<size_t, size_t> score_size() const override {
         return std::make_pair(size_t(0), size_t(0));
       }
@@ -86,11 +82,10 @@ namespace tests {
       }
     };
 
-    test_sort():sort(test_sort::type()) {}
-    virtual sort::prepared::ptr prepare() const { return test_sort::prepared::make<test_sort::prepared>(); }
+    test_sort():sort(irs::type<test_sort>::get()) {}
+    virtual sort::prepared::ptr prepare() const { return std::make_unique<test_sort::prepared>(); }
   };
 
-  DEFINE_SORT_TYPE(test_sort)
   DEFINE_FACTORY_DEFAULT(test_sort)
 
   class IqlQueryBuilderTestSuite: public ::testing::Test {
@@ -111,7 +106,7 @@ namespace tests {
         auto locale = irs::locale_utils::locale("en");
         const std::string tmp_str;
 
-        irs::analysis::analyzers::get("text", irs::text_format::text, "en"); // stream needed only to load stopwords
+        irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en"); // stream needed only to load stopwords
 
         if (czOldStopwordPath) {
           iresearch::setenv(text_stopword_path_var, sOldStopwordPath.c_str(), true);
@@ -128,7 +123,7 @@ namespace tests {
    public:
     analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
-        token_stream_(irs::analysis::analyzers::get("text", irs::text_format::text, "en")) {
+        token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
       if (!token_stream_) {
         throw std::runtime_error("Failed to get 'text' analyzer for args: en");
       }
@@ -198,17 +193,17 @@ namespace tests {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::null_token_stream::value_null());
+        field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::boolean_token_stream::value_true());
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
         field.name(iresearch::string_ref(name));
-        field.value(irs::boolean_token_stream::value_true());
+        field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_number()) {
         const double dValue = data.as_number<double_t>();
 
@@ -264,10 +259,10 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder) {
     double dValue = strtod(iresearch::ref_cast<char>(value).c_str(), nullptr);
     iresearch::numeric_token_stream stream;
     stream.reset((double_t)dValue);
-    auto& term = stream.attributes().get<iresearch::term_attribute>();
+    auto* term = irs::get<irs::term_attribute>(stream);
 
     while (stream.next()) {
-      buf.append(term->value());
+      buf.append(term->value);
     }
 
     return true;
@@ -762,26 +757,26 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_builders_custom) {
   irs::bytes_ref actual_value;
 
   query_builder::branch_builder_function_t fnFail = [](
-    boolean_function::contextual_buffer_t&,
-    const std::locale&,
-    const iresearch::string_ref&,
-    void* cookie,
-    const boolean_function::contextual_function_args_t&
-  )->bool {
+      boolean_function::contextual_buffer_t&,
+      const std::locale&,
+      const iresearch::string_ref&,
+      void* cookie,
+      const boolean_function::contextual_function_args_t&)->bool {
     std::cerr << "File: " << __FILE__ << " Line: " << __LINE__ << " Failed" << std::endl;
     throw "Fail";
   };
   query_builder::branch_builder_function_t fnEqual = [](
-    boolean_function::contextual_buffer_t& node,
-    const std::locale& locale,
-    const iresearch::string_ref& field,
-    void* cookie,
-    const boolean_function::contextual_function_args_t& args
-  )->bool {
+      boolean_function::contextual_buffer_t& node,
+      const std::locale& locale,
+      const iresearch::string_ref& field,
+      void* cookie,
+      const boolean_function::contextual_function_args_t& args)->bool {
     iresearch::bstring value;
     bool bValue;
     args[0].value(value, bValue, locale, cookie);
-    node.proxy<iresearch::by_term>().field(field).term(std::move(value));
+    auto& filter = node.proxy<iresearch::by_term>();
+    *filter.mutable_field() = field;
+    filter.mutable_options()->term = std::move(value);
     return true;
   };
   iresearch::memory_directory dir;
@@ -902,7 +897,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     bool bValue;
     args[0].value(field, bField, locale, cookie);
     args[1].value(value, bValue, locale, cookie);
-    node.proxy<iresearch::by_term>().field(iresearch::ref_cast<char>(field)).term(std::move(value));
+    auto& filter = node.proxy<iresearch::by_term>();
+    *filter.mutable_field() = iresearch::ref_cast<char>(field);
+    filter.mutable_options()->term = std::move(value);
     return true;
   };
   iresearch::memory_directory dir;
@@ -968,6 +965,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
     }
 
     ASSERT_FALSE(docsItr->next());
+    ASSERT_FALSE(docsItr->next());
   }
 
   // user supplied boolean_function with expression args
@@ -991,7 +989,9 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
         return false;
       }
 
-      root.add<iresearch::by_term>().field("name").term(std::move(value));
+      auto& filter = root.add<iresearch::by_term>();
+      *filter.mutable_field() = "name";
+      filter.mutable_options()->term = std::move(value);
 
       return true;
     };
@@ -1322,7 +1322,3 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_order) {
     ASSERT_EQ(0, query.error->find("order conversion error, node: @9\n'b'('c'()@8)@9 ASC"));
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

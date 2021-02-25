@@ -18,24 +18,44 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_MISC_H
 #define IRESEARCH_MISC_H
 
-#include "math_utils.hpp"
+#include "utils/math_utils.hpp"
+#include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief SFINAE
+////////////////////////////////////////////////////////////////////////////////
+#define DEFINE_HAS_MEMBER(member)                                            \
+  template<typename T>                                                       \
+  class has_member_##member {                                                \
+   private:                                                                  \
+    using yes_type = char;                                                   \
+    using no_type = long;                                                    \
+    using type = std::remove_reference_t<std::remove_cv_t<T>>;               \
+    template<typename U> static yes_type test(decltype(&U::member));         \
+    template<typename U> static no_type  test(...);                          \
+   public:                                                                   \
+    static constexpr bool value = sizeof(test<type>(0)) == sizeof(yes_type); \
+  };                                                                         \
+  template<typename T>                                                       \
+  inline constexpr auto has_member_##member##_v = has_member_##member<T>::value
+
+#define HAS_MEMBER(type, member) has_member_##member##_v<type>
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cross-platform 'COUNTOF' implementation
 ////////////////////////////////////////////////////////////////////////////////
 #if __cplusplus >= 201103L || _MSC_VER >= 1900 || IRESEARCH_COMPILER_HAS_FEATURE(cxx_constexpr) // C++ 11 implementation
-  NS_BEGIN(detail)
+  namespace detail {
   template <typename T, std::size_t N>
-  CONSTEXPR std::size_t countof(T const (&)[N]) NOEXCEPT { return N; }
-  NS_END // detail
+  constexpr std::size_t countof(T const (&)[N]) noexcept { return N; }
+  } // detail
   #define IRESEARCH_COUNTOF(x) ::iresearch::detail::countof(x)
 #elif _MSC_VER // Visual C++ fallback
   #define IRESEARCH_COUNTOF(x) _countof(x)
@@ -51,13 +71,21 @@ NS_ROOT
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief compile-time type identifier
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+constexpr string_ref ctti() noexcept {
+  return { IRESEARCH_CURRENT_FUNCTION };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief convenient helper for simulating 'try/catch/finally' semantic
 ////////////////////////////////////////////////////////////////////////////////
 template<typename Func>
 class finally {
  public:
   finally(const Func& func) : func_(func) { }
-  finally(Func&& func) NOEXCEPT : func_(std::move(func)) { }
+  finally(Func&& func) noexcept : func_(std::move(func)) { }
   ~finally() { func_(); }
 
  private:
@@ -76,11 +104,11 @@ finally<Func> make_finally(Func&& func) {
 template<typename T>
 class move_on_copy {
  public:
-  move_on_copy(T&& value) NOEXCEPT : value_(std::move(value)) {}
-  move_on_copy(const move_on_copy& rhs) NOEXCEPT : value_(std::move(rhs.value_)) {}
+  move_on_copy(T&& value) noexcept : value_(std::move(value)) {}
+  move_on_copy(const move_on_copy& rhs) noexcept : value_(std::move(rhs.value_)) {}
 
-  T& value() NOEXCEPT { return value_; }
-  const T& value() const NOEXCEPT { return value_; }
+  T& value() noexcept { return value_; }
+  const T& value() const noexcept { return value_; }
 
  private:
   move_on_copy& operator=(move_on_copy&&) = delete;
@@ -90,11 +118,11 @@ class move_on_copy {
 }; // move_on_copy
 
 template<typename T>
-move_on_copy<T> make_move_on_copy(T&& value) NOEXCEPT {
+move_on_copy<T> make_move_on_copy(T&& value) noexcept {
   static_assert(std::is_rvalue_reference<decltype(value)>::value, "parameter should be an rvalue");
   return move_on_copy<T>(std::move(value));
 }
 
-NS_END
+}
 
 #endif

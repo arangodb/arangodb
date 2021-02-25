@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "CursorRepository.h"
 
+#include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/LogMacros.h"
@@ -144,18 +145,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result, size_
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(std::string const& query,
-                                            std::shared_ptr<VPackBuilder> const& binds,
-                                            std::shared_ptr<VPackBuilder> const& opts,
-                                            size_t batchSize, double ttl,
-                                            bool contextOwnedByExterior,
-                                            std::shared_ptr<transaction::Context> ctx) {
-  TRI_ASSERT(!query.empty());
-
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(_vocbase, query, binds,
-                                                         opts, batchSize, ttl,
-                                                         contextOwnedByExterior,
-                                                         std::move(ctx));
+Cursor* CursorRepository::createQueryStream(std::unique_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl) {
+  auto cursor = std::make_unique<aql::QueryStreamCursor>(std::move(q), batchSize, ttl);
   cursor->use();
 
   return addCursor(std::move(cursor));
@@ -165,7 +156,7 @@ Cursor* CursorRepository::createQueryStream(std::string const& query,
 /// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
+bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
 
   {
@@ -181,11 +172,6 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 
     if (cursor->isDeleted()) {
       // already deleted
-      return false;
-    }
-
-    if (cursor->type() != type) {
-      // wrong type
       return false;
     }
 
@@ -211,7 +197,7 @@ bool CursorRepository::remove(CursorId id, Cursor::CursorType type) {
 /// it must be returned later using release()
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy) {
+Cursor* CursorRepository::find(CursorId id, bool& busy) {
   arangodb::Cursor* cursor = nullptr;
   busy = false;
 
@@ -231,13 +217,13 @@ Cursor* CursorRepository::find(CursorId id, Cursor::CursorType type, bool& busy)
       return nullptr;
     }
 
-    if (cursor->type() != type) {
-      // wrong cursor type
-      return nullptr;
-    }
-
     if (cursor->isUsed()) {
       busy = true;
+      return nullptr;
+    }
+    
+    if (cursor->expires() < TRI_microtime()) {
+      // cursor has expired already
       return nullptr;
     }
 

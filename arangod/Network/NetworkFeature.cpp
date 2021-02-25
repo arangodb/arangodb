@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,16 +23,22 @@
 
 #include "NetworkFeature.h"
 
+#include <fuerte/connection.h>
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Logger/Logger.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& workItem,
@@ -55,6 +62,10 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
     FATAL_ERROR_EXIT();
   }
 }
+
+constexpr double CongestionRatio = 0.5;
+constexpr std::uint64_t MaxAllowedInFlight = 65536;
+constexpr std::uint64_t MinAllowedInFlight = 64;
 }  // namespace
 
 using namespace arangodb::basics;
@@ -63,92 +74,148 @@ using namespace arangodb::options;
 namespace arangodb {
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
-    : NetworkFeature(server, network::ConnectionPool::Config{}) {
-      this->_numIOThreads = 2; // override default
-    }
+    : NetworkFeature(server, network::ConnectionPool::Config{server.getFeature<MetricsFeature>()}) {
+  this->_numIOThreads = 2; // override default
+}
 
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),
-      _numIOThreads(config.numIOThreads),
+      _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
-      _verifyHosts(config.verifyHosts) {
+      _numIOThreads(config.numIOThreads),
+      _verifyHosts(config.verifyHosts),
+      _prepared(false),
+      _forwardedRequests(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_forwarded_requests", 0,
+          "Number of requests forwarded to another coordinator")),
+      _maxInFlight(::MaxAllowedInFlight),
+      _requestsInFlight(server.getFeature<arangodb::MetricsFeature>().gauge<std::uint64_t>(
+          "arangodb_network_requests_in_flight", 0,
+          "Number of outgoing internal requests in flight")),
+      _requestTimeouts(server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_network_request_timeouts", 0,
+          "Number of internal requests that have timed out")),
+      _requestDurations(server.getFeature<arangodb::MetricsFeature>().histogram(
+          "arangodb_network_request_duration_as_percentage_of_timeout",
+          fixed_scale_t(0.0, 100.0, {1.0, 5.0, 15.0, 50.0}),
+          "Internal request round-trip time as a percentage of timeout [%]")) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<ServerFeature>();
+  startsAfter<EngineSelectorFeature>();
 }
 
 void NetworkFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "Configure cluster-internal networking");
 
-  options->addOption("--network.io-threads", "number of network IO threads",
+  options->addOption("--network.io-threads", "number of network IO threads for cluster-internal communication",
                      new UInt32Parameter(&_numIOThreads))
                      .setIntroducedIn(30600);
   options->addOption("--network.max-open-connections",
-                     "max open network connections",
+                     "max open TCP connections for cluster-internal communication per endpoint",
                      new UInt64Parameter(&_maxOpenConnections))
                      .setIntroducedIn(30600);
   options->addOption("--network.idle-connection-ttl",
-                     "default time-to-live of idle connections (in milliseconds)",
+                     "default time-to-live of idle connections for cluster-internal communication (in milliseconds)",
                      new UInt64Parameter(&_idleTtlMilli))
                      .setIntroducedIn(30600);
-  options->addOption("--network.verify-hosts", "verify hosts when using TLS",
+  options->addOption("--network.verify-hosts", "verify hosts when using TLS in cluster-internal communication",
                      new BooleanParameter(&_verifyHosts))
                      .setIntroducedIn(30600);
+
+  std::unordered_set<std::string> protos = {
+      "", "http", "http2", "h2", "vst"};
+
+  options->addOption("--network.protocol", "network protocol to use for cluster-internal communication",
+                     new DiscreteValuesParameter<StringParameter>(&_protocol, protos))
+                     .setIntroducedIn(30700);
+
+  options
+      ->addOption("--network.max-requests-in-flight",
+                  "controls the number of internal requests that can be in "
+                  "flight at a given point in time",
+                  new options::UInt64Parameter(&_maxInFlight),
+                  options::makeDefaultFlags(options::Flags::Hidden))
+      .setIntroducedIn(30800);
 }
 
-void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
-  _numIOThreads = std::min<unsigned>(1, std::max<unsigned>(_numIOThreads, 8));
+void NetworkFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opts) {
+  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
   if (_maxOpenConnections < 8) {
     _maxOpenConnections = 8;
+  }
+  if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
+    auto& gs = server().getFeature<GeneralServerFeature>();
+    _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
   }
   if (_idleTtlMilli < 10000) {
     _idleTtlMilli = 10000;
   }
+
+  uint64_t clamped = std::clamp(_maxInFlight, ::MinAllowedInFlight, ::MaxAllowedInFlight);
+  if (clamped != _maxInFlight) {
+    LOG_TOPIC("38cd1", WARN, Logger::CONFIG)
+        << "Must set --network.max-requests-in-flight between " << ::MinAllowedInFlight
+        << " and " << ::MaxAllowedInFlight << ", clamping value";
+    _maxInFlight = clamped;
+  }
 }
 
 void NetworkFeature::prepare() {
-  
   ClusterInfo* ci = nullptr;
   if (server().hasFeature<ClusterFeature>() && server().isEnabled<ClusterFeature>()) {
      ci = &server().getFeature<ClusterFeature>().clusterInfo();
   }
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = static_cast<unsigned>(_numIOThreads);
   config.maxOpenConnections = _maxOpenConnections;
   config.idleConnectionMilli = _idleTtlMilli;
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
+  config.name = "ClusterComm";
+
+  config.protocol = fuerte::ProtocolType::Http;
+  if (_protocol == "http" || _protocol == "h1") {
+    config.protocol = fuerte::ProtocolType::Http;
+  } else if (_protocol == "http2" || _protocol == "h2") {
+    config.protocol = fuerte::ProtocolType::Http2;
+  } else if (_protocol == "vst") {
+    config.protocol = fuerte::ProtocolType::Vst;
+  }
 
   _pool = std::make_unique<network::ConnectionPool>(config);
-  _poolPtr.store(_pool.get(), std::memory_order_release);
-  
-  _gcfunc = [this, ci](bool canceled) {
-    if (canceled) {
-      return;
-    }
+  _poolPtr.store(_pool.get(), std::memory_order_relaxed);
 
-    _pool->pruneConnections();
+  _gcfunc =
+    [this, ci](bool canceled) {
+      if (canceled) {
+        return;
+      }
 
-    if (ci != nullptr) {
-      auto failed = ci->getFailedServers();
-      for (ServerID const& srvId : failed) {
-        std::string endpoint = ci->getServerEndpoint(srvId);
-        size_t n = _pool->cancelConnections(endpoint);
-        LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
+      _pool->pruneConnections();
+
+      if (ci != nullptr) {
+        auto failed = ci->getFailedServers();
+        for (ServerID const& srvId : failed) {
+          std::string endpoint = ci->getServerEndpoint(srvId);
+          size_t n = _pool->cancelConnections(endpoint);
+          LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connection(s) to failed server '"
             << srvId << "' on endpoint '" << endpoint << "'";
+        }
       }
-    }
 
-    if (!server().isStopping() && !canceled) {
-      std::chrono::seconds off(12);
-      ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
-    }
-  };
+      if (!server().isStopping() && !canceled) {
+        std::chrono::seconds off(12);
+        ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
+      }
+    };
+
+  _prepared = true;
 }
 
 void NetworkFeature::start() {
@@ -159,14 +226,15 @@ void NetworkFeature::start() {
   }
 }
 
+
 void NetworkFeature::beginShutdown() {
   {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _poolPtr.store(nullptr, std::memory_order_release);
+  _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
-    _pool->drainConnections();
+    _pool->shutdownConnections();
   }
 }
 
@@ -176,11 +244,19 @@ void NetworkFeature::stop() {
     std::lock_guard<std::mutex> guard(_workItemMutex);
     _workItem.reset();
   }
-  _pool->drainConnections();
+  if (_pool) {
+    _pool->shutdownConnections();
+  }
+}
+
+void NetworkFeature::unprepare() {
+  if (_pool) {
+    _pool->drainConnections();
+  }
 }
 
 arangodb::network::ConnectionPool* NetworkFeature::pool() const {
-  return _poolPtr.load(std::memory_order_acquire);
+  return _poolPtr.load(std::memory_order_relaxed);
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -188,5 +264,72 @@ void NetworkFeature::setPoolTesting(arangodb::network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
 }
 #endif
+
+bool NetworkFeature::prepared() const {
+  return _prepared;
+}
+
+void NetworkFeature::trackForwardedRequest() {
+  ++_forwardedRequests;
+}
+
+std::size_t NetworkFeature::requestsInFlight() const {
+  return _requestsInFlight.load();
+}
+
+bool NetworkFeature::isCongested() const {
+  return _requestsInFlight.load() >= (_maxInFlight * ::CongestionRatio);
+}
+
+bool NetworkFeature::isSaturated() const {
+  return _requestsInFlight.load() >= _maxInFlight;
+}
+
+void NetworkFeature::sendRequest(network::ConnectionPool& pool,
+                                 network::RequestOptions const& options,
+                                 std::string const& endpoint,
+                                 std::unique_ptr<fuerte::Request>&& req,
+                                 RequestCallback&& cb) {
+  TRI_ASSERT(req != nullptr);
+  prepareRequest(pool, req);
+  auto conn = pool.leaseConnection(endpoint);
+  conn->sendRequest(std::move(req),
+                    [this, &pool,
+                     cb = std::move(cb)](fuerte::Error err,
+                                         std::unique_ptr<fuerte::Request> req,
+                                         std::unique_ptr<fuerte::Response> res) {
+                      TRI_ASSERT(req != nullptr);
+                      finishRequest(pool, err, req, res);
+                      TRI_ASSERT(req != nullptr);
+                      cb(err, std::move(req), std::move(res));
+                    });
+}
+
+void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
+                                    std::unique_ptr<fuerte::Request>& req) {
+  _requestsInFlight += 1;
+  if (req) {
+    req->timestamp(std::chrono::steady_clock::now());
+  }
+}
+void NetworkFeature::finishRequest(network::ConnectionPool const& pool, fuerte::Error err,
+                                   std::unique_ptr<fuerte::Request> const& req,
+                                   std::unique_ptr<fuerte::Response>& res) {
+  _requestsInFlight -= 1;
+  if (err == fuerte::Error::RequestTimeout) {
+    _requestTimeouts.count();
+  } else if (req && res) {
+    res->timestamp(std::chrono::steady_clock::now());
+    std::chrono::milliseconds duration =
+        std::chrono::duration_cast<std::chrono::milliseconds>(res->timestamp() -
+                                                              req->timestamp());
+    std::chrono::milliseconds timeout = req->timeout();
+    TRI_ASSERT(timeout.count() > 0);
+    double percentage = std::clamp(100.0 * static_cast<double>(duration.count()) /
+                                       static_cast<double>(timeout.count()),
+                                   0.0, 100.0);
+    _requestDurations.count(percentage);
+  }
+}
 
 }  // namespace arangodb

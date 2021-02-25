@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,7 +69,7 @@ std::wstring arangodb::basics::toWString(std::string const& validUTF8String) {
   // using bufferType = std::remove_pointer_t<decltype(utf16.getTerminatedBuffer())>;
   // static_assert(sizeof(std::wchar_t) == sizeof(bufferType), "sizes do not match");
   // return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
-  return std::wstring(utf16.getTerminatedBuffer(), utf16.length());
+  return std::wstring(reinterpret_cast<wchar_t const*>(utf16.getTerminatedBuffer()), utf16.length());
 }
 
 std::string arangodb::basics::fromWString(wchar_t const* validUTF16String, std::size_t size) {

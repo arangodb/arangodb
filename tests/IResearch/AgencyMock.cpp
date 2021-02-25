@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,18 +24,22 @@
 
 #include "AgencyMock.h"
 
+#include <fuerte/connection.h>
+#include <fuerte/requests.h>
+
 #include "Agency/Store.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Rest/HttpResponse.h"
 
 #include <velocypack/velocypack-aliases.h>
 
-namespace arangodb {
-namespace consensus {
+#include <utility>
+
+namespace arangodb::consensus {
 
 // FIXME TODO this implementation causes deadlock when unregistering a callback,
 //            if there is still another callback registered; it's not obvious
@@ -49,7 +54,6 @@ void Store::notifyObservers() const {
     return;
   }
   auto& clusterFeature = _server.getFeature<arangodb::ClusterFeature>();
-
   auto* callbackRegistry = clusterFeature.agencyCallbackRegistry();
 
   if (!callbackRegistry) {
@@ -90,128 +94,106 @@ void Store::notifyObservers() const {
   }
 }
 
-} // consensus
 } // arangodb
+using namespace arangodb;
+using namespace arangodb::network;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                 GeneralClientConnectionAgencyMock
-// -----------------------------------------------------------------------------
+struct AsyncAgencyStorePoolConnection final : public fuerte::Connection {
+  AsyncAgencyStorePoolConnection(AsyncAgencyStorePoolMock* mock, std::string endpoint)
+      : fuerte::Connection(fuerte::detail::ConnectionConfiguration()),
+        _mock(mock),
+        _endpoint(std::move(endpoint)) {}
 
-void GeneralClientConnectionAgencyMock::handleRead(
-    arangodb::basics::StringBuffer& buffer
-) {
-  auto const query = arangodb::velocypack::Parser::fromJson(_body);
+  std::size_t requestsLeft() const override { return 1; }
+  State state() const override { return fuerte::Connection::State::Connected; }
 
-  auto result = std::make_shared<arangodb::velocypack::Builder>();
-  auto const success = _store->read(query, result);
-  auto const code = std::find(success.begin(), success.end(), false) == success.end()
-    ? arangodb::rest::ResponseCode::OK
-    : arangodb::rest::ResponseCode::BAD;
+  void cancel() override {}
 
-  arangodb::HttpResponse resp(code, nullptr);
+  AsyncAgencyStorePoolMock* _mock;
+  std::string _endpoint;
 
-  std::string body;
-  if (arangodb::rest::ResponseCode::OK == code && !result->isEmpty()) {
-    body = result->slice().toString();
-    resp.setContentType(arangodb::ContentType::VPACK);
-    resp.headResponse(body.size());
+  auto handleRead(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
+    auto& cache = _mock->_server.getFeature<ClusterFeature>().agencyCache();
+
+    fuerte::ResponseHeader header;
+
+    auto bodyBuilder = std::make_shared<VPackBuilder>(body);
+    VPackBuffer<uint8_t> responseBuffer;
+    {
+      auto result = std::make_shared<arangodb::velocypack::Builder>(responseBuffer);
+      auto const success = cache.store().read(bodyBuilder, result);
+      auto const code =
+        std::find(success.begin(), success.end(), false) == success.end()
+        ? fuerte::StatusOK : fuerte::StatusBadRequest;
+
+      header.contentType(fuerte::ContentType::VPack);
+      header.responseCode = code;
+    }
+
+    auto response = std::make_unique<fuerte::Response>(std::move(header));
+    response->setPayload(std::move(responseBuffer), 0);
+
+    return response;
   }
 
-  resp.writeHeader(&buffer);
+  auto handleWrite(VPackSlice body) -> std::unique_ptr<fuerte::Response> {
+    auto& cache = _mock->_server.getFeature<ClusterFeature>().agencyCache();
+    auto bodyBuilder = std::make_shared<VPackBuilder>(body);
 
-  if (!body.empty()) {
-    buffer.appendText(body);
-  }
-}
+    auto [success,index] = cache.applyTestTransaction(bodyBuilder);
 
-void GeneralClientConnectionAgencyMock::handleWrite(
-    arangodb::basics::StringBuffer& buffer
-) {
-  auto const query = arangodb::velocypack::Parser::fromJson(_body);
-  auto const success = _store->applyTransactions(query);
-  auto const code =
-    std::find_if(success.begin(), success.end(),
-                 [&](int i)->bool { return i != 0; }) == success.end() ?
-    arangodb::rest::ResponseCode::OK : arangodb::rest::ResponseCode::PRECONDITION_FAILED;
-  
-  VPackBuilder bodyObj;
-  bodyObj.openObject();
-  bodyObj.add("results", VPackValue(VPackValueType::Array));
-  bodyObj.close();
-  bodyObj.close();
-  auto body = bodyObj.slice().toString();
+    auto const code =
+      std::find_if(success.begin(), success.end(),
+                   [&](int i) -> bool { return i != 0; }) == success.end()
+      ? fuerte::StatusOK : fuerte::StatusPreconditionFailed;
 
-  arangodb::HttpResponse resp(code, nullptr);
-  resp.setContentType(arangodb::ContentType::VPACK);
-  resp.headResponse(body.size());
+    VPackBuffer<uint8_t> responseBody;
+    VPackBuilder bodyObj(responseBody);
+    {
+      { VPackObjectBuilder o(&bodyObj);
+        bodyObj.add("results", VPackValue(VPackValueType::Array));
+        for (auto const& s : success) {
+          bodyObj.add(VPackValue((s == arangodb::consensus::APPLIED ? index : 0)));
+        }
+        bodyObj.close(); }
+    }
 
-  resp.writeHeader(&buffer);
-  buffer.appendText(body);
-  _store->notifyObservers();
-}
+    fuerte::ResponseHeader header;
+    header.contentType(fuerte::ContentType::VPack);
+    header.responseCode = code;
 
-void GeneralClientConnectionAgencyMock::response(
-    arangodb::basics::StringBuffer& buffer
-) {
-  if (_path.size() != 4) {
-    // invalid message format
-    throw std::exception();
+    auto response = std::make_unique<fuerte::Response>(std::move(header));
+    response->setPayload(std::move(responseBody), 0);
+
+    cache.store().notifyObservers();
+
+    return response;
   }
 
-  auto const& op = action();
+  void sendRequest(std::unique_ptr<fuerte::Request> req,
+                                fuerte::RequestCallback cb) override {
 
-  if (op == "write") {
-    handleWrite(buffer);
-  } else if (op == "read") {
-    handleRead(buffer);
-  } else {
-    // unsupported operation
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+    std::unique_ptr<fuerte::Response> resp;
+
+    if (req->header.restVerb == fuerte::RestVerb::Post) {
+      if (req->header.path.find("write") != std::string::npos) {
+        resp = handleWrite(req->slice());
+      } else if(req->header.path.find("read") != std::string::npos) {
+        resp = handleRead(req->slice());
+      } else {
+        throw std::logic_error("invalid operation");
+      }
+    } else {
+      throw std::logic_error("only post requests for agency");
+    }
+
+    cb(fuerte::Error::NoError, std::move(req), std::move(resp));
   }
+};
 
-  if (_trace) {
-    std::cerr << "Response(" << _url << " " << _path << " )" << std::endl;
-    std::cerr << buffer.toString() << std::endl;
-  }
-}
-
-void GeneralClientConnectionAgencyMock::request(char const* data, size_t length) {
-  static const std::string bodyDelimiter("\r\n\r\n");
-
-  std::string const request(data, length);
-
-  if (_trace) {
-    std::cerr << "Request()" << std::endl;
-    std::cerr << request << std::endl;
-  }
-
-  auto pos = request.find("\r\n");
-
-  if (pos == std::string::npos) {
-    return; // use full string as key
-  }
-
-  // <HTTP-method> <path> HTTP/1.1
-  auto const requestLineParts = arangodb::basics::StringUtils::split(
-    std::string(data, pos), ' '
-  );
-
-  if (3 != requestLineParts.size()
-      || requestLineParts[0] != "POST" // agency works with POST requests only
-      || requestLineParts[2] != "HTTP/1.1") {
-    // invalid message format
-    throw std::exception();
-  }
-
-  pos = request.find(bodyDelimiter, pos);
-
-  if (pos == std::string::npos) {
-    return; // use full string as key
-  }
-
-  _url = requestLineParts[1];
-  _path = arangodb::basics::StringUtils::split(_url, '/');
-  _body.assign(data + pos + bodyDelimiter.size());
+std::shared_ptr<fuerte::Connection> AsyncAgencyStorePoolMock::createConnection(
+    fuerte::ConnectionBuilder& builder) {
+  return std::make_shared<AsyncAgencyStorePoolConnection>(this, builder.normalizedEndpoint());
 }
 
 // -----------------------------------------------------------------------------

@@ -18,11 +18,9 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
-#include "field_meta.hpp"
 #include "index_reader.hpp"
 #include "segment_reader.hpp"
 #include "index_meta.hpp"
@@ -30,7 +28,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/singleton.hpp"
 
-NS_LOCAL
+namespace {
 
 struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reader {
   virtual const irs::column_meta* column(const irs::string_ref& name) const override {
@@ -69,15 +67,15 @@ struct empty_sub_reader final : irs::singleton<empty_sub_reader>, irs::sub_reade
   }
 }; // index_reader
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         sub_reader implementation
 // -----------------------------------------------------------------------------
 
-/*static*/ const sub_reader& sub_reader::empty() NOEXCEPT {
+/*static*/ const sub_reader& sub_reader::empty() noexcept {
   return empty_sub_reader::instance();
 }
 
@@ -87,8 +85,4 @@ const columnstore_reader::column_reader* sub_reader::column_reader(
   return meta ? column_reader(meta->id) : nullptr;
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

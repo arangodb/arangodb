@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,15 +26,17 @@
 
 #include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
 
 #include <map>
+#include <memory>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 namespace arangodb {
+
+class SupervisedScheduler;
+
 namespace cluster {
 
 // Note:
@@ -42,13 +45,7 @@ namespace cluster {
 class RebootTracker {
  public:
   using Callback = std::function<void(void)>;
-  using SchedulerPointer = decltype(SchedulerFeature::SCHEDULER);
-  static_assert(std::is_pointer<SchedulerPointer>::value,
-                "If SCHEDULER is changed to a non-pointer type, this class "
-                "might have to be adapted");
-  static_assert(
-      std::is_base_of<Scheduler, std::remove_pointer<SchedulerPointer>::type>::value,
-      "SchedulerPointer is expected to point to an instance of Scheduler");
+  using SchedulerPointer = SupervisedScheduler*;
 
   class PeerState {
    public:

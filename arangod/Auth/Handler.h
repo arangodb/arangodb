@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@ class HandlerResult {
   explicit HandlerResult(arangodb::auth::Source const& source)
       : HandlerResult(TRI_ERROR_FAILED, source) {}
 
-  HandlerResult(int errorNumber, arangodb::auth::Source const& source)
+  HandlerResult(ErrorCode errorNumber, arangodb::auth::Source const& source)
       : _result(errorNumber), _authSource(source) {}
 
   HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
@@ -54,7 +55,7 @@ class HandlerResult {
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
   int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
  protected:
   Result _result;
@@ -66,6 +67,7 @@ class Handler {
  public:
   /// Refresh rate for users from this source in seconds
   virtual double refreshRate() const = 0;
+  virtual bool allowOfflineCacheUsage() const = 0;
   virtual auth::Source source() const = 0;
 
   /// Authenticate user and return user permissions and roles

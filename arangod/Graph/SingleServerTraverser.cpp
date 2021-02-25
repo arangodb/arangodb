@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,61 +24,92 @@
 #include "SingleServerTraverser.h"
 #include "Aql/AqlValue.h"
 #include "Graph/BreadthFirstEnumerator.h"
+#include "Graph/EdgeCursor.h"
 #include "Graph/NeighborsEnumerator.h"
+#include "Graph/PathEnumerator.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/WeightedEnumerator.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/StringRef.h>
+
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
-SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts, transaction::Methods* trx)
-    : Traverser(opts, trx) {}
+SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts)
+    : Traverser(opts) {
+  createEnumerator();
+}
 
 SingleServerTraverser::~SingleServerTraverser() = default;
 
-void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid, VPackBuilder& result) {
-  _opts->cache()->insertVertexIntoResult(vid, result);
+void SingleServerTraverser::addVertexToVelocyPack(arangodb::velocypack::StringRef vid,
+                                                  VPackBuilder& result) {
+  _opts->cache()->appendVertex(vid, result);
 }
 
 aql::AqlValue SingleServerTraverser::fetchVertexData(arangodb::velocypack::StringRef vid) {
-  return _opts->cache()->fetchVertexAqlResult(vid);
+  arangodb::aql::AqlValue result;
+  _opts->cache()->appendVertex(vid, result);
+  return result;
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {
-  _startIdBuilder.clear();
-  _startIdBuilder.add(VPackValue(vid));
-  VPackSlice idSlice = _startIdBuilder.slice();
-
-  if (!vertexMatchesConditions(arangodb::velocypack::StringRef(vid), 0)) {
+  arangodb::velocypack::StringRef const s(vid);
+  if (!vertexMatchesConditions(s, 0)) {
     // Start vertex invalid
     _done = true;
     return;
   }
 
-  arangodb::velocypack::StringRef persId = _opts->cache()->persistString(arangodb::velocypack::StringRef(vid));
+  arangodb::velocypack::StringRef persId = _opts->cache()->persistString(s);
   _vertexGetter->reset(persId);
-
-  if (_opts->useBreadthFirst) {
-    if (_canUseOptimizedNeighbors) {
-      _enumerator.reset(new NeighborsEnumerator(this, idSlice, _opts));
-    } else {
-      _enumerator.reset(new BreadthFirstEnumerator(this, idSlice, _opts));
-    }
-  } else {
-    _enumerator.reset(new DepthFirstEnumerator(this, vid, _opts));
-  }
+  _enumerator->setStartVertex(persId);
   _done = false;
 }
 
-bool SingleServerTraverser::getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) {
-  return _vertexGetter->getVertex(edge, result);
+void SingleServerTraverser::clear() { traverserCache()->clear(); }
+
+bool SingleServerTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  return _vertexGetter->getVertex(edge, path);
 }
 
-bool SingleServerTraverser::getSingleVertex(VPackSlice edge, arangodb::velocypack::StringRef const sourceVertexId,
-                                            uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) {
+bool SingleServerTraverser::getSingleVertex(VPackSlice edge,
+                                            arangodb::velocypack::StringRef sourceVertexId,
+                                            uint64_t depth,
+                                            arangodb::velocypack::StringRef& targetVertexId) {
   return _vertexGetter->getSingleVertex(edge, sourceVertexId, depth, targetVertexId);
+}
+
+void SingleServerTraverser::createEnumerator() {
+  TRI_ASSERT(_enumerator == nullptr);
+
+  switch (_opts->mode) {
+    case TraverserOptions::Order::DFS:
+      TRI_ASSERT(!_opts->useNeighbors);
+      // normal, depth-first enumerator
+      _enumerator = std::make_unique<DepthFirstEnumerator>(this, _opts);
+      break;
+    case TraverserOptions::Order::BFS:
+      if (_opts->useNeighbors) {
+        // optimized neighbors enumerator
+        _enumerator = std::make_unique<NeighborsEnumerator>(this, _opts);
+      } else {
+        // default breadth-first enumerator
+        _enumerator = std::make_unique<BreadthFirstEnumerator>(this, _opts);
+      }
+      break;
+    case TraverserOptions::Order::WEIGHTED:
+      TRI_ASSERT(!_opts->useNeighbors);
+      _enumerator = std::make_unique<WeightedEnumerator>(this, _opts);
+      break;
+  }
+}
+
+bool SingleServerTraverser::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+  return _vertexGetter->getVertex(vertex, depth);
 }

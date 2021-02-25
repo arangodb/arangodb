@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/conversions.h"
 #include "V8/v8-conv.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
 #include "v8-vocbaseprivate.h"
 
@@ -103,6 +104,7 @@ static bool ParseDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> cons
 bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val,
                            std::string& collectionName, VPackBuilder& builder,
                            bool includeRev) {
+  auto context = TRI_IGETC;
   // reset the collection identifier and the revision
   TRI_ASSERT(collectionName.empty());
 
@@ -129,14 +131,14 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
         val->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
-    if (obj->HasRealNamedProperty(_IdKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
+    if (TRI_HasRealNamedProperty(context, isolate, obj, _IdKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(context, _IdKey).FromMaybe(v8::Local<v8::Value>());
 
       if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
       }
-    } else if (obj->HasRealNamedProperty(_KeyKey)) {
-      v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
+    } else if (TRI_HasRealNamedProperty(context, isolate, obj, _KeyKey)) {
+      v8::Handle<v8::Value> didVal = obj->Get(context, _KeyKey).FromMaybe(v8::Local<v8::Value>());
 
       if (!ParseDocumentHandle(isolate, didVal, collectionName, key)) {
         return false;
@@ -156,21 +158,21 @@ bool ExtractDocumentHandle(v8::Isolate* isolate, v8::Handle<v8::Value> const val
     }
 
     TRI_GET_GLOBAL_STRING(_RevKey);
-    if (!obj->HasRealNamedProperty(_RevKey)) {
+    if (!TRI_HasRealNamedProperty(context, isolate, obj, _RevKey)) {
       return true;
     }
-    v8::Handle<v8::Value> revObj = obj->Get(_RevKey);
+    v8::Handle<v8::Value> revObj = obj->Get(context, _RevKey).FromMaybe(v8::Local<v8::Value>());
     if (!revObj->IsString()) {
       return true;
     }
     v8::String::Utf8Value str(isolate, revObj);
     bool isOld;
-    uint64_t rid = TRI_StringToRid(*str, str.length(), isOld, false);
+    RevisionId rid = RevisionId::fromString(*str, str.length(), isOld, false);
 
-    if (rid == 0) {
+    if (rid.empty()) {
       return false;
     }
-    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
+    builder.add(StaticStrings::RevString, VPackValue(rid.toString()));
     return true;
   }
 

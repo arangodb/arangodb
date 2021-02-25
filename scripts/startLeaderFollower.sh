@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 params=("$@")
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 rm -rf active
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
@@ -51,16 +54,8 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "$USE_ROCKSDB" ] ; then
-  #default engine is RocksDB
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-elif [ "$USE_ROCKSDB" == "0" ]; then 
-  #explicitly disable RocksDB engine, so use MMFiles
-  STORAGE_ENGINE="--server.storage-engine=mmfiles"
-else 
-  #any value other than "0" means RocksDB engine
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-fi
+#default engine is RocksDB
+STORAGE_ENGINE="--server.storage-engine=rocksdb"
 DEFAULT_REPLICATION=""
 
 if [[ $NRAGENTS -le 0 ]]; then
@@ -149,6 +144,7 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.statistics false \
         --log.file active/$PORT.log \
         --log.level $LOG_LEVEL_AGENCY \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -178,6 +174,7 @@ start() {
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path active/apps$PORT \
         --log.level $LOG_LEVEL_CLUSTER \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

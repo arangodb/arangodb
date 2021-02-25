@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,8 +36,8 @@ using namespace arangodb;
 #endif
 
 #include <cstring>
-#include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::basics;
 
@@ -50,11 +50,9 @@ void LogAppenderSyslog::close() {
   }
 }
 
-LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
-                                     std::string const& name, std::string const& filter)
-    : LogAppender(filter) {
-  // no logging
-  std::string sysname = name.empty() ? "[arangod]" : name;
+LogAppenderSyslog::LogAppenderSyslog(std::string const& facility, std::string const& name)
+    : LogAppender(),
+      _sysname(name.empty() ? "[arangod]" : name) {
 
   // find facility
   int value = LOG_LOCAL0;
@@ -74,15 +72,20 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
     }
   }
 
+  // from man 3 syslog:
+  //   The argument ident in the call of openlog() is probably stored as-is.  
+  //   Thus, if the string it points to is changed, syslog() may start prepending the changed string, and  if
+  //    the string it points to ceases to exist, the results are undefined.  Most portable is to use a string constant.
+  
   // and open logging, openlog does not have a return value...
-  ::openlog(sysname.c_str(), LOG_CONS | LOG_PID, value);
+  ::openlog(_sysname.c_str(), LOG_CONS | LOG_PID, value);
   _opened = true;
 }
 
-void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message, size_t offset) {
+void LogAppenderSyslog::logMessage(LogMessage const& message) {
   int priority = LOG_ERR;
 
-  switch (level) {
+  switch (message._level) {
     case LogLevel::FATAL:
       priority = LOG_CRIT;
       break;
@@ -105,22 +108,12 @@ void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message, s
   }
 
   if (_opened) {
-    ::syslog(priority, "%s", message.c_str() + offset);
+    ::syslog(priority, "%s", message._message.c_str() + message._offset);
   }
 }
 
-std::string LogAppenderSyslog::details() {
+std::string LogAppenderSyslog::details() const {
   return "More error details may be provided in the syslog";
 }
-
-#else
-
-LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
-                                     std::string const& name, std::string const& filter)
-    : LogAppender(filter) {
-  std::abort();
-}
-
-void LogAppenderSyslog::close() {}
 
 #endif

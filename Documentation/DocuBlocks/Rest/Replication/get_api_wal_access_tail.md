@@ -6,6 +6,10 @@
 
 @RESTQUERYPARAMETERS
 
+@RESTQUERYPARAM{global,boolean,optional}
+If set to *true*, tails the WAL for all databases. If set to *false*, tails the 
+WAL for the selected database.
+
 @RESTQUERYPARAM{from,number,optional}
 Exclusive lower bound tick value for results. On successive calls
 to this API you should set this to the value returned
@@ -43,10 +47,6 @@ operations with the rocksdb storage engine.
 
 @RESTQUERYPARAM{clientInfo,string,optional}
 Short description of the client, used for informative purposes only.
-
-@RESTQUERYPARAM{barrierId,number,optional}
-Id of barrier used to keep WAL entries around. **Note** this is only required for the
-MMFiles storage engine
 
 @RESTDESCRIPTION
 Returns data from the server's write-ahead log (also named replication log). This method can be called
@@ -147,7 +147,7 @@ The response will also contain the following HTTP headers:
   If there isn't any more log data to fetch, the client might decide to go
   to sleep for a while before calling the logger again.
 
-**Note**: this method is not supported on a coordinator in a cluster.
+**Note**: this method is not supported on a Coordinator in a cluster.
 
 @RESTRETURNCODES
 
@@ -171,7 +171,7 @@ is returned when an invalid HTTP method is used.
 is returned if an error occurred while assembling the response.
 
 @RESTRETURNCODE{501}
-is returned when this operation is called on a coordinator in a cluster.
+is returned when this operation is called on a Coordinator in a cluster.
 
 @EXAMPLES
 

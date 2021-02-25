@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/voc-errors.h"
 #include "Replication/common-defines.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -69,7 +70,7 @@ struct ReplicationApplierState {
 
   std::string _progressMsg;
   char _progressTime[24];
-  TRI_server_id_t _serverId;
+  ServerId _serverId;
   char _startTime[24];
 
   /// performs initial sync or running tailing syncer
@@ -85,7 +86,12 @@ struct ReplicationApplierState {
 
   bool isShuttingDown() const { return (_phase == ActivityPhase::SHUTDOWN); }
 
-  void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
+  void setError(ErrorCode code, std::string msg) {
+    _lastError.set(code, std::move(msg));
+  }
+  void setError(ErrorCode code, std::string_view msg) {
+    _lastError.set(code, std::string(msg));
+  }
 
   void setStartTime();
 
@@ -100,9 +106,9 @@ struct ReplicationApplierState {
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
 
-    void set(int errorCode, std::string const& msg) {
+    void set(ErrorCode errorCode, std::string msg) {
       code = errorCode;
-      message = msg;
+      message = std::move(msg);
       time[0] = '\0';
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
@@ -120,7 +126,7 @@ struct ReplicationApplierState {
       result.close();
     }
 
-    int code;
+    ErrorCode code;
     std::string message;
     char time[24];
   } _lastError;

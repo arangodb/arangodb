@@ -1,9 +1,9 @@
 
 
 @brief finds an index
-`db._index(index-handle)`
+`db._index(index-id)`
 
-Returns the index with *index-handle* or null if no such index exists.
+Returns the index with *index-id* or null if no such index exists.
 
 @EXAMPLE_ARANGOSH_OUTPUT{IndexHandle}
 ~db._create("example");

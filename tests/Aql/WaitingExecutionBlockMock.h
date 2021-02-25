@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,16 +26,19 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
+#include "Aql/ScatterExecutor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Builder.h>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
+class SkipResult;
 }  // namespace aql
 
 namespace tests {
@@ -46,17 +50,27 @@ namespace aql {
 class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
  public:
   /**
+   * @brief Define how often this Block should return "WAITING"
+   */
+  enum WaitingBehaviour {
+    NEVER,  // Never return WAITING
+    ONCE,  // Return WAITING on the first execute call, afterwards return all blocks
+    ALWAYS  // Return WAITING once for every execute Call.
+  };
+
+  /**
    * @brief Create a WAITING ExecutionBlockMock
    *
    * @param engine Required by API.
    * @param node Required by API.
    * @param data Must be a shared_ptr to an VPackArray.
+   * @param variant The waiting behaviour of this block (default ALWAYS), see WaitingBehaviour
    */
   WaitingExecutionBlockMock(arangodb::aql::ExecutionEngine* engine,
                             arangodb::aql::ExecutionNode const* node,
-                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data);
-
-  virtual std::pair<arangodb::aql::ExecutionState, Result> shutdown(int errorCode) override;
+                            std::deque<arangodb::aql::SharedAqlItemBlockPtr>&& data,
+                            WaitingBehaviour variant = WaitingBehaviour::ALWAYS,
+                            size_t subqueryDepth = 0);
 
   /**
    * @brief Initialize the cursor. Return values will be alternating.
@@ -70,37 +84,21 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   std::pair<arangodb::aql::ExecutionState, arangodb::Result> initializeCursor(
       arangodb::aql::InputAqlItemRow const& input) override;
 
-  /**
-   * @brief The return values are alternating. On non-WAITING case
-   *        it will return atMost many elements from _data.
-   *
-   *
-   * @param atMost This many elements will be returned at Most
-   *
-   * @return First: <WAITING, nullptr>
-   *         Second: <HASMORE/DONE, _data-part>
-   */
-  std::pair<arangodb::aql::ExecutionState, arangodb::aql::SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  /**
-   * @brief The return values are alternating. On non-WAITING case
-   *        it will return atMost, or whatever is not skipped over on data,
-   * whichever number is lower.
-   *
-   *
-   * @param atMost This many elements will be skipped at most
-   *
-   * @return First: <WAITING, 0>
-   *         Second: <HASMORE/DONE, min(atMost,_data.length)>
-   */
-  std::pair<arangodb::aql::ExecutionState, size_t> skipSome(size_t atMost) override;
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr> execute(
+      arangodb::aql::AqlCallStack stack) override;
 
  private:
-  std::deque<arangodb::aql::SharedAqlItemBlockPtr> _data;
-  arangodb::aql::ResourceMonitor _resourceMonitor;
-  size_t _inflight;
-  bool _returnedDone = false;
+  // Implementation of execute
+  std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult, arangodb::aql::SharedAqlItemBlockPtr>
+  executeWithoutTrace(arangodb::aql::AqlCallStack stack);
+
+ private:
   bool _hasWaited;
+  WaitingBehaviour _variant;
+  bool _doesContainShadowRows{false};
+  bool _shouldLieOnLastRow{false};
+  arangodb::aql::RegisterInfos _infos;
+  typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
 };
 }  // namespace aql
 

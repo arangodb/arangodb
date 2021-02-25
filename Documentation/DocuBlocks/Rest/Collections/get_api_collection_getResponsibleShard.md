@@ -24,7 +24,7 @@ collection's shard key attributes set to some values.
 The response is a JSON object with a *shardId* attribute, which will
 contain the ID of the responsible shard.
 
-**Note** : This method is only available in a cluster coordinator.
+**Note** : This method is only available in a cluster Coordinator.
 
 @RESTRETURNCODES
 

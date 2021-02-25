@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "cpuinfo.hpp"
@@ -27,7 +26,7 @@
 
 #include "bit_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 const cpuinfo cpuinfo::instance_;
 
@@ -36,6 +35,6 @@ const cpuinfo cpuinfo::instance_;
   return check_bit<23>(instance_.f1_cpuinfo_[2]);
 }
 
-NS_END
+}
 
 #endif

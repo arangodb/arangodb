@@ -38,6 +38,7 @@ const arango = arangodb.arango;
 const ERRORS = arangodb.errors;
 const db = arangodb.db;
 const internal = require('internal');
+const isCluster = internal.isCluster();
 const wait = internal.wait;
 const url = '/_api/gharial';
 
@@ -94,19 +95,32 @@ describe('_api/gharial', () => {
       from: Joi.array().items(Joi.string()).required(),
       to: Joi.array().items(Joi.string()).required()
     });
-    const schema = Joi.object({
-      "_key": Joi.string().required(),
-      "_rev": Joi.string().required(),
-      "_id": Joi.string().required(),
-      name: Joi.string().required(),
-      numberOfShards: Joi.number().integer().min(1).required(),
-      replicationFactor: Joi.number().integer().min(1).required(),
-      minReplicationFactor: Joi.number().integer().min(1).required(),
-      writeConcern: Joi.number().integer().min(1).required(),
-      isSmart: Joi.boolean().required(),
-      orphanCollections: Joi.array().items(Joi.string()).required(),
-      edgeDefinitions: Joi.array().items(edgeDefinition).required()
-    });
+    let schema;
+    if (isCluster) {
+      schema = Joi.object({
+        "_key": Joi.string().required(),
+        "_rev": Joi.string().required(),
+        "_id": Joi.string().required(),
+        name: Joi.string().required(),
+        numberOfShards: Joi.number().integer().min(1).required(),
+        replicationFactor: Joi.number().integer().min(1).required(),
+        minReplicationFactor: Joi.number().integer().min(1).required(),
+        writeConcern: Joi.number().integer().min(1).required(),
+        isSmart: Joi.boolean().required(),
+        isSatellite: Joi.boolean().required(),
+        orphanCollections: Joi.array().items(Joi.string()).required(),
+        edgeDefinitions: Joi.array().items(edgeDefinition).required()
+      });
+    } else {
+      schema = Joi.object({
+        "_key": Joi.string().required(),
+        "_rev": Joi.string().required(),
+        "_id": Joi.string().required(),
+        name: Joi.string().required(),
+        orphanCollections: Joi.array().items(Joi.string()).required(),
+        edgeDefinitions: Joi.array().items(edgeDefinition).required()
+      });
+    }
     const res = schema.validate(graph);
     expect(res.error).to.be.null;
   };
@@ -1088,6 +1102,7 @@ describe('_api/gharial', () => {
           const eName = 'knows';
           const eName_2 = 'knows_2';
           expect(db._collection(eName)).to.be.null; // edgec
+          expect(db._collection(eName_2)).to.be.null; // edgec2
           expect(db._collection(vName)).to.be.null; // vertexc
           const g = examples.loadGraph(exampleGraphName);
           expect(g).to.not.be.null;
@@ -1261,7 +1276,7 @@ describe('_api/gharial', () => {
           });
           expect(req.error).to.equal(true);
           expect(req.code).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.code);
-          expect(req.errorMessage).to.equal(ERRORS.ERROR_HTTP_PRECONDITION_FAILED.message);
+          expect(req.errorMessage).to.equal(ERRORS.ERROR_ARANGO_CONFLICT.message);
         });
       });
 

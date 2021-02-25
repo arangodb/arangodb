@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,17 +26,17 @@
 
 #include "Agency/AgencyCommon.h"
 #include "Agency/AgentInterface.h"
-#include "Agency/Node.h"
+#include "Agency/Store.h"
 #include "Agency/TimeString.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Mutex.h"
-#include "Cluster/CriticalThread.h"
+#include "Basics/Thread.h"
+#include "RestServer/MetricsFeature.h"
 
 namespace arangodb {
 namespace consensus {
 
 class Agent;
-class Store;
 
 struct check_t {
   bool good;
@@ -44,7 +44,14 @@ struct check_t {
   check_t(std::string const& n, bool g) : good(g), name(n) {}
 };
 
-class Supervision : public arangodb::CriticalThread {
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::enforceReplication and the
+// unit tests:
+void enforceReplicationFunctional(Node const& snapshot, 
+                                  uint64_t& jobId,
+                                  std::shared_ptr<VPackBuilder> envelope);
+
+class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;
@@ -89,7 +96,7 @@ class Supervision : public arangodb::CriticalThread {
     std::string jobId;
   };
 
-  /// @brief Construct sanity checking
+  /// @brief Construct cluster consistency checking
   explicit Supervision(application_features::ApplicationServer& server);
 
   /// @brief Default dtor
@@ -110,6 +117,15 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Upgrade agency
   void upgradeAgency();
 
+  /// @brief Upgrade hot backup entry, if 0
+  void upgradeMaintenance(VPackBuilder& builder);
+
+  /// @brief Upgrade maintenance key, if "on"
+  void upgradeBackupKey(VPackBuilder& builder);
+
+  /// @brief remove hotbackup lock in agency, if expired
+  void unlockHotBackup();
+
   static constexpr char const* HEALTH_STATUS_GOOD = "GOOD";
   static constexpr char const* HEALTH_STATUS_BAD = "BAD";
   static constexpr char const* HEALTH_STATUS_FAILED = "FAILED";
@@ -121,6 +137,10 @@ class Supervision : public arangodb::CriticalThread {
   }
 
  private:
+
+  /// @brief get reference to the spearhead snapshot
+  Node const& snapshot() const;
+
   /// @brief decide, if we can start supervision ahead of armageddon delay
   bool earlyBird() const;
 
@@ -139,9 +159,31 @@ class Supervision : public arangodb::CriticalThread {
   /// @brief Check for orphaned index creations, which have been successfully built
   void checkBrokenCreatedDatabases();
 
+  /// @brief Check for boken collections
+  void checkBrokenCollections();
+
+  /// @brief Check for broken analyzers
+  void checkBrokenAnalyzers();
+
+  struct ResourceCreatorLostEvent {
+    std::shared_ptr<Node> const& resource;
+    std::string const& coordinatorId;
+    uint64_t coordinatorRebootId;
+    bool coordinatorFound;
+  };
+
+  // @brief Checks if a resource (database or collection). Action is called if resource should be deleted
+  void ifResourceCreatorLost(std::shared_ptr<Node> const& resource,
+                             std::function<void(ResourceCreatorLostEvent const&)> const& action);
+
+  // @brief Action is called if resource should be deleted
+  void resourceCreatorLost(std::shared_ptr<Node> const& resource,
+                           std::function<void(const ResourceCreatorLostEvent&)> const& action);
+
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
+ private:
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
 
@@ -160,12 +202,16 @@ class Supervision : public arangodb::CriticalThread {
   // @brief
   void cleanupFinishedAndFailedJobs();
 
+  // @brief these servers have gone for too long without any responsibility
+  //        and this are safely removable and so they are
+  void cleanupExpiredServers(Node const&, Node const&);
+
   void workJobs();
 
   /// @brief Get unique ids from agency
   void getUniqueIds();
 
-  /// @brief Perform sanity checking
+  /// @brief Perform consistency checking
   bool doChecks();
 
   /// @brief update my local agency snapshot
@@ -173,9 +219,21 @@ class Supervision : public arangodb::CriticalThread {
 
   void shrinkCluster();
 
- public:
+ public:  // only for unit tests:
+  void setSnapshotForUnitTest(Node* snapshot) {
+    _snapshot = snapshot;
+  }
+
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
                                      uint64_t& jobId);
+
+  void setOkThreshold(double d) {
+    _okThreshold = d;
+  }
+
+  void setGracePeriod(double d) {
+    _gracePeriod = d;
+  }
 
  private:
   /**
@@ -192,13 +250,24 @@ class Supervision : public arangodb::CriticalThread {
                                  uint64_t wantedRebootID, bool& coordinatorFound);
   void deleteBrokenDatabase(std::string const& database, std::string const& coordinatorID,
                             uint64_t rebootID, bool coordinatorFound);
+  void deleteBrokenCollection(std::string const& database, std::string const& collection,
+                              std::string const& coordinatorID,
+                              uint64_t rebootID, bool coordinatorFound);
+
+  void restoreBrokenAnalyzersRevision(std::string const& database,
+                                      AnalyzersRevision::Revision revision,
+                                      AnalyzersRevision::Revision buildingRevision,
+                                      std::string const& coordinatorID,
+                                      uint64_t rebootID,
+                                      bool coordinatorFound);
 
   /// @brief Migrate chains of distributeShardsLike to depth 1
   void fixPrototypeChain(VPackBuilder&);
 
   Mutex _lock;   // guards snapshot, _jobId, jobIdMax, _selfShutdown
   Agent* _agent; /**< @brief My agent */
-  Node _snapshot;
+  Store _spearhead;
+  mutable Node const* _snapshot;
   Node _transient;
 
   arangodb::basics::ConditionVariable _cv; /**< @brief Control if thread
@@ -209,6 +278,8 @@ class Supervision : public arangodb::CriticalThread {
   double _okThreshold;
   uint64_t _jobId;
   uint64_t _jobIdMax;
+  uint64_t _lastUpdateIndex;
+
   bool _haveAborts;        /**< @brief We have accumulated pending aborts in a round */
 
   // mop: this feels very hacky...we have a hen and egg problem here
@@ -222,10 +293,18 @@ class Supervision : public arangodb::CriticalThread {
   bool _selfShutdown;
 
   std::atomic<bool> _upgraded;
+  std::chrono::system_clock::time_point _nextServerCleanup;
 
   std::string serverHealth(std::string const&);
 
   static std::string _agencyPrefix;  // initialized in AgencyFeature
+
+ public:
+  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_msec;
+  Histogram<log_scale_t<uint64_t>>& _supervision_runtime_wait_for_sync_msec;
+  Counter& _supervision_accum_runtime_msec;
+  Counter& _supervision_accum_runtime_wait_for_sync_msec;
+  Counter& _supervision_failed_server_counter;
 };
 
 /**

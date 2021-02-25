@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,60 +28,82 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SubqueryStartExecutor::SubqueryStartExecutor(Fetcher& fetcher, Infos& infos)
-    : _fetcher(fetcher),
-      _state(ExecutionState::HASMORE),
-      _input(CreateInvalidInputRowHint{}) {}
-SubqueryStartExecutor::~SubqueryStartExecutor() = default;
+SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
-std::pair<ExecutionState, NoStats> SubqueryStartExecutor::produceRows(OutputAqlItemRow& output) {
-  while (!output.isFull()) {
-    TRI_ASSERT(!output.produced());
-    if (_state == ExecutionState::DONE && !_input.isInitialized()) {
-      // We need to handle shadowRows now. It is the job of this node to
-      // increase the shadow row depth
-      ShadowAqlItemRow shadowRow{CreateInvalidShadowRowHint{}};
-      std::tie(_state, shadowRow) = _fetcher.fetchShadowRow();
-      if (!shadowRow.isInitialized()) {
-        TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
-        // We are either fully DONE, or WAITING
-        return {_state, NoStats{}};
-      }
-      output.increaseShadowRowDepth(shadowRow);
-    } else {
-      // This loop alternates between data row and shadow row
-      if (_input.isInitialized()) {
-        output.createShadowRow(_input);
-        _input = InputAqlItemRow(CreateInvalidInputRowHint{});
-      } else {
-        // We need to round the number of rows, otherwise this might be called with atMost == 0
-        std::tie(_state, _input) = _fetcher.fetchRow((output.numRowsLeft() + 1) / 2);
-        if (!_input.isInitialized()) {
-          TRI_ASSERT(_state == ExecutionState::WAITING || _state == ExecutionState::DONE);
-          return {_state, NoStats{}};
-        }
-        TRI_ASSERT(!output.isFull());
-        output.copyRow(_input);
-      }
-    }
+auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  if (_inputRow.isInitialized()) {
+    // We have not been able to report the ShadowRow.
+    // Simply return DONE to trigger Impl to fetch shadow row instead.
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
+  }
+  TRI_ASSERT(!_inputRow.isInitialized());
+  if (input.hasDataRow()) {
+    TRI_ASSERT(!output.isFull());
+    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
+    output.copyRow(_inputRow);
     output.advanceRow();
+    return {ExecutorState::DONE, NoStats{}, AqlCall{}};
   }
-  if (_input.isInitialized()) {
-    // We at least need to insert the Shadow row!
-    return {ExecutionState::HASMORE, NoStats{}};
-  }
-  // Take state from dependency.
-  return {_state, NoStats{}};
+  return {input.upstreamState(), NoStats{}, AqlCall{}};
 }
 
-std::pair<ExecutionState, size_t> SubqueryStartExecutor::expectedNumberOfRows(size_t atMost) const {
-  ExecutionState state{ExecutionState::HASMORE};
-  size_t expected = 0;
-  std::tie(state, expected) = _fetcher.preFetchNumberOfRows(atMost);
-  // We will write one shadow row per input data row.
-  // We might write less on all shadow rows in input, right now we do not figure this out yes.
-  return {state, expected * 2};
+auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  TRI_ASSERT(call.shouldSkip());
+  if (_inputRow.isInitialized()) {
+    // We have not been able to report the ShadowRow.
+    // Simply return DONE to trigger Impl to fetch shadow row instead.
+    return {ExecutorState::DONE, NoStats{}, 0, AqlCall{}};
+  }
+
+  if (input.hasDataRow()) {
+    // Do not consume the row.
+    // It needs to be reported in Produce.
+    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
+    call.didSkip(1);
+    return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}};
+  }
+  return {input.upstreamState(), NoStats{}, 0, AqlCall{}};
+}
+
+auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
+                                             OutputAqlItemRow& output) -> bool {
+  TRI_ASSERT(!output.allRowsUsed());
+  if (_inputRow.isInitialized()) {
+    // Actually consume the input row now.
+    auto const [upstreamState, inputRow] = input.nextDataRow();
+    // We are only supposed to report the inputRow we
+    // have seen in produce as a ShadowRow
+    TRI_ASSERT(inputRow.isSameBlockAndIndex(_inputRow));
+    output.createShadowRow(_inputRow);
+    output.advanceRow();
+    // Reset local input row
+    _inputRow = InputAqlItemRow(CreateInvalidInputRowHint{});
+    return true;
+  }
+  return false;
+}
+
+[[nodiscard]] auto SubqueryStartExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  // The DataRow is consumed after a shadowRow is produced.
+  // So if there is no datarow in the input we will not create a data or a
+  // shadowRow, we might be off by one, if we get asked this and have written the
+  // last dataRow. However, as we only overallocate a single row then, this is not too bad.
+  if (input.countDataRows() > 0) {
+    // We will write one ShadowRow
+    if (call.getLimit() > 0) {
+      // We will write one DataRow
+      return 2 * input.countDataRows();
+    }
+    return input.countDataRows();
+  }
+  // Nothing to create here.
+  return 0;
 }

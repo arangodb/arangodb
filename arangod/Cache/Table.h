@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,18 +18,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_TABLE_H
 #define ARANGODB_CACHE_TABLE_H
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Cache/BucketState.h"
 #include "Cache/Common.h"
 
-#include <stdint.h>
+#include <cstdint>
+#include <limits>
 #include <memory>
 
 namespace arangodb {
@@ -42,21 +42,22 @@ class Table : public std::enable_shared_from_this<Table> {
  public:
   static constexpr double idealLowerRatio = 0.04;
   static constexpr double idealUpperRatio = 0.25;
-  static const uint32_t minLogSize;
-  static const uint32_t maxLogSize;
-  static constexpr uint32_t standardLogSizeAdjustment = 6;
-  static constexpr uint64_t triesGuarantee = UINT64_MAX;
-  static constexpr uint64_t padding = BUCKET_SIZE;
+  static const std::uint32_t minLogSize;
+  static const std::uint32_t maxLogSize;
+  static constexpr std::uint32_t standardLogSizeAdjustment = 6;
+  static constexpr std::uint64_t triesGuarantee =
+      std::numeric_limits<std::uint64_t>::max();
+  static constexpr std::uint64_t padding = BUCKET_SIZE;
 
   typedef std::function<void(void*)> BucketClearer;
 
  private:
   struct GenericBucket {
     BucketState _state;
-    static constexpr size_t paddingSize = BUCKET_SIZE - sizeof(BucketState);
-    uint8_t _padding[paddingSize];
+    static constexpr std::size_t paddingSize = BUCKET_SIZE - sizeof(BucketState);
+    std::uint8_t _padding[paddingSize];
     GenericBucket();
-    bool lock(uint64_t maxTries);
+    bool lock(std::uint64_t maxTries);
     void unlock();
     void clear();
     bool isMigrated() const;
@@ -66,20 +67,56 @@ class Table : public std::enable_shared_from_this<Table> {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Helper class for RAII-style bucket locking
+  //////////////////////////////////////////////////////////////////////////////
+  struct BucketLocker {
+    BucketLocker();
+    BucketLocker(void* bucket, Table* source, std::uint64_t maxAttempts);
+    BucketLocker(BucketLocker&&) noexcept;
+    ~BucketLocker();
+    BucketLocker& operator=(BucketLocker&&) noexcept;
+
+    BucketLocker(BucketLocker const&) = delete;             // no copy
+    BucketLocker& operator=(BucketLocker const&) = delete;  // no copy
+
+    bool isValid() const;
+    bool isLocked() const;
+
+    Table* source() const;
+
+    template <typename BucketType>
+    BucketType& bucket() const;
+
+    void release();
+
+   private:
+    void steal(BucketLocker&&);
+
+   private:
+    GenericBucket* _bucket;
+    Table* _source;
+    bool _locked;
+  };
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Helper class for migration.
   //////////////////////////////////////////////////////////////////////////////
   struct Subtable {
     Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
-             uint64_t size, uint32_t mask, uint32_t shift);
-    void* fetchBucket(uint32_t hash);
-    bool applyToAllBuckets(std::function<bool(void*)> cb);
+             std::uint64_t size, std::uint32_t mask, std::uint32_t shift);
+    void* fetchBucket(std::uint32_t hash);
+
+    std::vector<BucketLocker> lockAllBuckets();
+
+    template <typename BucketType>
+    bool applyToAllBuckets(std::function<bool(BucketType&)> cb);
 
    private:
     std::shared_ptr<Table> _source;
     GenericBucket* _buckets;
-    uint64_t _size;
-    uint32_t _mask;
-    uint32_t _shift;
+    std::uint64_t _size;
+    std::uint32_t _mask;
+    std::uint32_t _shift;
   };
 
  public:
@@ -88,7 +125,7 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a new table of size 2^(logSize) in disabled state.
   //////////////////////////////////////////////////////////////////////////////
-  explicit Table(uint32_t logSize);
+  explicit Table(std::uint32_t logSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the table
@@ -99,22 +136,22 @@ class Table : public std::enable_shared_from_this<Table> {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the memory usage for a table with specified logSize
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t allocationSize(uint32_t logSize);
+  static std::uint64_t allocationSize(std::uint32_t logSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the memory usage of the table.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t memoryUsage() const;
+  std::uint64_t memoryUsage() const;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the number of buckets in the table.
+  /// @brief Returns the number of buckets in the table. At most 2^32.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t size() const;
+  std::uint64_t size() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the logSize of the table. (2^(logSize()) == size())
   //////////////////////////////////////////////////////////////////////////////
-  uint32_t logSize() const;
+  std::uint32_t logSize() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Fetches a pointer to the bucket mapped by the given hash, and locks
@@ -126,7 +163,8 @@ class Table : public std::enable_shared_from_this<Table> {
   /// the auxiliary table. The second member of the returned pair is the source
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
-  std::pair<void*, Table*> fetchAndLockBucket(uint32_t hash, uint64_t maxTries = UINT64_MAX);
+  BucketLocker fetchAndLockBucket(std::uint32_t hash,
+                                  std::uint64_t maxTries = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the auxiliary table.
@@ -136,24 +174,24 @@ class Table : public std::enable_shared_from_this<Table> {
   /// then the return value will be the existing auxiliary table (possibly
   /// null).
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> table);
+  std::shared_ptr<Table> setAuxiliary(std::shared_ptr<Table> const& table);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer to the specified bucket in the primary table,
   /// regardless of migration status.
   //////////////////////////////////////////////////////////////////////////////
-  void* primaryBucket(uint64_t index);
+  void* primaryBucket(std::uint64_t index);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a subtable in the auxiliary index which corresponds to the
   /// specified bucket in the primary table.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<Table::Subtable> auxiliaryBuckets(uint32_t index);
+  std::unique_ptr<Table::Subtable> auxiliaryBuckets(std::uint32_t index);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Set cache-type-specific members.
   //////////////////////////////////////////////////////////////////////////////
-  void setTypeSpecifics(BucketClearer clearer, size_t slotsPerBucket);
+  void setTypeSpecifics(BucketClearer clearer, std::size_t slotsPerBucket);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reset table to fully empty state. Disables table.
@@ -200,11 +238,11 @@ class Table : public std::enable_shared_from_this<Table> {
   bool _disabled;
   bool _evictions;
 
-  uint32_t _logSize;
-  uint64_t _size;
-  uint32_t _shift;
-  uint32_t _mask;
-  std::unique_ptr<uint8_t[]> _buffer;
+  std::uint32_t _logSize;
+  std::uint64_t _size;
+  std::uint32_t _shift;
+  std::uint32_t _mask;
+  std::unique_ptr<std::uint8_t[]> _buffer;
   GenericBucket* _buckets;
 
   std::shared_ptr<Table> _auxiliary;
@@ -212,11 +250,11 @@ class Table : public std::enable_shared_from_this<Table> {
   BucketClearer _bucketClearer;
 
   uint64_t _slotsTotal;
-  std::atomic<uint64_t> _slotsUsed;
+  std::atomic<std::uint64_t> _slotsUsed;
 
  private:
   void disable();
-  bool isEnabled(uint64_t maxTries = triesGuarantee);
+  bool isEnabled(std::uint64_t maxTries = triesGuarantee);
   static void defaultClearer(void* ptr);
 };
 

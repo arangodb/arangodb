@@ -8,14 +8,6 @@ Returns an object containing all collection properties.
 * *waitForSync*: If *true* creating a document will only return
   after the data was synced to disk.
 
-* *journalSize* : The size of the journal in bytes.
-  This option is meaningful for the MMFiles storage engine only.
-
-* *isVolatile*: If *true* then the collection data will be
-  kept in memory only and ArangoDB will not write or sync the data
-  to disk.
-  This option is meaningful for the MMFiles storage engine only.
-
 * *keyOptions* (optional) additional options for key generation. This is
   a JSON array containing the following attributes (note: some of the
   attributes are optional):
@@ -30,19 +22,10 @@ Returns an object containing all collection properties.
   * *offset*: initial offset value for *autoincrement* key generator.
     Not used for other key generator types.
 
-* *indexBuckets*: number of buckets into which indexes using a hash
-  table are split. The default is 16 and this number has to be a
-  power of 2 and less than or equal to 1024.
-  This option is meaningful for the MMFiles storage engine only.
-
-  For very large collections one should increase this to avoid long pauses
-  when the hash table has to be initially built or resized, since buckets
-  are resized individually and can be initially built in parallel. For
-  example, 64 might be a sensible value for a collection with 100
-  000 000 documents. Currently, only the edge index respects this
-  value, but other index types might follow in future ArangoDB versions.
-  Changes (see below) are applied when the collection is loaded the next
-  time.
+* *schema* (optional, default is *null*): 
+  Object that specifies the collection level document schema for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 In a cluster setup, the result will also contain the following attributes:
 
@@ -51,16 +34,20 @@ In a cluster setup, the result will also contain the following attributes:
 * *shardKeys*: contains the names of document attributes that are used to
   determine the target shard for documents.
 
-* *replicationFactor*: determines how many copies of each shard are kept 
-  on different DBServers. Has to be in the range of 1-10 *(Cluster only)*
+* *replicationFactor*: determines how many copies of each shard are kept
+  on different DB-Servers. Has to be in the range of 1-10 or the string
+  `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
-* *writeConcern* : determines the number of minimal shard copies kept on
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
+* *writeConcern*: determines how many copies of each shard are required to be
+  in sync on the different DB-Servers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 * *shardingStrategy*: the sharding strategy selected for the collection.
   This attribute will only be populated in cluster mode and is not populated
-  in single-server mode.
+  in single-server mode. _(cluster only)_
 
 `collection.properties(properties)`
 
@@ -70,23 +57,19 @@ one or more of the following attribute(s):
 * *waitForSync*: If *true* creating a document will only return
   after the data was synced to disk.
 
-* *journalSize* : The size of the journal in bytes.
-  This option is meaningful for the MMFiles storage engine only.
+* *replicationFactor*: Change the number of shard copies kept on
+  different DB-Servers. Valid values are integer numbers in the range of 1-10
+  or the string `"satellite"` for a SatelliteCollection (Enterprise Edition only).
+  _(cluster only)_
 
-* *indexBuckets* : See above, changes are only applied when the
-  collection is loaded the next time.
-  This option is meaningful for the MMFiles storage engine only.
+* *writeConcern*: change how many copies of each shard are required to be
+  in sync on the different DB-Servers. If there are less then these many copies
+  in the cluster a shard will refuse to write. Writes to shards with enough
+  up-to-date copies will succeed at the same time however. The value of
+  *writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
-* *replicationFactor* : Change the number of shard copies kept on 
-  different DBServers, valid values are  integer numbers
-  in the range of 1-10 *(Cluster only)*
-
-* *writeConcern* : Change the number of minimal shard copies to be in sync on 
-  different DBServers, a shard will refuse to write if less than this amount
-  of copies are in sync. Has to be in the range of 1-replicationFactor *(Cluster only)*
-
-**Note**: some other collection properties, such as *type*, *isVolatile*,
-*keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once 
+**Note**: some other collection properties, such as *type*,
+*keyOptions*, *numberOfShards* or *shardingStrategy* cannot be changed once
 the collection is created.
 
 @EXAMPLES

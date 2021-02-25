@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,20 +24,12 @@
 #include "InsertModifier.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
+#include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorHelpers.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
-#include "ModificationExecutor.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
-
-class CollectionNameResolver;
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -57,6 +50,6 @@ ModifierOperationType InsertModifierCompletion::accumulate(ModificationExecutorA
   }
 }
 
-OperationResult InsertModifierCompletion::transact(VPackSlice const& data) {
-  return _infos._trx->insert(_infos._aqlCollection->name(), data, _infos._options);
+OperationResult InsertModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+  return trx.insert(_infos._aqlCollection->name(), data, _infos._options);
 }

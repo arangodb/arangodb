@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,15 +36,15 @@ RocksDBRestCollectionHandler::RocksDBRestCollectionHandler(application_features:
                                                            GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result RocksDBRestCollectionHandler::handleExtraCommandPut(LogicalCollection& coll,
+Result RocksDBRestCollectionHandler::handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll,
                                                            std::string const& suffix,
                                                            velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {
-    if (!ExecContext::current().canUseCollection(coll.name(), auth::Level::RW)) {
+    if (!ExecContext::current().canUseCollection(coll->name(), auth::Level::RW)) {
       return Result(TRI_ERROR_FORBIDDEN);
     }
 
-    auto physical = toRocksDBCollection(coll.getPhysical());
+    auto physical = toRocksDBCollection(coll->getPhysical());
 
     Result res;
     uint64_t count = 0;

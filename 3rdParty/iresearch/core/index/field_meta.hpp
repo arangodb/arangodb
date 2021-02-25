@@ -27,7 +27,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/attributes.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct field_meta 
@@ -39,14 +39,14 @@ struct IRESEARCH_API field_meta {
 
   field_meta() = default;
   field_meta(const field_meta&) = default;
-  field_meta(field_meta&& rhs) NOEXCEPT;
+  field_meta(field_meta&& rhs) noexcept;
   field_meta(
     const string_ref& field, 
     const flags& features, 
     field_id norm = field_limits::invalid()
   );
 
-  field_meta& operator=(field_meta&& rhs) NOEXCEPT;
+  field_meta& operator=(field_meta&& rhs) noexcept;
   field_meta& operator=(const field_meta&) = default;
 
   bool operator==(const field_meta& rhs) const;
@@ -59,6 +59,9 @@ struct IRESEARCH_API field_meta {
   field_id norm{ field_limits::invalid() };
 }; // field_meta
 
+static_assert(std::is_move_constructible<field_meta>::value,
+              "default move constructor expected");
+
 //////////////////////////////////////////////////////////////////////////////
 /// @struct column_meta 
 /// @brief represents column metadata
@@ -67,10 +70,10 @@ struct IRESEARCH_API column_meta {
  public:
   column_meta() = default;
   column_meta(const column_meta&) = default;
-  column_meta(column_meta&& rhs) NOEXCEPT;
+  column_meta(column_meta&& rhs) noexcept;
   column_meta(const string_ref& field, field_id id);
 
-  column_meta& operator=(column_meta&& rhs) NOEXCEPT;
+  column_meta& operator=(column_meta&& rhs) noexcept;
   column_meta& operator=(const column_meta&) = default;
 
   bool operator==(const column_meta& rhs) const;
@@ -82,6 +85,9 @@ struct IRESEARCH_API column_meta {
   field_id id{ field_limits::invalid() };
 }; // column_meta
 
-NS_END
+static_assert(std::is_nothrow_move_constructible<column_meta>::value,
+              "default move constructor expected");
+
+}
 
 #endif

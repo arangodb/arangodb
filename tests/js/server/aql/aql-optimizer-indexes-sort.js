@@ -205,44 +205,7 @@ function optimizerIndexesSortTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSingleAttributeSortNotOptimizedAwayMMFiles : function () {
-      if (db._engine().name !== "mmfiles") {
-        return;
-      }
-
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
-
-      c.ensureHashIndex("value2");
-      c.ensureHashIndex("value3");
-
-      var queries = [
-        "FOR j IN " + c.name() + " FILTER j.value2 == 2 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, NOOPT(1) RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value3, i.value2 RETURN i.value2",
-        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT NOOPT(1) RETURN i.value2"
-      ];
-
-      queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-        assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
-        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
-      });
-    },
-
     testSingleAttributeSortNotOptimizedAwayRocksDB : function () {
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-
       AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
 
       c.ensureHashIndex("value2");
@@ -438,61 +401,7 @@ function optimizerIndexesSortTestSuite () {
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
-    testCannotUseHashIndexForSortIfConstRangesMoreMMFiles : function () {
-      if (db._engine().name !== "mmfiles") {
-        return;
-      }
-
-      c.ensureIndex({ type: "hash", fields: [ "value2", "value3", "value4" ] });
-
-      var queries = [
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2", false ],
-
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 ASC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 DESC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2", false ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2" ,false ],
-
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 DESC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value4 ASC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value4 DESC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2", true ],
-        [ "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 DESC RETURN i.value2", true ]
-      ];
-
-      queries.forEach(function(query) {
-        var plan = AQL_EXPLAIN(query[0]).plan;
-        var nodeTypes = plan.nodes.map(function(node) {
-          return node.type;
-        });
-
-       if (query[1]) {
-          assertEqual(-1, nodeTypes.indexOf("SortNode"), query[0]);
-        }
-        else {
-          assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query[0]);
-        }
-      });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test index usage
-    ////////////////////////////////////////////////////////////////////////////////
-
     testCannotUseHashIndexForSortIfConstRangesMoreRocksDB : function () {
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-
       c.ensureIndex({ type: "hash", fields: [ "value2", "value3", "value4" ] });
 
       var queries = [

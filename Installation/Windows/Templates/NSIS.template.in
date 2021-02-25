@@ -16,6 +16,7 @@
   !include "StripSlashes.nsh"
   !include "xcopy.nsh"
   !include "Utf8Converter.nsh"
+  !include "BaseDir.nsh"
 ;   !include "GetTime.nsh"
 ;--------------------------------
 ; get commandline parameters
@@ -47,7 +48,6 @@ Var START_MENU
 Var ADD_DESKTOP_ICON           ; x bool: add desktop icon
 Var IS_DEFAULT_INSTALLDIR
 
-Var STORAGE_ENGINE            ; x string auto/mmfiles/rocksdb
 Var PASSWORD                  ; x string
 Var PASSWORD_AGAIN            ; x string / only for comparison
 
@@ -75,11 +75,12 @@ Var ServiceUp                 ; did the service start?
 
 Var DATADIR
 Var APPDIR
-; Var LOGFILE
+Var LOGDIR
+Var PROGRAMDATA
 
 Var ini_DATADIR
 Var ini_APPDIR
-; Var ini_LOGFILE
+Var ini_LOGFILE
 
 Var UpgradeInstall
 Var LaunchAfterInstall
@@ -92,7 +93,7 @@ Var Dlg1_RB_all_users
 Var Dlg1_RB_cur_user
 
 Var Dlg1_CB_custom_path
-;Var Dlg1_CB_custom_logging
+Var Dlg1_CB_custom_logging
 Var Dlg1_CB_automatic_update
 Var Dlg1_CB_keep_backup
 Var Dlg1_CB_add_path
@@ -210,13 +211,18 @@ Function un.ReadSettings
   ;MessageBox MB_OK "Add to path: $ADD_TO_PATH"
   ReadRegStr $ADD_DESKTOP_ICON         SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
   ReadINIStr $newCfgValuesUtf8                  "$INSTDIR\${ARANGO_INI}" "database"   "directory"
-  ${Utf8ToAnsi} $newCfgValuesUtf8 $DATADIR       
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $DATADIR
   ReadINIStr $newCfgValuesUtf8                   "$INSTDIR\${ARANGO_INI}" "javascript" "app-path"
   ${Utf8ToAnsi} $newCfgValuesUtf8 $APPDIR
+  ReadINIStr $newCfgValuesUtf8                   "$INSTDIR\${ARANGO_INI}" "log" "file"
+  ${Utf8ToAnsi} $newCfgValuesUtf8 $LOGDIR
+  !insertmacro un.BaseDir "$LOGDIR"
 
 FunctionEnd
 
 Function check_previous_install
+  DetailPrint "checking whether $DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER exists"
+
   StrCpy $UpgradeInstall "0"
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\SERVER" OldFound
   IfFileExists "$DATADIR\@INC_CPACK_ARANGO_DATA_DIR@\ENGINE" OldFound
@@ -537,8 +543,9 @@ continueUI:
   ${NSD_CreateCheckBox} 0 -100 100% 6% "Choose custom install paths for databases and installation"
   Pop $Dlg1_CB_custom_path
 
-  ;${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDBs own logfiles"
-  ;Pop $Dlg1_CB_custom_logging
+  ${NSD_CreateCheckBox} 0 -120 100% 6% "Enable ArangoDB's own logfiles"
+  Pop $Dlg1_CB_custom_logging
+  ${NSD_SetState} $Dlg1_CB_custom_logging ${BST_CHECKED}
 
   ${NSD_CreateCheckBox} 0 -80 100% 6% "Automatically update existing ArangoDB database"
   Pop $Dlg1_CB_automatic_update
@@ -595,10 +602,14 @@ continueUI:
     StrCpy $ChooseInstallPath "0"
   ${EndIf}
 
-  ;${NSD_GetState} $Dlg1_CB_custom_logging $R0
-  ;${If} $R0 = ${BST_CHECKED}
-  ;  StrCpy $LOGFILE "$APPDIR\LOG.txt"
-  ;${EndIf}
+  ${NSD_GetState} $Dlg1_CB_custom_logging $R0
+  ${If} $R0 = ${BST_CHECKED}
+    ${If} $TRI_INSTALL_SCOPE_ALL == '1'
+      StrCpy $LOGDIR "$PROGRAMDATA\ArangoDB-logs"
+    ${Else}
+      StrCpy $LOGDIR "$LOCALAPPDATA\ArangoDB-logs"
+    ${EndIf}
+  ${EndIf}
 
 
   ${NSD_GetState} $Dlg1_CB_automatic_update $R0
@@ -652,7 +663,6 @@ continueUI:
       MessageBox MB_ICONEXCLAMATION "Please clean up the previously existing incomplete database directory $\r$\n$DATADIR$\r$\n before continuing with the installation!"
     startDialog:
   ${Else}
-    StrCpy $STORAGE_ENGINE "auto"
     Return
   ${EndIf}
   nsDialogs::Create 1018
@@ -675,16 +685,6 @@ continueUI:
   ${NSD_CreateLabel} 35% 50 40% 6% "Password (Again)"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateLabel} 0, 90, 100% 6% "Choose the storage engine to use for this ArangoDB installation"
-  Pop $0 ; Don't care...
-
-  ${NSD_CreateDropList} 5, 110, 30% 6% ""
-  Pop $DLG2_droplist
-  ${NSD_CB_AddString} $DLG2_droplist "auto"
-  ${NSD_CB_AddString} $DLG2_droplist "mmfiles"
-  ${NSD_CB_AddString} $DLG2_droplist "rocksdb"
-
-  ${NSD_CB_SelectString} $DLG2_droplist "auto"
   nsDialogs::Show
 
   Return
@@ -698,7 +698,6 @@ Function InstallOptionsPage2_results
   Push $R0
   Push $R1
   Push $R2
-  ${NSD_GetText} $DLG2_droplist $STORAGE_ENGINE
 
   ${NSD_GetText} $Dlg2_PW_2 $PASSWORD_AGAIN
   ${NSD_GetText} $Dlg2_PW_1 $PASSWORD
@@ -861,10 +860,14 @@ continueUI:
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 60u "Your databases are stored in $\r$\n'$DATADIR'$\r$\n, and your Foxx services in$\r$\n'$APPDIR'$\r$\nShould we remove it during the uninstallation?"
+  ${if} $LOGDIR != ""
+     StrCpy $ini_LOGFILE ",$\r$\nYour logfiles are stored in $\r$\n   '$LOGDIR'"
+  ${EndIf}
+  
+  ${NSD_CreateLabel} 0 0 100% 70u "Your databases are stored in $\r$\n   '$DATADIR'$ini_LOGFILE$\r$\nand your Foxx services in$\r$\n   '$APPDIR'$\r$\n$\r$\nShould we remove them during the uninstallation?"
   Pop $0 ; Don't care...
 
-  ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete databases with uninstallation?"
+  ${NSD_CreateCheckbox} 5u -20u 50% 20u "Delete ArangoDB user elements with uninstallation?"
   Pop $mycheckbox
 
   nsDialogs::Show
@@ -948,10 +951,10 @@ Section "-Core installation"
   ${If} $APPDIR != ""
     StrCpy $ini_APPDIR "[javascript]$\r$\napp-path = $APPDIR$\r$\n"
   ${EndIf}
-  ;${If} $LOGFILE != ""
-  ;  StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGFILE$\r$\n"
-  ;${EndIf}
-  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR[server]$\r$\nstorage-engine = $STORAGE_ENGINE$\r$\n"
+  ${If} $LOGDIR != ""
+    StrCpy $ini_LOGFILE "[log]$\r$\nfile = $LOGDIR\arangod.log$\r$\n"
+  ${EndIf}
+  StrCpy $newCfgValues "$ini_APPDIR$ini_DATADIR$ini_LOGFILE"
   ${AnsiToUtf8} $newCfgValues $newCfgValuesUtf8
   StrCpy $newCfgValuesFile "$INSTDIR\etc\arangodb3\newValues.ini"
   FileOpen $4  "$newCfgValuesFile" w
@@ -962,6 +965,13 @@ Section "-Core installation"
   push "$INSTDIR\${ARANGO_INI}"
   call ReadINIFileKeys
   Delete "$newCfgValuesFile"
+
+  ${If} $LOGDIR != ""
+    CreateDirectory $LOGDIR
+  ${EndIf}
+
+  ; non-interactive install only hits us here?
+  Call check_previous_install
 
   CreateDirectory $APPDIR
   Call assignFileRights
@@ -1152,6 +1162,7 @@ Done:
   RMDir /r "$INSTDIR\var\lib\arangodb3-apps"
   RMDir    "$INSTDIR\var\lib"
   RMDir /r "$INSTDIR\var\log\arangodb3"
+  RMDIR /r "$LOGDIR"
   dontDeleteDatabases:
     DetailPrint 'Removing programm files:'
     DetailPrint "      RMDir $INSTDIR\usr\share\arangodb3\js\node\node_modules\graphql-sync"
@@ -1258,7 +1269,7 @@ Function .onInit
     StrCpy $TRI_INSTALL_SCOPE_ALL "0"
     StrCpy $TRI_INSTALL_SERVICE "0"
   ${EndIf}
-  
+
   !insertmacro determineInstallScope 1
 
   ${GetParameters} $R0
@@ -1294,12 +1305,6 @@ noInstDir:
   ${GetOptions} $R0 "/DATABASEDIR="        $CMDINSTDIR
   IfErrors +2 0
   StrCpy $DATADIR "$CMDINSTDIR"
-
-  ${GetParameters} $R0
-  ClearErrors
-  ${GetOptions} $R0 "/STORAGE_ENGINE=" $STORAGE_ENGINE
-  IfErrors 0 +2
-  StrCpy $STORAGE_ENGINE "auto"
 
   ${GetParameters} $R0
   ${GetOptions} $R0 "/DESKTOPICON="    $ADD_DESKTOP_ICON
@@ -1339,6 +1344,7 @@ inst:
   ; Reads components status for registry
   !insertmacro SectionList "InitSection"
 
+  ReadEnvStr $PROGRAMDATA ProgramData
   ; check to see if /D has been used to change
   ; the install directory by comparing it to the
   ; install directory that is expected to be the

@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "bitset_doc_iterator.hpp"
@@ -26,81 +25,67 @@
 #include "utils/bitset.hpp"
 #include "utils/math_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set)
-  : begin_(set.begin()),
-    end_(set.end()),
-    size_(set.size()) {
-  auto docs_count = set.count();
-
-  // make doc_id accessible via attribute
-  attrs_.emplace(doc_);
-  doc_.value = docs_count
-    ? doc_limits::invalid()
-    : doc_limits::eof(); // seal iterator
-
-  // set estimation value
-  estimate(docs_count);
-}
-
-bitset_doc_iterator::bitset_doc_iterator(
-      const sub_reader& reader,
-      const byte_type* stats,
-      const bitset& set,
-      const order::prepared& order,
-      boost_t boost)
-  : bitset_doc_iterator(set) {
-  prepare_score(order, order.prepare_scorers(
-    reader,
-    empty_term_reader(cost_.estimate()),
-    stats,
-    attributes(), // doc_iterator attributes
-    boost
-  ));
-}
-
-bool bitset_doc_iterator::next() NOEXCEPT {
-  return !doc_limits::eof(
-    seek(doc_.value + irs::doc_id_t(doc_.value < size_))
-  );
-}
-
-doc_id_t bitset_doc_iterator::seek(doc_id_t target) NOEXCEPT {
-  const auto* pword = begin_ + bitset::word(target);
-
-  if (pword >= end_) {
-    doc_.value = doc_limits::eof();
-
-    return doc_.value;
+attribute* bitset_doc_iterator::get_mutable(type_info::type_id id) noexcept {
+  if (type<document>::id() == id) {
+    return &doc_;
   }
 
-  auto word = ((*pword) >> bitset::bit(target));
+  return type<cost>::id() == id
+    ? &cost_ : nullptr;
+}
 
-  typedef decltype(word) word_t;
+bool bitset_doc_iterator::next() noexcept {
+  while (!word_) {
+    if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
 
-  if (word) {
-    // current word contains the specified 'target'
-    doc_.value = target + math::math_traits<word_t>::ctz(word);
+      doc_.value = doc_limits::eof();
+      word_ = 0;
 
-    return doc_.value;
+      return false;
+    }
+
+    word_ = *next_++;
+    base_ += bits_required<word_t>();
   }
 
-  while (!word && ++pword < end_) {
-    word = *pword;
+  const doc_id_t delta = math::math_traits<word_t>::ctz(word_);
+  irs::unset_bit(word_, delta);
+  doc_.value = base_ + delta;
+
+  return true;
+}
+
+doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
+  while (1) {
+    next_ = begin_ + bitset::word(target);
+
+    if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
+
+      doc_.value = doc_limits::eof();
+      word_ = 0;
+
+      return doc_.value;
+    }
+
+    break;
   }
 
-  assert(pword >= begin_);
+  base_ = doc_id_t(std::distance(begin_, next_) * bits_required<word_t>());
+  word_ = (*next_++) & ((~word_t(0)) << bitset::bit(target));
 
-  doc_.value = word
-    ? bitset::bit_offset(std::distance(begin_, pword)) + math::math_traits<word_t>::ctz(word)
-    : doc_limits::eof();
+  next();
 
   return doc_.value;
 }
 
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

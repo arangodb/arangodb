@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "RestServer/VocbaseContext.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
@@ -145,6 +146,9 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   }
 
  protected:
+  /// @brief returns the short id of the server which should handle this request
+  ResultT<std::pair<std::string, bool>> forwardingTarget() override;
+
   /// @brief assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string const& collectionName, 
@@ -177,16 +181,12 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief generates forbidden
   void generateForbidden();
 
-  /// @brief generates precondition failed, without transaction info
-  ///        DEPRECATED
-  void generatePreconditionFailed(std::string const&, std::string const& key,
-                                  TRI_voc_rid_t rev);
-
-  /// @brief generates precondition failed, without transaction info
-  void generatePreconditionFailed(arangodb::velocypack::Slice const& slice);
+  /// @brief generates conflict error
+  void generateConflictError(arangodb::OperationResult const&,
+                             bool precFailed = false);
 
   /// @brief generates not modified
-  void generateNotModified(TRI_voc_rid_t);
+  void generateNotModified(RevisionId);
 
   /// @brief generates first entry from a result set
   void generateDocument(arangodb::velocypack::Slice const& input, 
@@ -197,22 +197,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// is used by the others.
   void generateTransactionError(std::string const& collectionName,
                                 OperationResult const& result,
-                                std::string const& key, TRI_voc_rid_t = 0);
-
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(std::string const& collectionName, 
-                                Result const& res,
-                                std::string const& key, TRI_voc_rid_t rid = 0) {
-    generateTransactionError(collectionName, OperationResult(res), key, rid);
-  }
-
-  /// @brief generate an error message for a transaction error
-  void generateTransactionError(OperationResult const& result) {
-    generateTransactionError("", result, "", 0);
-  }
+                                std::string const& key = "",
+                                RevisionId rid = RevisionId::none());
 
   /// @brief extracts the revision. "header" must be lowercase.
-  TRI_voc_rid_t extractRevision(char const* header, bool& isValid) const;
+  RevisionId extractRevision(char const* header, bool& isValid) const;
 
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
@@ -231,10 +220,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * locking or a leased transaction.
    */
   std::unique_ptr<transaction::Methods> createTransaction(std::string const& cname,
-                                                          AccessMode::Type mode) const;
+                                                          AccessMode::Type mode,
+                                                          OperationOptions const& opOptions) const;
   
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext() const;
+  std::shared_ptr<transaction::Context> createTransactionContext(AccessMode::Type mode) const;
 
  protected:
   /// @brief request context

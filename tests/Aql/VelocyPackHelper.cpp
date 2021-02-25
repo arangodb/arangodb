@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -47,7 +48,7 @@ void arangodb::tests::VPackToAqlItemBlock(VPackSlice data, RegisterCount nrRegs,
                                           AqlItemBlock& block) {
   // coordinates in the matrix rowNr, entryNr
   size_t rowIndex = 0;
-  RegisterId entry = 0;
+  RegisterId::value_t entry = 0;
   for (auto const& row : VPackArrayIterator(data)) {
     // Walk through the rows
     TRI_ASSERT(row.isArray());

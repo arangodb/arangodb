@@ -1,0 +1,79 @@
+
+  <div class="headerBar">
+    <div class="headerButtonBar">
+      <ul class="headerButtonList">
+        <li class="enabled">
+          <a id="addDocument" class="headerButton">
+            <span title="Add new document">
+              <i class="fa fa-file fa-stack-1x"></i>
+              <i class="fa fa-plus fa-stack-1x fa-top"></i>
+            </span>
+          </a>
+        </li>
+      </ul>
+    </div>
+
+  </div>
+
+  <div class="innerContent document-info-div">
+
+    <div class="document-info">
+
+      <div class="document-type-container">
+        <div id="document-type" class="document-bold-font"></div>
+        <div id="document-id" class="document-thin-font"></div>
+      </div>
+
+      <div class="document-info-container">
+
+        <div class="document-inner-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_rev:</div>
+            <div id="document-rev" class="document-thin-font"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_key:</div>
+            <div id="document-key" class="document-thin-font"></div>
+          </div>
+        </div>
+
+        <div class="document-inner-info-container edge-info-container">
+          <div class="document-attribute">
+            <div class="document-bold-font">_from:</div>
+            <div id="document-from" class="document-thin-font document-link"></div>
+          </div>
+          <div class="document-attribute">
+            <div class="document-bold-font">_to:</div>
+            <div id="document-to" class="document-thin-font document-link"></div>
+          </div>
+        </div>
+
+        <div class="document-inner-info-container edge-edit-container">
+          <div id="edit-from" class="document-attribute">
+            <i class="fa fa-edit"></i>
+            <i class="fa fa-check" style="display: none"></i>
+            <i class="fa fa-times" style="display: none"></i>
+          </div>
+          <div id="edit-to" class="document-attribute">
+            <i class="fa fa-edit"></i>
+            <i class="fa fa-check" style="display: none"></i>
+            <i class="fa fa-times" style="display: none"></i>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="tableDiv" class="innerContent document-content-div">
+
+    <div id="documentEditor" class="document-editor"></div>
+    <div class="bottomButtonBar">
+      <button id="saveDocumentButton" class="button-success pull-right">Save</button>
+      <button id="deleteDocumentButton" class="button-danger pull-right">Delete</button>
+    </div>
+    <div class="pull-left shortcuts showHotkeyHelp"></div>
+	</div>
+

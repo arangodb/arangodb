@@ -33,9 +33,9 @@
 
 const expect = require('chai').expect;
 const users = require('@arangodb/users');
-const helper = require('@arangodb/user-helper');
+const helper = require('@arangodb/testutils/user-helper');
 const tasks = require('@arangodb/tasks');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const download = require('internal').download;
 const dbName = helper.dbName;
 const colName = helper.colName;
@@ -164,7 +164,7 @@ describe('User Rights Management', () => {
                       global.KEY_SET('${keySpaceId}', '${name}_status', true);
                     } catch (e) {
                       global.KEY_SET('${keySpaceId}', '${name}_status', false);
-                    }finally {
+                    } finally {
                       global.KEY_SET('${keySpaceId}', '${name}', true);
                     }
                   })(params);`

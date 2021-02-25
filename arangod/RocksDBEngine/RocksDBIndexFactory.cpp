@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,21 +51,25 @@ namespace {
 struct DefaultIndexFactory : public arangodb::IndexTypeFactory {
   arangodb::Index::IndexType const _type;
 
-  explicit DefaultIndexFactory(arangodb::Index::IndexType type) : _type(type) {}
+  explicit DefaultIndexFactory(arangodb::application_features::ApplicationServer& server,
+                               arangodb::Index::IndexType type)
+      : IndexTypeFactory(server), _type(type) {}
 
   bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
+             arangodb::velocypack::Slice const& rhs,
+             std::string const&) const override {
     return arangodb::IndexTypeFactory::equal(_type, lhs, rhs, true);
   }
 };
 
 struct EdgeIndexFactory : public DefaultIndexFactory {
-  EdgeIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {}
+  EdgeIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create edge index");
@@ -100,12 +104,13 @@ struct EdgeIndexFactory : public DefaultIndexFactory {
 };
 
 struct FulltextIndexFactory : public DefaultIndexFactory {
-  FulltextIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
+  FulltextIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<arangodb::RocksDBFulltextIndex>(id, collection, definition);
   }
 
@@ -131,12 +136,13 @@ struct FulltextIndexFactory : public DefaultIndexFactory {
 };
 
 struct GeoIndexFactory : public DefaultIndexFactory {
-  GeoIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  GeoIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<arangodb::RocksDBGeoIndex>(id, collection, definition, "geo");
   }
 
@@ -161,12 +167,13 @@ struct GeoIndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo1IndexFactory : public DefaultIndexFactory {
-  Geo1IndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  Geo1IndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<arangodb::RocksDBGeoIndex>(id, collection, definition, "geo1");
   }
 
@@ -192,12 +199,13 @@ struct Geo1IndexFactory : public DefaultIndexFactory {
 };
 
 struct Geo2IndexFactory : public DefaultIndexFactory {
-  Geo2IndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
+  Geo2IndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_GEO_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<arangodb::RocksDBGeoIndex>(id, collection, definition, "geo2");
   }
 
@@ -224,11 +232,13 @@ struct Geo2IndexFactory : public DefaultIndexFactory {
 
 template <typename F, arangodb::Index::IndexType type>
 struct SecondaryIndexFactory : public DefaultIndexFactory {
-  SecondaryIndexFactory() : DefaultIndexFactory(type) {}
+  SecondaryIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<F>(id, collection, definition);
   }
 
@@ -253,12 +263,14 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct TtlIndexFactory : public DefaultIndexFactory {
-  explicit TtlIndexFactory(arangodb::Index::IndexType type)
-      : DefaultIndexFactory(type) {}
+  explicit TtlIndexFactory(arangodb::application_features::ApplicationServer& server,
+                           arangodb::Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     return std::make_shared<RocksDBTtlIndex>(id, collection, definition);
   }
 
@@ -283,12 +295,13 @@ struct TtlIndexFactory : public DefaultIndexFactory {
 };
 
 struct PrimaryIndexFactory : public DefaultIndexFactory {
-  PrimaryIndexFactory()
-      : DefaultIndexFactory(arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
+  PrimaryIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
                                                arangodb::velocypack::Slice const& definition,
-                                               TRI_idx_iid_t id, bool isClusterConstructor) const override {
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
     if (!isClusterConstructor) {
       // this index type cannot be created directly
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create primary index");
@@ -319,17 +332,21 @@ struct PrimaryIndexFactory : public DefaultIndexFactory {
 
 }  // namespace
 
-RocksDBIndexFactory::RocksDBIndexFactory() {
-  static const EdgeIndexFactory edgeIndexFactory;
-  static const FulltextIndexFactory fulltextIndexFactory;
-  static const GeoIndexFactory geoIndexFactory;
-  static const Geo1IndexFactory geo1IndexFactory;
-  static const Geo2IndexFactory geo2IndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBHashIndex, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBPersistentIndex, arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory;
-  static const SecondaryIndexFactory<arangodb::RocksDBSkiplistIndex, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory;
-  static const TtlIndexFactory ttlIndexFactory(arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
-  static const PrimaryIndexFactory primaryIndexFactory;
+RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer& server)
+    : IndexFactory(server) {
+  static const EdgeIndexFactory edgeIndexFactory(server);
+  static const FulltextIndexFactory fulltextIndexFactory(server);
+  static const GeoIndexFactory geoIndexFactory(server);
+  static const Geo1IndexFactory geo1IndexFactory(server);
+  static const Geo2IndexFactory geo2IndexFactory(server);
+  static const SecondaryIndexFactory<arangodb::RocksDBHashIndex, arangodb::Index::TRI_IDX_TYPE_HASH_INDEX> hashIndexFactory(
+      server);
+  static const SecondaryIndexFactory<arangodb::RocksDBPersistentIndex, arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX> persistentIndexFactory(
+      server);
+  static const SecondaryIndexFactory<arangodb::RocksDBSkiplistIndex, arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX> skiplistIndexFactory(
+      server);
+  static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
+  static const PrimaryIndexFactory primaryIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -363,10 +380,10 @@ void RocksDBIndexFactory::fillSystemIndexes(arangodb::LogicalCollection& col,
   // create edges indexes
   if (TRI_COL_TYPE_EDGE == col.type()) {
     indexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(1, col, def,
+        std::make_shared<arangodb::RocksDBEdgeIndex>(IndexId::edgeFrom(), col, def,
                                                      StaticStrings::FromString));
     indexes.emplace_back(
-        std::make_shared<arangodb::RocksDBEdgeIndex>(2, col, def,
+        std::make_shared<arangodb::RocksDBEdgeIndex>(IndexId::edgeTo(), col, def,
                                                      StaticStrings::ToString));
   }
 }
@@ -378,7 +395,7 @@ void RocksDBIndexFactory::prepareIndexes(
   TRI_ASSERT(indexesSlice.isArray());
 
   bool splitEdgeIndex = false;
-  TRI_idx_iid_t last = 0;
+  IndexId last = IndexId::primary();
 
   for (VPackSlice v : VPackArrayIterator(indexesSlice)) {
     if (!validateFieldsDefinition(v, 0, SIZE_MAX).ok()) {
@@ -424,9 +441,9 @@ void RocksDBIndexFactory::prepareIndexes(
               to.add(VPackValue(StaticStrings::ToString));
               to.close();
             } else if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexId) {
-              auto iid = basics::StringUtils::uint64(f.value.copyString()) + 1;
+              IndexId iid{basics::StringUtils::uint64(f.value.copyString()) + 1};
               last = iid;
-              to.add(StaticStrings::IndexId, VPackValue(std::to_string(iid)));
+              to.add(StaticStrings::IndexId, VPackValue(std::to_string(iid.id())));
             } else {
               to.add(f.key);
               to.add(f.value);
@@ -453,8 +470,8 @@ void RocksDBIndexFactory::prepareIndexes(
 
         for (auto const& f : VPackObjectIterator(v)) {
           if (arangodb::velocypack::StringRef(f.key) == StaticStrings::IndexId) {
-            last++;
-            b.add(StaticStrings::IndexId, VPackValue(std::to_string(last)));
+            last = IndexId{last.id() + 1};
+            b.add(StaticStrings::IndexId, VPackValue(std::to_string(last.id())));
           } else {
             b.add(f.key);
             b.add(f.value);
@@ -475,12 +492,13 @@ void RocksDBIndexFactory::prepareIndexes(
       TRI_ASSERT(idx != nullptr);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       LOG_TOPIC("c455a", DEBUG, arangodb::Logger::ENGINES)
-          << "created index '" << idx->id() << "' from definition '"
+          << "created index '" << idx->id().id() << "' from definition '"
           << v.toJson() << "'";
 #endif
 
       if (basics::VelocyPackHelper::getBooleanValue(v, "_inprogress", false)) {
-        LOG_TOPIC("66770", WARN, Logger::ENGINES) << "dropping failed index '" << idx->id() << "'";
+        LOG_TOPIC("66770", WARN, Logger::ENGINES)
+            << "dropping failed index '" << idx->id().id() << "'";
         idx->drop();
         continue;
       }

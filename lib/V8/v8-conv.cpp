@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -130,9 +130,9 @@ bool TRI_ObjectToBoolean(v8::Isolate* isolate, v8::Handle<v8::Value> const value
 /// @brief extracts an optional boolean property from a V8 object
 bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate, v8::Handle<v8::Object> const obj,
                                     const char* property, bool defaultValue) {
-  auto value = obj->Get(TRI_V8_ASCII_STRING(isolate, property));
-  if (!value->IsUndefined()) {
-    return TRI_ObjectToBoolean(isolate, value);
+  auto value = obj->Get(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, property));
+  if (!value.IsEmpty()) {
+    return TRI_ObjectToBoolean(isolate, value.FromMaybe(v8::Local<v8::Value>()));
   } else {
     return defaultValue;
   }

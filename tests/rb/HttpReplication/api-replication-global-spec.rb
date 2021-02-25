@@ -225,9 +225,16 @@ describe ArangoDB do
 ################################################################################
 
     context "dealing with wal access api" do
-
       api = "/_api/wal"
       prefix = "api-wal"
+      
+      before do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
+
+      after do
+        ArangoDB.drop_collection("UnitTestsReplication")
+      end
 
 ################################################################################
 ## state
@@ -260,7 +267,7 @@ describe ArangoDB do
 ## tickRanges
 ################################################################################
 
-      it "fetches the available tick range" do
+      it "fetches the available tick range 1" do
         # fetch state
         cmd = api + "/range"
         doc = ArangoDB.log_get("#{prefix}-range", cmd, :body => "")
@@ -283,7 +290,7 @@ describe ArangoDB do
 ## lastTick
 ################################################################################
 
-      it "fetches the available tick range" do
+      it "fetches the available tick range 2" do
         # fetch state
         cmd = api + "/lastTick"
         doc = ArangoDB.log_get("#{prefix}-lastTick", cmd, :body => "")

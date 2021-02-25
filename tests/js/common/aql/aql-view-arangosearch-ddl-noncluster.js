@@ -256,7 +256,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -291,7 +291,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -730,7 +730,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -756,6 +756,7 @@ function IResearchFeatureDDLTestSuite () {
           { field: "my.Nested.field", direction: "asc" },
           { field: "another.field", asc: false }
         ],
+        primarySortCompression:"none",
         "cleanupIntervalStep": 42,
         "commitIntervalMsec": 12345 
       });
@@ -774,9 +775,10 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
@@ -792,6 +794,7 @@ function IResearchFeatureDDLTestSuite () {
         locale: "en_EN.UTF-8",
         version: 2,
         primarySort: [ { field: "field", asc: false } ],
+        primarySortCompression:"lz4",
         "cleanupIntervalStep": 442
       }, false); // full update
 
@@ -810,9 +813,10 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
@@ -1091,7 +1095,7 @@ function IResearchFeatureDDLTestSuite () {
       }
 
       // truncate collection
-      col.truncate();
+      col.truncate({ compact: false });
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
@@ -1255,9 +1259,9 @@ function IResearchFeatureDDLTestSuite () {
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove(analyzerName); } catch (e) {}
-      assertEqual(0, db._analyzers.count());
       db._createDatabase(dbName);
       db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "identity");
       // recreating database
       db._useDatabase("_system");
@@ -1267,6 +1271,7 @@ function IResearchFeatureDDLTestSuite () {
 
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
       assertEqual(1, db._analyzers.count());
 

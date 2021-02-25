@@ -227,11 +227,27 @@ function optimizerCollectExpressionTestSuite () {
     },
 
     testMultiCollectWithConstExpression : function () {
-      var query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m != p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      var query = `
+        LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ]
+        FOR p1 IN values
+          COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time)
+          FOR p2 IN values
+            FILTER m != p2.time
+            COLLECT q = 0 INTO qs = p2
+            RETURN {q}
+      `;
       var results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
       
-      query = "LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ] FOR p1 IN values COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time) FOR p2 IN values FILTER m == p2.time COLLECT q = 0 INTO qs = p2 RETURN {q}"; 
+      query = `
+        LET values = [ {time:1}, {time:1}, {time:2}, {time:2}, {time:3}, {time:4}, {time:2}, {time:3}, {time:6} ]
+        FOR p1 IN values
+          COLLECT t = FLOOR(p1.time / 2) AGGREGATE m = MAX(p1.time)
+          FOR p2 IN values
+            FILTER m == p2.time
+            COLLECT q = 0 INTO qs = p2
+            RETURN {q}
+      `;
       results = AQL_EXECUTE(query);
       assertEqual([ { q: 0 } ], results.json);
     },
@@ -260,7 +276,36 @@ function optimizerCollectExpressionTestSuite () {
       query = "FOR v IN 1..3 COLLECT w = v INTO x RETURN w";
       results = AQL_EXECUTE(query);
       assertEqual([ 1, 2, 3 ], results.json);
-    }
+    },
+
+    // regression test.
+    // COLLECT should invalidate all previous variables.
+    // COLLECT INTO should collect all those variables into the group variable.
+    // There is one exception: Unless the COLLECT itself is on the top level,
+    // top-level variables are *neither* invalidated *nor* collected.
+    testCollectAfterCollect : function () {
+      const query = `
+        LET foo = "bar"
+        FOR x IN 1..3
+          COLLECT p = 'p' INTO groups
+          COLLECT o = 'o' INTO ngroups
+          RETURN {foo, ngroup: FIRST(ngroups)}
+      `;
+
+      const expectedResults = [
+        {
+          foo: 'bar',
+          ngroup:
+            {
+              p: 'p',
+              groups: [{x: 1}, {x: 2}, {x: 3}],
+            },
+        },
+      ];
+
+      const results = AQL_EXECUTE(query);
+      assertEqual(expectedResults, results.json);
+    },
      
   };
 }

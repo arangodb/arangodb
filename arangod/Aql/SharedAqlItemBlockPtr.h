@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,8 +35,7 @@ class SharedAqlItemBlockPtr {
   inline explicit SharedAqlItemBlockPtr(AqlItemBlock* aqlItemBlock) noexcept;
 
   // allow implicit cast from nullptr:
-  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions)
-  // cppcheck-suppress noExplicitConstructor
+  // NOLINTNEXTLINE(google-explicit-constructor, hicpp-explicit-conversions) cppcheck-suppress noExplicitConstructor
   constexpr inline SharedAqlItemBlockPtr(std::nullptr_t) noexcept;
 
   constexpr inline SharedAqlItemBlockPtr() noexcept;
@@ -88,8 +88,9 @@ arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(arangodb::aql::AqlIt
   // This constructor should only be used for fresh AqlItemBlocks in the
   // AqlItemBlockManager. All other places should already have a
   // SharedAqlItemBlockPtr.
-  TRI_ASSERT(aqlItemBlock->getRefCount() == 0);
-  incrRefCount();
+  TRI_ASSERT(_aqlItemBlock != nullptr);
+  TRI_ASSERT(_aqlItemBlock->getRefCount() == 0);
+  _aqlItemBlock->incrRefCount();
 }
 
 constexpr arangodb::aql::SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(std::nullptr_t) noexcept
@@ -113,10 +114,9 @@ SharedAqlItemBlockPtr::SharedAqlItemBlockPtr(SharedAqlItemBlockPtr&& other) noex
 }
 
 SharedAqlItemBlockPtr& SharedAqlItemBlockPtr::operator=(SharedAqlItemBlockPtr const& other) noexcept {
-  TRI_ASSERT(this != &other);
+  other.incrRefCount();
   decrRefCount();
   _aqlItemBlock = other._aqlItemBlock;
-  incrRefCount();
   return *this;
 }
 
@@ -199,11 +199,9 @@ void SharedAqlItemBlockPtr::swap(SharedAqlItemBlockPtr& other) noexcept {
 }
 
 void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
-  if (_aqlItemBlock != nullptr) {
-    _aqlItemBlock->decrRefCount();
-    if (_aqlItemBlock->getRefCount() == 0) {
-      returnBlock();
-    }
+  if (_aqlItemBlock != nullptr &&
+      _aqlItemBlock->decrRefCount() == 0) {
+    returnBlock();
   }
 }
 

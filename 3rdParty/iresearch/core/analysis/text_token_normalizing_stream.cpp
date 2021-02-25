@@ -52,8 +52,8 @@
 
 #include "text_token_normalizing_stream.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
@@ -74,10 +74,10 @@ struct text_token_normalizing_stream::state_t {
   }
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
-NS_LOCAL
+namespace {
 
 
 bool make_locale_from_name(const irs::string_ref& name,
@@ -96,7 +96,6 @@ bool make_locale_from_name(const irs::string_ref& name,
         "Caught error while constructing locale from "
         "name: %s",
         name.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -181,7 +180,8 @@ bool parse_json_config(
 
           return true;
         }
-      default:  // fall through
+      [[fallthrough]];
+      default:
         IR_FRMT_ERROR(
             "Missing '%s' while constructing text_token_normalizing_stream "
             "from jSON arguments: %s",
@@ -192,7 +192,6 @@ bool parse_json_config(
         "Caught error while constructing text_token_normalizing_stream from "
         "jSON arguments: %s",
         args.c_str());
-    IR_LOG_EXCEPTION();
   }
   return false;
 }
@@ -297,7 +296,6 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
       "Caught error while constructing text_token_normalizing_stream TEXT arguments: %s",
       args.c_str()
     );
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -318,23 +316,21 @@ REGISTER_ANALYZER_JSON(irs::analysis::text_token_normalizing_stream, make_json,
 REGISTER_ANALYZER_TEXT(irs::analysis::text_token_normalizing_stream, make_text, 
                        normalize_text_config);
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
-
-DEFINE_ANALYZER_TYPE_NAMED(text_token_normalizing_stream, "norm")
+namespace iresearch {
+namespace analysis {
 
 text_token_normalizing_stream::text_token_normalizing_stream(
-    const options_t& options
-): analyzer(text_token_normalizing_stream::type()),
-  attrs_(4), // increment + offset + payload + term
-  state_(memory::make_unique<state_t>(options)),
-  term_eof_(true) {
- attrs_.emplace(inc_);
- attrs_.emplace(offset_);
- attrs_.emplace(payload_);
- attrs_.emplace(term_);
+    const options_t& options)
+  : attributes{{
+      { irs::type<increment>::id(), &inc_       },
+      { irs::type<offset>::id(), &offset_       },
+      { irs::type<payload>::id(), &payload_     },
+      { irs::type<term_attribute>::id(), &term_ }},
+      irs::type<text_token_normalizing_stream>::get()},
+    state_(memory::make_unique<state_t>(options)),
+    term_eof_(true) {
 }
 
 /*static*/ void text_token_normalizing_stream::init() {
@@ -407,19 +403,23 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // convert encoding to UTF8 for use with ICU
   // ...........................................................................
   std::string data_utf8;
-
-  // valid conversion since 'locale_' was created with internal unicode encoding
-  if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
-    return false; // UTF8 conversion failure
+  irs::string_ref data_utf8_ref;
+  if (irs::locale_utils::is_utf8(state_->options.locale)) {
+    data_utf8_ref = data;
+  } else {
+    // valid conversion since 'locale_' was created with internal unicode encoding
+    if (!irs::locale_utils::append_internal(data_utf8, data, state_->options.locale)) {
+      return false; // UTF8 conversion failure
+    }
+    data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8.size() > irs::integer_traits<int32_t>::const_max) {
+  if (data_utf8_ref.size() > irs::integer_traits<int32_t>::const_max) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 
   state_->data = icu::UnicodeString::fromUTF8(
-    icu::StringPiece(data_utf8.c_str(), (int32_t)(data_utf8.size()))
-  );
+    icu::StringPiece(data_utf8_ref.c_str(), static_cast<int32_t>(data_utf8_ref.size())));
 
   // ...........................................................................
   // normalize unicode
@@ -460,7 +460,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
   // use the normalized value
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value(irs::ref_cast<irs::byte_type>(irs::string_ref(state_->term_buf)));
+  term_.value = irs::ref_cast<irs::byte_type>(state_->term_buf);
   offset_.start = 0;
   offset_.end = data.size();
   payload_.value = ref_cast<uint8_t>(data);
@@ -470,9 +470,5 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
 }
 
 
-NS_END // analysis
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // analysis
+} // ROOT

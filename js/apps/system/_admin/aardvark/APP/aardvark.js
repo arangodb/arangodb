@@ -94,7 +94,8 @@ router.get('/config.js', function (req, res) {
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
-      maxNumberOfShards: internal.maxNumberOfShards
+      maxNumberOfShards: internal.maxNumberOfShards,
+      forceOneShard: internal.forceOneShard 
     })}`
   );
 })
@@ -131,24 +132,6 @@ router.get('/api/*', module.context.apiDocumentation({
   Mounts the system API documentation.
 `);
 
-authRouter.get('shouldCheckVersion', function (req, res) {
-  const versions = notifications.versions();
-  res.json(Boolean(versions && versions.enableVersionNotification));
-})
-.summary('Is version check allowed')
-.description(dd`
-  Check if version check is allowed.
-`);
-
-authRouter.post('disableVersionCheck', function (req, res) {
-  notifications.setVersions({enableVersionNotification: false});
-  res.json('ok');
-})
-.summary('Disable version check')
-.description(dd`
-  Disable the version check in web interface
-`);
-
 authRouter.post('/query/profile', function (req, res) {
   const bindVars = req.body.bindVars;
   const query = req.body.query;
@@ -179,23 +162,17 @@ authRouter.post('/query/profile', function (req, res) {
 `);
 
 authRouter.post('/query/explain', function (req, res) {
-  const bindVars = req.body.bindVars;
+  const bindVars = req.body.bindVars || {};
   const query = req.body.query;
   const id = req.body.id;
-  const batchSize = req.body.batchSize;
   let msg = null;
 
   try {
-    if (bindVars) {
-      msg = explainer.explain({
-        query: query,
-        bindVars: bindVars,
-        batchSize: batchSize,
-        id: id
-      }, {colors: false}, false, bindVars);
-    } else {
-      msg = explainer.explain(query, {colors: false}, false);
-    }
+    msg = explainer.explain({
+      query: query,
+      bindVars: bindVars,
+      id: id
+    }, {colors: false}, false);
   } catch (e) {
     res.throw('bad request', e.message, {cause: e});
   }
@@ -386,11 +363,29 @@ authRouter.post('/job', function (req, res) {
 `);
 
 authRouter.delete('/job', function (req, res) {
+  let arr = [];
   let frontend = db._collection('_frontend');
+
   if (frontend) {
+    // get all job results and return before deletion
+    _.each(frontend.all().toArray(), function (job) {
+      let resp = request.put({
+        url: '/_api/job/' + encodeURIComponent(job.id),
+        json: true,
+        headers: {
+          'Authorization': req.headers.authorization
+        }
+      }).body;
+      try {
+        arr.push(JSON.parse(resp));
+      } catch (ignore) {
+      }
+    });
+
+    // actual deletion
     frontend.removeByExample({model: 'job'}, false);
   }
-  res.json(true);
+  res.json({result: arr});
 })
 .summary('Delete all jobs')
 .description(dd`
@@ -399,10 +394,25 @@ authRouter.delete('/job', function (req, res) {
 
 authRouter.delete('/job/:id', function (req, res) {
   let frontend = db._collection('_frontend');
+  let toReturn = {};
   if (frontend) {
+    // get the job result and return before deletion
+    let resp = request.put({
+      url: '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      json: true,
+      headers: {
+        'Authorization': req.headers.authorization
+      }
+    }).body;
+    try {
+      toReturn = JSON.parse(resp);
+    } catch (ignore) {
+    }
+
+    // actual deletion
     frontend.removeByExample({id: req.pathParams.id}, false);
   }
-  res.json(true);
+  res.json(toReturn);
 })
 .summary('Delete a job id')
 .description(dd`
@@ -613,7 +623,7 @@ authRouter.get('/graph/:name', function (req, res) {
   };
 
   var multipleIds;
-  var startVertex; // will be "randomly" choosen if no start vertex is specified
+  var startVertex; // will be "randomly" chosen if no start vertex is specified
 
   if (config.nodeStart) {
     if (config.nodeStart.indexOf(' ') > -1) {
@@ -635,7 +645,7 @@ authRouter.get('/graph/:name', function (req, res) {
   var limit = 0;
   if (config.limit !== undefined) {
     if (config.limit.length > 0 && config.limit !== '0') {
-      limit = config.limit;
+      limit = parseInt(config.limit);
     }
   }
 
@@ -658,6 +668,8 @@ authRouter.get('/graph/:name', function (req, res) {
     var aqlQuery;
     var aqlQueries = [];
 
+    let depth = parseInt(config.depth);
+
     if (config.query) {
       aqlQuery = config.query;
     } else {
@@ -665,11 +677,11 @@ authRouter.get('/graph/:name', function (req, res) {
         /* TODO: uncomment after #75 fix
           aqlQuery =
             'FOR x IN ' + JSON.stringify(multipleIds) + ' ' +
-            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY x GRAPH "' + name + '"';
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY x GRAPH "' + name + '"';
         */
         _.each(multipleIds, function (nodeid) {
           aqlQuery =
-            'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + nodeid + '" GRAPH "' + name + '"';
+            'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
           if (limit !== 0) {
             aqlQuery += ' LIMIT ' + limit;
           }
@@ -678,7 +690,7 @@ authRouter.get('/graph/:name', function (req, res) {
         });
       } else {
         aqlQuery =
-          'FOR v, e, p IN 1..' + (config.depth || '2') + ' ANY "' + startVertex._id + '" GRAPH "' + name + '"';
+          'FOR v, e, p IN 1..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
         if (limit !== 0) {
           aqlQuery += ' LIMIT ' + limit;
         }
@@ -737,18 +749,23 @@ authRouter.get('/graph/:name', function (req, res) {
         }
       });
     } else {
-    // get all nodes and edges which are connected to the given start node
-      if (aqlQueries.length === 0) {
-        cursor = AQL_EXECUTE(aqlQuery);
-      } else {
-        var x;
-        cursor = AQL_EXECUTE(aqlQueries[0]);
-        for (var k = 1; k < aqlQueries.length; k++) {
-          x = AQL_EXECUTE(aqlQueries[k]);
-          _.each(x.json, function (val) {
-            cursor.json.push(val);
-          });
+      // get all nodes and edges which are connected to the given start node
+      try {
+        if (aqlQueries.length === 0) {
+          cursor = AQL_EXECUTE(aqlQuery);
+        } else {
+          var x;
+          cursor = AQL_EXECUTE(aqlQueries[0]);
+          for (var k = 1; k < aqlQueries.length; k++) {
+            x = AQL_EXECUTE(aqlQueries[k]);
+            _.each(x.json, function (val) {
+              cursor.json.push(val);
+            });
+          }
         }
+      } catch (e) {
+        const error = new ArangoError({errorNum: e.errorNum, errorMessage: e.errorMessage});
+        res.throw(actions.arangoErrorToHttpCode(e.errorNum), error);
       }
     }
 

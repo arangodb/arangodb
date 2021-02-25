@@ -16,7 +16,7 @@ Distribution of this document is unlimited.
 
 ### Version
 
-1.6.0 (08/08/2017)
+1.6.1 (30/01/2018)
 
 
 Introduction
@@ -72,12 +72,15 @@ Value : 0x184D2204
 
 __Frame Descriptor__
 
-3 to 15 Bytes, to be detailed in the next part.
-Most important part of the spec.
+3 to 15 Bytes, to be detailed in its own paragraph,
+as it is the most important part of the spec.
+
+The combined __Magic Number__ and __Frame Descriptor__ fields are sometimes
+called ___LZ4 Frame Header___. Its size varies between 7 and 19 bytes.
 
 __Data Blocks__
 
-To be detailed later on.
+To be detailed in its own paragraph.
 That’s where compressed data is stored.
 
 __EndMark__
@@ -97,6 +100,9 @@ Content Checksum validates the result,
 that all blocks were fully transmitted in the correct order and without error,
 and also that the encoding/decoding process itself generated no distortion.
 Its usage is recommended.
+
+The combined __EndMark__ and __Content Checksum__ fields might sometimes be
+referred to as ___LZ4 Frame Footer___. Its size varies between 4 and 8 bytes.
 
 __Frame Concatenation__
 
@@ -207,7 +213,7 @@ __Content Size__
 
 This is the original (uncompressed) size.
 This information is optional, and only present if the associated flag is set.
-Content size is provided using unsigned 8 Bytes, for a maximum of 16 HexaBytes.
+Content size is provided using unsigned 8 Bytes, for a maximum of 16 Exabytes.
 Format is Little endian.
 This value is informational, typically for display or memory allocation.
 It can be skipped by a decoder, or used to validate content correctness.
@@ -259,20 +265,23 @@ The highest bit is “1” if data in the block is uncompressed.
 
 The highest bit is “0” if data in the block is compressed by LZ4.
 
-All other bits give the size, in bytes, of the following data block
-(the size does not include the block checksum if present).
+All other bits give the size, in bytes, of the following data block.
+The size does not include the block checksum if present.
 
 Block Size shall never be larger than Block Maximum Size.
-Such a thing could happen for incompressible source data.
-In such case, such a data block shall be passed in uncompressed format.
+Such a thing could potentially happen for non-compressible sources.
+In such a case, such data block shall be passed using uncompressed format.
 
 __Data__
 
 Where the actual data to decode stands.
 It might be compressed or not, depending on previous field indications.
-Uncompressed size of Data can be any size, up to “block maximum size”.
-Note that data block is not necessarily full :
-an arbitrary “flush” may happen anytime. Any block can be “partially filled”.
+
+When compressed, the data must respect the [LZ4 block format specification](https://github.com/lz4/lz4/blob/master/doc/lz4_Block_format.md).
+
+Note that the block is not necessarily full.
+Uncompressed size of data can be any size, up to "Block Maximum Size”,
+so it may contain less data than the maximum block size.
 
 __Block checksum__
 
@@ -379,6 +388,8 @@ and trigger an error if it does not fit within acceptable range.
 
 Version changes
 ---------------
+
+1.6.1 : introduced terms "LZ4 Frame Header" and "LZ4 Frame Footer"
 
 1.6.0 : restored Dictionary ID field in Frame header
 

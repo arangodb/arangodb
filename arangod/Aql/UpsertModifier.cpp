@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,7 +29,9 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -128,40 +131,36 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end() co
 }
 
 void UpsertModifier::reset() {
-  _insertAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  _insertResults = OperationResult{};
-
-  _updateAccumulator = std::make_unique<ModificationExecutorAccumulator>();
-  _updateResults = OperationResult{};
+  _insertAccumulator.reset();
+  _insertResults.reset();
+  _updateAccumulator.reset();
+  _updateResults.reset();
 
   _operations.clear();
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
     ModificationExecutorAccumulator& accu, AqlValue const& inDoc, AqlValue const& updateDoc) {
-  std::string key;
-  Result result;
-
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    TRI_ASSERT(_infos._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
     // We are only interested in the key from `inDoc`
-    result = getKey(collectionNameResolver, inDoc, key);
+    std::string key;
+    Result result = getKey(collectionNameResolver, inDoc, key);
 
     if (!result.ok()) {
       if (!_infos._ignoreErrors) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        THROW_ARANGO_EXCEPTION(result);
       }
       return UpsertModifier::OperationType::SkipRow;
     }
 
     if (updateDoc.isObject()) {
       VPackSlice toUpdate = updateDoc.slice();
-      VPackBuilder keyDocBuilder;
+      _keyDocBuilder.clear();
 
-      buildKeyDocument(keyDocBuilder, key);
-      auto merger = VPackCollection::merge(toUpdate, keyDocBuilder.slice(), false, false);
+      buildKeyDocument(_keyDocBuilder, key);
+      auto merger = VPackCollection::merge(toUpdate, _keyDocBuilder.slice(), false, false);
       accu.add(merger.slice());
 
       return UpsertModifier::OperationType::UpdateReturnIfAvailable;
@@ -205,14 +204,14 @@ VPackArrayIterator UpsertModifier::getUpdateResultsIterator() const {
   if (_updateResults.hasSlice() && _updateResults.slice().isArray()) {
     return VPackArrayIterator(_updateResults.slice());
   }
-  return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
 VPackArrayIterator UpsertModifier::getInsertResultsIterator() const {
   if (_insertResults.hasSlice() && _insertResults.slice().isArray()) {
     return VPackArrayIterator(_insertResults.slice());
   }
-  return VPackArrayIterator(VPackSlice::emptyArraySlice());
+  return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
 Result UpsertModifier::accumulate(InputAqlItemRow& row) {
@@ -229,31 +228,31 @@ Result UpsertModifier::accumulate(InputAqlItemRow& row) {
   // update that document, otherwise, we insert
   if (inDoc.isObject()) {
     auto updateDoc = row.getValue(updateReg);
-    result = updateReplaceCase(*_updateAccumulator.get(), inDoc, updateDoc);
+    result = updateReplaceCase(_updateAccumulator, inDoc, updateDoc);
   } else {
     auto insertDoc = row.getValue(insertReg);
-    result = insertCase(*_insertAccumulator.get(), insertDoc);
+    result = insertCase(_insertAccumulator, insertDoc);
   }
   _operations.push_back({result, row});
   return Result{};
 }
 
-Result UpsertModifier::transact() {
-  auto toInsert = _insertAccumulator->closeAndGetContents();
+Result UpsertModifier::transact(transaction::Methods& trx) {
+  auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
     _insertResults =
-        _infos._trx->insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+        trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
     throwOperationResultException(_infos, _insertResults);
   }
 
-  auto toUpdate = _updateAccumulator->closeAndGetContents();
+  auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
-      _updateResults = _infos._trx->replace(_infos._aqlCollection->name(),
-                                            toUpdate, _infos._options);
+      _updateResults = trx.replace(_infos._aqlCollection->name(),
+                                   toUpdate, _infos._options);
     } else {
-      _updateResults = _infos._trx->update(_infos._aqlCollection->name(),
-                                           toUpdate, _infos._options);
+      _updateResults = trx.update(_infos._aqlCollection->name(),
+                                  toUpdate, _infos._options);
     }
     throwOperationResultException(_infos, _updateResults);
   }
@@ -262,7 +261,7 @@ Result UpsertModifier::transact() {
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
-  return _insertAccumulator->nrOfDocuments() + _updateAccumulator->nrOfDocuments();
+  return _insertAccumulator.nrOfDocuments() + _updateAccumulator.nrOfDocuments();
 }
 
 size_t UpsertModifier::nrOfOperations() const { return _operations.size(); }

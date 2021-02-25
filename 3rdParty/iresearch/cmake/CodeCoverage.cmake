@@ -194,3 +194,31 @@ FUNCTION(SETUP_TARGET_FOR_COVERAGE_COBERTURA _targetname _testrunner _outputname
 	)
 
 ENDFUNCTION() # SETUP_TARGET_FOR_COVERAGE_COBERTURA
+
+# Param _targetname     The name of new the custom make target
+# Param _outputname     cobertura output is generated as _outputname.xml
+# One can specify GCOVR_EXTRA_ARGS to pass extra arguments to GCOVR
+FUNCTION(SETUP_TARGET_FOR_COLLECTING_COVERAGE_COBERTURA _targetname _outputname)
+
+	IF(NOT PYTHON_EXECUTABLE)
+		MESSAGE(FATAL_ERROR "Python not found! Aborting...")
+	ENDIF() # NOT PYTHON_EXECUTABLE
+
+	IF(NOT GCOVR_PATH)
+		MESSAGE(FATAL_ERROR "gcovr not found! Aborting...")
+	ENDIF() # NOT GCOVR_PATH
+
+	ADD_CUSTOM_TARGET(${_targetname}
+		# Running gcovr
+        COMMAND ${GCOVR_PATH} -x -r ${CMAKE_SOURCE_DIR} -e '${CMAKE_SOURCE_DIR}/tests/' -o ${_outputname}.xml ${GCOVR_EXTRA_ARGS}
+		WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+		COMMENT "Running gcovr to produce Cobertura code coverage report."
+	)
+
+	# Show info where to find the report
+	ADD_CUSTOM_COMMAND(TARGET ${_targetname} POST_BUILD
+		COMMAND ;
+		COMMENT "Cobertura code coverage report saved in ${_outputname}.xml."
+	)
+
+ENDFUNCTION() # SETUP_TARGET_FOR_COVERAGE_COBERTURA

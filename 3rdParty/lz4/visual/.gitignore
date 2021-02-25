@@ -6,5 +6,5 @@
 *.sdf
 *.suo
 *.user
-
+ver*/
 VS2010/bin/

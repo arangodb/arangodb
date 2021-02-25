@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,12 +33,13 @@
 
 #include <velocypack/StringRef.h>
 
+#include <memory>
 #include <thread>
 
 namespace arangodb {
 
 namespace graph {
-
+class EdgeCursor;
 struct EdgeDocumentToken;
 struct ShortestPathOptions;
 
@@ -154,7 +155,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
    public:
     Searcher(AttributeWeightShortestPathFinder* pathFinder, ThreadInfo& myInfo,
              ThreadInfo& peerInfo, arangodb::velocypack::StringRef const& start,
-             bool isBackward);
+             bool backward);
 
    public:
     //////////////////////////////////////////////////////////////////////////////
@@ -181,7 +182,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
     ThreadInfo& _myInfo;
     ThreadInfo& _peerInfo;
     arangodb::velocypack::StringRef _start;
-    bool _isBackward;
+    bool _backward;
   };
 
   // -----------------------------------------------------------------------------
@@ -198,6 +199,8 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   explicit AttributeWeightShortestPathFinder(ShortestPathOptions& options);
 
   ~AttributeWeightShortestPathFinder();
+
+  void clear() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Find the shortest path between start and target.
@@ -218,7 +221,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
                 arangodb::velocypack::StringRef const& t, double currentWeight,
                 graph::EdgeDocumentToken&& edge);
 
-  void expandVertex(bool isBackward, arangodb::velocypack::StringRef const& source,
+  void expandVertex(bool backward, arangodb::velocypack::StringRef const& source,
                     std::vector<std::unique_ptr<Step>>& result);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -275,6 +278,9 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
 
   bool _intermediateSet;
   arangodb::velocypack::StringRef _intermediate;
+
+  std::unique_ptr<EdgeCursor> _forwardCursor;
+  std::unique_ptr<EdgeCursor> _backwardCursor;
 };
 
 }  // namespace graph

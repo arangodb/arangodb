@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -41,6 +42,8 @@ class BootstrapFeature final : public application_features::ApplicationFeature {
 
  private:
   void waitForHealthEntry();
+  /// @brief wait for databases to appear in Plan and Current
+  void waitForDatabases() const;
  
  private:
   bool _isReady;

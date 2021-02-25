@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +36,8 @@ class boolean_filter;  // forward declaration
 }  // namespace iresearch
 
 namespace arangodb {
+class Result;
+
 namespace aql {
 
 struct AstNode;  // forward declaration
@@ -53,6 +56,15 @@ struct FilterFactory {
   static arangodb::Result filter(irs::boolean_filter* filter, QueryContext const& ctx,
                      arangodb::aql::AstNode const& node);
 };  // FilterFactory
+
+
+struct FilterConstants {
+  // Defaults
+  static constexpr size_t DefaultScoringTermsLimit { 128 };
+  static constexpr size_t DefaultLevenshteinTermsLimit { 64 };
+  static constexpr double_t DefaultNgramMatchThreshold { 0.7 };
+  static constexpr int64_t DefaultStartsWithMinMatchCount { 1 };
+};
 
 }  // namespace iresearch
 }  // namespace arangodb

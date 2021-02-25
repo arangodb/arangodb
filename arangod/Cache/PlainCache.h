@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_PLAIN_CACHE_H
 #define ARANGODB_CACHE_PLAIN_CACHE_H
 
-#include "Basics/Common.h"
+#include <atomic>
+#include <chrono>
+#include <cstdint>
+#include <list>
+
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
@@ -35,11 +39,6 @@
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
 #include "Cache/Table.h"
-
-#include <stdint.h>
-#include <atomic>
-#include <chrono>
-#include <list>
 
 namespace arangodb {
 namespace cache {
@@ -53,7 +52,7 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class PlainCache final : public Cache {
  public:
-  PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager, std::uint64_t id,
              Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats);
   ~PlainCache();
 
@@ -69,7 +68,7 @@ class PlainCache final : public Cache {
   /// fashion. The Result contained in the return value should report an error
   /// code in this case. Should not block for long.
   //////////////////////////////////////////////////////////////////////////////
-  Finding find(void const* key, uint32_t keySize) override;
+  Finding find(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to insert the given value.
@@ -89,12 +88,12 @@ class PlainCache final : public Cache {
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert.
   //////////////////////////////////////////////////////////////////////////////
-  Result remove(void const* key, uint32_t keySize) override;
+  Result remove(void const* key, std::uint32_t keySize) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Does nothing; convenience method inheritance compliance
   //////////////////////////////////////////////////////////////////////////////
-  Result blacklist(void const* key, uint32_t keySize) override;
+  Result banish(void const* key, std::uint32_t keySize) override;
 
  private:
   // friend class manager and tasks
@@ -104,18 +103,18 @@ class PlainCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata&& metadata,
-                                       std::shared_ptr<Table> table,
+  static std::shared_ptr<Cache> create(Manager* manager, std::uint64_t id,
+                                       Metadata&& metadata, std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
-  virtual uint64_t freeMemoryFrom(uint32_t hash) override;
+  virtual uint64_t freeMemoryFrom(std::uint32_t hash) override;
   virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) override;
 
   // helpers
-  std::tuple<Result, PlainBucket*, Table*> getBucket(uint32_t hash, uint64_t maxTries,
-                                                     bool singleOperation = true);
-  uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
+  std::pair<Result, Table::BucketLocker> getBucket(std::uint32_t hash, std::uint64_t maxTries,
+                                                   bool singleOperation = true);
+  uint32_t getIndex(std::uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);
 };

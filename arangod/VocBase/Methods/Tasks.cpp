@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,7 @@ std::unordered_map<std::string, std::pair<std::string, std::shared_ptr<Task>>> T
 
 std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const& name,
                                        TRI_vocbase_t* vocbase, std::string const& command,
-                                       bool allowUseDatabase, int& ec) {
+                                       bool allowUseDatabase, ErrorCode& ec) {
   if (id.empty()) {
     ec = TRI_ERROR_TASK_INVALID_ID;
 
@@ -115,7 +115,7 @@ std::shared_ptr<Task> Task::createTask(std::string const& id, std::string const&
   return task;
 }
 
-int Task::unregisterTask(std::string const& id, bool cancel) {
+ErrorCode Task::unregisterTask(std::string const& id, bool cancel) {
   if (id.empty()) {
     return TRI_ERROR_TASK_INVALID_ID;
   }
@@ -218,13 +218,24 @@ void Task::removeTasksForDatabase(std::string const& name) {
   }
 }
 
-bool Task::tryCompile(v8::Isolate* isolate, std::string const& command) {
-  v8::HandleScope scope(isolate);
+bool Task::tryCompile(application_features::ApplicationServer& server,
+                      v8::Isolate* isolate, std::string const& command) {
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>() ||
+      !server.getFeature<V8DealerFeature>().isEnabled()) {
+    return false;
+  }
 
+  TRI_ASSERT(isolate != nullptr);
+
+  v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                            current->Get(context,
+                                                         TRI_V8_ASCII_STRING(isolate, "Function"))
+                                            .FromMaybe(v8::Local<v8::Value>())
+                                            );
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
@@ -361,6 +372,11 @@ void Task::start() {
 }
 
 bool Task::queue(std::chrono::microseconds offset) {
+  auto& server = _dbGuard->database().server();
+  if (!server.hasFeature<V8DealerFeature>() || !server.isEnabled<V8DealerFeature>()) {
+    return false;
+  }
+
   MUTEX_LOCKER(lock, _taskHandleMutex);
   bool queued = false;
   std::tie(queued, _taskHandle) =
@@ -418,11 +434,15 @@ void Task::work(ExecContext const* exec) {
   {
     auto isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
 
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
+                                              current->Get(context,
+                                                           TRI_V8_ASCII_STRING(isolate, "Function"))
+                                              .FromMaybe(v8::Local<v8::Value>())
+                                              );
 
     // Invoke Function constructor to create function with the given body and
     // no
@@ -446,7 +466,7 @@ void Task::work(ExecContext const* exec) {
       // call the function within a try/catch
       try {
         v8::TryCatch tryCatch(isolate);
-        action->Call(current, 1, &fArgs);
+        action->Call(TRI_IGETC, current, 1, &fArgs).FromMaybe(v8::Local<v8::Value>());
         if (tryCatch.HasCaught()) {
           if (tryCatch.CanContinue()) {
             TRI_LogV8Exception(isolate, &tryCatch);

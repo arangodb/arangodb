@@ -256,7 +256,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -291,7 +291,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(20, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(2, Object.keys(properties.consolidationPolicy).length);
       assertEqual("bytes_accum", properties.consolidationPolicy.type);
@@ -732,7 +732,7 @@ function IResearchFeatureDDLTestSuite () {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -754,6 +754,7 @@ function IResearchFeatureDDLTestSuite () {
         writebufferSizeMax: 44040192,
         locale: "C",
         version: 1,
+        primarySortCompression:"none",
         primarySort: [
           { field: "my.Nested.field", direction: "asc" },
           { field: "another.field", asc: false }
@@ -776,9 +777,10 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
@@ -794,6 +796,7 @@ function IResearchFeatureDDLTestSuite () {
         locale: "en_EN.UTF-8",
         version: 2,
         primarySort: [ { field: "field", asc: false } ],
+        primarySortCompression:"lz4",
         "cleanupIntervalStep": 442
       }, false); // full update
 
@@ -812,9 +815,10 @@ function IResearchFeatureDDLTestSuite () {
       assertEqual(true, primarySort[0].asc);
       assertEqual("another.field", primarySort[1].field);
       assertEqual(false, primarySort[1].asc);
+      assertEqual("none", properties.primarySortCompression);
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(10000, properties.consolidationIntervalMsec);
+      assertEqual(1000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
@@ -1004,7 +1008,7 @@ function IResearchFeatureDDLTestSuite () {
       }
 
       // truncate collection
-      col.truncate();
+      col.truncate({ compact: false });
 
       // ensure data is synchronized
       res = db._query("FOR d IN TestView OPTIONS {waitForSync:true} SORT d.foo RETURN d").toArray();
@@ -1254,16 +1258,16 @@ function IResearchFeatureDDLTestSuite () {
       assertNotEqual(null, db._collection("_analyzers"));
       try { db._dropDatabase(dbName); } catch (e) {}
       try { analyzers.remove(analyzerName); } catch (e) {}
-      assertEqual(0, db._analyzers.count());
       db._createDatabase(dbName);
       db._useDatabase(dbName);
+      assertEqual(0, db._analyzers.count());
       analyzers.save(analyzerName, "identity");
       // recreating database
       db._useDatabase("_system");
       db._dropDatabase(dbName);
       db._createDatabase(dbName);
       db._useDatabase(dbName);
-
+      assertEqual(0, db._analyzers.count());
       assertNull(analyzers.analyzer(analyzerName));
       // this should be no name conflict
       analyzers.save(analyzerName, "text", {"stopwords" : [], "locale":"en"});
@@ -1277,7 +1281,6 @@ function IResearchFeatureDDLTestSuite () {
           }
         }
       });
-
       var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
       assertEqual(1, db._analyzers.count());
       assertEqual(1, res.length);
@@ -1285,8 +1288,59 @@ function IResearchFeatureDDLTestSuite () {
 
       db._useDatabase("_system");
       db._dropDatabase(dbName);
+    },
+    testAutoLoadAnalyzerOnViewCreation : function() {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        db._analyzers.save({type:"identity", name: analyzerName});
+        var view = db._createView("analyzersView", "arangosearch", {
+          links: {
+            _analyzers : {
+              includeAllFields:true,
+              analyzers: [ analyzerName] // test only new database access. Load from _system is checked in gtest
+            }
+          }
+        });
+        var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+        assertEqual(1, res.length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
+    },
+    testAutoLoadAnalyzerOnViewUpdate : function() {
+      const dbName = "TestNameDroppedDB";
+      const analyzerName = "TestAnalyzer";
+      db._useDatabase("_system");
+      assertNotEqual(null, db._collection("_analyzers"));
+      try { db._dropDatabase(dbName); } catch (e) {}
+      try {
+        db._createDatabase(dbName);
+        db._useDatabase(dbName);
+        db._analyzers.save({type:"identity", name: analyzerName});
+        var view = db._createView("analyzersView", "arangosearch", {});
+        var links = {
+          links: {
+            _analyzers : {
+              includeAllFields:true,
+              analyzers: [ analyzerName] // test only new database access. Load from _system is checked in gtest
+            }
+          }
+        };
+        view.properties(links, true);
+        var res = db._query("FOR d IN analyzersView OPTIONS {waitForSync:true} RETURN d").toArray();
+        assertEqual(1, res.length);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(dbName);
+      }
     }
-
   };
 }
 

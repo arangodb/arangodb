@@ -96,7 +96,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(10)
       end
       
-      it "returns an error if action attribute contains broken code" do
+      it "returns an error if action attribute contains broken code 1" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \" for \" }"
         doc = ArangoDB.log_post("#{prefix}-invalid-action1", cmd, :body => body)
@@ -108,7 +108,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(10)
       end
       
-      it "returns an error if action attribute contains broken code" do
+      it "returns an error if action attribute contains broken code 2" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"return 1;\" }"
         doc = ArangoDB.log_post("#{prefix}-invalid-action2", cmd, :body => body)
@@ -120,7 +120,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(10)
       end
       
-      it "returns an error if action attribute contains broken code" do
+      it "returns an error if action attribute contains broken code 3" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function() {\" }"
         doc = ArangoDB.log_post("#{prefix}-invalid-action3", cmd, :body => body)
@@ -132,7 +132,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(10)
       end
 
-      it "returns an error if transactions are nested" do
+      it "returns an error if transactions are nested 1" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function () { return TRANSACTION({ collections: { }, action: function() { return 1; } }); }\" }"
         doc = ArangoDB.log_post("#{prefix}-nested1", cmd, :body => body)
@@ -144,7 +144,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(1651)
       end
 
-      it "returns an error if transactions are nested" do
+      it "returns an error if transactions are nested 2" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function () { return TRANSACTION({ collections: { }, action: \\\"function () { return 1; }\\\" }); }\" }"
         doc = ArangoDB.log_post("#{prefix}-nested2", cmd, :body => body)
@@ -229,7 +229,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq([ 2, 5 ])
       end
       
-      it "checking return parameters, object" do
+      it "checking return parameters, object 1" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function (params) { return params['foo']; }\", \"params\" : { \"foo\" : \"bar\" } }"
         doc = ArangoDB.log_post("#{prefix}-params3", cmd, :body => body)
@@ -241,7 +241,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq("bar")
       end
       
-      it "checking return parameters, object" do
+      it "checking return parameters, object 2" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function (params) { return params['meow']; }\", \"params\" : { \"foo\" : \"bar\" } }"
         doc = ArangoDB.log_post("#{prefix}-params4", cmd, :body => body)
@@ -253,7 +253,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq(nil)
       end
 
-      it "checking return parameters, undefined" do
+      it "checking return parameters, undefined 1" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function (params) { return params['meow']; }\", \"params\" : null }"
         doc = ArangoDB.log_post("#{prefix}-params5", cmd, :body => body)
@@ -265,7 +265,7 @@ describe ArangoDB do
         doc.parsed_response['errorNum'].should eq(17) # TypeError
       end
       
-      it "checking return parameters, undefined" do
+      it "checking return parameters, undefined 2" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function (params) { return params['meow']; }\", \"params\" : { } }"
         doc = ArangoDB.log_post("#{prefix}-params5", cmd, :body => body)
@@ -277,7 +277,7 @@ describe ArangoDB do
         doc.parsed_response['result'].should eq(nil)
       end
       
-      it "checking return parameters, undefined" do
+      it "checking return parameters, undefined 3" do
         cmd = api
         body = "{ \"collections\" : { }, \"action\" : \"function (params) { return params; }\" }"
         doc = ArangoDB.log_post("#{prefix}-params7", cmd, :body => body)
@@ -346,7 +346,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "read-only, using write" do
+      it "read-only, using write 1" do
         body = "{ }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
@@ -368,7 +368,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(3);
       end
 
-      it "read-only, using read" do
+      it "read-only, using read 1" do
         body = "{ }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
         doc = ArangoDB.post("/_api/document?collection=#{@cn}", :body => body)
@@ -390,7 +390,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn).should eq(3);
       end
 
-      it "committing" do
+      it "committing 1" do
         cmd = api
         body = "{ \"collections\" : { \"write\": \"#{@cn}\" }, \"action\" : \"function () { var c = require(\\\"internal\\\").db.UnitTestsTransactions; c.save({ }); c.save({ }); return c.count(); }\" }"
         doc = ArangoDB.log_post("#{prefix}-single-commit", cmd, :body => body)
@@ -424,7 +424,7 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn2)
       end
 
-      it "read-only, using write" do
+      it "read-only, using write 2" do
         body = "{ }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
         doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
@@ -449,7 +449,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn2).should eq(1);
       end
 
-      it "read-only, using read" do
+      it "read-only, using read 2" do
         body = "{ }"
         doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
         doc = ArangoDB.post("/_api/document?collection=#{@cn1}", :body => body)
@@ -474,7 +474,7 @@ describe ArangoDB do
         ArangoDB.size_collection(@cn2).should eq(1);
       end
 
-      it "committing" do
+      it "committing 2" do
         cmd = api
         body = "{ \"collections\" : { \"write\": [ \"#{@cn1}\", \"#{@cn2}\" ] }, \"action\" : \"function () { var c1 = require(\\\"internal\\\").db.#{@cn1}; var c2 = require(\\\"internal\\\").db.#{@cn2}; c1.save({ }); c1.save({ }); c2.save({ }); return [ c1.count(), c2.count() ]; }\" }"
         doc = ArangoDB.log_post("#{prefix}-multi-commit", cmd, :body => body)

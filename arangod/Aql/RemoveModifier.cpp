@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,19 +24,15 @@
 #include "RemoveModifier.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Collection.h"
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Basics/Common.h"
+#include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-
-#include <velocypack/Collection.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Logger/LogMacros.h"
 
 class CollectionNameResolver;
 
@@ -45,22 +42,19 @@ using namespace arangodb::aql::ModificationExecutorHelpers;
 
 ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorAccumulator& accu,
                                                            InputAqlItemRow& row) {
-  std::string key{}, rev{};
-  Result result;
-
   RegisterId const inDocReg = _infos._input1RegisterId;
 
   // The document to be REMOVEd
   AqlValue const& inDoc = row.getValue(inDocReg);
 
   if (writeRequired(_infos, inDoc.slice(), StaticStrings::Empty)) {
-    TRI_ASSERT(_infos._trx->resolver() != nullptr);
-    CollectionNameResolver const& collectionNameResolver{*_infos._trx->resolver()};
+    CollectionNameResolver const& collectionNameResolver{_infos._query.resolver()};
 
-    result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
+    std::string key{}, rev{};
+    Result result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
     if (!result.ok()) {
       if (!_infos._ignoreErrors) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(result.errorNumber(), result.errorMessage());
+        THROW_ARANGO_EXCEPTION(result);
       }
       return ModifierOperationType::SkipRow;
     }
@@ -69,16 +63,16 @@ ModifierOperationType RemoveModifierCompletion::accumulate(ModificationExecutorA
       rev.clear();
     }
 
-    VPackBuilder keyDocBuilder;
-    buildKeyAndRevDocument(keyDocBuilder, key, rev);
+    _keyDocBuilder.clear();
+    buildKeyAndRevDocument(_keyDocBuilder, key, rev);
     // This deletes _rev if rev is empty or ignoreRevs is set in options.
-    accu.add(keyDocBuilder.slice());
+    accu.add(_keyDocBuilder.slice());
     return ModifierOperationType::ReturnIfAvailable;
   } else {
     return ModifierOperationType::CopyRow;
   }
 }
 
-OperationResult RemoveModifierCompletion::transact(VPackSlice const& data) {
-  return _infos._trx->remove(_infos._aqlCollection->name(), data, _infos._options);
+OperationResult RemoveModifierCompletion::transact(transaction::Methods& trx, VPackSlice const& data) {
+  return trx.remove(_infos._aqlCollection->name(), data, _infos._options);
 }

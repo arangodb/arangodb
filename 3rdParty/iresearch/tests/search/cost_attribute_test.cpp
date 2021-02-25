@@ -28,15 +28,18 @@
 #include <limits>
 
 TEST(cost_attribute_test, consts) {
-  ASSERT_EQ(
-    (std::numeric_limits<irs::cost::cost_t>::max)(),
-    irs::cost::cost_t(irs::cost::MAX)
-  );
+  static_assert("iresearch::cost" == irs::type<irs::cost>::name());
+  static_assert((std::numeric_limits<irs::cost::cost_t>::max)() == irs::cost::MAX);
+}
+
+TEST(cost_attribute_test, ctor) {
+  irs::cost cost;
+  ASSERT_EQ(0, cost.estimate());
 }
 
 TEST(cost_attribute_test, estimation) {
   irs::cost cost;
-  ASSERT_FALSE(bool(cost.rule()));
+  ASSERT_EQ(0, cost.estimate());
 
   // explicit estimation
   {
@@ -45,17 +48,7 @@ TEST(cost_attribute_test, estimation) {
     // set estimation value and check
     {
       cost.value(est);
-      ASSERT_TRUE(bool(cost.rule()));
       ASSERT_EQ(est, cost.estimate());
-      ASSERT_EQ(est, cost.rule()());
-    }
-
-    // clear
-    {
-      cost.clear();
-      ASSERT_TRUE(bool(cost.rule()));
-      ASSERT_EQ(est, cost.estimate());
-      ASSERT_EQ(est, cost.rule()());
     }
   }
   
@@ -68,7 +61,6 @@ TEST(cost_attribute_test, estimation) {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
@@ -77,48 +69,61 @@ TEST(cost_attribute_test, estimation) {
 
 TEST(cost_attribute_test, lazy_estimation) {
   irs::cost cost;
-  ASSERT_FALSE(bool(cost.rule()));
+  ASSERT_EQ(0, cost.estimate());
 
   auto evaluated = false;
   auto est = 7;
 
-  /* set estimation function and evaluate */
+  // set estimation function and evaluate
   {
+    evaluated = false;
     cost.rule([&evaluated, est]() {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
-  /* change estimation func */
+  // ensure value is cached
+  {
+    evaluated = false;
+    ASSERT_EQ(est, cost.estimate());
+    ASSERT_FALSE(evaluated);
+  }
+
+  // change estimation func
   {
     evaluated = false;
     cost.rule([&evaluated, est]() {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+1, cost.estimate());
     ASSERT_TRUE(evaluated);
   }
 
-  /* clear */
+  // set value directly
   {
     evaluated = false;
-    cost.clear();
-    ASSERT_EQ(est+1, cost.estimate());
-    /* evaluate again */
-    ASSERT_TRUE(evaluated);
+    cost.value(est+2);
+    ASSERT_FALSE(evaluated);
+    ASSERT_EQ(est+2, cost.estimate());
+    ASSERT_FALSE(evaluated);
   }
 }
 
 TEST(cost_attribute_test, extract) {
-  irs::attribute_view attrs;
+  struct basic_attribute_provider : irs::attribute_provider {
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+      return type == irs::type<irs::cost>::id()
+        ? cost : nullptr;
+    }
+
+    irs::cost* cost{};
+  } attrs;
 
   ASSERT_EQ(
     irs::cost::cost_t(irs::cost::MAX),
@@ -128,8 +133,7 @@ TEST(cost_attribute_test, extract) {
   ASSERT_EQ(5, irs::cost::extract(attrs, 5));
 
   irs::cost cost;
-  attrs.emplace(cost);
-  ASSERT_FALSE(bool(cost.rule()));
+  attrs.cost = &cost;
 
   auto est = 7;
   auto evaluated = false;
@@ -140,7 +144,6 @@ TEST(cost_attribute_test, extract) {
       evaluated = true;
       return est;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est, irs::cost::extract(attrs));
     ASSERT_TRUE(evaluated);
@@ -153,7 +156,6 @@ TEST(cost_attribute_test, extract) {
       evaluated = true;
       return est+1;
     });
-    ASSERT_TRUE(bool(cost.rule()));
     ASSERT_FALSE(evaluated);
     ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
     ASSERT_TRUE(evaluated);
@@ -162,13 +164,7 @@ TEST(cost_attribute_test, extract) {
   // clear
   {
     evaluated = false;
-    cost.clear();
     ASSERT_EQ(est+1, irs::cost::extract(attrs, 3));
-    /* evaluate again */
-    ASSERT_TRUE(evaluated);
+    ASSERT_FALSE(evaluated);
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

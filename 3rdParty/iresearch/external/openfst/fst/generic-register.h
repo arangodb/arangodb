@@ -4,9 +4,9 @@
 #ifndef FST_GENERIC_REGISTER_H_
 #define FST_GENERIC_REGISTER_H_
 
+#include <fst/compat.h>
 #ifndef FST_NO_DYNAMIC_LINKING
 #include <dlfcn.h>
-#include <fst/compat.h>
 #endif
 #include <map>
 #include <string>
@@ -44,7 +44,7 @@ class GenericRegister {
 
   void SetEntry(const KeyType &key, const EntryType &entry) {
     MutexLock l(&register_lock_);
-    register_table_.insert(std::make_pair(key, entry));
+    register_table_.emplace(key, entry);
   }
 
   EntryType GetEntry(const KeyType &key) const {
@@ -88,7 +88,7 @@ class GenericRegister {
   }
 
   // Override this to define how to turn a key into an SO filename.
-  virtual string ConvertKeyToSoFilename(const KeyType &key) const = 0;
+  virtual std::string ConvertKeyToSoFilename(const KeyType &key) const = 0;
 
   virtual const EntryType *LookupEntry(const KeyType &key) const {
     MutexLock l(&register_lock_);

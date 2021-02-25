@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,7 +55,7 @@ SimpleHttpResult::SimpleHttpResult()
   _resultBody.ensureNullTerminated();
 }
 
-SimpleHttpResult::~SimpleHttpResult() {}
+SimpleHttpResult::~SimpleHttpResult() = default;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// public methods
@@ -80,15 +80,10 @@ StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }
 
 StringBuffer const& SimpleHttpResult::getBody() const { return _resultBody; }
 
-std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack(VPackOptions const& options) const {
-  VPackParser parser(&options);
-  parser.parse(_resultBody.c_str());
-  return parser.steal();
-}
-
-// Default case
 std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
-  return getBodyVelocyPack(*VelocyPackHelper::optionsWithUniquenessCheck());
+  VPackParser parser(&VelocyPackHelper::looseRequestValidationOptions);
+  parser.parse(_resultBody.c_str(), _resultBody.size());
+  return parser.steal();
 }
 
 std::string SimpleHttpResult::getResultTypeMessage() const {

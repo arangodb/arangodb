@@ -10,17 +10,14 @@
 single collection name as string. Collections that will be written to in the
 transaction must be declared with the *write* or *exclusive* attribute or it
 will fail, whereas non-declared collections from which is solely read will be
-added lazily. The optional sub-attribute *allowImplicit* can be set to *false*
-to let transactions fail in case of undeclared collections for reading.
-Collections for reading should be fully declared if possible, to avoid
-deadlocks.
+added lazily.
 
 @RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
 transaction to write all data to disk before returning.
 
 @RESTBODYPARAM{allowImplicit,boolean,optional,}
-Allow reading from undeclared collections.
+Allow reading from undeclared collections. 
 
 @RESTBODYPARAM{lockTimeout,integer,optional,int64}
 an optional numeric value that can be used to set a

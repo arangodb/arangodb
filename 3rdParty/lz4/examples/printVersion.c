@@ -1,5 +1,5 @@
 // LZ4 trivial example : print Library version number
-// Copyright : Takayuki Matsuoka & Yann Collet
+// by Takayuki Matsuoka
 
 
 #include <stdio.h>

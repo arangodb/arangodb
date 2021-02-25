@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@
 #include "RestServer/BootstrapFeature.h"
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -40,7 +43,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "V8Server/FoxxQueuesFeature.h"
+#include "V8Server/FoxxFeature.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Upgrade.h"
 
@@ -60,15 +63,15 @@ using namespace arangodb;
 using namespace arangodb::options;
 
 BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& server)
-    : ApplicationFeature(server, ::FEATURE_NAME), 
-      _isReady(false), 
+    : ApplicationFeature(server, ::FEATURE_NAME),
+      _isReady(false),
       _bark(false) {
   startsAfter<application_features::ServerFeaturePhase>();
 
   startsAfter<SystemDatabaseFeature>();
 
   // TODO: It is only in FoxxPhase because of:
-  startsAfter<FoxxQueuesFeature>();
+  startsAfter<FoxxFeature>();
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -86,7 +89,7 @@ BootstrapFeature::BootstrapFeature(application_features::ApplicationServer& serv
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("hund", "make ArangoDB bark on startup", new BooleanParameter(&_bark),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 // Local Helper functions
@@ -96,7 +99,7 @@ namespace {
 /// and various similar things. Only runs through on a SINGLE coordinator.
 /// must only return if we are bootstrap lead or bootstrap is done.
 void raceForClusterBootstrap(BootstrapFeature& feature) {
-  AgencyComm agency;
+  AgencyComm agency(feature.server());
   auto& ci = feature.server().getFeature<ClusterFeature>().clusterInfo();
   while (true) {
     AgencyCommResult result = agency.getValues(::bootstrapKey);
@@ -109,7 +112,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     }
 
     VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), ::bootstrapKey}));
+        std::vector<std::string>({AgencyCommHelper::path(), ::bootstrapKey}));
     if (value.isString()) {
       // key was found and is a string
       std::string bootstrapVal = value.copyString();
@@ -212,7 +215,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
         << "Running server/bootstrap/coordinator.js";
 
     VPackBuilder builder;
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+    vocbase->server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
         vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -223,18 +226,18 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
           newResult = newResult && val.isTrue();
         }
         if (!newResult) {
-          LOG_TOPIC("6ca4b", ERR, Logger::STARTUP)
+          LOG_TOPIC("6ca4b", WARN, Logger::STARTUP)
               << "result of bootstrap was: " << builder.toJson()
               << ". retrying bootstrap in 1s.";
         }
         success = newResult;
       } else {
-        LOG_TOPIC("541a2", ERR, Logger::STARTUP)
+        LOG_TOPIC("541a2", WARN, Logger::STARTUP)
             << "bootstrap wasn't executed in a single context! retrying "
                "bootstrap in 1s.";
       }
     } else {
-      LOG_TOPIC("5f716", ERR, Logger::STARTUP)
+      LOG_TOPIC("5f716", WARN, Logger::STARTUP)
           << "result of bootstrap was not an array: " << slice.typeName()
           << ". retrying bootstrap in 1s.";
     }
@@ -245,15 +248,15 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
 }
 
 // Try to become leader in active-failover setup
-void runActiveFailoverStart(std::string const& myId) {
+void runActiveFailoverStart(BootstrapFeature& feature, std::string const& myId) {
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
   try {
     VPackBuilder myIdBuilder;
     myIdBuilder.add(VPackValue(myId));
-    AgencyComm agency;
+    AgencyComm agency(feature.server());
     AgencyCommResult res = agency.getValues(leaderPath);
     if (res.successful()) {
-      VPackSlice leader = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+      VPackSlice leader = res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
       if (!leader.isString() || leader.getStringLength() == 0) {  // no leader in agency
         if (leader.isNone()) {
           res = agency.casValue(leaderPath, myIdBuilder.slice(),
@@ -264,7 +267,7 @@ void runActiveFailoverStart(std::string const& myId) {
                                 /*new*/ myIdBuilder.slice(),
                                 /*ttl*/ 0, /*timeout*/ 5.0);
         }
-        if (res.successful()) {  // sucessfull leadership takeover
+        if (res.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
         }  // ignore for now, heartbeat thread will handle it
       }
@@ -292,7 +295,9 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
-  bool v8Enabled = V8DealerFeature::DEALER && V8DealerFeature::DEALER->isEnabled();
+  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                   server().isEnabled<V8DealerFeature>() &&
+                   server().getFeature<V8DealerFeature>().isEnabled();
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -303,18 +308,26 @@ void BootstrapFeature::start() {
     // the root user
     if (ServerState::isCoordinator(role)) {
       LOG_TOPIC("724e0", DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
+      // note: this may create the _system database in Plan!
       raceForClusterBootstrap(*this);
+       
+      // wait until at least one database appears. this is an indication that
+      // both Plan and Current have been populated successfully
+      waitForDatabases();
 
       if (v8Enabled && !databaseFeature.upgrade()) {
         ::runCoordinatorJS(vocbase.get());
       }
     } else if (ServerState::isDBServer(role)) {
+      // don't wait for databases in Current here, as we are a DB server and may be
+      // the one responsible to create it. blocking here is thus no option!
+
       LOG_TOPIC("a2b65", DEBUG, Logger::STARTUP) << "Running bootstrap";
 
       auto upgradeRes = methods::Upgrade::clusterBootstrap(*vocbase);
 
       if (upgradeRes.fail()) {
-        LOG_TOPIC("4e67f", ERR, Logger::STARTUP) << "Problem during startup";
+        LOG_TOPIC("4e67f", ERR, Logger::STARTUP) << "Problem during startup: " << upgradeRes.errorMessage();
       }
     } else {
       TRI_ASSERT(false);
@@ -324,8 +337,8 @@ void BootstrapFeature::start() {
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
-      ::runActiveFailoverStart(myId);
+    if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
+      ::runActiveFailoverStart(*this, myId);
     } else {
       ServerState::instance()->setFoxxmaster(myId);  // could be empty, but set anyway
     }
@@ -334,7 +347,7 @@ void BootstrapFeature::start() {
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
           vocbase.get(), "server/server.js", nullptr);
     }
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -344,12 +357,12 @@ void BootstrapFeature::start() {
       um->createRootUser();
     }
   }
-  
+
   if (ServerState::isClusterRole(role)) {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
+  if (ServerState::isSingleServer(role) && AsyncAgencyCommManager::isEnabled()) {
     // simon: this is set to correct value in the heartbeat thread
     ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
   } else {
@@ -387,13 +400,13 @@ void BootstrapFeature::unprepare() {
 void BootstrapFeature::waitForHealthEntry() {
   LOG_TOPIC("4000c", DEBUG, arangodb::Logger::CLUSTER) << "waiting for our health entry to appear in Supervision/Health";
   bool found = false;
-  AgencyComm agency;
+  AgencyComm agency(server());
   int tries = 0;
   while (++tries < 30) {
     AgencyCommResult result = agency.getValues(::healthKey);
     if (result.successful()) {
       VPackSlice value = result.slice()[0].get(
-        std::vector<std::string>({AgencyCommManager::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
+        std::vector<std::string>({AgencyCommHelper::path(), "Supervision", "Health", ServerState::instance()->getId(), "Status"}));
       if (value.isString() && !value.copyString().empty()) {
         found = true;
         break;
@@ -405,5 +418,19 @@ void BootstrapFeature::waitForHealthEntry() {
     LOG_TOPIC("b0de6", DEBUG, arangodb::Logger::CLUSTER) << "found our health entry in Supervision/Health";
   } else {
     LOG_TOPIC("2c993", INFO, arangodb::Logger::CLUSTER) << "did not find our health entry after 15 s in Supervision/Health";
+  }
+}
+
+void BootstrapFeature::waitForDatabases() const {
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  uint64_t iterations = 0;
+  while (ci.databases().empty() && !server().isStopping()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(25));
+
+    if (++iterations % 2000 == 0) {
+      // log every few seconds that we are waiting here
+      LOG_TOPIC("db886", INFO, Logger::CLUSTER) << "waiting for databases to appear...";
+    }
   }
 }

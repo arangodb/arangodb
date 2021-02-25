@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -46,7 +47,8 @@ struct GeneralRequestMock: public arangodb::GeneralRequest {
     _contentType = arangodb::rest::ContentType::VPACK;
   }
   virtual arangodb::velocypack::StringRef rawPayload() const override;
-  virtual arangodb::velocypack::Slice payload(arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults) override;
+  virtual arangodb::velocypack::Slice payload(bool strictValidation = true) override;
+  virtual void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
   virtual arangodb::Endpoint::TransportType transportType() override;
   std::unordered_map<std::string, std::string>& values() { return _values; }
 };

@@ -7,7 +7,7 @@
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_STORE_UTILS_H
@@ -40,7 +39,7 @@
 
 #include <unordered_set>
 
-NS_LOCAL
+namespace {
 
 using iresearch::data_input;
 using iresearch::data_output;
@@ -73,9 +72,9 @@ struct read_write_helper<T, sizeof(uint64_t)> {
   }
 };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
 
 template<
@@ -313,36 +312,25 @@ StringType vread_string(const byte_type*& in) {
 }
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                     skip helpers
-// ----------------------------------------------------------------------------
-
-const uint64_t SKIP_BUFFER_SIZE = 1024U;
-
-IRESEARCH_API void skip(
-  data_input& in, size_t to_skip,
-  byte_type* skip_buf, size_t skip_buf_size
-);
-
-// ----------------------------------------------------------------------------
 // --SECTION--                                              bit packing helpers
 // ----------------------------------------------------------------------------
 
-FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) NOEXCEPT {
+FORCE_INLINE uint64_t shift_pack_64(uint64_t val, bool b) noexcept {
   assert(val <= UINT64_C(0x7FFFFFFFFFFFFFFF));
   return (val << 1) | uint64_t(b);
 }
 
-FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) NOEXCEPT {
+FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   assert(val <= UINT32_C(0x7FFFFFFF));
   return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) NOEXCEPT {
+FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) noexcept {
   out = in >> 1;
   return in & 1;
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) NOEXCEPT {
+FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) noexcept {
   out = in >> 1;
   return in & 1;
 }
@@ -356,7 +344,7 @@ FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) NOEXCEPT {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API bytes_output final : public data_output {
  public:
-  explicit bytes_output(bstring& buf) NOEXCEPT
+  explicit bytes_output(bstring& buf) noexcept
     : buf_(&buf) {
   }
 
@@ -384,25 +372,25 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   bytes_ref_input() = default;
   explicit bytes_ref_input(const bytes_ref& data);
 
-  void skip(size_t size) NOEXCEPT {
+  void skip(size_t size) noexcept {
     assert(pos_ + size <= data_.end());
     pos_ += size;
   }
 
-  virtual void seek(size_t pos) NOEXCEPT override {
+  virtual void seek(size_t pos) noexcept override {
     assert(data_.begin() + pos <= data_.end());
     pos_ = data_.begin() + pos;
   }
 
-  virtual size_t file_pointer() const NOEXCEPT override {
+  virtual size_t file_pointer() const noexcept override {
     return std::distance(data_.begin(), pos_);
   }
 
-  virtual size_t length() const NOEXCEPT override {
+  virtual size_t length() const noexcept override {
     return data_.size();
   }
 
-  virtual bool eof() const NOEXCEPT override {
+  virtual bool eof() const noexcept override {
     return pos_ >= data_.end();
   }
 
@@ -411,22 +399,33 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return *pos_++;
   }
 
+  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
+    const auto* pos = pos_ + size;
+
+    if (pos > data_.end()) {
+      return nullptr;
+    }
+
+    std::swap(pos, pos_);
+    return pos;
+  }
+
   virtual size_t read_bytes(byte_type* b, size_t size) override final;
 
   // append to buf
   void read_bytes(bstring& buf, size_t size);
 
-  void reset(const byte_type* data, size_t size) NOEXCEPT {
+  void reset(const byte_type* data, size_t size) noexcept {
     data_ = bytes_ref(data, size);
     pos_ = data;
   }
 
-  void reset(const bytes_ref& ref) NOEXCEPT {
+  void reset(const bytes_ref& ref) noexcept {
     reset(ref.c_str(), ref.size());
   }
 
   virtual ptr dup() const override {
-    return index_input::make<bytes_ref_input>(*this);
+    return memory::make_unique<bytes_ref_input>(*this);
   }
 
   virtual ptr reopen() const override {
@@ -456,75 +455,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
   const byte_type* pos_{ data_.begin() };
 }; // bytes_ref_input
 
-//////////////////////////////////////////////////////////////////////////////
-/// @class bytes_input
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
- public:
-  bytes_input() = default;
-  explicit bytes_input(const bytes_ref& data);
-  bytes_input(bytes_input&& rhs) NOEXCEPT;
-  bytes_input& operator=(bytes_input&& rhs) NOEXCEPT;
-  bytes_input& operator=(const bytes_ref& data);
-
-  void read_from(data_input& in, size_t size);
-
-  void skip(size_t size) {
-    assert(pos_ + size <= this->end());
-    pos_ += size;
-  }
-
-  void seek(size_t pos) {
-    assert(this->begin() + pos <= this->end());
-    pos_ = this->begin() + pos;
-  }
-
-  virtual size_t file_pointer() const override { 
-    return std::distance(this->begin(), pos_);
-  }
-
-  virtual size_t length() const override { 
-    return this->size(); 
-  }
-
-  virtual bool eof() const override {
-    return pos_ >= this->end();
-  }
-
-  virtual byte_type read_byte() override final {
-    assert(pos_ < this->end());
-    return *pos_++;
-  }
-
-  virtual size_t read_bytes(byte_type* b, size_t size) override final;
-
-  // append to buf
-  void read_bytes(bstring& buf, size_t size);
-
-  virtual int32_t read_int() override final {
-    return irs::read<uint32_t>(pos_);
-  }
-
-  virtual int64_t read_long() override final {
-    return irs::read<uint64_t>(pos_);
-  }
-
-  virtual uint32_t read_vint() override final {
-    return irs::vread<uint32_t>(pos_);
-  }
-
-  virtual uint64_t read_vlong() override final {
-    return irs::vread<uint64_t>(pos_);
-  }
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  bstring buf_;
-  const byte_type* pos_{ buf_.c_str() };
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // bytes_input
-
-NS_BEGIN(encode)
+namespace encode {
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                bit packing encode/decode helpers
@@ -544,7 +475,7 @@ NS_BEGIN(encode)
 //
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(bitpack)
+namespace bitpack {
 
 const uint32_t ALL_EQUAL = 0U;
 
@@ -568,8 +499,15 @@ IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,
   uint32_t* RESTRICT encoded,
-  uint32_t* RESTRICT decoded
-);
+  uint32_t* RESTRICT decoded);
+
+// reads block of 128 integers from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
+IRESEARCH_API void read_block(
+  data_input& in,
+  uint32_t* RESTRICT encoded,
+  uint32_t* RESTRICT decoded);
 
 // reads block of the specified size from the stream
 // that was previously encoded with the corresponding
@@ -578,8 +516,24 @@ IRESEARCH_API void read_block(
   data_input& in,
   uint32_t size,
   uint64_t* RESTRICT encoded,
-  uint64_t* RESTRICT decoded
-);
+  uint64_t* RESTRICT decoded);
+
+// reads block of 128 integers from the stream
+// that was previously encoded with the corresponding
+// 'write_block' funcion
+IRESEARCH_API void read_block(
+  data_input& in,
+  uint64_t* RESTRICT encoded,
+  uint64_t* RESTRICT decoded);
+
+// writes block of 128 integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+IRESEARCH_API uint32_t write_block(
+  data_output& out,
+  const uint32_t* RESTRICT decoded,
+  uint32_t* RESTRICT encoded);
 
 // writes block of the specified size to stream
 //   all values are equal -> RL encoding,
@@ -589,8 +543,7 @@ IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint32_t* RESTRICT decoded,
   uint32_t size,
-  uint32_t* RESTRICT encoded
-);
+  uint32_t* RESTRICT encoded);
 
 // writes block of the specified size to stream
 //   all values are equal -> RL encoding,
@@ -600,17 +553,24 @@ IRESEARCH_API uint32_t write_block(
   data_output& out,
   const uint64_t* RESTRICT decoded,
   uint64_t size, // same type as 'decoded'/'encoded'
-  uint64_t* RESTRICT encoded
-);
+  uint64_t* RESTRICT encoded);
 
+// writes block of 128 integers to a stream
+//   all values are equal -> RL encoding,
+//   otherwise            -> bit packing
+// returns number of bits used to encoded the block (0 == RL)
+IRESEARCH_API uint32_t write_block(
+  data_output& out,
+  const uint64_t* RESTRICT decoded,
+  uint64_t* RESTRICT encoded);
 
-NS_END
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                      delta encode/decode helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(delta)
+namespace delta {
 
 template<typename Iterator>
 inline void decode(Iterator begin, Iterator end) {
@@ -637,13 +597,13 @@ inline void encode(Iterator begin, Iterator end) {
   });
 }
 
-NS_END // delta
+} // delta
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                        avg encode/decode helpers
 // ----------------------------------------------------------------------------
 
-NS_BEGIN(avg)
+namespace avg {
 
 // Encodes block denoted by [begin;end) using average encoding algorithm
 // Returns block std::pair{ base, average }
@@ -965,10 +925,10 @@ inline void visit_block_packed(
   visit_packed(base, avg, packed, size, bits, visitor);
 }
 
-NS_END // avg
+} // avg
 
-NS_END // encode
+} // encode
 
-NS_END // ROOT
+} // ROOT
 
 #endif

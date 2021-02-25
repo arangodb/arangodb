@@ -114,7 +114,7 @@ class MatcherFst : public ImplToExpandedFst<internal::AddOnImpl<F, Data>> {
   // Read a MatcherFst from a file; return nullptr on error
   // Empty filename reads from standard input
   static MatcherFst<FST, FstMatcher, Name, Init, Data> *Read(
-      const string &filename) {
+      const std::string &filename) {
     auto *impl = ImplToExpandedFst<Impl>::Read(filename);
     return impl ? new MatcherFst<FST, FstMatcher, Name, Init, Data>(
                       std::shared_ptr<Impl>(impl))
@@ -125,7 +125,7 @@ class MatcherFst : public ImplToExpandedFst<internal::AddOnImpl<F, Data>> {
     return GetImpl()->Write(strm, opts);
   }
 
-  bool Write(const string &filename) const override {
+  bool Write(const std::string &filename) const override {
     return Fst<Arc>::WriteFile(filename);
   }
 
@@ -164,7 +164,7 @@ class MatcherFst : public ImplToExpandedFst<internal::AddOnImpl<F, Data>> {
   using ImplToFst<Impl, ExpandedFst<Arc>>::GetImpl;
 
   static std::shared_ptr<Impl> CreateDataAndImpl(const FST &fst,
-                                                 const string &name) {
+                                                 const std::string &name) {
     FstMatcher imatcher(fst, MATCH_INPUT);
     FstMatcher omatcher(fst, MATCH_OUTPUT);
     return CreateImpl(fst, name,
@@ -173,12 +173,13 @@ class MatcherFst : public ImplToExpandedFst<internal::AddOnImpl<F, Data>> {
   }
 
   static std::shared_ptr<Impl> CreateDataAndImpl(const Fst<Arc> &fst,
-                                                 const string &name) {
+                                                 const std::string &name) {
     FST result(fst);
     return CreateDataAndImpl(result, name);
   }
 
-  static std::shared_ptr<Impl> CreateImpl(const FST &fst, const string &name,
+  static std::shared_ptr<Impl> CreateImpl(const FST &fst,
+                                          const std::string &name,
                                           std::shared_ptr<Data> data) {
     auto impl = std::make_shared<Impl>(fst, name);
     impl->SetAddOn(data);
@@ -322,11 +323,11 @@ using StdArcLookAheadFst =
 extern const char ilabel_lookahead_fst_type[];
 extern const char olabel_lookahead_fst_type[];
 
-FST_CONSTEXPR const auto ilabel_lookahead_flags =
+constexpr auto ilabel_lookahead_flags =
     kInputLookAheadMatcher | kLookAheadWeight | kLookAheadPrefix |
     kLookAheadEpsilons | kLookAheadNonEpsilonPrefix;
 
-FST_CONSTEXPR const auto olabel_lookahead_flags =
+constexpr auto olabel_lookahead_flags =
     kOutputLookAheadMatcher | kLookAheadWeight | kLookAheadPrefix |
     kLookAheadEpsilons | kLookAheadNonEpsilonPrefix;
 

@@ -132,6 +132,56 @@ function aqlKillSuite () {
       assertEqual(410, result.code);
     },
 
+    // test killing the query via the Job API
+    testCancelWriteQuery: function () {
+      let result = arango.POST_RAW("/_api/cursor", {
+        query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
+      }, { 
+        "x-arango-async" : "store"
+      });
+
+      let jobId = result.headers["x-arango-async-id"];
+
+      let queryId = 0;
+      let tries = 0;
+      while (++tries < 30) {
+        let queries = require("@arangodb/aql/queries").current();
+        queries.filter(function(data) {
+          if (data.query.indexOf(cn) !== -1) {
+            queryId = data.id;
+          }
+        });
+        if (queryId > 0) {
+          break;
+        }
+        
+        require("internal").wait(1, false);
+      }
+
+      assertTrue(queryId > 0);
+
+      // cancel the async job
+
+      result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
+      assertEqual(result.code, 200);
+
+      // make sure the query is no longer in the list of running queries
+      tries = 0;
+      while (++tries < 30) {
+        let queries = require("@arangodb/aql/queries").current();
+        let stillThere = false;
+        queries.filter(function(data) {
+          if (data.id === queryId) {
+            stillThere = true;
+          }
+        });
+        if (!stillThere) {
+          break;
+        }
+        require("internal").wait(1, false);
+      }
+      assertTrue(tries < 30);
+    },
   };
 }
 

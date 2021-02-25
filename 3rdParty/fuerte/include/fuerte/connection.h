@@ -24,12 +24,12 @@
 #ifndef ARANGO_CXX_DRIVER_CONNECTION
 #define ARANGO_CXX_DRIVER_CONNECTION
 
+#include <memory>
+#include <string>
+
 #include "loop.h"
 #include "message.h"
 #include "types.h"
-
-#include <memory>
-#include <string>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Connection is the base class for a connection between a client
@@ -42,17 +42,17 @@ class Connection : public std::enable_shared_from_this<Connection> {
   virtual ~Connection();
 
   ///  Connection state
-  ///  Disconnected <---------+
-  ///  +                      |
-  ///  |  +-------------------+--> Failed
+  ///  Created
+  ///  +
+  ///  |  +-------------------+--> Closed
   ///  |  |                   |
-  ///  v  +                   +
+  ///  v  +                +
   ///  Connecting +-----> Connected
-  enum class State {
-    Disconnected = 0,
+  enum class State : uint8_t {
+    Created = 0,
     Connecting = 1,
     Connected = 2,
-    Failed = 3  /// canceled or broken permanently (i.e. bad authentication)
+    Closed = 3  /// closed permanently
   };
 
   /// @brief Send a request to the server and wait into a response it received.
@@ -69,14 +69,13 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  virtual MessageID sendRequest(std::unique_ptr<Request> r,
-                                RequestCallback cb) = 0;
+  virtual void sendRequest(std::unique_ptr<Request> r, RequestCallback cb) = 0;
 
   /// @brief Send a request to the server and return immediately.
   /// When a response is received or an error occurs, the corresponding
   /// callbackis called. The callback is executed on a specific
   /// IO-Thread for this connection.
-  MessageID sendRequest(Request const& r, RequestCallback cb) {
+  void sendRequest(Request const& r, RequestCallback cb) {
     auto copy = std::make_unique<Request>(r);
     return sendRequest(std::move(copy), cb);
   }
@@ -96,15 +95,13 @@ class Connection : public std::enable_shared_from_this<Connection> {
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 
-  /// @brief Activate the connection.
-  virtual void startConnection() = 0;
-
   // Invoke the configured ConnectionFailureCallback (if any)
   void onFailure(Error errorCode, const std::string& errorMessage) {
     if (_config._onFailure) {
       try {
         _config._onFailure(errorCode, errorMessage);
-      } catch(...) {}
+      } catch (...) {
+      }
     }
   }
 
@@ -133,13 +130,47 @@ class ConnectionBuilder {
   // Create an connection and start opening it.
   std::shared_ptr<Connection> connect(EventLoopService& eventLoopService);
 
-  /// @brief idle connection timeout (60s default)
+  /// @brief connect timeout (15s default)
+  inline std::chrono::milliseconds connectTimeout() const {
+    return _conf._connectTimeout;
+  }
+  /// @brief set the connect connection timeout (15s default)
+  ConnectionBuilder& connectTimeout(std::chrono::milliseconds t) {
+    _conf._connectTimeout = t;
+    return *this;
+  }
+
+  /// @brief idle connection timeout (300s default)
   inline std::chrono::milliseconds idleTimeout() const {
     return _conf._idleTimeout;
   }
-  /// @brief set the idle connection timeout (60s default)
+  /// @brief set the idle connection timeout (300s default)
   ConnectionBuilder& idleTimeout(std::chrono::milliseconds t) {
     _conf._idleTimeout = t;
+    return *this;
+  }
+
+  /// @brief use an idle timeout
+  ConnectionBuilder& useIdleTimeout(bool t) {
+    _conf._useIdleTimeout = t;
+    return *this;
+  }
+
+  /// @brief connect retry pause (1s default)
+  inline std::chrono::milliseconds connectRetryPause() const {
+    return _conf._connectRetryPause;
+  }
+  /// @brief set the connect retry pause (1s default)
+  ConnectionBuilder& connectRetryPause(std::chrono::milliseconds p) {
+    _conf._connectRetryPause = p;
+    return *this;
+  }
+
+  /// @brief connect retries (3 default)
+  inline unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
+  /// @brief set the max connect retries (3 default)
+  ConnectionBuilder& maxConnectRetries(unsigned r) {
+    _conf._maxConnectRetries = r;
     return *this;
   }
 
@@ -170,12 +201,6 @@ class ConnectionBuilder {
     _conf._jwtToken = t;
     return *this;
   }
-  // Set the maximum size for chunks (VST only)
-  /*inline std::size_t maxChunkSize() const { return _conf._maxChunkSize; }
-  ConnectionBuilder& maxChunkSize(std::size_t c) {
-    _conf._maxChunkSize = c;
-    return *this;
-  }*/
 
   /// @brief tcp, ssl or unix
   inline SocketType socketType() const { return _conf._socketType; }
@@ -187,6 +212,12 @@ class ConnectionBuilder {
   inline vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
   ConnectionBuilder& vstVersion(vst::VSTVersion c) {
     _conf._vstVersion = c;
+    return *this;
+  }
+
+  /// upgrade http1.1 to http2 connection (not necessary)
+  ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {
+    _conf._upgradeH1ToH2 = c;
     return *this;
   }
 

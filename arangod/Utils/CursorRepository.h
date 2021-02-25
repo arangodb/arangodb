@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,7 @@ class Builder;
 }
 
 namespace aql {
+class Query;
 struct QueryResult;
 }
 
@@ -78,17 +79,14 @@ class CursorRepository {
   /// the cursor will create a query internally and retain it until deleted
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* createQueryStream(std::string const& query,
-                            std::shared_ptr<velocypack::Builder> const& binds,
-                            std::shared_ptr<velocypack::Builder> const& opts,
-                            size_t batchSize, double ttl, bool contextOwnedByExterior,
-                            std::shared_ptr<transaction::Context> ctx);
+  Cursor* createQueryStream(std::unique_ptr<arangodb::aql::Query> q,
+                            size_t batchSize, double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a cursor by id
   //////////////////////////////////////////////////////////////////////////////
 
-  bool remove(CursorId, Cursor::CursorType);
+  bool remove(CursorId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief find an existing cursor by id
@@ -96,7 +94,7 @@ class CursorRepository {
   /// it must be returned later using release()
   //////////////////////////////////////////////////////////////////////////////
 
-  Cursor* find(CursorId, Cursor::CursorType, bool&);
+  Cursor* find(CursorId, bool& found);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return a cursor

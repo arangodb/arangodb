@@ -42,7 +42,7 @@ function optimizerRuleTestSuite () {
 
   // various choices to control the optimizer: 
   var paramNone   = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] }, inspectSimplePlans: true };
+  var paramEnabled    = { optimizer: { rules: [ "-all", "+" + ruleName, "+" + ruleName + "-2" ] } };
   var paramDisabled  = { optimizer: { rules: [ "+all", "-" + ruleName, "-" + ruleName + "-2" ] } };
 
   return {
@@ -87,8 +87,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramNone);
+        assertEqual([ ], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -173,8 +173,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+        assertEqual([ ], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
       });
     },
@@ -377,6 +377,22 @@ function optimizerRuleTestSuite () {
 
         result = AQL_EXECUTE(query[0]).json;
         assertEqual(query[1], result, query);
+      });
+    },
+    
+    testDontMoveExpensiveCallIntoInnerLoop : function () {
+      let queries = [
+        [ "LET values = SORTED_UNIQUE(NOOPT(1..100)) FOR j IN 1..100 FILTER j IN values RETURN j", false ],
+        [ "LET values = [3] FOR j IN 1..100 FILTER j IN values RETURN j", true ],
+        [ "LET values = NOOPT([3]) FOR j IN 1..100 FILTER j IN values RETURN j", false ],
+        [ "LET value = 3 FOR j IN 1..100 FILTER j == value RETURN [j, value]", true ],
+        [ "LET value = NOOPT(3) FOR j IN 1..100 FILTER j == value RETURN [j, value]", false ],
+        [ "LET value = 3 FOR j IN 1..100 FILTER j == NOOPT(value) RETURN [j, value]", true ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = AQL_EXPLAIN(query[0]).plan;
+        assertEqual(query[1], plan.rules.indexOf(ruleName) !== -1, { query, rules: plan.rules });
       });
     },
 

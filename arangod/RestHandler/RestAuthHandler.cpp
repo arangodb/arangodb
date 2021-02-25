@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 
 #include "RestAuthHandler.h"
 
+#include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -45,19 +46,9 @@ RestAuthHandler::RestAuthHandler(application_features::ApplicationServer& server
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  std::chrono::seconds exp = std::chrono::duration_cast<std::chrono::seconds>(
-                                 std::chrono::system_clock::now().time_since_epoch()) +
-                             _validFor;
-  VPackBuilder bodyBuilder;
-  {
-    VPackObjectBuilder p(&bodyBuilder);
-    bodyBuilder.add("preferred_username", VPackValue(username));
-    bodyBuilder.add("iss", VPackValue("arangodb"));
-    bodyBuilder.add("exp", VPackValue(exp.count()));
-  }
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return af->tokenCache().generateJwt(bodyBuilder.slice());
+  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username, _validFor);
 }
 
 RestStatus RestAuthHandler::execute() {
@@ -69,8 +60,8 @@ RestStatus RestAuthHandler::execute() {
 
   bool parseSuccess = false;
   VPackSlice slice = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess) {
-    return badRequest();
+  if (!parseSuccess) { // error already set
+    return RestStatus::DONE;
   }
 
   if (!slice.isObject()) {

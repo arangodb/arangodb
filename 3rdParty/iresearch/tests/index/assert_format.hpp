@@ -53,11 +53,11 @@ class posting {
   posting(irs::doc_id_t id, std::set<position>&& positions)
     : positions_(std::move(positions)), id_(id) {
   }
-  posting(posting&& rhs) NOEXCEPT
+  posting(posting&& rhs) noexcept
     : positions_(std::move(rhs.positions_)),
       id_(rhs.id_) {
   }
-  posting& operator=(posting&& rhs) NOEXCEPT {
+  posting& operator=(posting&& rhs) noexcept {
     if (this != &rhs) {
       positions_ = std::move(rhs.positions_);
       id_ = rhs.id_;
@@ -65,7 +65,7 @@ class posting {
     return *this;
   }
 
-  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_view& attrs);
+  void add(uint32_t pos, uint32_t offs_start, const irs::attribute_provider& attrs);
 
   bool operator<(const posting& rhs) const {
     return id_ < rhs.id_;
@@ -110,14 +110,9 @@ struct term {
 
 class field : public irs::field_meta {
  public:
-  field(
-    const irs::string_ref& name,
-    const irs::flags& features
-  );
-
-  field(field&& rhs) NOEXCEPT;
-
-  field& operator=(field&& rhs) NOEXCEPT;
+  field(const irs::string_ref& name, const irs::flags& features);
+  field(field&& rhs) noexcept;
+  field& operator=(field&& rhs) noexcept;
 
   term& add(const irs::bytes_ref& term);
   term* find(const irs::bytes_ref& term);
@@ -140,8 +135,8 @@ class index_segment: irs::util::noncopyable {
   typedef field_map_t::const_iterator iterator;
 
   index_segment();
-  index_segment(index_segment&& rhs) NOEXCEPT;
-  index_segment& operator=(index_segment&& rhs) NOEXCEPT;
+  index_segment(index_segment&& rhs) noexcept;
+  index_segment& operator=(index_segment&& rhs) noexcept;
    
   size_t doc_count() const { return count_; }
   size_t size() const { return fields_.size(); }
@@ -233,29 +228,43 @@ class index_segment: irs::util::noncopyable {
   irs::document_mask doc_mask_;
 };
 
-namespace detail {
-
 class term_reader : public irs::term_reader {
  public:
-  term_reader(const tests::field& data):
-    data_(data), min_(data_.terms.begin()->value), max_(data_.terms.rbegin()->value) {
+  term_reader(const tests::field& data)
+    : data_(data),
+      min_(data_.terms.begin()->value),
+      max_(data_.terms.rbegin()->value) {
+    if (meta().features.check<irs::frequency>()) {
+      for (auto& term : data.terms) {
+        for (auto& p : term.postings) {
+          freq_.value += p.positions().size();
+        }
+      }
+      pfreq_ = &freq_;
+    }
   }
 
   virtual irs::seek_term_iterator::ptr iterator() const override;
-  virtual const irs::field_meta& meta() const override;
-  virtual size_t size() const override;
-  virtual uint64_t docs_count() const override;
-  virtual const irs::bytes_ref& (min)() const override;
-  virtual const irs::bytes_ref& (max)() const override;
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override;
+  virtual irs::seek_term_iterator::ptr iterator(irs::automaton_table_matcher& a) const override;
+  virtual const irs::field_meta& meta() const override { return data_; }
+  virtual size_t size() const override { return data_.terms.size(); }
+  virtual uint64_t docs_count() const override { return data_.docs.size(); }
+  virtual const irs::bytes_ref& (min)() const override { return min_; }
+  virtual const irs::bytes_ref& (max)() const override { return max_; }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    if (irs::type<irs::frequency>::id() == type) {
+      return pfreq_;
+    }
+    return nullptr;
+  }
 
  private:
   const tests::field& data_;
-  irs::bytes_ref max_;
+  irs::frequency freq_;
+  irs::frequency* pfreq_{};
   irs::bytes_ref min_;
+  irs::bytes_ref max_;
 };
-
-} // detail
 
 struct index_meta_writer: public irs::index_meta_writer {
   virtual std::string filename(
@@ -266,7 +275,7 @@ struct index_meta_writer: public irs::index_meta_writer {
     irs::index_meta& meta
   ) override;
   virtual bool commit() override;
-  virtual void rollback() NOEXCEPT override;
+  virtual void rollback() noexcept override;
 };
 
 struct index_meta_reader : public irs::index_meta_reader {
@@ -316,7 +325,7 @@ class document_mask_writer: public irs::document_mask_writer {
 class field_reader : public irs::field_reader {
  public:
   field_reader( const index_segment& data );
-  field_reader(field_reader&& other) NOEXCEPT;
+  field_reader(field_reader&& other) noexcept;
 
   virtual void prepare(const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask) override;
   virtual const irs::term_reader* field(const irs::string_ref& field) const override;
@@ -355,7 +364,6 @@ class field_writer : public irs::field_writer {
 
 class format : public irs::format {
  public:
-  DECLARE_FORMAT_TYPE();
   DECLARE_FACTORY();
   format();
   format(const index_segment& data);
@@ -393,19 +401,22 @@ void assert_term(
 void assert_terms_next(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
+  irs::automaton_table_matcher* acceptor,
   const irs::flags& features);
 
 void assert_terms_seek(
   const irs::term_reader& expected_term_reader,
   const irs::term_reader& actual_term_reader,
   const irs::flags& features,
+  irs::automaton_table_matcher* acceptor,
   size_t lookahead = 10); // number of steps to iterate after the seek
 
 void assert_index(
   const index_t& expected_index,
   const irs::index_reader& actual_index,
   const irs::flags& features,
-  size_t skip = 0 // do not validate the first 'skip' segments
+  size_t skip = 0, // do not validate the first 'skip' segments
+  irs::automaton_table_matcher* matcher = nullptr
 );
 
 void assert_index(
@@ -413,7 +424,8 @@ void assert_index(
   irs::format::ptr codec,
   const index_t& index,
   const irs::flags& features,
-  size_t skip = 0 // no not validate the first 'skip' segments
+  size_t skip = 0, // no not validate the first 'skip' segments
+  irs::automaton_table_matcher* matcher = nullptr
 );
 
 } // tests

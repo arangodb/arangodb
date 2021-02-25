@@ -18,187 +18,168 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "range_filter.hpp"
-#include "range_query.hpp"
-#include "term_query.hpp"
-#include "index/index_reader.hpp"
+
+#include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+#include "index/index_reader.hpp"
+#include "search/filter_visitor.hpp"
+#include "search/limited_sample_collector.hpp"
+#include "search/term_filter.hpp"
 
-#include <boost/functional/hash.hpp>
+namespace {
 
-NS_LOCAL
+using namespace irs;
 
-template<typename Comparer>
+template<typename Visitor, typename Comparer>
 void collect_terms(
-    const irs::sub_reader& segment,
-    const irs::term_reader& field,
-    irs::seek_term_iterator& terms,
-    irs::range_query::states_t& states,
-    irs::limited_sample_scorer& scorer,
+    const sub_reader& segment,
+    const term_reader& field,
+    seek_term_iterator& terms,
+    Visitor& visitor,
     Comparer cmp) {
-  if (cmp(terms)) {
+  auto& value = terms.value();
+
+  if (cmp(value)) {
     // read attributes
     terms.read();
 
-    // get state for current segment
-    auto& state = states.insert(segment);
-    state.reader = &field;
-    state.min_term = terms.value();
-    state.min_cookie = terms.cookie();
-    state.unscored_docs.reset(
-      (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
-    ); // highest valid doc_id in segment
-
-    // get term metadata
-    auto& meta = terms.attributes().get<irs::term_meta>();
+    visitor.prepare(segment, field, terms);
 
     do {
-      // fill scoring candidates
-      scorer.collect(meta ? meta->docs_count : 0, state.count, state, segment, terms);
-      ++state.count;
-
-      if (meta) {
-        state.estimation += meta->docs_count;
-      }
+      visitor.visit(no_boost());
 
       if (!terms.next()) {
         break;
       }
 
-      // read attributes
       terms.read();
-    } while (cmp(terms));
+    } while (cmp(value));
   }
 }
 
-NS_END // LOCAL
+template<typename Visitor>
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const by_range_options::range_type& rng,
+    Visitor& visitor) {
+  auto terms = reader.iterator();
 
-NS_ROOT
+  if (IRS_UNLIKELY(!terms)) {
+    return;
+  }
 
-DEFINE_FILTER_TYPE(by_range)
+  auto res = false;
+
+  // seek to min
+  switch (rng.min_type) {
+    case BoundType::UNBOUNDED:
+      res = terms->next();
+      break;
+    case BoundType::INCLUSIVE:
+      res = seek_min<true>(*terms, rng.min);
+      break;
+    case BoundType::EXCLUSIVE:
+      res = seek_min<false>(*terms, rng.min);
+      break;
+  }
+
+  if (!res) {
+    // reached the end, nothing to collect
+    return;
+  }
+
+  // now we are on the target or the next term
+  const bytes_ref max = rng.max;
+
+  switch (rng.max_type) {
+    case BoundType::UNBOUNDED:
+      ::collect_terms(
+        segment, reader, *terms, visitor, [](const bytes_ref&) {
+          return true;
+      });
+      break;
+    case BoundType::INCLUSIVE:
+      ::collect_terms(
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+          return term <= max;
+      });
+      break;
+    case BoundType::EXCLUSIVE:
+      ::collect_terms(
+        segment, reader, *terms, visitor, [max](const bytes_ref& term) {
+          return term < max;
+      });
+      break;
+  }
+}
+
+}
+
+namespace iresearch {
+
 DEFINE_FACTORY_DEFAULT(by_range)
 
-by_range::by_range() NOEXCEPT
-  : filter(by_range::type()) {
-}
-
-bool by_range::equals(const filter& rhs) const NOEXCEPT {
-  const by_range& trhs = static_cast<const by_range&>(rhs);
-  return filter::equals(rhs) && fld_ == trhs.fld_ && rng_ == trhs.rng_;
-}
-
-size_t by_range::hash() const NOEXCEPT {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, filter::hash());
-  ::boost::hash_combine(seed, fld_);
-  ::boost::hash_combine(seed, rng_.min);
-  ::boost::hash_combine(seed, rng_.min_type);
-  ::boost::hash_combine(seed, rng_.max);
-  ::boost::hash_combine(seed, rng_.max_type);
-  return seed;
-}
-
-filter::prepared::ptr by_range::prepare(
+/*static*/ filter::prepared::ptr by_range::prepare(
     const index_reader& index,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& /*ctx*/) const {
+    const string_ref& field,
+    const options_type::range_type& rng,
+    size_t scored_terms_limit) {
   //TODO: optimize unordered case
   // - seek to min
   // - get ordinal position of the term
   // - seek to max
   // - get ordinal position of the term
 
-  if (rng_.min_type != Bound_Type::UNBOUNDED
-      && rng_.max_type != Bound_Type::UNBOUNDED
-      && rng_.min == rng_.max) {
+  if (rng.min_type != BoundType::UNBOUNDED
+      && rng.max_type != BoundType::UNBOUNDED
+      && rng.min == rng.max) {
 
-    if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+    if (rng.min_type == rng.max_type && rng.min_type == BoundType::INCLUSIVE) {
       // degenerated case
-      return term_query::make(index, ord, boost*this->boost(), fld_, rng_.min);
+      return by_term::prepare(index, ord, boost, field, rng.min);
     }
 
     // can't satisfy conditon
     return prepared::empty();
   }
 
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(index.size());
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments
-  const string_ref field_name = fld_;
   for (const auto& segment : index) {
     // get term dictionary for field
-    const auto* field = segment.field(field_name);
+    const auto* reader = segment.field(field);
 
-    if (!field) {
+    if (!reader) {
       // can't find field with the specified name
       continue;
     }
 
-    auto terms = field->iterator();
-    bool res = false;
-
-    // seek to min
-    switch (rng_.min_type) {
-      case Bound_Type::UNBOUNDED:
-        res = terms->next();
-        break;
-      case Bound_Type::INCLUSIVE:
-        res = seek_min<true>(*terms, rng_.min);
-        break;
-      case Bound_Type::EXCLUSIVE:
-        res = seek_min<false>(*terms, rng_.min);
-        break;
-      default:
-        assert(false);
-    }
-
-    if (!res) {
-      // reached the end, nothing to collect
-      continue;
-    }
-
-    // now we are on the target or the next term
-    const irs::bytes_ref max = rng_.max;
-
-    switch (rng_.max_type) {
-      case Bound_Type::UNBOUNDED:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [](const term_iterator&) {
-            return true;
-        });
-        break;
-      case Bound_Type::INCLUSIVE:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
-            return terms.value() <= max;
-        });
-        break;
-      case Bound_Type::EXCLUSIVE:
-        ::collect_terms(
-          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
-            return terms.value() < max;
-        });
-        break;
-      default:
-        assert(false);
-    }
+    ::visit(segment, *reader, rng, mtv);
   }
 
-  scorer.score(index, ord);
+  std::vector<bstring> stats;
+  collector.score(index, ord, stats);
 
-  return memory::make_shared<range_query>(
-    std::move(states), this->boost() * boost
-  );
+  return memory::make_managed<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
-NS_END // ROOT
+/*static*/ void by_range::visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const options_type::range_type& rng,
+    filter_visitor& visitor) {
+  ::visit(segment, reader, rng, visitor);
+}
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

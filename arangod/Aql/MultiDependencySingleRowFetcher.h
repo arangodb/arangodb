@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,34 +24,54 @@
 #ifndef ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 #define ARANGOD_AQL_MULTI_DEPENDENCY_SINGLE_ROW_FETCHER_H
 
+#include "Aql/AqlCallSet.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/MultiAqlItemBlockInputRange.h"
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need one
  *        row at a time from every dependency in order to make progress.
- *        The guarantee is the following:
- *        If fetchRowForDependency returns a row of the given dependency,
- *        the pointer to
- *        this row stays valid until the next call
- *        of fetchRowForDependency.
- *        So we can have one Row per dependency in flight.
  */
 class MultiDependencySingleRowFetcher {
  private:
+  class UpstreamSkipReport {
+   public:
+    UpstreamSkipReport();
+    ~UpstreamSkipReport() = default;
+
+    auto isInitialized() const -> bool;
+
+    auto initialize(size_t depth) -> void;
+
+    auto getSkipped(size_t subqueryDepth) const -> size_t;
+
+    auto getFullCount(size_t subqueryDepth) const-> size_t;
+
+    auto clearCounts(size_t subqueryDepth) -> void;
+
+    auto setSkipped(size_t subqueryDepth, size_t skipped) -> void;
+    auto setFullCount(size_t subqueryDepth, size_t skipped) -> void;
+    auto incFullCount(size_t subqueryDepth, size_t skipped) -> void;
+
+   private:
+    bool _isInitialized{false};
+    std::vector<std::pair<size_t, size_t>> _report;
+  };
+
   /**
    * @brief helper struct to contain all information about dependency-states
    */
@@ -59,7 +80,7 @@ class MultiDependencySingleRowFetcher {
     DependencyInfo();
     ~DependencyInfo() = default;
     /**
-     * @brief Holds state returned by the last fetchBlock() call.
+     * @brief Holds state returned by the last execute() call.
      *        This is similar to ExecutionBlock::_upstreamState, but can also be
      *        WAITING.
      *        Part of the Fetcher, and may be moved if the Fetcher
@@ -75,7 +96,7 @@ class MultiDependencySingleRowFetcher {
     SharedAqlItemBlockPtr _currentBlock;
 
     /**
-     * @brief Index of the row to be returned next by fetchRow(). This is valid
+     * @brief Index of the row to be returned next. This is valid
      *        iff _currentBlock != nullptr and it's smaller or equal than
      *        _currentBlock->size(). May be moved if the Fetcher implementations
      *        are moved into separate classes.
@@ -84,51 +105,35 @@ class MultiDependencySingleRowFetcher {
   };
 
  public:
+  using DataRange = MultiAqlItemBlockInputRange;
   explicit MultiDependencySingleRowFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
   TEST_VIRTUAL ~MultiDependencySingleRowFetcher() = default;
+
+  void init();
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
   MultiDependencySingleRowFetcher();
 
  public:
-  std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t atMost);
-  std::pair<ExecutionState, size_t> preFetchNumberOfRowsForDependency(size_t dependency,
-                                                                      size_t atMost);
-
   // May only be called once, after the dependencies are injected.
   void initDependencies();
 
   size_t numberDependencies();
 
-  /**
-   * @brief Fetch one new AqlItemRow from the specified upstream dependency.
-   *
-   * @param atMost may be passed if a block knows the maximum it might want to
-   *        fetch from upstream. Will not fetch more than the default batch
-   *        size, so passing something greater than it will not have any effect.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediately return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
-   */
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  TEST_VIRTUAL std::pair<ExecutionState, InputAqlItemRow> fetchRowForDependency(
-      size_t dependency, size_t atMost = ExecutionBlock::DefaultBatchSize());
+  [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
+      -> std::tuple<ExecutionState, SkipResult, std::vector<std::pair<size_t, AqlItemBlockInputRange>>>;
 
-  std::pair<ExecutionState, size_t> skipRowsForDependency(size_t dependency, size_t atMost);
+  [[nodiscard]] auto upstreamState() const -> ExecutionState;
 
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
+  auto resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void;
+
+  void reportSubqueryFullCounts(size_t subqueryDepth,
+                                std::vector<size_t> const& skippedInDependency);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto initialize(size_t subqueryDepth) -> void;
+#endif
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -137,39 +142,40 @@ class MultiDependencySingleRowFetcher {
    * @brief Holds the information for all dependencies
    */
   std::vector<DependencyInfo> _dependencyInfos;
+  std::vector<ExecutionState> _dependencyStates;
+  std::vector<UpstreamSkipReport> _dependencySkipReports;
+
+  UpstreamSkipReport _maximumSkipReport;
+
+  /// @brief Only needed for parallel executors; could be omitted otherwise
+  ///        It's size is >0 after init() is called, and this is currently used
+  ///        in initOnce() to make sure that init() is called exactly once.
+  std::vector<std::optional<AqlCallStack>> _callsInFlight;
+
+  bool _didReturnSubquerySkips{false};
 
  private:
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForDependency(size_t dependency,
-                                                                           size_t atMost);
-
-  std::pair<ExecutionState, size_t> skipSomeForDependency(size_t dependency, size_t atMost);
+  [[nodiscard]] auto executeForDependency(size_t dependency, AqlCallStack& stack)
+      -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
+  RegisterCount getNrInputRegisters() const;
 
   bool indexIsValid(DependencyInfo const& info) const;
 
   bool isDone(DependencyInfo const& info) const;
 
-  bool isLastRowInBlock(DependencyInfo const& info) const;
 
-  /**
-  * @brief If it returns true, there are no more data row in the current subquery
-  * level. If it returns false, there may or may not be more.
-  */
-  bool noMoreDataRows(DependencyInfo const& info) const;
-  
-  bool isAtShadowRow(DependencyInfo const& info) const;
+  AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack, const size_t dependency);
 
-  bool fetchBlockIfNecessary(const size_t dependency, const size_t atMost);
+  void reportSkipForDependency(AqlCallStack const& originalStack,
+                               SkipResult const& skipped, const size_t dependency);
+
+  void initializeReports(size_t subqueryDepth);
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 #endif  // ARANGOD_AQL_SINGLE_ROW_FETCHER_H

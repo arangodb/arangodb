@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,12 +26,12 @@
 
 #include <array>
 #include <memory>
-
-#include <boost/variant.hpp>
+#include <variant>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/overload.h"
 
 #include "AqlHelper.h"
 #include "VelocyPackHelper.h"
@@ -77,15 +78,17 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-using EntryBuilder = boost::variant<int, const char*>;
+struct NoneEntry {};
 
-template <::arangodb::aql::RegisterId columns>
+using EntryBuilder = std::variant<NoneEntry, int, const char*>;
+
+template <::arangodb::aql::RegisterId::value_t columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
 
-template <::arangodb::aql::RegisterId columns>
+template <::arangodb::aql::RegisterId::value_t columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
-template <::arangodb::aql::RegisterId columns>
+template <::arangodb::aql::RegisterId::value_t columns>
 ::arangodb::aql::SharedAqlItemBlockPtr buildBlock(
     ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
     std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {});
@@ -100,17 +103,7 @@ namespace aql {
 
 using namespace ::arangodb::aql;
 
-class EntryToAqlValueVisitor : public boost::static_visitor<AqlValue> {
- public:
-  AqlValue operator()(int i) const { return AqlValue{AqlValueHintInt{i}}; }
-
-  AqlValue operator()(const char* json) const {
-    VPackBufferPtr tmpVpack = vpackFromJsonString(json);
-    return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
-  }
-};
-
-template <RegisterId columns>
+template <RegisterId::value_t columns>
 SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
                                  MatrixBuilder<columns>&& matrix,
                                  std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
@@ -119,17 +112,28 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
   }
   SharedAqlItemBlockPtr block{new AqlItemBlock(manager, matrix.size(), columns)};
 
-  for (size_t row = 0; row < matrix.size(); row++) {
-    for (RegisterId col = 0; col < columns; col++) {
-      auto const& entry = matrix[row][col];
-      auto visitor = EntryToAqlValueVisitor();
-      block->setValue(row, col, boost::apply_visitor(visitor, entry));
+  if constexpr (columns > 0) {
+    for (size_t row = 0; row < matrix.size(); row++) {
+      for (RegisterId::value_t col = 0; col < columns; col++) {
+        auto const& entry = matrix[row][col];
+        auto value =
+            std::visit(overload{
+                           [](NoneEntry) { return AqlValue{}; },
+                           [](int i) { return AqlValue{AqlValueHintInt{i}}; },
+                           [](const char* json) {
+                             VPackBufferPtr tmpVpack = vpackFromJsonString(json);
+                             return AqlValue{AqlValueHintCopy{tmpVpack->data()}};
+                           },
+                       },
+                       entry);
+        block->setValue(row, col, value);
+      }
     }
   }
 
   if (!shadowRows.empty()) {
     for (auto const& it : shadowRows) {
-      block->setShadowRowDepth(it.first, AqlValue(AqlValueHintUInt(it.second)));
+      block->makeShadowRow(it.first, it.second);
     }
   }
 

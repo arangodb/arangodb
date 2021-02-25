@@ -33,7 +33,7 @@ const optionsDocumentation = [
 ];
 
 const fs = require('fs');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const yaml = require('js-yaml');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -89,7 +89,6 @@ function config (options) {
     'arangorestore',
     'arangoexport',
     'arangosh',
-    'arango-dfdb',
     'foxx-manager'
   ];
 

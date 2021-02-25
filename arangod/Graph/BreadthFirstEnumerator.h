@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,9 @@
 #include "Basics/Common.h"
 #include "Graph/PathEnumerator.h"
 
+#include <memory>
+#include <vector>
+
 namespace arangodb {
 
 namespace traverser {
@@ -35,35 +38,30 @@ struct TraverserOptions;
 }  // namespace traverser
 
 namespace graph {
+class EdgeCursor;
 
 class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator {
  private:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief One entry in the schreier vector
-  //////////////////////////////////////////////////////////////////////////////
-
   struct PathStep {
     size_t sourceIdx;
     graph::EdgeDocumentToken edge;
     arangodb::velocypack::StringRef /* const */ vertex;
 
    public:
-    explicit PathStep(arangodb::velocypack::StringRef const vertex);
+    explicit PathStep(arangodb::velocypack::StringRef vertex);
 
     PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
-             arangodb::velocypack::StringRef const vertex);
+             arangodb::velocypack::StringRef vertex);
 
-    ~PathStep();
+    ~PathStep() = default;
 
     PathStep(PathStep const& other) = default;
     PathStep& operator=(PathStep const& other) = delete;
   };
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Struct to hold all information required to get the list of
   ///        connected edges
-  //////////////////////////////////////////////////////////////////////////////
-
   struct NextStep {
     size_t sourceIdx;
 
@@ -74,68 +72,45 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
     explicit NextStep(size_t sourceIdx) : sourceIdx(sourceIdx) {}
   };
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief schreier vector to store the visited vertices
-  //////////////////////////////////////////////////////////////////////////////
+  /// @brief schreier vector to store the visited vertices. 
+  /// note: for memory usage tracking, it is require to call growStorage() before
+  /// inserting into the schreier vector.
+  std::vector<PathStep> _schreier;
 
-  std::vector<std::unique_ptr<PathStep>> _schreier;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Next free index in schreier vector.
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t _schreierIndex;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Position of the last returned value in the schreier vector
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t _lastReturned;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector to store where to continue search on next depth
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<NextStep> _nextDepth;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
   std::vector<NextStep> _toSearch;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Vector storing the position at current search depth
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::unordered_set<arangodb::velocypack::Slice> _tmpEdges;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Marker for the search depth. Used to abort searching.
-  //////////////////////////////////////////////////////////////////////////////
-
   uint64_t _currentDepth;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief position in _toSearch. If this is >= _toSearch.size() we are done
   ///        with this depth.
-  //////////////////////////////////////////////////////////////////////////////
-
   size_t _toSearchPos;
+
+  /// @brief helper vector that is used temporarily when building the path
+  /// output
+  std::vector<size_t> _tempPathHelper;
 
  public:
   BreadthFirstEnumerator(arangodb::traverser::Traverser* traverser,
-                         arangodb::velocypack::Slice startVertex,
                          arangodb::traverser::TraverserOptions* opts);
 
   ~BreadthFirstEnumerator();
+  
+  void setStartVertex(arangodb::velocypack::StringRef startVertex) override;
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the next Path element from the traversal.
-  //////////////////////////////////////////////////////////////////////////////
-
   bool next() override;
-
+  
   aql::AqlValue lastVertexToAqlValue() override;
 
   aql::AqlValue lastEdgeToAqlValue() override;
@@ -143,15 +118,6 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& result) override;
 
  private:
-  inline size_t getDepth(size_t index) const {
-    size_t depth = 0;
-    while (index != 0) {
-      ++depth;
-      index = _schreier[index]->sourceIdx;
-    }
-    return depth;
-  }
-
   /**
    * @brief Helper function to validate if the path contains the given
    *        vertex.
@@ -190,6 +156,10 @@ class BreadthFirstEnumerator final : public arangodb::traverser::PathEnumerator 
   velocypack::Slice pathToIndexToSlice(arangodb::velocypack::Builder& result, size_t index);
 
   bool shouldPrune();
+
+  void growStorage();
+  
+  constexpr size_t pathStepSize() const noexcept;
 };
 }  // namespace graph
 }  // namespace arangodb

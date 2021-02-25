@@ -163,8 +163,8 @@ module.exports =
       const warnings = this.applyConfiguration(this._configuration, false);
       if (warnings) {
         console.warnLines(`Stored configuration for service "${this.mount}" has errors:\n  ${
-          Object.keys(warnings).map((key) => warnings[key]).join('\n  ')
-        }\nValues for unknown options will be discarded if you save the configuration in production mode using the web interface.`);
+          Object.keys(warnings).map((key) => `${key} ${warnings[key]}`).join('\n  ')
+        }\nValues for unknown options will be discarded if you save the configuration in production mode.`);
       }
 
       this.thumbnail = null;
@@ -197,6 +197,14 @@ module.exports =
       const omittedNames = knownNames.filter((name) => !configNames.includes(name));
       const names = replace ? configNames.concat(omittedNames) : configNames;
       const warnings = {};
+
+      if (!this.isDevelopment) {
+        for (const name of Object.keys(this._configuration)) {
+          if (!knownNames.includes(name) && !configNames.includes(name)) {
+            delete this._configuration[name];
+          }
+        }
+      }
 
       for (const name of names) {
         if (!knownNames.includes(name)) {
@@ -310,9 +318,9 @@ module.exports =
 
     buildRoutes () {
       this.tree = new Tree(this.main.context, this.router);
-      let paths = [];
+      let oas = {paths: []};
       try {
-        paths = this.tree.buildSwaggerPaths();
+        oas = this.tree.buildSwaggerPaths();
       } catch (e) {
         if (this.isDevelopment) {
           e.codeFrame = codeFrame(e, this.basePath);
@@ -326,7 +334,8 @@ module.exports =
       this.docs = {
         swagger: '2.0',
         basePath: this.main.context.baseUrl,
-        paths: paths,
+        paths: oas.paths,
+        securityDefinitions: oas.securitySchemes,
         info: {
           title: this.manifest.name,
           description: this.manifest.description,
@@ -410,12 +419,25 @@ module.exports =
                   body[key] = error.extra[key];
                 });
               }
-              res.responseCode = error.statusCode;
+              res.responseCode = error.statusCode || 500;
               res.contentType = 'application/json';
               res.body = JSON.stringify(body);
             }
 
             if (handled) {
+              if (!res.responseCode) {
+                res.responseCode = 200;
+              } else if (isNaN(res.responseCode)) {
+                console.warn(`Unexpected status code value: ${res.responseCode}`);
+                res.responseCode = 500;
+              } else {
+                res.responseCode = Number(res.responseCode);
+              }
+              if (!res.contentType) {
+                res.contentType = 'application/json';
+              } else {
+                res.contentType = String(res.contentType);
+              }
               // provide default CORS headers
               if (req.headers.origin) {
                 if (!res.headers) {

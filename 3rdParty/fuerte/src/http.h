@@ -26,25 +26,10 @@
 
 #include <fuerte/message.h>
 #include <fuerte/types.h>
+
 #include <string>
 
 namespace arangodb { namespace fuerte { inline namespace v1 { namespace http {
-
-// in-flight request data
-struct RequestItem {
-  /// the request header
-  std::string requestHeader;
-
-  /// Callback for when request is done (in error or succeeded)
-  RequestCallback callback;
-  
-  /// Reference to the request we're processing
-  std::unique_ptr<arangodb::fuerte::v1::Request> request;
-
-  inline void invokeOnError(Error e) {
-    callback(e, std::move(request), nullptr);
-  }
-};
 
 /// url-decodes [src, src+len) into out
 void urlDecode(std::string& out, char const* src, size_t len);
@@ -75,5 +60,7 @@ inline std::string urlEncode(std::string const& str) {
   urlEncode(result, str.c_str(), str.size());
   return result;
 }
+
+void appendPath(Request const& req, std::string& target);
 }}}}  // namespace arangodb::fuerte::v1::http
 #endif

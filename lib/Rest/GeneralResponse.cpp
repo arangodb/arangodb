@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,10 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+
+bool GeneralResponse::isValidResponseCode(uint64_t code) {
+  return ((code >= 100) && (code < 600));
+}
 
 std::string GeneralResponse::responseString(ResponseCode code) {
   switch (code) {
@@ -152,13 +156,18 @@ std::string GeneralResponse::responseString(ResponseCode code) {
           return StringUtils::itoa((int)code) + " Client error";
         case 5:
           return StringUtils::itoa((int)code) + " Server error";
+        case 0:
+          if (static_cast<int>(code) != 0) {
+            return StringUtils::itoa(500) + " Internal Server error";
+          }
+          break;
         default:
           break;
       }
     }
   }
 
-  return StringUtils::itoa((int)code) + " Unknown";
+  return StringUtils::itoa(500) + " Internal Server error - Unknown";
 }
 
 rest::ResponseCode GeneralResponse::responseCode(std::string const& str) {
@@ -281,6 +290,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING:
     case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
     case TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD:
+    case TRI_ERROR_CLUSTER_TOO_MANY_SHARDS:
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY:
     case TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN:
@@ -364,6 +374,8 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_JOIN_ATTRIBUTE:
     case TRI_ERROR_NO_SMART_JOIN_ATTRIBUTE:
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE:
+    case TRI_ERROR_VALIDATION_FAILED:
+    case TRI_ERROR_VALIDATION_BAD_PARAMETER:
       return ResponseCode::BAD;
 
     case TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE:
@@ -407,7 +419,12 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_USER_DUPLICATE:
     case TRI_ERROR_TASK_DUPLICATE_ID:
     case TRI_ERROR_GRAPH_DUPLICATE:
+    case TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED:
       return ResponseCode::CONFLICT;
+    
+    case TRI_ERROR_HTTP_PRECONDITION_FAILED:
+    case TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED:
+      return ResponseCode::PRECONDITION_FAILED;
 
     case TRI_ERROR_DEADLOCK:
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
@@ -429,6 +446,7 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
     case TRI_ERROR_CLUSTER_CONNECTION_LOST:
       return ResponseCode::SERVICE_UNAVAILABLE;
 
+    case TRI_ERROR_HTTP_NOT_IMPLEMENTED:
     case TRI_ERROR_CLUSTER_UNSUPPORTED:
     case TRI_ERROR_NOT_IMPLEMENTED:
     case TRI_ERROR_ONLY_ENTERPRISE:
@@ -441,9 +459,10 @@ rest::ResponseCode GeneralResponse::responseCode(int code) {
   }
 }
 
-GeneralResponse::GeneralResponse(ResponseCode responseCode)
-    : _responseCode(responseCode),
+GeneralResponse::GeneralResponse(ResponseCode responseCode, uint64_t mid)
+    : _messageId(mid),
+      _responseCode(responseCode),
       _contentType(ContentType::UNSET),
       _contentTypeRequested(ContentType::UNSET),
-      _generateBody(false),
+      _generateBody(true),
       _allowCompression(false) {}

@@ -24,11 +24,67 @@
 #ifndef IRESEARCH_GRANULAR_RANGE_FILTER_H
 #define IRESEARCH_GRANULAR_RANGE_FILTER_H
 
-#include "range_filter.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
+#include "search/filter.hpp"
+#include "search/search_range.hpp"
+#include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+class by_granular_range;
+class numeric_token_stream;
+struct filter_visitor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_granular_range_options
+/// @brief options for granular range filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_granular_range_options {
+  using filter_type = by_granular_range;
+
+  using terms = std::vector<bstring>;
+  using range_type = search_range<terms>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search range
+  /// @note terms are expected to be placed by granularity levels from the most
+  ///       precise term to the less precise one, i.e. lower indexes denote more
+  ///       precise term
+  /// @note consider using "set_granular_term" function for convenience
+  //////////////////////////////////////////////////////////////////////////////
+  range_type range;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit{1024};
+
+  bool operator==(const by_granular_range_options& rhs) const noexcept {
+    return range == rhs.range && scored_terms_limit == rhs.scored_terms_limit;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(scored_terms_limit, range);
+  }
+}; // by_granular_range_options
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for setting granular term at a specified range
+///        boundary
+/// @note use the most precise value of 'granularity_level'
+//////////////////////////////////////////////////////////////////////////////
+template<typename T>
+void set_granular_term(by_granular_range_options::terms& boundary, T&& value) {
+  boundary.clear();
+  boundary.emplace_back(std::forward<T>(value));
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief convenient helper for setting granular term at a specified range
+///        boundary
+//////////////////////////////////////////////////////////////////////////////
+IRESEARCH_API void set_granular_term(
+  by_granular_range_options::terms& boundary,
+  numeric_token_stream& term);
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_granular_range
@@ -41,193 +97,38 @@ NS_ROOT
 ///              termA@0 + termA@2 + termA@5 + termA@10
 ///              termB@0 + termB@2 + termB@6 + termB@10
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_granular_range: public filter {
+class IRESEARCH_API by_granular_range
+    : public filter_base<by_granular_range_options> {
  public:
-  // granularity levels and terms
-  typedef bytes_ref::char_type granularity_level_t;
-  typedef std::map<granularity_level_t, bstring> terms_t;
-  typedef terms_t::const_iterator const_iterator;
-  typedef terms_t::iterator iterator;
-  typedef terms_t::key_type level_t;
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_granular_range();
+  static filter::prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const options_type::range_type& rng,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const options_type::range_type& rng,
+    filter_visitor& visitor);
 
   using filter::prepare;
 
-  template<Bound B>
-  bool empty() const { return get<B>::term(rng_).empty(); }
-
-  template<Bound B>
-  size_t size() const { return get<B>::term(rng_).size(); }
-
-  template<Bound B>
-  const_iterator begin() const { return get<B>::term(rng_).begin(); }
-
-  template<Bound B>
-  const_iterator end() const { return get<B>::term(rng_).end(); }
-
-  template<Bound B>
-  iterator begin() { return get<B>::term(rng_).begin(); }
-
-  template<Bound B>
-  iterator end() { return get<B>::term(rng_).end(); }
-
-  const std::string& field() const { return fld_; }
-
-  by_granular_range& field(std::string fld);
-
-  virtual size_t hash() const NOEXCEPT override;
-
-  template<Bound B>
-  bool include() const { return Bound_Type::INCLUSIVE == get<B>::type(rng_); }
-
-  template<Bound B>
-  by_granular_range& include(bool incl) {
-    get<B>::type(rng_) = incl ? Bound_Type::INCLUSIVE : Bound_Type::EXCLUSIVE;
-    return *this;
-  }
-
-  // use the most precise value for 'granularity_level'
-  template<Bound B>
-  by_granular_range& insert(bstring&& term) {
-    return insert<B>((std::numeric_limits<level_t>::min)(), std::move(term));
-  }
-
-  // use the most precise value for 'granularity_level'
-  template<Bound B>
-  by_granular_range& insert(const bytes_ref& term) {
-    return insert<B>((std::numeric_limits<level_t>::min)(), term);
-  }
-
-  // use the most precise value for 'granularity_level'
-  template<Bound B>
-  by_granular_range& insert(const string_ref& term) {
-    return insert<B>((std::numeric_limits<level_t>::min)(), ref_cast<byte_type>(term));
-  }
-
-  // sequential 'granularity_level' value, cannot use 'iresearch::increment' since it can be 0
-  template<Bound B>
-  by_granular_range& insert(numeric_token_stream& term) {
-    auto& attributes = term.attributes();
-    auto& term_attr = attributes.get<term_attribute>();
-
-    for (level_t level = (std::numeric_limits<level_t>::min)(); term.next(); ++level) {
-      insert<B>(level, term_attr->value());
-    }
-
-    return *this;
-  }
-
-  // the lower the value of 'granularity_level' the more precise the term
-  template<Bound B>
-  by_granular_range& insert(
-    const level_t& granularity_level, bstring&& term
-  ) {
-    insert(get<B>::term(rng_), granularity_level, std::move(term));
-
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
-    }
-
-    return *this;
-  }
-
-  // the lower the value of 'granularity_level' the more precise the term
-  template<Bound B>
-  by_granular_range& insert(
-    const level_t& granularity_level, const bytes_ref& term
-  ) {
-    assert(!term.null());
-
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
-    }
-
-    insert(get<B>::term(rng_), granularity_level, term);
-
-    return *this;
-  }
-
-  // the lower the value of 'granularity_level' the more precise the term
-  template<Bound B>
-  by_granular_range& insert(
-    const level_t& granularity_level, const string_ref& term
-  ) {
-    return insert<B>(granularity_level, ref_cast<byte_type>(term));
-  }
-
   virtual filter::prepared::ptr prepare(
-      const index_reader& rdr,
+      const index_reader& index,
       const order::prepared& ord,
       boost_t boost,
-      const attribute_view& ctx
-  ) const override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_granular_range& scored_terms_limit(size_t limit) {
-    scored_terms_limit_ = limit;
-    return *this;
+      const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), options().range,
+                   options().scored_terms_limit);
   }
+}; // by_granular_range
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const { return scored_terms_limit_; }
-
-  // the lower the value of 'granularity_level' the more precise the term
-  template<Bound B>
-  bstring& term(level_t granularity_level) {
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
-    }
-
-    return insert(get<B>::term(rng_), granularity_level);
-  }
-
-  // the lower the value of 'granularity_level' the more precise the term
-  template<Bound B>
-  const bstring& term(level_t granularity_level) const {
-    return get<B>::term(rng_).at(granularity_level);
-  }
-
- protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
-
- private:
-  typedef detail::range<terms_t> range_t;
-  template<Bound B> struct get;
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string fld_;
-  range_t rng_;
-  size_t scored_terms_limit_{1024};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-
-  bstring& insert(terms_t& terms, const level_t& granularity_level);
-
-  bstring& insert(terms_t& terms, const level_t& granularity_level, bstring&& term);
-
-  bstring& insert(terms_t& terms, const level_t& granularity_level, const bytes_ref& term);
-};
-
-template<> struct by_granular_range::get<Bound::MIN> {
-  static terms_t& term(range_t& rng) { return rng.min; }
-  static const terms_t& term(const range_t& rng) { return rng.min; }
-  static Bound_Type& type(range_t& rng) { return rng.min_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.min_type; }
-}; // get<Bound::MIN>
-
-template<> struct by_granular_range::get<Bound::MAX> {
-  static terms_t& term(range_t& rng) { return rng.max; }
-  static const terms_t& term(const range_t& rng) { return rng.max; }
-  static Bound_Type& type(range_t& rng) { return rng.max_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.max_type; }
-}; // get<Bound::MAX>
-
-NS_END // ROOT
+} // ROOT
 
 #endif

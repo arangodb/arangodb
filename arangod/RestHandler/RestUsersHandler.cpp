@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestUsersHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/Version.h"
@@ -40,8 +43,8 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
+arangodb::Result existsCollection(arangodb::application_features::ApplicationServer& server,
+                                  std::string const& database, std::string const& collection) {
   if (!server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
@@ -212,8 +215,8 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   // return list of databases
   VPackBuilder data;
   data.openObject();
-  Result res = um->accessUser(username, [&](auth::User const& user) {
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+  Result res = um->accessUser(username, [&, this](auth::User const& user) {
+    server().getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
       if (full) {
         auto lvl = user.configuredDBAuthLevel(vocbase.name());
         std::string str = convertFromAuthLevel(lvl);
@@ -378,7 +381,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
       // validate that the collection is present
       if (suffixes.size() > 3) {
-        auto res = existsCollection(db, coll);
+        auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
           generateError(res);
@@ -545,7 +548,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
 
       // validate that the collection is present
       if (suffixes.size() > 3) {
-        auto res = existsCollection(db, coll);
+        auto res = existsCollection(server(), db, coll);
 
         if (!res.ok()) {
           generateError(res);

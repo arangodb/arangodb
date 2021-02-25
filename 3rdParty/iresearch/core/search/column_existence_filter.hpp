@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_COLUMN_EXISTENCE_FILTER_H
@@ -27,41 +26,39 @@
 #include "filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+class by_column_existence;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_column_existence_options
+/// @brief options for column existence filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_column_existence_options {
+  using filter_type = by_column_existence;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief match field prefix
+  //////////////////////////////////////////////////////////////////////////////
+  bool prefix_match{};
+
+  bool operator==(const by_column_existence_options& rhs) const noexcept {
+    return prefix_match == rhs.prefix_match;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bool>()(prefix_match);
+  }
+}; // by_column_existence_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_column_existence
 /// @brief user-side column existence filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_column_existence final : public filter {
+class IRESEARCH_API by_column_existence final
+    : public filter_base<by_column_existence_options> {
  public:
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
-
-  by_column_existence() NOEXCEPT;
-
-  by_column_existence& field(const std::string& field) {
-    field_ = field;
-    return *this;
-  }
-
-  by_column_existence& field(std::string&& field) NOEXCEPT {
-    field_ = std::move(field);
-    return *this;
-  }
-
-  const std::string& field() const NOEXCEPT {
-    return field_;
-  }
-
-  bool prefix_match() const NOEXCEPT {
-    return prefix_match_;
-  }
-
-  by_column_existence& prefix_match(bool value) NOEXCEPT {
-    prefix_match_ = value;
-    return *this;
-  }
 
   using filter::prepare;
 
@@ -69,21 +66,9 @@ class IRESEARCH_API by_column_existence final : public filter {
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
-
-  virtual size_t hash() const NOEXCEPT override;
-
- protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string field_;
-  bool prefix_match_{};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+    const attribute_provider* ctx) const override;
 }; // by_column_existence
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_COLUMN_EXISTENCE_FILTER_H

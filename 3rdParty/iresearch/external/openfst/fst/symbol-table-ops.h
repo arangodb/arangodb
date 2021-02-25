@@ -42,35 +42,36 @@ SymbolTable *PruneSymbolTable(const Fst<Arc> &fst, const SymbolTable &syms,
 SymbolTable *CompactSymbolTable(const SymbolTable &syms);
 
 // Merges two SymbolTables, all symbols from left will be merged into right
-// with the same ids.  Symbols in right that have conflicting ids with those
+// with the same IDs. Symbols in right that have conflicting IDs with those
 // in left will be assigned to value assigned from the left SymbolTable.
 // The returned symbol table will never modify symbol assignments from the left
-// side, but may do so on the right.  If right_relabel_output is non-NULL, it
+// side, but may do so on the right. If right_relabel_output is non-null, it
 // will be assigned true if the symbols from the right table needed to be
 // reassigned.
-// A potential use case is to Compose two Fst's that have different symbol
-// tables.  You can reconcile them in the following way:
+//
+// A potential use case is to compose two FSTs that have different symbol
+// tables. You can reconcile them in the following way:
+//
 //   Fst<Arc> a, b;
 //   bool relabel;
 //   std::unique_ptr<SymbolTable> bnew(MergeSymbolTable(a.OutputSymbols(),
 //                                     b.InputSymbols(), &relabel);
-//   if (relabel) {
-//     Relabel(b, bnew.get(), nullptr);
-//   }
+//   if (relabel) Relabel(b, bnew.get(), nullptr);
 //   b.SetInputSymbols(bnew);
 SymbolTable *MergeSymbolTable(const SymbolTable &left, const SymbolTable &right,
                               bool *right_relabel_output = nullptr);
 
 // Read the symbol table from any Fst::Read()able file, without loading the
-// corresponding Fst.  Returns nullptr if the Fst does not contain a symbol
+// corresponding FST. Returns nullptr if the FST does not contain a symbol
 // table or the symbol table cannot be read.
-SymbolTable *FstReadSymbols(const string &filename, bool input);
+SymbolTable *FstReadSymbols(const std::string &filename, bool input);
 
 // Adds a contiguous range of symbols to a symbol table using a simple prefix
 // for the string, returning false if the inserted symbol string clashes with
 // any currently present.
-bool AddAuxiliarySymbols(const string &prefix, int64 start_label,
+bool AddAuxiliarySymbols(const std::string &prefix, int64 start_label,
                          int64 nlabels, SymbolTable *syms);
 
 }  // namespace fst
+
 #endif  // FST_SYMBOL_TABLE_OPS_H_

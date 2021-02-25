@@ -1,7 +1,8 @@
-//////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 EMC Corporation
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
@@ -29,12 +30,15 @@
 #include <vector>
 
 #include "analysis/analyzer.hpp"
+#include "utils/compression.hpp"
 #include "utils/object_pool.hpp"
+#include "utils/range.hpp"
 
 #include "Containers.h"
 #include "IResearchAnalyzerFeature.h"
 #include "IResearchViewSort.h"
 #include "IResearchViewStoredValues.h"
+#include "IResearchCompression.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -128,20 +132,22 @@ struct FieldMeta {
   /// @brief initialize FieldMeta with values from a JSON description
   ///        return success or set 'errorField' to specific field with error
   ///        on failure state is undefined
+  /// @param server underlying application server
   /// @param slice input definition
   /// @param errorField field causing error (out-param)
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
-  /// @param analyzers analyzers referenced in this link
+  /// @param referencedAnalyzers analyzers referenced in this link
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(velocypack::Slice const& slice,
+  bool init(arangodb::application_features::ApplicationServer& server,
+            velocypack::Slice const& slice,
             std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
+            irs::string_ref const defaultVocbase,
             FieldMeta const& defaults = DEFAULT(),
             Mask* mask = nullptr,
-            std::set<AnalyzerPool::ptr, AnalyzerComparer>* analyzers = nullptr);
+            std::set<AnalyzerPool::ptr, AnalyzerComparer>* referencedAnalyzers = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a FieldMeta object
@@ -149,6 +155,7 @@ struct FieldMeta {
   ///        or (if 'mask' != nullptr) values in 'mask' that are set to false
   ///        elements are appended to an existing object
   ///        return success or set TRI_set_errno(...) and return false
+  /// @param server underlying application server
   /// @param builder output buffer
   /// @param defaultVocbase fallback vocbase for analyzer name normalization
   ///                       nullptr == do not normalize
@@ -156,7 +163,8 @@ struct FieldMeta {
   /// @param defaultVocbase fallback vocbase
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(arangodb::velocypack::Builder& builder,
+  bool json(arangodb::application_features::ApplicationServer& server,
+            arangodb::velocypack::Builder& builder,
             FieldMeta const* ignoreEqual = nullptr,
             TRI_vocbase_t const* defaultVocbase = nullptr,
             Mask const* mask = nullptr) const;
@@ -167,6 +175,7 @@ struct FieldMeta {
   size_t memory() const noexcept;
 
   std::vector<Analyzer> _analyzers; // analyzers to apply to every field
+  size_t _primitiveOffset;
   Fields _fields;  // explicit list of fields to be indexed with optional overrides
   ValueStorage _storeValues{ ValueStorage::NONE };  // how values should be stored inside the view
   bool _includeAllFields{ false }; // include all fields or only fields listed in '_fields'
@@ -182,23 +191,36 @@ struct IResearchLinkMeta : public FieldMeta {
       : FieldMeta::Mask(mask),
         _analyzerDefinitions(mask),
         _sort(mask),
-        _storedValues(mask) {
+        _storedValues(mask),
+        _sortCompression(mask),
+        _collectionName(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
+    bool _sortCompression;
+    bool _collectionName;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
+  irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+  /// @brief Linked collection name. Stored here for cluster deployment only.
+  /// For sigle server collection could be renamed so can`t store it here or 
+  /// syncronisation will be needed. For cluster rename is not possible so 
+  /// there is no problem but solved recovery issue - we will be able to index
+  /// _id attribute without doing agency request for collection name
+  std::string _collectionName;
+
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!
   // NOTE: if adding fields don't forget to modify the init(...) function !!!
   // NOTE: if adding fields don't forget to modify the json(...) function !!!
-  // NOTE: if adding fields don't forget to modify the memSize() function !!!
+  // NOTE: if adding fields don't forget to modify the memory() function !!!
 
   IResearchLinkMeta();
   IResearchLinkMeta(IResearchLinkMeta const& other) = default;
@@ -230,12 +252,14 @@ struct IResearchLinkMeta : public FieldMeta {
   /// @param defaults inherited defaults
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool init(velocypack::Slice const& slice,
-            bool readAnalyzerDefinition,
-            std::string& errorField,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
-            FieldMeta const& defaults = DEFAULT(),
-            Mask* mask = nullptr);
+  bool init(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Slice const& slice,
+      bool readAnalyzerDefinition,
+      std::string& errorField,
+      irs::string_ref const defaultVocbase = irs::string_ref::NIL,
+      IResearchLinkMeta const& defaults = DEFAULT(),
+      Mask* mask = nullptr);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief fill and return a JSON description of a IResearchLinkMeta object
@@ -250,11 +274,13 @@ struct IResearchLinkMeta : public FieldMeta {
   ///                       nullptr == do not normalize
   /// @param mask if set reflects which fields were initialized from JSON
   ////////////////////////////////////////////////////////////////////////////////
-  bool json(velocypack::Builder& builder,
-            bool writeAnalyzerDefinition,
-            IResearchLinkMeta const* ignoreEqual = nullptr,
-            TRI_vocbase_t const* defaultVocbase = nullptr,
-            Mask const* mask = nullptr) const;
+  bool json(
+      arangodb::application_features::ApplicationServer& server,
+      arangodb::velocypack::Builder& builder,
+      bool writeAnalyzerDefinition,
+      IResearchLinkMeta const* ignoreEqual = nullptr,
+      TRI_vocbase_t const* defaultVocbase = nullptr,
+      Mask const* mask = nullptr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief amount of memory in bytes occupied by this IResearchLinkMeta

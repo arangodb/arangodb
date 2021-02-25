@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,6 +35,7 @@
 
 #include "zlib.h"
 
+#include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Basics/operating-system.h"
 
@@ -111,7 +113,7 @@ class ManagedDirectory {
      * @param  length Maximum amount of data to read (no more than buffer
      *                length)
      */
-    ssize_t read(char* buffer, size_t length);
+    TRI_read_return_t read(char* buffer, size_t length);
 
     /**
      * @brief Read file contents into string
@@ -141,7 +143,16 @@ class ManagedDirectory {
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
      */
 
-    ssize_t offset() const;
+    TRI_read_return_t offset() const;
+
+    /**
+     * @brief skips `count` bytes of uncompressed data.
+     */
+    void skip(size_t count);
+
+   private:
+    void writeNoLock(char const* data, size_t length);
+    TRI_read_return_t readNoLock(char* buffer, size_t length);
 
    private:
     ManagedDirectory const& _directory;
@@ -150,6 +161,7 @@ class ManagedDirectory {
     int _fd;
     int _gzfd;     // duplicate fd for gzip close
     gzFile _gzFile;
+    Mutex mutable _mutex;
 #ifdef USE_ENTERPRISE
     std::unique_ptr<EncryptionFeature::Context> _context;
 #endif
@@ -175,8 +187,8 @@ class ManagedDirectory {
    * @param create       If `true` and directory does not exist, create it
    * @param writeGzip    True if writes should use gzip (reads autodetect .gz)
    */
-  ManagedDirectory(application_features::ApplicationServer& server, std::string const& path,
-                   bool requireEmpty, bool create, bool writeGzip = true);
+  ManagedDirectory(application_features::ApplicationServer& server,
+                   std::string const& path, bool requireEmpty, bool create, bool writeGzip);
   ~ManagedDirectory();
 
  public:

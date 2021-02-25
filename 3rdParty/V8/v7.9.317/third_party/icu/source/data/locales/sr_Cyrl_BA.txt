@@ -1,0 +1,169 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Cyrl_BA{
+    Version{"2.1.47.86"}
+    calendar{
+        generic{
+            intervalFormats{
+                MMMEd{
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. MMM – E, d. MMM"}
+                }
+                yMd{
+                    M{"d.M.y. – d.M.y. GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "прије подне",
+                "по подне",
+            }
+            AmPmMarkersAbbr{
+                "прије подне",
+                "по подне",
+            }
+            availableFormats{
+                MMMMW{
+                    few{"W. 'сједмица' 'у' MMMM"}
+                    one{"W. 'сједмица' 'у' MMMM"}
+                    other{"W. 'сједмица' 'у' MMMM"}
+                }
+                yw{
+                    few{"w. 'сједмица' 'у' Y."}
+                    one{"w. 'сједмица' 'у' Y."}
+                    other{"w. 'сједмица' 'у' Y."}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "нед",
+                        "пон",
+                        "ут",
+                        "ср",
+                        "чет",
+                        "пет",
+                        "суб",
+                    }
+                    wide{
+                        "недјеља",
+                        "понедељак",
+                        "уторак",
+                        "сриједа",
+                        "четвртак",
+                        "петак",
+                        "субота",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "нед",
+                        "пон",
+                        "ут",
+                        "ср",
+                        "чет",
+                        "пет",
+                        "суб",
+                    }
+                    wide{
+                        "недјеља",
+                        "понедељак",
+                        "уторак",
+                        "сриједа",
+                        "четвртак",
+                        "петак",
+                        "субота",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"по под."}
+                        evening1{"вече"}
+                        morning1{"јутро"}
+                    }
+                    narrow{
+                        afternoon1{"по под."}
+                        evening1{"вече"}
+                        morning1{"јутро"}
+                        night1{"ноћ"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"прије подне"}
+                    }
+                    narrow{
+                        am{"а"}
+                        pm{"p"}
+                    }
+                    wide{
+                        am{"прије подне"}
+                    }
+                }
+            }
+            eras{
+                wide{
+                    "прије нове ере",
+                    "нове ере",
+                }
+                wide%variant{
+                    "BCE",
+                    "нове ере",
+                }
+            }
+            intervalFormats{
+                MEd{
+                    M{"E, MM-dd – E, MM-dd"}
+                    d{"E, MM-dd – E, MM-dd"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                yM{
+                    M{"y-MM – y-MM"}
+                    y{"y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"E, y-MM-dd – E, y-MM-dd"}
+                    d{"E, y-MM-dd – E, y-MM-dd"}
+                    y{"E, y-MM-dd – E, y-MM-dd"}
+                }
+                yMd{
+                    M{"y-MM-dd – y-MM-dd"}
+                    d{"y-MM-dd – y-MM-dd"}
+                    y{"y-MM-dd – y-MM-dd"}
+                }
+            }
+            monthNames{
+                stand-alone{
+                    abbreviated{
+                        "јан",
+                        "феб",
+                        "март",
+                        "апр",
+                        "мај",
+                        "јун",
+                        "јул",
+                        "авг",
+                        "септ",
+                        "окт",
+                        "нов",
+                        "дец",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        week{
+            relative{
+                "-1"{"претходне недеље"}
+                "1"{"наредне недеље"}
+            }
+        }
+    }
+}

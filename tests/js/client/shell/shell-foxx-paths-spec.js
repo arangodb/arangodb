@@ -7,13 +7,14 @@ const fs = require('fs');
 const internal = require('internal');
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 const baseUrl = origin + '/_db/_system';
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx service path handling', () => {
   const mount = '/unittest/paths';
   before(function () {
-    // Sanity tests
     expect(encodeURIComponent('ö')).not.to.equal('ö');
     expect(encodeURIComponent('+')).not.to.equal('+');
     expect(encodeURIComponent('/')).not.to.equal('/');

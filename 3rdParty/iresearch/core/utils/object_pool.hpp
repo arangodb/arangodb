@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_OBJECT_POOL_H
@@ -36,35 +35,29 @@
 #include "misc.hpp"
 #include "noncopyable.hpp"
 
-// CMPXCHG16B requires that the destination
-// (memory) operand be 16-byte aligned
-#define IRESEARCH_CMPXCHG16B_ALIGNMENT 16
+namespace iresearch {
 
-NS_ROOT
-
-// GCC prior the 5.0 does not support std::atomic_exchange(std::shared_ptr<T>*, std::shared_ptr<T>)
-#if !defined(__GNUC__) || (__GNUC__ >= 5)
 template<typename T>
 class atomic_shared_ptr_helper {
   #if defined(IRESEARCH_VALGRIND) // suppress valgrind false-positives related to std::atomic_*
    public:
     // for compatibility 'std::mutex' is not moveable
     atomic_shared_ptr_helper() = default;
-    atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) NOEXCEPT { }
-    atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) NOEXCEPT { return *this; }
+    atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) noexcept { }
+    atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) noexcept { return *this; }
 
-    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
-      SCOPED_LOCK(mutex_);
+    std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
+      auto lock = irs::make_lock_guard(mutex_);
       return std::atomic_exchange(p, r);
     }
 
-    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
-      SCOPED_LOCK(mutex_);
+    void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const {
+      auto lock = irs::make_lock_guard(mutex_);
       std::atomic_store(p, r);
     }
 
-    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const NOEXCEPT {
-      SCOPED_LOCK(mutex_);
+    std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const {
+      auto lock = irs::make_lock_guard(mutex_);
       return std::atomic_load(p);
     }
 
@@ -72,48 +65,19 @@ class atomic_shared_ptr_helper {
     mutable std::mutex mutex_;
   #else
    public:
-    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) NOEXCEPT {
+    static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       return std::atomic_exchange(p, r);
     }
 
-    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) NOEXCEPT {
+    static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
       std::atomic_store(p, r);
     }
 
-    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) NOEXCEPT {
+    static std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) {
       return std::atomic_load(p);
     }
   #endif // defined(IRESEARCH_VALGRIND)
 }; // atomic_shared_ptr_helper
-#else
-template<typename T>
-class atomic_shared_ptr_helper {
- public:
-  // for compatibility 'std::mutex' is not moveable
-  atomic_shared_ptr_helper() = default;
-  atomic_shared_ptr_helper(atomic_shared_ptr_helper&&) NOEXCEPT { }
-  atomic_shared_ptr_helper& operator=(atomic_shared_ptr_helper&&) NOEXCEPT { return *this; }
-
-  std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
-    SCOPED_LOCK(mutex_);
-    p->swap(r);
-    return r;
-  }
-
-  void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) const NOEXCEPT {
-    SCOPED_LOCK(mutex_);
-    *p = r;
-  }
-
-  std::shared_ptr<T> atomic_load(const std::shared_ptr<T>* p) const NOEXCEPT {
-    SCOPED_LOCK(mutex_);
-    return *p;
-  }
-
- private:
-  mutable std::mutex mutex_;
-}; // atomic_shared_ptr_helper
-#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class concurrent_stack
@@ -129,11 +93,11 @@ class concurrent_stack : private util::noncopyable {
     node_type* next{};
   };
 
-  explicit concurrent_stack(node_type* head = nullptr) NOEXCEPT
+  explicit concurrent_stack(node_type* head = nullptr) noexcept
     : head_(head) {
   }
 
-  concurrent_stack(concurrent_stack&& rhs) NOEXCEPT
+  concurrent_stack(concurrent_stack&& rhs) noexcept
     : head_(nullptr) {
     if (this != &rhs) {
       auto rhshead = rhs.head_.load();
@@ -142,7 +106,7 @@ class concurrent_stack : private util::noncopyable {
     }
   }
 
-  concurrent_stack& operator=(concurrent_stack&& rhs) NOEXCEPT {
+  concurrent_stack& operator=(concurrent_stack&& rhs) noexcept {
     if (this != &rhs) {
       auto rhshead = rhs.head_.load();
       const concurrent_node empty;
@@ -152,13 +116,13 @@ class concurrent_stack : private util::noncopyable {
     return *this;
   }
 
-  bool empty() const NOEXCEPT {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  bool empty() const noexcept {
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     return nullptr == head_.load().node;
   }
 
-  node_type* pop() NOEXCEPT {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  node_type* pop() noexcept {
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
@@ -174,8 +138,8 @@ class concurrent_stack : private util::noncopyable {
     return head.node;
   }
 
-  void push(node_type& new_node) NOEXCEPT {
-    VALGRIND_ONLY(SCOPED_LOCK(mutex_);) // suppress valgrind false-positives related to std::atomic_*
+  void push(node_type& new_node) noexcept {
+    VALGRIND_ONLY(auto lock = make_lock_guard(mutex_);) // suppress valgrind false-positives related to std::atomic_*
     concurrent_node head = head_.load();
     concurrent_node new_head;
 
@@ -190,8 +154,8 @@ class concurrent_stack : private util::noncopyable {
  private:
   // CMPXCHG16B requires that the destination
   // (memory) operand be 16-byte aligned
-  struct ALIGNAS(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
-    concurrent_node(node_type* node = nullptr) NOEXCEPT
+  struct alignas(IRESEARCH_CMPXCHG16B_ALIGNMENT) concurrent_node {
+    concurrent_node(node_type* node = nullptr) noexcept
       : version(0), node(node) {
     }
 
@@ -200,7 +164,7 @@ class concurrent_stack : private util::noncopyable {
   }; // concurrent_node
 
   static_assert(
-    IRESEARCH_CMPXCHG16B_ALIGNMENT == ALIGNOF(concurrent_node),
+    IRESEARCH_CMPXCHG16B_ALIGNMENT == alignof(concurrent_node),
     "invalid alignment"
   );
 
@@ -246,20 +210,20 @@ class bounded_object_pool {
     static node_type EMPTY_SLOT;
 
    public:
-    ptr() NOEXCEPT
+    ptr() noexcept
       : slot_(&EMPTY_SLOT) {
     }
 
-    explicit ptr(node_type& slot) NOEXCEPT
+    explicit ptr(node_type& slot) noexcept
       : slot_(&slot) {
     }
 
-    ptr(ptr&& rhs) NOEXCEPT
+    ptr(ptr&& rhs) noexcept
       : slot_(rhs.slot_) {
       rhs.slot_ = &EMPTY_SLOT; // take ownership
     }
 
-    ptr& operator=(ptr&& rhs) NOEXCEPT {
+    ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
         slot_ = rhs.slot_;
         rhs.slot_ = &EMPTY_SLOT; // take ownership
@@ -267,11 +231,11 @@ class bounded_object_pool {
       return *this;
     }
 
-    ~ptr() NOEXCEPT {
+    ~ptr() noexcept {
       reset();
     }
 
-    FORCE_INLINE void reset() NOEXCEPT {
+    FORCE_INLINE void reset() noexcept {
       reset_impl(slot_);
     }
 
@@ -284,20 +248,20 @@ class bounded_object_pool {
       // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
-        [slot] (element_type*) mutable NOEXCEPT {
+        [slot] (element_type*) mutable noexcept {
           reset_impl(slot);
       });
     }
 
-    operator bool() const NOEXCEPT { return &EMPTY_SLOT != slot_; }
-    element_type& operator*() const NOEXCEPT { return *slot_->value.ptr; }
-    element_type* operator->() const NOEXCEPT { return get(); }
-    element_type* get() const NOEXCEPT {
+    operator bool() const noexcept { return &EMPTY_SLOT != slot_; }
+    element_type& operator*() const noexcept { return *slot_->value.ptr; }
+    element_type* operator->() const noexcept { return get(); }
+    element_type* get() const noexcept {
       return slot_->value.ptr.get();
     }
 
    private:
-    static void reset_impl(node_type*& slot) NOEXCEPT {
+    static void reset_impl(node_type*& slot) noexcept {
       if (slot == &EMPTY_SLOT) {
         // nothing to do
         return;
@@ -351,7 +315,7 @@ class bounded_object_pool {
     return ptr();
   }
 
-  size_t size() const NOEXCEPT { return pool_.size(); }
+  size_t size() const noexcept { return pool_.size(); }
 
   template<typename Visitor>
   bool visit(const Visitor& visitor) {
@@ -393,14 +357,16 @@ class bounded_object_pool {
 
  private:
   void wait_for_free_slots() const {
-    SCOPED_LOCK_NAMED(mutex_, lock);
+    using namespace std::chrono_literals;
+
+    auto lock = make_unique_lock(mutex_);
 
     if (free_list_.empty()) {
-      cond_.wait_for(lock, std::chrono::milliseconds(1000));
+      cond_.wait_for(lock, 1000ms);
     }
   }
 
-  void unlock(node_type& slot) const NOEXCEPT {
+  void unlock(node_type& slot) const noexcept {
     free_list_.push(slot);
     cond_.notify_all();
   }
@@ -434,19 +400,19 @@ class async_value {
     : value_(std::forward<Args>(args)...) {
   }
 
-  const value_type& value() const NOEXCEPT {
+  const value_type& value() const noexcept {
     return value_;
   }
 
-  value_type& value() NOEXCEPT {
+  value_type& value() noexcept {
     return value_;
   }
 
-  read_lock_type& read_lock() const NOEXCEPT {
+  read_lock_type& read_lock() const noexcept {
     return read_lock_;
   }
 
-  write_lock_type& write_lock() const NOEXCEPT {
+  write_lock_type& write_lock() const noexcept {
     return write_lock_;
   }
 
@@ -466,7 +432,7 @@ class unbounded_object_pool_base : private util::noncopyable {
  public:
   typedef typename T::ptr::element_type element_type;
 
-  size_t size() const NOEXCEPT { return pool_.size(); }
+  size_t size() const noexcept { return pool_.size(); }
 
  protected:
   typedef concurrent_stack<typename T::ptr> stack;
@@ -482,7 +448,7 @@ class unbounded_object_pool_base : private util::noncopyable {
     }
   }
 
-  unbounded_object_pool_base(unbounded_object_pool_base&& rhs) NOEXCEPT
+  unbounded_object_pool_base(unbounded_object_pool_base&& rhs) noexcept
     : pool_(std::move(rhs.pool_)) {
   }
 
@@ -500,9 +466,9 @@ class unbounded_object_pool_base : private util::noncopyable {
     return T::make(std::forward<Args>(args)...);
   }
 
-  void release(typename T::ptr&& value) NOEXCEPT {
+  void release(typename T::ptr&& value) noexcept {
     if (!value) {
-      return; // do not hold nullptr values in the pool since emplace(...) uses nullptr to denot creation failure
+      return; // do not hold nullptr values in the pool since emplace(...) uses nullptr to denote creation failure
     }
 
     auto* slot = free_slots_.pop();
@@ -557,13 +523,13 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
         owner_(&owner) {
     }
 
-    ptr(ptr&& rhs) NOEXCEPT
+    ptr(ptr&& rhs) noexcept
       : value_(std::move(rhs.value_)),
         owner_(rhs.owner_) {
       rhs.owner_ = nullptr;
     }
 
-    ptr& operator=(ptr&& rhs) NOEXCEPT {
+    ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
         value_ = std::move(rhs.value_);
         owner_ = rhs.owner_;
@@ -572,16 +538,16 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       return *this;
     }
 
-    ~ptr() NOEXCEPT {
+    ~ptr() noexcept {
       reset();
     }
 
-    FORCE_INLINE void reset() NOEXCEPT {
+    FORCE_INLINE void reset() noexcept {
       reset_impl(value_, owner_);
     }
 
     // FIXME handle potential bad_alloc in shared_ptr constructor
-    // mark method as NOEXCEPT and move back all the stuff in case of error
+    // mark method as noexcept and move back all the stuff in case of error
     std::shared_ptr<element_type> release() {
       auto* raw = get();
       auto moved_value = make_move_on_copy(std::move(value_));
@@ -592,20 +558,20 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
       // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
-        [owner, moved_value] (element_type*) mutable NOEXCEPT {
+        [owner, moved_value] (element_type*) mutable noexcept {
           reset_impl(moved_value.value(), owner);
       });
     }
 
-    element_type& operator*() const NOEXCEPT { return *value_; }
-    element_type* operator->() const NOEXCEPT { return get(); }
-    element_type* get() const NOEXCEPT { return value_.get(); }
-    operator bool() const NOEXCEPT {
+    element_type& operator*() const noexcept { return *value_; }
+    element_type* operator->() const noexcept { return get(); }
+    element_type* get() const noexcept { return value_.get(); }
+    operator bool() const noexcept {
       return static_cast<bool>(value_);
     }
 
    private:
-    static void reset_impl(typename T::ptr& obj, unbounded_object_pool*& owner) NOEXCEPT {
+    static void reset_impl(typename T::ptr& obj, unbounded_object_pool*& owner) noexcept {
       if (!owner) {
         // already destroyed
         return;
@@ -662,11 +628,11 @@ class unbounded_object_pool : public unbounded_object_pool_base<T> {
 
 }; // unbounded_object_pool
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename Pool>
 struct pool_generation {
-  explicit pool_generation(Pool* owner) NOEXCEPT
+  explicit pool_generation(Pool* owner) noexcept
     : owner(owner) {
   }
 
@@ -674,7 +640,7 @@ struct pool_generation {
   Pool* owner; // current owner
 }; // pool_generation
 
-NS_END // detail
+} // detail
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class unbounded_object_pool_volatile
@@ -716,17 +682,17 @@ class unbounded_object_pool_volatile
   class ptr : util::noncopyable {
    public:
     ptr(typename T::ptr&& value,
-        const generation_ptr_t& gen) NOEXCEPT
+        const generation_ptr_t& gen) noexcept
       : value_(std::move(value)),
         gen_(std::move(gen)) {
     }
 
-    ptr(ptr&& rhs) NOEXCEPT
+    ptr(ptr&& rhs) noexcept
       : value_(std::move(rhs.value_)),
         gen_(std::move(rhs.gen_)) {
     }
 
-    ptr& operator=(ptr&& rhs) NOEXCEPT {
+    ptr& operator=(ptr&& rhs) noexcept {
       if (this != &rhs) {
         value_ = std::move(rhs.value_);
         gen_ = std::move(rhs.gen_);
@@ -734,11 +700,11 @@ class unbounded_object_pool_volatile
       return *this;
     }
 
-    ~ptr() NOEXCEPT {
+    ~ptr() noexcept {
       reset();
     }
 
-    FORCE_INLINE void reset() NOEXCEPT {
+    FORCE_INLINE void reset() noexcept {
       reset_impl(value_, gen_);
     }
 
@@ -752,20 +718,20 @@ class unbounded_object_pool_volatile
       // destructor will be called
       return std::shared_ptr<element_type>(
         raw,
-        [moved_gen, moved_value] (element_type*) mutable NOEXCEPT {
+        [moved_gen, moved_value] (element_type*) mutable noexcept {
           reset_impl(moved_value.value(), moved_gen.value());
       });
     }
 
-    element_type& operator*() const NOEXCEPT { return *value_; }
-    element_type* operator->() const NOEXCEPT { return get(); }
-    element_type* get() const NOEXCEPT { return value_.get(); }
-    operator bool() const NOEXCEPT {
+    element_type& operator*() const noexcept { return *value_; }
+    element_type* operator->() const noexcept { return get(); }
+    element_type* get() const noexcept { return value_.get(); }
+    operator bool() const noexcept {
       return static_cast<bool>(gen_);
     }
 
    private:
-    static void reset_impl(typename T::ptr& obj, generation_ptr_t& gen) NOEXCEPT {
+    static void reset_impl(typename T::ptr& obj, generation_ptr_t& gen) noexcept {
       if (!gen) {
         // already destroyed
         return;
@@ -800,7 +766,7 @@ class unbounded_object_pool_volatile
   // unbounded_object_pool_volatile p0, p1;
   // thread0: p0.clear();
   // thread1: unbounded_object_pool_volatile p1(std::move(p0));
-  unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) NOEXCEPT
+  unbounded_object_pool_volatile(unbounded_object_pool_volatile&& rhs) noexcept
     : base_t(std::move(rhs)) {
     gen_ = atomic_utils::atomic_load(&rhs.gen_);
 
@@ -811,7 +777,7 @@ class unbounded_object_pool_volatile
     this->free_objects_ = std::move(rhs.free_objects_);
   }
 
-  ~unbounded_object_pool_volatile() NOEXCEPT {
+  ~unbounded_object_pool_volatile() noexcept {
     // prevent existing elements from returning into the pool
     // if pool doesn't own generation anymore
     const auto gen = atomic_utils::atomic_load(&gen_);
@@ -861,7 +827,7 @@ class unbounded_object_pool_volatile
     return value ? ptr(std::move(value), gen) : ptr(nullptr, no_gen);
   }
 
-  size_t generation_size() const NOEXCEPT {
+  size_t generation_size() const noexcept {
     const auto use_count = atomic_utils::atomic_load(&gen_).use_count();
     assert(use_count >= 2);
     return use_count - 2; // -1 for temporary object, -1 for this->_gen
@@ -874,6 +840,6 @@ class unbounded_object_pool_volatile
   generation_ptr_t gen_; // current generation
 }; // unbounded_object_pool_volatile
 
-NS_END
+}
 
 #endif

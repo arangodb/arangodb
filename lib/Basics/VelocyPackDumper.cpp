@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,7 +66,7 @@ void VelocyPackDumper::appendUInt(uint64_t v) {
   TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
   TRI_ASSERT(MinReserveValue > 20);
-  int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
+  auto res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -139,7 +139,7 @@ void VelocyPackDumper::appendDouble(double v) {
 
   TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
-  int res = TRI_ReserveStringBuffer(buffer, static_cast<size_t>(len));
+  auto res = TRI_ReserveStringBuffer(buffer, static_cast<size_t>(len));
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -157,7 +157,7 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
     TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
     TRI_ASSERT(MinReserveValue > 20);
-    int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
+    auto res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -234,7 +234,7 @@ void VelocyPackDumper::dumpInteger(VPackSlice const* slice) {
     TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
     TRI_ASSERT(MinReserveValue > 20);
-    int res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
+    auto res = TRI_ReserveStringBuffer(buffer, MinReserveValue);
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(res);
@@ -307,7 +307,7 @@ void VelocyPackDumper::appendString(char const* src, VPackValueLength len) {
   // reserve enough room for the whole string at once
   // each character is at most 6 bytes (if we ignore surrogate pairs here)
   // plus we need two bytes for the enclosing double quotes
-  int res = TRI_ReserveStringBuffer(buffer, 6 * len + 2);
+  auto res = TRI_ReserveStringBuffer(buffer, 6 * len + 2);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -415,7 +415,7 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
   TRI_string_buffer_t* buffer = _buffer->stringBuffer();
 
   // alloc at least 32 bytes
-  int res = TRI_ReserveStringBuffer(buffer, 32);
+  auto res = TRI_ReserveStringBuffer(buffer, 32);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -522,7 +522,8 @@ void VelocyPackDumper::dumpValue(VPackSlice const* slice, VPackSlice const* base
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
     case VPackValueType::MaxKey:
-    case VPackValueType::BCD: {
+    case VPackValueType::BCD: 
+    case VPackValueType::Tagged: {
       handleUnsupportedType(slice);
       break;
     }

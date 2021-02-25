@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 
 #include "SCC.h"
 #include <atomic>
+#include <climits>
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -35,6 +37,7 @@ using namespace arangodb;
 using namespace arangodb::pregel;
 using namespace arangodb::pregel::algos;
 
+namespace {
 static std::string const kPhase = "phase";
 static std::string const kFoundNewMax = "max";
 static std::string const kConverged = "converged";
@@ -58,8 +61,9 @@ struct SCCComputation
     }
 
     SCCValue* vertexState = mutableVertexData();
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
-    switch (*phase) {
+    auto const& phase = getAggregatedValueRef<uint32_t>(kPhase);
+
+    switch (phase) {
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
         vertexState->parents.clear();
@@ -138,6 +142,8 @@ struct SCCComputation
   }
 };
 
+}
+
 VertexComputation<SCCValue, int8_t, SenderMessage<uint64_t>>* SCC::createComputation(
     WorkerConfig const* config) const {
   return new SCCComputation();
@@ -152,29 +158,21 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
                           std::string const& result)
       : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                      SCCValue& senders) override {
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& documentId,
+                      arangodb::velocypack::Slice document, SCCValue& senders,
+                      uint64_t& vertexIdRange) override {
     senders.vertexID = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
-
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SCCValue* ptr, size_t size) const override {
-    SCCValue* senders = (SCCValue*)ptr;
-    if (senders->color != INT_MAX) {
-      b.add(_resultField, VPackValue(senders->color));
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, SCCValue const* ptr) const override {
+    if (ptr->color != INT_MAX) {
+      b.add(_resultField, VPackValue(ptr->color));
     } else {
       b.add(_resultField, VPackValue(-1));
     }
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 
@@ -185,7 +183,7 @@ GraphFormat<SCCValue, int8_t>* SCC::inputFormat() const {
 }
 
 struct SCCMasterContext : public MasterContext {
-  SCCMasterContext() {}  // TODO use _threashold
+  SCCMasterContext() {}  // TODO use _threshold
   void preGlobalSuperstep() override {
     if (globalSuperstep() == 0) {
       aggregate<uint32_t>(kPhase, SCCPhase::TRANSPOSE);

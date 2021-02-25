@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <stdlib.h>
@@ -54,9 +55,9 @@ static bool canExpose(v8::Isolate* isolate, v8::Local<v8::Name> property) {
     return true;
   }
 
-  auto& server = arangodb::application_features::ApplicationServer::server();
+  TRI_GET_GLOBALS();
   arangodb::V8SecurityFeature& v8security =
-      server.getFeature<arangodb::V8SecurityFeature>();
+      v8g->_server.getFeature<arangodb::V8SecurityFeature>();
   return v8security.shouldExposeEnvironmentVariable(isolate, utf8String);
 }
 
@@ -92,8 +93,9 @@ static void EnvGetter(v8::Local<v8::Name> property,
     TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif
+  auto context = TRI_IGETC;
   // Not found.  Fetch from prototype.
-  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(property));
+  TRI_V8_RETURN(args.Data().As<v8::Object>()->Get(context, property).FromMaybe(v8::Local<v8::Value>()));
 }
 
 static void EnvSetter(v8::Local<v8::Name> property, v8::Local<v8::Value> value,
@@ -186,6 +188,7 @@ static void EnvDeleter(v8::Local<v8::Name> property,
 static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
 #ifndef _WIN32
   int size = 0;
   while (environ[size]) {
@@ -193,7 +196,6 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
   }
 
   v8::Local<v8::Array> envarr = v8::Array::New(isolate);
-
   int j = 0;
   for (int i = 0; i < size; ++i) {
     char const* var = environ[i];
@@ -201,7 +203,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     size_t const length = s ? s - var : strlen(var);
     v8::Local<v8::String> name = TRI_V8_PAIR_STRING(isolate, var, length);
     if (canExpose(isolate, name)) {
-      envarr->Set(j++, name);
+      envarr->Set(context, j++, name).FromMaybe(false);
     }
   }
 #else  // _WIN32
@@ -227,7 +229,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     auto value = TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
 
     if (canExpose(isolate, value)) {
-      envarr->Set(i, value);
+      envarr->Set(context, i, value).FromMaybe(false);
     }
     p = s + wcslen(s) + 1;
     i++;
@@ -260,5 +262,5 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   v8g->EnvTempl.Reset(isolate, rt);
   TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
-                               ft->GetFunction());
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()));
 }

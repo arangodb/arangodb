@@ -47,6 +47,15 @@
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief set deadline for external requests & sleeps
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_COMMUNICATE_SLEEP_DEADLINE) {
+    exports.SetGlobalExecutionDeadlineTo = global.SYS_COMMUNICATE_SLEEP_DEADLINE;
+    delete global.SYS_COMMUNICATE_SLEEP_DEADLINE;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief write-ahead log functionality
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -69,7 +78,73 @@
       return exports.arango.GET('/_admin/wal/transactions', null);
     }
   };
-
+  
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief client side failpoints functionality
+  // //////////////////////////////////////////////////////////////////////////////
+  function endpointToURL(endpoint) {
+    if (endpoint.substr(0, 6) === 'ssl://') {
+      return 'https://' + endpoint.substr(6);
+    }
+    let pos = endpoint.indexOf('://');
+    if (pos === -1) {
+      return 'http://' + endpoint;
+    }
+    return 'http' + endpoint.substr(pos);
+  };
+  
+  exports.debugClearFailAt = function(failAt) {
+    const request = require('@arangodb/request');
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
+    instanceInfo.arangods.forEach((a) => {
+      let res = request.delete({
+        url: endpointToURL(a.endpoint) + '/_admin/debug/failat' + (failAt === undefined ? '' : '/' + failAt),
+        body: ""});
+      if (res.status !== 200) {
+        throw "Error removing failure point";
+      }
+    });
+  };
+  
+  exports.debugSetFailAt = function(failAt) {
+    const request = require('@arangodb/request');
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
+    instanceInfo.arangods.forEach((a) => {
+      let res = request.put({
+        url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + failAt,
+        body: ""});
+      if (res.status !== 200) {
+        throw "Error setting failure point";
+      }
+    });
+  };
+  
+  exports.debugTerminate = function() {
+    // NOOP. Terminate should be executed
+    // by tests framework not by client
+  };
+  
+  exports.debugTerminateInstance = function(endpoint) {
+    const request = require('@arangodb/request');
+    let res = request.put({
+      url: endpointToURL(endpoint) + '/_admin/debug/crash',
+      body: ""
+    });
+  };
+  
+  exports.debugCanUseFailAt = function() {
+    const request = require('@arangodb/request');
+    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
+    let res = request.get({
+      url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',
+      body: ""
+    });
+    if (res.status !== 200) {
+      return false;
+    }
+    return res.body === "true";
+  };
+  
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief are we talking to a single server or cluster?
   // //////////////////////////////////////////////////////////////////////////////
@@ -134,19 +209,20 @@
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief reloads the AQL user functions
+  // / @brief reloads the AQL user functions (does nothing in 3.7)
   // //////////////////////////////////////////////////////////////////////////////
 
-  exports.reloadAqlFunctions = function () {
-    exports.arango.POST('/_admin/aql/reload', null);
-  };
+  exports.reloadAqlFunctions = function () {};
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief rebuilds the routing cache
   // //////////////////////////////////////////////////////////////////////////////
 
   exports.reloadRouting = function () {
-    exports.arango.POST('/_admin/routing/reload', null);
+    const arangosh = require('@arangodb/arangosh');
+    let requestResult = exports.arango.POST('/_admin/routing/reload', null);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult;
   };
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -226,13 +302,23 @@
   let appendHeaders = function(appender, headers) {
     var key;
     // generate header
-    appender('HTTP/1.1 ' + headers['http/1.1'] + '\n');
+    const protocol = exports.arango.protocol();
+    if (protocol === 'http') {
+      if (headers.hasOwnProperty('http/1.1')) {
+        appender(`HTTP/1.1 ${headers['http/1.1']}\n`);
+      } else {
+        throw `Header field 'http/1.1' is missing.`;
+      }
+    } else {
+      throw `ArangoConnection::protocol() is '${protocol}', expected 'http'.`;
+    }
 
     for (key in headers) {
       if (headers.hasOwnProperty(key)) {
-        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-            && key !== 'content-length') {
-          appender(key + ': ' + headers[key] + '\n');
+        if (key !== 'http/1.1') {
+          // Could filter out some common header fields here
+          //key !== 'server' && key !== 'connection' && key !== 'content-length'
+          appender(`${key}: ${headers[key]}\n`);
         }
       }
     }
@@ -330,7 +416,7 @@
   };
 
   // //////////////////////////////////////////////////////////////////////////////
-  // / @brief returns if we are in enterprise version or not
+  // / @brief returns if we are an Enterprise Edition or not
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.SYS_IS_ENTERPRISE) {

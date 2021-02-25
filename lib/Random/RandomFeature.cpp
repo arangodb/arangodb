@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -55,7 +56,7 @@ void RandomFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "3 = URANDOM, 4 = COMBINED (not for Windows), 5 = WinCrypt (Windows "
       "only)",
       new DiscreteValuesParameter<UInt32Parameter>(&_randomGenerator, generators),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void RandomFeature::prepare() {

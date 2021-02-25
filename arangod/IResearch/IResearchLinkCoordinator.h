@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,8 @@
 #include "ClusterEngine/ClusterIndex.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearchLink.h"
+#include "Indexes/IndexFactory.h"
+#include "VocBase/Identifiers/IndexId.h"
 
 namespace arangodb {
 
@@ -44,23 +47,17 @@ class IResearchViewCoordinator;
 ////////////////////////////////////////////////////////////////////////////////
 class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IResearchLink {
  public:
-  virtual void batchInsert(
-      transaction::Methods& trx,
-      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
-      std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override {
-    TRI_ASSERT(false);  // should not be called
-  }
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief construct an uninitialized IResearch link, must call init(...)
+  /// after
+  ////////////////////////////////////////////////////////////////////////////////
+  IResearchLinkCoordinator(IndexId id, arangodb::LogicalCollection& collection);
 
   virtual bool canBeDropped() const override {
     return IResearchLink::canBeDropped();
   }
 
   virtual arangodb::Result drop() override { return IResearchLink::drop(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the factory for this type of index
-  //////////////////////////////////////////////////////////////////////////////
-  static arangodb::IndexTypeFactory const& factory();
 
   virtual bool hasSelectivityEstimate() const override {
     return IResearchLink::hasSelectivityEstimate();
@@ -110,14 +107,36 @@ class IResearchLinkCoordinator final : public arangodb::ClusterIndex, public IRe
     }
   }
 
- private:
-  struct IndexFactory;  // forward declaration
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief IResearchLinkCoordinator-specific implementation of an
+  ///        IndexTypeFactory
+  ////////////////////////////////////////////////////////////////////////////////
+  struct IndexFactory : public arangodb::IndexTypeFactory {
+    friend class IResearchLinkCoordinator;
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief construct an uninitialized IResearch link, must call init(...)
-  /// after
-  ////////////////////////////////////////////////////////////////////////////////
-  IResearchLinkCoordinator(TRI_idx_iid_t id, arangodb::LogicalCollection& collection);
+   private:
+    IndexFactory(arangodb::application_features::ApplicationServer& server);
+
+   public:
+    bool equal(arangodb::velocypack::Slice const& lhs,
+               arangodb::velocypack::Slice const& rhs,
+               std::string const& dbname) const override;
+
+    std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                                 arangodb::velocypack::Slice const& definition,
+                                                 IndexId id,
+                                                 bool isClusterConstructor) const override;
+
+    virtual arangodb::Result normalize(             // normalize definition
+        arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+        arangodb::velocypack::Slice definition,  // source definition
+        bool isCreation,              // definition for index creation
+        TRI_vocbase_t const& vocbase  // index vocbase
+        ) const override;
+  };
+
+  static std::shared_ptr<IndexFactory> createFactory(application_features::ApplicationServer&);
+
 };  // IResearchLinkCoordinator
 
 }  // namespace iresearch

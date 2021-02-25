@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,7 @@
 
 #include "VocbaseInfo.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -32,8 +34,10 @@
 
 namespace arangodb {
 
-CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server) : _server(server) {}
-  
+CreateDatabaseInfo::CreateDatabaseInfo(application_features::ApplicationServer& server,
+                                       ExecContext const& context)
+    : _server(server), _context(context) {}
+
 ShardingPrototype CreateDatabaseInfo::shardingPrototype() const { 
   if (_name != StaticStrings::SystemDatabase) {
     return ShardingPrototype::Graphs;
@@ -53,8 +57,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _valid = true;
-#endif
-
+#endif 
   return checkOptions();
 }
 
@@ -74,7 +77,7 @@ Result CreateDatabaseInfo::load(VPackSlice const& options, VPackSlice const& use
 #endif
 
   return checkOptions();
-};
+}
 
 Result CreateDatabaseInfo::load(uint64_t id, VPackSlice const& options,
                                 VPackSlice const& users) {
@@ -138,7 +141,7 @@ Result CreateDatabaseInfo::load(std::string const& name, uint64_t id,
 #endif
 
   return checkOptions();
-};
+}
 
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) const {
   TRI_ASSERT(_validId);
@@ -146,11 +149,12 @@ void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder, bool withUsers) con
   std::string const idString(basics::StringUtils::itoa(_id));
   builder.add(StaticStrings::DatabaseId, VPackValue(idString));
   builder.add(StaticStrings::DatabaseName, VPackValue(_name));
-  builder.add(StaticStrings::DataSourceSystem, VPackValue(_isSystemDB));
+  builder.add(StaticStrings::DataSourceSystem, VPackValue(_name == StaticStrings::SystemDatabase));
 
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isDBServer()) {
     addClusterOptions(builder, _sharding, _replicationFactor, _writeConcern);
-  }
+  } 
 
   if (withUsers) {
     builder.add(VPackValue("users"));
@@ -177,13 +181,13 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
   if (users.isNone() || users.isNull()) {
     return Result();
   } else if (!users.isArray()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid users slice");
   }
 
   for (VPackSlice const& user : VPackArrayIterator(users)) {
     if (!user.isObject()) {
-      events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+      events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
@@ -198,7 +202,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
         name = slice.copyString();
         userSet = true;
       } else {
-        events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
     }
@@ -207,7 +211,7 @@ Result CreateDatabaseInfo::extractUsers(VPackSlice const& users) {
     if (user.hasKey("passwd")) {
       VPackSlice passwd = user.get("passwd");
       if (!passwd.isString()) {
-        events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+        events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
         return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
       }
       password = passwd.copyString();
@@ -242,7 +246,7 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     return Result();
   }
   if (!options.isObject()) {
-    events::CreateDatabase(_name, TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::CreateDatabase(_name, Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return Result(TRI_ERROR_HTTP_BAD_PARAMETER, "invalid options slice");
   }
 
@@ -258,7 +262,6 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice const& options,
     }
     _name = nameSlice.copyString();
   }
-
   if (extractId) {
     auto idSlice = options.get(StaticStrings::DatabaseId);
     if (idSlice.isString()) {
@@ -287,8 +290,14 @@ Result CreateDatabaseInfo::checkOptions() {
     _validId = false;
   }
 
+  // we cannot use IsAllowedName for database name length validation alone, because
+  // IsAllowedName allows up to 256 characters. Database names are just up to 64
+  // chars long, as their names are also used as filesystem directories (for Foxx apps)
+  bool isSystem = _name == StaticStrings::SystemDatabase;
+
   if (_name.empty() ||
-      !TRI_vocbase_t::IsAllowedName(_isSystemDB, arangodb::velocypack::StringRef(_name))) {
+      !TRI_vocbase_t::IsAllowedName(isSystem, arangodb::velocypack::StringRef(_name)) ||
+      _name.size() > 64) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
 

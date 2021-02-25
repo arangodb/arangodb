@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,16 +18,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_CACHED_VALUE_H
 #define ARANGODB_CACHE_CACHED_VALUE_H
 
-#include "Basics/Common.h"
-
-#include <stdint.h>
 #include <atomic>
+#include <cstdint>
 #include <cstring>
 
 namespace arangodb {
@@ -43,56 +41,56 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 struct CachedValue {
   // key size must fit in 3 bytes
-  static constexpr size_t maxKeySize = 0x00FFFFFFULL;
+  static constexpr std::size_t maxKeySize = 0x00FFFFFFULL;
   // value size must fit in 4 bytes
-  static constexpr size_t maxValueSize = 0xFFFFFFFFULL;
+  static constexpr std::size_t maxValueSize = 0xFFFFFFFFULL;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Reference count (to avoid premature deletion)
   //////////////////////////////////////////////////////////////////////////////
-  inline uint32_t refCount() const noexcept { return _refCount.load(); }
+  inline std::uint32_t refCount() const noexcept { return _refCount.load(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the key in bytes
   //////////////////////////////////////////////////////////////////////////////
-  inline size_t keySize() const noexcept {
-    return static_cast<size_t>(_keySize & _keyMask);
+  inline std::size_t keySize() const noexcept {
+    return static_cast<std::size_t>(_keySize & _keyMask);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Size of the value in bytes
   //////////////////////////////////////////////////////////////////////////////
-  inline size_t valueSize() const noexcept {
-    return static_cast<size_t>(_valueSize);
+  inline std::size_t valueSize() const noexcept {
+    return static_cast<std::size_t>(_valueSize);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer offset to the key
   //////////////////////////////////////////////////////////////////////////////
-  inline uint8_t const* key() const noexcept {
-    return (reinterpret_cast<uint8_t const*>(this) + sizeof(CachedValue));
+  inline std::uint8_t const* key() const noexcept {
+    return (reinterpret_cast<std::uint8_t const*>(this) + sizeof(CachedValue));
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a pointer offset to the value
   //////////////////////////////////////////////////////////////////////////////
-  inline uint8_t const* value() const noexcept {
+  inline std::uint8_t const* value() const noexcept {
     return (_valueSize == 0) ? nullptr
-                             : reinterpret_cast<uint8_t const*>(this) +
+                             : reinterpret_cast<std::uint8_t const*>(this) +
                                    sizeof(CachedValue) + keySize();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the allocated size of bytes including the key and value
   //////////////////////////////////////////////////////////////////////////////
-  inline size_t size() const noexcept {
+  inline std::size_t size() const noexcept {
     return _headerAllocSize + keySize() + valueSize();
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Utility method to compare underlying key to external key
   //////////////////////////////////////////////////////////////////////////////
-  inline bool sameKey(void const* k, size_t kSize) const noexcept {
+  inline bool sameKey(void const* k, std::size_t kSize) const noexcept {
     return (keySize() == kSize) && (0 == memcmp(key(), k, kSize));
   }
 
@@ -119,7 +117,8 @@ struct CachedValue {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Construct a CachedValue object from a given key and value
   //////////////////////////////////////////////////////////////////////////////
-  static CachedValue* construct(void const* k, size_t kSize, void const* v, size_t vSize);
+  static CachedValue* construct(void const* k, std::size_t kSize, void const* v,
+                                std::size_t vSize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Custom deleter to handle casting issues
@@ -127,23 +126,24 @@ struct CachedValue {
   static void operator delete(void* ptr);
 
  private:
-  static constexpr size_t _padding = alignof(std::atomic<uint32_t>) - 1;
-  static const size_t _headerAllocSize;
-  static constexpr size_t _headerAllocMask = ~_padding;
-  static constexpr size_t _headerAllocOffset = _padding;
-  static constexpr uint32_t _keyMask = 0x00FFFFFF;
-  static constexpr uint32_t _offsetMask = 0xFF000000;
-  static constexpr size_t _offsetShift = 24;
+  static constexpr std::size_t _padding = alignof(std::atomic<std::uint32_t>) - 1;
+  static const std::size_t _headerAllocSize;
+  static constexpr std::size_t _headerAllocMask = ~_padding;
+  static constexpr std::size_t _headerAllocOffset = _padding;
+  static constexpr std::uint32_t _keyMask = 0x00FFFFFF;
+  static constexpr std::uint32_t _offsetMask = 0xFF000000;
+  static constexpr std::size_t _offsetShift = 24;
 
-  std::atomic<uint32_t> _refCount;
-  uint32_t _keySize;
-  uint32_t _valueSize;
+  std::atomic<std::uint32_t> _refCount;
+  std::uint32_t _keySize;
+  std::uint32_t _valueSize;
 
  private:
-  CachedValue(size_t off, void const* k, size_t kSize, void const* v, size_t vSize) noexcept;
+  CachedValue(std::size_t off, void const* k, std::size_t kSize, void const* v,
+              std::size_t vSize) noexcept;
   CachedValue(CachedValue const& other) noexcept;
 
-  inline size_t offset() const {
+  inline std::size_t offset() const {
     return ((_keySize & _offsetMask) >> _offsetShift);
   }
 };

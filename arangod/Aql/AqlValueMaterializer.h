@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -43,8 +44,6 @@ namespace aql {
 /// @brief Helper class to materialize AqlValues (see AqlValue::materialize).
 struct AqlValueMaterializer {
   explicit AqlValueMaterializer(velocypack::Options const* options);
-  [[deprecated("Pass VPackOptions instead of the transaction")]]
-  explicit AqlValueMaterializer(arangodb::transaction::Methods* trx);
 
   AqlValueMaterializer(AqlValueMaterializer const& other);
 

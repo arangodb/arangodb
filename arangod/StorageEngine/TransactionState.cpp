@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,11 +23,16 @@
 
 #include "TransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Basics/DebugRaceController.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/MetricsFeature.h"
+#include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -38,39 +43,44 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
+#include <any>
+
 using namespace arangodb;
 
 /// @brief transaction type
-TransactionState::TransactionState(TRI_vocbase_t& vocbase,
-                                   TRI_voc_tid_t tid,
+TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options)
     : _vocbase(vocbase),
-      _id(tid),
       _lastWrittenOperationTick(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
       _arena(),
       _collections{_arena},  // assign arena to vector
-      _serverRole(ServerState::instance()->getRole()),
       _hints(),
+      _serverRole(ServerState::instance()->getRole()),
       _options(options),
-      _nestingLevel(0),
-      _registeredTransaction(false) {}
+      _id(tid),
+      _registeredTransaction(false) {
+
+  // patch intermediateCommitCount for testing
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  transaction::Options::adjustIntermediateCommitCount(_options);
+#endif
+}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
 
-  releaseCollections();
-
-  // free all collections
+  // process collections in reverse order, free all collections
   for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
+    (*it)->releaseUsage();
     delete (*it);
   }
 }
 
 /// @brief return the collection from a transaction
-TransactionCollection* TransactionState::collection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::collection(DataSourceId cid,
                                                     AccessMode::Type accessType) const {
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
@@ -92,9 +102,10 @@ TransactionCollection* TransactionState::collection(std::string const& name,
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 
-  auto it = std::find_if(_collections.begin(), _collections.end(), [&name](TransactionCollection const* trxColl) {
-    return trxColl->collectionName() == name;
-  });
+  auto it = std::find_if(_collections.begin(), _collections.end(),
+                         [&name](TransactionCollection const* trxColl) {
+                           return trxColl->collectionName() == name;
+                         });
 
   if (it == _collections.end() || !(*it)->canAccess(accessType)) {
     // not found or not accessible in the requested mode
@@ -118,24 +129,47 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 }
 
 /// @brief add a collection to a transaction
-Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                                       AccessMode::Type accessType,
-                                       int nestingLevel, bool force) {
-  LOG_TRX("ad6d0", TRACE, this, nestingLevel) << "adding collection " << cid;
-  
+Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
+                                       AccessMode::Type accessType, bool lockUsage) {
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(ARANGODB_ENABLE_FAILURE_TESTS)
+  TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
+    auto& raceController = basics::DebugRaceController::sharedInstance();
+    if (!raceController.didTrigger()) {
+      raceController.waitForOthers(2, _id, vocbase().server());
+      // Slice out the first char, then we have a number
+      uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
+      std::vector<std::any> const data = raceController.data();
+      if (shardNum % 2 == 0) {
+        auto min = *std::min_element(data.begin(), data.end(),
+                                     [](std::any const& a, std::any const& b) {
+                                       return std::any_cast<TransactionId>(a) <
+                                              std::any_cast<TransactionId>(b);
+                                     });
+        if (_id == std::any_cast<TransactionId>(min)) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+      } else {
+        auto max = *std::max_element(data.begin(), data.end(),
+                                     [](std::any const& a, std::any const& b) {
+                                       return std::any_cast<TransactionId>(a) <
+                                              std::any_cast<TransactionId>(b);
+                                     });
+        if (_id == std::any_cast<TransactionId>(max)) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+      }
+    }
+  }
+#endif
   Result res;
 
   // upgrade transaction type if required
-  if (nestingLevel == 0) {
-    if (!force) {
-      TRI_ASSERT(_status == transaction::Status::CREATED);
-    }
-
+  if (_status == transaction::Status::CREATED) {
     if (AccessMode::isWriteOrExclusive(accessType) &&
         !AccessMode::isWriteOrExclusive(_type)) {
       // if one collection is written to, the whole transaction becomes a
-      // write-transaction
-      _type = AccessMode::Type::WRITE;
+      // write-y transaction
+      _type = std::max(_type, accessType);
     }
   }
 
@@ -148,36 +182,44 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
                       AccessMode::Type::READ < AccessMode::Type::WRITE &&
                       AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE,
                   "AccessMode::Type total order fail");
+    LOG_TRX("ad6d0", TRACE, this)
+        << "updating collection usage " << cid << ": '" << cname << "'";
+
     // we may need to recheck permissions here
     if (trxColl->accessType() < accessType) {
-      res.reset(checkCollectionPermission(cname, accessType));
+      res.reset(checkCollectionPermission(cid, cname, accessType));
 
       if (res.fail()) {
         return res;
       }
     }
     // collection is already contained in vector
-    return res.reset(trxColl->updateUsage(accessType, nestingLevel));
+    return res.reset(trxColl->updateUsage(accessType));
   }
 
   // collection not found.
 
-  if (nestingLevel > 0 && AccessMode::isWriteOrExclusive(accessType)) {
-    // trying to write access a collection in an embedded transaction
-    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname + 
-                     " [" + AccessMode::typeString(accessType) + "]");
+  LOG_TRX("ad6e1", TRACE, this) << "adding new collection " << cid << ": '" << cname << "'";
+  if (_status != transaction::Status::CREATED && AccessMode::isWriteOrExclusive(accessType) &&
+      !_options.allowImplicitCollectionsForWrite) {
+    // trying to write access a collection that was not declared at start.
+    // this is only supported internally for replication transactions.
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                         ": " + cname + " [" +
+                         AccessMode::typeString(accessType) + "]");
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
-      (isRunning() && !_options.allowImplicitCollections)) {
-    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, 
-                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + cname +
-                     " [" + AccessMode::typeString(accessType) + "]");
+      (isRunning() && !_options.allowImplicitCollectionsForRead)) {
+    return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
+                         ": " + cname + " [" +
+                         AccessMode::typeString(accessType) + "]");
   }
 
   // now check the permissions
-  res = checkCollectionPermission(cname, accessType);
+  res = checkCollectionPermission(cid, cname, accessType);
 
   if (res.fail()) {
     return res;
@@ -186,9 +228,9 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxColl == nullptr);
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  StorageEngine& engine = vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
-  trxColl = engine->createTransactionCollection(*this, cid, accessType, nestingLevel).release();
+  trxColl = engine.createTransactionCollection(*this, cid, accessType).release();
 
   TRI_ASSERT(trxColl != nullptr);
 
@@ -200,33 +242,23 @@ Result TransactionState::addCollection(TRI_voc_cid_t cid, std::string const& cna
     return res.reset(TRI_ERROR_OUT_OF_MEMORY);
   }
 
+  if (lockUsage) {
+    TRI_ASSERT(!isRunning() || !AccessMode::isWriteOrExclusive(accessType) ||
+               _options.allowImplicitCollectionsForWrite);
+    res = trxColl->lockUsage();
+  }
+
   return res;
 }
 
-/// @brief make sure all declared collections are used & locked
-Result TransactionState::ensureCollections(int nestingLevel) {
-  return useCollections(nestingLevel);
-}
-
-/// @brief run a callback on all collections
-void TransactionState::allCollections(                     // iterate
-    std::function<bool(TransactionCollection&)> const& cb  // callback to invoke
-) {
-  for (auto& trxCollection : _collections) {
-    TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
-    if (!cb(*trxCollection)) {
-      // abort early
-      return;
-    }
-  }
-}
-  
 /// @brief use all participating collections of a transaction
-Result TransactionState::useCollections(int nestingLevel) {
+Result TransactionState::useCollections() {
   Result res;
   // process collections in forward order
-  for (auto& trxCollection : _collections) {
-    res = trxCollection->use(nestingLevel);
+
+  for (TransactionCollection* trxCollection : _collections) {
+    res = trxCollection->lockUsage();
+
     if (!res.ok()) {
       break;
     }
@@ -234,29 +266,8 @@ Result TransactionState::useCollections(int nestingLevel) {
   return res;
 }
 
-/// @brief release collection locks for a transaction
-int TransactionState::unuseCollections(int nestingLevel) {
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->unuse(nestingLevel);
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-int TransactionState::lockCollections() {
-  for (auto& trxCollection : _collections) {
-    int res = trxCollection->lockRecursive();
-
-    if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_LOCKED) {
-      return res;
-    }
-  }
-  return TRI_ERROR_NO_ERROR;
-}
-
 /// @brief find a collection in the transaction's list of collections
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const {
+TransactionCollection* TransactionState::findCollection(DataSourceId cid) const {
   for (auto* trxCollection : _collections) {
     if (cid == trxCollection->id()) {
       // found
@@ -279,7 +290,7 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid) const
 ///        defines where the collection should be inserted,
 ///        so whenever we want to insert the collection we
 ///        have to use this position for insert.
-TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
+TransactionCollection* TransactionState::findCollection(DataSourceId cid,
                                                         size_t& position) const {
   size_t const n = _collections.size();
   size_t i;
@@ -308,53 +319,63 @@ TransactionCollection* TransactionState::findCollection(TRI_voc_cid_t cid,
 void TransactionState::setExclusiveAccessType() {
   if (_status != transaction::Status::CREATED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "cannot change the type of a running transaction");
+        TRI_ERROR_INTERNAL, "cannot change the type of a running transaction");
   }
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
-Result TransactionState::checkCollectionPermission(std::string const& cname,
-                                                   AccessMode::Type accessType) const {
+void TransactionState::acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevision) noexcept {
+  // only init from default allowed! Or we have problem -> different analyzersRevision in one transaction
+  LOG_TOPIC_IF("9127a", ERR, Logger::AQL,
+               (_analyzersRevision != analyzersRevision && !_analyzersRevision.isDefault()))
+      << " Changing analyzers revision for transaction from "
+      << _analyzersRevision << " to " << analyzersRevision;
+  TRI_ASSERT(_analyzersRevision == analyzersRevision || _analyzersRevision.isDefault());
+  _analyzersRevision = analyzersRevision;
+}
+
+Result TransactionState::checkCollectionPermission(DataSourceId cid, std::string const& cname,
+                                                   AccessMode::Type accessType) {
   TRI_ASSERT(!cname.empty());
   ExecContext const& exec = ExecContext::current();
 
-  Result res;
   // no need to check for superuser, cluster_sync tests break otherwise
-  if (!exec.isSuperuser()) {
-    auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
-    TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+  if (exec.isSuperuser()) {
+    return Result{};
+  }
 
-    if (level == auth::Level::NONE) {
-      LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
-          << "User " << exec.user() << " has collection auth::Level::NONE";
+  auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
+  TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
 
-      res.reset(TRI_ERROR_FORBIDDEN,
-                std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " + cname + 
-                " [" + AccessMode::typeString(accessType) + "]");
-    } else {
-      bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+  if (level == auth::Level::NONE) {
+    LOG_TOPIC("24971", TRACE, Logger::AUTHORIZATION)
+        << "User " << exec.user() << " has collection auth::Level::NONE";
 
-      if (level == auth::Level::RO && collectionWillWrite) {
-        LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
-            << "User " << exec.user() << " has no write right for collection " << cname;
+#ifdef USE_ENTERPRISE
+    if (accessType == AccessMode::Type::READ && _options.skipInaccessibleCollections) {
+      addInaccessibleCollection(cid, cname);
+      return Result();
+    }
+#endif
 
-        res.reset(TRI_ERROR_ARANGO_READ_ONLY,
-                  std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) + ": " + cname +
-                  " [" + AccessMode::typeString(accessType) + "]");
-      }
+    return Result(TRI_ERROR_FORBIDDEN,
+                  std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " +
+                      cname + " [" + AccessMode::typeString(accessType) + "]");
+  } else {
+    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+
+    if (level == auth::Level::RO && collectionWillWrite) {
+      LOG_TOPIC("d3e61", TRACE, Logger::AUTHORIZATION)
+          << "User " << exec.user() << " has no write right for collection " << cname;
+
+      return Result(TRI_ERROR_ARANGO_READ_ONLY,
+                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) +
+                        ": " + cname + " [" +
+                        AccessMode::typeString(accessType) + "]");
     }
   }
 
-  return res;
-}
-
-/// @brief release collection locks for a transaction
-void TransactionState::releaseCollections() {
-  // process collections in reverse order
-  for (auto it = _collections.rbegin(); it != _collections.rend(); ++it) {
-    (*it)->release();
-  }
+  return Result{};
 }
 
 /// @brief clear the query cache for all collections that were modified by
@@ -387,13 +408,23 @@ void TransactionState::clearQueryCache() {
   }
 }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+// reset the internal Transaction ID to none.
+// Only used in the Transaction Mock for internal reasons.
+void TransactionState::resetTransactionId() {
+  // avoid use of TransactionManagerFeature::manager()->unregisterTransaction(...)
+  _id = arangodb::TransactionId::none();
+}
+#endif
+
 /// @brief update the status of a transaction
 void TransactionState::updateStatus(transaction::Status status) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (_status != transaction::Status::CREATED && _status != transaction::Status::RUNNING) {
-    LOG_TOPIC("257ea", ERR, Logger::FIXME) << "trying to update transaction status with "
-                                     "an invalid state. current: "
-                                  << _status << ", future: " << status;
+    LOG_TOPIC("257ea", ERR, Logger::FIXME)
+        << "trying to update transaction status with "
+           "an invalid state. current: "
+        << _status << ", future: " << status;
   }
 #endif
 
@@ -409,4 +440,35 @@ void TransactionState::updateStatus(transaction::Status status) {
   }
 
   _status = status;
+}
+
+/// @brief returns the name of the actor the transaction runs on:
+/// - leader
+/// - follower
+/// - coordinator
+/// - single
+char const* TransactionState::actorName() const noexcept {
+  if (isDBServer()) {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX) ? "follower" : "leader";
+  } else if (isCoordinator()) {
+    return "coordinator";
+  }
+  return "single";
+}
+
+void TransactionState::coordinatorRerollTransactionId() {
+  TRI_ASSERT(isCoordinator());
+  TRI_ASSERT(isRunning())
+  auto old = _id;
+  _id = transaction::Context::makeTransactionId();
+  LOG_TOPIC("a565a", DEBUG, Logger::TRANSACTIONS)
+      << "Rerolling transaction id from " << old << " to " << _id;
+  clearKnownServers();
+  // Increase sequential lock by one.
+  statistics()._sequentialLocks.count();
+}
+
+/// @brief return a reference to the global transaction statistics
+TransactionStatistics& TransactionState::statistics() noexcept {
+  return _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics;
 }

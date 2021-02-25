@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_SUBQUERY_END_EXECUTION_NODE_H 1
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb {
 namespace aql {
@@ -36,12 +37,8 @@ class SubqueryEndNode : public ExecutionNode {
  public:
   SubqueryEndNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
-  SubqueryEndNode(ExecutionPlan* plan, size_t id, Variable const* inVariable,
-                  Variable const* outVariable)
-      : ExecutionNode(plan, id), _inVariable(inVariable), _outVariable(outVariable) {
-    // _inVariable might be nullptr
-    TRI_ASSERT(_outVariable != nullptr);
-  }
+  SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id, Variable const* inVariable,
+                  Variable const* outVariable);
 
   CostEstimate estimateCost() const override final;
 
@@ -63,7 +60,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(arangodb::containers::HashSet<Variable const*>& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const override final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }
@@ -75,9 +72,13 @@ class SubqueryEndNode : public ExecutionNode {
 
   void replaceOutVariable(Variable const* var);
 
+  // We only override this to TRI_ASSERT(false), because
+  // noone should ever ask this node whether it is a modification
+  // node
+  bool isModificationNode() const override;
+
  private:
   Variable const* _inVariable;
-
   Variable const* _outVariable;
 };
 

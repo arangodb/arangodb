@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,32 +24,44 @@
 #ifndef ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_QUERY_EXPRESSION_CONTEXT_H 1
 
+#include <Basics/ErrorCode.h>
 #include "ExpressionContext.h"
 
 namespace arangodb {
+struct ValidatorBase;
 namespace aql {
-class Query;
+class QueryContext;
+class AqlFunctionsInternalCache;
 
 class QueryExpressionContext : public ExpressionContext {
  public:
-  explicit QueryExpressionContext(Query* query)
-      : ExpressionContext(), _query(query) {}
+  explicit QueryExpressionContext(transaction::Methods& trx,
+                                  QueryContext& query,
+                                  AqlFunctionsInternalCache& cache) noexcept
+      : ExpressionContext(),
+        _trx(trx), _query(query), _aqlFunctionsInternalCache(cache) {}
 
-  void registerWarning(int errorCode, char const* msg) override;
-  void registerError(int errorCode, char const* msg) override;
+  void registerWarning(ErrorCode errorCode, char const* msg) override final;
+  void registerError(ErrorCode errorCode, char const* msg) override final;
 
   icu::RegexMatcher* buildRegexMatcher(char const* ptr, size_t length,
-                                       bool caseInsensitive) override;
+                                       bool caseInsensitive) override final;
   icu::RegexMatcher* buildLikeMatcher(char const* ptr, size_t length,
-                                      bool caseInsensitive) override;
-  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, transaction::Methods*,
-                                       bool& isEmptyExpression) override;
+                                      bool caseInsensitive) override final;
+  icu::RegexMatcher* buildSplitMatcher(AqlValue splitExpression, velocypack::Options const* opts,
+                                       bool& isEmptyExpression) override final;
+
+  arangodb::ValidatorBase* buildValidator(arangodb::velocypack::Slice const&) override final;
 
   TRI_vocbase_t& vocbase() const override final;
-  Query* query() const override final;
+  /// may be inaccessible on some platforms
+  transaction::Methods& trx() const override final;
+  bool killed() const override final;
 
  private:
-  Query* _query;
+  transaction::Methods& _trx;
+  QueryContext& _query;
+  AqlFunctionsInternalCache& _aqlFunctionsInternalCache;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,9 +24,13 @@
 #ifndef ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H
 #define ARANGOD_AQL_COLLECTION_ACCESSING_NODE_H 1
 
+#include "Aql/CollectionAccess.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
 
+#include <optional>
 #include <string>
+#include <unordered_map>
 
 struct TRI_vocbase_t;
 
@@ -44,6 +48,7 @@ class CollectionAccessingNode {
  public:
   explicit CollectionAccessingNode(aql::Collection const* collection);
   CollectionAccessingNode(ExecutionPlan* plan, arangodb::velocypack::Slice slice);
+  virtual ~CollectionAccessingNode() = default;
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder, unsigned flags) const;
@@ -63,7 +68,7 @@ class CollectionAccessingNode {
 
   void setUsedShard(std::string const& shardName) {
     // We can only use the shard we are restricted to
-    TRI_ASSERT(_restrictedTo.empty() || _restrictedTo == shardName);
+    TRI_ASSERT(shardName.empty() || _restrictedTo.empty() || _restrictedTo == shardName);
     _usedShard = shardName;
   }
 
@@ -95,31 +100,39 @@ class CollectionAccessingNode {
   aql::Collection const* prototypeCollection() const;
   aql::Variable const* prototypeOutVariable() const;
 
-  bool isUsedAsSatellite() const { return _isSatellite; }
+  bool isUsedAsSatellite() const;
 
-  void useAsSatellite();
+  /// @brief Use this collection access as a satellite of the prototype.
+  /// This will work transitively, even if the prototypeAccess is only
+  /// subsequently marked as a satellite of another access. However, after
+  /// se- and deserialization, this won't work anymore.
+  void useAsSatelliteOf(ExecutionNodeId prototypeAccessId);
 
   void cloneInto(CollectionAccessingNode& c) const {
-    c._prototypeCollection = _prototypeCollection;
-    c._prototypeOutVariable = _prototypeOutVariable;
+    c._collectionAccess = _collectionAccess;
     c._restrictedTo = _restrictedTo;
-    c._isSatellite = _isSatellite;
     c._usedShard = _usedShard;
   }
 
+  /// @brief Get the CollectionAccess of which *this* collection access is a
+  /// satellite of, if any.
+  /// This will make a recursive lookup, so if A isSatelliteOf B, and B isSatelliteOf C,
+  /// A.getSatelliteOf() will return C.
+  auto getSatelliteOf(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById) const
+      -> ExecutionNode*;
+
+  /// @brief Get local value of getSatelliteOf, without resolving it recursively.
+  auto getRawSatelliteOf() const -> std::optional<aql::ExecutionNodeId>;
+
+  auto collectionAccess() const -> aql::CollectionAccess const&;
+
  protected:
-  aql::Collection const* _collection;
+  aql::CollectionAccess _collectionAccess;
 
   /// @brief A shard this node is restricted to, may be empty
   std::string _restrictedTo;
 
-  /// @brief prototype collection when using distributeShardsLike
-  aql::Collection const* _prototypeCollection;
-  aql::Variable const* _prototypeOutVariable;
-
   std::string _usedShard;
-
-  bool _isSatellite;
 };
 
 }  // namespace aql

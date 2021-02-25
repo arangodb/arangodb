@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #ifndef ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H
 #define ARANGOD_GRAPH_SHORTEST_PATH_OPTIONS_H 1
 
+#include <memory>
 #include "Graph/BaseOptions.h"
 
 namespace arangodb {
@@ -38,37 +39,41 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 namespace graph {
+class EdgeCursor;
 
 struct ShortestPathOptions : public BaseOptions {
  public:
+  uint64_t minDepth;
+  uint64_t maxDepth;
   std::string start;
-  std::string direction;
+  std::string end;
   std::string weightAttribute;
   double defaultWeight;
   bool bidirectional;
   bool multiThreaded;
-  std::string end;
-  arangodb::velocypack::Builder startBuilder;
-  arangodb::velocypack::Builder endBuilder;
 
-  explicit ShortestPathOptions(aql::Query* query);
+  explicit ShortestPathOptions(aql::QueryContext& query);
 
-  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice const& info);
+  ShortestPathOptions(aql::QueryContext& query, arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines
-  ShortestPathOptions(aql::Query* query, arangodb::velocypack::Slice info,
+  ShortestPathOptions(aql::QueryContext& query,
+                      arangodb::velocypack::Slice info,
                       arangodb::velocypack::Slice collections);
-  ~ShortestPathOptions();
+  ~ShortestPathOptions() override;
+
+  /// @brief This copy constructor is only working during planning phase.
+  ///        After planning this node should not be copied anywhere.
+  ///        When allowAlreadyBuiltCopy is true, the constructor also works after
+  ///        the planning phase; however, the options have to be prepared again
+  ///        (see ShortestPathNode / KShortestPathsNode ::prepareOptions())
+  ShortestPathOptions(ShortestPathOptions const& other, bool allowAlreadyBuiltCopy = false);
 
   // Creates a complete Object containing all EngineInfo
   // in the given builder.
   void buildEngineInfo(arangodb::velocypack::Builder&) const override;
 
-  void setStart(std::string const&);
-  void setEnd(std::string const&);
-
-  arangodb::velocypack::Slice getStart() const;
-  arangodb::velocypack::Slice getEnd() const;
+  std::unique_ptr<EdgeCursor> buildCursor(bool backward);
 
   /// @brief  Test if we have to use a weight attribute
   bool useWeight() const;
@@ -91,17 +96,10 @@ struct ShortestPathOptions : public BaseOptions {
   // Compute the weight of the given edge
   double weightEdge(arangodb::velocypack::Slice const) const;
 
-  EdgeCursor* nextCursor(arangodb::velocypack::StringRef vid);
+  template<typename ListType>
+  void fetchVerticesCoordinator(ListType const& vertexIds);
 
-  EdgeCursor* nextReverseCursor(arangodb::velocypack::StringRef vid);
-
-  void fetchVerticesCoordinator(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-
-  void isQueryKilledCallback() const;
-
- private:
-  EdgeCursor* nextCursorCoordinator(arangodb::velocypack::StringRef vid);
-  EdgeCursor* nextReverseCursorCoordinator(arangodb::velocypack::StringRef vid);
+  auto estimateDepth() const noexcept -> uint64_t override;
 
  private:
   /// @brief Lookup info to find all reverse edges.

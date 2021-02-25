@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -217,7 +218,6 @@ struct OptimizerRule {
 
     // remove now obsolete path variables
     removeTraversalPathVariable,
-    prepareTraversalsRule,
 
     // when we have single document operations, fill in special cluster
     // handling.
@@ -242,6 +242,10 @@ struct OptimizerRule {
     clusterOneShardRule,
 #endif
 
+#ifdef USE_ENTERPRISE
+    clusterLiftConstantsForDisjointGraphNodes,
+#endif
+
     // make operations on sharded collections use distribute
     distributeInClusterRule,
 
@@ -256,25 +260,41 @@ struct OptimizerRule {
     // make operations on sharded IResearch views use scatter / gather / remote
     scatterIResearchViewInClusterRule,
 
+#ifdef USE_ENTERPRISE
+    // move traversal on SatelliteGraph to db server and add scatter / gather / remote
+    scatterSatelliteGraphRule,
+#endif
+
+#ifdef USE_ENTERPRISE
+    // remove any superfluous SatelliteCollection joins...
+    // put it after Scatter rule because we would do
+    // the work twice otherwise
+    removeSatelliteJoinsRule,
+
+    // remove multiple remote <-> distribute snippets if we are able
+    // to combine multiple in only one
+    removeDistributeNodesRule,
+#endif
+
     // move FilterNodes & Calculation nodes in between
     // scatter(remote) <-> gather(remote) so they're
     // distributed to the cluster nodes.
-    distributeFilternCalcToClusterRule,
+    distributeFilterCalcToClusterRule,
 
     // move SortNodes into the distribution.
     // adjust gathernode to also contain the sort criteria.
     distributeSortToClusterRule,
 
+    // remove calculations that are redundant
+    // this is hidden and disabled by default version
+    // used to cleanup calculation nodes after conditionally
+    // removed nodes. Currently used by OneShard rule to handle
+    // removals of sort nodes for arangosearch views.
+    removeUnnecessaryCalculationsRule3,
+
     // try to get rid of a RemoteNode->ScatterNode combination which has
     // only a SingletonNode and possibly some CalculationNodes as dependencies
     removeUnnecessaryRemoteScatterRule,
-
-#ifdef USE_ENTERPRISE
-    // remove any superflous satellite collection joins...
-    // put it after Scatter rule because we would do
-    // the work twice otherwise
-    removeSatelliteJoinsRule,
-#endif
 
     // recognize that a RemoveNode can be moved to the shards
     undistributeRemoveAfterEnumCollRule,
@@ -296,8 +316,19 @@ struct OptimizerRule {
     // avoid copying large amounts of unneeded documents
     moveFiltersIntoEnumerateRule,
 
+    // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized count
+    // operation
+    optimizeCountRule,
+
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
+
+    // reduce a sorted gather to an unsorted gather if only a single shard is affected
+    decayUnnecessarySortedGatherRule,
+
+#ifdef USE_ENTERPRISE
+    clusterPushSubqueryToDBServer,
+#endif
 
     // move document materialization after SORT and LIMIT
     // this must be run AFTER all cluster rules as this rule
@@ -321,12 +352,12 @@ struct OptimizerRule {
   static_assert(clusterOneShardRule < distributeInClusterRule);
   static_assert(clusterOneShardRule < smartJoinsRule);
   static_assert(clusterOneShardRule < scatterInClusterRule);
-  
-  // smart joins must come before we move filters around, so the smart-join
+
+  // SmartJoins must come before we move filters around, so the smart-join
   // detection code does not need to take the special filters into account
   static_assert(smartJoinsRule < moveFiltersIntoEnumerateRule);
 #endif
-  
+
   static_assert(scatterInClusterRule < parallelizeGatherRule);
 
   velocypack::StringRef name;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,8 +23,8 @@
 
 #include <time.h>
 
+#include "Basics/StaticStrings.h"
 #include "Basics/system-functions.h"
-#include "Basics/tri-strings.h"
 #include "Replication/common-defines.h"
 
 namespace arangodb {
@@ -64,13 +64,15 @@ bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSyste
     return true;
   }
 
-  if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
-      name == "_configuration" || name == "_frontend" ||
-      name == "_cluster_kickstarter_plans" || name == "_routing" ||
-      name == "_fishbowl" || name == "_foxxlog" || name == "_sessions") {
+  // check if the name starts with _statistics
+  if (name.compare(0, 11, StaticStrings::StatisticsCollection) == 0 ||
+      name == "_routing") {
     // these system collections will always be excluded
     return true;
-  } else if (!includeFoxxQueues && (name == "_jobs" || name == "_queues")) {
+  } 
+  
+  if (!includeFoxxQueues && 
+      (name == StaticStrings::JobsCollection || name == StaticStrings::QueuesCollection)) {
     return true;
   }
 

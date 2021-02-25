@@ -18,65 +18,103 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_PREFIX_FILTER_H
 #define IRESEARCH_PREFIX_FILTER_H
 
-#include "term_filter.hpp"
+#include "search/filter.hpp"
+#include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-class term_selector;
+class by_prefix;
+struct filter_visitor;
 
-class IRESEARCH_API by_prefix final : public by_term {
+struct IRESEARCH_API by_prefix_filter_options {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search prefix
+  //////////////////////////////////////////////////////////////////////////////
+  bstring term;
+
+  bool operator==(const by_prefix_filter_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_prefix_options
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for prefix filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_prefix_options : by_prefix_filter_options {
+  using filter_type = by_prefix;
+  using filter_options = by_prefix_filter_options;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit{1024};
+
+  bool operator==(const by_prefix_options& rhs) const noexcept {
+    return filter_options::operator==(rhs) &&
+        scored_terms_limit == rhs.scored_terms_limit;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(filter_options::hash(), scored_terms_limit);
+  }
+}; // by_prefix_options
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class by_prefix
+/// @brief user-side prefix filter
+////////////////////////////////////////////////////////////////////////////////
+class IRESEARCH_API by_prefix : public filter_base<by_prefix_options> {
  public:
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_prefix() NOEXCEPT;
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit);
 
-  using by_term::field;
-
-  by_prefix& field(std::string fld) {
-    by_term::field(std::move(fld));
-    return *this;
-  }
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_prefix& scored_terms_limit(size_t limit) {
-    scored_terms_limit_ = limit;
-    return *this;
+      const index_reader& index,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), options().term,
+                   options().scored_terms_limit);
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const {
-    return scored_terms_limit_;
-  }
-
-  virtual size_t hash() const NOEXCEPT override;
-
- protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
-
- private:
-  size_t scored_terms_limit_{1024};
 }; // by_prefix
 
-NS_END
+}
+
+namespace std {
+
+template<>
+struct hash<::iresearch::by_prefix_options> {
+  size_t operator()(const ::iresearch::by_prefix_options& v) const noexcept {
+    return v.hash();
+  }
+};
+
+}
 
 #endif

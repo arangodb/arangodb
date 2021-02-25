@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+mr{
+    Version{"2.1.19.14"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on]"
+                "[reorder Deva Beng Guru Gujr Orya Taml Telu Knda Mlym Sinh]"
+                "&ॐ<ं<<ँ<ः"
+                "&ह<ळ"
+                "<क्ष"
+                "<ज्ञ"
+            }
+            Version{"35.1"}
+        }
+    }
+}

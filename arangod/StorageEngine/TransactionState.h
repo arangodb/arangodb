@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
@@ -33,21 +34,23 @@
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/voc-types.h"
 
 #include <map>
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define LOG_TRX(logid, llevel, trx, tlevel)                \
+#define LOG_TRX(logid, llevel, trx)                        \
   LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS) \
-      << "#" << trx->id() << "." << tlevel << " ("         \
+      << "#" << trx->id().id() << " ("                     \
       << transaction::statusString(trx->status()) << "): "
 
 #else
 
 #define LOG_TRX(logid, llevel, ...) \
-  while (0) LOG_TOPIC(logid, llevel,  arangodb::Logger::TRANSACTIONS)
+  while (0) LOG_TOPIC(logid, llevel, arangodb::Logger::TRANSACTIONS)
 #endif
 
 struct TRI_vocbase_t;
@@ -60,6 +63,7 @@ struct Options;
 }  // namespace transaction
 
 class TransactionCollection;
+struct TransactionStatistics;
 
 /// @brief transaction type
 class TransactionState {
@@ -70,13 +74,17 @@ class TransactionState {
     virtual ~Cookie() = default;
   };
 
+  static bool ServerIdLessThan(ServerID const& lhs, ServerID const& rhs) {
+    return lhs < rhs;
+  }
+
   typedef std::function<void(TransactionState& state)> StatusChangeCallback;
 
   TransactionState() = delete;
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TRI_voc_tid_t tid,
+  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                    transaction::Options const& options);
   virtual ~TransactionState();
 
@@ -92,11 +100,12 @@ class TransactionState {
   }
   bool isDBServer() const { return ServerState::isDBServer(_serverRole); }
   bool isCoordinator() const { return ServerState::isCoordinator(_serverRole); }
+  ServerState::RoleEnum serverRole() const { return _serverRole; }
 
   inline transaction::Options& options() { return _options; }
   inline transaction::Options const& options() const { return _options; }
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
-  inline TRI_voc_tid_t id() const { return _id; }
+  inline TransactionId id() const { return _id; }
   inline transaction::Status status() const { return _status; }
   inline bool isRunning() const {
     return _status == transaction::Status::RUNNING;
@@ -104,21 +113,18 @@ class TransactionState {
   void setRegistered() noexcept { _registeredTransaction = true; }
   bool wasRegistered() const noexcept { return _registeredTransaction; }
 
-  int increaseNesting() {
-    return _nestingLevel.fetch_add(1, std::memory_order_relaxed) + 1;
-  }
-  int decreaseNesting() {
-    TRI_ASSERT(nestingLevel() > 0);
-    return _nestingLevel.fetch_sub(1, std::memory_order_relaxed) - 1;
-  }
-  int nestingLevel() const {
-    return _nestingLevel.load(std::memory_order_relaxed);
-  }
-  bool isTopLevelTransaction() const { return nestingLevel() == 0; }
-  bool isEmbeddedTransaction() const { return !isTopLevelTransaction(); }
+  /// @brief returns the name of the actor the transaction runs on:
+  /// - leader
+  /// - follower
+  /// - coordinator
+  /// - single
+  char const* actorName() const noexcept;
 
-  double timeout() const { return _options.lockTimeout; }
-  void timeout(double value) {
+  /// @brief return a reference to the global transaction statistics/counters
+  TransactionStatistics& statistics() noexcept;
+
+  double lockTimeout() const { return _options.lockTimeout; }
+  void lockTimeout(double value) {
     if (value > 0.0) {
       _options.lockTimeout = value;
     }
@@ -127,42 +133,39 @@ class TransactionState {
   bool waitForSync() const { return _options.waitForSync; }
   void waitForSync(bool value) { _options.waitForSync = value; }
 
-  bool allowImplicitCollections() const {
-    return _options.allowImplicitCollections;
+  bool allowImplicitCollectionsForRead() const {
+    return _options.allowImplicitCollectionsForRead;
   }
-  void allowImplicitCollections(bool value) {
-    _options.allowImplicitCollections = value;
+  void allowImplicitCollectionsForRead(bool value) {
+    _options.allowImplicitCollectionsForRead = value;
   }
 
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(TRI_voc_cid_t cid,
-                                    AccessMode::Type accessType) const;
-  
+  TransactionCollection* collection(DataSourceId cid, AccessMode::Type accessType) const;
+
   /// @brief return the collection from a transaction
-  TransactionCollection* collection(std::string const& name,
-                                    AccessMode::Type accessType) const;
+  TransactionCollection* collection(std::string const& name, AccessMode::Type accessType) const;
 
   /// @brief add a collection to a transaction
-  Result addCollection(TRI_voc_cid_t cid, std::string const& cname,
-                       AccessMode::Type accessType, int nestingLevel, bool force);
-
-  /// @brief make sure all declared collections are used & locked
-  Result ensureCollections(int nestingLevel = 0);
+  Result addCollection(DataSourceId cid, std::string const& cname,
+                       AccessMode::Type accessType, bool lockUsage);
 
   /// @brief use all participating collections of a transaction
-  Result useCollections(int nestingLevel);
+  Result useCollections();
 
   /// @brief run a callback on all collections of the transaction
-  void allCollections(std::function<bool(TransactionCollection&)> const& cb);
-  
+  template <typename F>
+  void allCollections(F&& cb) {
+    for (auto& trxCollection : _collections) {
+      TRI_ASSERT(trxCollection);  // ensured by addCollection(...)
+      if (!std::forward<F>(cb)(*trxCollection)) {  // abort early
+        return;
+      }
+    }
+  }
+
   /// @brief return the number of collections in the transaction
   size_t numCollections() const { return _collections.size(); }
-
-  /// @brief release collection locks for a transaction
-  int unuseCollections(int nestingLevel);
-
-  /// FIXME delete, server-based locking should take care of this
-  int lockCollections();
 
   /// @brief whether or not a transaction consists of a single operation
   bool isSingleOperation() const {
@@ -184,9 +187,15 @@ class TransactionState {
   /// @brief abort a transaction
   virtual arangodb::Result abortTransaction(transaction::Methods* trx) = 0;
 
+  /// @brief return number of commits.
+  /// for cluster transactions on coordinator, this either returns 0 or 1.
+  /// for leader, follower or single-server transactions, this can include any
+  /// number, because it will also include intermediate commits.
+  virtual uint64_t numCommits() const = 0;
+
   virtual bool hasFailedOperations() const = 0;
 
-  TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
+  TransactionCollection* findCollection(DataSourceId cid) const;
 
   /// @brief make a exclusive transaction, only valid before begin
   void setExclusiveAccessType();
@@ -194,6 +203,11 @@ class TransactionState {
   /// @brief whether or not a transaction is read-only
   bool isReadOnlyTransaction() const {
     return (_type == AccessMode::Type::READ);
+  }
+
+  /// @brief whether or not a transaction is a follower transaction
+  bool isFollowerTransaction() const {
+    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
   }
 
   /// @brief whether or not a transaction only has exculsive or read accesses
@@ -209,18 +223,12 @@ class TransactionState {
   }
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string const& uuid) {
-    _knownServers.emplace(uuid);
-  }
+  void addKnownServer(std::string const& uuid) { _knownServers.emplace(uuid); }
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string const& uuid) {
-    _knownServers.erase(uuid);
-  }
+  void removeKnownServer(std::string const& uuid) { _knownServers.erase(uuid); }
 
-  void clearKnownServers() {
-    _knownServers.clear();
-  }
+  void clearKnownServers() { _knownServers.clear(); }
 
   /// @returns tick of last operation in a transaction
   /// @note the value is guaranteed to be valid only after
@@ -229,25 +237,45 @@ class TransactionState {
     return _lastWrittenOperationTick;
   }
 
+  void acceptAnalyzersRevision(QueryAnalyzerRevisions const& analyzersRevsion) noexcept;
+
+  const QueryAnalyzerRevisions& analyzersRevision() const noexcept {
+    return _analyzersRevision;
+  }
+
+#ifdef USE_ENTERPRISE
+  void addInaccessibleCollection(DataSourceId cid, std::string const& cname);
+  bool isInaccessibleCollection(DataSourceId cid);
+  bool isInaccessibleCollection(std::string const& cname);
+#endif
+
+  /// @brief roll a new transaction ID on the coordintor. Use this method
+  /// with care, it should only be used when retrying in a synchronized
+  /// fashion after a fast-path locking detected a dead-lock situation.
+  /// Only allowed on coordinators.
+  void coordinatorRerollTransactionId();
+
  protected:
   /// @brief find a collection in the transaction's list of collections
-  TransactionCollection* findCollection(TRI_voc_cid_t cid, size_t& position) const;
-
-  /// @brief release collection locks for a transaction
-  void releaseCollections();
+  TransactionCollection* findCollection(DataSourceId cid, size_t& position) const;
 
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // reset the internal Transaction ID to none.
+  // Only used in the Transaction Mock for internal reasons.
+  void resetTransactionId();
+#endif
+
  private:
   /// @brief check if current user can access this collection
-  Result checkCollectionPermission(std::string const& cname, AccessMode::Type) const;
-
+  Result checkCollectionPermission(DataSourceId cid, std::string const& cname,
+                                   AccessMode::Type);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
-  TRI_voc_tid_t const _id;  /// @brief local trx id
 
   /// @brief tick of last added & written operation
   TRI_voc_tick_t _lastWrittenOperationTick;
@@ -261,22 +289,22 @@ class TransactionState {
   ListType::allocator_type::arena_type _arena;  // memory for collections
   ListType _collections;  // list of participating collections
 
-  ServerState::RoleEnum const _serverRole;  /// role of the server
-
   transaction::Hints _hints;  // hints; set on _nestingLevel == 0
+
+  ServerState::RoleEnum const _serverRole;  /// role of the server
 
   transaction::Options _options;
 
  private:
+  TransactionId _id;  /// @brief local trx id
+
   /// a collection of stored cookies
   std::map<void const*, Cookie::ptr> _cookies;
 
   /// @brief servers we already talked to for this transactions
   ::arangodb::containers::HashSet<std::string> _knownServers;
 
-  /// @brief reference counter of # of 'Methods' instances using this object
-  std::atomic<int> _nestingLevel;
-
+  QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction;
 };
 

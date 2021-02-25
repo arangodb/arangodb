@@ -27,7 +27,7 @@
 
 #include "index_tests.hpp"
 
-NS_LOCAL
+namespace {
 
 class sorted_europarl_doc_template : public tests::templates::europarl_doc_template {
  public:
@@ -84,14 +84,14 @@ struct long_comparer : irs::comparer {
 
 class sorted_index_test_case : public tests::index_test_base {
  protected:
-  void assert_index(size_t skip = 0) const {
-    index_test_base::assert_index(irs::flags(), skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::offset::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type() }, skip);
-    index_test_base::assert_index(irs::flags{ irs::document::type(), irs::frequency::type(), irs::position::type(), irs::payload::type(), irs::offset::type() }, skip);
+  void assert_index(size_t skip = 0, irs::automaton_table_matcher* matcher = nullptr) const {
+    index_test_base::assert_index(irs::flags(), skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get() }, skip, matcher);
+    index_test_base::assert_index(irs::flags{ irs::type<irs::document>::get(), irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::payload>::get(), irs::type<irs::offset>::get() }, skip, matcher);
   }
 };
 
@@ -169,7 +169,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -234,7 +234,7 @@ TEST_P(sorted_index_test_case, simple_sequential) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
@@ -353,7 +353,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         auto sorted_column_it = sorted_column.iterator();
         ASSERT_NE(nullptr, sorted_column_it);
 
-        auto& payload = sorted_column_it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*sorted_column_it);
         ASSERT_TRUE(payload);
 
         auto expected_doc = irs::doc_limits::min();
@@ -418,7 +418,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
         auto column_it = column->iterator();
         ASSERT_NE(nullptr, column_it);
 
-        auto& payload = column_it->attributes().get<irs::payload>();
+        auto* payload = irs::get<irs::payload>(*column_it);
         ASSERT_TRUE(payload);
 
         irs::doc_id_t doc = 0;
@@ -506,7 +506,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -571,7 +571,7 @@ TEST_P(sorted_index_test_case, simple_sequential_consolidate) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
@@ -665,7 +665,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       auto sorted_column_it = sorted_column.iterator();
       ASSERT_NE(nullptr, sorted_column_it);
 
-      auto& payload = sorted_column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*sorted_column_it);
       ASSERT_TRUE(payload);
 
       auto expected_doc = irs::doc_limits::min();
@@ -730,7 +730,7 @@ TEST_P(sorted_index_test_case, simple_sequential_already_sorted) {
       auto column_it = column->iterator();
       ASSERT_NE(nullptr, column_it);
 
-      auto& payload = column_it->attributes().get<irs::payload>();
+      auto* payload = irs::get<irs::payload>(*column_it);
       ASSERT_TRUE(payload);
 
       irs::doc_id_t doc = 0;
@@ -1366,9 +1366,10 @@ INSTANTIATE_TEST_CASE_P(
       &tests::fs_directory,
       &tests::mmap_directory
     ),
-    ::testing::Values("1_1", "1_2")
+    ::testing::Values(tests::format_info{"1_1", "1_0"},
+                      tests::format_info{"1_2", "1_0"})
   ),
   tests::to_string
 );
 
-NS_END
+}

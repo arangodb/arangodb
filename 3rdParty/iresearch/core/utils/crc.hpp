@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_CRC_H
@@ -30,20 +29,20 @@
 
 #include <nmmintrin.h>
 
-NS_ROOT
+namespace iresearch {
 
 class crc32c {
  public:
- explicit crc32c(uint32_t seed = 0) NOEXCEPT
+ explicit crc32c(uint32_t seed = 0) noexcept
    : value_(seed) {
  }
 
- FORCE_INLINE void process_bytes(const void* buffer, size_t size) NOEXCEPT {
+ FORCE_INLINE void process_bytes(const void* buffer, size_t size) noexcept {
    const auto* begin = reinterpret_cast<const uint8_t*>(buffer);
    process_block(begin, begin + size);
  }
 
- FORCE_INLINE void process_block(const void* buffer_begin, const void* buffer_end) NOEXCEPT {
+ FORCE_INLINE void process_block(const void* buffer_begin, const void* buffer_end) noexcept {
    const auto* begin = process_block_32(buffer_begin, buffer_end);
    const auto* end = reinterpret_cast<const uint8_t*>(buffer_end);
 
@@ -52,12 +51,12 @@ class crc32c {
    }
  }
 
- FORCE_INLINE uint32_t checksum() const NOEXCEPT {
+ FORCE_INLINE uint32_t checksum() const noexcept {
    return value_;
  }
 
  private:
-  FORCE_INLINE const uint8_t* process_block_32(const void* buffer_begin, const void* buffer_end) NOEXCEPT {
+  FORCE_INLINE const uint8_t* process_block_32(const void* buffer_begin, const void* buffer_end) noexcept {
     const size_t BLOCK_SIZE = 8*sizeof(uint32_t);
 
     const auto k = std::distance(
@@ -78,7 +77,7 @@ class crc32c {
   uint32_t value_;
 }; // crc32c
 
-NS_END
+}
 
 #else
 
@@ -98,11 +97,11 @@ NS_END
   // NOOP
 #endif
 
-NS_ROOT
+namespace iresearch {
 
 typedef boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true> crc32c;
 
-NS_END
+}
 
 #endif // IRESEARCH_SSE
 #endif // IRESEARCH_CRC_H

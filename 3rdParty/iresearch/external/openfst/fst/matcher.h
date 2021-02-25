@@ -7,6 +7,7 @@
 #define FST_MATCHER_H_
 
 #include <algorithm>
+#include <memory>
 #include <unordered_map>
 #include <utility>
 
@@ -100,13 +101,13 @@ namespace fst {
 
 // Matcher needs to be used as the matching side in composition for
 // at least one state (has kRequirePriority).
-FST_CONSTEXPR const uint32 kRequireMatch = 0x00000001;
+constexpr uint32 kRequireMatch = 0x00000001;
 
 // Flags used for basic matchers (see also lookahead.h).
-FST_CONSTEXPR const uint32 kMatcherFlags = kRequireMatch;
+constexpr uint32 kMatcherFlags = kRequireMatch;
 
 // Matcher priority that is mandatory.
-FST_CONSTEXPR const ssize_t kRequirePriority = -1;
+constexpr ssize_t kRequirePriority = -1;
 
 // Matcher interface, templated on the Arc definition; used for matcher
 // specializations that are returned by the InitMatcher FST method.
@@ -230,7 +231,7 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     }
   }
 
-  void SetState(StateId s) final {
+  void SetState(StateId s) override final {
     if (state_ == s) return;
     state_ = s;
     if (match_type_ == MATCH_NONE) {
@@ -244,7 +245,7 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     loop_.nextstate = s;
   }
 
-  bool Find(Label match_label) final {
+  bool Find(Label match_label) override final {
     exact_match_ = true;
     if (error_) {
       current_loop_ = false;
@@ -275,25 +276,23 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
 
   // After Find(), returns false if no more exact matches.
   // After LowerBound(), returns false if no more arcs.
-  bool Done() const final {
+  bool Done() const override final {
     if (current_loop_) return false;
     if (aiter_->Done()) return true;
     if (!exact_match_) return false;
-    aiter_->SetFlags(
-        match_type_ == MATCH_INPUT ? kArcILabelValue : kArcOLabelValue,
+    aiter_->SetFlags(match_type_ == MATCH_INPUT ?
+        kArcILabelValue : kArcOLabelValue,
         kArcValueFlags);
-    const auto label = match_type_ == MATCH_INPUT ? aiter_->Value().ilabel
-                                                  : aiter_->Value().olabel;
-    return label != match_label_;
+    return GetLabel() != match_label_;
   }
 
-  const Arc &Value() const final {
+  const Arc &Value() const override final {
     if (current_loop_) return loop_;
     aiter_->SetFlags(kArcValueFlags, kArcValueFlags);
     return aiter_->Value();
   }
 
-  void Next() final {
+  void Next() override final {
     if (current_loop_) {
       current_loop_ = false;
     } else {
@@ -301,11 +300,11 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
     }
   }
 
-  Weight Final(StateId s) const final {
+  Weight Final(StateId s) const override final {
     return MatcherBase<Arc>::Final(s);
   }
 
-  ssize_t Priority(StateId s) final {
+  ssize_t Priority(StateId s) override final {
     return MatcherBase<Arc>::Priority(s);
   }
 
@@ -320,7 +319,12 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
  private:
   Label GetLabel() const {
     const auto &arc = aiter_->Value();
-    return match_type_ == MATCH_INPUT ? arc.ilabel : arc.olabel;
+
+    if (match_type_ == MATCH_INPUT) {
+      return arc.ilabel;
+    }
+
+    return arc.olabel;
   }
 
   bool BinarySearch();
@@ -345,22 +349,33 @@ class SortedMatcher : public MatcherBase<typename F::Arc> {
 // Returns true iff match to match_label_. The arc iterator is positioned at the
 // lower bound, that is, the first element greater than or equal to
 // match_label_, or the end if all elements are less than match_label_.
+// If multiple elements are equal to the `match_label_`, returns the rightmost
+// one.
 template <class FST>
 inline bool SortedMatcher<FST>::BinarySearch() {
-  size_t low = 0;
-  size_t high = narcs_;
-  while (low < high) {
-    const size_t mid = low + (high - low) / 2;
+  size_t size = narcs_;
+  if (size == 0) {
+    return false;
+  }
+  size_t high = size - 1;
+  while (size > 1) {
+    const size_t half = size / 2;
+    const size_t mid = high - half;
     aiter_->Seek(mid);
-    if (GetLabel() < match_label_) {
-      low = mid + 1;
-    } else {
+    if (GetLabel() >= match_label_) {
       high = mid;
     }
+    size -= half;
   }
-
-  aiter_->Seek(low);
-  return low < narcs_ && GetLabel() == match_label_;
+  aiter_->Seek(high);
+  const auto label = GetLabel();
+  if (label == match_label_) {
+    return true;
+  }
+  if (label < match_label_) {
+    aiter_->Next();
+  }
+  return false;
 }
 
 // Returns true iff match to match_label_, positioning arc iterator at lower
@@ -416,7 +431,9 @@ class HashMatcher : public MatcherBase<typename F::Arc> {
       : fst_(*fst),
         state_(kNoStateId),
         match_type_(match_type),
-        loop_(kNoLabel, 0, Weight::One(), kNoStateId) {
+        loop_(kNoLabel, 0, Weight::One(), kNoStateId),
+        error_(false),
+        state_table_(std::make_shared<StateTable>()) {
     switch (match_type_) {
       case MATCH_INPUT:
       case MATCH_NONE:
@@ -425,7 +442,7 @@ class HashMatcher : public MatcherBase<typename F::Arc> {
         std::swap(loop_.ilabel, loop_.olabel);
         break;
       default:
-        FSTERROR() << "SortedMatcher: Bad match type";
+        FSTERROR() << "HashMatcher: Bad match type";
         match_type_ = MATCH_NONE;
         error_ = true;
     }
@@ -438,7 +455,9 @@ class HashMatcher : public MatcherBase<typename F::Arc> {
         state_(kNoStateId),
         match_type_(matcher.match_type_),
         loop_(matcher.loop_),
-        error_(matcher.error_) {}
+        error_(matcher.error_),
+        state_table_(
+            safe ? std::make_shared<StateTable>() : matcher.state_table_) {}
 
   HashMatcher<FST> *Copy(bool safe = false) const override {
     return new HashMatcher<FST>(*this, safe);
@@ -485,20 +504,25 @@ class HashMatcher : public MatcherBase<typename F::Arc> {
   }
 
  private:
+  Label GetLabel() const {
+    const auto &arc = aiter_->Value();
+    return match_type_ == MATCH_INPUT ? arc.ilabel : arc.olabel;
+  }
+
   bool Search(Label match_label);
 
   using LabelTable = std::unordered_multimap<Label, size_t>;
-  using StateTable = std::unordered_map<StateId, LabelTable>;
+  using StateTable = std::unordered_map<StateId, std::unique_ptr<LabelTable>>;
 
   std::unique_ptr<const FST> owned_fst_;  // ptr to FST if owned.
   const FST &fst_;     // FST for matching.
   StateId state_;      // Matcher state.
   MatchType match_type_;
-  Arc loop_;           // The implicit loop itself.
-  bool current_loop_;  // Is the current arc is the implicit loop?
-  bool error_;         // Error encountered?
+  Arc loop_;            // The implicit loop itself.
+  bool current_loop_;   // Is the current arc the implicit loop?
+  bool error_;          // Error encountered?
   std::unique_ptr<ArcIterator<FST>> aiter_;
-  StateTable state_table_;   // Table from states to label table.
+  std::shared_ptr<StateTable> state_table_;  // Table from state to label table.
   LabelTable *label_table_;  // Pointer to current state's label table.
   typename LabelTable::iterator label_it_;   // Position for label.
   typename LabelTable::iterator label_end_;  // Position for last label + 1.
@@ -513,15 +537,16 @@ void HashMatcher<FST>::SetState(typename FST::Arc::StateId s) {
   aiter_.reset(new ArcIterator<FST>(fst_, state_));
   if (match_type_ == MATCH_NONE) {
     FSTERROR() << "HashMatcher: Bad match type";
-    error_ = false;
+    error_ = true;
   }
-  // Attempts to insert a new label table; if it already exists,
-  // no additional work is done and we simply return.
-  auto it_and_success = state_table_.emplace(state_, LabelTable());
+  // Attempts to insert a new label table.
+  auto it_and_success = state_table_->emplace(
+    state_, std::unique_ptr<LabelTable>(new LabelTable()));
+  // Sets instance's pointer to the label table for this state.
+  label_table_ = it_and_success.first->second.get();
+  // If it already exists, no additional work is done and we simply return.
   if (!it_and_success.second) return;
   // Otherwise, populate this new table.
-  // Sets instance's pointer to the label table for this state.
-  label_table_ = &(it_and_success.first->second);
   // Populates the label table.
   label_table_->reserve(internal::NumArcs(fst_, state_));
   const auto aiter_flags =
@@ -529,9 +554,7 @@ void HashMatcher<FST>::SetState(typename FST::Arc::StateId s) {
       kArcNoCache;
   aiter_->SetFlags(aiter_flags, kArcFlags);
   for (; !aiter_->Done(); aiter_->Next()) {
-    const auto label = (match_type_ == MATCH_INPUT) ? aiter_->Value().ilabel
-                                                    : aiter_->Value().olabel;
-    label_table_->emplace(label, aiter_->Position());
+    label_table_->emplace(GetLabel(), aiter_->Position());
   }
   aiter_->SetFlags(kArcValueFlags, kArcValueFlags);
 }
@@ -539,9 +562,9 @@ void HashMatcher<FST>::SetState(typename FST::Arc::StateId s) {
 template <class FST>
 inline bool HashMatcher<FST>::Search(typename FST::Arc::Label match_label) {
   auto range = label_table_->equal_range(match_label);
-  if (range.first == range.second) return false;
   label_it_ = range.first;
   label_end_ = range.second;
+  if (label_it_ == label_end_) return false;
   aiter_->Seek(label_it_->second);
   return true;
 }
@@ -845,7 +868,8 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
         match_type_(match_type),
         rho_label_(rho_label),
         error_(false),
-        state_(kNoStateId) {
+        state_(kNoStateId),
+        has_rho_(false) {
     if (match_type == MATCH_BOTH) {
       FSTERROR() << "RhoMatcher: Bad match type";
       match_type_ = MATCH_NONE;
@@ -879,7 +903,8 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
         rho_label_(matcher.rho_label_),
         rewrite_both_(matcher.rewrite_both_),
         error_(matcher.error_),
-        state_(kNoStateId) {}
+        state_(kNoStateId),
+        has_rho_(false) {}
 
   RhoMatcher<M> *Copy(bool safe = false) const override {
     return new RhoMatcher<M>(*this, safe);
@@ -887,14 +912,14 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
 
   MatchType Type(bool test) const override { return matcher_->Type(test); }
 
-  void SetState(StateId s) final {
+  void SetState(StateId s) override final {
     if (state_ == s) return;
     state_ = s;
     matcher_->SetState(s);
     has_rho_ = rho_label_ != kNoLabel;
   }
 
-  bool Find(Label label) final {
+  bool Find(Label label) override final {
     if (label == rho_label_ && rho_label_ != kNoLabel) {
       FSTERROR() << "RhoMatcher::Find: bad label (rho)";
       error_ = true;
@@ -912,9 +937,9 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
     }
   }
 
-  bool Done() const final { return matcher_->Done(); }
+  bool Done() const override final { return matcher_->Done(); }
 
-  const Arc &Value() const final {
+  const Arc &Value() const override final {
     if (rho_match_ == kNoLabel) {
       return matcher_->Value();
     } else {
@@ -931,11 +956,11 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
     }
   }
 
-  void Next() final { matcher_->Next(); }
+  void Next() override final { matcher_->Next(); }
 
-  Weight Final(StateId s) const final { return matcher_->Final(s); }
+  Weight Final(StateId s) const override final { return matcher_->Final(s); }
 
-  ssize_t Priority(StateId s) final {
+  ssize_t Priority(StateId s) override final {
     state_ = s;
     matcher_->SetState(s);
     has_rho_ = matcher_->Find(rho_label_);
@@ -964,11 +989,11 @@ class RhoMatcher : public MatcherBase<typename M::Arc> {
   MatchType match_type_;  // Type of match requested.
   Label rho_label_;       // Label that represents the rho transition
   bool rewrite_both_;     // Rewrite both sides when both are rho_label_?
-  bool has_rho_;          // Are there possibly rhos at the current state?
   Label rho_match_;       // Current label that matches rho transition.
   mutable Arc rho_arc_;   // Arc to return when rho match.
   bool error_;            // Error encountered?
   StateId state_;         // Matcher state.
+  bool has_rho_;          // Are there possibly rhos at the current state?
 };
 
 template <class M>

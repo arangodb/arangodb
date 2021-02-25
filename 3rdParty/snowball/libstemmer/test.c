@@ -25,7 +25,7 @@ int main () {
     stemmed = sb_stemmer_stem(s, unstemmed, 10);
     printf("%s -> %s\n", unstemmed, stemmed);
     if (sb_stemmer_length(s) != strlen(stemmed))
-	error("TEST FAIL: length not correct");
+        error("TEST FAIL: length not correct");
     unstemmed = "recognized";
     printf("%s -> %s\n", unstemmed, stemmed);
     sb_stemmer_delete(s);

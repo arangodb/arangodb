@@ -7,7 +7,9 @@
 #define FST_EXPANDED_FST_H_
 
 #include <sys/types.h>
+
 #include <istream>
+#include <memory>
 #include <string>
 
 #include <fst/log.h>
@@ -59,7 +61,7 @@ class ExpandedFst : public Fst<A> {
 
   // Read an ExpandedFst from a file; return NULL on error.
   // Empty filename reads from standard input.
-  static ExpandedFst<Arc> *Read(const string &filename) {
+  static ExpandedFst<Arc> *Read(const std::string &filename) {
     if (!filename.empty()) {
       std::ifstream strm(filename,
                               std::ios_base::in | std::ios_base::binary);
@@ -115,8 +117,6 @@ class ImplToExpandedFst : public ImplToFst<Impl, FST> {
   using StateId = typename Arc::StateId;
   using Weight = typename Arc::Weight;
 
-  using ImplToFst<Impl, FST>::operator=;
-
   StateId NumStates() const override { return GetImpl()->NumStates(); }
 
  protected:
@@ -124,9 +124,6 @@ class ImplToExpandedFst : public ImplToFst<Impl, FST> {
 
   explicit ImplToExpandedFst(std::shared_ptr<Impl> impl)
       : ImplToFst<Impl, FST>(impl) {}
-
-  ImplToExpandedFst(const ImplToExpandedFst<Impl, FST> &fst)
-      : ImplToFst<Impl, FST>(fst) {}
 
   ImplToExpandedFst(const ImplToExpandedFst<Impl, FST> &fst, bool safe)
       : ImplToFst<Impl, FST>(fst, safe) {}
@@ -137,7 +134,7 @@ class ImplToExpandedFst : public ImplToFst<Impl, FST> {
 
   // Read FST implementation from a file; return NULL on error.
   // Empty filename reads from standard input.
-  static Impl *Read(const string &filename) {
+  static Impl *Read(const std::string &filename) {
     if (!filename.empty()) {
       std::ifstream strm(filename,
                               std::ios_base::in | std::ios_base::binary);
@@ -169,10 +166,10 @@ typename Arc::StateId CountStates(const Fst<Arc> &fst) {
 }
 
 // Function to return the number of arcs in an FST.
-template <class Arc>
-typename Arc::StateId CountArcs(const Fst<Arc> &fst) {
+template <class F>
+size_t CountArcs(const F &fst) {
   size_t narcs = 0;
-  for (StateIterator<Fst<Arc>> siter(fst); !siter.Done(); siter.Next()) {
+  for (StateIterator<F> siter(fst); !siter.Done(); siter.Next()) {
     narcs += fst.NumArcs(siter.Value());
   }
   return narcs;

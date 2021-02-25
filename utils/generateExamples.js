@@ -5,7 +5,7 @@
 const _ = require("lodash");
 const fs = require("fs");
 const internal = require("internal");
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const download = internal.download;
@@ -189,7 +189,7 @@ function main(argv) {
   args = args.concat(['--arangoshSetup']);
   args = args.concat(documentationSourceDirs);
 
-  let storageEngines = [['mmfiles', false, false], ['rocksdb', true, false], ['rocksdb', true, true]];
+  let storageEngines = [['rocksdb', true, false], ['rocksdb', true, true]];
   let res;
 
   storageEngines.forEach(function (engine) {

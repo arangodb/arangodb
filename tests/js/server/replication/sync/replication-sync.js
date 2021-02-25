@@ -39,12 +39,7 @@ const _ = require('lodash');
 const replication = require('@arangodb/replication');
 const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
-
-var mmfilesEngine = false;
-if (db._engine().name === 'mmfiles') {
-  mmfilesEngine = true;
-}
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const sysCn = '_UnitTestsReplication';
@@ -102,13 +97,9 @@ function BaseTestConfig () {
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test existing collection
     // //////////////////////////////////////////////////////////////////////////////
-
+    
     testExistingPatchBrokenSlaveCounters1: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -118,6 +109,8 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           let c = db._create(cn);
           let docs = [];
 
@@ -131,6 +124,8 @@ function BaseTestConfig () {
           assertEqual(5000, state.count);
         },
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           //  already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -159,11 +154,7 @@ function BaseTestConfig () {
     },
     
     testExistingPatchBrokenSlaveCounters2: function () {
-      // can only use this with failure tests enabled and RocksDB engine
-      if (db._engine().name !== "rocksdb") {
-        return;
-      }
-          
+      // can only use this with failure tests enabled
       let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
       if (String(r) === "false") {
         return;
@@ -173,6 +164,7 @@ function BaseTestConfig () {
 
       compare(
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
           let c = db._create(cn);
           let docs = [];
 
@@ -186,6 +178,8 @@ function BaseTestConfig () {
           assertEqual(10000, state.count);
         },
         function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/disableRevisionsAsDocumentIds", "");
+
           //  already create the collection on the slave
           replication.syncCollection(cn, {
             endpoint: masterEndpoint,
@@ -709,6 +703,101 @@ function BaseTestConfig () {
       assertEqual(st.checksum, collectionChecksum(cn));
     },
 
+    testUpdateHugeIntermediateCommits: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      if (String(r) === "false") {
+        return;
+      }
+
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+          //  insert some documents 'before'
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: 'a' + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+
+          //  insert some documents 'after'
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: 'z' + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(220000, state.count);
+
+          st = _.clone(state); // save state
+        },
+        function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+
+      connectToMaster();
+      var c = db._collection(cn);
+      let selectors = [];
+      let docs = [];
+      //  update some documents at the 'front'
+      for (let i = 0; i < 50000; ++i) {
+        selectors.push({ _key: 'a' + i });
+        docs.push({ updated: true });
+        if (docs.length === 5000) {
+          c.update(selectors, docs);
+          selectors = [];
+          docs = [];
+        }
+      }
+
+      //  remove some documents from the 'back'
+      for (let i = 0; i < 50000; ++i) {
+        selectors.push({ _key: 'z' + i });
+        docs.push({ updated: true });
+        if (docs.length === 5000) {
+          c.update(selectors, docs);
+          selectors = [];
+          docs = [];
+        }
+      }
+
+      //  update the state
+      st.checksum = collectionChecksum(cn);
+      st.count = collectionCount(cn);
+      assertEqual(220000, collectionCount(cn));
+
+      connectToSlave();
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test collection properties
     // //////////////////////////////////////////////////////////////////////////////
@@ -721,9 +810,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            indexBuckets: 32,
             waitForSync: true,
-            journalSize: 16 * 1024 * 1024
           });
         },
         function (state) {
@@ -733,10 +820,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );
@@ -754,9 +837,7 @@ function BaseTestConfig () {
           var c = db._create(cn);
 
           c.properties({
-            indexBuckets: 32,
             waitForSync: true,
-            journalSize: 16 * 1024 * 1024
           });
         },
         function (state) {
@@ -767,10 +848,6 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           var p = c.properties();
           assertTrue(p.waitForSync);
-          if (mmfilesEngine) {
-            assertEqual(32, p.indexBuckets);
-            assertEqual(16 * 1024 * 1024, p.journalSize);
-          }
         },
         true
       );
@@ -817,7 +894,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -939,6 +1016,8 @@ function BaseTestConfig () {
       assertEqual(0, db._analyzers.count());
       let analyzer = analyzers.save('custom', 'delimiter', { delimiter: ' ' }, ['frequency']);
       assertEqual(1, db._analyzers.count());
+      // check analyzer is usable on master
+      assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
       //  create view & collection on master
       db._flushCache();
@@ -960,6 +1039,9 @@ function BaseTestConfig () {
       assertEqual(1, db._analyzers.count());
       assertEqual(1, res.length);
       assertEqual(db._analyzers.toArray()[0], res[0]);
+      
+      // check analyzer is usable on slave
+      assertEqual(3, db._query("RETURN TOKENS('1 2 3', 'custom')").toArray()[0].length);
 
       {
         //  check state is the same
@@ -1007,15 +1089,17 @@ function BaseTestConfig () {
             incremental: false
           });
           var c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 100; ++i) {
-            c.save(cn + '/test' + i, cn + '/test' + (i % 10), {
+            docs.push(cn + '/test' + i, cn + '/test' + (i % 10), {
               _key: 'test' + i,
               'value1': i,
               'value2': 'test' + i
             });
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1069,8 +1153,9 @@ function BaseTestConfig () {
           var c = db._collection(cn);
           c.truncate(); // but empty it
 
+          let docs = [];
           for (var i = 0; i < 200; ++i) {
-            c.save(
+            docs.push(
               cn + '/test' + (i + 1),
               cn + '/test' + (i % 11), {
                 _key: 'test' + i,
@@ -1079,6 +1164,7 @@ function BaseTestConfig () {
               }
             );
           }
+          c.save(docs);
         },
         function (state) {
           assertEqual(state.count, collectionCount(cn));
@@ -1520,7 +1606,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1571,7 +1657,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1621,7 +1707,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1670,7 +1756,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
 
@@ -1721,7 +1807,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
@@ -1773,7 +1859,7 @@ function BaseTestConfig () {
             incremental: false
           });
           let c = db._collection(cn);
-          c.truncate(); // but empty it
+          c.truncate({ compact: false }); // but empty it
 
           let docs = [];
           for (let i = 0; i < 5000; ++i) {
@@ -1810,6 +1896,7 @@ function ReplicationSuite () {
 
     setUp: function () {
       connectToMaster();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1826,6 +1913,7 @@ function ReplicationSuite () {
 
     tearDown: function () {
       connectToMaster();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1842,6 +1930,7 @@ function ReplicationSuite () {
       } catch (e) { }
 
       connectToSlave();
+      arango.DELETE_RAW("/_admin/debug/failat", "");
       try {
         db._dropView(cn + 'View');
       } catch (ignored) {}
@@ -1858,8 +1947,8 @@ function ReplicationSuite () {
       } catch (e) { }
     }
   };
+  
   deriveTestSuite(BaseTestConfig(), suite, '_Repl');
-
   return suite;
 }
 

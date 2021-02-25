@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,6 @@
 #include "IResearchViewCoordinator.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VelocyPackHelper.h"
@@ -43,18 +43,21 @@
 
 namespace {
 
-arangodb::ClusterEngineType getEngineType() {
+arangodb::ClusterEngineType getEngineType(arangodb::application_features::ApplicationServer& server) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // during the unit tests there is a mock storage engine which cannot be casted
   // to a ClusterEngine at all. the only sensible way to find out the engine type is 
   // to try a dynamic_cast here and assume the MockEngine if the cast goes wrong
-  auto engine = dynamic_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE);
-  if (engine != nullptr) {
-    return engine->engineType();
+  auto& engine = server.getFeature<arangodb::EngineSelectorFeature>().engine();
+  auto cast = dynamic_cast<arangodb::ClusterEngine*>(&engine);
+  if (cast != nullptr) {
+    return cast->engineType();
   }
   return arangodb::ClusterEngineType::MockEngine;
 #else
-  return static_cast<arangodb::ClusterEngine*>(arangodb::EngineSelectorFeature::ENGINE)->engineType();
+  return server.getFeature<arangodb::EngineSelectorFeature>()
+      .engine<arangodb::ClusterEngine>()
+      .engineType();
 #endif
 }
 
@@ -63,53 +66,11 @@ arangodb::ClusterEngineType getEngineType() {
 namespace arangodb {
 namespace iresearch {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief IResearchLinkCoordinator-specific implementation of an
-///        IndexTypeFactory
-////////////////////////////////////////////////////////////////////////////////
-struct IResearchLinkCoordinator::IndexFactory : public arangodb::IndexTypeFactory {
-  bool equal(arangodb::velocypack::Slice const& lhs,
-             arangodb::velocypack::Slice const& rhs) const override {
-    return arangodb::iresearch::IResearchLinkHelper::equal(lhs, rhs);
-  }
-
-  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
-                                       arangodb::velocypack::Slice const& definition,
-                                       TRI_idx_iid_t id,
-                                       bool isClusterConstructor) const override {
-    auto link = std::shared_ptr<IResearchLinkCoordinator>(
-        new IResearchLinkCoordinator(id, collection));
-    auto res = link->init(definition);
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    return link;
-  }
-
-  virtual arangodb::Result normalize( // normalize definition
-      arangodb::velocypack::Builder& normalized, // normalized definition (out-param)
-      arangodb::velocypack::Slice definition, // source definition
-      bool isCreation, // definition for index creation
-      TRI_vocbase_t const& vocbase // index vocbase
-  ) const override {
-    return IResearchLinkHelper::normalize( // normalize
-      normalized, definition, isCreation, vocbase // args
-    );
-  }
-};
-
-/*static*/ arangodb::IndexTypeFactory const& IResearchLinkCoordinator::factory() {
-  static const IndexFactory factory;
-
-  return factory;
-}
-
-IResearchLinkCoordinator::IResearchLinkCoordinator(TRI_idx_iid_t id, LogicalCollection& collection)
-    : arangodb::ClusterIndex(id, collection, ::getEngineType(),
+IResearchLinkCoordinator::IResearchLinkCoordinator(IndexId id, LogicalCollection& collection)
+    : arangodb::ClusterIndex(id, collection,
+                             ::getEngineType(collection.vocbase().server()),
                              arangodb::Index::TRI_IDX_TYPE_IRESEARCH_LINK,
-                             IResearchLinkHelper::emptyIndexSlice()),
+                             IResearchLinkHelper::emptyIndexSlice(0).slice()), // we don`t have objectId`s on coordinator
       IResearchLink(id, collection) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -121,10 +82,11 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
     std::underlying_type<arangodb::Index::Serialize>::type flags // definition flags
 ) const {
   if (builder.isOpenObject()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_BAD_PARAMETER, // code
-      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_BAD_PARAMETER,              // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "Cluster link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   auto forPersistence = // definition for persistence
@@ -133,10 +95,11 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
   builder.openObject();
 
   if (!properties(builder, forPersistence).ok()) {
-    THROW_ARANGO_EXCEPTION(arangodb::Result( // result
-      TRI_ERROR_INTERNAL, // code
-      std::string("failed to generate link definition for arangosearch view Cluster link '") + std::to_string(arangodb::Index::id()) + "'"
-    ));
+    THROW_ARANGO_EXCEPTION(arangodb::Result(  // result
+        TRI_ERROR_INTERNAL,                   // code
+        std::string("failed to generate link definition for arangosearch view "
+                    "Cluster link '") +
+            std::to_string(arangodb::Index::id().id()) + "'"));
   }
 
   if (arangodb::Index::hasFlag(flags, arangodb::Index::Serialize::Figures)) {
@@ -146,6 +109,46 @@ void IResearchLinkCoordinator::toVelocyPack( // generate definition
   }
 
   builder.close();
+}
+
+IResearchLinkCoordinator::IndexFactory::IndexFactory(arangodb::application_features::ApplicationServer& server)
+    : IndexTypeFactory(server) {}
+
+bool IResearchLinkCoordinator::IndexFactory::equal(arangodb::velocypack::Slice const& lhs,
+                                                   arangodb::velocypack::Slice const& rhs,
+                                                   std::string const& dbname) const {
+  return arangodb::iresearch::IResearchLinkHelper::equal(_server, lhs, rhs, dbname);
+}
+
+std::shared_ptr<arangodb::Index> IResearchLinkCoordinator::IndexFactory::instantiate(
+    arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& definition,
+    IndexId id, bool isClusterConstructor) const {
+  auto link = std::shared_ptr<arangodb::iresearch::IResearchLinkCoordinator>(
+      new arangodb::iresearch::IResearchLinkCoordinator(id, collection));
+  auto res = link->init(definition);
+
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  return link;
+}
+
+arangodb::Result IResearchLinkCoordinator::IndexFactory::normalize(  // normalize definition
+    arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+    arangodb::velocypack::Slice definition,  // source definition
+    bool isCreation,                         // definition for index creation
+    TRI_vocbase_t const& vocbase             // index vocbase
+    ) const {
+  return arangodb::iresearch::IResearchLinkHelper::normalize(  // normalize
+      normalized, definition, isCreation, vocbase              // args
+  );
+}
+
+std::shared_ptr<IResearchLinkCoordinator::IndexFactory> IResearchLinkCoordinator::createFactory(
+    application_features::ApplicationServer& server) {
+  return std::shared_ptr<IResearchLinkCoordinator::IndexFactory>(
+      new IResearchLinkCoordinator::IndexFactory(server));
 }
 
 }  // namespace iresearch

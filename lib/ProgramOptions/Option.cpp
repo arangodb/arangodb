@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,8 @@
 
 #include "Option.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 #include "ProgramOptions/Parameters.h"
 
 #include <velocypack/Builder.h>
@@ -44,6 +47,15 @@ Option::Option(std::string const& value, std::string const& description,
     shorthand = stripShorthand(name.substr(pos + 1));
     name = name.substr(0, pos);
   }
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // at least one OS must be supported
+  if (!hasFlag(arangodb::options::Flags::OsLinux) &&
+      !hasFlag(arangodb::options::Flags::OsMac) &&
+      !hasFlag(arangodb::options::Flags::OsWindows) &&
+      !hasFlag(arangodb::options::Flags::Obsolete)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("option ") + value + " needs to be supported on at least one OS"); 
+  }
+#endif
 }
 
 void Option::toVPack(VPackBuilder& builder) const {
@@ -148,7 +160,7 @@ std::string Option::stripPrefix(std::string const& name) {
 
 // strip the "-" from a string
 std::string Option::stripShorthand(std::string const& name) {
-  size_t pos = name.find("-");
+  size_t pos = name.find('-');
   if (pos == 0) {
     // strip initial "-"
     return name.substr(1);
@@ -161,7 +173,7 @@ std::pair<std::string, std::string> Option::splitName(std::string name) {
   std::string section;
   name = stripPrefix(name);
   // split at "."
-  size_t pos = name.find(".");
+  size_t pos = name.find('.');
   if (pos == std::string::npos) {
     // global option
     section = "";

@@ -29,7 +29,9 @@
 #include "utils/file_utils.hpp"
 #include "utils/utf8_path.hpp"
 
-NS_LOCAL
+using namespace std::chrono_literals;
+
+namespace {
 
 class utf8_path_tests: public test_base {
   irs::utf8_path cwd_;
@@ -51,7 +53,7 @@ class utf8_path_tests: public test_base {
   }
 };
 
-NS_END
+}
 
 TEST_F(utf8_path_tests, current) {
   // absolute path
@@ -869,7 +871,7 @@ TEST_F(utf8_path_tests, directory) {
             break;
           }
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(1000ms);
       }
       for (auto& thread : pool) {
         thread.join();
@@ -1729,7 +1731,3 @@ TEST_F(utf8_path_tests, visit) {
   ASSERT_TRUE(path.file_size(tmpUint));
   ASSERT_FALSE(path.visit_directory(visitor));
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

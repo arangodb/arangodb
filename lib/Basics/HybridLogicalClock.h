@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,9 @@
 #include <atomic>
 #include <chrono>
 #include <string>
+
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 
 #include "Basics/Common.h"
 
@@ -124,8 +127,22 @@ class HybridLogicalClock {
     return std::make_pair(pos, 11 - pos);
   }
 
+  static velocypack::ValuePair encodeTimeStampToValuePair(uint64_t t, char* r) {
+    auto p = encodeTimeStamp(t, r);
+    return velocypack::ValuePair(&r[0] + p.first, p.second, velocypack::ValueType::String);
+  }
+
   static uint64_t decodeTimeStamp(std::string const& s) {
     return decodeTimeStamp(s.data(), s.size());
+  }
+
+  static uint64_t decodeTimeStamp(velocypack::Slice const& s) {
+    if (!s.isString()) {
+      return std::numeric_limits<std::uint64_t>::max();
+    }
+    velocypack::ValueLength l;
+    char const* p = s.getString(l);
+    return decodeTimeStamp(p, l);
   }
 
   static uint64_t decodeTimeStamp(char const* p, size_t len) {

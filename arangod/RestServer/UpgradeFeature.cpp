@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,14 +23,14 @@
 
 #include "UpgradeFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/DaemonFeature.h"
-#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
+#include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/SupervisorFeature.h"
-#include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Cluster/ClusterFeature.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
@@ -82,7 +83,7 @@ void UpgradeFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--database.upgrade-check", "skip a database upgrade",
                      new BooleanParameter(&_upgradeCheck),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 /// @brief This external is buried in RestServer/arangod.cpp.
@@ -241,16 +242,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
 
   DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
 
-  bool ignoreDatafileErrors = false;
-  {
-    VPackBuilder options = server().options([](std::string const& name) {
-      return (name.find("database.ignore-datafile-errors") != std::string::npos);
-    });
-    VPackSlice s = options.slice();
-    if (s.get("database.ignore-datafile-errors").isBoolean()) {
-      ignoreDatafileErrors = s.get("database.ignore-datafile-errors").getBool();
-    }
-  }
+  bool ignoreDatafileErrors = databaseFeature.ignoreDatafileErrors();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {
     TRI_vocbase_t* vocbase = databaseFeature.lookupDatabase(name);

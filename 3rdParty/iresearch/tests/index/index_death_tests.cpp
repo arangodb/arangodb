@@ -28,7 +28,7 @@
 #include "utils/index_utils.hpp"
 #include "iql/query_builder.hpp"
 
-NS_LOCAL
+namespace {
 
 class failing_directory : public tests::directory_mock {
  public:
@@ -54,10 +54,13 @@ class failing_directory : public tests::directory_mock {
     explicit failing_index_input(
         index_input::ptr&& impl,
         const std::string name,
-        const failing_directory& dir
-    ) : impl_(std::move(impl)),
+        const failing_directory& dir)
+      : impl_(std::move(impl)),
         dir_(&dir),
         name_(name) {
+    }
+    virtual const irs::byte_type* read_buffer(size_t size, irs::BufferHint hint) override {
+      return impl_->read_buffer(size, hint);
     }
     virtual irs::byte_type read_byte() override {
       return impl_->read_byte();
@@ -110,7 +113,7 @@ class failing_directory : public tests::directory_mock {
   }; // failing_index_input
 
  public:
-  explicit failing_directory(irs::directory& impl) NOEXCEPT
+  explicit failing_directory(irs::directory& impl) noexcept
     : tests::directory_mock(impl) {
   }
 
@@ -129,77 +132,76 @@ class failing_directory : public tests::directory_mock {
     return failures_.emplace(name, type).second;
   }
 
-  void clear_failures() NOEXCEPT {
+  void clear_failures() noexcept {
     failures_.clear();
   }
 
-  size_t num_failures() const NOEXCEPT {
+  size_t num_failures() const noexcept {
     return failures_.size();
   }
 
-  bool no_failures() const NOEXCEPT {
+  bool no_failures() const noexcept {
     return failures_.empty();
   }
 
-  virtual irs::index_output::ptr create(const std::string &name) NOEXCEPT override {
+  virtual irs::index_output::ptr create(const std::string &name) noexcept override {
     if (should_fail(Failure::CREATE, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::create(name);
   }
-  virtual bool exists(bool& result, const std::string& name) const NOEXCEPT override {
+  virtual bool exists(bool& result, const std::string& name) const noexcept override {
     if (should_fail(Failure::EXISTS, name)) {
       return false;
     }
 
     return tests::directory_mock::exists(result, name);
   }
-  virtual bool length(uint64_t& result, const std::string& name) const NOEXCEPT override {
+  virtual bool length(uint64_t& result, const std::string& name) const noexcept override {
     if (should_fail(Failure::LENGTH, name)) {
       return false;
     }
 
     return tests::directory_mock::length(result, name);
   }
-  virtual irs::index_lock::ptr make_lock(const std::string& name) NOEXCEPT override {
+  virtual irs::index_lock::ptr make_lock(const std::string& name) noexcept override {
     if (should_fail(Failure::MAKE_LOCK, name)) {
       return nullptr;
     }
 
     return tests::directory_mock::make_lock(name);
   }
-  virtual bool mtime(std::time_t& result, const std::string& name) const NOEXCEPT override {
+  virtual bool mtime(std::time_t& result, const std::string& name) const noexcept override {
     if (should_fail(Failure::MTIME, name)) {
       return false;
     }
 
     return tests::directory_mock::mtime(result, name);
   }
-  virtual irs::index_input::ptr open(const std::string& name, irs::IOAdvice advice) const NOEXCEPT override {
+  virtual irs::index_input::ptr open(const std::string& name, irs::IOAdvice advice) const noexcept override {
     if (should_fail(Failure::OPEN, name)) {
       return nullptr;
     }
 
-    return irs::index_input::make<failing_index_input>(
-      tests::directory_mock::open(name, advice), name, *this
-    );
+    return irs::memory::make_unique<failing_index_input>(
+      tests::directory_mock::open(name, advice), name, *this);
   }
-  virtual bool remove(const std::string& name) NOEXCEPT override {
+  virtual bool remove(const std::string& name) noexcept override {
     if (should_fail(Failure::REMOVE, name)) {
       return false;
     }
 
     return tests::directory_mock::remove(name);
   }
-  virtual bool rename(const std::string& src, const std::string& dst) NOEXCEPT override {
+  virtual bool rename(const std::string& src, const std::string& dst) noexcept override {
     if (should_fail(Failure::RENAME, src)) {
       return false;
     }
 
     return tests::directory_mock::rename(src, dst);
   }
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     if (should_fail(Failure::SYNC, name)) {
       return false;
     }
@@ -222,7 +224,7 @@ class failing_directory : public tests::directory_mock {
   typedef std::pair<std::string, Failure> fail_t;
 
   struct fail_less {
-    bool operator()(const fail_t& lhs, const fail_t& rhs) const NOEXCEPT {
+    bool operator()(const fail_t& lhs, const fail_t& rhs) const noexcept {
       if (lhs.second == rhs.second) {
         return lhs.first < rhs.first;
       }
@@ -234,7 +236,7 @@ class failing_directory : public tests::directory_mock {
   mutable std::set<fail_t, fail_less> failures_;
 }; // failing_directory
 
-NS_END
+}
 
 TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
   tests::json_doc_generator gen(
@@ -272,7 +274,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -284,11 +286,11 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -315,7 +317,7 @@ TEST(index_death_test_formats_10, index_meta_write_fail_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -400,7 +402,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -412,11 +414,11 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -431,7 +433,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -464,7 +466,7 @@ TEST(index_death_test_formats_10, index_commit_fail_sync_1st_phase) {
 
     // successful attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -534,7 +536,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -546,11 +548,11 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -576,7 +578,7 @@ TEST(index_death_test_formats_10, index_meta_write_failure_2nd_phase) {
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -639,7 +641,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -651,11 +653,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -678,7 +680,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -714,11 +716,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -736,7 +738,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
@@ -780,11 +782,11 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -802,7 +804,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_THROW(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
@@ -816,7 +818,7 @@ TEST(index_death_test_formats_10, segment_columnstore_creation_failure_1st_phase
 
     // nothing to flush
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -904,7 +906,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // segment meta
     while (!dir.no_failures()) {
@@ -933,11 +935,11 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -977,7 +979,7 @@ TEST(index_death_test_formats_10, segment_components_creation_failure_1st_phase_
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1059,7 +1061,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -1071,11 +1073,11 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1117,7 +1119,7 @@ TEST(index_death_test_formats_10, segment_components_sync_failure_1st_phase_flus
 
     // successul attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1196,7 +1198,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // ensure no data
     auto reader = irs::directory_reader::open(dir);
@@ -1208,11 +1210,11 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1247,7 +1249,7 @@ TEST(index_death_test_formats_10, segment_meta_creation_failure_1st_phase_flush)
 
     // second attempt
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -1301,11 +1303,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1320,14 +1322,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_immediate_consolidatio
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_3.0.sm"); // fail at segment meta creation on consolidation
@@ -1422,11 +1424,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1441,14 +1443,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_4.0.sm"); // fail at segment meta creation on consolidation
@@ -1463,7 +1465,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ));
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
-    writer->commit(); // commit started transaction
+    ASSERT_FALSE(writer->commit()); // commit started transaction
     ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // segment meta synchronization failure
@@ -1473,7 +1475,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_deffered_consolidation
     ));
     ASSERT_TRUE(writer->begin()); // start transaction
     ASSERT_TRUE(writer->consolidate(irs::index_utils::consolidation_policy(consolidate_all))); // register pending consolidation
-    writer->commit(); // commit started transaction
+    ASSERT_FALSE(writer->commit()); // commit started transaction
     ASSERT_THROW(writer->begin(), irs::io_error); // start transaction to commit pending consolidation
 
     // check data
@@ -1598,11 +1600,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
   // segment meta creation failure
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1618,14 +1620,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     failing_dir.register_failure(failing_directory::Failure::CREATE, "_3.0.sm"); // fail at segment meta creation on consolidation
@@ -1644,7 +1646,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -1730,11 +1732,11 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
   // segment meta synchonization failure
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1750,14 +1752,14 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     failing_dir.register_failure(failing_directory::Failure::SYNC, "_3.0.sm"); // fail at segment meta synchronization on consolidation
@@ -1776,7 +1778,7 @@ TEST(index_death_test_formats_10, segment_meta_write_fail_long_running_consolida
       doc3->indexed.begin(), doc3->indexed.end(),
       doc3->stored.begin(), doc3->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     dir.intermediate_commits_lock.unlock(); // finish consolidation
     consolidation_thread.join(); // wait for the consolidation to complete
@@ -1876,11 +1878,11 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -1895,14 +1897,14 @@ TEST(index_death_test_formats_10, segment_components_write_fail_consolidation) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::CREATE, "_3.doc"); // postings list (documents)
@@ -1989,11 +1991,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
   {
     const auto all_features = irs::flags{
-      irs::document::type(),
-      irs::frequency::type(),
-      irs::position::type(),
-      irs::payload::type(),
-      irs::offset::type()
+      irs::type<irs::document>::get(),
+      irs::type<irs::frequency>::get(),
+      irs::type<irs::position>::get(),
+      irs::type<irs::payload>::get(),
+      irs::type<irs::offset>::get()
     };
 
     irs::memory_directory impl;
@@ -2008,14 +2010,14 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
       doc1->indexed.begin(), doc1->indexed.end(),
       doc1->stored.begin(), doc1->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // segment 1
     ASSERT_TRUE(insert(*writer,
       doc2->indexed.begin(), doc2->indexed.end(),
       doc2->stored.begin(), doc2->stored.end()
     ));
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
 
     // register failures
     dir.register_failure(failing_directory::Failure::SYNC, "_3.doc"); // postings list (documents)
@@ -2092,11 +2094,11 @@ TEST(index_death_test_formats_10, segment_components_sync_fail_consolidation) {
 
 TEST(index_death_test_formats_10, segment_components_fail_import) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2121,7 +2123,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
       doc1->stored.begin(), doc1->stored.end()
     ));
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   auto src_index = irs::directory_reader::open(src_dir);
@@ -2149,7 +2151,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->import(*src_index), irs::io_error);
@@ -2186,7 +2188,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_THROW(writer->import(*src_index), irs::io_error);
@@ -2196,7 +2198,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // successful commit
     ASSERT_TRUE(writer->import(*src_index));
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2254,7 +2256,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->import(*src_index));
@@ -2291,7 +2293,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(writer->import(*src_index));
@@ -2301,7 +2303,7 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
     // successful commit
     ASSERT_TRUE(writer->import(*src_index));
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2340,11 +2342,11 @@ TEST(index_death_test_formats_10, segment_components_fail_import) {
 
 TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2382,7 +2384,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer,
@@ -2430,7 +2432,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     while (!dir.no_failures()) {
       ASSERT_TRUE(insert(*writer,
@@ -2452,7 +2454,7 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
     ));
 
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2489,11 +2491,11 @@ TEST(index_death_test_formats_10, segment_components_creation_fail_implicit_segm
 
 TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2520,7 +2522,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2535,7 +2537,7 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
     ), irs::io_error);
 
     ASSERT_TRUE(writer->begin()); // nothing to commit
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     // check data
     auto reader = irs::directory_reader::open(dir);
@@ -2572,11 +2574,11 @@ TEST(index_death_test_formats_10, columnstore_creation_fail_implicit_segment_flu
 
 TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segment_flush) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2603,7 +2605,7 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
 
     // initial commit
     ASSERT_TRUE(writer->begin());
-    writer->commit();
+    ASSERT_FALSE(writer->commit());
 
     ASSERT_TRUE(insert(*writer,
       doc1->indexed.begin(), doc1->indexed.end(),
@@ -2631,11 +2633,11 @@ TEST(index_death_test_formats_10, columnstore_creation_sync_fail_implicit_segmen
 
 TEST(index_death_test_formats_10, open_reader) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2670,7 +2672,7 @@ TEST(index_death_test_formats_10, open_reader) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // register failures
@@ -2730,16 +2732,16 @@ TEST(index_death_test_formats_10, open_reader) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2774,7 +2776,7 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check data
@@ -2823,36 +2825,36 @@ TEST(index_death_test_formats_10, columnstore_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
 
 TEST(index_death_test_formats_10, postings_reopen_fail) {
   const auto all_features = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get(),
+    irs::type<irs::offset>::get()
   };
 
   const auto positions = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get()
   };
 
   const auto positions_offsets = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::offset::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::offset>::get()
   };
 
   const auto positions_payload = irs::flags{
-    irs::document::type(),
-    irs::frequency::type(),
-    irs::position::type(),
-    irs::payload::type()
+    irs::type<irs::document>::get(),
+    irs::type<irs::frequency>::get(),
+    irs::type<irs::position>::get(),
+    irs::type<irs::payload>::get()
   };
 
   tests::json_doc_generator gen(
@@ -2887,7 +2889,7 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
 
     writer->documents().remove(*query_doc2.filter);
 
-    writer->commit();
+    ASSERT_TRUE(writer->commit());
   }
 
   // check data
@@ -2981,9 +2983,5 @@ TEST(index_death_test_formats_10, postings_reopen_fail) {
   ASSERT_TRUE(live_docs->next());
   ASSERT_EQ(1, live_docs->value());
   ASSERT_FALSE(live_docs->next());
-  ASSERT_EQ(irs::type_limits<irs::type_t::doc_id_t>::eof(), live_docs->value());
+  ASSERT_EQ(irs::doc_limits::eof(), live_docs->value());
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

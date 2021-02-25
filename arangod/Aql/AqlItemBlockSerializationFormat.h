@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,8 @@
 #ifndef ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 #define ARANGOD_AQL_AQLITEMBLOCK_SERIALIZATION_FORMAT_H
 
+#include <type_traits>
+
 namespace arangodb {
 namespace aql {
 
@@ -33,6 +36,8 @@ enum class SerializationFormat {
   // Use a hidden register for shadow rows. In classic versions all entries would be off by one.
   SHADOWROWS = 1
 };
+
+using SerializationFormatType = std::underlying_type_t<SerializationFormat>;
 
 }  // namespace aql
 }  // namespace arangodb

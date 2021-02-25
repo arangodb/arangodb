@@ -25,7 +25,7 @@ synchronization for collections that have a default *waitForSync* value
 of *true*.
 
 The method returns a document with the attributes *_id*, *_rev* and
-*_oldRev*. The attribute *_id* contains the document handle of the
+*_oldRev*. The attribute *_id* contains the document identifier of the
 updated document, the attribute *_rev* contains the document revision of
 the updated document, the attribute *_oldRev* contains the revision of
 the old (now replaced) document.
@@ -38,9 +38,9 @@ match the revision in the collection, then an error is thrown.
 As before, but in case of a conflict, the conflict is ignored and the old
 document is overwritten.
 
-`db._update(document-handle, data)`
+`db._update(document-id, data)`
 
-As before. Instead of document a *document-handle* can be passed as
+As before. Instead of document a *document-id* can be passed as
 first argument.
 
 @EXAMPLES

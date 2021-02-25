@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_NONCOPYABLE_H
@@ -26,24 +25,20 @@
 
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN( util )
-
-NS_BEGIN( noncopyable__detail__ )
+namespace iresearch {
+namespace util {
 
 struct noncopyable {
   noncopyable() = default;
-  ~noncopyable() = default;
 
-  noncopyable( const noncopyable& ) = delete;
-  noncopyable& operator= ( const noncopyable& ) = delete;
+  noncopyable(noncopyable&&) = default;
+  noncopyable& operator=(noncopyable&&) = default;
+
+  noncopyable(const noncopyable&) = delete;
+  noncopyable& operator= (const noncopyable&) = delete;
 };
 
-NS_END // noncopyable__detail__ 
-
-using noncopyable = noncopyable__detail__::noncopyable;
-
-NS_END
-NS_END
+}
+}
 
 #endif

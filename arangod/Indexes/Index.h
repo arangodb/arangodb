@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,19 +24,20 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
+#include <iosfwd>
+
+#include <velocypack/StringRef.h>
+
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-
-#include <velocypack/StringRef.h>
-
-#include <iosfwd>
 
 namespace arangodb {
 namespace basics {
@@ -53,6 +54,8 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+struct AttributeNamePath;
+class Projections;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -77,12 +80,11 @@ class Index {
   Index(Index const&) = delete;
   Index& operator=(Index const&) = delete;
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection, std::string const& name,
+  Index(IndexId iid, LogicalCollection& collection, std::string const& name,
         std::vector<std::vector<arangodb::basics::AttributeName>> const& fields,
         bool unique, bool sparse);
 
-  Index(TRI_idx_iid_t iid, LogicalCollection& collection,
-        arangodb::velocypack::Slice const& slice);
+  Index(IndexId iid, LogicalCollection& collection, arangodb::velocypack::Slice const& slice);
 
   virtual ~Index();
 
@@ -103,9 +105,6 @@ class Index {
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
-
-  /// @brief: mode to signal how operation should behave
-  enum OperationMode { normal, internal, rollback };
   
   /// @brief: helper struct returned by index methods that determine the costs
   /// of index usage for filtering
@@ -146,7 +145,7 @@ class Index {
 
  public:
   /// @brief return the index id
-  inline TRI_idx_iid_t id() const { return _iid; }
+  inline IndexId id() const { return _iid; }
 
   /// @brief return the index name
   inline std::string const& name() const {
@@ -227,8 +226,9 @@ class Index {
   /// @brief if index needs explicit reversal and wouldn`t be reverted by storage rollback
   virtual bool needsReversal() const { return false; } 
 
-  /// @brief whether or not the index covers all the attributes passed in
-  virtual bool covers(std::unordered_set<std::string> const& attributes) const;
+  /// @brief whether or not the index covers all the attributes passed in.
+  /// the function may modify the projections by setting the coveringIndexPosition value in it.
+  bool covers(arangodb::aql::Projections& projections) const;
 
   /// @brief return the underlying collection
   inline LogicalCollection& collection() const { return _collection; }
@@ -280,14 +280,16 @@ class Index {
   static bool validateHandleName(char const*, size_t*);
 
   /// @brief generate a new index id
-  static TRI_idx_iid_t generateId();
+  static IndexId generateId();
 
   /// @brief check if two index definitions share any identifiers (_id, name)
   static bool CompareIdentifiers(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(velocypack::Slice const& lhs, velocypack::Slice const& rhs);
+  static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs,
+                      std::string const& dbname);
 
   /// @brief whether or not the index is persistent (storage on durable media)
   /// or not (RAM only)
@@ -383,7 +385,7 @@ class Index {
 
   /// @brief called after the collection was truncated
   /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t tick) {}
+  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
 
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this index
@@ -440,8 +442,8 @@ class Index {
   /// @brief generate error result
   /// @param code the error key
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, int code,
-                                std::string const& key = "") {
+  arangodb::Result& addErrorMsg(Result& r, ErrorCode code,
+                                std::string const& key = "") const {
     if (code != TRI_ERROR_NO_ERROR) {
       r.reset(code);
       return addErrorMsg(r, key);
@@ -451,7 +453,8 @@ class Index {
 
   /// @brief generate error result
   /// @param key the conflicting key
-  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "");
+  arangodb::Result& addErrorMsg(Result& r, std::string const& key = "") const;
+  void addErrorMsg(result::Error& err, std::string const& key) const;
 
   /// @brief extracts a timestamp value from a document
   /// returns a negative value if the document does not contain the specified
@@ -459,7 +462,7 @@ class Index {
   double getTimestamp(arangodb::velocypack::Slice const& doc,
                       std::string const& attributeName) const;
 
-  TRI_idx_iid_t const _iid;
+  IndexId const _iid;
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<arangodb::basics::AttributeName>> const _fields;

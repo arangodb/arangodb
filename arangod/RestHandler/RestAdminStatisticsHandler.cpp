@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "RestAdminStatisticsHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/RequestStatistics.h"
@@ -45,8 +48,7 @@ RestStatus RestAdminStatisticsHandler::execute() {
     return RestStatus::DONE;
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -55,6 +57,11 @@ RestStatus RestAdminStatisticsHandler::execute() {
   }
 
   if (_request->requestPath() == "/_admin/statistics") {
+    if (_request->value("sync") == "true") {
+      // processAll operates on a lock-free queue, and the statistic updates
+      // themselves are also thread-safe
+      RequestStatistics::processAll();
+    }
     getStatistics();
   } else if (_request->requestPath() == "/_admin/statistics-description") {
     getStatisticsDescription();
@@ -67,38 +74,39 @@ RestStatus RestAdminStatisticsHandler::execute() {
 }
 
 void RestAdminStatisticsHandler::getStatistics() {
-  stats::Descriptions const* desc = StatisticsFeature::descriptions();
-  if (!desc) {
+  StatisticsFeature& feature = server().getFeature<StatisticsFeature>();
+  if (!feature.isEnabled()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED,
                   "statistics not enabled");
     return;
   }
+  stats::Descriptions const& desc = feature.descriptions();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object, true));
 
   tmp.add("time", VPackValue(TRI_microtime()));
-  tmp.add("enabled", VPackValue(StatisticsFeature::enabled()));
+  tmp.add("enabled", VPackValue(true));
 
   tmp.add("system", VPackValue(VPackValueType::Object, true));
-  desc->processStatistics(tmp);
+  desc.processStatistics(tmp);
   tmp.close();  // system
 
   tmp.add("client", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
+  desc.clientStatistics(tmp, stats::RequestStatisticsSource::ALL);
   tmp.close();  // client
 
   tmp.add("clientUser", VPackValue(VPackValueType::Object, true));
-  desc->clientStatistics(tmp, stats::RequestStatisticsSource::USER);
+  desc.clientStatistics(tmp, stats::RequestStatisticsSource::USER);
   tmp.close();  // clientUser
 
   tmp.add("http", VPackValue(VPackValueType::Object, true));
-  desc->httpStatistics(tmp);
+  desc.httpStatistics(tmp);
   tmp.close();  // http
 
   tmp.add("server", VPackValue(VPackValueType::Object, true));
-  desc->serverStatistics(tmp);
+  desc.serverStatistics(tmp);
   tmp.close();  // server
 
   tmp.add(StaticStrings::Error, VPackValue(false));
@@ -108,19 +116,20 @@ void RestAdminStatisticsHandler::getStatistics() {
 }
 
 void RestAdminStatisticsHandler::getStatisticsDescription() {
-  stats::Descriptions const* desc = StatisticsFeature::descriptions();
-  if (!desc) {
+  StatisticsFeature& feature = server().getFeature<StatisticsFeature>();
+  if (!feature.isEnabled()) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_DISABLED,
                   "statistics not enabled");
     return;
   }
+  stats::Descriptions const& desc = feature.descriptions();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder tmp(buffer);
   tmp.add(VPackValue(VPackValueType::Object));
 
   tmp.add("groups", VPackValue(VPackValueType::Array, true));
-  for (stats::Group const& group : desc->groups()) {
+  for (stats::Group const& group : desc.groups()) {
     tmp.openObject();
     group.toVPack(tmp);
     tmp.close();
@@ -128,7 +137,7 @@ void RestAdminStatisticsHandler::getStatisticsDescription() {
   tmp.close();  // groups
 
   tmp.add("figures", VPackValue(VPackValueType::Array, true));
-  for (stats::Figure const& figure : desc->figures()) {
+  for (stats::Figure const& figure : desc.figures()) {
     tmp.openObject();
     figure.toVPack(tmp);
     tmp.close();

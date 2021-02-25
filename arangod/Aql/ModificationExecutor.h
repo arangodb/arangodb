@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@
 #include "Aql/ModificationExecutorInfos.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationResult.h"
 
 #include <velocypack/Builder.h>
@@ -39,6 +41,16 @@
 
 namespace arangodb {
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
+class InputAqlItemRow;
+class OutputAqlItemRow;
+class RegisterInfos;
+class FilterStats;
+template <BlockPassthrough>
+class SingleRowFetcher;
+
 //
 // ModificationExecutor is the "base" class for the Insert, Remove,
 // UpdateReplace and Upsert executors.
@@ -64,8 +76,6 @@ namespace aql {
 // class (defined in SimpleModifier.h) with a *completion*.
 // The four completions for SimpleModifiers are defined in InsertModifier.h,
 // RemoveModifier.h, and UpdateReplaceModifier.h
-//
-// The FetcherType has to provide the function fetchRow with the parameter atMost
 //
 // The two types of modifiers (Simple and Upsert) follow a similar design. The main
 // data is held in
@@ -140,8 +150,10 @@ class ModifierOutput {
  protected:
   InputAqlItemRow const _inputRow;
   Type const _type;
-  std::optional<AqlValue> const _oldValue;
-  std::optional<AqlValue> const _newValue;
+  std::optional<AqlValue> _oldValue;
+  std::optional<AqlValueGuard> _oldValueGuard;
+  std::optional<AqlValue> _newValue;
+  std::optional<AqlValueGuard> _newValueGuard;
 };
 
 template <typename FetcherType, typename ModifierType>
@@ -159,11 +171,17 @@ class ModificationExecutor {
   ModificationExecutor(FetcherType&, Infos&);
   ~ModificationExecutor() = default;
 
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  [[nodiscard]] auto skipRowsRange(typename FetcherType::DataRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  protected:
-  std::pair<ExecutionState, Stats> doCollect(size_t maxOutputs);
+  void doCollect(AqlItemBlockInputRange& input, size_t maxOutputs);
   void doOutput(OutputAqlItemRow& output, Stats& stats);
+  
+  transaction::Methods _trx;
 
   // The state that was returned on the last call to produceRows. For us
   // this is relevant because we might have collected some documents in the
@@ -171,7 +189,6 @@ class ModificationExecutor {
   // WAITING
   ExecutionState _lastState;
   ModificationExecutorInfos& _infos;
-  FetcherType& _fetcher;
   ModifierType _modifier;
 };
 

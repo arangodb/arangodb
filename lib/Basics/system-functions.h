@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,9 +52,6 @@ time_t TRI_timegm(struct tm*);
 
 // seconds with microsecond resolution
 double TRI_microtime();
-
-// number of processors or 0
-size_t TRI_numberProcessors();
 
 namespace arangodb {
 namespace utilities {

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 
 #include "Basics/Thread.h"
 #include "Cluster/Action.h"
+#include "RestServer/Metrics.h"
 
 namespace arangodb {
 
@@ -83,6 +85,8 @@ class MaintenanceWorker : public Thread {
 
  private:
   MaintenanceWorker(MaintenanceWorker const&) = delete;
+
+  void recordJobStats(bool failed);
 
 };  // class MaintenanceWorker
 

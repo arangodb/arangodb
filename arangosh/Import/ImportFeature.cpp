@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,7 +25,9 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -68,6 +71,7 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _onDuplicateAction("error"),
       _rowsToSkip(0),
       _result(result),
+      _skipValidation(false),
       _latencyStats(false) {
   requiresElevatedPrivileges(false);
   setOptional(false);
@@ -159,7 +163,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--separator", "field separator, used for csv and tsv. "
                      "Defaults to a comma (csv) or a tabulation character (tsv)",
                      new StringParameter(&_separator),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--progress", "show progress", new BooleanParameter(&_progress));
 
@@ -180,25 +184,30 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption(
       "--latency", "show 10 second latency statistics (values in microseconds)",
       new BooleanParameter(&_latencyStats));
+
+  options->addOption(
+      "--skip-validation", "skips document validation during import",
+      new BooleanParameter(&_skipValidation)).setIntroducedIn(30700);
 }
 
 void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
-  if (1 == n) {
+  if ((1 == n) && (!options->processingResult().touched("--file"))) {
     // only take positional file name attribute into account if user
     // did not specify the --file option as well
-    if (!options->processingResult().touched("--file")) {
-      _filename = positionals[0];
-    }
+    _filename = positionals[0];
   } else if (1 < n) {
     LOG_TOPIC("0dc12", FATAL, arangodb::Logger::FIXME)
         << "expecting at most one filename, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
+  } else if (n > 0) {
+    LOG_TOPIC("0dc13", FATAL, arangodb::Logger::FIXME)
+      << "Unused commandline arguments: " << positionals;
+    FATAL_ERROR_EXIT();
   }
-
   // _chunkSize is dynamic ... unless user explicitly sets it
   _autoChunkSize = !options->processingResult().touched("--batch-size");
 
@@ -217,12 +226,12 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
     LOG_TOPIC("9e3f9", WARN, arangodb::Logger::FIXME) << "capping --threads value to " << 1;
     _threadCount = 1;
   }
-  if (_threadCount > TRI_numberProcessors() * 2) {
+  if (_threadCount > NumberOfCores::getValue() * 2) {
     // it's not sensible to use just one thread ...
     //  and import's CPU usage is negligible, real limit is cluster cores
     LOG_TOPIC("aca46", WARN, arangodb::Logger::FIXME)
-        << "capping --threads value to " << TRI_numberProcessors() * 2;
-    _threadCount = (uint32_t)TRI_numberProcessors() * 2;
+        << "capping --threads value to " << NumberOfCores::getValue() * 2;
+    _threadCount = static_cast<uint32_t>(NumberOfCores::getValue()) * 2;
   }
 
   for (auto const& it : _translations) {
@@ -254,6 +263,28 @@ void ImportFeature::start() {
 
   int ret = EXIT_SUCCESS;
   *_result = ret;
+
+  // filename
+  if (_filename == "") {
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
+    if (!FileUtils::exists(_filename)) {
+      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open file '" << _filename << "'. File not found.";
+    } else if (FileUtils::isDirectory(_filename)) {
+      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
+          << "Specified file '" << _filename
+          << "' is a directory. Please use a regular file.";
+    } else {
+      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open '" << _filename << "'. Invalid file type.";
+    }
+
+    FATAL_ERROR_EXIT();
+  }
 
   if (_typeImport == "auto") {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
@@ -289,7 +320,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 
@@ -323,6 +354,7 @@ void ImportFeature::start() {
       std::cout << "separator:              " << _separator << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
+    std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
     std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
     std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
@@ -348,7 +380,7 @@ void ImportFeature::start() {
     client.setDatabaseName(dbName);
     err = TRI_ERROR_NO_ERROR;
     versionString = _httpClient->getServerVersion(&err);
-  
+
     if (err != TRI_ERROR_NO_ERROR) {
       // disconnecting here will abort arangoimport a few lines below
       _httpClient->disconnect();
@@ -364,7 +396,7 @@ void ImportFeature::start() {
   }
 
   TRI_ASSERT(client.databaseName() == dbName);
-    
+
   // successfully connected
   // print out connection info
   successfulConnection();
@@ -389,6 +421,7 @@ void ImportFeature::start() {
   ih.setOverwrite(_overwrite);
   ih.useBackslash(_useBackslash);
   ih.ignoreMissing(_ignoreMissing);
+  ih.setSkipValidation(_skipValidation);
 
   std::unordered_map<std::string, std::string> translations;
   for (auto const& it : _translations) {
@@ -435,28 +468,6 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // filename
-  if (_filename == "") {
-    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
-          << "Specified file '" << _filename
-          << "' is a directory. Please use a regular file.";
-    } else {
-      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open '" << _filename << "'. Invalid file type.";
-    }
-
-    FATAL_ERROR_EXIT();
-  }
-
   // progress
   if (_progress) {
     ih.setProgress(true);
@@ -483,6 +494,7 @@ void ImportFeature::start() {
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
 
+    TRI_NormalizePath(_filename);
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;

@@ -15,8 +15,10 @@ const arango = require('@arangodb').arango;
 const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
-var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+var origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
+const isVst = arango.getEndpoint().match('^vst://') !== null;
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -28,7 +30,7 @@ function loadFoxxIntoZip(path) {
   };
 }
 
-function installFoxx(mountpoint, which) {
+function installFoxx(mountpoint, which, mode) {
   let headers = {};
   let content;
   if (which.type === 'js') {
@@ -49,14 +51,22 @@ function installFoxx(mountpoint, which) {
     content = fs.readFileSync(which.buffer);
   }
   let devmode = '';
-  if (which.hasOwnProperty('devmode') && which.devmode === true) {
-    devmode = '&development=true';
+  if (typeof which.devmode === "boolean") {
+    devmode = `&development=${which.devmode}`;
   }
-  const crudResp = arango.POST('/_api/foxx?mount=' + mountpoint + devmode, content, headers);
+  let crudResp;
+  if (mode === "upgrade") {
+    crudResp = arango.PATCH('/_api/foxx/service?mount=' + mountpoint + devmode, content, headers);
+  } else if (mode === "replace") {
+    crudResp = arango.PUT('/_api/foxx/service?mount=' + mountpoint + devmode, content, headers);
+  } else {
+    crudResp = arango.POST('/_api/foxx?mount=' + mountpoint + devmode, content, headers);
+  }
   expect(crudResp).to.have.property('manifest');
+  return crudResp;
 }
 
-function deleteFox(mountpoint) {
+function deleteFoxx(mountpoint) {
   const deleteResp = arango.DELETE('/_api/foxx/service?force=true&mount=' + mountpoint);
   expect(deleteResp).to.have.property('code');
   expect(deleteResp.code).to.equal(204);
@@ -80,29 +90,103 @@ describe('FoxxApi commit', function () {
   });
 
   it('should fix missing service definition', function () {
-    db._query(aql`
+    expect(db._query(aql`
       FOR service IN _apps
         FILTER service.mount == ${mount}
         REMOVE service IN _apps
-    `);
+    `).getExtra().stats.writesExecuted).to.equal(1);
+
+    let body;
     let result = arango.GET('/test/header-echo');
     expect(result.code).to.equal(404);
 
     result = arango.POST('/_api/foxx/commit', '');
     expect(result.code).to.equal(204);
-
-    result = arango.GET_RAW('/test/header-echo', { origin: origin});
-    expect(result.code).to.equal(200);
-    if (arango.getEndpoint().match(/^vst:/)) {
-      // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-      let body = VPACK_TO_V8(result.body);
-      expect(body['origin']).to.equal(origin);
+    [
+      // explicitly say we want utf8-json, since the server will add it:
+      { origin: origin, accept: 'application/json; charset=utf-8', test: 'first' },
+      { 'accept-encoding': 'deflate', accept: 'application/json; charset=utf-8', test: "second"},
+      // work around clever arangosh client, specify random content-type first:
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
+      { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
+    ].forEach(headers => {
+      result = arango.GET_RAW('/test/header-echo', headers);
+      expect(result.code).to.equal(200);
+      if (result.headers['content-type'] === 'application/x-velocypack') {
+        body = result.parsedBody;
+      } else {
+        body = JSON.parse(result.body);
+      }
       
+      Object.keys(headers).forEach(function(key) {
+        let value = headers[key];
+        if (key === 'origin') {
+          if (arango.getEndpoint().match(/^vst:/)) {
+            // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
+            expect(body['origin']).to.equal(origin);
+          } else {
+            expect(result.headers['access-control-allow-origin']).to.equal(origin);
+          }
+        }
+        expect(body[key]).to.equal(headers[key]);
+        
+      });
+      if (!headers.hasOwnProperty('accept-encoding')) {
+        expect(body['accept-encoding']).to.equal(undefined);
+      }
+    });
+
+    // sending content-type json actually requires to post something:
+    let headers = { accept: 'application/json; charset=utf-8', test: "first", "content-type": "application/json; charset=utf-8"};
+    result = arango.POST_RAW('/test/header-echo', '{}', headers);
+    expect(result.code).to.equal(200);
+    if (result.headers['content-type'] === 'application/x-velocypack') {
+      body = result.parsedBody;
     } else {
-      expect(result.headers['access-control-allow-origin']).to.equal(origin);
+      body = JSON.parse(result.body);
     }
+    
+    Object.keys(headers).forEach(function(key) {
+      let value = headers[key];
+      
+      expect(body[key]).to.equal(headers[key]);
+    });
   });
 
+  it('should deliver compressed files according to accept-encoding', function() {
+    // TODO: decompress body (if) and check for its content, so double-compression can be eradicted.
+    let result;
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'identity'});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'deflate'});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {'accept-encoding': 'gzip'});
+    expect(result.body).to.be.instanceof(Buffer);
+
+    result = arango.GET_RAW('/_db/_system/_admin/aardvark/index.html', {});
+    expect(result.body).to.contain('doctype');
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'identity'});
+    expect(result).to.have.property('parsedBody');
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
+    if (!isVst) {
+      // no transparent compression support in VST atm.
+      expect(result.body).to.be.instanceof(Buffer);
+    } else {
+      expect(result).to.have.property('parsedBody');
+    }      
+
+    result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
+    expect(result).to.have.property('parsedBody');
+
+  });
   it('should fix missing checksum', function () {
     db._query(aql`
       FOR service IN _apps
@@ -225,13 +309,13 @@ describe('Foxx service', () => {
 
   afterEach(() => {
     try {
-      deleteFox(serviceServiceMount);
+      deleteFoxx(serviceServiceMount);
     } catch (e) {}
   });
 
   afterEach(() => {
     try {
-      deleteFox(mount);
+      deleteFoxx(mount);
     } catch (e) {}
   });
 
@@ -361,6 +445,7 @@ describe('Foxx service', () => {
   });
 
   const confPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration');
+  const confPath2 = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-configuration2');
 
   it('empty configuration should be available', () => {
     installFoxx(mount, minimalWorkingZip);
@@ -585,6 +670,53 @@ describe('Foxx service', () => {
     expect(resp).not.to.have.property('test2');
   });
 
+  it('should retain obsolete config after update in development', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
+      test1: 'test1',
+      test2: 'test2'
+    });
+    installFoxx(mount, {type: 'dir', buffer: confPath2, devmode: true}, "upgrade");
+    const resp1 = db._query(aql`
+      FOR service IN _apps
+        FILTER service.mount == ${mount}
+        RETURN service.options.configuration
+    `).next();
+    expect(resp1).to.have.property('test1', 'test1');
+    expect(resp1).to.have.property('test2', 'test2');
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
+    const resp2 = db._query(aql`
+      FOR service IN _apps
+      FILTER service.mount == ${mount}
+      RETURN service.options.configuration
+    `).next();
+    expect(resp2).to.have.property('test1', 'test1');
+    expect(resp2).to.have.property('test2', 'test2');
+  });
+
+  it('should discard obsolete config after update in production', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {
+      test1: 'test1',
+      test2: 'test2'
+    });
+    installFoxx(mount, {type: 'dir', buffer: confPath2}, "upgrade");
+    const resp1 = db._query(aql`
+      FOR service IN _apps
+        FILTER service.mount == ${mount}
+        RETURN service.options.configuration
+    `).next();
+    expect(resp1).to.have.property('test1', 'test1');
+    expect(resp1).to.have.property('test2', 'test2');
+    arango.PATCH('/_api/foxx/configuration?mount=' + mount, {});
+    const resp2 = db._query(aql`
+      FOR service IN _apps
+      FILTER service.mount == ${mount}
+      RETURN service.options.configuration
+    `).next();
+    expect(resp2).to.have.property('test1', 'test1');
+    expect(resp2).not.to.have.property('test2');
+  });
 
   const depPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-dependencies');
 
@@ -1006,6 +1138,54 @@ describe('Foxx service', () => {
     expect(respAfter.development).to.equal(false);
   });
 
+  it('upgrade should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('upgrade should retain development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "upgrade");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('upgrade should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "upgrade");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should retain production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should revert development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
+  it('replace should affect production mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true}, "replace");
+    expect(resp.development).to.eql(true);
+  });
+
+  it('replace should affect development mode', () => {
+    installFoxx(mount, {type: 'dir', buffer: confPath, devmode: true});
+    const resp = installFoxx(mount, {type: 'dir', buffer: confPath, devmode: false}, "replace");
+    expect(resp.development).to.eql(false);
+  });
+
   const routes = [
     ['GET', '/_api/foxx/service'],
     ['PATCH', '/_api/foxx/service', { source: minimalWorkingZipPath }],
@@ -1054,6 +1234,21 @@ describe('Foxx service', () => {
     expect(resp).to.have.property('pending');
     expect(resp).to.have.property('failures');
     expect(resp).to.have.property('passes');
+  });
+
+  it('idiomatic tests reporter should return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
+    expect(resp).to.be.instanceof(Buffer);
+    expect(resp.toString("utf-8").startsWith("<?xml")).to.equal(true);
+  });
+
+  it('non-idiomatic tests reporter should not return string', () => {
+    const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
+    FoxxManager.install(testPath, mount);
+    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=false&mount=' + mount, '');
+    expect(resp).to.be.an("array");
   });
 
   it('replace on invalid mount should not be installed', () => {

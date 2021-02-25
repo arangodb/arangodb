@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +27,13 @@
 #include "ServerStatistics.h"
 #include "StatisticsFeature.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CpuUsageFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/ConditionLocker.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/PhysicalMemory.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -42,6 +46,7 @@
 #include "RestServer/TtlFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -55,23 +60,20 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace {
-static std::string const statisticsCollection("_statistics");
-static std::string const statistics15Collection("_statistics15");
-static std::string const statisticsRawCollection("_statisticsRaw");
-
-static std::string const garbageCollectionQuery(
+std::string const garbageCollectionQuery(
     "FOR s in @@collection FILTER s.time < @start RETURN s._key");
 
-static std::string const lastEntryQuery(
+std::string const lastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start SORT s.time DESC LIMIT 1 "
     "RETURN s");
-static std::string const filteredLastEntryQuery(
+std::string const filteredLastEntryQuery(
     "FOR s in @@collection FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time DESC LIMIT 1 RETURN s");
 
-static std::string const fifteenMinuteQuery(
+std::string const fifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start SORT s.time RETURN s");
-static std::string const filteredFifteenMinuteQuery(
+
+std::string const filteredFifteenMinuteQuery(
     "FOR s in _statistics FILTER s.time >= @start FILTER s.clusterId == "
     "@clusterId SORT s.time RETURN s");
 
@@ -89,13 +91,18 @@ double extractNumber(VPackSlice slice, char const* attribute) {
 }  // namespace
 
 using namespace arangodb;
-using namespace arangodb::basics;
+using namespace arangodb::statistics;
 
 StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
     : Thread(vocbase.server(), "StatisticsWorker"), _gcTask(GC_STATS), _vocbase(vocbase) {
+
+  // statistics queries don't work on DB servers, so we should not 
+  // run the StatisticsWorker on DB servers! 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+
   _bytesSentDistribution.openArray();
 
-  for (auto const& val : TRI_BytesSentDistributionVectorStatistics) {
+  for (auto const& val : BytesSentDistributionCuts) {
     _bytesSentDistribution.add(VPackValue(val));
   }
 
@@ -103,7 +110,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _bytesReceivedDistribution.openArray();
 
-  for (auto const& val : TRI_BytesReceivedDistributionVectorStatistics) {
+  for (auto const& val : BytesReceivedDistributionCuts) {
     _bytesReceivedDistribution.add(VPackValue(val));
   }
 
@@ -111,7 +118,7 @@ StatisticsWorker::StatisticsWorker(TRI_vocbase_t& vocbase)
 
   _requestTimeDistribution.openArray();
 
-  for (auto const& val : TRI_RequestTimeDistributionVectorStatistics) {
+  for (auto const& val : RequestTimeDistributionCuts) {
     _requestTimeDistribution.add(VPackValue(val));
   }
 
@@ -128,13 +135,13 @@ void StatisticsWorker::collectGarbage() {
 
   try {
     if (_gcTask == GC_STATS) {
-      collectGarbage(statisticsCollection, time - 3600.0);  // 1 hour
+      collectGarbage(StaticStrings::StatisticsCollection, time - 3600.0);  // 1 hour
       _gcTask = GC_STATS_RAW;
     } else if (_gcTask == GC_STATS_RAW) {
-      collectGarbage(statisticsRawCollection, time - 3600.0);  // 1 hour
+      collectGarbage(StaticStrings::StatisticsRawCollection, time - 3600.0);  // 1 hour
       _gcTask = GC_STATS_15;
     } else if (_gcTask == GC_STATS_15) {
-      collectGarbage(statistics15Collection, time - 30.0 * 86400.0);  // 30 days
+      collectGarbage(StaticStrings::Statistics15Collection, time - 30.0 * 86400.0);  // 30 days
       _gcTask = GC_STATS;
     }
   } catch (basics::Exception const& ex) {
@@ -147,8 +154,6 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::collectGarbage(std::string const& name, double start) const {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -157,13 +162,14 @@ void StatisticsWorker::collectGarbage(std::string const& name, double start) con
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
-                             arangodb::aql::QueryString(garbageCollectionQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString(::garbageCollectionQuery),
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -198,13 +204,13 @@ void StatisticsWorker::historian() {
   try {
     double now = TRI_microtime();
     std::shared_ptr<arangodb::velocypack::Builder> prevRawBuilder =
-        lastEntry(statisticsRawCollection, now - 2.0 * INTERVAL);
+        lastEntry(StaticStrings::StatisticsRawCollection, now - 2.0 * INTERVAL);
     VPackSlice prevRaw = prevRawBuilder->slice();
 
     _rawBuilder.clear();
     generateRawStatistics(_rawBuilder, now);
 
-    saveSlice(_rawBuilder.slice(), statisticsRawCollection);
+    saveSlice(_rawBuilder.slice(), StaticStrings::StatisticsRawCollection);
 
     // create the per-seconds statistics
     if (prevRaw.isArray() && prevRaw.length()) {
@@ -214,7 +220,7 @@ void StatisticsWorker::historian() {
       VPackSlice perSecs = _tempBuilder.slice();
 
       if (perSecs.length()) {
-        saveSlice(perSecs, statisticsCollection);
+        saveSlice(perSecs, StaticStrings::StatisticsCollection);
       }
     }
   } catch (...) {
@@ -233,7 +239,7 @@ void StatisticsWorker::historianAverage() {
     double now = TRI_microtime();
 
     std::shared_ptr<arangodb::velocypack::Builder> prev15Builder =
-        lastEntry(statistics15Collection, now - 2.0 * HISTORY_INTERVAL);
+        lastEntry(StaticStrings::Statistics15Collection, now - 2.0 * HISTORY_INTERVAL);
     VPackSlice prev15 = prev15Builder->slice();
 
     double start;
@@ -249,7 +255,7 @@ void StatisticsWorker::historianAverage() {
     VPackSlice stat15 = _tempBuilder.slice();
 
     if (stat15.length()) {
-      saveSlice(stat15, statistics15Collection);
+      saveSlice(stat15, StaticStrings::Statistics15Collection);
     }
   } catch (velocypack::Exception const& ex) {
     LOG_TOPIC("1c429", DEBUG, Logger::STATISTICS)
@@ -265,8 +271,6 @@ void StatisticsWorker::historianAverage() {
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
     std::string const& collectionName, double start) const {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -280,13 +284,14 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
-                             arangodb::aql::QueryString(_clusterId.empty() ? lastEntryQuery : filteredLastEntryQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
+                             arangodb::aql::QueryString(_clusterId.empty() ? ::lastEntryQuery : ::filteredLastEntryQuery),
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -296,8 +301,6 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
 }
 
 void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
-  auto& queryRegistryFeature = _server.getFeature<QueryRegistryFeature>();
-  auto _queryRegistry = queryRegistryFeature.queryRegistry();
   auto bindVars = _bindVars.get();
 
   bindVars->clear();
@@ -310,14 +313,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
 
   bindVars->close();
 
-  arangodb::aql::Query query(false, _vocbase,
+  arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
                              arangodb::aql::QueryString(
-                                 _clusterId.empty() ? fifteenMinuteQuery : filteredFifteenMinuteQuery),
-                             _bindVars, nullptr, arangodb::aql::PART_MAIN);
+                                 _clusterId.empty() ? ::fifteenMinuteQuery : ::filteredFifteenMinuteQuery),
+                             _bindVars);
 
   query.queryOptions().cache = false;
+  query.queryOptions().skipAudit = true;
 
-  aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+  aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -369,21 +373,21 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       // to give up in this case, but simply ignore these errors
       try {
         VPackSlice v8Contexts = server.get("v8Context");
-        serverV8available += extractNumber(v8Contexts, "availablePerSecond");
-        serverV8busy += extractNumber(v8Contexts, "busyPerSecond");
-        serverV8dirty += extractNumber(v8Contexts, "dirtyPerSecond");
-        serverV8free += extractNumber(v8Contexts, "freePerSecond");
-        serverV8max += extractNumber(v8Contexts, "maxPerSecond");
+        serverV8available += ::extractNumber(v8Contexts, "availablePerSecond");
+        serverV8busy += ::extractNumber(v8Contexts, "busyPerSecond");
+        serverV8dirty += ::extractNumber(v8Contexts, "dirtyPerSecond");
+        serverV8free += ::extractNumber(v8Contexts, "freePerSecond");
+        serverV8max += ::extractNumber(v8Contexts, "maxPerSecond");
       } catch (...) {
         // if attribute "v8Context" is not present, simply do not count
       }
 
       try {
         VPackSlice threads = server.get("threads");
-        serverThreadsRunning += extractNumber(threads, "runningPerSecond");
-        serverThreadsWorking += extractNumber(threads, "workingPerSecond");
-        serverThreadsBlocked += extractNumber(threads, "blockedPerSecond");
-        serverThreadsQueued += extractNumber(threads, "queuedPerSecond");
+        serverThreadsRunning += ::extractNumber(threads, "runningPerSecond");
+        serverThreadsWorking += ::extractNumber(threads, "workingPerSecond");
+        serverThreadsBlocked += ::extractNumber(threads, "blockedPerSecond");
+        serverThreadsQueued += ::extractNumber(threads, "queuedPerSecond");
       } catch (...) {
         // if attribute "threads" is not present, simply do not count
       }
@@ -391,15 +395,15 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       try {
         VPackSlice system = values.get("system");
         systemMinorPageFaultsPerSecond +=
-            extractNumber(system, "minorPageFaultsPerSecond");
+            ::extractNumber(system, "minorPageFaultsPerSecond");
         systemMajorPageFaultsPerSecond +=
-            extractNumber(system, "majorPageFaultsPerSecond");
-        systemUserTimePerSecond += extractNumber(system, "userTimePerSecond");
+            ::extractNumber(system, "majorPageFaultsPerSecond");
+        systemUserTimePerSecond += ::extractNumber(system, "userTimePerSecond");
         systemSystemTimePerSecond +=
-            extractNumber(system, "systemTimePerSecond");
-        systemResidentSize += extractNumber(system, "residentSize");
-        systemVirtualSize += extractNumber(system, "virtualSize");
-        systemNumberOfThreads += extractNumber(system, "numberOfThreads");
+            ::extractNumber(system, "systemTimePerSecond");
+        systemResidentSize += ::extractNumber(system, "residentSize");
+        systemVirtualSize += ::extractNumber(system, "virtualSize");
+        systemNumberOfThreads += ::extractNumber(system, "numberOfThreads");
       } catch (...) {
         // if attribute "system" is not present, simply do not count
       }
@@ -407,37 +411,37 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       try {
         VPackSlice http = values.get("http");
         httpRequestsTotalPerSecond +=
-            extractNumber(http, "requestsTotalPerSecond");
+            ::extractNumber(http, "requestsTotalPerSecond");
         httpRequestsAsyncPerSecond +=
-            extractNumber(http, "requestsAsyncPerSecond");
-        httpRequestsGetPerSecond += extractNumber(http, "requestsGetPerSecond");
+            ::extractNumber(http, "requestsAsyncPerSecond");
+        httpRequestsGetPerSecond += ::extractNumber(http, "requestsGetPerSecond");
         httpRequestsHeadPerSecond +=
-            extractNumber(http, "requestsHeadPerSecond");
+            ::extractNumber(http, "requestsHeadPerSecond");
         httpRequestsPostPerSecond +=
-            extractNumber(http, "requestsPostPerSecond");
-        httpRequestsPutPerSecond += extractNumber(http, "requestsPutPerSecond");
+            ::extractNumber(http, "requestsPostPerSecond");
+        httpRequestsPutPerSecond += ::extractNumber(http, "requestsPutPerSecond");
         httpRequestsPatchPerSecond +=
-            extractNumber(http, "requestsPatchPerSecond");
+            ::extractNumber(http, "requestsPatchPerSecond");
         httpRequestsDeletePerSecond +=
-            extractNumber(http, "requestsDeletePerSecond");
+            ::extractNumber(http, "requestsDeletePerSecond");
         httpRequestsOptionsPerSecond +=
-            extractNumber(http, "requestsOptionsPerSecond");
+            ::extractNumber(http, "requestsOptionsPerSecond");
         httpRequestsOtherPerSecond +=
-            extractNumber(http, "requestsOtherPerSecond");
+            ::extractNumber(http, "requestsOtherPerSecond");
       } catch (...) {
         // if attribute "http" is not present, simply do not count
       }
 
       try {
         VPackSlice client = values.get("client");
-        clientHttpConnections += extractNumber(client, "httpConnections");
-        clientBytesSentPerSecond += extractNumber(client, "bytesSentPerSecond");
+        clientHttpConnections += ::extractNumber(client, "httpConnections");
+        clientBytesSentPerSecond += ::extractNumber(client, "bytesSentPerSecond");
         clientBytesReceivedPerSecond +=
-            extractNumber(client, "bytesReceivedPerSecond");
-        clientAvgTotalTime += extractNumber(client, "avgTotalTime");
-        clientAvgRequestTime += extractNumber(client, "avgRequestTime");
-        clientAvgQueueTime += extractNumber(client, "avgQueueTime");
-        clientAvgIoTime += extractNumber(client, "avgIoTime");
+            ::extractNumber(client, "bytesReceivedPerSecond");
+        clientAvgTotalTime += ::extractNumber(client, "avgTotalTime");
+        clientAvgRequestTime += ::extractNumber(client, "avgRequestTime");
+        clientAvgQueueTime += ::extractNumber(client, "avgQueueTime");
+        clientAvgIoTime += ::extractNumber(client, "avgIoTime");
       } catch (...) {
         // if attribute "client" is not present, simply do not count
       }
@@ -818,288 +822,23 @@ void StatisticsWorker::avgPercentDistributon(VPackBuilder& builder, VPackSlice c
   builder.close();
 }
 
-std::string const TYPE_("\n\n#TYPE ");
-std::string const HELP_("\n#HELP ");
-
-// local_name: {"prometheus_name", "type", "help"}
-std::map<std::string, std::vector<std::string>> statStrings{
-  {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket ", "gauge",
-    "Bytes received for a request.\n"}},
-  {"bytesReceivedCount",
-   {"arangodb_client_connection_statistics_bytes_received_count ", "gauge",
-    "Bytes received for a request.\n"}},
-  {"bytesReceivedSum",
-   {"arangodb_client_connection_statistics_bytes_received_sum ", "gauge",
-    "Bytes received for a request.\n"}},
-  {"bytesSent",
-   {"arangodb_client_connection_statistics_bytes_sent_bucket ", "gauge",
-    "Bytes sent for a request.\n"}},
-  {"bytesSentCount",
-   {"arangodb_client_connection_statistics_bytes_sent_count ", "gauge",
-    "Bytes sent for a request.\n"}},
-  {"bytesSentSum",
-   {"arangodb_client_connection_statistics_bytes_sent_sum ", "gauge",
-    "Bytes sent for a request.\n"}},
-  {"minorPageFaults",
-   {"arangodb_process_statistics_minor_page_faults ", "gauge",
-    "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows.\n"}},
-  {"majorPageFaults",
-   {"arangodb_process_statistics_major_page_faults ", "gauge",
-    "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk.\n"}},
-  {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket ", "gauge",
-    "Bytes received for a request"}},
-  {"userTime",
-   {"arangodb_process_statistics_user_time ", "gauge",
-    "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
-  {"systemTime",
-   {"arangodb_process_statistics_system_time ", "gauge",
-    "Amount of time that this process has been scheduled in kernel mode, measured in seconds.\n"}},
-  {"numberOfThreads",
-   {"arangodb_process_statistics_number_of_threads ", "gauge",
-    "Number of threads in the arangod process.\n"}},
-  {"residentSize",
-   {"arangodb_process_statistics_resident_set_size ", "gauge", "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes.\n"}},
-  {"residentSizePercent", 
-   {"arangodb_process_statistics_resident_set_size_percent ", "gauge", "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00.\n"}},
-  {"virtualSize",
-   {"arangodb_process_statistics_virtual_memory_size ", "gauge", "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using.\n"}},
-  {"clientHttpConnections",
-   {"arangodb_client_connection_statistics_client_connections ", "guage",
-    "The number of client connections that are currently open.\n"}},
-  {"connectionTimeCounts",
-   {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
-    "Total connection time of a client.\n"}},
-  {"connectionTimeCount",
-   {"arangodb_client_connection_statistics_connection_time_count ", "gauge",
-    "Total connection time of a client.\n"}},
-  {"connectionTimeSum",
-   {"arangodb_client_connection_statistics_connection_time_sum ", "gauge",
-    "Total connection time of a client.\n"}}
-  /*{"",
-    {"", "",
-    ""}}*/
-};
-
-void StatisticsWorker::generateRawStatistics(std::string& result, double const& now) {
-    ProcessInfo info = TRI_ProcessInfoSelf();
-    uint64_t rss = static_cast<uint64_t>(info._residentSize);
-    double rssp = 0;
-
-    if (TRI_PhysicalMemory != 0) {
-        rssp = static_cast<double>(rss) / static_cast<double>(TRI_PhysicalMemory);
-    }
-
-    StatisticsCounter httpConnections;
-    StatisticsCounter totalRequests;
-    std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-    StatisticsCounter asyncRequests;
-    StatisticsDistribution connectionTime;
-
-    ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                               asyncRequests, connectionTime);
-
-    StatisticsDistribution totalTime;
-    StatisticsDistribution requestTime;
-    StatisticsDistribution queueTime;
-    StatisticsDistribution ioTime;
-    StatisticsDistribution bytesSent;
-    StatisticsDistribution bytesReceived;
-
-    RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
-
-    // processStatistics()
-    result +=
-      TYPE_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[1] +
-      HELP_ + statStrings.at("minorPageFaults")[0] + statStrings.at("minorPageFaults")[2] +
-      statStrings.at("minorPageFaults")[0] + std::to_string(info._minorPageFaults);
-    result +=
-      TYPE_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[1] +
-      HELP_ + statStrings.at("majorPageFaults")[0] + statStrings.at("majorPageFaults")[2] +
-      statStrings.at("majorPageFaults")[0] + std::to_string(info._majorPageFaults);
-
-    if (info._scClkTck != 0) {  // prevent division by zero
-      result +=
-        TYPE_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[1] +
-        HELP_ + statStrings.at("userTime")[0] + statStrings.at("userTime")[2] +
-        statStrings.at("userTime")[0] +
-        std::to_string(static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck));
-      result +=
-        TYPE_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[1] +
-        HELP_ + statStrings.at("systemTime")[0] + statStrings.at("systemTime")[2] +
-        statStrings.at("systemTime")[0] +
-        std::to_string(static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck));
-    }
-
-    result +=
-      TYPE_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[1] +
-      HELP_ + statStrings.at("numberOfThreads")[0] + statStrings.at("numberOfThreads")[2] +
-      statStrings.at("numberOfThreads")[0] + std::to_string(info._numberThreads);
-    result +=
-      TYPE_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[1] +
-      HELP_ + statStrings.at("residentSize")[0] + statStrings.at("residentSize")[2] +
-      statStrings.at("residentSize")[0] + std::to_string(rss);
-    result +=
-      TYPE_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[1] +
-      HELP_ + statStrings.at("residentSizePercent")[0] + statStrings.at("residentSizePercent")[2] +
-      statStrings.at("residentSizePercent")[0] + std::to_string(rssp);
-    result +=
-      TYPE_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[1] +
-      HELP_ + statStrings.at("virtualSize")[0] + statStrings.at("virtualSize")[2] +
-      statStrings.at("virtualSize")[0] + std::to_string(info._virtualSize);
-    
-
-    // _clientStatistics()    
-    result +=
-      TYPE_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[1] +
-      HELP_ + statStrings.at("clientHttpConnections")[0] + statStrings.at("clientHttpConnections")[2] +
-      statStrings.at("clientHttpConnections")[0] + std::to_string(httpConnections._count);
-
-    VPackBuilder tmp = fillDistribution(connectionTime);
-    VPackSlice slc = tmp.slice();
-    
-    result +=
-      TYPE_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[1] +
-      HELP_ + statStrings.at("connectionTimeCounts")[0] + statStrings.at("connectionTimeCounts")[2] +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"0.1\"}"  + " " +
-      std::to_string(slc.get("counts").at(0).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"1\"}"    + " " +
-      std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"60\"}"   + " " +
-      std::to_string(slc.get("counts").at(1).getNumber<uint64_t>()) + "\n" +
-      statStrings.at("connectionTimeCounts")[0] + "{le=\"+Inf\"}" + " " +
-      std::to_string(slc.get("counts").at(3).getNumber<uint64_t>());
-
-    result +=
-      TYPE_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[1] +
-      HELP_ + statStrings.at("connectionTimeCount")[0] + statStrings.at("connectionTimeCount")[2] +
-      statStrings.at("connectionTimeCount")[0] + std::to_string(slc.get("count").template getNumber<uint64_t>());
-    
-    result +=
-      TYPE_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[1] +
-      HELP_ + statStrings.at("connectionTimeSum")[0] + statStrings.at("connectionTimeSum")[2] +
-      statStrings.at("connectionTimeSum")[0] + std::to_string(slc.get("sum").template getNumber<uint64_t>());
-
-    result += "\n";
-
-      /*
-
-        // _clientStatistics()
-
-        tmp = fillDistribution(totalTime);
-        builder.add("totalTime", tmp.slice());
-
-        tmp = fillDistribution(requestTime);
-        builder.add("requestTime", tmp.slice());
-
-        tmp = fillDistribution(queueTime);
-        builder.add("queueTime", tmp.slice());
-
-        tmp = fillDistribution(ioTime);
-        builder.add("ioTime", tmp.slice());
-
-        tmp = fillDistribution(bytesSent);
-        builder.add("bytesSent", tmp.slice());
-
-        tmp = fillDistribution(bytesReceived);
-        builder.add("bytesReceived", tmp.slice());
-        builder.close();
-
-        // _httpStatistics()
-        builder.add("http", VPackValue(VPackValueType::Object));
-        builder.add("requestsTotal", VPackValue(totalRequests._count));
-        builder.add("requestsAsync", VPackValue(asyncRequests._count));
-        builder.add("requestsGet",
-                    VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
-        builder.add("requestsHead",
-                    VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
-        builder.add("requestsPost",
-                    VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
-        builder.add("requestsPut",
-                    VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
-        builder.add("requestsPatch",
-                    VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
-        builder.add("requestsDelete",
-                    VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-        builder.add("requestsOptions",
-                    VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
-        builder.add("requestsOther",
-                    VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
-        builder.close();
-
-        // _serverStatistics()
-        builder.add("server", VPackValue(VPackValueType::Object));
-        builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
-        builder.add("transactions", VPackValue(VPackValueType::Object));
-        builder.close();
-
-        // export v8 statistics
-        builder.add("v8Context", VPackValue(VPackValueType::Object));
-        V8DealerFeature::Statistics v8Counters{};
-        // std::vector<V8DealerFeature::MemoryStatistics> memoryStatistics;
-        // V8 may be turned off on a server
-        if (_server.hasFeature<V8DealerFeature>()) {
-            V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
-            if (dealer.isEnabled()) {
-                v8Counters = dealer.getCurrentContextNumbers();
-                // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
-            }
-        }
-        builder.add("available", VPackValue(v8Counters.available));
-        builder.add("busy", VPackValue(v8Counters.busy));
-        builder.add("dirty", VPackValue(v8Counters.dirty));
-        builder.add("free", VPackValue(v8Counters.free));
-        builder.add("max", VPackValue(v8Counters.max));
-        builder.close();
-
-        // export threads statistics
-        builder.add("threads", VPackValue(VPackValueType::Object));
-        SchedulerFeature::SCHEDULER->toVelocyPack(builder);
-        builder.close();
-
-        // export ttl statistics
-        TtlFeature& ttlFeature = _server.getFeature<TtlFeature>();
-        builder.add(VPackValue("ttl"));
-        ttlFeature.statsToVelocyPack(builder);
-
-        builder.close();
-
-        builder.close();
-    */
-}
-
 void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const& now) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
 
-  if (TRI_PhysicalMemory != 0) {
-    rssp = static_cast<double>(rss) / static_cast<double>(TRI_PhysicalMemory);
+  if (PhysicalMemory::getValue() != 0) {
+    rssp = static_cast<double>(rss) / static_cast<double>(PhysicalMemory::getValue());
   }
 
-  StatisticsCounter httpConnections;
-  StatisticsCounter totalRequests;
-  std::array<StatisticsCounter, MethodRequestsStatisticsSize> methodRequests;
-  StatisticsCounter asyncRequests;
-  StatisticsDistribution connectionTime;
+  ConnectionStatistics::Snapshot connectionStats;
+  ConnectionStatistics::getSnapshot(connectionStats);
 
-  ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
-                             asyncRequests, connectionTime);
+  RequestStatistics::Snapshot requestStats;
+  RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
-  StatisticsDistribution totalTime;
-  StatisticsDistribution requestTime;
-  StatisticsDistribution queueTime;
-  StatisticsDistribution ioTime;
-  StatisticsDistribution bytesSent;
-  StatisticsDistribution bytesReceived;
-
-  RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent, bytesReceived, stats::RequestStatisticsSource::ALL);
-
-  
   ServerStatistics const& serverInfo =
-    application_features::ApplicationServer::server().
-    getFeature<MetricsFeature>().serverStatistics();
+      _vocbase.server().getFeature<MetricsFeature>().serverStatistics();
 
   builder.openObject();
   if (!_clusterId.empty()) {
@@ -1127,56 +866,59 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
 
   // _clientStatistics()
   builder.add("client", VPackValue(VPackValueType::Object));
-  builder.add("httpConnections", VPackValue(httpConnections._count));
+  builder.add("httpConnections", VPackValue(connectionStats.httpConnections.get()));
 
-  VPackBuilder tmp = fillDistribution(connectionTime);
+  VPackBuilder tmp = StatisticsFeature::fillDistribution(connectionStats.connectionTime);
   builder.add("connectionTime", tmp.slice());
 
-  tmp = fillDistribution(totalTime);
+  tmp = StatisticsFeature::fillDistribution(requestStats.totalTime);
   builder.add("totalTime", tmp.slice());
 
-  tmp = fillDistribution(requestTime);
+  tmp = StatisticsFeature::fillDistribution(requestStats.requestTime);
   builder.add("requestTime", tmp.slice());
 
-  tmp = fillDistribution(queueTime);
+  tmp = StatisticsFeature::fillDistribution(requestStats.queueTime);
   builder.add("queueTime", tmp.slice());
 
-  tmp = fillDistribution(ioTime);
+  tmp = StatisticsFeature::fillDistribution(requestStats.ioTime);
   builder.add("ioTime", tmp.slice());
 
-  tmp = fillDistribution(bytesSent);
+  tmp = StatisticsFeature::fillDistribution(requestStats.bytesSent);
   builder.add("bytesSent", tmp.slice());
 
-  tmp = fillDistribution(bytesReceived);
+  tmp = StatisticsFeature::fillDistribution(requestStats.bytesReceived);
   builder.add("bytesReceived", tmp.slice());
   builder.close();
 
   // _httpStatistics()
+  using rest::RequestType;
   builder.add("http", VPackValue(VPackValueType::Object));
-  builder.add("requestsTotal", VPackValue(totalRequests._count));
-  builder.add("requestsAsync", VPackValue(asyncRequests._count));
+  builder.add("requestsTotal", VPackValue(connectionStats.totalRequests.get()));
+  builder.add("requestsSuperuser", VPackValue(connectionStats.totalRequestsSuperuser.get()));
+  builder.add("requestsUser", VPackValue(connectionStats.totalRequestsUser.get()));
+  builder.add("requestsAsync", VPackValue(connectionStats.asyncRequests.get()));
   builder.add("requestsGet",
-              VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::GET].get()));
   builder.add("requestsHead",
-              VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::HEAD].get()));
   builder.add("requestsPost",
-              VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::POST].get()));
   builder.add("requestsPut",
-              VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::PUT].get()));
   builder.add("requestsPatch",
-              VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::PATCH].get()));
   builder.add("requestsDelete",
-              VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()));
   builder.add("requestsOptions",
-              VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()));
   builder.add("requestsOther",
-              VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+              VPackValue(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()));
   builder.close();
 
   // _serverStatistics()
   builder.add("server", VPackValue(VPackValueType::Object));
-  builder.add("uptime", VPackValue(serverInfo._uptime));
-  builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  builder.add("uptime", VPackValue(serverInfo.uptime()));
+  builder.add("physicalMemory", VPackValue(PhysicalMemory::getValue()));
   builder.add("transactions", VPackValue(VPackValueType::Object));
   builder.add("started", VPackValue(serverInfo._transactionsStatistics._transactionsStarted.load()));
   builder.add("aborted", VPackValue(serverInfo._transactionsStatistics._transactionsAborted.load()));
@@ -1193,13 +935,14 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
     V8DealerFeature& dealer = _server.getFeature<V8DealerFeature>();
     if (dealer.isEnabled()) {
       v8Counters = dealer.getCurrentContextNumbers();
-      // see below: memoryStatistics = dealer.getCurrentMemoryNumbers();
+      // see below: memoryStatistics = dealer.getCurrentMemoryDetails();
     }
   }
   builder.add("available", VPackValue(v8Counters.available));
   builder.add("busy", VPackValue(v8Counters.busy));
   builder.add("dirty", VPackValue(v8Counters.dirty));
   builder.add("free", VPackValue(v8Counters.free));
+  builder.add("min", VPackValue(v8Counters.min));
   builder.add("max", VPackValue(v8Counters.max));
   /* at the time being we don't want to write this into the database so the data volume doesn't increase.
   {
@@ -1231,24 +974,6 @@ void StatisticsWorker::generateRawStatistics(VPackBuilder& builder, double const
   builder.close();
 
   builder.close();
-}
-
-VPackBuilder StatisticsWorker::fillDistribution(StatisticsDistribution const& dist) const {
-  VPackBuilder builder;
-  builder.openObject();
-
-  builder.add("sum", VPackValue(dist._total));
-  builder.add("count", VPackValue(dist._count));
-
-  builder.add("counts", VPackValue(VPackValueType::Array));
-  for (auto const& val : dist._counts) {
-    builder.add(VPackValue(val));
-  }
-  builder.close();
-
-  builder.close();
-
-  return builder;
 }
 
 void StatisticsWorker::saveSlice(VPackSlice const& slice, std::string const& collection) const {
@@ -1296,6 +1021,10 @@ void StatisticsWorker::beginShutdown() {
 }
 
 void StatisticsWorker::run() {
+  // statistics queries don't work on DB servers, so we should not 
+  // run the StatisticsWorker on DB servers! 
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+  
   while (ServerState::isMaintenance()) {
     if (isStopping()) {
       // startup aborted
@@ -1314,7 +1043,7 @@ void StatisticsWorker::run() {
   }
 
   uint64_t seconds = 0;
-  while (!isStopping() && StatisticsFeature::enabled()) {
+  while (!isStopping()) {
     seconds++;
     try {
       if (seconds % STATISTICS_INTERVAL == 0) {
@@ -1323,11 +1052,12 @@ void StatisticsWorker::run() {
       }
 
       if (seconds % GC_INTERVAL == 0) {
+        // runs every 8 minutes
         collectGarbage();
       }
 
-      // process every 15 seconds
       if (seconds % HISTORY_INTERVAL == 0) {
+        // process every 15 minutes
         historianAverage();
       }
     } catch (std::exception const& ex) {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,18 +24,24 @@
 #ifndef ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H
 #define ARANGOD_GRAPH_SINGLE_SERVER_EDGE_CURSOR_H 1
 
+#include <memory>
 #include <vector>
 
 #include "Basics/Common.h"
+#include "BaseOptions.h"
 #include "Graph/EdgeCursor.h"
+#include "Indexes/IndexIterator.h"
 
 #include <velocypack/StringRef.h>
 
 namespace arangodb {
 
 class LocalDocumentId;
-struct OperationCursor;
 class LogicalCollection;
+
+namespace aql {
+struct Variable;
+}
 
 namespace transaction {
 class Methods;
@@ -51,18 +57,23 @@ struct SingleServerEdgeDocumentToken;
 
 class SingleServerEdgeCursor final : public EdgeCursor {
  private:
-  BaseOptions* _opts;
+  BaseOptions const* _opts;
   transaction::Methods* _trx;
-  std::vector<std::vector<OperationCursor*>> _cursors;
+  aql::Variable const* _tmpVar;
+  // TODO: make this a flat vector
+  std::vector<std::vector<std::unique_ptr<IndexIterator>>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
+  std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  SingleServerEdgeCursor(BaseOptions* options, size_t,
-                         std::vector<size_t> const* mapping = nullptr);
+  explicit SingleServerEdgeCursor(BaseOptions* options, 
+                                  aql::Variable const* tmpVar,
+                                  std::vector<size_t> const* mapping,
+                                  std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
   ~SingleServerEdgeCursor();
 
@@ -70,17 +81,22 @@ class SingleServerEdgeCursor final : public EdgeCursor {
 
   void readAll(EdgeCursor::Callback const& callback) override;
 
-  std::vector<std::vector<OperationCursor*>>& getCursors() { return _cursors; }
-  
   /// @brief number of HTTP requests performed. always 0 in single server
   size_t httpRequests() const override { return 0; }
-
+  
+  void rearm(arangodb::velocypack::StringRef vertex, uint64_t depth) override;
+  
  private:
   // returns false if cursor can not be further advanced
-  bool advanceCursor(OperationCursor*& cursor, std::vector<OperationCursor*>& cursorSet);
+  bool advanceCursor(IndexIterator*& cursor, std::vector<std::unique_ptr<IndexIterator>>*& cursorSet);
 
-  void getDocAndRunCallback(OperationCursor*, EdgeCursor::Callback const& callback);
+  void getDocAndRunCallback(IndexIterator*, EdgeCursor::Callback const& callback);
+
+  void buildLookupInfo(arangodb::velocypack::StringRef vertex); 
+
+  void addCursor(BaseOptions::LookupInfo const& info, arangodb::velocypack::StringRef vertex);
 };
+
 }  // namespace graph
 }  // namespace arangodb
 

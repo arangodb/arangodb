@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,6 +32,8 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/MaxMapCountFeature.h"
 #include "Basics/FileUtils.h"
+#include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/Result.h"
 #include "Basics/StringUtils.h"
 #include "Basics/operating-system.h"
@@ -78,6 +81,98 @@ void EnvironmentFeature::prepare() {
         << "it is recommended to run a 64 bit build instead because it can "
         << "address significantly bigger regions of memory";
   }
+
+#ifdef __arm__
+  // detect alignment settings for ARM
+  {
+    LOG_TOPIC("6aec3", TRACE, arangodb::Logger::MEMORY) << "running CPU alignment check";
+    // To change the alignment trap behavior, simply echo a number into
+    // /proc/cpu/alignment.  The number is made up from various bits:
+    //
+    // bit             behavior when set
+    // ---             -----------------
+    //
+    // 0               A user process performing an unaligned memory access
+    //                 will cause the kernel to print a message indicating
+    //                 process name, pid, pc, instruction, address, and the
+    //                 fault code.
+    //
+    // 1               The kernel will attempt to fix up the user process
+    //                 performing the unaligned access.  This is of course
+    //                 slow (think about the floating point emulator) and
+    //                 not recommended for production use.
+    //
+    // 2               The kernel will send a SIGBUS signal to the user process
+    //                 performing the unaligned access.
+    bool alignmentDetected = false;
+
+    std::string const filename("/proc/cpu/alignment");
+    try {
+      std::string const cpuAlignment = arangodb::basics::FileUtils::slurp(filename);
+      auto start = cpuAlignment.find("User faults:");
+
+      if (start != std::string::npos) {
+        start += strlen("User faults:");
+        size_t end = start;
+        while (end < cpuAlignment.size()) {
+          if (cpuAlignment[end] == ' ' || cpuAlignment[end] == '\t') {
+            ++end;
+          } else {
+            break;
+          }
+        }
+        while (end < cpuAlignment.size()) {
+          ++end;
+          if (cpuAlignment[end] < '0' || cpuAlignment[end] > '9') {
+            break;
+          }
+        }
+
+        int64_t alignment =
+            std::stol(std::string(cpuAlignment.c_str() + start, end - start));
+        if ((alignment & 2) == 0) {
+          LOG_TOPIC("f1bb9", FATAL, arangodb::Logger::MEMORY)
+              << "possibly incompatible CPU alignment settings found in '" << filename
+              << "'. this may cause arangod to abort with "
+                 "SIGBUS. please set the value in '"
+              << filename << "' to 2";
+          FATAL_ERROR_EXIT();
+        }
+
+        alignmentDetected = true;
+      }
+
+    } catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG_TOPIC("14b8a", TRACE, arangodb::Logger::MEMORY)
+          << "unable to detect CPU alignment settings. could not process file '"
+          << filename << "'";
+    }
+
+    if (!alignmentDetected) {
+      LOG_TOPIC("b8a20", WARN, arangodb::Logger::MEMORY)
+          << "unable to detect CPU alignment settings. could not process file '" << filename
+          << "'. this may cause arangod to abort with SIGBUS. it may be "
+             "necessary to set the value in '"
+          << filename << "' to 2";
+    }
+    std::string const proc_cpuinfo_filename("/proc/cpuinfo");
+    try {
+      std::string const cpuInfo = arangodb::basics::FileUtils::slurp(proc_cpuinfo_filename);
+      auto start = cpuInfo.find("ARMv6");
+
+      if (start != std::string::npos) {
+        LOG_TOPIC("0cfa9", FATAL, arangodb::Logger::MEMORY)
+            << "possibly incompatible ARMv6 CPU detected.";
+        FATAL_ERROR_EXIT();
+      }
+    } catch (...) {
+      // ignore that we cannot detect the alignment
+      LOG_TOPIC("a8305", TRACE, arangodb::Logger::MEMORY)
+          << "unable to detect CPU type '" << filename << "'";
+    }
+  }
+#endif
 
 #ifdef __linux__
   {
@@ -128,7 +223,7 @@ void EnvironmentFeature::prepare() {
           int res = sysinfo(&info);
           if (res == 0) {
             double swapSpace = static_cast<double>(info.totalswap);
-            double ram = static_cast<double>(TRI_PhysicalMemory);
+            double ram = static_cast<double>(PhysicalMemory::getValue());
             double rr = (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
             if (static_cast<double>(r) < 0.99 * rr) {
               LOG_TOPIC("b0a75", WARN, Logger::MEMORY)
@@ -152,6 +247,14 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
+
+  // Report memory and CPUs found:
+  LOG_TOPIC("25362", INFO, Logger::MEMORY)
+    << "Available physical memory: " 
+    << PhysicalMemory::getValue() << " bytes" 
+    << (PhysicalMemory::overridden() ? " (overriden by environment variable)" : "")
+    << ", available cores: " << NumberOfCores::getValue()
+    << (NumberOfCores::overridden() ? " (overriden by environment variable)" : "");
 
   // test local ipv6 support
   try {

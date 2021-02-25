@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,8 +28,8 @@
 #define ARANGOD_AQL_ENUMERATE_EXECUTOR_H
 
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -41,19 +42,17 @@ class Methods;
 
 namespace aql {
 
-class ExecutorInfos;
+struct AqlCall;
+class AqlItemBlockInputRange;
+class RegisterInfos;
 class OutputAqlItemRow;
 class NoStats;
 template <BlockPassthrough>
 class SingleRowFetcher;
 
-class EnumerateListExecutorInfos : public ExecutorInfos {
+class EnumerateListExecutorInfos {
  public:
-  // cppcheck-suppress passedByValue
-  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister,
-                             RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep);
+  EnumerateListExecutorInfos(RegisterId inputRegister, RegisterId outputRegister);
 
   EnumerateListExecutorInfos() = delete;
   EnumerateListExecutorInfos(EnumerateListExecutorInfos&&) = default;
@@ -85,15 +84,41 @@ class EnumerateListExecutor {
   using Infos = EnumerateListExecutorInfos;
   using Stats = NoStats;
 
-  EnumerateListExecutor(Fetcher& fetcher, EnumerateListExecutorInfos&);
+  EnumerateListExecutor(Fetcher&, EnumerateListExecutorInfos&);
   ~EnumerateListExecutor() = default;
+
+  /**
+   * @brief Will fetch a new InputRow if necessary and store their local state
+   *
+   * @return bool done in case we do not have any input and upstreamState is done
+   */
+  void initializeNewRow(AqlItemBlockInputRange& inputRange);
+
+  /**
+   * @brief Will process an found array element
+   */
+  void processArrayElement(OutputAqlItemRow& output);
+
+  /**
+   * @brief Will skip a maximum of n-elements inside the current array
+   */
+  size_t skipArrayElement(size_t skip);
 
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] std::tuple<ExecutorState, Stats, AqlCall> produceRows(
+      AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output);
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] std::tuple<ExecutorState, Stats, size_t, AqlCall> skipRowsRange(
+      AqlItemBlockInputRange& inputRange, AqlCall& call);
 
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos, bool& mustDestroy);
@@ -101,9 +126,8 @@ class EnumerateListExecutor {
 
  private:
   EnumerateListExecutorInfos& _infos;
-  Fetcher& _fetcher;
   InputAqlItemRow _currentRow;
-  ExecutionState _rowState;
+  ExecutorState _currentRowState;
   size_t _inputArrayPosition;
   size_t _inputArrayLength;
 };

@@ -7,9 +7,9 @@
 #ifndef FST_MUTABLE_FST_H_
 #define FST_MUTABLE_FST_H_
 
-#include <stddef.h>
 #include <sys/types.h>
 
+#include <cstddef>
 #include <istream>
 #include <string>
 #include <utility>
@@ -45,7 +45,7 @@ class MutableFst : public ExpandedFst<A> {
   virtual void SetStart(StateId) = 0;
 
   // Sets a state's final weight.
-  virtual void SetFinal(StateId, Weight) = 0;
+  virtual void SetFinal(StateId s, Weight weight = Weight::One()) = 0;
 
   // Sets property bits w.r.t. mask.
   virtual void SetProperties(uint64 props, uint64 mask) = 0;
@@ -53,8 +53,15 @@ class MutableFst : public ExpandedFst<A> {
   // Adds a state and returns its ID.
   virtual StateId AddState() = 0;
 
+  // Adds multiple states.
+  virtual void AddStates(size_t) = 0;
+
   // Adds an arc to state.
-  virtual void AddArc(StateId, const Arc &arc) = 0;
+  virtual void AddArc(StateId, const Arc &) = 0;
+
+  // Adds an arc (passed by rvalue reference) to state. Allows subclasses
+  // to optionally implement move semantics. Defaults to lvalue overload.
+  virtual void AddArc(StateId state, Arc &&arc) { AddArc(state, arc); }
 
   // Deletes some states, preserving original StateId ordering.
   virtual void DeleteStates(const std::vector<StateId> &) = 0;
@@ -63,16 +70,16 @@ class MutableFst : public ExpandedFst<A> {
   virtual void DeleteStates() = 0;
 
   // Delete some arcs at a given state.
-  virtual void DeleteArcs(StateId, size_t n) = 0;
+  virtual void DeleteArcs(StateId, size_t) = 0;
 
   // Delete all arcs at a given state.
   virtual void DeleteArcs(StateId) = 0;
 
   // Optional, best effort only.
-  virtual void ReserveStates(StateId n) {}
+  virtual void ReserveStates(size_t) {}
 
   // Optional, best effort only.
-  virtual void ReserveArcs(StateId s, size_t n) {}
+  virtual void ReserveArcs(StateId, size_t) {}
 
   // Returns input label symbol table or nullptr if not specified.
   const SymbolTable *InputSymbols() const override = 0;
@@ -125,8 +132,9 @@ class MutableFst : public ExpandedFst<A> {
   // filename results in reading from standard input. If convert is true,
   // convert to a mutable FST subclass (given by convert_type) in the case
   // that the input FST is non-mutable.
-  static MutableFst<Arc> *Read(const string &filename, bool convert = false,
-                               const string &convert_type = "vector") {
+  static MutableFst<Arc> *Read(const std::string &filename,
+                               bool convert = false,
+                               const std::string &convert_type = "vector") {
     if (convert == false) {
       if (!filename.empty()) {
         std::ifstream strm(filename,
@@ -278,7 +286,7 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
     GetMutableImpl()->SetStart(s);
   }
 
-  void SetFinal(StateId s, Weight weight) override {
+  void SetFinal(StateId s, Weight weight = Weight::One()) override {
     MutateCheck();
     GetMutableImpl()->SetFinal(s, std::move(weight));
   }
@@ -296,9 +304,19 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
     return GetMutableImpl()->AddState();
   }
 
+  void AddStates(size_t n) override {
+    MutateCheck();
+    return GetMutableImpl()->AddStates(n);
+  }
+
   void AddArc(StateId s, const Arc &arc) override {
     MutateCheck();
     GetMutableImpl()->AddArc(s, arc);
+  }
+
+  void AddArc(StateId s, Arc &&arc) override {
+    MutateCheck();
+    GetMutableImpl()->AddArc(s, std::forward<Arc>(arc));
   }
 
   void DeleteStates(const std::vector<StateId> &dstates) override {
@@ -328,9 +346,9 @@ class ImplToMutableFst : public ImplToExpandedFst<Impl, FST> {
     GetMutableImpl()->DeleteArcs(s);
   }
 
-  void ReserveStates(StateId s) override {
+  void ReserveStates(size_t n) override {
     MutateCheck();
-    GetMutableImpl()->ReserveStates(s);
+    GetMutableImpl()->ReserveStates(n);
   }
 
   void ReserveArcs(StateId s, size_t n) override {

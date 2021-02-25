@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShardingStrategyDefault.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -125,7 +127,8 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
-                              bool docComplete, int& error, VPackStringRef const& key) {
+                              bool docComplete, ErrorCode& error,
+                              VPackStringRef const& key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
@@ -217,31 +220,29 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 }
 
 /// calling getResponsibleShard on this class will always throw an exception
-int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                              bool docComplete, ShardID& shardID,
-                                              bool& usesDefaultShardKeys,
-                                              VPackStringRef const& key) {
+ErrorCode ShardingStrategyNone::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
-/// is only available in the enterprise edition of ArangoDB
+/// is only available in the Enterprise Edition of ArangoDB
 /// calling getResponsibleShard on this class will always throw an exception
 /// with an appropriate error message
 ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string const& name)
     : ShardingStrategy(), _name(name) {}
 
 /// @brief will always throw an exception telling the user the selected sharding
-/// is only available in the enterprise edition
-int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                          bool docComplete, ShardID& shardID,
-                                                          bool& usesDefaultShardKeys,
-                                                          VPackStringRef const& key) {
+/// is only available in the Enterprise Edition
+ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
-          "' is only available in the enterprise edition of ArangoDB");
+          "' is only available in the Enterprise Edition of ArangoDB");
 }
 
 /// @brief base class for hash-based sharding
@@ -266,10 +267,9 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
   }
 }
 
-int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                  bool docComplete, ShardID& shardID,
-                                                  bool& usesDefaultShardKeys,
-                                                  VPackStringRef const& key) {
+ErrorCode ShardingStrategyHashBase::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   static constexpr char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
@@ -279,7 +279,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
@@ -305,7 +305,7 @@ void ShardingStrategyHashBase::determineShards() {
   // determine all available shards (which will stay const afterwards)
   auto& ci =
       _sharding->collection()->vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id()));
+  auto shards = ci.getShardList(std::to_string(_sharding->collection()->id().id()));
 
   _shards = *shards;
 
@@ -320,12 +320,12 @@ void ShardingStrategyHashBase::determineShards() {
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
                                                     std::vector<std::string> const& attributes,
-                                                    bool docComplete, int& error,
+                                                    bool docComplete, ErrorCode& error,
                                                     VPackStringRef const& key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
 
-/// @brief old version of the sharding used in the community edition
+/// @brief old version of the sharding used in the Community Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
@@ -340,7 +340,7 @@ ShardingStrategyCommunityCompat::ShardingStrategyCommunityCompat(ShardingInfo* s
   ::preventUseOnSmartEdgeCollection(_sharding->collection(), NAME);
 }
 
-/// @brief old version of the sharding used in the enterprise edition
+/// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sharding)
     : ShardingStrategyHashBase(sharding) {
@@ -361,16 +361,16 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 }
 
 /// @brief this implementation of "hashByAttributes" is slightly different
-/// than the implementation in the Community version
+/// than the implementation in the Community Edition
 /// we leave the differences in place, because making any changes here
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, VPackStringRef const& key) {
+    bool docComplete, ErrorCode& error, VPackStringRef const& key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 
-/// @brief old version of the sharding used in the enterprise edition
+/// @brief old version of the sharding used in the Enterprise Edition
 /// this is DEPRECATED and should not be used for new collections
 ShardingStrategyEnterpriseCompat::ShardingStrategyEnterpriseCompat(ShardingInfo* sharding)
     : ShardingStrategyEnterpriseBase(sharding) {

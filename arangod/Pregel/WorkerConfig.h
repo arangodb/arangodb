@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,7 +35,6 @@
 
 struct TRI_vocbase_t;
 namespace arangodb {
-class SingleCollectionTransaction;
 namespace pregel {
 
 template <typename V, typename E, typename M>
@@ -59,8 +59,6 @@ class WorkerConfig {
 
   inline bool asynchronousMode() const { return _asynchronousMode; }
 
-  inline bool lazyLoading() const { return _lazyLoading; }
-
   inline bool useMemoryMaps() const { return _useMemoryMaps; }
 
   inline uint64_t parallelism() const { return _parallelism; }
@@ -82,8 +80,8 @@ class WorkerConfig {
 
   inline std::unordered_map<CollectionID, std::string> const& collectionPlanIdMap() const {
     return _collectionPlanIdMap;
-  };
-
+  }
+  
   std::string const& shardIDToCollectionName(ShardID const& shard) const {
     auto const& it = _shardToCollectionName.find(shard);
     if (it != _shardToCollectionName.end()) {
@@ -95,19 +93,19 @@ class WorkerConfig {
   // same content on every worker, has to stay equal!!!!
   inline std::vector<ShardID> const& globalShardIDs() const {
     return _globalShardIDs;
-  };
+  }
 
   // convenvience access without guaranteed order, same values as in
   // vertexCollectionShards
   inline std::vector<ShardID> const& localVertexShardIDs() const {
     return _localVertexShardIDs;
-  };
+  }
 
   // convenvience access without guaranteed order, same values as in
   // edgeCollectionShards
   inline std::vector<ShardID> const& localEdgeShardIDs() const {
     return _localEdgeShardIDs;
-  };
+  }
 
   /// Actual set of pregel shard id's located here
   inline std::set<PregelShard> const& localPregelShardIDs() const {
@@ -116,7 +114,7 @@ class WorkerConfig {
 
   inline PregelShard shardId(ShardID const& responsibleShard) const {
     auto const& it = _pregelShardIDs.find(responsibleShard);
-    return it != _pregelShardIDs.end() ? it->second : (PregelShard)-1;
+    return it != _pregelShardIDs.end() ? it->second : InvalidPregelShard;
   }
 
   // index in globalShardIDs
@@ -124,6 +122,8 @@ class WorkerConfig {
     // TODO cache this? prob small
     return _localPShardIDs_hash.find(shardIndex) != _localPShardIDs_hash.end();
   }
+  
+  std::vector<ShardID> const& edgeCollectionRestrictions(ShardID const& shard) const;
 
   // convert an arangodb document id to a pregel id
   PregelID documentIdToPregel(std::string const& documentID) const;
@@ -135,8 +135,6 @@ class WorkerConfig {
 
   /// Let async
   bool _asynchronousMode = false;
-  /// load vertices on a lazy basis
-  bool _lazyLoading = false;
   bool _useMemoryMaps = false; /// always use mmaps
 
   size_t _parallelism = 1;
@@ -152,6 +150,8 @@ class WorkerConfig {
 
   // Map from edge collection to their shards, only iterated over keep sorted
   std::map<CollectionID, std::vector<ShardID>> _vertexCollectionShards, _edgeCollectionShards;
+  
+  std::unordered_map<CollectionID, std::vector<ShardID>> _edgeCollectionRestrictions;
 
   /// cache these ids as much as possible, since we access them often
   std::unordered_map<std::string, PregelShard> _pregelShardIDs;

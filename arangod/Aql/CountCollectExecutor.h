@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,8 +27,10 @@
 #ifndef ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_COUNT_COLLECT_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -38,17 +41,16 @@ namespace aql {
 
 class InputAqlItemRow;
 class NoStats;
-class ExecutorInfos;
+class RegisterInfos;
 class OutputAqlItemRow;
 template <BlockPassthrough>
 class SingleRowFetcher;
+struct AqlCall;
+class AqlItemBlockInputRange;
 
-class CountCollectExecutorInfos : public ExecutorInfos {
+class CountCollectExecutorInfos {
  public:
-  CountCollectExecutorInfos(RegisterId collectRegister, RegisterId nrInputRegisters,
-                            RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep);
+  explicit CountCollectExecutorInfos(RegisterId collectRegister);
 
   CountCollectExecutorInfos() = delete;
   CountCollectExecutorInfos(CountCollectExecutorInfos&&) = default;
@@ -80,31 +82,33 @@ class CountCollectExecutor {
   CountCollectExecutor() = delete;
   CountCollectExecutor(CountCollectExecutor&&) = default;
   CountCollectExecutor(CountCollectExecutor const&) = delete;
-  CountCollectExecutor(Fetcher& fetcher, Infos&);
+  CountCollectExecutor(Fetcher&, Infos&);
   ~CountCollectExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief produce the next Rows of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  std::pair<ExecutionState, NoStats> produceRows(OutputAqlItemRow& output);
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  void incrCountBy(size_t incr) noexcept;
-
-  uint64_t getCount() noexcept;
-
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
   Infos const& infos() const noexcept;
 
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _state;
-  uint64_t _count;
 };
 
 }  // namespace aql

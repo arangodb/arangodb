@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,8 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GeneralServer/ServerSecurityFeature.h"
 #include "RestEngineHandler.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "GeneralServer/ServerSecurityFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 
@@ -35,9 +37,7 @@ using namespace arangodb::rest;
 
 RestEngineHandler::RestEngineHandler(application_features::ApplicationServer& server,
                                      GeneralRequest* request, GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestBaseHandler(server, request, response) {}
 
 RestStatus RestEngineHandler::execute() {
   // extract the sub-request type
@@ -66,8 +66,7 @@ void RestEngineHandler::handleGet() {
     return;
   }
 
-  auto& server = application_features::ApplicationServer::server();
-  ServerSecurityFeature& security = server.getFeature<ServerSecurityFeature>();
+  ServerSecurityFeature& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // dont leak information about server internals here
@@ -81,16 +80,16 @@ void RestEngineHandler::handleGet() {
 
 void RestEngineHandler::getCapabilities() {
   VPackBuilder result;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getCapabilities(result);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.getCapabilities(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RestEngineHandler::getStats() {
   VPackBuilder result;
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  engine->getStatistics(result);
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+  engine.getStatistics(result);
 
   generateResult(rest::ResponseCode::OK, result.slice());
 }

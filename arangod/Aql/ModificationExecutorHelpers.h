@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -73,7 +74,7 @@ void buildKeyAndRevDocument(VPackBuilder& builder, std::string const& key,
                             std::string const& rev);
 
 // Establishes whether a write is necessary. This is only relevant for
-// SmartGraphs in the enterprise edition. Refer to skipForAqlWrite in
+// SmartGraphs in the Enterprise Edition. Refer to skipForAqlWrite in
 // Enterprise Edition
 bool writeRequired(ModificationExecutorInfos const& infos,
                    VPackSlice const& doc, std::string const& key);
@@ -84,7 +85,7 @@ bool writeRequired(ModificationExecutorInfos const& infos,
 // which are needed in the cluster where a document not found error can happen
 // but not be fatal.
 void throwOperationResultException(ModificationExecutorInfos const& infos,
-                                   OperationResult const& result);
+                                   OperationResult const& operationResult);
 
 // Converts ModificationOptions to OperationOptions
 OperationOptions convertOptions(ModificationOptions const& in, Variable const* outVariableNew,

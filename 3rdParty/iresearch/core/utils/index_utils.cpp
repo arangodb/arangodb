@@ -26,28 +26,28 @@
 
 #include <cmath>
 
-NS_LOCAL
+namespace {
 
 /// @returns percentage of live documents
-inline double_t fill_factor(const irs::segment_meta& segment) NOEXCEPT {
+inline double_t fill_factor(const irs::segment_meta& segment) noexcept {
   return double(segment.live_docs_count)/segment.docs_count;
 }
 
 /// @returns approximated size of a segment in the absence of removals
-inline size_t size_without_removals(const irs::segment_meta& segment) NOEXCEPT{
+inline size_t size_without_removals(const irs::segment_meta& segment) noexcept{
   return size_t(segment.size * fill_factor(segment));
 }
 
-NS_BEGIN(tier)
+namespace tier {
 
 struct segment_stat {
-  segment_stat(const irs::segment_meta& meta) NOEXCEPT
+  segment_stat(const irs::segment_meta& meta) noexcept
     : meta(&meta), 
       size(size_without_removals(meta)),
       fill_factor(::fill_factor(meta)) {
   }
 
-  bool operator<(const segment_stat& rhs) const NOEXCEPT {
+  bool operator<(const segment_stat& rhs) const noexcept {
     auto& lhs = *this;
 
     if (lhs.size == rhs.size) {
@@ -63,7 +63,7 @@ struct segment_stat {
     return lhs.size < rhs.size;
   }
 
-  operator const irs::segment_meta*() const NOEXCEPT {
+  operator const irs::segment_meta*() const noexcept {
     return meta;
   }
 
@@ -76,25 +76,25 @@ struct consolidation_candidate {
   typedef std::set<segment_stat>::const_iterator iterator_t;
   typedef std::pair<iterator_t, iterator_t> range_t;
 
-  explicit consolidation_candidate(iterator_t i) NOEXCEPT
+  explicit consolidation_candidate(iterator_t i) noexcept
     : segments(i, i) {
   }
 
-  iterator_t begin() const NOEXCEPT { return segments.first; }
-  iterator_t end() const NOEXCEPT { return segments.second; }
+  iterator_t begin() const noexcept { return segments.first; }
+  iterator_t end() const noexcept { return segments.second; }
 
-  const segment_stat& front() const NOEXCEPT {
+  const segment_stat& front() const noexcept {
     assert(segments.first != segments.second);
     return *segments.first;
   }
 
-  const segment_stat& back() const NOEXCEPT {
+  const segment_stat& back() const noexcept {
     assert(segments.first != segments.second);
     auto end = segments.second;
     return *(--end);
   }
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     segments = range_t();
     count = 0;
     size = 0;
@@ -112,7 +112,7 @@ double_t consolidation_score(
     const consolidation_candidate& consolidation,
     const size_t segments_per_tier,
     const size_t floor_segment_bytes
-) NOEXCEPT {
+) noexcept {
   // to detect how skewed the consolidation we do the following:
   // 1. evaluate coefficient of variation, less is better
   // 2. good candidates are in range [0;1]
@@ -174,11 +174,11 @@ double_t consolidation_score(
   return score;
 }
 
-NS_END // tier
-NS_END
+} // tier
+}
 
-NS_ROOT
-NS_BEGIN(index_utils)
+namespace iresearch {
+namespace index_utils {
 
 index_writer::consolidation_policy_t consolidation_policy(
     const consolidate_bytes& options) {
@@ -465,10 +465,9 @@ index_writer::consolidation_policy_t consolidation_policy(
 }
 
 void read_document_mask(
-  iresearch::document_mask& docs_mask,
-  const iresearch::directory& dir,
-  const iresearch::segment_meta& meta
-) {
+    irs::document_mask& docs_mask,
+    const irs::directory& dir,
+    const irs::segment_meta& meta) {
   if (!segment_reader::has<document_mask_reader>(meta)) {
     return; // nothing to read
   }
@@ -498,9 +497,5 @@ void flush_index_segment(directory& dir, index_meta::index_segment_t& segment) {
   writer->write(dir, segment.filename, segment.meta);
 }
 
-NS_END // index_utils
-NS_END // NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // index_utils
+} // namespace iresearch {

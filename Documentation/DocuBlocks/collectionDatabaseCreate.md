@@ -15,12 +15,6 @@ to the [naming conventions](../NamingConventions/README.md).
 * *waitForSync* (optional, default *false*): If *true* creating
   a document will only return after the data was synced to disk.
 
-* *journalSize* (optional, default is a
-  global config parameter, **mmfiles-only**): The maximal
-  size of a journal or datafile.  Note that this also limits the maximal
-  size of a single object. Must be at least 1MB.
-  This option is meaningful for the MMFiles storage engine only.
-
 * *isSystem* (optional, default is *false*): If *true*, create a
   system collection. In this case *collection-name* should start with
   an underscore. End users should normally create non-system collections
@@ -88,29 +82,10 @@ to the [naming conventions](../NamingConventions/README.md).
   especially if your collection has a subset of frequently accessed keys. Please test this feature
   carefully to ensure that it does not adversely affect the performance of your system.
 
-* *isVolatile* (optional, default is *false*, **mmfiles-only**): If *true* then the
-  collection data is kept in-memory only and not made persistent. Unloading
-  the collection will cause the collection data to be discarded. Stopping
-  or re-starting the server will also cause full loss of data in the
-  collection. Setting this option will make the resulting collection be
-  slightly faster than regular collections because ArangoDB does not
-  enforce any synchronization to disk and does not calculate any CRC
-  checksums for datafiles (as there are no datafiles).
-  This option is meaningful for the MMFiles storage engine only.
-
-* *indexBuckets* (optional, default is *16*, **mmfiles-only**): The number of buckets 
-  into which indexes using a hash table are split. The default is 16 and 
-  this number has to be a power of 2 and less than or equal to 1024. 
-
-  For very large collections one should increase this to avoid long pauses 
-  when the hash table has to be initially built or resized, since buckets 
-  are resized individually and can be initially built in parallel. For 
-  example, 64 might be a sensible value for a collection with 100
-  000 000 documents. Currently, only the edge index respects this
-  value, but other index types might follow in future ArangoDB versions. 
-  Changes (see below) are applied when the collection is loaded the next 
-  time.
-  This option is meaningful for the MMFiles storage engine only.
+* *schema* (optional, default is *null*): 
+  Object that specifies the collection level schema for documents.
+  The attribute keys `rule`, `level` and `message` must follow the rules
+  documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 `db._create(collection-name, properties, type)`
 
@@ -131,8 +106,7 @@ With defaults:
 With properties:
 
 @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateProperties}
-  |c = db._create("users", { waitForSync : true,
-           journalSize : 1024 * 1204});
+  c = db._create("users", { waitForSync: true });
   c.properties();
 ~ db._drop("users");
 @END_EXAMPLE_ARANGOSH_OUTPUT

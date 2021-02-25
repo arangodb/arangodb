@@ -21,10 +21,10 @@ transactions as well as intermediate commits done for the server queried. The
 intermediate commit count will only take non zero values for the RocksDB
 storage engine. Coordinators do almost no local transactions themselves in
 their local databases, therefor cluster transactions (transactions started on a
-coordinator that require DBServers to finish before the transactions is
+Coordinator that require DB-Servers to finish before the transactions is
 committed cluster wide) are just added to their local statistics. This means
 that the statistics you would see for a single server is roughly what you can
-expect in a cluster setup using a single coordinator querying this coordinator.
+expect in a cluster setup using a single Coordinator querying this Coordinator.
 Just with the difference that cluster transactions have no notion of
 intermediate commits and will not increase the value.
 
@@ -32,6 +32,9 @@ intermediate commits and will not increase the value.
 
 @RESTRETURNCODE{200}
 Statistics were returned successfully.
+
+@RESTRETURNCODE{404}
+Statistics are disabled on the instance.
 
 @RESTREPLYBODY{error,boolean,required,}
 boolean flag to indicate whether an error occurred (*false* in this case)
@@ -184,7 +187,10 @@ the number of contexts that were previously used, and should now be garbage coll
 the number of V8 contexts that are free to use
 
 @RESTSTRUCT{max,v8_context_struct,integer,required,}
-the total number of V8 contexts we may spawn as configured by --javascript.v8-contexts
+the maximum number of V8 concurrent contexts we may spawn as configured by --javascript.v8-contexts
+
+@RESTSTRUCT{min,v8_context_struct,integer,required,}
+the minimum number of V8 contexts that are spawned as configured by --javascript.v8-contexts-minimum
 
 @RESTSTRUCT{memory,v8_context_struct,array,required,v8_isolate_memory}
 a list of V8 memory / garbage collection watermarks; Refreshed on every garbage collection run;

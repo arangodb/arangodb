@@ -1,6 +1,6 @@
 /* jshint unused: false */
 /* global window, $, Backbone, document, d3, ReactDOM */
-/* global $, arangoHelper, btoa, atob, _, frontendConfig */
+/* global arangoHelper, btoa, atob, _, frontendConfig */
 
 (function () {
   'use strict';
@@ -23,6 +23,7 @@
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
       'cSettings/:colname': 'cSettings',
+      'cSchema/:colname': 'cSchema',
       'cInfo/:colname': 'cInfo',
       'collection/:colid/:docid': 'document',
       'shell': 'shell',
@@ -139,6 +140,7 @@
 
     listener: function (event) {
       _.each(window.App.listenerFunctions, function (func, key) {
+        void (key);
         func(event);
       });
     },
@@ -231,13 +233,15 @@
 
       // foxx repository
       this.foxxRepo = new window.FoxxRepository();
-      this.foxxRepo.fetch({
-        success: function () {
-          if (self.serviceInstallView) {
-            self.serviceInstallView.collection = self.foxxRepo;
+      if (frontendConfig.foxxStoreEnabled) {
+        this.foxxRepo.fetch({
+          success: function () {
+            if (self.serviceInstallView) {
+              self.serviceInstallView.collection = self.foxxRepo;
+            }
           }
-        }
-      });
+        });
+      }
 
       window.progressView = new window.ProgressView();
 
@@ -694,6 +698,28 @@
       });
     },
 
+    cSchema: function (colname, initialized) {
+      var self = this;
+
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.cSchema.bind(this), colname);
+        return;
+      }
+      this.arangoCollectionsStore.fetch({
+        cache: false,
+        success: function () {
+          self.settingsView = new window.ValidationView({
+            collectionName: colname,
+            collection: self.arangoCollectionsStore.findWhere({
+              name: colname
+            })
+          });
+          self.settingsView.render();
+        }
+      });
+    },
+
     cInfo: function (colname, initialized) {
       var self = this;
 
@@ -767,10 +793,11 @@
       this.documentView.render();
 
       var callback = function (error, type) {
+        void (type);
         if (!error) {
           this.documentView.setType();
         } else {
-          console.log('Error', 'Could not fetch collection type');
+          this.documentView.renderNotFound(colid, true);
         }
       }.bind(this);
 
@@ -1141,6 +1168,9 @@
       }
       if (this.documentView && Backbone.history.getFragment().indexOf('collection') > -1) {
         this.documentView.resize();
+      }
+      if (this.validationView && Backbone.history.getFragment().indexOf('cSchema') > -1) {
+        this.validationView.resize();
       }
     },
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterCollection.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
@@ -33,7 +36,6 @@
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "MMFiles/MMFilesCollection.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -43,7 +45,7 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
@@ -62,41 +64,16 @@ ClusterCollection::ClusterCollection(LogicalCollection& collection, ClusterEngin
       _engineType(engineType),
       _info(info),
       _selectivityEstimates(collection) {
-  // duplicate all the error handling
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
-
-    if (isVolatile && _logicalCollection.waitForSync()) {
-      // Illegal collection configuration
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections do not support the waitForSync option");
-    }
-
-    VPackSlice journalSlice = _info.slice().get("journalSize");
-
-    if (journalSlice.isNone()) {
-      // In some APIs maximalSize is allowed instead
-      journalSlice = _info.slice().get("maximalSize");
-    }
-
-    if (journalSlice.isNumber()) {
-      if (journalSlice.getNumericValue<uint32_t>() < TRI_JOURNAL_MINIMAL_SIZE) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "<properties>.journalSize too small");
-      }
-    }
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    VPackSlice s = info.get("isVolatile");
-    if (s.isBoolean() && s.getBoolean()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections are unsupported in the RocksDB engine");
-    }
-  } else if (_engineType != ClusterEngineType::MockEngine) {
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    return;
   }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  if (_engineType == ClusterEngineType::MockEngine) {
+    return;
+  }
+#endif
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
 }
 
 ClusterCollection::ClusterCollection(LogicalCollection& collection,
@@ -111,13 +88,8 @@ ClusterCollection::~ClusterCollection() = default;
 /// @brief fetches current index selectivity estimates
 /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
 /// to fetch current values!
-IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TRI_voc_tick_t tid) {
+IndexEstMap ClusterCollection::clusterIndexEstimates(bool allowUpdating, TransactionId tid) {
   return _selectivityEstimates.get(allowUpdating, tid);
-}
-
-/// @brief sets the current index selectivity estimates
-void ClusterCollection::setClusterIndexEstimates(IndexEstMap&& estimates) {
-  _selectivityEstimates.set(std::move(estimates));
 }
 
 /// @brief flushes the current index selectivity estimates
@@ -129,65 +101,24 @@ std::string const& ClusterCollection::path() const {
   return StaticStrings::Empty;  // we do not have any path
 }
 
-void ClusterCollection::setPath(std::string const&) {
-  // we do not have any path
-}
-
 Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync) {
   VPackBuilder merge;
   merge.openObject();
 
-  // duplicate all the error handling of the storage engines
-  if (_engineType == ClusterEngineType::MMFilesEngine) {  // duplicate the error validation
-    // validation
-    uint32_t tmp = Helper::getNumericValue<uint32_t>(slice, "indexBuckets", 2 /*Just for validation, this default Value passes*/);
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    bool def = Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false);
+    merge.add(StaticStrings::CacheEnabled,
+              VPackValue(Helper::getBooleanValue(slice, StaticStrings::CacheEnabled, def)));
 
-    if (tmp == 0 || tmp > 1024) {
-      return {TRI_ERROR_BAD_PARAMETER,
-              "indexBuckets must be a two-power between 1 and 1024"};
+    auto validators = slice.get(StaticStrings::Schema);
+    if (!validators.isNone()) {
+      merge.add(StaticStrings::Schema, validators);
     }
-
-    bool isVolatile = Helper::getBooleanValue(_info.slice(), "isVolatile", false);
-    if (isVolatile && arangodb::basics::VelocyPackHelper::getBooleanValue(
-                          slice, "waitForSync", _logicalCollection.waitForSync())) {
-      // the combination of waitForSync and isVolatile makes no sense
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "volatile collections do not support the waitForSync option");
-    }
-
-    if (isVolatile != Helper::getBooleanValue(slice, "isVolatile", isVolatile)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "isVolatile option cannot be changed at runtime");
-    }
-    VPackSlice journalSlice = slice.get("journalSize");
-    if (journalSlice.isNone()) {
-      // In some APIs maximalSize is allowed instead
-      journalSlice = slice.get("maximalSize");
-    }
-    uint32_t journalSize =
-        Helper::getNumericValue<uint32_t>(_info.slice(), "journalSize", TRI_JOURNAL_DEFAULT_SIZE);
-    if (journalSlice.isNumber()) {
-      journalSize = journalSlice.getNumericValue<uint32_t>();
-      if (journalSize < TRI_JOURNAL_MINIMAL_SIZE) {
-        return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
-      }
-    }
-
-    merge.add("doCompact",
-              VPackValue(Helper::getBooleanValue(slice, "doCompact", true)));
-    merge.add("indexBuckets",
-              VPackValue(Helper::getNumericValue(slice, "indexBuckets",
-                                                  MMFilesCollection::defaultIndexBuckets)));
-    merge.add("journalSize", VPackValue(journalSize));
-
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    bool def = Helper::getBooleanValue(_info.slice(), "cacheEnabled", false);
-    merge.add("cacheEnabled",
-              VPackValue(Helper::getBooleanValue(slice, "cacheEnabled", def)));
-
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
@@ -213,12 +144,6 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   return TRI_ERROR_NO_ERROR;
 }
 
-arangodb::Result ClusterCollection::persistProperties() {
-  // only code path calling this causes these properties to be
-  // already written in RocksDBEngine::changeCollection()
-  return Result();
-}
-
 PhysicalCollection* ClusterCollection::clone(LogicalCollection& logical) const {
   return new ClusterCollection(logical, this);
 }
@@ -228,36 +153,29 @@ void ClusterCollection::getPropertiesVPack(velocypack::Builder& result) const {
   // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
 
-  if (_engineType == ClusterEngineType::MMFilesEngine) {
-    result.add("doCompact",
-               VPackValue(Helper::getBooleanValue(_info.slice(), "doCompact", true)));
-    result.add("indexBuckets",
-               VPackValue(Helper::getNumericValue(_info.slice(), "indexBuckets",
-                                                   MMFilesCollection::defaultIndexBuckets)));
-    result.add("isVolatile",
-               VPackValue(Helper::getBooleanValue(_info.slice(), "isVolatile", false)));
-    result.add("journalSize",
-               VPackValue(Helper::getNumericValue(_info.slice(), "journalSize",
-                                                   TRI_JOURNAL_DEFAULT_SIZE)));
-
-  } else if (_engineType == ClusterEngineType::RocksDBEngine) {
-    result.add("cacheEnabled",
-               VPackValue(Helper::getBooleanValue(_info.slice(), "cacheEnabled", false)));
-
-  } else if (_engineType != ClusterEngineType::MockEngine) {
+  if (_engineType == ClusterEngineType::RocksDBEngine) {
+    result.add(StaticStrings::CacheEnabled,
+               VPackValue(Helper::getBooleanValue(_info.slice(), StaticStrings::CacheEnabled, false)));
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (_engineType == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid storage engine");
   }
 }
 
 /// @brief return the figures for a collection
-futures::Future<OperationResult> ClusterCollection::figures() {
+futures::Future<OperationResult> ClusterCollection::figures(bool details,
+                                                            OperationOptions const& options) {
   auto& feature = _logicalCollection.vocbase().server().getFeature<ClusterFeature>();
   return figuresOnCoordinator(feature, _logicalCollection.vocbase().name(),
-                              std::to_string(_logicalCollection.id()));
+                              std::to_string(_logicalCollection.id().id()),
+                              details, options);
 }
 
-void ClusterCollection::figuresSpecific(arangodb::velocypack::Builder& builder) {
+void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::Builder& /*builder*/) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);  // not used here
 }
 
@@ -284,7 +202,7 @@ void ClusterCollection::unload() {
   }
 }
 
-TRI_voc_rid_t ClusterCollection::revision(transaction::Methods* trx) const {
+RevisionId ClusterCollection::revision(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -295,21 +213,19 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 /// @brief report extra memory used by indexes etc.
 size_t ClusterCollection::memory() const { return 0; }
 
-void ClusterCollection::open(bool ignoreErrors) {}
-
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
   WRITE_LOCKER(guard, _indexesLock);
   TRI_ASSERT(indexesSlice.isArray());
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
   std::vector<std::shared_ptr<Index>> indexes;
 
   if (indexesSlice.length() == 0 && _indexes.empty()) {
-    engine->indexFactory().fillSystemIndexes(_logicalCollection, indexes);
+    engine.indexFactory().fillSystemIndexes(_logicalCollection, indexes);
 
   } else {
-    engine->indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
+    engine.indexFactory().prepareIndexes(_logicalCollection, indexesSlice, indexes);
   }
 
   for (std::shared_ptr<Index>& idx : indexes) {
@@ -353,12 +269,12 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
     return idx;
   }
 
-  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  TRI_ASSERT(engine != nullptr);
+  StorageEngine& engine =
+      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
-  idx = engine->indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
+  idx = engine.indexFactory().prepareIndexFromSlice(info, true, _logicalCollection, false);
   TRI_ASSERT(idx != nullptr);
 
   // In the coordinator case we do not fill the index
@@ -369,10 +285,9 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
 }
 
 /// @brief Drop an index with the given iid.
-bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
+bool ClusterCollection::dropIndex(IndexId iid) {
   // usually always called when _exclusiveLock is held
-  if (iid == 0) {
-    // invalid index id or primary index
+  if (iid.empty() || iid.isPrimary()) {
     return true;
   }
 
@@ -381,90 +296,82 @@ bool ClusterCollection::dropIndex(TRI_idx_iid_t iid) {
     if (iid == it->id()) {
       _indexes.erase(it);
       events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                        std::to_string(iid), TRI_ERROR_NO_ERROR);
+                        std::to_string(iid.id()), TRI_ERROR_NO_ERROR);
       return true;
     }
   }
 
   // We tried to remove an index that does not exist
   events::DropIndex(_logicalCollection.vocbase().name(), _logicalCollection.name(),
-                    std::to_string(iid), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+                    std::to_string(iid.id()), TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   return false;
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* trx) const {
+std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Methods* /*trx*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-////////////////////////////////////
-// -- SECTION DML Operations --
-///////////////////////////////////
-
-Result ClusterCollection::truncate(transaction::Methods& trx, OperationOptions& options) {
+Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptions& /*options*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
-  
+
 /// @brief compact-data operation
 Result ClusterCollection::compact() {
   return {};
 }
 
-LocalDocumentId ClusterCollection::lookupKey(transaction::Methods* trx,
-                                             VPackSlice const& key) const {
+Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
+                                    std::pair<LocalDocumentId, RevisionId>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::read(transaction::Methods* trx,
-                               arangodb::velocypack::StringRef const& key,
-                               ManagedDocumentResult& result, bool) {
+Result ClusterCollection::read(transaction::Methods* /*trx*/,
+                               arangodb::velocypack::StringRef const& /*key*/,
+                               IndexIterator::DocumentCallback const& /*cb*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocument(transaction::Methods* trx,
-                                     LocalDocumentId const& documentId,
-                                     ManagedDocumentResult& result) const {
+bool ClusterCollection::read(transaction::Methods* /*trx*/,
+                             LocalDocumentId const& /*documentId*/,
+                             IndexIterator::DocumentCallback const& /*cb*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 // read using a token!
-bool ClusterCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 LocalDocumentId const& documentId,
-                                                 IndexIterator::DocumentCallback const& cb) const {
+bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
+                                     LocalDocumentId const& /*documentId*/,
+                                     ManagedDocumentResult& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::insert(arangodb::transaction::Methods*,
                                  arangodb::velocypack::Slice const,
                                  arangodb::ManagedDocumentResult&,
-                                 OperationOptions&, bool /*lock*/,
-                                 KeyLockInfo* /*keyLock*/,
-                                 std::function<void()> const&) {
+                                 OperationOptions&) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::update(arangodb::transaction::Methods* trx,
-                                 arangodb::velocypack::Slice const newSlice,
+                                 arangodb::velocypack::Slice newSlice,
                                  ManagedDocumentResult& mdr, OperationOptions& options,
-                                 bool /*lock*/, ManagedDocumentResult& previous) {
+                                 ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::replace(transaction::Methods* trx,
-                                  arangodb::velocypack::Slice const newSlice,
+                                  arangodb::velocypack::Slice newSlice,
                                   ManagedDocumentResult& mdr, OperationOptions& options,
-                                  bool /*lock*/, ManagedDocumentResult& previous) {
+                                  ManagedDocumentResult& previous) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 Result ClusterCollection::remove(transaction::Methods& trx, velocypack::Slice slice,
-                                 ManagedDocumentResult& previous, OperationOptions& options,
-                                 bool /*lock*/, KeyLockInfo* /*keyLock*/, std::function<void()> const& /*callbackDuringLock*/
-) {
+                                 ManagedDocumentResult& previous, OperationOptions& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

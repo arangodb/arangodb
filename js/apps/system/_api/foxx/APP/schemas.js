@@ -7,7 +7,7 @@ exports.mount = joi.string().regex(/(?:\/[-_0-9a-z]+)+/i).required();
 exports.flag = joi.alternatives().try(
   joi.boolean(),
   joi.number().integer().min(0).max(1)
-).default(false);
+);
 
 exports.shortInfo = joi.object({
   mount: exports.mount,

@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 params=("$@")
 
+ulimit -H -n 131072 || true
+ulimit -S -n 131072 || true
+
 rm -rf cluster
 if [ -d cluster-init ];then
   echo "== creating cluster directory from existing cluster-init directory"
@@ -51,17 +54,7 @@ if [ "$POOLSZ" == "" ] ; then
   POOLSZ=$NRAGENTS
 fi
 
-if [ -z "$USE_ROCKSDB" ] ; then
-  #default engine is RocksDB
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-elif [ "$USE_ROCKSDB" == "0" ]; then 
-  #explicitly disable RocksDB engine, so use MMFiles
-  STORAGE_ENGINE="--server.storage-engine=mmfiles"
-else 
-  #any value other than "0" means RocksDB engine
-  STORAGE_ENGINE="--server.storage-engine=rocksdb"
-fi
-DEFAULT_REPLICATION=""
+STORAGE_ENGINE="--server.storage-engine=rocksdb"
 
 if [ "$AUTOUPGRADE" == "1" ];then
   echo "-- Using autoupgrade procedure"
@@ -130,8 +123,8 @@ if [ ! -z "$INTERACTIVE_MODE" ] ; then
         CO_ARANGOD="$XTERM $XTERMOPTIONS ${BUILD}/bin/arangod --console"
         echo "Starting one coordinator in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
-        ARANGOD="$XTERM $XTERMOPTIONS rr ${BUILD}/bin/arangod"
-        CO_ARANGOD="$ARANGOD --console"
+        ARANGOD="rr ${BUILD}/bin/arangod"
+        CO_ARANGOD="$ARANGOD"
         echo Running cluster in rr with --console.
     fi
 else
@@ -160,11 +153,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
           --database.directory cluster/data$PORT \
           --javascript.enabled false \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-          --server.statistics false \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.force-direct false \
           --log.level $LOG_LEVEL_AGENCY \
-          --javascript.allow-admin-execute true \
+          --server.descriptors-minimum 0 \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -187,11 +180,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --database.directory cluster/data$PORT \
         --javascript.enabled false \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-        --server.statistics false \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.force-direct false \
         --log.level $LOG_LEVEL_AGENCY \
-        --javascript.allow-admin-execute true \
+        --server.descriptors-minimum 0 \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \
@@ -200,6 +193,11 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
+    if [ "$NRDBSERVERS" == "1" ]; then
+        SYSTEM_REPLICATION_FACTOR="--cluster.system-replication-factor=1"
+    else
+        SYSTEM_REPLICATION_FACTOR=""
+    fi
 
     if [ "$1" == "dbserver" ]; then
         ROLE="DBSERVER"
@@ -234,6 +232,7 @@ start() {
           --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
           --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
           --cluster.my-role $ROLE \
+          --log.role true \
           --log.file cluster/$PORT.log \
           --log.level $LOG_LEVEL \
           --server.statistics true \
@@ -242,7 +241,9 @@ start() {
           --javascript.app-path cluster/apps$PORT \
           --log.force-direct false \
           --log.level $LOG_LEVEL_CLUSTER \
+          --server.descriptors-minimum 0 \
           --javascript.allow-admin-execute true \
+          $SYSTEM_REPLICATION_FACTOR \
           $STORAGE_ENGINE \
           $AUTHENTICATION \
           $SSLKEYFILE \
@@ -257,6 +258,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
+        --log.role true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
@@ -266,7 +268,9 @@ start() {
         --log.force-direct false \
         --log.thread true \
         --log.level $LOG_LEVEL_CLUSTER \
+        --server.descriptors-minimum 0 \
         --javascript.allow-admin-execute true \
+        $SYSTEM_REPLICATION_FACTOR \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
         $SSLKEYFILE \

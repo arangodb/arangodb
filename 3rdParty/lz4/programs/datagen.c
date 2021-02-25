@@ -31,6 +31,7 @@
 #include <stdlib.h>    /* malloc */
 #include <stdio.h>     /* FILE, fwrite */
 #include <string.h>    /* memcpy */
+#include <assert.h>
 
 
 /**************************************
@@ -78,7 +79,10 @@ static void RDG_fillLiteralDistrib(litDistribTable lt, double ld)
     while (u<LTSIZE) {
         U32 const weight = (U32)((double)(LTSIZE - u) * ld) + 1;
         U32 const end = MIN(u+weight, LTSIZE);
-        while (u < end) lt[u++] = character;
+        while (u < end) {
+            assert(u<LTSIZE);  /* try to ease static analyzer. u < end <= LTSIZE */
+            lt[u++] = character;
+        }
         character++;
         if (character > lastChar) character = firstChar;
     }
@@ -103,13 +107,11 @@ void RDG_genBlock(void* buffer, size_t buffSize, size_t prefixSize, double match
     U32* seed = seedPtr;
 
     /* special case */
-    while (matchProba >= 1.0)
-    {
+    while (matchProba >= 1.0) {
         size_t size0 = RDG_rand(seed) & 3;
         size0  = (size_t)1 << (16 + size0 * 2);
         size0 += RDG_rand(seed) & (size0-1);   /* because size0 is power of 2*/
-        if (buffSize < pos + size0)
-        {
+        if (buffSize < pos + size0) {
             memset(buffPtr+pos, 0, buffSize-pos);
             return;
         }
@@ -125,11 +127,9 @@ void RDG_genBlock(void* buffer, size_t buffSize, size_t prefixSize, double match
     }
 
     /* Generate compressible data */
-    while (pos < buffSize)
-    {
+    while (pos < buffSize) {
         /* Select : Literal (char) or Match (within 32K) */
-        if (RDG_RAND15BITS < matchProba32)
-        {
+        if (RDG_RAND15BITS < matchProba32) {
             /* Copy (within 32K) */
             size_t match;
             size_t d;
@@ -140,9 +140,7 @@ void RDG_genBlock(void* buffer, size_t buffSize, size_t prefixSize, double match
             d = pos + length;
             if (d > buffSize) d = buffSize;
             while (pos < d) buffPtr[pos++] = buffPtr[match++];
-        }
-        else
-        {
+        } else {
             /* Literal (noise) */
             size_t d;
             size_t length = RDG_RANDLENGTH;
@@ -180,12 +178,11 @@ void RDG_genOut(unsigned long long size, double matchProba, double litProba, uns
     RDG_genBlock(buff, RDG_DICTSIZE, 0, matchProba, lt, &seed);
 
     /* Generate compressible data */
-    while (total < size)
-    {
+    while (total < size) {
         RDG_genBlock(buff, RDG_DICTSIZE+RDG_BLOCKSIZE, RDG_DICTSIZE, matchProba, lt, &seed);
         if (size-total < RDG_BLOCKSIZE) genBlockSize = (size_t)(size-total);
         total += genBlockSize;
-        fwrite(buff, 1, genBlockSize, stdout);
+        fwrite(buff, 1, genBlockSize, stdout);  /* should check potential write error */
         /* update dict */
         memcpy(buff, buff + RDG_BLOCKSIZE, RDG_DICTSIZE);
     }

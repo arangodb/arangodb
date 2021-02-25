@@ -247,21 +247,12 @@ function getCompactPlan (explainResult) {
   return out;
 }
 
-function findExecutionNodes (plan, nodetype) {
-  var matches = [];
-  var what = plan;
+function findExecutionNodes (plan, nodeType) {
+  let what = plan;
   if (plan.hasOwnProperty('plan')) {
     what = plan.plan;
   }
-  what.nodes.forEach(function(node) {
-    if (nodetype === undefined || node.type === nodetype) {
-      matches.push(node);
-    } else if (node.type === 'SubqueryNode') {
-      var subPlan = {'plan': node.subquery};
-      matches = matches.concat(findExecutionNodes(subPlan, nodetype));
-    }
-  });
-  return matches;
+  return what.nodes.filter((node) => nodeType === undefined || node.type === nodeType);
 }
 
 function findReferencedNodes (plan, testNode) {
@@ -381,21 +372,18 @@ function removeClusterNodesFromPlan (nodes) {
   });
 }
 
-function roundCost (obj) {
+/// @brief recursively removes keys named "estimatedCost" or "selectivityEstimate" of a given object
+/// used in tests where we do not want to test those values because of floating-point values used in "AsserEqual"
+/// This method should only be used where we explicitly don't want to test those values. 
+function removeCost (obj) {
   if (Array.isArray(obj)) {
-    return obj.map(roundCost);
+    return obj.map(removeCost);
   } else if (typeof obj === 'object') {
-    var result = {};
+    let result = {};
     for (var key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        if (key === "estimatedCost") {
-          result[key] = Math.round(obj[key]);
-        } else if (key === "selectivityEstimate") {
-          // Round the estimate to 3 digits after ,
-          result[key] = obj[key].toFixed(3);
-        } else {
-          result[key] = roundCost(obj[key]);
-        }
+      if (obj.hasOwnProperty(key) &&
+          key !== "estimatedCost" && key !== "selectivityEstimate") {
+        result[key] = removeCost(obj[key]);
       }
     }
     return result;
@@ -403,7 +391,6 @@ function roundCost (obj) {
     return obj;
   }
 }
-
 
 exports.getParseResults = getParseResults;
 exports.assertParseError = assertParseError;
@@ -422,4 +409,4 @@ exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules = removeAlwaysOnClusterRules;
 exports.removeClusterNodes = removeClusterNodes;
 exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
-exports.roundCost = roundCost;
+exports.removeCost = removeCost;

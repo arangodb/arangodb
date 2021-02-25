@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,26 +23,35 @@
 
 #include "TraverserCacheFactory.h"
 
+#include "Aql/QueryContext.h"
+#include "Cache/Cache.h"
+#include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserDocumentCache.h"
-#include "Logger/Logger.h"
-#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
-using namespace arangodb::graph::cacheFactory;
+using namespace arangodb::graph::CacheFactory;
 
-TraverserCache* cacheFactory::CreateCache(
-    arangodb::aql::Query* query, bool activateDocumentCache,
-    std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines, BaseOptions const* opts) {
+TraverserCache* CacheFactory::CreateCache(
+    arangodb::aql::QueryContext& query, bool activateDocumentCache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines, BaseOptions* opts) {
   if (ServerState::instance()->isCoordinator()) {
     return new ClusterTraverserCache(query, engines, opts);
   }
   if (activateDocumentCache) {
-    return new TraverserDocumentCache(query, opts);
+    auto cacheManager =
+        query.vocbase().server().getFeature<CacheManagerFeature>().manager();
+    if (cacheManager != nullptr) {
+      std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(cache::CacheType::Plain);
+      if (cache != nullptr) {
+        return new TraverserDocumentCache(query, std::move(cache), opts);
+      }
+    }
+    // fallthrough intentional
   }
   return new TraverserCache(query, opts);
 }

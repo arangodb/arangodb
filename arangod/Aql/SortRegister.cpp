@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,7 +50,7 @@ void SortRegister::fill(ExecutionPlan const& /*execPlan*/, RegisterPlan const& r
     auto const varId = p.var->id;
     auto const it = vars.find(varId);
     TRI_ASSERT(it != vars.end());
-    TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+    TRI_ASSERT(it->second.registerId.isValid());
     sortRegisters.emplace_back(it->second.registerId, p);
   }
 }

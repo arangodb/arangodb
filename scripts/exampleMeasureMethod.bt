@@ -1,0 +1,15 @@
+#!/usr/bin/env bpftrace
+
+// To use this you have to install bpftrace and compile with -DUSE_DTRACE.
+// Then simply execute this script. It will output a single line for each
+// time /_api/version is requested and the nanoseconds the execute method
+// of the RestHandler ran.
+
+uprobe:build/bin/arangod:_ZN8arangodb18RestVersionHandler7executeEv {
+  @T[tid] = nsecs;
+}
+
+uretprobe:build/bin/arangod:_ZN8arangodb18RestVersionHandler7executeEv {
+  printf("VersionHandler: %lld\n", nsecs - @T[tid]);
+} 
+

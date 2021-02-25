@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,8 +25,6 @@
 #define APPLICATION_FEATURES_GENERAL_SERVER_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Aql/QueryRegistry.h"
-#include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -34,48 +33,6 @@ namespace arangodb {
 class RestServerThread;
 
 class GeneralServerFeature final : public application_features::ApplicationFeature {
- public:
-  static rest::RestHandlerFactory* HANDLER_FACTORY;
-  static rest::AsyncJobManager* JOB_MANAGER;
-
- public:
-  static double keepAliveTimeout() {
-    return GENERAL_SERVER != nullptr ? GENERAL_SERVER->_keepAliveTimeout : 300.0;
-  };
-
-  static bool hasProxyCheck() {
-    return GENERAL_SERVER != nullptr && GENERAL_SERVER->proxyCheck();
-  }
-
-  static std::vector<std::string> getTrustedProxies() {
-    if (GENERAL_SERVER == nullptr) {
-      return std::vector<std::string>();
-    }
-
-    return GENERAL_SERVER->trustedProxies();
-  }
-
-  static bool allowMethodOverride() {
-    if (GENERAL_SERVER == nullptr) {
-      return false;
-    }
-
-    return GENERAL_SERVER->_allowMethodOverride;
-  }
-
-  static std::vector<std::string> const& accessControlAllowOrigins() {
-    static std::vector<std::string> empty;
-
-    if (GENERAL_SERVER == nullptr) {
-      return empty;
-    }
-
-    return GENERAL_SERVER->_accessControlAllowOrigins;
-  }
-
- private:
-  static GeneralServerFeature* GENERAL_SERVER;
-
  public:
   explicit GeneralServerFeature(application_features::ApplicationServer& server);
 
@@ -86,11 +43,19 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
- 
-  bool proxyCheck() const { return _proxyCheck; }
-  std::vector<std::string> trustedProxies() const { return _trustedProxies; }
- 
+
+  double keepAliveTimeout() const;
+  bool proxyCheck() const;
+  std::vector<std::string> trustedProxies() const;
+  bool allowMethodOverride() const;
+  std::vector<std::string> const& accessControlAllowOrigins() const;
+  Result reloadTLS();
+
+  rest::RestHandlerFactory& handlerFactory();
+  rest::AsyncJobManager& jobManager();
+
  private:
+
   void buildServers();
   void defineHandlers();
 
@@ -102,7 +67,6 @@ class GeneralServerFeature final : public application_features::ApplicationFeatu
   std::vector<std::string> _accessControlAllowOrigins;
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
-  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
   uint64_t _numIoThreads;
 };

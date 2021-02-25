@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "Aql/QueryResult.h"
 #include "VocBase/vocbase.h"
 
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -35,6 +37,30 @@ using namespace arangodb::aql;
 using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
+namespace {
+// Check whether there exists some None value inside this slice, recursively.
+auto vpackHasNoneRecursive(VPackSlice slice) -> bool {
+  slice = slice.resolveExternals();
+  if (slice.isNone()) {
+    return true;
+  }
+
+  if (slice.isArray()) {
+    auto iter = VPackArrayIterator(slice);
+    return std::any_of(iter.begin(), iter.end(),
+                       [](auto slice) { return vpackHasNoneRecursive(slice); });
+  }
+  if (slice.isObject()) {
+    auto iter = VPackObjectIterator(slice);
+    return std::any_of(iter.begin(), iter.end(), [](auto pair) {
+      return vpackHasNoneRecursive(pair.key) || vpackHasNoneRecursive(pair.value);
+    });
+  }
+
+  return false;
+}
+}
+
 void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
                                                     VPackSlice expected) {
   ASSERT_TRUE(expected.isArray()) << "Invalid input";
@@ -42,6 +68,7 @@ void arangodb::tests::aql::AssertQueryResultToSlice(QueryResult const& result,
                            << result.errorMessage();
   auto resultSlice = result.data->slice();
   ASSERT_TRUE(resultSlice.isArray());
+  EXPECT_FALSE(vpackHasNoneRecursive(result.data->slice()));
   ASSERT_EQ(expected.length(), resultSlice.length()) << resultSlice.toJson();
   for (VPackValueLength i = 0; i < expected.length(); ++i) {
     EXPECT_TRUE(basics::VelocyPackHelper::equal(resultSlice.at(i), expected.at(i), false))

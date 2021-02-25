@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +27,11 @@
 #ifndef ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 #define ARANGOD_AQL_HASHED_COLLECT_EXECUTOR_H
 
+#include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
 #include "Aql/types.h"
 
@@ -37,24 +39,38 @@
 #include <unordered_map>
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class OutputAqlItemRow;
-class ExecutorInfos;
+class RegisterInfos;
 template <BlockPassthrough>
 class SingleRowFetcher;
 struct Aggregator;
 
-class HashedCollectExecutorInfos : public ExecutorInfos {
+class HashedCollectExecutorInfos {
  public:
-  HashedCollectExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                             std::unordered_set<RegisterId> registersToClear,
-                             std::unordered_set<RegisterId> registersToKeep,
-                             std::unordered_set<RegisterId>&& readableInputRegisters,
-                             std::unordered_set<RegisterId>&& writeableOutputRegisters,
-                             std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
+  /**
+   * @brief Construct a new Hashed Collect Executor Infos object
+   *
+   * @param groupRegisters Registers the grouping is based on.
+   *                       If values in the registers are identical,
+   *                       the rows are considered as the same group.
+   *                       Format: <outputRegister, inputRegister>
+   * @param collectRegister Register to write the GroupingResult to
+   *                        (COLLECT ... INTO collectRegister)
+   * @param aggregateTypes Aggregation methods used
+   * @param aggregateRegisters Input and output Register for Aggregation
+   * @param trxPtr The AQL transaction, as it might be needed for aggregates
+   */
+  HashedCollectExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
                              RegisterId collectRegister, std::vector<std::string>&& aggregateTypes,
                              std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-                             transaction::Methods* trxPtr, bool count);
+                             velocypack::Options const* vpackOptions, 
+                             arangodb::ResourceMonitor& resourceMonitor);
 
   HashedCollectExecutorInfos() = delete;
   HashedCollectExecutorInfos(HashedCollectExecutorInfos&&) = default;
@@ -62,12 +78,12 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   ~HashedCollectExecutorInfos() = default;
 
  public:
-  std::vector<std::pair<RegisterId, RegisterId>> getGroupRegisters() const;
-  std::vector<std::pair<RegisterId, RegisterId>> getAggregatedRegisters() const;
-  std::vector<std::string> getAggregateTypes() const;
-  bool getCount() const noexcept;
-  transaction::Methods* getTransaction() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getGroupRegisters() const;
+  std::vector<std::pair<RegisterId, RegisterId>> const& getAggregatedRegisters() const;
+  std::vector<std::string> const& getAggregateTypes() const;
+  velocypack::Options const* getVPackOptions() const;
   RegisterId getCollectRegister() const noexcept;
+  arangodb::ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief aggregate types
@@ -84,12 +100,12 @@ class HashedCollectExecutorInfos : public ExecutorInfos {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
-
-  /// @brief COUNTing node?
-  bool _count;
-
+  
   /// @brief the transaction for this query
-  transaction::Methods* _trxPtr;
+  velocypack::Options const* _vpackOptions;
+
+  /// @brief resource manager
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 /**
@@ -116,9 +132,18 @@ class HashedCollectExecutor {
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+
+  /**
+   * @brief skip the next Row of Aql Values.
+   *
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
   /**
    * @brief This Executor does not know how many distinct rows will be fetched
@@ -126,30 +151,46 @@ class HashedCollectExecutor {
    * it knows that it can only create as many new rows as pulled from upstream.
    * So it will overestimate.
    */
-  std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t atMost) const;
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 
  private:
-  using AggregateValuesType = std::vector<std::unique_ptr<Aggregator>>;
-  using GroupKeyType = std::vector<AqlValue>;
-  using GroupValueType = std::unique_ptr<AggregateValuesType>;
+  struct ValueAggregators {
+    ValueAggregators(std::vector<Aggregator::Factory const*> factories, velocypack::Options const* opts);
+    ~ValueAggregators();
+    std::size_t size() const;
+    Aggregator& operator[](std::size_t index);
+    static void operator delete(void* ptr);
+   private:
+    std::size_t _size;
+  };
+  using GroupKeyType = HashedAqlValueGroup;
+  using GroupValueType = std::unique_ptr<ValueAggregators>;
   using GroupMapType =
       std::unordered_map<GroupKeyType, GroupValueType, AqlValueGroupHash, AqlValueGroupEqual>;
 
   Infos const& infos() const noexcept;
 
   /**
-   * @brief Shall be executed until it returns DONE, then never again.
-   * Consumes all input, writes groups and calculates aggregates, and
-   * initializes _currentGroup to _allGroups.begin().
+   * @brief Consumes all rows from upstream
+   *        Every row is collected into one of the groups.
    *
-   * @return DONE or WAITING
+   * @param inputRange Upstream range, will be fully consumed
+   * @return true We have consumed everything, start output
+   * @return false We do not have all input ask for more.
    */
-  ExecutionState init();
+  auto consumeInputRange(AqlItemBlockInputRange& inputRange) -> bool;
+
+  /**
+   * @brief State this Executor needs to report
+   *
+   * @return ExecutorState
+   */
+  auto returnState() const -> ExecutorState;
 
   void destroyAllGroupsAqlValues();
 
-  static std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*>
-  createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
+  static std::vector<Aggregator::Factory const*> createAggregatorFactories(HashedCollectExecutor::Infos const& infos);
 
   GroupMapType::iterator findOrEmplaceGroup(InputAqlItemRow& input);
 
@@ -157,10 +198,12 @@ class HashedCollectExecutor {
 
   void writeCurrentGroupToOutput(OutputAqlItemRow& output);
 
+  std::unique_ptr<ValueAggregators> makeAggregateValues() const;
+
+  size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
+
  private:
   Infos const& _infos;
-  Fetcher& _fetcher;
-  ExecutionState _upstreamState;
 
   /// @brief We need to save any input row (it really doesn't matter, except for
   /// when input blocks are freed - thus the last), so we can produce output
@@ -169,15 +212,15 @@ class HashedCollectExecutor {
 
   /// @brief hashmap of all encountered groups
   GroupMapType _allGroups;
-  GroupMapType::iterator _currentGroup;
+  GroupMapType::const_iterator _currentGroup;
 
   bool _isInitialized;  // init() was called successfully (e.g. it returned DONE)
 
-  std::vector<std::function<std::unique_ptr<Aggregator>(transaction::Methods*)> const*> _aggregatorFactories;
+  std::vector<Aggregator::Factory const*> _aggregatorFactories;
 
-  size_t _returnedGroups;
+  GroupKeyType _nextGroup;
 
-  GroupKeyType _nextGroupValues;
+  size_t _returnedGroups = 0;
 };
 
 }  // namespace aql

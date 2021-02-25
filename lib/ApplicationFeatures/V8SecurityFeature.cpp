@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,7 +36,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -57,26 +57,25 @@ using namespace arangodb::options;
 
 namespace {
 
-void testRegexPair(std::string const& whitelist, std::string const& blacklist,
+void testRegexPair(std::string const& allowList, 
+                   std::string const& denyList,
                    char const* optionName) {
   try {
-    std::regex(whitelist, std::regex::nosubs | std::regex::ECMAScript);
+    std::regex(allowList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab6d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript." << optionName
-        << "-whitelist' is not a "
-           "valid regular expression: "
+        << "-allowlist' is not a valid regular expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
   }
 
   try {
-    std::regex(blacklist, std::regex::nosubs | std::regex::ECMAScript);
+    std::regex(denyList, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     LOG_TOPIC("ab2d5", FATAL, arangodb::Logger::FIXME)
         << "value for '--javascript." << optionName
-        << "-blacklist' is not a "
-           "valid regular expression: "
+        << "-denylist' is not a valid regular expression: "
         << ex.what();
     FATAL_ERROR_EXIT();
   }
@@ -121,41 +120,50 @@ void convertToSingleExpression(std::unordered_set<std::string> const& values,
   targetRegex = ss.str();
 }
 
-bool checkBlackAndWhitelist(std::string const& value, bool hasWhitelist,
-                            std::regex const& whitelist, bool hasBlacklist,
-                            std::regex const& blacklist) {
-  if (!hasWhitelist && !hasBlacklist) {
-    return true;
+struct checkAllowDenyResult {
+  bool result;
+  bool allow;
+  bool deny;
+};
+
+checkAllowDenyResult checkAllowAndDenyList(std::string const& value, 
+                                           bool hasAllowList, std::regex const& allowList, 
+                                           bool hasDenyList,  std::regex const& denyList) {
+  if (!hasAllowList && !hasDenyList) {
+    return {true, false, false};
   }
 
-  if (!hasBlacklist) {
-    // only have a whitelist
-    return std::regex_search(value, whitelist);
+  if (!hasDenyList) {
+    // only have an allow list
+    bool allow = std::regex_search(value, allowList);
+    return {allow, allow, false};
   }
 
-  if (!hasWhitelist) {
-    // only have a blacklist
-    return !std::regex_search(value, blacklist);
+  if (!hasAllowList) {
+    // only have a deny list
+    bool deny = std::regex_search(value, denyList);
+    return {!deny, false, deny};
   }
 
-  std::smatch white_result{};
-  std::smatch black_result{};
-  bool white = std::regex_search(value, white_result, whitelist);
-  bool black = std::regex_search(value, black_result, blacklist);
+  std::smatch allowResult{};
+  std::smatch denyResult{};
+  bool allow = std::regex_search(value, allowResult, allowList);
+  bool deny = std::regex_search(value, denyResult, denyList);
 
-  if (white && !black) {
-    // we only have a whitelist hit => allow
-    return true;
-  } else if (!white && black) {
-    // we only have a blacklist hit => deny
-    return false;
-  } else if (!white && !black) {
-    // we have neither a whitelist nor a blacklist hit => deny
-    return false;
+  if (allow && !deny) {
+    // we only have an allow list hit => allow
+    return {true, allow, deny};
+  } else if (!allow && deny) {
+    // we only have a deny list hit => deny
+    return {false, allow, deny};
+  } else if (!allow && !deny) {
+    // we have neither an allow list nor a deny list hit => deny
+    return {false, allow, deny};
   }
 
-  // longer match or blacklist wins
-  return white_result[0].length() > black_result[0].length();
+  // longer match or deny list wins
+  bool allowLongerDeny = allowResult[0].length() > denyResult[0].length();
+  return {allowLongerDeny, allowLongerDeny, !allowLongerDeny};
 }
 }  // namespace
 
@@ -175,7 +183,11 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
       ->addOption("--javascript.allow-port-testing",
                   "allow testing of ports from within JavaScript actions",
                   new BooleanParameter(&_allowPortTesting),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle,
+                  arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
@@ -183,146 +195,192 @@ void V8SecurityFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                   "allow execution and control of external processes from "
                   "within JavaScript actions",
                   new BooleanParameter(&_allowProcessControl),
-                  arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle,
+                  arangodb::options::Flags::Hidden))
       .setIntroducedIn(30500);
 
   options
       ->addOption("--javascript.harden",
                   "disables access to JavaScript functions in the internal "
                   "module: getPid() and logLevel()",
-                  new BooleanParameter(&_hardenInternalModule))
+                  new BooleanParameter(&_hardenInternalModule),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--javascript.startup-options-whitelist",
+      ->addOption("--javascript.startup-options-allowlist",
                   "startup options whose names match this regular "
-                  "expression will be whitelisted and exposed to JavaScript",
-                  new VectorParameter<StringParameter>(&_startupOptionsWhitelistVec))
+                  "expression will be allowed and exposed to JavaScript",
+                  new VectorParameter<StringParameter>(&_startupOptionsAllowListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+
   options
-      ->addOption("--javascript.startup-options-blacklist",
+      ->addOption("--javascript.startup-options-denylist",
                   "startup options whose names match this regular "
-                  "expression will not be exposed (if not whitelisted) to "
+                  "expression will not be exposed (if not in allowlist) to "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_startupOptionsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_startupOptionsDenyListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
-
+  
   options
-      ->addOption("--javascript.environment-variables-whitelist",
+      ->addOption("--javascript.environment-variables-allowlist",
                   "environment variables that will be accessible in JavaScript",
-                  new VectorParameter<StringParameter>(&_environmentVariablesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_environmentVariablesAllowListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+  
   options
-      ->addOption("--javascript.environment-variables-blacklist",
+      ->addOption("--javascript.environment-variables-denylist",
                   "environment variables that will be inaccessible in "
-                  "JavaScript if not whitelisted",
-                  new VectorParameter<StringParameter>(&_environmentVariablesBlacklistVec))
+                  "JavaScript (if not in allowlist)",
+                  new VectorParameter<StringParameter>(&_environmentVariablesDenyListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
-
+  
   options
-      ->addOption("--javascript.endpoints-whitelist",
+      ->addOption("--javascript.endpoints-allowlist",
                   "endpoints that can be connected to via "
                   "@arangodb/request module in JavaScript actions",
-                  new VectorParameter<StringParameter>(&_endpointsWhitelistVec))
-      .setIntroducedIn(30500);
-  options
-      ->addOption("--javascript.endpoints-blacklist",
-                  "endpoints that cannot be connected to via @arangodb/request "
-                  "module in "
-                  "JavaScript actions if not whitelisted",
-                  new VectorParameter<StringParameter>(&_endpointsBlacklistVec))
+                  new VectorParameter<StringParameter>(&_endpointsAllowListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
 
   options
-      ->addOption("--javascript.files-whitelist",
+      ->addOption("--javascript.endpoints-denylist",
+                  "endpoints that cannot be connected to via @arangodb/request "
+                  "module in JavaScript actions (if not in allowlist)",
+                  new VectorParameter<StringParameter>(&_endpointsDenyListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30500);
+  
+  options
+      ->addOption("--javascript.files-allowlist",
                   "filesystem paths that will be accessible from within "
                   "JavaScript actions",
-                  new VectorParameter<StringParameter>(&_filesWhitelistVec))
+                  new VectorParameter<StringParameter>(&_filesAllowListVec),
+                  arangodb::options::makeFlags(
+                  arangodb::options::Flags::DefaultNoComponents,
+                  arangodb::options::Flags::OnCoordinator,
+                  arangodb::options::Flags::OnSingle))
       .setIntroducedIn(30500);
+  
+  options->addOldOption("--javascript.startup-options-whitelist", "--javascript.startup-options-allowlist");
+  options->addOldOption("--javascript.startup-options-blacklist", "--javascript.startup-options-denylist");
+  options->addOldOption("--javascript.environment-variables-whitelist", "--javascript.environment-variables-allowlist");
+  options->addOldOption("--javascript.environment-variables-blacklist", "--javascript.environment-variables-denylist");
+  options->addOldOption("--javascript.endpoints-whitelist", "--javascript.endpoints-allowlist");
+  options->addOldOption("--javascript.endpoints-blacklist", "--javascript.endpoints-denylist");
+  options->addOldOption("--javascript.files-whitelist", "--javascript.files-allowlist");
 }
 
 void V8SecurityFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   // check if the regular expressions compile properly
 
   // startup options
-  convertToSingleExpression(_startupOptionsWhitelistVec, _startupOptionsWhitelist);
-  convertToSingleExpression(_startupOptionsBlacklistVec, _startupOptionsBlacklist);
-  testRegexPair(_startupOptionsWhitelist, _startupOptionsBlacklist,
+  convertToSingleExpression(_startupOptionsAllowListVec, _startupOptionsAllowList);
+  convertToSingleExpression(_startupOptionsDenyListVec, _startupOptionsDenyList);
+  testRegexPair(_startupOptionsAllowList, _startupOptionsDenyList,
                 "startup-options");
 
   // environment variables
-  convertToSingleExpression(_environmentVariablesWhitelistVec, _environmentVariablesWhitelist);
-  convertToSingleExpression(_environmentVariablesBlacklistVec, _environmentVariablesBlacklist);
-  testRegexPair(_environmentVariablesWhitelist, _environmentVariablesBlacklist,
+  convertToSingleExpression(_environmentVariablesAllowListVec, _environmentVariablesAllowList);
+  convertToSingleExpression(_environmentVariablesDenyListVec, _environmentVariablesDenyList);
+  testRegexPair(_environmentVariablesAllowList, _environmentVariablesDenyList,
                 "environment-variables");
 
   // endpoints
-  convertToSingleExpression(_endpointsWhitelistVec, _endpointsWhitelist);
-  convertToSingleExpression(_endpointsBlacklistVec, _endpointsBlacklist);
-  testRegexPair(_endpointsWhitelist, _endpointsBlacklist, "endpoints");
+  convertToSingleExpression(_endpointsAllowListVec, _endpointsAllowList);
+  convertToSingleExpression(_endpointsDenyListVec, _endpointsDenyList);
+  testRegexPair(_endpointsAllowList, _endpointsDenyList, "endpoints");
 
   // file access
-  convertToSingleExpression(_filesWhitelistVec, _filesWhitelist);
-  testRegexPair(_filesWhitelist, "", "files");
+  convertToSingleExpression(_filesAllowListVec, _filesAllowList);
+  testRegexPair(_filesAllowList, "", "files");
 }
 
 void V8SecurityFeature::prepare() {
-  addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::READ);
-  addToInternalWhitelist(TRI_GetTempPath(), FSAccessType::WRITE);
-  TRI_ASSERT(!_writeWhitelist.empty());
-  TRI_ASSERT(!_readWhitelist.empty());
+  addToInternalAllowList(TRI_GetTempPath(), FSAccessType::READ);
+  addToInternalAllowList(TRI_GetTempPath(), FSAccessType::WRITE);
+  TRI_ASSERT(!_writeAllowList.empty());
+  TRI_ASSERT(!_readAllowList.empty());
 }
 
 void V8SecurityFeature::start() {
   // initialize regexes for filtering options. the regexes must have been validated before
-  _startupOptionsWhitelistRegex =
-      std::regex(_startupOptionsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _startupOptionsBlacklistRegex =
-      std::regex(_startupOptionsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsAllowListRegex =
+      std::regex(_startupOptionsAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _startupOptionsDenyListRegex =
+      std::regex(_startupOptionsDenyList, std::regex::nosubs | std::regex::ECMAScript);
 
-  _environmentVariablesWhitelistRegex =
-      std::regex(_environmentVariablesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _environmentVariablesBlacklistRegex =
-      std::regex(_environmentVariablesBlacklist, std::regex::nosubs | std::regex::ECMAScript);
+  _environmentVariablesAllowListRegex =
+      std::regex(_environmentVariablesAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _environmentVariablesDenyListRegex =
+      std::regex(_environmentVariablesDenyList, std::regex::nosubs | std::regex::ECMAScript);
 
-  _endpointsWhitelistRegex =
-      std::regex(_endpointsWhitelist, std::regex::nosubs | std::regex::ECMAScript);
-  _endpointsBlacklistRegex =
-      std::regex(_endpointsBlacklist, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsAllowListRegex =
+      std::regex(_endpointsAllowList, std::regex::nosubs | std::regex::ECMAScript);
+  _endpointsDenyListRegex =
+      std::regex(_endpointsDenyList, std::regex::nosubs | std::regex::ECMAScript);
 
-  _filesWhitelistRegex =
-      std::regex(_filesWhitelist, std::regex::nosubs | std::regex::ECMAScript);
+  _filesAllowListRegex =
+      std::regex(_filesAllowList, std::regex::nosubs | std::regex::ECMAScript);
 
 }
 
 void V8SecurityFeature::dumpAccessLists() const {
   LOG_TOPIC("2cafe", DEBUG, arangodb::Logger::SECURITY)
-    << "files whitelisted by user:" << _filesWhitelist
-    << ", internal read whitelist:" << _readWhitelist
-    << ", internal write whitelist:" << _writeWhitelist
-    << ", internal startup options whitelist:" << _startupOptionsWhitelist
-    << ", internal startup options blacklist: " << _startupOptionsBlacklist
-    << ", internal environment variable whitelist:" << _environmentVariablesWhitelist
-    << ", internal environment variables blacklist: " << _environmentVariablesBlacklist
-    << ", internal endpoints whitelist:" << _endpointsWhitelist
-    << ", internal endpoints blacklist: " << _endpointsBlacklist;
+    << "files allowed by user:" << _filesAllowList
+    << ", internal read allow list:" << _readAllowList
+    << ", internal write allow list:" << _writeAllowList
+    << ", internal startup options allow list:" << _startupOptionsAllowList
+    << ", internal startup options deny list: " << _startupOptionsDenyList
+    << ", internal environment variable allow list:" << _environmentVariablesAllowList
+    << ", internal environment variables deny list: " << _environmentVariablesDenyList
+    << ", internal endpoints allow list:" << _endpointsAllowList
+    << ", internal endpoints deny list: " << _endpointsDenyList;
 }
 
-void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAccessType type) {
-  // This function is not efficient and we would not need the _readWhitelist
+void V8SecurityFeature::addToInternalAllowList(std::string const& inItem, FSAccessType type) {
+  // This function is not efficient and we would not need the _readAllowList
   // to be persistent. But the persistence will help in debugging and
   // there are only a few items expected.
-  auto* set = &_readWhitelistSet;
-  auto* expression = &_readWhitelist;
-  auto* re = &_readWhitelistRegex;
+  auto* set = &_readAllowListSet;
+  auto* expression = &_readAllowList;
+  auto* re = &_readAllowListRegex;
 
   if (type == FSAccessType::WRITE) {
-    set = &_writeWhitelistSet;
-    expression = &_writeWhitelist;
-    re = &_writeWhitelistRegex;
+    set = &_writeAllowListSet;
+    expression = &_writeAllowList;
+    re = &_writeAllowListRegex;
   }
 
-  auto item =  canonicalpath(inItem);
+  auto item = canonicalpath(inItem);
   if ((item.length() > 0) &&
       (item[item.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
     item += TRI_DIR_SEPARATOR_STR;
@@ -335,7 +393,6 @@ void V8SecurityFeature::addToInternalWhitelist(std::string const& inItem, FSAcce
     *re = std::regex(*expression, std::regex::nosubs | std::regex::ECMAScript);
   } catch (std::exception const& ex) {
     throw std::invalid_argument(ex.what() + std::string(" '") + *expression + "'");
-
   }
 }
 
@@ -365,24 +422,31 @@ bool V8SecurityFeature::isInternalContext(v8::Isolate* isolate) const {
   return v8g->_securityContext.isInternal();
 }
 
+bool V8SecurityFeature::isAdminScriptContext(v8::Isolate* isolate) const {
+  TRI_GET_GLOBALS();
+  TRI_ASSERT(v8g != nullptr);
+  return v8g->_securityContext.isAdminScript() || v8g->_securityContext.isRestAdminScript();
+}
+
 bool V8SecurityFeature::shouldExposeStartupOption(v8::Isolate* isolate,
                                                   std::string const& name) const {
-  return checkBlackAndWhitelist(name, !_startupOptionsWhitelist.empty(),
-                                _startupOptionsWhitelistRegex,
-                                !_startupOptionsBlacklist.empty(),
-                                _startupOptionsBlacklistRegex);
+  return checkAllowAndDenyList(name, !_startupOptionsAllowList.empty(),
+                               _startupOptionsAllowListRegex,
+                               !_startupOptionsDenyList.empty(),
+                               _startupOptionsDenyListRegex).result;
 }
 
 bool V8SecurityFeature::shouldExposeEnvironmentVariable(v8::Isolate* isolate,
                                                         std::string const& name) const {
-  return checkBlackAndWhitelist(name, !_environmentVariablesWhitelist.empty(),
-                                _environmentVariablesWhitelistRegex,
-                                !_environmentVariablesBlacklist.empty(),
-                                _environmentVariablesBlacklistRegex);
+  return checkAllowAndDenyList(name, !_environmentVariablesAllowList.empty(),
+                               _environmentVariablesAllowListRegex,
+                               !_environmentVariablesDenyList.empty(),
+                               _environmentVariablesDenyListRegex).result;
 }
 
 bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
-                                                     std::string const& name) const {
+                                                     std::string const& endpoint,
+                                                     std::string const& url) const {
   TRI_GET_GLOBALS();
   TRI_ASSERT(v8g != nullptr);
   if (v8g->_securityContext.isInternal()) {
@@ -391,8 +455,13 @@ bool V8SecurityFeature::isAllowedToConnectToEndpoint(v8::Isolate* isolate,
     return true;
   }
 
-  return checkBlackAndWhitelist(name, !_endpointsWhitelist.empty(), _endpointsWhitelistRegex,
-                                !_endpointsBlacklist.empty(), _endpointsBlacklistRegex);
+  auto endpointResult = checkAllowAndDenyList(endpoint, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+                                              !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+
+  auto urlResult = checkAllowAndDenyList(url, !_endpointsAllowList.empty(), _endpointsAllowListRegex,
+                                         !_endpointsDenyList.empty(), _endpointsDenyListRegex);
+
+  return endpointResult.result || ( urlResult.result && !endpointResult.deny);
 }
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string const& path,
@@ -402,7 +471,7 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, std::string 
 
 bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* pathPtr,
                                               FSAccessType access) const {
-  if (_filesWhitelist.empty()) {
+  if (_filesAllowList.empty()) {
     return true;
   }
 
@@ -427,16 +496,16 @@ bool V8SecurityFeature::isAllowedToAccessPath(v8::Isolate* isolate, char const* 
     path += TRI_DIR_SEPARATOR_STR;
   }
 
-  if (access == FSAccessType::READ && std::regex_search(path, _readWhitelistRegex)) {
+  if (access == FSAccessType::READ && std::regex_search(path, _readAllowListRegex)) {
     // even in restricted contexts we may read module paths
     return true;
   }
 
-  if (access == FSAccessType::WRITE && std::regex_search(path, _writeWhitelistRegex)) {
+  if (access == FSAccessType::WRITE && std::regex_search(path, _writeAllowListRegex)) {
     // even in restricted contexts we may read module paths
     return true;
   }
 
-  return checkBlackAndWhitelist(path, !_filesWhitelist.empty(), _filesWhitelistRegex,
-                                false, _filesWhitelistRegex /*passed to match the signature but not used*/);
+  return checkAllowAndDenyList(path, !_filesAllowList.empty(), _filesAllowListRegex,
+                               false, _filesAllowListRegex /*passed to match the signature but not used*/).result;
 }

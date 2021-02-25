@@ -34,6 +34,7 @@
 #include "utils/directory_utils.hpp"
 #include "utils/log.hpp"
 #include "utils/lz4compression.hpp"
+#include "utils/memory.hpp"
 #include "utils/type_limits.hpp"
 #include "utils/version_utils.hpp"
 #include "store/store_utils.hpp"
@@ -42,10 +43,10 @@
 
 #include <boost/iterator/filter_iterator.hpp>
 
-NS_LOCAL
+namespace {
 
 const irs::column_info NORM_COLUMN{
-  irs::compression::lz4::type(),
+  irs::type<irs::compression::lz4>::get(),
   irs::compression::options(),
   false
 };
@@ -61,12 +62,12 @@ typedef std::unordered_map<irs::string_ref, const irs::field_meta*> field_meta_m
 
 class noop_directory : public irs::directory {
  public:
-  static noop_directory& instance() NOEXCEPT {
+  static noop_directory& instance() noexcept {
     static noop_directory INSTANCE;
     return INSTANCE;
   }
 
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
+  virtual irs::attribute_store& attributes() noexcept override {
     return const_cast<irs::attribute_store&>(
       irs::attribute_store::empty_instance()
     );
@@ -74,52 +75,52 @@ class noop_directory : public irs::directory {
 
   virtual irs::index_output::ptr create(
     const std::string&
-  ) NOEXCEPT override {
+  ) noexcept override {
     return nullptr;
   }
 
   virtual bool exists(
     bool&, const std::string&
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return false;
   }
 
   virtual bool length(
     uint64_t&, const std::string&
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return false;
   }
 
   virtual irs::index_lock::ptr make_lock(
     const std::string&
-  ) NOEXCEPT override {
+  ) noexcept override {
     return nullptr;
   }
 
   virtual bool mtime(
     std::time_t&, const std::string&
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return false;
   }
 
   virtual irs::index_input::ptr open(
     const std::string&,
     irs::IOAdvice
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return nullptr;
   }
 
-  virtual bool remove(const std::string&) NOEXCEPT override {
+  virtual bool remove(const std::string&) noexcept override {
     return false;
   }
 
   virtual bool rename(
     const std::string&, const std::string&
-  ) NOEXCEPT override {
+  ) noexcept override {
     return false;
   }
 
-  virtual bool sync(const std::string&) NOEXCEPT override {
+  virtual bool sync(const std::string&) noexcept override {
     return false;
   }
 
@@ -128,7 +129,7 @@ class noop_directory : public irs::directory {
   }
 
  private:
-  noop_directory() NOEXCEPT { }
+  noop_directory() noexcept { }
 }; // noop_directory
 
 class progress_tracker {
@@ -136,7 +137,7 @@ class progress_tracker {
   explicit progress_tracker(
       const irs::merge_writer::flush_progress_t& progress,
       size_t count
-  ) NOEXCEPT
+  ) noexcept
     : progress_(&progress),
       count_(count) {
     assert(progress);
@@ -151,11 +152,11 @@ class progress_tracker {
     return valid_;
   }
 
-  explicit operator bool() const NOEXCEPT {
+  explicit operator bool() const noexcept {
     return valid_;
   }
 
-  void reset() NOEXCEPT {
+  void reset() noexcept {
     hits_ = 0;
     valid_ = true;
   }
@@ -168,74 +169,6 @@ class progress_tracker {
 }; // progress_tracker
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class compound_attributes
-/// @brief compound view of multiple attributes as a single object
-//////////////////////////////////////////////////////////////////////////////
-class compound_attributes: public irs::attribute_view {
- public:
-  void add(const irs::attribute_view& attributes) {
-    auto visitor = [this](
-        const irs::attribute::type_id& type_id,
-        const irs::attribute_view::ref<irs::attribute>::type&
-    ) ->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
-      // member of base class from lambda
-      this->insert(type_id);
-#else
-      bool inserted;
-      attribute_map::emplace(inserted, type_id);
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
-      return true;
-    };
-
-    attributes.visit(visitor); // add
-  }
-
-  void set(const irs::attribute_view& attributes) {
-    auto visitor_unset = [](
-      const irs::attribute::type_id&,
-      irs::attribute_view::ref<irs::attribute>::type& value
-    )->bool {
-      value = nullptr;
-      return true;
-    };
-    auto visitor_update = [this](
-      const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>::type& value
-    )->bool {
-#if defined(__GNUC__) && (__GNUC__ < 5)
-      // GCCs before 5 are unable to call protected
-      // member of base class from lambda
-      this->insert(type_id, value);
-#else
-      bool inserted;
-      attribute_map::emplace(inserted, type_id) = value;
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
-      return true;
-    };
-
-    visit(visitor_unset); // unset
-    attributes.visit(visitor_update); // set
-  }
-
-#if defined(__GNUC__) && (__GNUC__ < 5)
- private:
-  void insert(const irs::attribute::type_id& type_id) {
-    bool inserted;
-    attribute_map::emplace(inserted, type_id);
-  }
-
-  void insert(
-      const irs::attribute::type_id& type_id,
-      const irs::attribute_view::ref<irs::attribute>::type& value) {
-    bool inserted;
-    attribute_map::emplace(inserted, type_id) = value;
-  }
-#endif // defined(__GNUC__) && (__GNUC__ < 5)
-}; // compound_attributes
-
-//////////////////////////////////////////////////////////////////////////////
 /// @struct compound_doc_iterator
 /// @brief iterator over doc_ids for a term over all readers
 //////////////////////////////////////////////////////////////////////////////
@@ -243,11 +176,10 @@ struct compound_doc_iterator : public irs::doc_iterator {
   typedef std::pair<irs::doc_iterator::ptr, const doc_map_f*> doc_iterator_t;
   typedef std::vector<doc_iterator_t> iterators_t;
 
-  static CONSTEXPR const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
+  static constexpr const size_t PROGRESS_STEP_DOCS = size_t(1) << 14;
 
   explicit compound_doc_iterator(
-      const irs::merge_writer::flush_progress_t& progress
-  ) NOEXCEPT
+      const irs::merge_writer::flush_progress_t& progress) noexcept
     : progress(progress, PROGRESS_STEP_DOCS) {
   }
 
@@ -257,30 +189,20 @@ struct compound_doc_iterator : public irs::doc_iterator {
       return false;
     }
 
-    auto begin = iterators.begin();
-    auto end = iterators.end();
-
-    if (begin != end) {
-      attrs.set(begin->first->attributes()); // add keys and set values
-      ++begin;
-    }
-
-    for (; begin != end; ++begin) {
-      attrs.add(begin->first->attributes()); // only add missing keys
-    }
-
     current_id = irs::doc_limits::invalid();
     current_itr = 0;
 
     return true;
   }
 
-  bool aborted() const NOEXCEPT {
+  bool aborted() const noexcept {
     return !static_cast<bool>(progress);
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<irs::attribute_provider_change>::id() == type
+      ? &attribute_change
+      : nullptr;
   }
 
   virtual bool next() override;
@@ -290,11 +212,11 @@ struct compound_doc_iterator : public irs::doc_iterator {
     return value();
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return current_id;
   }
 
-  compound_attributes attrs;
+  irs::attribute_provider_change attribute_change;
   std::vector<doc_iterator_t> iterators;
   irs::doc_id_t current_id{ irs::doc_limits::invalid() };
   size_t current_itr{ 0 };
@@ -310,11 +232,9 @@ bool compound_doc_iterator::next() {
     return false;
   }
 
-  for (
-    bool update_attributes = false;
-    current_itr < iterators.size();
-    update_attributes = true, ++current_itr
-  ) {
+  for (bool notify = !irs::doc_limits::valid(current_id);
+       current_itr < iterators.size();
+       notify = true, ++current_itr) {
     auto& itr_entry = iterators[current_itr];
     auto& itr = itr_entry.first;
     auto& id_map = itr_entry.second;
@@ -323,8 +243,8 @@ bool compound_doc_iterator::next() {
       continue;
     }
 
-    if (update_attributes) {
-      attrs.set(itr->attributes());
+    if (notify) {
+      attribute_change(*itr);
     }
 
     while (itr->next()) {
@@ -341,7 +261,6 @@ bool compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -354,7 +273,7 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
  public:
   explicit sorting_compound_doc_iterator(
       compound_doc_iterator& doc_it
-  ) NOEXCEPT
+  ) noexcept
     : doc_it_(&doc_it),
       heap_it_(min_heap_context(doc_it.iterators)) {
   }
@@ -371,8 +290,8 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return doc_it_->attrs;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return doc_it_->get_mutable(type);
   }
 
   virtual bool next() override;
@@ -382,21 +301,28 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
     return value();
   }
 
-  virtual irs::doc_id_t value() const NOEXCEPT override {
+  virtual irs::doc_id_t value() const noexcept override {
     return doc_it_->current_id;
   }
 
  private:
   class min_heap_context {
    public:
-    explicit min_heap_context(compound_doc_iterator::iterators_t& itrs) NOEXCEPT
+    explicit min_heap_context(compound_doc_iterator::iterators_t& itrs) noexcept
       : itrs_(itrs) {
     }
 
     // advance
     bool operator()(const size_t i) const {
       assert(i < itrs_.get().size());
-      return itrs_.get()[i].first->next();
+      auto& doc_it = itrs_.get()[i];
+      auto const& map = *doc_it.second;
+      while (doc_it.first->next()) {
+        if (!irs::doc_limits::eof(map(doc_it.first->value()))) {
+          return true;
+        }
+      }
+      return false;
     }
 
     // compare
@@ -422,7 +348,6 @@ class sorting_compound_doc_iterator : public irs::doc_iterator {
 bool sorting_compound_doc_iterator::next() {
   auto& iterators = doc_it_->iterators;
   auto& current_id = doc_it_->current_id;
-  auto& attrs = doc_it_->attrs;
 
   doc_it_->progress();
 
@@ -439,7 +364,7 @@ bool sorting_compound_doc_iterator::next() {
 
     if (&new_lead != lead_) {
       // update attributes
-      attrs.set(it->attributes());
+      doc_it_->attribute_change(*it);
       lead_ = &new_lead;
     }
 
@@ -453,7 +378,6 @@ bool sorting_compound_doc_iterator::next() {
   }
 
   current_id = irs::doc_limits::eof();
-  attrs.set(irs::attribute_view::empty_instance());
 
   return false;
 }
@@ -536,7 +460,7 @@ class compound_iterator {
   }
 
  private:
-  struct iterator_t {
+  struct iterator_t : irs::util::noncopyable {
     iterator_t(
         Iterator&& it,
         const irs::sub_reader& reader,
@@ -546,16 +470,15 @@ class compound_iterator {
         doc_map(&doc_map) {
       }
 
-    iterator_t(iterator_t&& other) NOEXCEPT
-      : it(std::move(other.it)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+    iterator_t(iterator_t&&) = default;
+    iterator_t& operator=(iterator_t&&) = delete;
 
     Iterator it;
     const irs::sub_reader* reader;
     const doc_map_f* doc_map;
   };
+
+  static_assert(std::is_nothrow_move_constructible_v<iterator_t>);
 
   const value_type* current_value_{};
   irs::string_ref current_key_;
@@ -569,7 +492,7 @@ class compound_iterator {
 //////////////////////////////////////////////////////////////////////////////
 class compound_term_iterator : public irs::term_iterator {
  public:
-  static CONSTEXPR const size_t PROGRESS_STEP_TERMS = size_t(1) << 7;
+  static constexpr const size_t PROGRESS_STEP_TERMS = size_t(1) << 7;
 
   explicit compound_term_iterator(
       const irs::merge_writer::flush_progress_t& progress,
@@ -583,20 +506,20 @@ class compound_term_iterator : public irs::term_iterator {
     return !static_cast<bool>(progress_) || doc_itr_.aborted();
   }
 
-  void reset(const irs::field_meta& meta) NOEXCEPT {
+  void reset(const irs::field_meta& meta) noexcept {
     meta_ = &meta;
     term_iterator_mask_.clear();
     term_iterators_.clear();
     current_term_ = irs::bytes_ref::NIL;
   }
 
-  const irs::field_meta& meta() const NOEXCEPT { return *meta_; }
+  const irs::field_meta& meta() const noexcept { return *meta_; }
   void add(const irs::term_reader& reader, const doc_map_f& doc_map);
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
     // no way to merge attributes for the same term spread over multiple iterators
     // would require API change for attributes
     assert(false);
-    return irs::attribute_view::empty_instance();
+    return nullptr;
   }
   virtual bool next() override;
   virtual irs::doc_iterator::ptr postings(const irs::flags& features) const override;
@@ -616,16 +539,16 @@ class compound_term_iterator : public irs::term_iterator {
     const doc_map_f* second;
 
     term_iterator_t(
-      irs::seek_term_iterator::ptr&& term_itr,
-      const doc_map_f* doc_map
-    ): first(std::move(term_itr)), second(doc_map) {
+        irs::seek_term_iterator::ptr&& term_itr,
+        const doc_map_f* doc_map)
+      : first(std::move(term_itr)), second(doc_map) {
     }
 
     // GCC 8.1.0/8.2.0 optimized code requires an *explicit* noexcept non-inlined
     // move constructor implementation, otherwise the move constructor is fully
     // optimized out (https://gcc.gnu.org/bugzilla/show_bug.cgi?id=87665)
     GCC8_12_OPTIMIZED_WORKAROUND(__attribute__((noinline)))
-    term_iterator_t(term_iterator_t&& other) NOEXCEPT
+    term_iterator_t(term_iterator_t&& other) noexcept
       : first(std::move(other.first)), second(std::move(other.second)) {
     }
   };
@@ -720,8 +643,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
     doc_itr_.reset(add_iterators);
   }
 
-  // aliasing constructor
-  return irs::doc_iterator::ptr(irs::doc_iterator::ptr(), doc_itr);
+  return irs::memory::to_managed<irs::doc_iterator, false>(doc_itr);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -730,7 +652,7 @@ irs::doc_iterator::ptr compound_term_iterator::postings(const irs::flags& /*feat
 //////////////////////////////////////////////////////////////////////////////
 class compound_field_iterator : public irs::basic_term_reader {
  public:
-  static CONSTEXPR const size_t PROGRESS_STEP_FIELDS = size_t(1);
+  static constexpr const size_t PROGRESS_STEP_FIELDS = size_t(1);
 
   explicit compound_field_iterator(
       const irs::merge_writer::flush_progress_t& progress,
@@ -755,21 +677,21 @@ class compound_field_iterator : public irs::basic_term_reader {
     return true;
   }
 
-  virtual const irs::field_meta& meta() const NOEXCEPT override {
+  virtual const irs::field_meta& meta() const noexcept override {
     assert(current_meta_);
     return *current_meta_;
   }
 
-  virtual const irs::bytes_ref& (min)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (min)() const noexcept override {
     return *min_;
   }
 
-  virtual const irs::bytes_ref& (max)() const NOEXCEPT override {
+  virtual const irs::bytes_ref& (max)() const noexcept override {
     return *max_;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
-    return irs::attribute_view::empty_instance();
+  virtual irs::attribute* get_mutable(irs::type_info::type_id) noexcept override {
+    return nullptr;
   }
 
   virtual irs::term_iterator::ptr iterator() const override;
@@ -779,7 +701,7 @@ class compound_field_iterator : public irs::basic_term_reader {
   }
 
  private:
-  struct field_iterator_t {
+  struct field_iterator_t : irs::util::noncopyable {
     field_iterator_t(
         irs::field_iterator::ptr&& itr,
         const irs::sub_reader& reader,
@@ -788,16 +710,17 @@ class compound_field_iterator : public irs::basic_term_reader {
         reader(&reader),
         doc_map(&doc_map) {
     }
-    field_iterator_t(field_iterator_t&& other) NOEXCEPT
-      : itr(std::move(other.itr)),
-        reader(other.reader),
-        doc_map(other.doc_map) {
-    }
+
+    field_iterator_t(field_iterator_t&&) = default;
+    field_iterator_t& operator=(field_iterator_t&&) = delete;
 
     irs::field_iterator::ptr itr;
     const irs::sub_reader* reader;
     const doc_map_f* doc_map;
   };
+
+  static_assert(std::is_nothrow_move_constructible_v<field_iterator_t>);
+
   struct term_iterator_t {
     size_t itr_id;
     const irs::field_meta* meta;
@@ -902,7 +825,7 @@ irs::term_iterator::ptr compound_field_iterator::iterator() const {
     term_itr_.add(*(segment.reader), *(field_iterators_[segment.itr_id].doc_map));
   }
 
-  return irs::memory::make_managed<irs::term_iterator, false>(&term_itr_);
+  return irs::memory::to_managed<irs::term_iterator, false>(&term_itr_);
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -941,7 +864,7 @@ bool compute_field_meta(
 //////////////////////////////////////////////////////////////////////////////
 class columnstore {
  public:
-  static CONSTEXPR const size_t PROGRESS_STEP_COLUMN = size_t(1) << 13;
+  static constexpr const size_t PROGRESS_STEP_COLUMN = size_t(1) << 13;
 
   columnstore(
       irs::columnstore_writer::ptr&& writer,
@@ -996,7 +919,17 @@ class columnstore {
 
   // inserts live values from the specified 'iterator' into column
   bool insert(irs::doc_iterator& it) {
-    auto& payload = it.attributes().get<irs::payload>();
+    const irs::payload* payload = nullptr;
+
+    auto* callback = irs::get<irs::attribute_provider_change>(it);
+
+    if (callback) {
+      callback->subscribe([&payload](const irs::attribute_provider& attrs) {
+        payload = irs::get<irs::payload>(attrs);
+      });
+    } else {
+      payload = irs::get<irs::payload>(it);
+    }
 
     while (it.next()) {
       if (!progress_()) {
@@ -1026,16 +959,16 @@ class columnstore {
   // returs 
   //   'true' if object has been initialized sucessfully, 
   //   'false' otherwise
-  operator bool() const NOEXCEPT { return static_cast<bool>(writer_); }
+  operator bool() const noexcept { return static_cast<bool>(writer_); }
 
   // returns 'true' if no data has been written to columnstore
-  bool empty() const NOEXCEPT { return empty_; }
+  bool empty() const noexcept { return empty_; }
 
   // @return was anything actually flushed
   bool flush() { return writer_->commit(); }
 
   // returns current column identifier
-  irs::field_id id() const NOEXCEPT { return column_.first; }
+  irs::field_id id() const noexcept { return column_.first; }
 
  private:
   progress_tracker progress_;
@@ -1065,7 +998,7 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
       return false;
     }
 
-    irs::payload* payload = it->attributes().get<irs::payload>().get();
+    const irs::payload* payload = irs::get<irs::payload>(*it);
 
     if (!payload) {
       return false;
@@ -1089,7 +1022,7 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
     return heap_it_.next();
   }
 
-  std::pair<size_t, const iterator_t*> value() const NOEXCEPT {
+  std::pair<size_t, const iterator_t*> value() const noexcept {
     return std::make_pair(heap_it_.value(), &itrs_[heap_it_.value()]);
   }
 
@@ -1098,7 +1031,7 @@ class sorting_compound_column_iterator : irs::util::noncopyable {
    public:
     explicit min_heap_context(
         std::vector<iterator_t>& itrs,
-        const irs::comparer& less) NOEXCEPT
+        const irs::comparer& less) noexcept
       : itrs_(&itrs), less_(&less) {
     }
 
@@ -1385,7 +1318,7 @@ irs::doc_id_t compute_doc_ids(
   doc_id_map_t& doc_id_map,
   const irs::sub_reader& reader,
   irs::doc_id_t next_id
-) NOEXCEPT {
+) noexcept {
   REGISTER_TIMER_DETAILED();
   // assume not a lot of space wasted if irs::doc_limits::min() > 0
   try {
@@ -1415,24 +1348,24 @@ irs::doc_id_t compute_doc_ids(
 
 const irs::merge_writer::flush_progress_t PROGRESS_NOOP = [](){ return true; };
 
-NS_END // LOCAL
+} // LOCAL
 
-NS_ROOT
+namespace iresearch {
 
-merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) NOEXCEPT
+merge_writer::reader_ctx::reader_ctx(irs::sub_reader::ptr reader) noexcept
   : reader(reader),
-    doc_map([](doc_id_t) NOEXCEPT { return irs::doc_limits::eof(); }
+    doc_map([](doc_id_t) noexcept { return irs::doc_limits::eof(); }
 ) {
   assert(reader);
 }
 
-merge_writer::merge_writer() NOEXCEPT
+merge_writer::merge_writer() noexcept
   : dir_(noop_directory::instance()),
     column_info_(nullptr),
     comparator_(nullptr) {
 }
 
-merge_writer::operator bool() const NOEXCEPT {
+merge_writer::operator bool() const noexcept {
   return &dir_ != &noop_directory::instance();
 }
 
@@ -1461,14 +1394,14 @@ bool merge_writer::flush(
       const auto reader_base = base_id - irs::doc_limits::min();
       base_id += docs_count;
 
-      reader_ctx.doc_map = [reader_base](doc_id_t doc) NOEXCEPT {
+      reader_ctx.doc_map = [reader_base](doc_id_t doc) noexcept {
         return reader_base + doc;
       };
     } else { // segment has some deleted docs
       auto& doc_id_map = reader_ctx.doc_id_map;
       base_id = compute_doc_ids(doc_id_map , reader, base_id);
 
-      reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) NOEXCEPT {
+      reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) noexcept {
         return doc >= doc_id_map.size()
           ? irs::doc_limits::eof()
           : doc_id_map[doc];
@@ -1600,7 +1533,7 @@ bool merge_writer::flush_sorted(
       return false;
     }
 
-    reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) NOEXCEPT {
+    reader_ctx.doc_map = [&doc_id_map](doc_id_t doc) noexcept {
       return doc >= doc_id_map.size()
         ? irs::doc_limits::eof()
         : doc_id_map[doc];
@@ -1654,7 +1587,7 @@ bool merge_writer::flush_sorted(
 
 #ifdef IRESEARCH_DEBUG
   struct ne_eof {
-    bool operator()(doc_id_t doc) const NOEXCEPT {
+    bool operator()(doc_id_t doc) const noexcept {
       return !doc_limits::eof(doc);
     }
   };
@@ -1718,7 +1651,7 @@ bool merge_writer::flush(
 
   bool result = false; // overall flush result
 
-  auto segment_invalidator = irs::make_finally([&result, &segment]() NOEXCEPT {
+  auto segment_invalidator = irs::make_finally([&result, &segment]() noexcept {
     if (result) {
       // all good
       return;
@@ -1749,8 +1682,4 @@ bool merge_writer::flush(
   return result;
 }
 
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

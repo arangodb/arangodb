@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +23,17 @@
 
 #include "RestQueryHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
+#include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -63,7 +64,7 @@ RestStatus RestQueryHandler::execute() {
       parseQuery();
       break;
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
+      generateNotImplemented("ILLEGAL /_api/query");
       break;
   }
 
@@ -71,7 +72,7 @@ RestStatus RestQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
-bool RestQueryHandler::readQueryProperties() {
+void RestQueryHandler::readQueryProperties() {
   auto queryList = _vocbase.queryList();
   VPackBuilder result;
 
@@ -89,99 +90,73 @@ bool RestQueryHandler::readQueryProperties() {
   result.close();
 
   generateResult(rest::ResponseCode::OK, result.slice());
-
-  return true;
 }
 
-bool RestQueryHandler::readQuery(bool slow) {
-  auto queryList = _vocbase.queryList();
-  auto queries = slow ? queryList->listSlow() : queryList->listCurrent();
+void RestQueryHandler::readQuery(bool slow) {
+  Result res;
   VPackBuilder result;
-
-  result.add(VPackValue(VPackValueType::Array));
-
-  for (auto const& q : queries) {
-    auto timeString = TRI_StringTimeStamp(q.started, Logger::getUseLocalTime());
-
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(StringUtils::itoa(q.id)));
-    result.add("query", VPackValue(q.queryString));
-    if (q.bindParameters != nullptr) {
-      result.add("bindVars", q.bindParameters->slice());
-    } else {
-      result.add("bindVars", arangodb::velocypack::Slice::emptyObjectSlice());
-    }
-    result.add("started", VPackValue(timeString));
-    result.add("runTime", VPackValue(q.runTime));
-    result.add("state", VPackValue(QueryExecutionState::toString(q.state)));
-    result.add("stream", VPackValue(q.stream));
-    result.close();
+    
+  bool const allDatabases = _request->parsedValue("all", false);
+  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  if (slow) {
+    res = methods::Queries::listSlow(_vocbase, result, allDatabases, fanout);
+  } else {
+    res = methods::Queries::listCurrent(_vocbase, result, allDatabases, fanout);
   }
-  result.close();
 
-  generateResult(rest::ResponseCode::OK, result.slice());
-
-  return true;
+  if (res.ok()) {
+    generateResult(rest::ResponseCode::OK, result.slice());
+  } else {
+    generateError(res);
+  }
 }
 
 /// @brief returns AQL query tracking
-bool RestQueryHandler::readQuery() {
+void RestQueryHandler::readQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
-    return true;
+    return;
   }
 
   auto const& name = suffixes[0];
 
   if (name == "slow") {
-    return readQuery(true);
+    readQuery(true);
   } else if (name == "current") {
-    return readQuery(false);
+    readQuery(false);
   } else if (name == "properties") {
-    return readQueryProperties();
+    readQueryProperties();
+  } else {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "unknown type '" + name +
+                      "', expecting 'slow', 'current', or 'properties'");
   }
-
-  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
-                "unknown type '" + name +
-                    "', expecting 'slow', 'current', or 'properties'");
-  return true;
 }
 
 void RestQueryHandler::deleteQuerySlow() {
-  auto queryList = _vocbase.queryList();
-  queryList->clearSlow();
-
-  VPackBuilder result;
-
-  result.add(VPackValue(VPackValueType::Object));
-  result.add(StaticStrings::Error, VPackValue(false));
-  result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
-  result.close();
-
-  generateResult(rest::ResponseCode::OK, result.slice());
-}
-
-void RestQueryHandler::deleteQuery(std::string const& name) {
-  auto id = StringUtils::uint64(name);
-  auto queryList = _vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
-  Result res = queryList->kill(id);
+  bool const allDatabases = _request->parsedValue("all", false);
+  bool const fanout = ServerState::instance()->isCoordinator() && !_request->parsedValue("local", false);
+  
+  Result res = methods::Queries::clearSlow(_vocbase, allDatabases, fanout);
 
   if (res.ok()) {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add(StaticStrings::Error, VPackValue(false));
-    result.add(StaticStrings::Code, VPackValue((int)rest::ResponseCode::OK));
-    result.close();
-
-    generateResult(rest::ResponseCode::OK, result.slice());
+    generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
   } else {
-    generateError(GeneralResponse::responseCode(res.errorNumber()), res.errorNumber(),
-                  "cannot kill query '" + name + "': " + res.errorMessage());
+    generateError(res);
+  }
+}
+
+void RestQueryHandler::killQuery(std::string const& id) {
+  bool const allDatabases = _request->parsedValue("all", false);
+  Result res = methods::Queries::kill(_vocbase, StringUtils::uint64(id), allDatabases);
+
+  if (res.ok()) {
+    generateOk(rest::ResponseCode::OK, velocypack::Slice::noneSlice());
+  } else {
+    generateError(res);
   }
 }
 
@@ -195,35 +170,35 @@ void RestQueryHandler::deleteQuery() {
     return;
   }
 
-  auto const& name = suffixes[0];
+  auto const& id = suffixes[0];
 
-  if (name == "slow") {
+  if (id == "slow") {
     deleteQuerySlow();
   } else {
-    deleteQuery(name);
+    killQuery(id);
   }
 }
 
-bool RestQueryHandler::replaceProperties() {
+void RestQueryHandler::replaceProperties() {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1 || suffixes[0] != "properties") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
-    return true;
+    return;
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return true;
+    return;
   }
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-    return true;
+    return;
   }
 
   auto queryList = _vocbase.queryList();
@@ -279,40 +254,41 @@ bool RestQueryHandler::replaceProperties() {
   queryList->slowStreamingQueryThreshold(slowStreamingQueryThreshold);
   queryList->maxQueryStringLength(maxQueryStringLength);
 
-  return readQueryProperties();
+  readQueryProperties();
 }
 
-bool RestQueryHandler::parseQuery() {
+void RestQueryHandler::parseQuery() {
   auto const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/query");
-    return true;
+    return;
   }
 
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return true;
+    return;
   }
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting a JSON object as body");
-    return true;
+    return;
   }
 
   std::string const queryString =
       VelocyPackHelper::checkAndGetStringValue(body, "query");
 
-  Query query(false, _vocbase, QueryString(queryString), nullptr, nullptr, PART_MAIN);
+  Query query(transaction::StandaloneContext::Create(_vocbase),
+              QueryString(queryString), nullptr);
   auto parseResult = query.parse();
 
   if (parseResult.result.fail()) {
     generateError(parseResult.result);
-    return true;
+    return;
   }
 
   VPackBuilder result;
@@ -326,7 +302,7 @@ bool RestQueryHandler::parseQuery() {
     for (const auto& it : parseResult.collectionNames) {
       result.add(VPackValue(it));
     }
-    result.close();  // Collections
+    result.close();  // collections
 
     result.add("bindVars", VPackValue(VPackValueType::Array));
     for (const auto& it : parseResult.bindParameters) {
@@ -342,29 +318,30 @@ bool RestQueryHandler::parseQuery() {
   }
 
   generateResult(rest::ResponseCode::OK, result.slice());
-  return true;
 }
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestQueryHandler::forwardingTarget() {
-  if (!ServerState::instance()->isCoordinator()) {
-    return {std::make_pair(StaticStrings::Empty, false)};
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
   }
 
-  bool found = false;
-  std::string const& value = _request->header(StaticStrings::TransactionId, found);
-  if (found) {
-    uint64_t tid = basics::StringUtils::uint64(value);
-    if (!transaction::isCoordinatorTransactionId(tid)) {
-      TRI_ASSERT(transaction::isLegacyTransactionId(tid));
-      return {std::make_pair(StaticStrings::Empty, false)};
+  if (_request->requestType() == RequestType::DELETE_REQ) {
+    // kill operation
+    auto const& suffixes = _request->suffixes();
+    TRI_ASSERT(suffixes.size() >= 1);
+    auto const& id = suffixes[0];
+    if (id != "slow") {
+      uint64_t tick = basics::StringUtils::uint64(id);
+      uint32_t sourceServer = TRI_ExtractServerIdFromTick(tick);
+      if (sourceServer != ServerState::instance()->getShortId()) {
+        auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+        return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
+      }
     }
-    uint32_t sourceServer = TRI_ExtractServerIdFromTick(tid);
-    if (sourceServer == ServerState::instance()->getShortId()) {
-      return {std::make_pair(StaticStrings::Empty, false)};
-    }
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    return {std::make_pair(ci.getCoordinatorByShortID(sourceServer), false)};
   }
 
   return {std::make_pair(StaticStrings::Empty, false)};

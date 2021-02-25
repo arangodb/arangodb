@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,6 +56,9 @@ class GeneralResponse {
   // converts the response code to a string for delivering to a http client.
   static std::string responseString(ResponseCode);
 
+  // returns true if code will become a valid http response.
+  static bool isValidResponseCode(uint64_t code);
+
   // converts the response code string to the internal code
   static ResponseCode responseCode(std::string const& str);
 
@@ -91,7 +94,7 @@ class GeneralResponse {
   virtual arangodb::Endpoint::TransportType transportType() = 0;
 
  protected:
-  explicit GeneralResponse(ResponseCode);
+  explicit GeneralResponse(ResponseCode, uint64_t mid);
 
  public:
   virtual ~GeneralResponse() = default;
@@ -130,20 +133,18 @@ class GeneralResponse {
   virtual bool isResponseEmpty() const = 0;
 
  public:
-  virtual uint64_t messageId() const { return 1; }
-
-  virtual void setMessageId(uint64_t msgId) { }
+  uint64_t messageId() const { return _messageId; }
+  void setMessageId(uint64_t msgId) { _messageId = msgId; }
 
   virtual void reset(ResponseCode) = 0;
 
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
-  void setPayload(Payload&& payload, bool generateBody,
+  void setPayload(Payload&& payload,
                   velocypack::Options const& options = velocypack::Options::Defaults,
                   bool resolveExternals = true) {
     TRI_ASSERT(isResponseEmpty());
-    _generateBody = generateBody;
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
@@ -153,17 +154,21 @@ class GeneralResponse {
                           arangodb::velocypack::Options const* = nullptr,
                           bool resolveExternals = true) = 0;
   virtual void addRawPayload(velocypack::StringRef payload) = 0;
-  virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
+  virtual ErrorCode reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
 
   /// used for head
   bool generateBody() const { return _generateBody; }
-  /// used for head
-  virtual bool setGenerateBody(bool) { return _generateBody; }
 
+  /// used for head-responses
+  bool setGenerateBody(bool generateBody) {
+    return _generateBody = generateBody;
+  }
+  
   virtual int deflate(size_t size = 16384) = 0;
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map
+  uint64_t _messageId;                                    // message ID
   ResponseCode _responseCode;                             // http response code
   ContentType _contentType;
   ContentType _contentTypeRequested;

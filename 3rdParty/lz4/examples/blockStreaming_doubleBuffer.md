@@ -1,7 +1,7 @@
 ﻿# LZ4 Streaming API Example : Double Buffer
 by *Takayuki Matsuoka*
 
-`blockStreaming_doubleBuffer.c` is LZ4 Straming API example which implements double buffer (de)compression.
+`blockStreaming_doubleBuffer.c` is LZ4 Streaming API example which implements double buffer (de)compression.
 
 Please note :
 
@@ -76,10 +76,10 @@ so it just compress the line without dependencies and generates compressed block
 After that, write {Out#1} to the file.
 
 Next, read second block to double buffer's second page. And compress it.
-In this time, LZ4 can use dependency to Block#1 to improve compression ratio.
+This time, LZ4 can use dependency to Block#1 to improve compression ratio.
 This dependency is called "Prefix mode".
 
-Next, read third block to double buffer's *first* page. And compress it.
+Next, read third block to double buffer's *first* page, and compress it.
 Also this time, LZ4 can use dependency to Block#2.
 This dependency is called "External Dictonaly mode".
 

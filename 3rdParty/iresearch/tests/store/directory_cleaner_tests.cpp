@@ -31,6 +31,8 @@
 #include "store/memory_directory.hpp"
 #include "utils/directory_utils.hpp"
 
+using namespace std::chrono_literals;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -344,7 +346,3 @@ TEST(directory_cleaner_tests, test_directory_cleaner_current_segment) {
     ASSERT_TRUE(files.empty()); // current segment should have been removed too
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,10 +33,10 @@
 #include <string>
 #include <vector>
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 #include "Basics/Common.h"
-#include "Basics/StringUtils.h"
+#include "Basics/Result.h"
 #include "Basics/debugging.h"
 
 #ifdef USE_ENTERPRISE
@@ -92,45 +92,51 @@ bool TRI_ExistsFile(char const* path);
 /// @brief sets the desired mode on a file, returns errno on error.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ChMod(char const* path, long mode, std::string& err);
+ErrorCode TRI_ChMod(char const* path, long mode, std::string& err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MTimeFile(char const* path, int64_t* mtime);
+ErrorCode TRI_MTimeFile(char const* path, int64_t* mtime);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory(char const* path, long& systemError,
+ErrorCode TRI_CreateRecursiveDirectory(char const* path, long& systemError,
                                  std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
+ErrorCode TRI_CreateDirectory(char const* path, long& systemError, std::string& systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveEmptyDirectory(char const* filename);
+ErrorCode TRI_RemoveEmptyDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using file order provided by
 /// the file system
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectory(char const* filename);
+ErrorCode TRI_RemoveDirectory(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes a directory recursively, using a deterministic order of files
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveDirectoryDeterministic(char const* filename);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalizes path to only use the default directory separator
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_NormalizePath(std::string& path);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the dirname
@@ -166,20 +172,20 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
+ErrorCode TRI_RenameFile(char const* old, char const* filename, long* systemError = nullptr,
                    std::string* systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnlinkFile(char const* filename);
+ErrorCode TRI_UnlinkFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads into a buffer from a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReadPointer(int fd, void* buffer, size_t length);
+TRI_read_return_t TRI_ReadPointer(int fd, char* buffer, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writes buffer to a file
@@ -242,7 +248,7 @@ char* TRI_SlurpDecryptFile(arangodb::EncryptionFeature& encryptionFeature, char 
 /// all open locks upon exit.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateLockFile(char const* filename);
+ErrorCode TRI_CreateLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
@@ -260,7 +266,7 @@ int TRI_CreateLockFile(char const* filename);
 /// TRI_ERROR_NO_ERROR than the file is locked and the lock is valid.
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_VerifyLockFile(char const* filename);
+ErrorCode TRI_VerifyLockFile(char const* filename);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
@@ -315,7 +321,7 @@ std::string TRI_HomeDirectory();
 /// @brief calculate the crc32 checksum of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_Crc32File(char const*, uint32_t*);
+ErrorCode TRI_Crc32File(char const* path, uint32_t* crc);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the application's name
@@ -388,18 +394,6 @@ std::string TRI_LocateInstallDirectory(char const* argv0, const char* binaryPath
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the address of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_GetNullBufferFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the size of the null buffer
-////////////////////////////////////////////////////////////////////////////////
-
-size_t TRI_GetNullBufferSizeFiles();
-
 /// @brief creates a new datafile
 /// returns the file descriptor or -1 if the file cannot be created
 int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
@@ -410,20 +404,20 @@ int TRI_CreateDatafile(std::string const& filename, size_t maximalSize);
 
 bool TRI_PathIsAbsolute(std::string const& path);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialize the files subsystem
-////////////////////////////////////////////////////////////////////////////////
+/// @brief return the amount of total and free disk space for the given path
+arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path, 
+                                      uint64_t& totalSpace,
+                                      uint64_t& freeSpace);
 
-void TRI_InitializeFiles();
+/// @brief return the amount of total and free inodes for the given path.
+/// always returns 0 on Windows!
+arangodb::Result TRI_GetINodesInfo(std::string const& path, 
+                                   uint64_t& totalINodes, 
+                                   uint64_t& freeINodes); 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown the files subsystem
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownFiles();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if which is found, value is overwriten, true returned.
+/// @brief reads an environment variable. returns false if env var was not set.
+/// if env var was set, returns env variable value in "value" and returns true.
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value);
@@ -433,28 +427,14 @@ bool TRI_GETENV(char const* which, std::string& value);
 ///        you need to wrap your TRI_SHA256Functor object within std::ref().
 ////////////////////////////////////////////////////////////////////////////////
 struct TRI_SHA256Functor {
-  SHA256_CTX _context;
-  unsigned char _digest[SHA256_DIGEST_LENGTH];
+  TRI_SHA256Functor();
+  ~TRI_SHA256Functor();
 
-  TRI_SHA256Functor() {
-    int ret_val = SHA256_Init(&_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-  }
-
-  bool operator()(char const* data, size_t size) {
-    int ret_val = SHA256_Update(&_context, static_cast<void const*>(data), size);
-    return 1 == ret_val;
-  }
-
-  std::string final() {
-    int ret_val = SHA256_Final(_digest, &_context);
-    if (1 != ret_val) {
-      TRI_ASSERT(false);
-    } // if
-    return arangodb::basics::StringUtils::encodeHex((char const *)_digest, SHA256_DIGEST_LENGTH);
-  }
+  bool operator()(char const* data, size_t size) noexcept;
+  
+  std::string finalize();
+  
+  EVP_MD_CTX* _context;
 };// struct TRI_SHA256Functor
 
 #endif

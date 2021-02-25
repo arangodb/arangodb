@@ -1,0 +1,22 @@
+diff --git a/source/i18n/regexcmp.cpp b/source/i18n/regexcmp.cpp
+index 2d14aa83..e27c3ca5 100644
+--- a/source/i18n/regexcmp.cpp
++++ b/source/i18n/regexcmp.cpp
+@@ -2285,7 +2285,7 @@ void  RegexCompile::handleCloseParen() {
+                 error(U_REGEX_LOOK_BEHIND_LIMIT);
+                 break;
+             }
+-            if (minML == INT32_MAX && maxML == 0) {
++            if (minML == INT32_MAX) {
+                 // This condition happens when no match is possible, such as with a
+                 // [set] expression containing no elements.
+                 // In principle, the generated code to evaluate the expression could be deleted,
+@@ -2328,7 +2328,7 @@ void  RegexCompile::handleCloseParen() {
+                 error(U_REGEX_LOOK_BEHIND_LIMIT);
+                 break;
+             }
+-            if (minML == INT32_MAX && maxML == 0) {
++            if (minML == INT32_MAX) {
+                 // This condition happens when no match is possible, such as with a
+                 // [set] expression containing no elements.
+                 // In principle, the generated code to evaluate the expression could be deleted,

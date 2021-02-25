@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, assertTypeOf */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection functionality in a cluster
@@ -28,11 +27,16 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var ERRORS = arangodb.errors;
-var db = arangodb.db;
-let internal = require("internal");
+const jsunity = require("jsunity");
+const {fail, assertEqual, assertTrue, assertFalse, assertNull, assertTypeOf} = jsunity.jsUnity.assertions;
+const arangodb = require("@arangodb");
+const ERRORS = arangodb.errors;
+const db = arangodb.db;
+const internal = require("internal");
+const isServer = typeof internal.arango === 'undefined';
+const console = require('console');
+const request = require('@arangodb/request');
+const ArangoError = require("@arangodb").ArangoError;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -40,6 +44,43 @@ let internal = require("internal");
 
 function ClusterCollectionSuite () {
   'use strict';
+
+  function baseUrl(endpoint) { // arango.getEndpoint()
+    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
+  }
+
+  /// @brief set failure point
+  function debugCanUseFailAt(endpoint) {
+    let res = request.get({
+      url: baseUrl(endpoint) + '/_admin/debug/failat',
+    });
+    return res.status === 200;
+  }
+
+  /// @brief set failure point
+  function debugSetFailAt(endpoint, failAt) {
+    assertTrue(typeof failAt !== 'undefined');
+    let res = request.put({
+      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error setting failure point";
+    }
+  }
+
+  /// @brief remove failure point
+  function debugRemoveFailAt(endpoint, failAt) {
+    assertTrue(typeof failAt !== 'undefined');
+    let res = request.delete({
+      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
+      body: ""
+    });
+    if (res.status !== 200) {
+      throw "Error seting failure point";
+    }
+  }
+
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,8 +303,8 @@ function ClusterCollectionSuite () {
 
       try {
         db._collection("UnitTestsClusterCrud").properties({
-          replicationFactor: 3,
-          minReplicationFactor: 3
+          replicationFactor: 5,
+          minReplicationFactor: 5
         });
         fail();
       } catch (err) {
@@ -553,6 +594,65 @@ function ClusterCollectionSuite () {
       }
     },
 
+    testCreateFailureDuringIsBuilding : function () {
+      if (!isServer) {
+        console.info('Skipping client test');
+        // TODO make client tests work
+        return;
+      }
+      let setFailAt;
+      let removeFailAt;
+      if (isServer) {
+        if (internal.debugCanUseFailAt()) {
+          setFailAt = internal.debugSetFailAt;
+          removeFailAt = internal.debugRemoveFailAt;
+        }
+      } else {
+        const arango = internal.arango;
+        const coordinatorEndpoint = arango.getEndpoint();
+        if (debugCanUseFailAt(coordinatorEndpoint)) {
+          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
+          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
+        }
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::createCollectionsCoordinator';
+      try {
+        setFailAt(failurePoint);
+        const colName = "UnitTestClusterShouldNotBeCreated";
+        let threw = false;
+        try {
+          db._create(colName);
+        } catch (e) {
+          threw = true;
+          if (isServer) {
+            assertTrue(e instanceof ArangoError);
+            assertEqual(22, e.errorNum);
+            assertEqual('intentional debug error', e.errorMessage);
+          } else {
+            const expected = {
+              'error': true,
+              'errorNum': 22,
+              'code': 500,
+              'errorMessage': 'intentional debug error',
+            };
+            assertEqual(expected, e);
+          }
+        }
+        assertTrue(threw);
+        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
+          .arango.Plan.Collections[db._name()];
+        assertEqual([], Object.values(collections).filter(col => col.name === colName),
+          'Collection should have been deleted');
+      } finally {
+        removeFailAt(failurePoint);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replicationFactor
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,16 +756,13 @@ function ClusterCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateProperties3 : function () {
-      var c = db._create("UnitTestsClusterCrud", { journalSize: 1048576 });
+      var c = db._create("UnitTestsClusterCrud");
       assertEqual("UnitTestsClusterCrud", c.name());
       assertEqual(2, c.type());
       assertEqual(3, c.status());
       assertTrue(c.hasOwnProperty("_id"));
       assertEqual([ "_key" ], c.properties().shardKeys);
       assertFalse(c.properties().waitForSync);
-      if (db._engine().name === "mmfiles") {
-        assertEqual(1048576, c.properties().journalSize);
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -808,9 +905,9 @@ function ClusterCollectionSuite () {
         {'@cn' : cn});
       assertEqual(1, c.toArray().length);
       var doc = c.any();
-      assertTrue(doc.super === "cat");
+      assertEqual(doc.super, "cat");
       doc = cursor.next();                // should be: cursor >>= id
-      assertTrue(doc[0].super === "cat");  // extra [] buy subquery return
+      assertEqual(doc[0].super, "cat");  // extra [] buy subquery return
 
       //remove
       cursor = db._query(`

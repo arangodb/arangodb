@@ -24,7 +24,7 @@ struct MemoryRegion {
   void *data;
   void *mmap;
   size_t size;
-  int offset;
+  size_t offset;
 };
 
 class MappedFile {
@@ -41,13 +41,19 @@ class MappedFile {
   // source argument needs to contain the filename that was used to open the
   // input stream.
   static MappedFile *Map(std::istream *istrm, bool memorymap,
-                         const string &source, size_t size);
+                         const std::string &source, size_t size);
+
+  // Returns a MappedFile object that contains the contents of the file referred
+  // to by the file descriptor starting from pos with size bytes. If the
+  // memory mapping fails, nullptr is returned. In contrast to Map(), this
+  // factory function does not backoff to allocating and reading.
+  static MappedFile *MapFromFileDescriptor(int fd, size_t pos, size_t size);
 
   // Creates a MappedFile object with a new[]'ed block of memory of size. The
   // align argument can be used to specify a desired block alignment.
   // This is RECOMMENDED FOR INTERNAL USE ONLY as it may change in future
   // releases.
-  static MappedFile *Allocate(size_t size, int align = kArchAlignment);
+  static MappedFile *Allocate(size_t size, size_t align = kArchAlignment);
 
   // Creates a MappedFile object pointing to a borrowed reference to data. This
   // block of memory is not owned by the MappedFile object and will not be
@@ -59,9 +65,9 @@ class MappedFile {
   // are not aligned upon a 128-bit boundary are read from the file instead.
   // This is consistent with the alignment boundary set in ConstFst and
   // CompactFst.
-  static FST_CONSTEXPR const int kArchAlignment = 16;
+  static constexpr size_t kArchAlignment = 16;
 
-  static FST_CONSTEXPR const size_t kMaxReadChunk = 256 * 1024 * 1024;  // 256 MB.
+  static constexpr size_t kMaxReadChunk = 256 * 1024 * 1024;  // 256 MB.
 
  private:
   explicit MappedFile(const MemoryRegion &region);

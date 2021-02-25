@@ -157,9 +157,6 @@
       var data = {};
       data.name = object.collName;
       data.waitForSync = object.wfs;
-      if (object.journalSize > 0) {
-        data.journalSize = object.journalSize;
-      }
       data.isSystem = object.isSystem;
       data.type = parseInt(object.collType, 10);
       if (object.shards) {
@@ -182,11 +179,11 @@
         }
       }
 
-      if (object.minReplicationFactor) {
-        data.minReplicationFactor = object.minReplicationFactor;
-        if (pattern.test(object.minReplicationFactor)) {
+      if (object.writeConcern) {
+        data.writeConcern = object.writeConcern;
+        if (pattern.test(object.writeConcern)) {
           // looks like a number
-          data.minReplicationFactor = JSON.parse(object.minReplicationFactor);
+          data.writeConcern = JSON.parse(object.writeConcern);
         }
       }
 

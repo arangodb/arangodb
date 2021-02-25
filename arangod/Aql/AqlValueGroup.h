@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,30 +28,43 @@
 #include "Basics/Common.h"
 
 namespace arangodb {
-namespace transaction {
-class Methods;
+namespace velocypack {
+struct Options;
 }
 
 namespace aql {
 
+using AqlValueGroup = std::vector<AqlValue>;
+
+struct HashedAqlValueGroup {
+  size_t hash{0};
+  AqlValueGroup values;
+};
+
 /// @brief hasher for a vector of AQL values
 struct AqlValueGroupHash {
-  AqlValueGroupHash(transaction::Methods* trx, size_t num);
+  explicit AqlValueGroupHash(size_t num);
 
   size_t operator()(std::vector<AqlValue> const& value) const;
+  size_t operator()(AqlValue const& value) const;
+  size_t operator()(HashedAqlValueGroup const& value) const noexcept;
 
-  transaction::Methods* _trx;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t const _num;
+#endif
 };
 
 /// @brief comparator for a vector of AQL values
 struct AqlValueGroupEqual {
-  explicit AqlValueGroupEqual(transaction::Methods* trx);
+  explicit AqlValueGroupEqual(velocypack::Options const*);
 
   bool operator()(std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const;
+  bool operator()(AqlValue const& lhs, AqlValue const& rhs) const;
+  bool operator()(HashedAqlValueGroup const& lhs, HashedAqlValueGroup const& rhs) const;
 
-  transaction::Methods* _trx;
+  velocypack::Options const* _vpackOptions;
 };
+
 
 }  // namespace aql
 }  // namespace arangodb

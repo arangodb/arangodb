@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +25,16 @@
 #define ARANGOD_CONSENSUS_NODE_H 1
 
 #include "AgencyCommon.h"
+#include "Basics/ResultT.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <cstdint>
 #include <type_traits>
 #include <utility>
 
-namespace arangodb {
-namespace consensus {
+namespace arangodb::consensus {
 
 enum NodeType { NODE, LEAF };
 enum Operation {
@@ -47,7 +48,11 @@ enum Operation {
   OBSERVE,
   UNOBSERVE,
   ERASE,
-  REPLACE
+  REPLACE,
+  READ_LOCK,
+  READ_UNLOCK,
+  WRITE_LOCK,
+  WRITE_UNLOCK,
 };
 
 using namespace arangodb::velocypack;
@@ -78,7 +83,10 @@ class Store;
 /// assignment operator.
 /// toBuilder(Builder&) will create a _vecBuf, when needed as a means to
 /// optimization by avoiding to build it before necessary.
-class Node {
+class Node final {
+  /// @brief Access private methods
+  friend class Store;
+
  public:
   /// @brief Slash-segmented path
   typedef std::vector<std::string> PathType;
@@ -93,7 +101,7 @@ class Node {
   Node(Node const& other);
 
   /// @brief Move constructor
-  Node(Node&& other);
+  Node(Node&& other) noexcept;
 
   /// @brief Construct with name and introduce to tree under parent
   Node(std::string const& name, Node* parent);
@@ -102,7 +110,7 @@ class Node {
   Node(std::string const& name, Store* store);
 
   /// @brief Default dtor
-  virtual ~Node();
+  ~Node();
 
   /// @brief Get name
   std::string const& name() const;
@@ -114,7 +122,7 @@ class Node {
   Node& operator=(Node const& node);
 
   /// @brief Move operator
-  Node& operator=(Node&& node);
+  Node& operator=(Node&& node) noexcept;
 
   /// @brief Apply value slice to this node
   Node& operator=(arangodb::velocypack::Slice const&);
@@ -134,12 +142,6 @@ class Node {
   /// @brief Get node specified by path vector
   Node const& operator()(std::vector<std::string> const& pv) const;
 
-  /// @brief Remove child by name
-  bool removeChild(std::string const& key);
-
-  /// @brief Remove this node and below from tree
-  bool remove();
-
   /// @brief Get root node
   Node const& root() const;
 
@@ -153,14 +155,17 @@ class Node {
   std::string path();
 
   /// @brief Apply single operation as defined by "op"
-  bool applieOp(arangodb::velocypack::Slice const&);
+  ResultT<std::shared_ptr<Node>> applyOp(arangodb::velocypack::Slice const&);
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
 
+  /// @brief Return all keys of an object node. Result will be empty for non-objects.
+  std::vector<std::string> keys() const;
+
   /// @brief handle "op" keys in write json
   template <Operation Oper>
-  bool handle(arangodb::velocypack::Slice const&);
+  arangodb::ResultT<std::shared_ptr<Node>> handle(arangodb::velocypack::Slice const&);
 
   /// @brief Create Builder representing this store
   void toBuilder(Builder&, bool showHidden = false) const;
@@ -179,22 +184,6 @@ class Node {
 
   /// @brief Get value type
   ValueType valueType() const;
-
-  /// @brief Get our container
-  Store& store();
-
-  /// @brief Get our container
-  Store const& store() const;
-
-  /// brief Normalize node URIs
-  static std::string normalize(std::string const& key);
- 
-private:
-
-  /// @brief Get store if it exists:
-  Store* getStore();
-
-public:
 
   /// @brief Create JSON representation of this node and below
   std::string toJson() const;
@@ -231,12 +220,6 @@ public:
 
   /// @brief Is string
   bool isString() const;
-
-  /**
-   * @brief Get seconds this node still has to live. (Must be guarded by caller)
-   * @return  seconds to live (int64_t::max, if none set)
-   */
-  TimePoint const& timeToLive() const;
 
   /**
    * @brief Set expiry for this node
@@ -289,7 +272,6 @@ public:
   /// @return  second is true if url exists, first populated if second true
   std::pair<Slice, bool> hasAsArray(std::string const&) const;
 
-  //
   // These two operator() functions could be "protected" once
   //  unit tests updated.
   //
@@ -308,11 +290,6 @@ public:
   /// @brief Get insigned value (throws if type NODE or if conversion fails)
   uint64_t getUInt() const;
 
-  //
-  // The protected accessors are the "old" interface.  They throw.
-  //  Please use the hasAsXXX replacements.
-  //
- protected:
   /// @brief Get node specified by path string, always throw if not there
   Node const& get(std::string const& path) const;
 
@@ -325,7 +302,23 @@ public:
   /// @brief Get double value (throws if type NODE or if conversion fails)
   double getDouble() const;
 
- public:
+  template<typename T>
+  auto getNumberUnlessExpiredWithDefault() -> T {
+    if (ADB_LIKELY(!lifetimeExpired())) {
+      try {
+        return this->slice().getNumber<T>();
+      } catch (...) {
+      }
+    }
+
+    return T{0};
+  }
+
+  static auto getIntWithDefault(Slice slice, std::string_view key, std::int64_t def) -> std::int64_t;
+
+  bool isReadLockable(const VPackStringRef& by) const;
+  bool isWriteLockable(const VPackStringRef& by) const;
+
   /// @brief Clear key value store
   void clear();
 
@@ -333,13 +326,32 @@ public:
   static Node const& dummyNode() {
     return _dummyNode;
   }
+ 
+ private:
+  
+  bool isReadUnlockable(const VPackStringRef& by) const;
+  bool isWriteUnlockable(const VPackStringRef& by) const;
+  
+  /// @brief  Remove child by name
+  /// @return shared pointer to removed child
+  arangodb::ResultT<std::shared_ptr<Node>> removeChild(std::string const& key);
 
- protected:
+  /// @brief Get root store if it exists:
+  Store* getRootStore() const;
+
+  /// @brief Remove me from tree, if not root node, clear else.
+  /// @return If not root node, shared pointer copy to this node is returned
+  ///         to control life time by caller; else nullptr.
+  arangodb::ResultT<std::shared_ptr<Node>> deleteMe();
+
+  // @brief check lifetime expiry
+  bool lifetimeExpired() const;
+
   /// @brief Add time to live entry
-  virtual bool addTimeToLive(long millis);
+  bool addTimeToLive(std::chrono::time_point<std::chrono::system_clock> const& tp);
 
   /// @brief Remove time to live entry
-  virtual bool removeTimeToLive();
+  bool removeTimeToLive();
 
   void rebuildVecBuf() const;
 
@@ -360,7 +372,7 @@ public:
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
   return n.print(o);
 }
-}  // namespace consensus
-}  // namespace arangodb
+
+}  // namespace arangodb::consensus
 
 #endif

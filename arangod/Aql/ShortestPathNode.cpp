@@ -1,10 +1,8 @@
-/// @brief Implementation of Shortest Path Execution Node
-///
-/// @file arangod/Aql/ShortestPathNode.cpp
-///
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -44,13 +42,16 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <memory>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id, Variable const*& variable, char const* part) {
+static void parseNodeInput(AstNode const* node, std::string& id,
+                           Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -58,8 +59,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                       std::string("invalid ") + part + " vertex. Must either be "
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
+                                       " vertex. Must either be "
                                        "an _id string or an object with _id.");
       }
       variable = nullptr;
@@ -67,8 +69,9 @@ static void parseNodeInput(AstNode const* node, std::string& id, Variable const*
       break;
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part + " vertex. Must either be an "
-                                     "_id string or an object with _id.");
+                                     std::string("invalid ") + part +
+                                         " vertex. Must either be an "
+                                         "_id string or an object with _id.");
   }
 }
 static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNode const* node,
@@ -94,7 +97,7 @@ static ShortestPathExecutorInfos::InputVertex prepareVertexInput(ShortestPathNod
 }
 }  // namespace
 
-ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
                                    AstNode const* direction, AstNode const* start,
                                    AstNode const* target, AstNode const* graph,
                                    std::unique_ptr<BaseOptions> options)
@@ -139,13 +142,15 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t
 
 /// @brief Internal constructor to clone the node.
 ShortestPathNode::ShortestPathNode(
-    ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-    std::vector<std::unique_ptr<Collection>> const& edgeColls,
-    std::vector<std::unique_ptr<Collection>> const& vertexColls,
-    std::vector<TRI_edge_direction_e> const& directions, Variable const* inStartVariable,
-    std::string const& startVertexId, Variable const* inTargetVariable,
-    std::string const& targetVertexId, std::unique_ptr<BaseOptions> options)
-    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, directions, std::move(options)),
+    ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+    std::vector<Collection*> const& edgeColls,
+    std::vector<Collection*> const& vertexColls,
+    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    Variable const* inStartVariable, std::string const& startVertexId,
+    Variable const* inTargetVariable, std::string const& targetVertexId,
+    std::unique_ptr<BaseOptions> options, graph::Graph const* graph)
+    : GraphNode(plan, id, vocbase, edgeColls, vertexColls, defaultDirection,
+                directions, std::move(options), graph),
       _inStartVariable(inStartVariable),
       _startVertexId(startVertexId),
       _inTargetVariable(inTargetVariable),
@@ -198,14 +203,19 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan, arangodb::velocypack::Sl
 
   // Filter Condition Parts
   TRI_ASSERT(base.hasKey("fromCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
-  _fromCondition = new AstNode(plan->getAst(), base.get("fromCondition"));
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
+  _fromCondition = plan->getAst()->createNode(base.get("fromCondition"));
 
   TRI_ASSERT(base.hasKey("toCondition"));
-  // the plan's AST takes ownership of the newly created AstNode, so this is safe
-  // cppcheck-suppress *
-  _toCondition = new AstNode(plan->getAst(), base.get("toCondition"));
+  // the plan's AST takes ownership of the newly created AstNode, so this is
+  // safe cppcheck-suppress *
+  _toCondition = plan->getAst()->createNode(base.get("toCondition"));
+}
+
+void ShortestPathNode::setStartInVariable(Variable const* inVariable) {
+  _inStartVariable = inVariable;
+  _startVertexId = "";
 }
 
 void ShortestPathNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
@@ -244,35 +254,37 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet();
   auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
     auto it = varInfo.find(startInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
   }
   if (usesTargetInVariable()) {
     auto it = varInfo.find(targetInVariable()->id);
     TRI_ASSERT(it != varInfo.end());
-    inputRegisters->emplace(it->second.registerId);
+    inputRegisters.emplace(it->second.registerId);
   }
 
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto outputRegisters = RegIdSet{};
   std::unordered_map<ShortestPathExecutorInfos::OutputName, RegisterId, ShortestPathExecutorInfos::OutputNameHash> outputRegisterMapping;
-  if (usesVertexOutVariable()) {
+  if (isVertexOutVariableUsedLater()) {
     auto it = varInfo.find(vertexOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::VERTEX,
-                                  it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+                                      it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
   }
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto it = varInfo.find(edgeOutVariable()->id);
     TRI_ASSERT(it != varInfo.end());
     outputRegisterMapping.try_emplace(ShortestPathExecutorInfos::OutputName::EDGE,
-                                  it->second.registerId);
-    outputRegisters->emplace(it->second.registerId);
+                                      it->second.registerId);
+    outputRegisters.emplace(it->second.registerId);
   }
+
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -281,20 +293,21 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   std::unique_ptr<ShortestPathFinder> finder;
   if (opts->useWeight()) {
-    finder.reset(new graph::AttributeWeightShortestPathFinder(*opts));
+    finder = std::make_unique<graph::AttributeWeightShortestPathFinder>(*opts);
   } else {
-    finder.reset(new graph::ConstantWeightShortestPathFinder(*opts));
+    finder = std::make_unique<graph::ConstantWeightShortestPathFinder>(*opts);
   }
 
+#ifdef USE_ENTERPRISE
+  waitForSatelliteIfRequired(&engine);
+#endif
+
   TRI_ASSERT(finder != nullptr);
-  ShortestPathExecutorInfos infos(inputRegisters, outputRegisters,
-                                  getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                  getRegisterPlan()->nrRegs[getDepth()],
-                                  getRegsToClear(), calcRegsToKeep(),
-                                  std::move(finder), std::move(outputRegisterMapping),
-                                  std::move(sourceInput), std::move(targetInput));
-  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(&engine, this,
-                                                                    std::move(infos));
+  auto executorInfos =
+      ShortestPathExecutorInfos(std::move(finder), std::move(outputRegisterMapping),
+                                std::move(sourceInput), std::move(targetInput));
+  return std::make_unique<ExecutionBlockImpl<ShortestPathExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -303,37 +316,43 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan, bool withDependencie
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
   auto c = std::make_unique<ShortestPathNode>(plan, _id, _vocbase, _edgeColls,
-                                              _vertexColls, _directions, _inStartVariable,
-                                              _startVertexId, _inTargetVariable,
-                                              _targetVertexId, std::move(tmp));
-  if (usesVertexOutVariable()) {
+                                              _vertexColls, _defaultDirection, _directions,
+                                              _inStartVariable, _startVertexId,
+                                              _inTargetVariable, _targetVertexId,
+                                              std::move(tmp), _graphObj);
+  shortestPathCloneHelper(*plan, *c, withProperties);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
+}
+
+void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
+                                               bool withProperties) const {
+  if (isVertexOutVariableUsedLater()) {
     auto vertexOutVariable = _vertexOutVariable;
     if (withProperties) {
-      vertexOutVariable = plan->getAst()->variables()->createVariable(vertexOutVariable);
+      vertexOutVariable = plan.getAst()->variables()->createVariable(vertexOutVariable);
     }
     TRI_ASSERT(vertexOutVariable != nullptr);
-    c->setVertexOutput(vertexOutVariable);
+    c.setVertexOutput(vertexOutVariable);
   }
 
-  if (usesEdgeOutVariable()) {
+  if (isEdgeOutVariableUsedLater()) {
     auto edgeOutVariable = _edgeOutVariable;
     if (withProperties) {
-      edgeOutVariable = plan->getAst()->variables()->createVariable(edgeOutVariable);
+      edgeOutVariable = plan.getAst()->variables()->createVariable(edgeOutVariable);
     }
     TRI_ASSERT(edgeOutVariable != nullptr);
-    c->setEdgeOutput(edgeOutVariable);
+    c.setEdgeOutput(edgeOutVariable);
   }
 
   // Temporary Filter Objects
-  c->_tmpObjVariable = _tmpObjVariable;
-  c->_tmpObjVarNode = _tmpObjVarNode;
-  c->_tmpIdNode = _tmpIdNode;
+  c._tmpObjVariable = _tmpObjVariable;
+  c._tmpObjVarNode = _tmpObjVarNode;
+  c._tmpIdNode = _tmpIdNode;
 
   // Filter Condition Parts
-  c->_fromCondition = _fromCondition->clone(_plan->getAst());
-  c->_toCondition = _toCondition->clone(_plan->getAst());
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  c._fromCondition = _fromCondition->clone(_plan->getAst());
+  c._toCondition = _toCondition->clone(_plan->getAst());
 }
 
 void ShortestPathNode::prepareOptions() {
@@ -377,4 +396,27 @@ void ShortestPathNode::prepareOptions() {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
+}
+
+auto ShortestPathNode::options() const -> ShortestPathOptions* {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto* opts = dynamic_cast<ShortestPathOptions*>(GraphNode::options());
+  TRI_ASSERT((GraphNode::options() == nullptr) == (opts == nullptr));
+#else
+  auto* opts = static_cast<ShortestPathOptions*>(GraphNode::options());
+#endif
+  return opts;
+}
+
+// This constructor is only used from LocalTraversalNode, and GraphNode
+// is virtually inherited; thus its constructor is never called from here.
+ShortestPathNode::ShortestPathNode(ExecutionPlan& plan, ShortestPathNode const& other)
+    : GraphNode(GraphNode::THIS_THROWS_WHEN_CALLED{}),
+      _inStartVariable(other._inStartVariable),
+      _startVertexId(other._startVertexId),
+      _inTargetVariable(other._inTargetVariable),
+      _targetVertexId(other._targetVertexId),
+      _fromCondition(nullptr),
+      _toCondition(nullptr) {
+  other.shortestPathCloneHelper(plan, *this, false);
 }

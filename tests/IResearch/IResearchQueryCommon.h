@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -71,14 +72,16 @@ class IResearchQueryTest
     dbFeature.createDatabase(testDBInfo(server.server()), _vocbase);  // required for IResearchAnalyzerFeature::emplace(...)
     
     std::shared_ptr<arangodb::LogicalCollection> unused;
-    arangodb::methods::Collections::createSystem(*_vocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::OperationOptions options(arangodb::ExecContext::current());
+    arangodb::methods::Collections::createSystem(*_vocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     unused = nullptr;
 
     auto res =
         analyzers.emplace(result, "testVocbase::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
-                          irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                          irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
         );  // cache analyzer
     EXPECT_TRUE(res.ok());
 
@@ -92,17 +95,18 @@ class IResearchQueryTest
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
-        {irs::frequency::type(), irs::norm::type(), irs::position::type()});  // cache analyzer
+        {irs::type<irs::frequency>::get(), irs::type<irs::norm>::get(), irs::type<irs::position>::get()});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto sysVocbase = server.getFeature<arangodb::SystemDatabaseFeature>().use();
-    arangodb::methods::Collections::createSystem(*sysVocbase, arangodb::tests::AnalyzerCollectionName,
+    arangodb::methods::Collections::createSystem(*sysVocbase, options,
+                                                 arangodb::tests::AnalyzerCollectionName,
                                                  false, unused);
     unused = nullptr;
 
     res = analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                             VPackParser::fromJson("\"abc\"")->slice(),
-                            irs::flags{irs::frequency::type(), irs::position::type()}  // required for PHRASE
+                            irs::flags{irs::type<irs::frequency>::get(), irs::type<irs::position>::get()}  // required for PHRASE
     );  // cache analyzer
     EXPECT_TRUE(res.ok());
 
@@ -117,8 +121,9 @@ class IResearchQueryTest
         "_NONDETERM_", ".",
         arangodb::aql::Function::makeFlags(
             // fake non-deterministic
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster, 
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -130,8 +135,9 @@ class IResearchQueryTest
         arangodb::aql::Function::makeFlags(
             // fake deterministic
             arangodb::aql::Function::Flags::Deterministic, arangodb::aql::Function::Flags::Cacheable,
-            arangodb::aql::Function::Flags::CanRunOnDBServer),
-        [](arangodb::aql::ExpressionContext*, arangodb::transaction::Methods*,
+            arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+            arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
+        [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
            arangodb::aql::VPackFunctionParameters const& params) {
           TRI_ASSERT(!params.empty());
           return params[0];
@@ -144,7 +150,9 @@ class IResearchQueryTest
         "CUSTOMSCORER", ".|+",
         arangodb::aql::Function::makeFlags(arangodb::aql::Function::Flags::Deterministic,
                                            arangodb::aql::Function::Flags::Cacheable,
-                                           arangodb::aql::Function::Flags::CanRunOnDBServer));
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
+                                           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard), 
+        nullptr);
     arangodb::iresearch::addFunction(functions, customScorer);
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();

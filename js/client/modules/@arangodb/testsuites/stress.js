@@ -34,7 +34,7 @@ const optionsDocumentation = [
 ];
 
 const _ = require('lodash');
-const pu = require('@arangodb/process-utils');
+const pu = require('@arangodb/testutils/process-utils');
 const yaml = require('js-yaml');
 
 const download = require('internal').download;

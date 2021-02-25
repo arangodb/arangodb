@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,11 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestTestHandler.h"
 
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -141,7 +142,7 @@ RestStatus RestTestHandler::execute() {
     builder.close();
 
     resetResponse(rest::ResponseCode::OK);
-    _response->setPayload(std::move(buffer), true);
+    _response->setPayload(std::move(buffer));
     wakeupHandler();
   });
 

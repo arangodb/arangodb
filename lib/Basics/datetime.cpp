@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -34,15 +35,12 @@
 #include <utility>
 #include <vector>
 
-#include <date/date.h>
 #include <date/iso_week.h>
 
 #include "Basics/NumberUtils.h"
 #include "Basics/datetime.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 #include <velocypack/StringRef.h>
 
@@ -194,7 +192,7 @@ std::
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(
-                                                                                ::weekDayNames[static_cast<unsigned>(wd)]);
+                                                                                ::weekDayNames[wd.c_encoding()]);
                                                                           }},
 
                                                                          {"%mmm",
@@ -207,8 +205,7 @@ std::
                                                                          {"%www",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
-                                                                            wrk.append(
-                                                                                weekDayNamesShort[static_cast<unsigned>(wd)]);
+                                                                            wrk.append(weekDayNamesShort[wd.c_encoding()]);
                                                                           }},
                                                                          {"%fff",
                                                                           [](std::string& wrk, arangodb::tp_sys_clock_ms const& tp) {
@@ -376,7 +373,7 @@ std::
                                                                              arangodb::tp_sys_clock_ms const& tp) {
                                                                             weekday wd{floor<date::days>(tp)};
                                                                             wrk.append(std::to_string(
-                                                                                static_cast<unsigned>(wd)));
+                                                                                wd.c_encoding()));
                                                                           }},
                                                                          {"%y",
                                                                           [](std::string& wrk,
@@ -524,63 +521,6 @@ std::
 // will be populated by DateRegexInitializer
 std::regex dateFormatRegex;
 
-std::regex const iso8601Regex(
-    "^\\d+(\\-\\d{1,2}(\\-\\d{1,2})?)?"  // YY[YY]-MM-DD
-    "("
-    "("
-    // Time is optional
-    "(\\ |T)"                     // T or blank separates date and time
-    "\\d\\d\\:\\d\\d"             // time: hh:mm
-    "(\\:\\d\\d(\\.\\d{1,})?)?"   // Optional: :ss.mmms
-    "("
-    "z|Z|"  // trailing Z or start of timezone
-    "(\\+|\\-)"
-    "\\d?\\d\\:\\d\\d"  // timezone hh:mm
-    ")?"
-    ")|"
-    "(z|Z)"  // Z
-    ")?", std::regex::optimize);
-
-/* REGEX GROUPS
-12:34:56.789-12:34
-submatch 0: '12:34:56.789-12:34'
-submatch 1: '12'
-submatch 2: '34'
-submatch 3: ':56.789'
-submatch 4: '56'
-submatch 5: '.789'
-submatch 6: '789'
-submatch 7: '-12:34'
-submatch 8: '-'
-submatch 9: '12'
-submatch 10: '34'
-*/
-
-std::regex const timeRegex(
-    "^(\\d\\d)\\:(\\d\\d)(\\:(\\d\\d)(\\.(\\d{1,}))?)?((\\+|\\-)(\\d?\\d)\\:"
-    "(\\d\\d))?", std::regex::optimize);
-
-/* REGEX GROUPS
-P1Y2M3W4DT5H6M7.891S
-  submatch 0: P1Y2M3W4DT5H6M7.891S
-  submatch 1: 1Y
-  submatch 2: 1
-  submatch 3: 2M
-  submatch 4: 2
-  submatch 5: 3W
-  submatch 6: 3
-  submatch 7: 4D
-  submatch 8: 4
-  submatch 9: T5H6M7.891S
-  submatch 10: 5H
-  submatch 11: 5
-  submatch 12: 6M
-  submatch 13: 6
-  submatch 14: 7.891S
-  submatch 15: 7
-  submatch 16: .891
-  submatch 17: 891
-*/
 std::regex const durationRegex(
     "^P((\\d+)Y)?((\\d+)M)?((\\d+)W)?((\\d+)D)?(T((\\d+)H)?((\\d+)M)?((\\d+)(\\."
     "(\\d{1,3}))?S)?)?", std::regex::optimize);
@@ -640,13 +580,37 @@ std::string executeDateFormatRegex(std::string const& search,
 // populates dateFormatRegex
 static DateRegexInitializer const initializer;
 
-}  // namespace
+struct ParsedDateTime {
+  int year = 0;
+  int month = 1;
+  int day = 1;
+  int hour = 0;
+  int minute = 0;
+  int second = 0;
+  int millisecond = 0;
+  int tzOffsetHour = 0;
+  int tzOffsetMinute = 0;
+};
 
-bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime, 
-                                     arangodb::tp_sys_clock_ms& date_tp) {
-  using namespace date;
-  using namespace std::chrono;
- 
+/// @brief parses a number value, and returns its length
+int parseNumber(arangodb::velocypack::StringRef const& dateTime, int& result) {
+  char const* p = dateTime.data();
+  char const* e = p + dateTime.size();
+
+  while (p != e) {
+    char c = *p;
+    if (c < '0' || c > '9') {
+      break;
+    }
+    ++p;
+  }
+  bool valid;
+  result = arangodb::NumberUtils::atoi_positive<int>(dateTime.data(), p, valid);
+  return static_cast<int>(p - dateTime.data());
+}
+
+bool parseDateTime(arangodb::velocypack::StringRef dateTime,
+                   ParsedDateTime& result) {
   // trim input string
   while (!dateTime.empty()) {
     char c = dateTime.front();
@@ -673,183 +637,182 @@ bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
     }
     dateTime.pop_back();
   }
-      
-  if (!std::regex_match(dateTime.begin(), dateTime.end(), ::iso8601Regex)) {
-    LOG_TOPIC("f19ee", DEBUG, arangodb::Logger::FIXME)
-        << "regex failed for datetime '" << dateTime << "'";
+
+  // year
+  int length = parseNumber(dateTime, result.year);
+  if (length == 0 || result.year > 9999) {
     return false;
   }
-
-  if (dateTime.back() == 'Z' || dateTime.back() == 'z') {
-    dateTime.pop_back();
-  }
-
-  LOG_TOPIC("c3c7a", TRACE, arangodb::Logger::FIXME) << "parse datetime '" << dateTime << "'";
-
-  size_t pos = dateTime.find('T');
-  if (pos == std::string::npos) {
-    pos = dateTime.find(' ');
-  }
-
-  arangodb::velocypack::StringRef strDate(dateTime);
-  arangodb::velocypack::StringRef strTime;
-
-  // split into ymd / time
-  if (pos != std::string::npos) {
-    strDate = arangodb::velocypack::StringRef(dateTime.data(), pos);
-    strTime = arangodb::velocypack::StringRef(dateTime.data() + pos + 1, dateTime.size() - pos - 1);
-  }
-
-  // parse date component, moves pointer "p" forward
-  // returns true if "p" pointed to a valid number, and false otherwise
-  auto parseDateComponent = [](char const*& p, char const* e, int& result) -> bool {
-    char const* s = p;  // remember initial start
-    if (p < e && *p == '-') {
-      // skip over initial '-'
-      ++p;
+  if (ADB_UNLIKELY(length > 4)) {
+    // we must have at least 4 digits for the year, however, we
+    // allow any amount of leading zeroes
+    size_t i = 0;
+    while (dateTime[i] == '0') {
+      ++i;
     }
-    while (p < e && *p >= '0' && *p <= '9') {
-      ++p;
-    }
-    if (p == s) {
-      // did not find any valid character
+    if (length - i > 4) {
       return false;
     }
-    result = NumberUtils::atoi_unchecked<int>(s, p);
-    if (p < e && *p == '-') {
-      ++p;
+  }
+  dateTime = dateTime.substr(length);
+
+  if (!dateTime.empty() && dateTime.front() == '-') {
+    // month
+    dateTime = dateTime.substr(1);
+
+    length = parseNumber(dateTime, result.month);
+    if (length == 0 || length > 2 || result.month < 1 || result.month > 12) {
+      return false;
     }
-    return true;
-  };
+    dateTime = dateTime.substr(length);
+  
+    if (!dateTime.empty() && dateTime.front() == '-') {
+      // day
+      dateTime = dateTime.substr(1);
 
-  char const* p = strDate.data();
-  char const* e = p + strDate.size();
-
-  // month and day are optional, so they intentionally default to 1
-  int parsedYear, parsedMonth = 1, parsedDay = 1;
-
-  // at least year must be valid
-  if (!parseDateComponent(p, e, parsedYear)) {
-    return false;
+      length = parseNumber(dateTime, result.day);
+      if (length == 0 || length > 2 || result.day < 1 || result.day > 31) {
+        return false;
+      }
+      dateTime = dateTime.substr(length);
+    }
   }
 
-  if (ADB_UNLIKELY(parsedYear < 0 || parsedYear > 9999)) {
-    // outside the allowed range
-    return false;
-  }
-
-  parseDateComponent(p, e, parsedMonth);
-  parseDateComponent(p, e, parsedDay);
-
-  if (ADB_UNLIKELY(parsedMonth < 1 || parsedMonth > 12 || parsedDay < 1 || parsedDay > 31)) {
-    // definitely invalid
-    return false;
-  }
-
-  LOG_TOPIC("29671", DEBUG, arangodb::Logger::FIXME)
-      << "parsed YMD " << parsedYear << " " << parsedMonth << " " << parsedDay;
-
-  date_tp = sys_days(year{parsedYear} / parsedMonth / parsedDay);
-
-  // parse Time HH:MM:SS(.SSS)((+|-)HH:MM)
-  if (1 < strTime.size()) {
-    std::match_results<char const*> timeParts;
-
-    if (!std::regex_match(strTime.begin(), strTime.end(), timeParts, ::timeRegex)) {
-      LOG_TOPIC("33cf9", DEBUG, arangodb::Logger::FIXME) << "regex failed for time " << strTime;
+  if (!dateTime.empty() && (dateTime.front() == ' ' || dateTime.front() == 'T')) {
+    // time part following
+    dateTime = dateTime.substr(1);
+      
+    // hour
+    length = parseNumber(dateTime, result.hour);
+    if (length == 0 || length > 2 || result.hour > 23) {
+      return false;
+    }
+    dateTime = dateTime.substr(length);
+  
+    if (dateTime.empty() || dateTime.front() != ':') {
       return false;
     }
     
-    int v;
-    char const* begin;
-
-    // hour
-    begin = strTime.data() + timeParts.position(1);
-    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(1));
-    hours parsedHours{v};
-
-    if (hours{23} < parsedHours) {
-      return false;
-    }
-    date_tp += parsedHours;
+    dateTime = dateTime.substr(1);
 
     // minute
-    begin = strTime.data() + timeParts.position(2);
-    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(2));
-    minutes parsedMinutes{v};
-
-    if (minutes{59} < parsedMinutes) {
+    length = parseNumber(dateTime, result.minute);
+    if (length == 0 || length > 2 || result.minute > 59) {
       return false;
     }
-    date_tp += parsedMinutes;
+    dateTime = dateTime.substr(length);
+  
+    if (!dateTime.empty() && dateTime.front() == ':') {
+      dateTime = dateTime.substr(1);
 
-    // seconds
-    begin = strTime.data() + timeParts.position(4);
-    v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(4));
-    seconds parsedSeconds{v};
-
-    if (seconds{59} < parsedSeconds) {
-      return false;
-    }
-    date_tp += parsedSeconds;
-
-    // milliseconds .9 -> 900ms
-    std::size_t matchLength = timeParts.length(6);
-    if (matchLength > 0) {    
-      if (matchLength > 3) {
-        matchLength = 3;
-      }
-      begin = strTime.data() + timeParts.position(6);
-      v = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
-      if (matchLength == 2) {
-        v *= 10;
-      } else if (matchLength == 1) {
-        v *= 100;
-      }
-      date_tp += milliseconds{v};
-    }
-
-    // timezone offset
-    if (timeParts.length(8) > 0) {
-      // hours
-      begin = strTime.data() + timeParts.position(9);
-      v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(9));
-      hours parsedHours{v}; 
-
-      if (hours{23} < parsedHours) {
+      // second
+      length = parseNumber(dateTime, result.second);
+      if (length == 0 || length > 2 || result.second > 59) {
         return false;
       }
-      minutes offset = parsedHours;
+      dateTime = dateTime.substr(length);
 
-      // minutes
-      begin = strTime.data() + timeParts.position(10);
-      v = NumberUtils::atoi_unchecked<int>(begin, begin + timeParts.length(10));
-      minutes parsedMinutes{v}; 
+      if (!dateTime.empty() && dateTime.front() == '.') {
+        dateTime = dateTime.substr(1);
 
-      if (minutes{59} < parsedMinutes) {
-        return false;
-      }
-      offset += parsedMinutes;
-
-      if (timeParts.length(8) == 1 &&
-          strTime[timeParts.position(8)] == '-') {
-        // minus sign!
-        offset *= -1;
-      }
-
-      if (offset.count() != 0) {
-        // apply timezone adjustment
-        date_tp -= offset;
-
-        // revalidate date after timezone adjustment
-        auto ymd = year_month_day(floor<date::days>(date_tp));
-        int year = static_cast<int>(ymd.year());
-        if (year < 0 || year > 9999) {
+        // millisecond
+        length = parseNumber(dateTime, result.millisecond);
+        if (length == 0) {
           return false;
         }
+        if (length >= 3) {
+          // restrict milliseconds length to 3 digits
+          parseNumber(dateTime.substr(0, 3), result.millisecond);
+        } else if (length == 2) {
+          result.millisecond *= 10;
+        } else if (length == 1) {
+          result.millisecond *= 100;
+        }
+        dateTime = dateTime.substr(length);
       }
     }
-  }  // if
+  }
+    
+  if (!dateTime.empty()) {
+    if (dateTime.front() == 'z' || dateTime.front() == 'Z') {
+      // z|Z timezone
+      dateTime = dateTime.substr(1);
+    } else if (dateTime.front() == '+' || dateTime.front() == '-') {
+      // +|- timezone adjustment
+      int factor = dateTime.front() == '+' ? 1 : -1;
+      
+      dateTime = dateTime.substr(1);
+
+      // tz adjustment hours
+      length = parseNumber(dateTime, result.tzOffsetHour);
+      if (length == 0 || length > 2 || result.tzOffsetHour > 23) {
+        return false;
+      }
+      result.tzOffsetHour *= factor;
+      dateTime = dateTime.substr(length);
+    
+      if (dateTime.empty() || dateTime.front() != ':') {
+        return false;
+      }
+      dateTime = dateTime.substr(1);
+      
+      // tz adjustment minutes
+      length = parseNumber(dateTime, result.tzOffsetMinute);
+      if (length == 0 || length > 2 || result.tzOffsetMinute > 59) {
+        return false;
+      }
+      dateTime = dateTime.substr(length);
+    }
+  }
+  
+  return dateTime.empty();
+}
+
+}  // namespace
+
+bool arangodb::basics::parseDateTime(arangodb::velocypack::StringRef dateTime,
+                                     arangodb::tp_sys_clock_ms& date_tp) {
+  ::ParsedDateTime result;
+  if (!::parseDateTime(dateTime, result)) {
+    return false;
+  }
+
+  using namespace date;
+  using namespace std::chrono;
+
+  date_tp = sys_days(year{result.year} / result.month / result.day);
+  date_tp += hours{result.hour};
+  date_tp += minutes{result.minute};
+  date_tp += seconds{result.second};
+  date_tp += milliseconds{result.millisecond};
+
+  if (result.tzOffsetHour != 0 || result.tzOffsetMinute != 0) {
+    minutes offset = hours{result.tzOffsetHour};
+    offset += minutes{result.tzOffsetMinute};
+
+    if (offset.count() != 0) {
+      // apply timezone adjustment
+      date_tp -= offset;
+
+      // revalidate date after timezone adjustment
+      auto ymd = year_month_day(floor<date::days>(date_tp));
+      int year = static_cast<int>(ymd.year());
+      if (year < 0 || year > 9999) {
+        return false;
+      }
+    }
+  } 
+
+  // LOG_TOPIC("51643", TRACE, Logger::FIXME)
+  //           << "year: " << result.year 
+  //           << ", month: " << result.month 
+  //           << ", day: " << result.day 
+  //           << ", hour: " << result.hour 
+  //           << ", minute: " << result.minute 
+  //           << ", second: " << result.second 
+  //           << ", millisecond: " << result.millisecond 
+  //           << ", tz hour: " << result.tzOffsetHour 
+  //           << ", tz minute: " << result.tzOffsetMinute;
   
   return true;
 }
@@ -868,3 +831,56 @@ std::string arangodb::basics::formatDate(std::string const& formatString,
   return ::executeDateFormatRegex(formatString, dateValue);
 }
 
+bool arangodb::basics::parseIsoDuration(arangodb::velocypack::StringRef duration,
+                                        arangodb::basics::ParsedDuration& ret) {
+  using namespace arangodb;
+
+  std::match_results<char const*> durationParts;
+  if (!arangodb::basics::regexIsoDuration(duration, durationParts)) {
+    return false;
+  }
+
+  char const* begin;
+
+  begin = duration.data() + durationParts.position(2);
+  ret.years = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(2));
+
+  begin = duration.data() + durationParts.position(4);
+  ret.months = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(4));
+
+  begin = duration.data() + durationParts.position(6);
+  ret.weeks = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(6));
+
+  begin = duration.data() + durationParts.position(8);
+  ret.days = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(8));
+
+  begin = duration.data() + durationParts.position(11);
+  ret.hours = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(11));
+
+  begin = duration.data() + durationParts.position(13);
+  ret.minutes = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(13));
+
+  begin = duration.data() + durationParts.position(15);
+  ret.seconds = NumberUtils::atoi_unchecked<int>(begin, begin + durationParts.length(15));
+
+  // The Milli seconds can be shortened:
+  // .1 => 100ms
+  // so we append 00 but only take the first 3 digits
+  auto matchLength = durationParts.length(17);
+  int number = 0;
+  if (matchLength > 0) {
+    if (matchLength > 3) {
+      matchLength = 3;
+    }
+    begin = duration.data() + durationParts.position(17);
+    number = NumberUtils::atoi_unchecked<int>(begin, begin + matchLength);
+    if (matchLength == 2) {
+      number *= 10;
+    } else if (matchLength == 1) {
+      number *= 100;
+    }
+  }
+  ret.milliseconds = number;
+
+  return true;
+}

@@ -81,36 +81,6 @@ ArangoView.prototype._PRINT = function (context) {
 };
 
 // /////////////////////////////////////////////////////////////////////////////
-// @brief append the waitForSync parameter to a URL
-// /////////////////////////////////////////////////////////////////////////////
-
-ArangoView.prototype._appendSyncParameter = function (url, waitForSync) {
-  if (waitForSync) {
-    if (url.indexOf('?') === -1) {
-      url += '?';
-    }else {
-      url += '&';
-    }
-    url += 'waitForSync=true';
-  }
-  return url;
-};
-
-// /////////////////////////////////////////////////////////////////////////////
-// @brief append some boolean parameter to a URL
-// /////////////////////////////////////////////////////////////////////////////
-
-ArangoView.prototype._appendBoolParameter = function (url, name, val) {
-  if (url.indexOf('?') === -1) {
-    url += '?';
-  }else {
-    url += '&';
-  }
-  url += name + (val ? '=true' : '=false');
-  return url;
-};
-
-// /////////////////////////////////////////////////////////////////////////////
 // @brief prefix a URL with the database name of the view
 // /////////////////////////////////////////////////////////////////////////////
 

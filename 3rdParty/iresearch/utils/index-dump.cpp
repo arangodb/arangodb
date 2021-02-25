@@ -43,14 +43,14 @@
 #include <fstream>
 #include <iostream>
 
-NS_LOCAL
+namespace {
 
 const std::string HELP = "help";
 const std::string INDEX_DIR = "index-dir";
 const std::string DIR_TYPE = "dir-type";
 const std::string OUTPUT = "out";
 
-NS_END
+}
 
 int dump(
     const std::string& path,
@@ -88,7 +88,7 @@ int dump(
              << std::endl;
 
       auto term = field.iterator();
-      auto& term_meta = term->attributes().get<irs::term_meta>();
+      auto const& term_meta = irs::get<irs::term_meta>(*term);
       stream << "Values" << std::endl;
       for (; term->next(); ) {
         term->read();

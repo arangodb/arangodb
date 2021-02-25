@@ -40,7 +40,7 @@ const compareTicks = replication.compareTicks;
 const console = require('console');
 const internal = require('internal');
 const masterEndpoint = arango.getEndpoint();
-const slaveEndpoint = ARGUMENTS[0];
+const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
@@ -83,7 +83,7 @@ const compare = function (masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFi
     username: 'root',
     password: '',
     verbose: true,
-    includeSystem: false,
+    includeSystem: true,
     keepBarrier: true
   });
 
@@ -715,7 +715,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          db._collection(cn).truncate();
+          db._collection(cn).truncate({ compact: false });
         },
 
         function (state) {
@@ -1302,6 +1302,91 @@ function BaseTestConfig () {
           res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx jumps over", "text_en") OPTIONS { waitForSync: true } RETURN doc').toArray();
           assertEqual(1, res.length);
         });
+    },
+    testViewDataCustomAnalyzer: function () {
+      connectToMaster();
+      compare(
+        function (state) { // masterFunc1
+          try {
+            analyzers.save('custom', 'identity', {});
+            let c = db._create(cn);
+            let links = {};
+            links[cn] = {
+              includeAllFields: true,
+              fields: {
+                text: { analyzers: ['custom'] }
+              }
+            };
+            let view = db._createView(cn + 'View', 'arangosearch', { links: links });
+            assertEqual(Object.keys(view.properties().links).length, 1);
+
+            let docs = [];
+            for (let i = 0; i < 5000; ++i) {
+              docs.push({
+                _key: 'test' + i,
+                'value': i
+              });
+            }
+            c.insert(docs);
+
+            state.arangoSearchEnabled = true;
+          } catch (err) {
+            analyzers.remove("custom", true);
+            db._drop(cn);
+          } 
+        },
+        function (state) { // masterFunc2
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          const txt = 'foxx';
+          db._collection(cn).save({
+            _key: 'testxxx',
+            'value': -1,
+            'text': txt
+          });
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(5001, state.count);
+          analyzers.save('custom2', 'identity', {});
+        },
+        function (state) { // slaveFuncOngoing
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+          let view = db._view(cn + 'View');
+          assertNotNull(view);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+          // do not check results. We need to trigger analyzers cache reload
+          db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, "foxx", "custom") '
+                    + ' OPTIONS { waitForSync: true } RETURN doc').toArray();
+        }, // slaveFuncOngoing
+        function (state) { // slaveFuncFinal
+          if (!state.arangoSearchEnabled) {
+            return;
+          }
+
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+          var idx = db._collection(cn).getIndexes();
+          assertEqual(1, idx.length); // primary
+
+          let view = db._view(cn + 'View');
+          assertNotNull(view);
+          let props = view.properties();
+          assertTrue(props.hasOwnProperty('links'));
+          assertEqual(Object.keys(props.links).length, 1);
+          assertTrue(props.links.hasOwnProperty(cn));
+
+          let res = db._query('FOR doc IN ' + view.name() + ' SEARCH doc.value >= 2500 OPTIONS { waitForSync: true } RETURN doc').toArray();
+          assertEqual(2500, res.length);
+          // analyzer here was added later so slave must properly reload its analyzers cache
+          res = db._query('FOR doc IN ' + view.name() + ' SEARCH PHRASE(doc.text, TOKENS("foxx","custom2")[0], "custom") OPTIONS { waitForSync: true } RETURN doc').toArray();
+          assertEqual(1, res.length);
+        });
     }
   };
 }
@@ -1346,6 +1431,9 @@ function ReplicationSuite () {
       db._dropView(cn + 'View');
       db._drop(cn);
       db._drop(cn2);
+      db._analyzers.toArray().forEach(function(analyzer) {
+        try { analyzers.remove(analyzer.name, true); } catch (err) {}
+      });
 
       connectToSlave();
       replication.applier.stop();
@@ -1405,7 +1493,7 @@ function ReplicationOtherDBSuite () {
       username: 'root',
       password: '',
       verbose: true,
-      includeSystem: false
+      includeSystem: true
     };
 
     replication.setupReplication(config);

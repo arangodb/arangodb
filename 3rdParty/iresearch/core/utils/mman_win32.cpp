@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #if defined(_MSC_VER)
@@ -31,9 +30,9 @@
 #include <errno.h>
 #include <io.h>
 
-NS_LOCAL
+namespace {
 
-DWORD page_protection(int prot) NOEXCEPT {
+DWORD page_protection(int prot) noexcept {
   switch (prot) {
     case PROT_NONE:
       return PAGE_NOACCESS;
@@ -61,7 +60,7 @@ DWORD page_protection(int prot) NOEXCEPT {
   return PAGE_NOACCESS; // fallback
 }
 
-DWORD file_protection(int prot) NOEXCEPT {
+DWORD file_protection(int prot) noexcept {
   DWORD access = 0;
 
   if (PROT_NONE == prot) {
@@ -83,7 +82,7 @@ DWORD file_protection(int prot) NOEXCEPT {
   return access;
 }
 
-NS_END
+} //namespace
 
 void* mmap(void* /*addr*/, size_t len, int prot, int flags, int fd, OffsetType off) {
   const OffsetType maxSize = off + static_cast<OffsetType>(len);

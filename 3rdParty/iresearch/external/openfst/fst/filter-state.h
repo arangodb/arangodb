@@ -65,8 +65,6 @@ class IntegerFilterState {
 
   T GetState() const { return state_; }
 
-  void SetState(T state) { state_ = state; }
-
  private:
   T state_;
 };
@@ -97,8 +95,6 @@ class WeightFilterState {
 
   W GetWeight() const { return weight_; }
 
-  void SetWeight(W weight) { weight_ = std::move(weight); }
-
  private:
   W weight_;
 };
@@ -128,8 +124,6 @@ class ListFilterState {
 
   std::forward_list<T> *GetMutableState() { return &list_; }
 
-  void SetState(const std::forward_list<T> &state) { list_ = state; }
-
  private:
   std::forward_list<T> list_;
 };
@@ -138,16 +132,20 @@ class ListFilterState {
 template <class FS1, class FS2>
 class PairFilterState {
  public:
+  using FilterState1 = FS1;
+  using FilterState2 = FS2;
+
   PairFilterState() : fs1_(FS1::NoState()), fs2_(FS2::NoState()) {}
 
-  PairFilterState(const FS1 &fs1, const FS2 &fs2) : fs1_(fs1), fs2_(fs2) {}
+  PairFilterState(const FilterState1 &fs1, const FilterState2 &fs2)
+      : fs1_(fs1), fs2_(fs2) {}
 
   static const PairFilterState NoState() { return PairFilterState(); }
 
   size_t Hash() const {
     const auto h1 = fs1_.Hash();
-    static FST_CONSTEXPR const auto lshift = 5;
-    static FST_CONSTEXPR const auto rshift = CHAR_BIT * sizeof(size_t) - 5;
+    static constexpr auto lshift = 5;
+    static constexpr auto rshift = CHAR_BIT * sizeof(size_t) - 5;
     return h1 << lshift ^ h1 >> rshift ^ fs2_.Hash();
   }
 
@@ -159,18 +157,13 @@ class PairFilterState {
     return fs1_ != fs.fs1_ || fs2_ != fs.fs2_;
   }
 
-  const FS1 &GetState1() const { return fs1_; }
+  const FilterState1 &GetState1() const { return fs1_; }
 
-  const FS2 &GetState2() const { return fs2_; }
-
-  void SetState(const FS1 &fs1, const FS2 &fs2) {
-    fs1_ = fs1;
-    fs2_ = fs2;
-  }
+  const FilterState2 &GetState2() const { return fs2_; }
 
  private:
-  FS1 fs1_;
-  FS2 fs2_;
+  FilterState1 fs1_;
+  FilterState2 fs2_;
 };
 
 // Single non-blocking filter state.

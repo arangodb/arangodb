@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include <type_traits>
 
 #include "process-utils.h"
+#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -75,6 +76,8 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/NumberUtils.h"
+#include "Basics/PageSize.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -84,28 +87,64 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief physical memory
-////////////////////////////////////////////////////////////////////////////////
+namespace {
 
-uint64_t TRI_PhysicalMemory;
+#ifdef TRI_HAVE_LINUX_PROC
+/// @brief consumes all whitespace
+void skipWhitespace(char const*& p, char const* e) {
+  while (p < e && *p == ' ') {
+    ++p;
+  }
+}
+/// @brief consumes all non-whitespace
+void skipNonWhitespace(char const*& p, char const* e) {
+  if (p < e && *p == '(') {
+    // special case: if the value starts with a '(', we will skip over all
+    // data until we find the closing parenthesis. this is used for the process
+    // name at least
+    ++p;
+    while (p < e && *p != ')') {
+      ++p;
+    }
+    if (p < e && *p == ')') {
+      ++p;
+    }
+  } else {
+    // no parenthesis at start, so just skip over whitespace
+    while (p < e && *p != ' ') {
+      ++p;
+    }
+  }
+}
+/// @brief reads over the whitespace at the beginning plus the following data
+void skipEntry(char const*& p, char const* e) {
+  skipWhitespace(p, e);
+  skipNonWhitespace(p, e);
+}
+/// @brief reads a numeric entry from the buffer
+template<typename T>
+T readEntry(char const*& p, char const* e) {
+  skipWhitespace(p, e);
+  char const* s = p;
+  skipNonWhitespace(p, e);
+  return arangodb::NumberUtils::atoi_unchecked<uint64_t>(s, p);
+}
+#endif
 
-////////////////////////////////////////////////////////////////////////////////
+} // namespace
+
+
 /// @brief all external processes
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<ExternalProcess*> ExternalProcesses;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses
-////////////////////////////////////////////////////////////////////////////////
-
 static arangodb::Mutex ExternalProcessesLock;
 
 ProcessInfo::ProcessInfo()
@@ -173,7 +212,7 @@ ExternalProcess::~ExternalProcess() {
 ExternalProcessStatus::ExternalProcessStatus()
     : _status(TRI_EXT_NOT_STARTED), _exitStatus(0), _errorMessage() {}
 
-static ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
+ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
     auto found = std::find_if(ExternalProcesses.begin(), ExternalProcesses.end(),
@@ -213,7 +252,7 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -245,14 +284,18 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
       close(pipe_child_to_server[0]);
       close(pipe_child_to_server[1]);
     } else {
-      close(0);
+      { // "close" stdin, but avoid fd 0 being reused!
+        int fd = open("/dev/null", O_RDONLY);
+        dup2(fd, 0);
+        close(fd);
+      }
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
     }
 
     // add environment variables
-    for (auto it : additionalEnv) {
-      putenv(TRI_DuplicateString(it.c_str()));
+    for (auto const& it : additionalEnv) {
+      putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
 
     // execute worker
@@ -436,14 +479,14 @@ static std::wstring makeWindowsArgs(ExternalProcess* external) {
 
   icu::UnicodeString uwargs(external->_executable.c_str());
 
-  err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
+  err = wAppendQuotedArg(res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
   if (err != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     res += L' ';
     uwargs = external->_arguments[i];
-    err = wAppendQuotedArg(res, static_cast<const wchar_t*>(uwargs.getTerminatedBuffer()));
+    err = wAppendQuotedArg(res, reinterpret_cast<wchar_t const*>(uwargs.getTerminatedBuffer()));
     if (err != TRI_ERROR_NO_ERROR) {
       return nullptr;
     }
@@ -504,7 +547,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 }
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -749,163 +792,76 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 
 #endif
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
-////////////////////////////////////////////////////////////////////////////////
-
 #ifdef TRI_HAVE_LINUX_PROC
 
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief contains all data documented by "proc"
-  ///
-  /// @see man 5 proc for the state of a process
-  ////////////////////////////////////////////////////////////////////////////////
-  typedef struct process_state_s {
-    pid_t pid;
-    /* size was chosen arbitrary */
-    char comm[128];
-    char state;
-    int ppid;
-    int pgrp;
-    int session;
-    int tty_nr;
-    int tpgid;
-    unsigned flags;
-    /* lu */
-    unsigned long minflt;
-    unsigned long cminflt;
-    unsigned long majflt;
-    unsigned long cmajflt;
-    unsigned long utime;
-    unsigned long stime;
-    /* ld */
-    long cutime;
-    long cstime;
-    long priority;
-    long nice;
-    long num_threads;
-    long itrealvalue;
-    /* llu */
-    long long unsigned int starttime;
-    /* lu */
-    unsigned long vsize;
-    /* ld */
-    long rss;
-    /* lu */
-    // cppcheck-suppress *
-    unsigned long rsslim;
-    // cppcheck-suppress *
-    unsigned long startcode;
-    // cppcheck-suppress *
-    unsigned long endcode;
-    // cppcheck-suppress *
-    unsigned long startstack;
-    // cppcheck-suppress *
-    unsigned long kstkesp;
-    // cppcheck-suppress *
-    unsigned long signal;
-    /* obsolete lu*/
-    // cppcheck-suppress *
-    unsigned long blocked;
-    // cppcheck-suppress *
-    unsigned long sigignore;
-    // cppcheck-suppress *
-    unsigned int sigcatch;
-    // cppcheck-suppress *
-    unsigned long wchan;
-    /* no maintained lu */
-    // cppcheck-suppress *
-    unsigned long nswap;
-    // cppcheck-suppress *
-    unsigned long cnswap;
-    /* d */
-    // cppcheck-suppress *
-    int exit_signal;
-    // cppcheck-suppress *
-    int processor;
-    /* u */
-    // cppcheck-suppress *
-    unsigned rt_priority;
-    // cppcheck-suppress *
-    unsigned policy;
-    /* llu */
-    // cppcheck-suppress *
-    long long unsigned int delayacct_blkio_ticks;
-    /* lu */
-    // cppcheck-suppress *
-    unsigned long guest_time;
-    /* ld */
-    // cppcheck-suppress *
-    long cguest_time;
-  } process_state_t;
-
   ProcessInfo result;
 
-  char fn[1024];
-  snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
+  char str[1024];
+  memset(&str, 0, sizeof(str));
 
-  int fd = open(fn, O_RDONLY);
+  // build filename /proc/<pid>/stat
+  {
+    char* p = &str[0];
+
+    // a malloc-free sprintf...
+    static constexpr char const* proc = "/proc/";
+    static constexpr char const* stat = "/stat";
+    
+    // append /proc/
+    memcpy(p, proc, strlen(proc));
+    p += strlen(proc);
+    // append pid
+    p += arangodb::basics::StringUtils::itoa(uint64_t(pid), p);
+    memcpy(p, stat, strlen(stat));
+    p += strlen(stat);
+    *p = '\0';
+  }
+
+  // open file...
+  int fd = TRI_OPEN(&str[0], O_RDONLY);
 
   if (fd >= 0) {
-    char str[1024];
-    process_state_t st;
-    size_t n;
-
     memset(&str, 0, sizeof(str));
 
-    n = read(fd, str, sizeof(str));
+    ssize_t n = TRI_READ(fd, str, static_cast<TRI_read_t>(sizeof(str)));
     close(fd);
 
     if (n == 0) {
       return result;
     }
+  
+    /// buffer now contains all data documented by "proc"
+    /// see man 5 proc for the state of a process
 
-    // fix process name in buffer. sadly, the process name might contain
-    // whitespace
-    // and the sscanf format '%s' will not honor that
-    char* p = &str[0];
-    char* e = p + n;
-    // first skip over the process id at the start of the string
-    while (*p != '\0' && p < e && *p != ' ') {
-      ++p;
-    }
-    // skip space
-    if (p < e && *p == ' ') {
-      ++p;
-    }
-    // check if filename is contained in parentheses
-    if (p < e && *p == '(') {
-      // yes
-      ++p;
-      // now replace all whitespace within the process name with underscores
-      // otherwise the sscanf below will happily parse the string incorrectly
-      while (p < e && *p != '0' && *p != ')') {
-        if (*p == ' ') {
-          *p = '_';
-        }
-        ++p;
-      }
-    }
-
-    // cppcheck-suppress *
-    sscanf(str,
-           "%d %s %c %d %d %d %d %d %u %lu %lu %lu %lu %lu %lu %ld %ld %ld %ld "
-           "%ld %ld %llu %lu %ld",
-           &st.pid, (char*)&st.comm, &st.state, &st.ppid, &st.pgrp, &st.session, &st.tty_nr,
-           &st.tpgid, &st.flags, &st.minflt, &st.cminflt, &st.majflt, &st.cmajflt,
-           &st.utime, &st.stime, &st.cutime, &st.cstime, &st.priority, &st.nice,
-           &st.num_threads, &st.itrealvalue, &st.starttime, &st.vsize, &st.rss);
-
-    result._minorPageFaults = st.minflt;
-    result._majorPageFaults = st.majflt;
-    result._userTime = st.utime;
-    result._systemTime = st.stime;
-    result._numberThreads = st.num_threads;
-    // st.rss is measured in number of pages, we need to multiply by page size
-    // to get the actual amount
-    result._residentSize = st.rss * getpagesize();
-    result._virtualSize = st.vsize;
+    char const* p = &str[0];
+    char const* e = p + n;
+    
+    skipEntry(p, e); // process id
+    skipEntry(p, e); // process name
+    skipEntry(p, e); // process state
+    skipEntry(p, e); // ppid
+    skipEntry(p, e); // pgrp
+    skipEntry(p, e); // session
+    skipEntry(p, e); // tty nr
+    skipEntry(p, e); // tpgid
+    skipEntry(p, e); // flags
+    result._minorPageFaults = readEntry<uint64_t>(p, e); // min flt
+    skipEntry(p, e); // cmin flt
+    result._majorPageFaults = readEntry<uint64_t>(p, e); // maj flt
+    skipEntry(p, e); // cmaj flt
+    result._userTime = readEntry<uint64_t>(p, e); // utime
+    result._systemTime = readEntry<uint64_t>(p, e); // stime
+    skipEntry(p, e); // cutime
+    skipEntry(p, e); // cstime
+    skipEntry(p, e); // priority
+    skipEntry(p, e); // nice
+    result._numberThreads = readEntry<int64_t>(p, e); // num threads
+    skipEntry(p, e); // itrealvalue
+    skipEntry(p, e); // starttime
+    result._virtualSize = readEntry<uint64_t>(p, e); // vsize
+    result._residentSize = readEntry<int64_t>(p, e) * PageSize::getValue(); // rss
     result._scClkTck = sysconf(_SC_CLK_TCK);
   }
 
@@ -940,7 +896,7 @@ void TRI_SetProcessTitle(char const* title) {
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid) {
   size_t const n = arguments.size();
   // create the external structure
@@ -958,7 +914,7 @@ void TRI_CreateExternalProcess(char const* executable,
 
   memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
-  external->_arguments[0] = TRI_DuplicateString(executable);
+  external->_arguments[0] = TRI_DuplicateString(executable, strlen(executable));
   if (external->_arguments[0] == nullptr) {
     // OOM
     pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -966,7 +922,7 @@ void TRI_CreateExternalProcess(char const* executable,
   }
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str());
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
     if (external->_arguments[i + 1] == nullptr) {
       // OOM
       pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -1006,6 +962,27 @@ void TRI_CreateExternalProcess(char const* executable,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Reads from the pipe of processes
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process,
+                               char* buffer,
+                               size_t bufferSize) {
+  if (process == nullptr || TRI_IS_INVALID_PIPE(process->_readPipe)) {
+    return 0;
+  }
+
+  memset(buffer, 0, bufferSize);
+
+#ifndef _WIN32
+  return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
+#else
+  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
+#endif
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1029,24 +1006,52 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
 
   if (external->_status == TRI_EXT_RUNNING || external->_status == TRI_EXT_STOPPED) {
 #ifndef _WIN32
-    int opts;
-    int loc = 0;
+    if (timeout > 0) {
+      // if we use a timeout, it means we cannot use blocking
+      wait = false;
+    }
 
+    int opts;
     if (wait) {
       opts = WUNTRACED;
     } else {
       opts = WNOHANG | WUNTRACED;
     }
 
-    TRI_pid_t res = waitpid(external->_pid, &loc, opts);
+    int loc = 0;
+    TRI_pid_t res = 0;
+    bool timeoutHappened = false;
+    if (timeout) {
+      TRI_ASSERT((opts & WNOHANG) != 0);
+      double endTime = 0.0; 
+      while (true) {
+        res = waitpid(external->_pid, &loc, opts);
+        if (res != 0) {
+          break;
+        }
+        double now = TRI_microtime();
+        if (endTime == 0.0) {
+          endTime = now + timeout / 1000.0;
+        } else if (now >= endTime) {
+          res = external->_pid;
+          timeoutHappened = true;
+          break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+      }
+    } else {
+      res = waitpid(external->_pid, &loc, opts);
+    }
 
     if (res == 0) {
       if (wait) {
         status._errorMessage =
             std::string("waitpid returned 0 for pid while it shouldn't ") +
             arangodb::basics::StringUtils::itoa(external->_pid);
-
-        if (WIFEXITED(loc)) {
+        if (timeoutHappened) {
+          external->_status = TRI_EXT_TIMEOUT;
+          external->_exitStatus = -1;
+        } else if (WIFEXITED(loc)) {
           external->_status = TRI_EXT_TERMINATED;
           external->_exitStatus = WEXITSTATUS(loc);
         } else if (WIFSIGNALED(loc)) {
@@ -1074,7 +1079,10 @@ ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid, bool wait, uint32
                              arangodb::basics::StringUtils::itoa(external->_pid) +
                              std::string(": ") + std::string(TRI_last_error());
     } else if (static_cast<TRI_pid_t>(external->_pid) == static_cast<TRI_pid_t>(res)) {
-      if (WIFEXITED(loc)) {
+      if (timeoutHappened) {
+        external->_status = TRI_EXT_TIMEOUT;
+        external->_exitStatus = -1;
+      } else if (WIFEXITED(loc)) {
         external->_status = TRI_EXT_TERMINATED;
         external->_exitStatus = WEXITSTATUS(loc);
       } else if (WIFSIGNALED(loc)) {
@@ -1290,125 +1298,6 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 #define SIGKILL 1
 #endif
 
-#ifndef _WIN32
-typedef enum e_sig_action {
-  term,
-  core,
-  cont,
-  ign,
-  logrotate,
-  stop,
-  user
-} e_sig_action;
-
-////////////////////////////////////////////////////////////////////////////////
-// @brief find out what impact a signal will have to the process we send it.
-static e_sig_action whatDoesSignal(int signal) {
-  // Some platforms don't have these. To keep our table clean
-  // we just define them here:
-#ifndef SIGPOLL
-#define SIGPOLL 23
-#endif
-#ifndef SIGSTKFLT
-#define SIGSTKFLT 255
-#endif
-#ifndef SIGPWR
-#define SIGPWR 29
-#endif
-
-  //     Signal       Value     Action   Comment
-  //     ────────────────────────────────────────────────────────────────────
-  switch (signal) {
-    case SIGHUP:  //    1       Term    Hangup detected on controlling terminal
-      return logrotate;  //             or death of controlling process
-                         //                 we say this is non-deadly since we
-                         //                 should do a logrotate.
-    case SIGINT:         //    2       Term    Interrupt from keyboard
-      return term;
-    case SIGQUIT:  //    3       Core    Quit from keyboard
-    case SIGILL:   //    4       Core    Illegal Instruction
-    case SIGABRT:  //    6       Core    Abort signal from abort(3)
-    case SIGFPE:   //    8       Core    Floating-point exception
-    case SIGSEGV:  //   11       Core    Invalid memory reference
-      return core;
-    case SIGKILL:  //    9       Term    Kill signal
-    case SIGPIPE:  //   13       Term    Broken pipe: write to pipe with no
-                   //                   readers; see pipe(7)
-    case SIGALRM:  //   14       Term    Timer signal from alarm(2)
-    case SIGTERM:  //   15       Term    Termination signal
-    case SIGUSR1:  // 30,10,16   Term    User-defined signal 1
-    case SIGUSR2:  // 31,12,17   Term    User-defined signal 2
-      return term;
-    case SIGCHLD:  // 20,17,18   Ign     Child stopped or terminated
-      return ign;
-    case SIGCONT:  // 19,18,25   Cont    Continue if stopped
-      return cont;
-    case SIGSTOP:  // 17,19,23   Stop    Stop process
-    case SIGTSTP:  // 18,20,24   Stop    Stop typed at terminal
-    case SIGTTIN:  // 21,21,26   Stop    Terminal input for background process
-    case SIGTTOU:  // 22,22,27   Stop    Terminal output for background process
-      return stop;
-    case SIGBUS:  //  10,7,10   Core    Bus error (bad memory access)
-      return core;
-    case SIGPOLL:   //            Term    Pollable event (Sys V).
-      return term;  //                    Synonym for SIGIO
-    case SIGPROF:   //  27,27,29  Term    Profiling timer expired
-      return term;
-    case SIGSYS:   //  12,31,12  Core    Bad system call (SVr4);
-                   //                     see also seccomp(2)
-    case SIGTRAP:  //     5      Core    Trace/breakpoint trap
-      return core;
-    case SIGURG:  //  16,23,21  Ign     Urgent condition on socket (4.2BSD)
-      return ign;
-    case SIGVTALRM:  //  26,26,28  Term    Virtual alarm clock (4.2BSD)
-      return term;
-    case SIGXCPU:  //  24,24,30  Core    CPU time limit exceeded (4.2BSD);
-                   //                    see setrlimit(2)
-    case SIGXFSZ:  //  25,25,31  Core    File size limit exceeded (4.2BSD);
-                   //                     see setrlimit(2)
-      // case SIGIOT:    //     6      Core    IOT trap. A synonym for SIGABRT
-      return core;
-      // case SIGEMT:    //   7,-,7    Term    Emulator trap
-    case SIGSTKFLT:  //   -,16,-   Term    Stack fault on coprocessor (unused)
-                     // case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
-    case SIGPWR:  //  29,30,19  Term    Power failure (System V)
-                  // case SIGINFO:   //   29,-,-           A synonym for SIGPWR
-      // case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
-      return term;
-      // case SIGCLD:    //   -,-,18   Ign     A synonym for SIGCHLD
-    case SIGWINCH:  //  28,28,20  Ign     Window resize signal (4.3BSD, Sun)
-      return ign;
-      // case SIGUNUSED: //   -,31,-   Core    Synonymous with SIGSYS
-      //  return core;
-    default:
-      return user;
-  }
-  return term;
-}
-#endif
-bool TRI_IsDeadlySignal(int signal) {
-#ifndef _WIN32
-  switch (whatDoesSignal(signal)) {
-    case term:
-      return true;
-    case core:
-      return true;
-    case cont:
-      return false;
-    case ign:
-      return false;
-    case logrotate:
-      return false;
-    case stop:
-      return false;
-    case user:  // user signals aren't supposed to be deadly.
-      return false;
-  }
-#else
-  // well windows... always deadly.
-#endif
-  return true;
-}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
@@ -1567,61 +1456,6 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
   return rc;
 #endif
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the physical memory
-////////////////////////////////////////////////////////////////////////////////
-
-#if defined(TRI_HAVE_MACOS_MEM_STATS)
-
-static uint64_t GetPhysicalMemory() {
-  int mib[2];
-  int64_t physicalMemory;
-  size_t length;
-
-  // Get the Physical memory size
-  mib[0] = CTL_HW;
-#ifdef TRI_HAVE_MACOS_MEM_STATS
-  mib[1] = HW_MEMSIZE;
-#else
-  mib[1] = HW_PHYSMEM;  // The bytes of physical memory. (kenel + user space)
-#endif
-  length = sizeof(int64_t);
-  sysctl(mib, 2, &physicalMemory, &length, nullptr, 0);
-
-  return (uint64_t)physicalMemory;
-}
-
-#else
-#ifdef TRI_HAVE_SC_PHYS_PAGES
-
-static uint64_t GetPhysicalMemory() {
-  long pages = sysconf(_SC_PHYS_PAGES);
-  long page_size = sysconf(_SC_PAGE_SIZE);
-
-  return (uint64_t)(pages * page_size);
-}
-
-#else
-#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-
-static uint64_t GetPhysicalMemory() {
-  MEMORYSTATUSEX status;
-  status.dwLength = sizeof(status);
-  GlobalMemoryStatusEx(&status);
-
-  return (uint64_t)status.ullTotalPhys;
-}
-
-#endif  // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-#endif
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initializes the process components
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitializeProcess() { TRI_PhysicalMemory = GetPhysicalMemory(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the process components

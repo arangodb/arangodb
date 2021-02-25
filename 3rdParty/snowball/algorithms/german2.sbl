@@ -1,0 +1,145 @@
+
+/*
+    Extra rule for -nisse ending added 11 Dec 2009
+*/
+
+routines (
+           prelude postlude
+           mark_regions
+           R1 R2
+           standard_suffix
+)
+
+externals ( stem )
+
+integers ( p1 p2 x )
+
+groupings ( v s_ending st_ending )
+
+stringescapes {}
+
+/* special characters */
+
+stringdef a"   '{U+00E4}'
+stringdef o"   '{U+00F6}'
+stringdef u"   '{U+00FC}'
+stringdef ss   '{U+00DF}'
+
+define v 'aeiouy{a"}{o"}{u"}'
+
+define s_ending  'bdfghklmnrt'
+define st_ending s_ending - 'r'
+
+define prelude as (
+
+    test repeat goto (
+        v [('u'] v <- 'U') or
+           ('y'] v <- 'Y')
+    )
+
+    repeat (
+        [substring] among(
+            '{ss}' (<- 'ss')
+            'ae'   (<- '{a"}')
+            'oe'   (<- '{o"}')
+            'ue'   (<- '{u"}')
+            'qu'   (hop 2)
+            ''     (next)
+        )
+    )
+
+)
+
+define mark_regions as (
+
+    $p1 = limit
+    $p2 = limit
+
+    test(hop 3 setmark x)
+
+    gopast v  gopast non-v  setmark p1
+    try($p1 < x  $p1 = x)  // at least 3
+    gopast v  gopast non-v  setmark p2
+
+)
+
+define postlude as repeat (
+
+    [substring] among(
+        'Y'    (<- 'y')
+        'U'    (<- 'u')
+        '{a"}' (<- 'a')
+        '{o"}' (<- 'o')
+        '{u"}' (<- 'u')
+        ''     (next)
+    )
+
+)
+
+backwardmode (
+
+    define R1 as $p1 <= cursor
+    define R2 as $p2 <= cursor
+
+    define standard_suffix as (
+        do (
+            [substring] R1 among(
+                'em' 'ern' 'er'
+                (   delete
+                )
+                'e' 'en' 'es'
+                (   delete
+                    try (['s'] 'nis' delete)
+                )
+                's'
+                (   s_ending delete
+                )
+            )
+        )
+        do (
+            [substring] R1 among(
+                'en' 'er' 'est'
+                (   delete
+                )
+                'st'
+                (   st_ending hop 3 delete
+                )
+            )
+        )
+        do (
+            [substring] R2 among(
+                'end' 'ung'
+                (   delete
+                    try (['ig'] not 'e' R2 delete)
+                )
+                'ig' 'ik' 'isch'
+                (   not 'e' delete
+                )
+                'lich' 'heit'
+                (   delete
+                    try (
+                        ['er' or 'en'] R1 delete
+                    )
+                )
+                'keit'
+                (   delete
+                    try (
+                        [substring] R2 among(
+                            'lich' 'ig'
+                            (   delete
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    )
+)
+
+define stem as (
+    do prelude
+    do mark_regions
+    backwards
+        do standard_suffix
+    do postlude
+)

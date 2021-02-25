@@ -1,0 +1,25 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ps_PK{
+    Currencies{
+        PKR{
+            "Rs",
+            "پاکستانۍ کلداره",
+        }
+        XXX{
+            "¤",
+            "نامعلومه مروجه پېسے",
+        }
+    }
+    CurrencyPlurals{
+        PKR{
+            one{"پاکستانۍ کلداره"}
+            other{"پاکستانۍ کلدارے"}
+        }
+        XXX{
+            one{"(د نامعلومه مروجه پېسو واحد)"}
+            other{"(نامعلومه مروجه پېسے)"}
+        }
+    }
+    Version{"2.1.49.34"}
+}

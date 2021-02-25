@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +23,12 @@
 
 #include "ClusterTransactionState.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -40,69 +43,70 @@
 using namespace arangodb;
 
 /// @brief transaction type
-ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase,
-                                                 TRI_voc_tid_t tid,
+ClusterTransactionState::ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                                  transaction::Options const& options)
-    : TransactionState(vocbase, tid, options) {}
+    : TransactionState(vocbase, tid, options) {
+  TRI_ASSERT(isCoordinator());
+  // we have to read revisions here as validateAndOptimize is executed before
+  // transaction is started and during validateAndOptimize some simple
+  // function calls could be executed and calls requires valid analyzers revisions.
+  acceptAnalyzersRevision(
+      _vocbase.server().getFeature<arangodb::ClusterFeature>()
+        .clusterInfo().getQueryAnalyzersRevision(vocbase.name()));
+}
 
 /// @brief start a transaction
 Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
-  LOG_TRX("03dec", TRACE, this, nestingLevel())
+  LOG_TRX("03dec", TRACE, this)
       << "beginning " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(!hasHint(transaction::Hints::Hint::NO_USAGE_LOCK) ||
              !AccessMode::isWriteOrExclusive(_type));
+  TRI_ASSERT(_status == transaction::Status::CREATED);
 
-  if (nestingLevel() == 0) {
-    // set hints
-    _hints = hints;
-  }
+  // set hints
+  _hints = hints;
 
   auto cleanup = scopeGuard([&] {
-    if (nestingLevel() == 0) {
-      updateStatus(transaction::Status::ABORTED);
-      _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
-    }
-    // free what we have got so far
-    unuseCollections(nestingLevel());
+    updateStatus(transaction::Status::ABORTED);
+    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
   });
 
-  Result res = useCollections(nestingLevel());
+  Result res = useCollections();
   if (res.fail()) { // something is wrong
     return res;
   }
 
   // all valid
-  if (nestingLevel() == 0) {
-    updateStatus(transaction::Status::RUNNING);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
+  updateStatus(transaction::Status::RUNNING);
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsStarted++;
 
-    transaction::ManagerFeature::manager()->registerTransaction(id(), nullptr, isReadOnlyTransaction());
-    setRegistered();
+  transaction::ManagerFeature::manager()->registerTransaction(id(), isReadOnlyTransaction(), false /* isFollowerTransaction */);
+  setRegistered();
+  if (AccessMode::isWriteOrExclusive(this->_type) &&
+      hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    TRI_ASSERT(isCoordinator());
 
-    ClusterEngine* ce = static_cast<ClusterEngine*>(EngineSelectorFeature::ENGINE);
-    if (ce->isMMFiles() && hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-      TRI_ASSERT(isCoordinator());
-
-      std::vector<std::string> leaders;
-      allCollections([&leaders](TransactionCollection& c) {
-        auto shardIds = c.collection()->shardIds();
-        for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ShardID> const& servers = pair.second;
-          if (!servers.empty()) {
-            leaders.push_back(servers[0]);
-          }
+    ClusterTrxMethods::SortedServersSet leaders{};
+    allCollections([&](TransactionCollection& c) {
+      auto shardIds = c.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ShardID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.emplace(servers[0]);
         }
-        return true; // continue
-      });
+      }
+      return true;  // continue
+    });
 
+    // if there is only one server we may defer the lazy locking
+    // until the first actual operation (should save one request)
+    if (leaders.size() > 1) {
       res = ClusterTrxMethods::beginTransactionOnLeaders(*this, leaders).get();
-      if (res.fail()) { // something is wrong
+      if (res.fail()) {  // something is wrong
         return res;
       }
     }
-  } else {
-    TRI_ASSERT(_status == transaction::Status::RUNNING);
   }
 
   cleanup.cancel();
@@ -111,7 +115,7 @@ Result ClusterTransactionState::beginTransaction(transaction::Hints hints) {
 
 /// @brief commit a transaction
 Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX("927c0", TRACE, this, nestingLevel())
+  LOG_TRX("927c0", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 
   TRI_ASSERT(_status == transaction::Status::RUNNING);
@@ -119,26 +123,26 @@ Result ClusterTransactionState::commitTransaction(transaction::Methods* activeTr
     return Result(TRI_ERROR_DEBUG);
   }
 
-  arangodb::Result res;
-  if (nestingLevel() == 0) {
-    updateStatus(transaction::Status::COMMITTED);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
-  }
+  updateStatus(transaction::Status::COMMITTED);
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsCommitted++;
 
-  unuseCollections(nestingLevel());
-  return res;
+  return {};
 }
 
 /// @brief abort and rollback a transaction
 Result ClusterTransactionState::abortTransaction(transaction::Methods* activeTrx) {
-  LOG_TRX("fc653", TRACE, this, nestingLevel()) << "aborting " << AccessMode::typeString(_type) << " transaction";
+  LOG_TRX("fc653", TRACE, this) << "aborting " << AccessMode::typeString(_type) << " transaction";
   TRI_ASSERT(_status == transaction::Status::RUNNING);
-  Result res;
-  if (nestingLevel() == 0) {
-    updateStatus(transaction::Status::ABORTED);
-    _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
-  }
 
-  unuseCollections(nestingLevel());
-  return res;
+  updateStatus(transaction::Status::ABORTED);
+  _vocbase.server().getFeature<MetricsFeature>().serverStatistics()._transactionsStatistics._transactionsAborted++;
+  
+  return {};
+}
+  
+/// @brief return number of commits
+uint64_t ClusterTransactionState::numCommits() const {
+  // there are no intermediate commits for a cluster transaction, so we can
+  // return 1 for a committed transaction and 0 otherwise
+  return _status == transaction::Status::COMMITTED ? 1 : 0;
 }

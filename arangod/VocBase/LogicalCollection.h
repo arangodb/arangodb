@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,10 @@
 #include "Indexes/IndexIterator.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalDataSource.h"
+#include "VocBase/Validators.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -48,7 +51,6 @@ class FollowerInfo;
 class Index;
 class IndexIterator;
 class KeyGenerator;
-struct KeyLockInfo;
 class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationOptions;
@@ -77,18 +79,15 @@ class LogicalCollection : public LogicalDataSource {
 
  public:
   LogicalCollection() = delete;
-  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
-                    bool isAStub, uint64_t planVersion = 0);
+  LogicalCollection(TRI_vocbase_t& vocbase, velocypack::Slice const& info, bool isAStub);
   LogicalCollection(LogicalCollection const&) = delete;
   LogicalCollection& operator=(LogicalCollection const&) = delete;
-  virtual ~LogicalCollection();
+  ~LogicalCollection() override;
 
-  enum class Version {
-    v30 = 5,
-    v31 = 6,
-    v33 = 7,
-    v34 = 8
-  };
+  /// @brief maximal collection name length
+  static constexpr size_t maxNameLength = 256;
+
+  enum class Version { v30 = 5, v31 = 6, v33 = 7, v34 = 8, v37 = 9 };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the category representing a logical collection
@@ -98,7 +97,7 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief hard-coded minimum version number for collections
   static constexpr Version minimumVersion() { return Version::v30; }
   /// @brief current version for collections
-  static constexpr Version currentVersion() { return Version::v34; }
+  static constexpr Version currentVersion() { return Version::v37; }
 
   // SECTION: Meta Information
   Version version() const { return _version; }
@@ -112,8 +111,8 @@ class LogicalCollection : public LogicalDataSource {
   std::string globallyUniqueId() const;
 
   // For normal collections the realNames is just a vector of length 1
-  // with its name. For smart edge collections (enterprise only) this is
-  // different.
+  // with its name. For smart edge collections (Enterprise Edition only)
+  // this is different.
   virtual std::vector<std::string> realNames() const {
     return std::vector<std::string>{name()};
   }
@@ -126,36 +125,40 @@ class LogicalCollection : public LogicalDataSource {
   TRI_vocbase_col_status_e getStatusLocked();
 
   void executeWhileStatusWriteLocked(std::function<void()> const& callback);
-  void executeWhileStatusLocked(std::function<void()> const& callback);
-  bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
   /// @brief try to fetch the collection status under a lock
   /// the boolean value will be set to true if the lock could be acquired
   /// if the boolean is false, the return value is always
   /// TRI_VOC_COL_STATUS_CORRUPTED
   TRI_vocbase_col_status_e tryFetchStatus(bool&);
-  std::string statusString() const;
 
   uint64_t numberDocuments(transaction::Methods*, transaction::CountType type);
 
   // SECTION: Properties
-  TRI_voc_rid_t revision(transaction::Methods*) const;
+  RevisionId revision(transaction::Methods*) const;
   bool waitForSync() const { return _waitForSync; }
   void waitForSync(bool value) { _waitForSync = value; }
 #ifdef USE_ENTERPRISE
+  bool isDisjoint() const { return _isDisjoint; }
   bool isSmart() const { return _isSmart; }
+  bool isSmartChild() const { return _isSmartChild; }
 #else
+  bool isDisjoint() const { return false; }
   bool isSmart() const { return false; }
+  bool isSmartChild() const { return false; }
 #endif
+  bool usesRevisionsAsDocumentIds() const;
+  void setUsesRevisionsAsDocumentIds(bool);
+  RevisionId minRevision() const;
   /// @brief is this a cluster-wide Plan (ClusterInfo) collection
   bool isAStub() const { return _isAStub; }
-  /// @brief is this a cluster-wide Plan (ClusterInfo) collection
-  bool isClusterGlobal() const { return _isAStub; }
 
   bool hasSmartJoinAttribute() const { return !smartJoinAttribute().empty(); }
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  bool hasClusterWideUniqueRevs() const;
+
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const { return _smartJoinAttribute; }
 
   // SECTION: sharding
@@ -165,7 +168,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const;
   size_t replicationFactor() const;
   size_t writeConcern() const;
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
   bool usesDefaultShardKeys() const;
@@ -177,12 +180,14 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          std::string& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const& key =
-                          arangodb::velocypack::StringRef());
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                std::string& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key =
+                                    arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -197,10 +202,8 @@ class LogicalCollection : public LogicalDataSource {
   /// if allowUpdate is true, will potentially make a cluster-internal roundtrip
   /// to fetch current values!
   /// @param tid the optional transaction ID to use
-  IndexEstMap clusterIndexEstimates(bool allowUpdating, TRI_voc_tid_t tid = 0);
-
-  /// @brief sets the current index selectivity estimates
-  void setClusterIndexEstimates(IndexEstMap&& estimates);
+  IndexEstMap clusterIndexEstimates(bool allowUpdating,
+                                    TransactionId tid = TransactionId::none());
 
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();
@@ -212,7 +215,7 @@ class LogicalCollection : public LogicalDataSource {
                        std::function<bool(arangodb::Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
-  /// this is only used in the enterprise edition for smart graphs
+  /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document, std::string const& key) const;
 
   bool allowUserKeys() const;
@@ -232,6 +235,8 @@ class LogicalCollection : public LogicalDataSource {
 
   velocypack::Builder toVelocyPackIgnore(std::unordered_set<std::string> const& ignoreKeys,
                                          Serialization context) const;
+  
+  void toVelocyPackForInventory(velocypack::Builder&) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&, bool useSystem,
                                                bool isReady, bool allInSync) const;
@@ -241,10 +246,8 @@ class LogicalCollection : public LogicalDataSource {
   virtual arangodb::Result properties(velocypack::Slice const& slice, bool partialUpdate) override;
 
   /// @brief return the figures for a collection
-  virtual futures::Future<OperationResult> figures() const;
-
-  /// @brief opens an existing collection
-  void open(bool ignoreErrors);
+  virtual futures::Future<OperationResult> figures(bool details,
+                                                   OperationOptions const& options) const;
 
   /// @brief closes an open collection
   int close();
@@ -258,20 +261,14 @@ class LogicalCollection : public LogicalDataSource {
   std::shared_ptr<Index> lookupIndex(velocypack::Slice const&) const;
 
   /// @brief Find index by iid
-  std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
+  std::shared_ptr<Index> lookupIndex(IndexId) const;
 
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string const&) const;
 
-  bool dropIndex(TRI_idx_iid_t iid);
+  bool dropIndex(IndexId iid);
 
   // SECTION: Index access (local only)
-
-  /// @brief reads an element from the document collection
-  Result read(transaction::Methods* trx, arangodb::velocypack::StringRef const& key,
-              ManagedDocumentResult& mdr, bool lock);
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
-              ManagedDocumentResult& result, bool lock);
 
   /// @brief processes a truncate operation
   Result truncate(transaction::Methods& trx, OperationOptions& options);
@@ -279,45 +276,27 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief compact-data operation
   Result compact();
 
-  // convenience function for downwards-compatibility
-  Result insert(transaction::Methods* trx, velocypack::Slice const slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock) {
-    return insert(trx, slice, result, options, lock, nullptr, nullptr);
-  }
-
-  /**
-   * @param cbDuringLock Called immediately after a successful insert. If
-   * it returns a failure, the insert will be rolled back. If the insert wasn't
-   * successful, it isn't called. May be nullptr.
-   */
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
-                ManagedDocumentResult& result, OperationOptions& options, bool lock,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
+                ManagedDocumentResult& result, OperationOptions& options);
 
   Result update(transaction::Methods*, velocypack::Slice newSlice,
-                ManagedDocumentResult& result, OperationOptions&, bool lock,
+                ManagedDocumentResult& result, OperationOptions&,
                 ManagedDocumentResult& previousMdr);
 
   Result replace(transaction::Methods*, velocypack::Slice newSlice,
-                 ManagedDocumentResult& result, OperationOptions&, bool lock,
+                 ManagedDocumentResult& result, OperationOptions&,
                  ManagedDocumentResult& previousMdr);
 
   Result remove(transaction::Methods& trx, velocypack::Slice slice,
-                OperationOptions& options, bool lock, ManagedDocumentResult& previousMdr,
-                KeyLockInfo* keyLockInfo, std::function<void()> const& cbDuringLock);
-
-  bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result) const;
-
-  bool readDocumentWithCallback(transaction::Methods* trx, LocalDocumentId const& token,
-                                IndexIterator::DocumentCallback const& cb) const;
+                OperationOptions& options, ManagedDocumentResult& previousMdr);
 
   /// @brief Persist the connected physical collection.
   ///        This should be called AFTER the collection is successfully
   ///        created and only on Sinlge/DBServer
   void persistPhysicalCollection();
 
-  basics::ReadWriteLock& lock() { return _lock; }
+  /// lock protecting the status and name
+  basics::ReadWriteLock& statusLock();
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -327,6 +306,9 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Key Options
   velocypack::Slice keyOptions() const;
+  void schemaToVelocyPack(VPackBuilder&) const;
+  Result validate(VPackSlice newDoc, VPackOptions const*) const; // insert
+  Result validate(VPackSlice modifiedDoc, VPackSlice oldDoc, VPackOptions const*) const; // update / replace
 
   // Get a reference to this KeyGenerator.
   // Caller is not allowed to free it.
@@ -336,23 +318,35 @@ class LogicalCollection : public LogicalDataSource {
 
   std::unique_ptr<FollowerInfo> const& followers() const;
 
+  /// @brief returns the value of _syncByRevision
+  bool syncByRevision() const;
+  /// @brief sets the value of _syncByRevision
+  void setSyncByRevision(bool);
+  
+  /// @brief returns the value of _syncByRevision, but only for "real" collections with data backing.
+  /// returns false for all collections with no data backing.
+  bool useSyncByRevision() const;
+
  protected:
   virtual arangodb::Result appendVelocyPack(arangodb::velocypack::Builder& builder,
                                            Serialization context) const override;
+
+  Result updateSchema(VPackSlice schema);
 
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
   void increaseV8Version();
 
-  transaction::CountCache _countCache;
+  bool determineSyncByRevision() const;
 
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
   // SECTION: Meta Information
 
-  mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
+  /// lock protecting the status and name
+  mutable basics::ReadWriteLock _statusLock;
 
   /// @brief collection format version
   Version _version;
@@ -370,16 +364,29 @@ class LogicalCollection : public LogicalDataSource {
   bool const _isAStub;
 
 #ifdef USE_ENTERPRISE
-  // @brief Flag if this collection is a smart one. (Enterprise only)
+  // @brief Flag if this collection is a disjoint smart one. (Enterprise Edition only)
+  // can only be true if _isSmart is also true
+  bool const _isDisjoint;
+  // @brief Flag if this collection is a smart one. (Enterprise Edition only)
   bool const _isSmart;
+  // @brief Flag if this collection is a child of a smart collection (Enterprise Edition only)
+  bool const _isSmartChild;
 #endif
-  
+
   // SECTION: Properties
   bool _waitForSync;
 
   bool const _allowUserKeys;
 
+  std::atomic<bool> _usesRevisionsAsDocumentIds;
+  
+  std::atomic<bool> _syncByRevision;
+
+  RevisionId const _minRevision;
+
   std::string _smartJoinAttribute;
+  
+  transaction::CountCache _countCache;
 
   // SECTION: Key Options
 
@@ -398,6 +405,10 @@ class LogicalCollection : public LogicalDataSource {
 
   /// @brief sharding information
   std::unique_ptr<ShardingInfo> _sharding;
+
+  // `_schema` must be used with atomic accessors only!!
+  // We use relaxed access (load/store) as we only care about atomicity.
+  std::shared_ptr<arangodb::ValidatorBase> _schema;
 };
 
 }  // namespace arangodb

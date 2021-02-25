@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 
 #include "Aql/GraphNode.h"
 #include "Aql/Graphs.h"
+#include "Graph/ShortestPathType.h"
 
 namespace arangodb {
 
@@ -37,17 +38,26 @@ class Builder;
 namespace graph {
 struct BaseOptions;
 struct ShortestPathOptions;
+struct IndexAccessor;
 }  // namespace graph
 namespace aql {
 
 /// @brief class KShortestPathsNode
-class KShortestPathsNode : public GraphNode {
+class KShortestPathsNode : public virtual GraphNode {
   friend class ExecutionBlock;
   friend class RedundantCalculationsReplacer;
 
   /// @brief constructor with a vocbase and a collection name
+ protected:
+  /// @brief Clone constructor, used for constructors of derived classes.
+  /// Does not clone recursively, does not clone properties (`other.plan()` is
+  /// expected to be the same as `plan)`, and does not register this node in the
+  /// plan.
+  KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode const& node);
+
  public:
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
                      AstNode const* direction, AstNode const* start,
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
@@ -57,13 +67,16 @@ class KShortestPathsNode : public GraphNode {
   ~KShortestPathsNode();
 
   /// @brief Internal constructor to clone the node.
-  KShortestPathsNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                     std::vector<std::unique_ptr<Collection>> const& edgeColls,
-                     std::vector<std::unique_ptr<Collection>> const& vertexColls,
+  KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+                     arangodb::graph::ShortestPathType::Type shortestPathType,
+                     std::vector<Collection*> const& edgeColls,
+                     std::vector<Collection*> const& vertexColls,
+                     TRI_edge_direction_e defaultDirection,
                      std::vector<TRI_edge_direction_e> const& directions,
                      Variable const* inStartVariable, std::string const& startVertexId,
                      Variable const* inTargetVariable, std::string const& targetVertexId,
-                     std::unique_ptr<graph::BaseOptions> options);
+                     std::unique_ptr<graph::BaseOptions> options,
+                     graph::Graph const* graph);
 
  public:
   /// @brief return the type of the node
@@ -80,7 +93,7 @@ class KShortestPathsNode : public GraphNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+                       bool withProperties) const override;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
   Variable const& pathOutVariable() const {
@@ -98,6 +111,8 @@ class KShortestPathsNode : public GraphNode {
     TRI_ASSERT(_inStartVariable != nullptr);
     return *_inStartVariable;
   }
+
+  void setStartInVariable(Variable const* inVariable);
 
   std::string const getStartVertex() const { return _startVertexId; }
 
@@ -121,7 +136,7 @@ class KShortestPathsNode : public GraphNode {
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const override {
+  void getVariablesUsedHere(VarSet& vars) const override {
     if (_inStartVariable != nullptr) {
       vars.emplace(_inStartVariable);
     }
@@ -130,12 +145,32 @@ class KShortestPathsNode : public GraphNode {
     }
   }
 
+  /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
+  arangodb::graph::ShortestPathType::Type shortestPathType() const {
+    return _shortestPathType;
+  }
+
   /// @brief Compute the shortest path options containing the expressions
   ///        MUST! be called after optimization and before creation
   ///        of blocks.
   void prepareOptions() override;
 
+  std::vector<arangodb::graph::IndexAccessor> buildUsedIndexes() const;
+
+  std::vector<arangodb::graph::IndexAccessor> buildReverseUsedIndexes() const;
+  
+  /// @brief Overrides GraphNode::options() with a more specific return type
+  ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
+  auto options() const -> graph::ShortestPathOptions*;
+
  private:
+  void kShortestPathsCloneHelper(ExecutionPlan& plan, KShortestPathsNode& c,
+                                 bool withProperties) const;
+
+ private:
+  /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
+  arangodb::graph::ShortestPathType::Type _shortestPathType;
+
   /// @brief path output variable
   Variable const* _pathOutVariable;
 

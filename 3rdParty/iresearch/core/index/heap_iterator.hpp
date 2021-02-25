@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_PQ_ITERATOR_H
@@ -31,7 +30,7 @@
 #include <algorithm>
 #include <vector>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class external_heap_iterator
@@ -94,9 +93,13 @@ class external_heap_iterator : private compact<0, Context> {
     return true;
   }
 
-  size_t value() const NOEXCEPT {
+  size_t value() const noexcept {
     assert(!heap_.empty());
     return heap_.back();
+  }
+
+  size_t size() const noexcept {
+    return heap_.size();
   }
 
  private:
@@ -108,7 +111,7 @@ class external_heap_iterator : private compact<0, Context> {
     return !heap_.empty();
   }
 
-  const context_t& context() const NOEXCEPT {
+  const context_t& context() const noexcept {
     return context_store_t::get();
   }
 
@@ -116,7 +119,7 @@ class external_heap_iterator : private compact<0, Context> {
   size_t lead_{};
 }; // external_heap_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_PQ_ITERATOR_H
 

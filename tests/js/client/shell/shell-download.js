@@ -33,6 +33,7 @@ var internal = require("internal");
 var arangodb = require("@arangodb");
 var fs = require("fs");
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attributes
@@ -44,11 +45,11 @@ function DownloadSuite () {
   var tempName;
 
   var buildUrl = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + "/_admin/echo" + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_admin/echo" + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:') + "/_not-there" + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_not-there" + append;
   };
 
   return {
@@ -78,7 +79,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      // some sanity check as we don't want to unintentionally remove "." or "/"
+      // some basic security checks as we don't want to unintentionally remove "." or "/"
       if (tempDir.length > 5) {
         // remove our temporary directory with all its subdirectories
         // we created it, so we don't care what's in it

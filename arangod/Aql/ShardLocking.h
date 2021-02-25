@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 #ifndef ARANGOD_AQL_SHARD_LOCKING_H
 #define ARANGOD_AQL_SHARD_LOCKING_H 1
 
+#include "Aql/ExecutionNodeId.h"
+#include "Aql/QuerySnippet.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
@@ -38,12 +40,12 @@ namespace aql {
 
 struct Collection;
 class ExecutionNode;
-class Query;
+class QueryContext;
 
 /*
  * This class is responsible to ensure all shards that participate in a query
  * get locked with the correct lock type.
- * During instanciation on the coordinator every ExecutionNode is passed
+ * During instantiation on the coordinator every ExecutionNode is passed
  * through this class which adapts locking accordingly.
  * As a side-effect this class can expose which servers are going
  * to participate in this query, and it can also expose a mapping
@@ -59,14 +61,14 @@ class ShardLocking {
     SnippetInformation() : isRestricted(false), restrictedShards({}) {}
     // Flag if this snippet is restricted at all
     bool isRestricted;
-    // THe list of shards this snippet is restricted to.
-    // Invariant isRestricted == false => restrictedShards.empty()
-    // Invariant isRestricted == true => !restrictedShards.empty()
+    // The list of shards this snippet is restricted to.
+    // Invariant isRestricted == false <=>  restrictedShards.empty()
+    // Invariant isRestricted == true  <=> !restrictedShards.empty()
     std::unordered_set<ShardID> restrictedShards;
   };
 
   // @brief the information about the locking for a single collection.
-  //  will be modified during the instanciation of the plan on coordinator.
+  //  will be modified during the instantiation of the plan on coordinator.
   struct CollectionLockingInformation {
     // Lock type used for this collection
     AccessMode::Type lockType{AccessMode::Type::NONE};
@@ -81,13 +83,13 @@ class ShardLocking {
 
  public:
   // @brief prepare a shardlocking for the new query.
-  explicit ShardLocking(Query* query) : _query(query) { TRI_ASSERT(_query != nullptr); }
+  explicit ShardLocking(QueryContext& query) : _query(query) {}
 
   // @brief Every ExectionNode that is send to a Database server needs to be passed through this method
   // this class will check if a collection (or more) is used, and will adapt the locking.
   // The given snippetId is used to determin in which snippet this node is used.
   // This will also check for shard restrictions on the given node.
-  void addNode(ExecutionNode const* node, size_t snippetId);
+  void addNode(ExecutionNode const* node, size_t snippetId, bool pushToSingleServer);
 
   // @brief we need to send the lock information to a database server.
   // This is the function that serializes this information for the given server.
@@ -128,7 +130,7 @@ class ShardLocking {
   // Get the shards of the given collection within the given snippet.
   // This will honor shard restrictions on the given snippet.
   // All shards will be returned, there will be no filtering on the server.
-  std::unordered_set<ShardID> const& shardsForSnippet(size_t snippetId,
+  std::unordered_set<ShardID> const& shardsForSnippet(aql::QuerySnippet::Id snippetId,
                                                       Collection const* col);
 
  private:
@@ -138,7 +140,7 @@ class ShardLocking {
                      bool useAsSatellite);
 
  private:
-  Query* _query;
+  QueryContext& _query;
 
   std::unordered_map<Collection const*, CollectionLockingInformation> _collectionLocking;
 

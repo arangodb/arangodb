@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
@@ -26,7 +25,7 @@
 
 #include <chrono>
 
-NS_LOCAL
+namespace {
 
 void decode_ctr_header(
     const irs::bytes_ref& header,
@@ -44,9 +43,9 @@ void decode_ctr_header(
   iv = irs::bytes_ref(header.c_str() + block_size, block_size);
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 ///// @class ctr_cipher_stream
@@ -57,13 +56,13 @@ class ctr_cipher_stream : public encryption::stream {
       const cipher& cipher,
       const bytes_ref& iv,
       uint64_t counter_base
-  ) NOEXCEPT
+  ) noexcept
     : cipher_(&cipher),
       iv_(iv),
       counter_base_(counter_base) {
   }
 
-  virtual size_t block_size() const NOEXCEPT override {
+  virtual size_t block_size() const noexcept override {
     return cipher_->block_size();
   }
 
@@ -318,4 +317,4 @@ encryption::stream::ptr ctr_encryption::create_stream(
   return memory::make_unique<ctr_cipher_stream>(*cipher_, bytes_ref(iv.c_str(), block_size), base_counter);
 }
 
-NS_END
+}

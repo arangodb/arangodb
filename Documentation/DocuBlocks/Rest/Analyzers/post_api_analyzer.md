@@ -1,40 +1,38 @@
 @startDocuBlock post_api_analyzer
-@brief creates a new analyzer based on the provided definition
+@brief creates a new Analyzer based on the provided definition
 
-@RESTHEADER{POST /_api/analyzer, Create an analyzer with the suppiled definition, RestAnalyzerHandler:Create}
+@RESTHEADER{POST /_api/analyzer, Create an Analyzer with the supplied definition, RestAnalyzerHandler:Create}
 
 @RESTBODYPARAM{name,string,required,string}
-The analyzer name.
+The Analyzer name.
 
 @RESTBODYPARAM{type,string,required,string}
-The analyzer type.
+The Analyzer type.
 
-@RESTBODYPARAM{properties,string,optional,string}
-The properties used to configure the specified type.
-Value may be a string, an object or null.
-The default value is *null*.
+@RESTBODYPARAM{properties,object,optional,}
+The properties used to configure the specified Analyzer type.
 
 @RESTBODYPARAM{features,array,optional,string}
-The set of features to set on the analyzer generated fields.
+The set of features to set on the Analyzer generated fields.
 The default value is an empty array.
 
 @RESTDESCRIPTION
-Creates a new analyzer based on the provided configuration.
+Creates a new Analyzer based on the provided configuration.
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-An analyzer with a matching name and definition already exists.
+An Analyzer with a matching name and definition already exists.
 
 @RESTRETURNCODE{201}
-A new analyzer definition was successfully created.
+A new Analyzer definition was successfully created.
 
 @RESTRETURNCODE{400}
 One or more of the required parameters is missing or one or more of the parameters
 is not valid.
 
 @RESTRETURNCODE{403}
-The user does not have permission to create and analyzer with this configuration.
+The user does not have permission to create and Analyzer with this configuration.
 
 @EXAMPLES
 

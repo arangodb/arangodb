@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,7 @@ class ClusterSelectivityEstimates {
   /// @brief fetch estimates from cache or server
   /// @param allowUpdate allow cluster communication
   /// @param tid specify ongoing transaction this is a part of
-  IndexEstMap get(bool allowUpdating, TRI_voc_tick_t tid);
+  IndexEstMap get(bool allowUpdating, TransactionId tid);
   void set(IndexEstMap const& estimates);
 
  private:

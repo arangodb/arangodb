@@ -18,18 +18,17 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "analyzer.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
-analyzer::analyzer(const analyzer::type_id& type) NOEXCEPT
-  : type_(&type) {
+analyzer::analyzer(const type_info& type) noexcept
+  : type_(type.id()) {
 }
 
-NS_END // analysis
-NS_END
+} // analysis
+}

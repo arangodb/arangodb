@@ -30,37 +30,37 @@
 
 #include <lz4.h>
 
-NS_LOCAL
+namespace {
 
 // can reuse stateless instances
 irs::compression::lz4::lz4compressor LZ4_BASIC_COMPRESSOR;
 irs::compression::lz4::lz4decompressor LZ4_BASIC_DECOMPRESSOR;
 
-inline int acceleration(const irs::compression::options::Hint hint) NOEXCEPT {
+inline int acceleration(const irs::compression::options::Hint hint) noexcept {
   static const int FACTORS[] { 0, 2, 0 };
   assert(static_cast<size_t>(hint) < IRESEARCH_COUNTOF(FACTORS));
 
   return FACTORS[static_cast<size_t>(hint)];
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 static_assert(
   sizeof(char) == sizeof(byte_type),
   "sizeof(char) != sizeof(byte_type)"
 );
 
-NS_BEGIN(compression)
+namespace compression {
 
-void LZ4_streamDecode_deleter::operator()(void *p) NOEXCEPT {
+void LZ4_streamDecode_deleter::operator()(void *p) noexcept {
   if (p) {
     LZ4_freeStreamDecode(reinterpret_cast<LZ4_streamDecode_t*>(p));
   }
 }
 
-void LZ4_stream_deleter::operator()(void *p) NOEXCEPT {
+void LZ4_stream_deleter::operator()(void *p) noexcept {
   if (p) {
     LZ4_freeStream(reinterpret_cast<LZ4_stream_t*>(p));
   }
@@ -98,7 +98,7 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
 }
 
 bytes_ref lz4::lz4decompressor::decompress(
-    byte_type* src,  size_t src_size,
+    const byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
   assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
 
@@ -123,7 +123,7 @@ compressor::ptr lz4::compressor(const options& opts) {
     return compressor::ptr(compressor::ptr(), &LZ4_BASIC_COMPRESSOR);
   }
 
-  return std::make_shared<lz4compressor>(acceleration);
+  return memory::make_shared<lz4compressor>(acceleration);
 }
 
 decompressor::ptr lz4::decompressor() {
@@ -135,8 +135,7 @@ void lz4::init() {
   REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 }
 
-DEFINE_COMPRESSION_TYPE(iresearch::compression::lz4);
 REGISTER_COMPRESSION(lz4, &lz4::compressor, &lz4::decompressor);
 
-NS_END // compression
-NS_END
+} // compression
+}

@@ -25,11 +25,11 @@
 #define IRESEARCH_DIRECTORY_ATTRIBUTES_H
 
 #include "shared.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/ref_counter.hpp"
 #include "utils/container_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class memory_allocator
@@ -43,7 +43,6 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
   }; // buffer
 
  public:
-  DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY(size_t pool_size);
 
   typedef container_utils::memory::bucket_allocator<
@@ -51,11 +50,11 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
     16 // as in memory_file
   > allocator_type;
 
-  static memory_allocator& global() NOEXCEPT;
+  static memory_allocator& global() noexcept;
 
   explicit memory_allocator(size_t pool_size);
 
-  operator allocator_type&() const NOEXCEPT {
+  operator allocator_type&() const noexcept {
     return const_cast<allocator_type&>(allocator_);
   }
 
@@ -69,11 +68,10 @@ class IRESEARCH_API memory_allocator : public stored_attribute {
 ///        where applicable, e.g. fs_directory
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API fd_pool_size: public stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
   DECLARE_FACTORY();
 
-  fd_pool_size() NOEXCEPT;
-  void clear() NOEXCEPT;
+  fd_pool_size() noexcept;
+  void clear() noexcept;
 
   size_t size;
 }; // fd_pool_size
@@ -87,14 +85,14 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   typedef attribute_store::ref<index_file_refs>::type attribute_t;
   typedef ref_counter<std::string> counter_t;
   typedef counter_t::ref_t ref_t;
-  DECLARE_ATTRIBUTE_TYPE();
+
   DECLARE_FACTORY();
   index_file_refs() = default;
   ref_t add(const std::string& key);
   ref_t add(std::string&& key);
   void clear();
   bool remove(const std::string& key) { return refs_.remove(key); }
-  counter_t& refs() NOEXCEPT {
+  counter_t& refs() noexcept {
     return refs_;
   }
 
@@ -104,6 +102,6 @@ class IRESEARCH_API index_file_refs : public stored_attribute {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // index_file_refs
 
-NS_END
+}
 
 #endif

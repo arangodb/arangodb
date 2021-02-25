@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,21 +28,21 @@ namespace aql {
 
 /// @brief node finder for one node type
 template <>
-NodeFinder<ExecutionNode::NodeType>::NodeFinder(
-    ExecutionNode::NodeType lookingFor,
+NodeFinder<ExecutionNode::NodeType, WalkerUniqueness::NonUnique>::NodeFinder(
+    ExecutionNode::NodeType const& lookingFor,
     ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
-    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
 /// @brief node finder for multiple types
 template <>
-NodeFinder<std::vector<ExecutionNode::NodeType>>::NodeFinder(
-    std::vector<ExecutionNode::NodeType> lookingFor,
+NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::NonUnique>::NodeFinder(
+    std::initializer_list<ExecutionNode::NodeType> const& lookingFor,
     ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
-    : _lookingFor(lookingFor), _out(out), _enterSubqueries(enterSubqueries) {}
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
 
 /// @brief before method for one node type
 template <>
-bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
+bool NodeFinder<ExecutionNode::NodeType, WalkerUniqueness::NonUnique>::before(ExecutionNode* en) {
   if (en->getType() == _lookingFor) {
     _out.emplace_back(en);
   }
@@ -52,7 +52,30 @@ bool NodeFinder<ExecutionNode::NodeType>::before(ExecutionNode* en) {
 
 /// @brief before method for multiple node types
 template <>
-bool NodeFinder<std::vector<ExecutionNode::NodeType>>::before(ExecutionNode* en) {
+bool NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::NonUnique>::before(
+    ExecutionNode* en) {
+  auto const nodeType = en->getType();
+
+  for (auto& type : _lookingFor) {
+    if (type == nodeType) {
+      _out.emplace_back(en);
+      break;
+    }
+  }
+  return false;
+}
+
+/// @brief unique node finder for multiple types
+template <>
+NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique>::NodeFinder(
+    std::initializer_list<ExecutionNode::NodeType> const& lookingFor,
+    ::arangodb::containers::SmallVector<ExecutionNode*>& out, bool enterSubqueries)
+    : _out(out), _lookingFor(lookingFor), _enterSubqueries(enterSubqueries) {}
+
+/// @brief before method for multiple node types
+template <>
+bool NodeFinder<std::initializer_list<ExecutionNode::NodeType>, WalkerUniqueness::Unique>::before(
+    ExecutionNode* en) {
   auto const nodeType = en->getType();
 
   for (auto& type : _lookingFor) {

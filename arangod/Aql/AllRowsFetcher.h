@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -33,6 +34,8 @@
 #include <cstddef>
 #include <memory>
 
+#include "Aql/AqlItemBlockInputMatrix.h"
+
 namespace arangodb {
 namespace aql {
 
@@ -42,6 +45,7 @@ enum class ExecutionState;
 template <BlockPassthrough>
 class DependencyProxy;
 class ShadowAqlItemRow;
+class SkipResult;
 
 /**
  * @brief Interface for all AqlExecutors that do need all
@@ -60,9 +64,6 @@ class ShadowAqlItemRow;
  *   - preFetchNumberOfRows()
  *     => Will do the same as fetchAllRows, but NOT give out the data, it will only hold it internally.
  *     => On response it will inform the caller on exactly how many Rows will be returned until the next ShadowRow appears.
- *   - fetchBlockForModificationExecutor()
- *     => Fetches all blocks from upstream up to the next shadow row. Then it will only return these Blocks one by one.
- *     => This is relevant for ModificationExecutors to guarantee that all Input is read before a write is executed.
  *   - upstreamState()
  *     => Returns the last state of the dependencyProxy.
  *   - fetchShadowRow()
@@ -78,17 +79,11 @@ class ShadowAqlItemRow;
  */
 class AllRowsFetcher {
  private:
-  enum FetchState {
-    NONE,
-    DATA_FETCH_ONGOING,
-    ALL_DATA_FETCHED,
-    SHADOW_ROW_FETCHED
-  };
-
  public:
   explicit AllRowsFetcher(DependencyProxy<BlockPassthrough::Disable>& executionBlock);
-
   TEST_VIRTUAL ~AllRowsFetcher() = default;
+
+  using DataRange = AqlItemBlockInputMatrix;
 
  protected:
   // only for testing! Does not initialize _dependencyProxy!
@@ -96,79 +91,21 @@ class AllRowsFetcher {
 
  public:
   /**
-   * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the pointer returned is valid only
-   *        until the next call to fetchRow.
+   * @brief Execute the given call stack
    *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this Matrix return DONE to caller.
-   *           HASMORE => Cannot be returned here
+   * @param stack Call stack, on top of stack there is current subquery, bottom is the main query.
+   * @return std::tuple<ExecutionState, size_t, DataRange>
+   *   ExecutionState => DONE, all queries are done, there will be no more
+   *   ExecutionState => HASMORE, there are more results for queries, might be on other subqueries
+   *   ExecutionState => WAITING, we need to do I/O to solve the request, save local state and return WAITING to caller immediately
    *
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => impossible
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
+   *   size_t => Amount of documents skipped
+   *   DataRange => Resulting data
    */
-  TEST_VIRTUAL std::pair<ExecutionState, AqlItemMatrix const*> fetchAllRows();
-
-  /**
-   * @brief Fetch one new AqlItemRow from upstream.
-   *        **Guarantee**: the row returned is valid only
-   *        until the next call to fetchRow.
-   *        **Guarantee**: All input rows have been produced from upstream before the first row is returned here
-   *
-   * @param atMost may be passed if a block knows the maximum it might want to
-   *        fetch from upstream (should apply only to the LimitExecutor). Will
-   *        not fetch more than the default batch size, so passing something
-   *        greater than it will not have any effect.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this row return DONE to caller.
-   *           HASMORE => There is potentially more from above, call again if
-   *                      you need more input.
-   *         AqlItemRow:
-   *           If WAITING => Do not use this Row, it is a nullptr.
-   *           If HASMORE => The Row is guaranteed to not be a nullptr.
-   *           If DONE => Row can be a nullptr (nothing received) or valid.
-   */
-  // This is only TEST_VIRTUAL, so we ignore this lint warning:
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, InputAqlItemRow> fetchRow(size_t atMost = ExecutionBlock::DefaultBatchSize());
-
-  /**
-   * @brief Prefetch the number of rows that will be returned from upstream.
-   * calling this function will render the fetchAllRows() a noop function
-   * as this function will already fill the local result caches.
-   *
-   * @return A pair with the following properties:
-   *         ExecutionState:
-   *           WAITING => IO going on, immediatly return to caller.
-   *           DONE => No more to expect from Upstream, if you are done with
-   *                   this Matrix return DONE to caller.
-   *           HASMORE => Cannot be returned here
-   *
-   *         AqlItemRow:
-   *           If WAITING => Do not use this number, it is 0.
-   *           If HASMORE => impossible
-   *           If DONE => Number contains the correct number of rows upstream.
-   */
-  TEST_VIRTUAL std::pair<ExecutionState, size_t> preFetchNumberOfRows(size_t);
-
-  // only for ModificationNodes
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlockForModificationExecutor(std::size_t);
+  std::tuple<ExecutionState, SkipResult, DataRange> execute(AqlCallStack& stack);
 
   // only for ModificationNodes
   ExecutionState upstreamState();
-
-  // NOLINTNEXTLINE google-default-arguments
-  std::pair<ExecutionState, ShadowAqlItemRow> fetchShadowRow(
-      size_t atMost = ExecutionBlock::DefaultBatchSize());
 
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
@@ -177,32 +114,11 @@ class AllRowsFetcher {
   ExecutionState _upstreamState;
   std::size_t _blockToReturnNext;
 
-  FetchState _dataFetchedState;
-
-  std::vector<AqlItemMatrix::RowIndex> _rowIndexes;
-  std::size_t _nextReturn;
-
  private:
   /**
    * @brief Delegates to ExecutionBlock::getNrInputRegisters()
    */
-  RegisterId getNrInputRegisters() const;
-
-  /**
-   * @brief Delegates to ExecutionBlock::fetchBlock()
-   */
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> fetchBlock();
-
-  /**
-   * @brief intermediate function to fetch data from
-   *        upstream and does upstream state checking
-   */
-  ExecutionState fetchData();
-
-  /**
-   * @brief Fetch blocks from upstream until done
-   */
-  ExecutionState fetchUntilDone();
+  RegisterCount getNrInputRegisters() const;
 };
 
 }  // namespace aql

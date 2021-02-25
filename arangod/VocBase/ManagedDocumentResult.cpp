@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,16 +31,9 @@
 
 using namespace arangodb;
 
-void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack) {
-  _string.clear();
-  _vpack = const_cast<uint8_t*>(vpack);
-  _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
-}
-
 void ManagedDocumentResult::setManaged(uint8_t const* vpack) {
   VPackSlice const slice(vpack);
   _string.assign(slice.startAs<char>(), slice.byteSize());
-  _vpack = nullptr;
   _revisionId = transaction::helpers::extractRevFromDocument(slice);
 }
 
@@ -49,17 +42,8 @@ void ManagedDocumentResult::setRevisionId() noexcept {
   _revisionId = transaction::helpers::extractRevFromDocument(VPackSlice(this->vpack()));
 }
 
-void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder,
-                                         bool allowExternals) const {
+void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder) const {
   TRI_ASSERT(!empty());
-  if (_vpack == nullptr) { // managed
-    TRI_ASSERT(!_string.empty());
-    builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
-  } else {
-    if (allowExternals) {
-      builder.addExternal(_vpack);
-    } else {
-      builder.add(VPackSlice(_vpack));
-    }
-  }
+  TRI_ASSERT(!_string.empty());
+  builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(_string.data())));
 }

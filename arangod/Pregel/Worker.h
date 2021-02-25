@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,6 +36,7 @@
 #include "Pregel/Statistics.h"
 #include "Pregel/WorkerConfig.h"
 #include "Pregel/WorkerContext.h"
+#include "Reports.h"
 #include "Scheduler/Scheduler.h"
 
 struct TRI_vocbase_t;
@@ -125,6 +127,7 @@ class Worker : public IWorker {
 
   /// Stats about the CURRENT gss
   MessageStats _messageStats;
+  ReportManager _reports;
   /// valid after _finishedProcessing was called
   uint64_t _activeCount = 0;
   /// current number of running threads

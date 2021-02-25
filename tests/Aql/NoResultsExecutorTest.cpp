@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,19 +21,13 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RowFetcherHelper.h"
 #include "gtest/gtest.h"
 
-#include "Aql/AqlItemBlock.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/InputAqlItemRow.h"
-#include "Aql/NoResultsExecutor.h"
-#include "Aql/OutputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
-#include "Aql/Stats.h"
+#include "AqlExecutorTestCase.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
+#include "Aql/NoResultsExecutor.h"
+#include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -41,94 +36,65 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class NoResultsExecutorTest : public ::testing::Test {
+using NoResultsTestHelper = ExecutorTestHelper<1, 1>;
+using NoResultsSplitType = NoResultsTestHelper::SplitType;
+using NoResultsInputParam = std::tuple<NoResultsSplitType, AqlCall, size_t>;
+
+class NoResultsExecutorTest : public AqlExecutorTestCaseWithParam<NoResultsInputParam> {
  protected:
-  ExecutionState state;
+  auto getSplit() -> NoResultsSplitType {
+    auto const& [split, call, inputRows] = GetParam();
+    return split;
+  }
+  auto getCall() -> AqlCall {
+    auto const& [split, call, inputRows] = GetParam();
+    return call;
+  }
 
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager;
-  SharedAqlItemBlockPtr block;
-  std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters;
-  std::shared_ptr<std::unordered_set<RegisterId>> registersToClear;
-  std::shared_ptr<std::unordered_set<RegisterId>> registersToKeep;
+  auto getInput() -> size_t {
+    auto const& [split, call, inputRows] = GetParam();
+    return inputRows;
+  }
 
-  RegisterId inputRegister;
-  ExecutorInfos infos;
-  OutputAqlItemRow result;
-
-  NoResultsExecutorTest()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
-        outputRegisters(make_shared_unordered_set()),
-        registersToClear(make_shared_unordered_set()),
-        registersToKeep(make_shared_unordered_set()),
-        inputRegister(0),
-        infos(make_shared_unordered_set({0}), outputRegisters, 1 /*nr in*/,
-              1 /*nr out*/, *registersToClear, *registersToKeep),
-        result(std::move(block), outputRegisters, registersToKeep, registersToClear) {}
+  auto makeInfos() -> RegisterInfos {
+    return RegisterInfos{RegIdSet{0},          {}, 1, 1, RegIdFlatSet{},
+                         RegIdFlatSetStack{{}}};
+  }
 };
 
-TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_doesnt_wait) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), false);
-  NoResultsExecutor testee(fetcher, infos);
-  NoStats stats{};
+template <size_t... vs>
+const NoResultsSplitType splitIntoBlocks =
+    NoResultsSplitType{std::vector<std::size_t>{vs...}};
+template <size_t step>
+const NoResultsSplitType splitStep = NoResultsSplitType{step};
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-}
+auto NoResultsInputSplits =
+    ::testing::Values(splitIntoBlocks<2, 3>, splitStep<1>, splitStep<2>);
+// This is just a random list of calls.
+auto NoResultsCalls =
+    ::testing::Values(AqlCall{}, AqlCall{0, false, 1, AqlCall::LimitType::SOFT},
+                      AqlCall{0, false, 2, AqlCall::LimitType::HARD},
+                      AqlCall{0, true, 1, AqlCall::LimitType::HARD},
+                      AqlCall{5, false, 1, AqlCall::LimitType::SOFT},
+                      AqlCall{2, true, 0, AqlCall::LimitType::HARD});
+auto NoResultsInputSizes = ::testing::Values(0, 1, 10, 2000);
 
-TEST_F(NoResultsExecutorTest, no_rows_upstream_the_producer_waits) {
-  VPackBuilder input;
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input.steal(), true);
-  NoResultsExecutor testee(fetcher, infos);
-  NoStats stats{};
+INSTANTIATE_TEST_CASE_P(NoResultsExecutorTest, NoResultsExecutorTest,
+                        ::testing::Combine(NoResultsInputSplits, NoResultsCalls,
+                                           NoResultsInputSizes));
 
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-}
-
-TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_doesnt_wait) {
-  auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), false);
-  NoResultsExecutor testee(fetcher, infos);
-  NoStats stats{};
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-}
-
-TEST_F(NoResultsExecutorTest, rows_upstream_the_producer_waits) {
-  auto input = VPackParser::fromJson("[ [true], [false], [true] ]");
-  SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(itemBlockManager, input->steal(), true);
-  NoResultsExecutor testee(fetcher, infos);
-  NoStats stats{};
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
-
-  std::tie(state, stats) = testee.produceRows(result);
-  ASSERT_EQ(state, ExecutionState::DONE);
-  ASSERT_FALSE(result.produced());
-  ASSERT_EQ(fetcher.nrCalled(), 0);
+TEST_P(NoResultsExecutorTest, do_never_ever_return_results) {
+  ExecutionStats stats{};
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<NoResultsExecutor>(makeInfos(), EmptyExecutorInfos{}, ExecutionNode::NORESULTS)
+      .setInputFromRowNum(getInput())
+      .setInputSplitType(getSplit())
+      .setCall(getCall())
+      .expectOutput({0}, {})
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .expectedStats(stats)
+      .run();
 }
 
 }  // namespace aql

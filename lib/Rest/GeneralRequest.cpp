@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -71,9 +71,8 @@ std::string GeneralRequest::translateMethod(RequestType method) {
   return "UNKNOWN";  // in order please MSVC
 }
 
-rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
-  std::string const methodString = StringUtils::toupper(method);
-
+namespace  {
+rest::RequestType translateMethod(VPackStringRef const& methodString) {
   if (methodString == "DELETE") {
     return RequestType::DELETE_REQ;
   } else if (methodString == "GET") {
@@ -89,8 +88,17 @@ rest::RequestType GeneralRequest::translateMethod(std::string const& method) {
   } else if (methodString == "PUT") {
     return RequestType::PUT;
   }
-
   return RequestType::ILLEGAL;
+}
+}
+
+rest::RequestType GeneralRequest::translateMethod(VPackStringRef const& method) {
+  auto ret = ::translateMethod(method);
+  if (RequestType::ILLEGAL == ret) {
+    std::string const methodString = StringUtils::toupper(method.toString());
+    return ::translateMethod(VPackStringRef(methodString));
+  }
+  return ret;
 }
 
 void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
@@ -249,8 +257,18 @@ double GeneralRequest::parsedValue(std::string const& key, double valueNotFound)
   return valueNotFound;
 }
 
-std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr() {
-  auto* opts = VelocyPackHelper::optionsWithUniquenessCheck();
-  return std::make_shared<VPackBuilder>(payload(opts), opts);
-};
+std::shared_ptr<VPackBuilder> GeneralRequest::toVelocyPackBuilderPtr(bool strictValidation) {
+  return std::make_shared<VPackBuilder>(payload(strictValidation));
+}
+
+/// @brief get VelocyPack options for validation. effectively turns off
+/// validation if strictValidation is false. This optimization can be used for
+/// internal requests
+arangodb::velocypack::Options const* GeneralRequest::validationOptions(bool strictValidation) {
+  if (strictValidation) {
+    return &basics::VelocyPackHelper::strictRequestValidationOptions;
+  }
+  return &basics::VelocyPackHelper::looseRequestValidationOptions;
+}
+
 }  // namespace arangodb

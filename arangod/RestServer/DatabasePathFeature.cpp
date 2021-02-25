@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,13 +26,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "ApplicationFeatures/LanguageFeature.h"
-#include "ApplicationFeatures/PageSizeFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -51,9 +52,10 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
-  startsAfter<PageSizeFeature>();
   startsAfter<TempFeature>();
 }
 

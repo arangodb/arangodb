@@ -1,0 +1,22 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+de{
+    Version{"2.1.19.14"}
+    collations{
+        phonebook{
+            Sequence{
+                "&AE<<ä<<<Ä"
+                "&OE<<ö<<<Ö"
+                "&UE<<ü<<<Ü"
+            }
+            Version{"35.1"}
+        }
+        search{
+            Sequence{
+                "[import und-u-co-search]"
+                "[import de-u-co-phonebk]"
+            }
+            Version{"35.1"}
+        }
+    }
+}

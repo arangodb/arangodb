@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,7 +44,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_closesocket(TRI_socket_t s) {
-  int res = TRI_ERROR_NO_ERROR;
+  int res = 0;
 #ifdef _WIN32
   if (s.fileHandle != TRI_INVALID_SOCKET) {
     res = shutdown(s.fileHandle, SD_SEND);

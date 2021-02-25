@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+﻿////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2016 by EMC Corporation, All Rights Reserved
@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TOKEN_STREAMS_H
@@ -26,61 +25,58 @@
 
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class basic_term
-/// @brief basic term_attribute implementation for string_token_stream
+/// @class basic_token_stream
+/// @brief convenient helper implementation providing access to "increment"
+///        and "term_attributes" attributes
 //////////////////////////////////////////////////////////////////////////////
-class basic_term final : public term_attribute {
+class IRESEARCH_API basic_token_stream : public token_stream {
  public:
-  void value(const bytes_ref& value) {
-    value_ = value;
-  }
-}; // basic_term
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final;
+
+ protected:
+  term_attribute term_;
+  increment inc_;
+}; // basic_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class null_token_stream
 /// @brief token_stream implementation for boolean field, a single bool term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API boolean_token_stream final
-    : public token_stream,
-      private util::noncopyable { // attrs_ non-copyable
+    : public basic_token_stream,
+      private util::noncopyable {
  public:
-  static const bytes_ref& value_false();
-  static const bytes_ref& value_true();
-  static const bytes_ref& value(bool val);
+  static constexpr string_ref value_true() noexcept {
+    return { "\xFF", 1 };
+  }
 
-  explicit boolean_token_stream(bool value = false);
-  boolean_token_stream(boolean_token_stream&& other) NOEXCEPT;
+  static constexpr string_ref value_false() noexcept {
+    return { "\x00", 1 };
+  }
 
-  virtual bool next() override;
+  static constexpr string_ref value(bool val) noexcept {
+    return val ? value_true() : value_false();
+  }
 
-  void reset(bool value) {
+  explicit boolean_token_stream(bool value = false) noexcept;
+
+  virtual bool next() noexcept override;
+
+  void reset(bool value) noexcept {
     value_ = value;
     in_use_ = false;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
-
  private:
-  void init_attributes() {
-    attrs_.emplace(term_);
-    attrs_.emplace(inc_); // required by field_data::invert(...)
-  }
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  attribute_view attrs_;
-  basic_term term_;
-  increment inc_;
   bool in_use_;
   bool value_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // boolean_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class string_token_stream 
@@ -89,50 +85,30 @@ class IRESEARCH_API boolean_token_stream final
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API string_token_stream final
-    : public token_stream,
-      private util::noncopyable { // attrs_ non-copyable
+    : public frozen_attributes<3, token_stream>,
+      private util::noncopyable {
  public:
-  string_token_stream();
-  string_token_stream(string_token_stream&& other) NOEXCEPT;
+  string_token_stream() noexcept;
 
-  virtual bool next() override;
+  virtual bool next() noexcept override;
 
-  void reset(const bytes_ref& value) { 
+  void reset(const bytes_ref& value) noexcept {
     value_ = value;
     in_use_ = false; 
   }
 
-  void reset(const string_ref& value) {
+  void reset(const string_ref& value) noexcept {
     value_ = ref_cast<byte_type>(value);
     in_use_ = false;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
-
  private:
-  void init_attributes() {
-    attrs_.emplace(offset_);
-    attrs_.emplace(inc_);
-    attrs_.emplace(term_);
-  }
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  attribute_view attrs_;
   offset offset_;
   increment inc_;
-  basic_term term_;
+  term_attribute term_;
   bytes_ref value_;
   bool in_use_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // string_token_stream 
-
-struct increment;
-class numeric_term;
-
-const uint32_t PRECISION_STEP_DEF = 16;
-const uint32_t PRECISION_STEP_32 = 8;
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class numeric_token_stream
@@ -141,15 +117,12 @@ const uint32_t PRECISION_STEP_32 = 8;
 ///        term
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API numeric_token_stream final
-    : public token_stream,
-      private util::noncopyable { // attrs_ non-copyable
+    : public basic_token_stream,
+      private util::noncopyable {
  public:
-  numeric_token_stream();
-  numeric_token_stream(numeric_token_stream&& other) NOEXCEPT;
+  static constexpr uint32_t PRECISION_STEP_DEF = 16;
+  static constexpr uint32_t PRECISION_STEP_32 = 8;
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
   virtual bool next() override;
 
   void reset(int32_t value, uint32_t step = PRECISION_STEP_DEF);
@@ -174,7 +147,7 @@ class IRESEARCH_API numeric_token_stream final
   /// @class numeric_term
   /// @brief term_attribute implementation for numeric_token_stream
   //////////////////////////////////////////////////////////////////////////////
-  class IRESEARCH_API numeric_term final: public term_attribute {
+  class IRESEARCH_API numeric_term final {
    public:
     static bytes_ref value(bstring& buf, int32_t value) {
       decltype(val_) val;
@@ -210,7 +183,7 @@ class IRESEARCH_API numeric_token_stream final
       return numeric_term::value(buf, NT_DBL, val, 0);
     }
 
-    bool next(increment& inc);
+    bool next(increment& inc, bytes_ref& out);
 
     void reset(int32_t value, uint32_t step) {
       val_.i32 = value;
@@ -244,10 +217,17 @@ class IRESEARCH_API numeric_token_stream final
 
    private:
     enum NumericType { NT_LONG = 0, NT_DBL, NT_INT, NT_FLOAT };
+
     union value_t {
       uint64_t i64;
       uint32_t i32;
     };
+
+    static irs::bytes_ref value(
+      bstring& buf,
+      NumericType type,
+      value_t val,
+      uint32_t shift);
 
     IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
     bstring data_;
@@ -256,23 +236,9 @@ class IRESEARCH_API numeric_token_stream final
     uint32_t step_;
     uint32_t shift_;
     IRESEARCH_API_PRIVATE_VARIABLES_END
-
-    static irs::bytes_ref value(
-      bstring& buf,
-      NumericType type,
-      value_t val,
-      uint32_t shift
-    );
   }; // numeric_term
 
-  void init_attributes() {
-    attrs_.emplace(num_);
-    attrs_.emplace(inc_); // required by field_data::invert(...)
-  }
-
-  attribute_view attrs_;
   numeric_term num_;
-  increment inc_;
 }; // numeric_token_stream 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -280,38 +246,24 @@ class IRESEARCH_API numeric_token_stream final
 /// @brief token_stream implementation for null field, a single null term.
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API null_token_stream final
-    : public token_stream,
-      private util::noncopyable { // attrs_ non-copyable
+    : public basic_token_stream,
+      private util::noncopyable {
  public:
-  static const bytes_ref& value_null();
+  static constexpr string_ref value_null() noexcept {
+    // data pointer != nullptr or assert failure in bytes_hash::insert(...)
+    return { "\x00", 0 };
+  }
 
-  null_token_stream();
-  null_token_stream(null_token_stream&& other) NOEXCEPT;
+  virtual bool next() noexcept override;
 
-  virtual bool next() override;
-
-  void reset() { 
+  void reset() noexcept {
     in_use_ = false; 
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT override {
-    return attrs_;
-  }
-
  private:
-  void init_attributes() {
-    attrs_.emplace(term_);
-    attrs_.emplace(inc_); // required by field_data::invert(...)
-  }
+  bool in_use_{false};
+}; // null_token_stream
 
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  attribute_view attrs_;
-  basic_term term_;
-  increment inc_;
-  bool in_use_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-};
-
-NS_END
+}
 
 #endif

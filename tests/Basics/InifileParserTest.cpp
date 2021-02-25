@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for StringUtils class
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,7 +16,7 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
@@ -104,11 +101,11 @@ TEST(InifileParserTest, test_options) {
   options.addOption("--pork.a-string-value-not-set", "bla", new StringParameter(&aStringValueNotSet));
   options.addOption("--pork.sounds", "which sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&porkSounds, soundsPorksMake),
-                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
   options.addOption("--pork.strange-sounds", "which strange sounds do pigs make?",
                     new DiscreteValuesVectorParameter<StringParameter>(&strangePorkSounds, soundsPorksMake),
-                    arangodb::options::makeFlags(options::Flags::FlushOnFirst));
+                    arangodb::options::makeDefaultFlags(options::Flags::FlushOnFirst));
 
 
   auto contents = R"data(

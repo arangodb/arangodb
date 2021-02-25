@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,42 +23,56 @@
 
 #include "ModificationOptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/StringRef.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb::aql;
 
-ModificationOptions::ModificationOptions(VPackSlice const& slice) {
+ModificationOptions::ModificationOptions(VPackSlice const& slice) 
+    : OperationOptions() {
   VPackSlice obj = slice.get("modificationFlags");
 
-  ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
-  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, "waitForSync", false);
-  nullMeansRemove =
-      basics::VelocyPackHelper::getBooleanValue(obj, "nullMeansRemove", false);
-  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, "mergeObjects", true);
+  waitForSync = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::WaitForSyncString, false);
+  validate = !basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::SkipDocumentValidation, false);
+  keepNull = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::KeepNullString, true);
+  mergeObjects = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::MergeObjectsString, true);
+  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IgnoreRevsString , true);
+  isRestore = basics::VelocyPackHelper::getBooleanValue(obj, StaticStrings::IsRestoreString, false);
+  overwriteMode = OperationOptions::determineOverwriteMode(VPackStringRef(basics::VelocyPackHelper::getStringValue(obj, StaticStrings::OverwriteMode, "")));
+
+  ignoreErrors = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false); 
   ignoreDocumentNotFound =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreDocumentNotFound", false);
   readCompleteInput =
       basics::VelocyPackHelper::getBooleanValue(obj, "readCompleteInput", true);
-  useIsRestore = basics::VelocyPackHelper::getBooleanValue(obj, "useIsRestore", false);
   consultAqlWriteFilter =
       basics::VelocyPackHelper::getBooleanValue(obj, "consultAqlWriteFilter", false);
   exclusive = basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
-  overwrite = basics::VelocyPackHelper::getBooleanValue(obj, "overwrite", false);
-  ignoreRevs = basics::VelocyPackHelper::getBooleanValue(obj, "ignoreRevs", true);
 }
 
 void ModificationOptions::toVelocyPack(VPackBuilder& builder) const {
   VPackObjectBuilder guard(&builder);
+
+  // relevant attributes from OperationOptions
+  builder.add(StaticStrings::WaitForSyncString, VPackValue(waitForSync));
+  builder.add(StaticStrings::SkipDocumentValidation, VPackValue(!validate));
+  builder.add(StaticStrings::KeepNullString, VPackValue(keepNull));
+  builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
+  builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
+  builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
+  
+  if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
+    builder.add(StaticStrings::OverwriteMode, VPackValue(OperationOptions::stringifyOverwriteMode(overwriteMode)));
+  }
+
+  // our own attributes
   builder.add("ignoreErrors", VPackValue(ignoreErrors));
-  builder.add("waitForSync", VPackValue(waitForSync));
-  builder.add("nullMeansRemove", VPackValue(nullMeansRemove));
-  builder.add("mergeObjects", VPackValue(mergeObjects));
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
   builder.add("readCompleteInput", VPackValue(readCompleteInput));
-  builder.add("useIsRestore", VPackValue(useIsRestore));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
-  builder.add("overwrite", VPackValue(overwrite));
-  builder.add("ignoreRevs", VPackValue(ignoreRevs));
 }

@@ -30,10 +30,10 @@
 # ################################################################
 
 
-CFLAGS ?= -O3
-CFLAGS += -Wall -Wextra -Wcast-qual -Wcast-align -Wshadow -Wstrict-aliasing=1 -Wswitch-enum -Wno-comment
-CFLAGS += $(MOREFLAGS)
-FLAGS   = $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
+CXXFLAGS ?= -O3
+CXXFLAGS += -Wall -Wextra -Wcast-qual -Wcast-align -Wshadow -Wstrict-aliasing=1 -Wswitch-enum -Wno-comment
+CXXFLAGS += $(MOREFLAGS)
+FLAGS   = $(CPPFLAGS) $(CXXFLAGS) $(LDFLAGS)
 
 LZ4API = ../../lib/lz4.h
 LZ4MANUAL = ../../doc/lz4_manual.html

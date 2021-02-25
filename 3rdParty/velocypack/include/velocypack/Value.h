@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_VALUE_H
@@ -32,6 +30,11 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/ValueType.h"
+
+#if __cplusplus >= 201703L
+#include <string_view>
+#define VELOCYPACK_HAS_STRING_VIEW 1
+#endif
 
 namespace arangodb {
 namespace velocypack {
@@ -51,75 +54,67 @@ class Value {
     UInt64 = 4,
     String = 5,
     CharPtr = 6,
-    VoidPtr = 7
+    VoidPtr = 7,
+    StringView = 8
   };
 
  private:
-  ValueType _valueType;
-  CType _cType;  // denotes variant used, 0: none
+  ValueType const _valueType;
+  CType const _cType;  // denotes variant used, 0: none
 
-  union {
-    bool b;                // 1: bool
-    double d;              // 2: double
-    int64_t i;             // 3: int64_t
-    uint64_t u;            // 4: uint64_t
-    std::string const* s;  // 5: std::string
-    char const* c;         // 6: char const*
-    void const* e;         // external
-  } _value;
+  union ValueUnion {
+    constexpr explicit ValueUnion(bool b) noexcept : b(b) {}
+    constexpr explicit ValueUnion(double d) noexcept : d(d) {}
+    constexpr explicit ValueUnion(int64_t i) noexcept : i(i) {}
+    constexpr explicit ValueUnion(uint64_t u) noexcept : u(u) {}
+    constexpr explicit ValueUnion(std::string const* s) noexcept : s(s) {}
+    constexpr explicit ValueUnion(char const* c) noexcept : c(c) {}
+    constexpr explicit ValueUnion(void const* e) noexcept : e(e) {}
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+    constexpr explicit ValueUnion(std::string_view const* sv) noexcept : sv(sv) {}
+#endif
 
-  bool _unindexed;
+    bool b;                      // 1: bool
+    double d;                    // 2: double
+    int64_t i;                   // 3: int64_t
+    uint64_t u;                  // 4: uint64_t
+    std::string const* s;        // 5: std::string
+    char const* c;               // 6: char const*
+    void const* e;               // 7: external
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+    std::string_view const* sv;  // 8: std::string_view
+#endif
+  } const _value;
 
  public:
-#ifdef SWIG
-  Value()
-      : _valueType(ValueType::None), _cType(CType::None), _unindexed(false) {}
-#else
   Value() = delete;
-#endif
 
   // creates a Value with the specified type Array or Object
   explicit Value(ValueType t, bool allowUnindexed = false);
 
-  explicit Value(bool b, ValueType t = ValueType::Bool) noexcept
-      : _valueType(t), _cType(CType::Bool), _unindexed(false) {
-    _value.b = b;
-  }
+  constexpr explicit Value(bool b, ValueType t = ValueType::Bool) noexcept
+      : _valueType(t), _cType(CType::Bool), _value(b) {}
 
-  explicit Value(double d, ValueType t = ValueType::Double) noexcept
-      : _valueType(t), _cType(CType::Double), _unindexed(false) {
-    _value.d = d;
-  }
+  constexpr explicit Value(double d, ValueType t = ValueType::Double) noexcept
+      : _valueType(t), _cType(CType::Double), _value(d) {}
 
-  explicit Value(void const* e, ValueType t = ValueType::External) noexcept
-      : _valueType(t), _cType(CType::VoidPtr), _unindexed(false) {
-    _value.e = e;
-  }
+  constexpr explicit Value(void const* e, ValueType t = ValueType::External) noexcept
+      : _valueType(t), _cType(CType::VoidPtr), _value(e) {}
 
-  explicit Value(char const* c, ValueType t = ValueType::String) noexcept
-      : _valueType(t), _cType(CType::CharPtr), _unindexed(false) {
-    _value.c = c;
-  }
+  constexpr explicit Value(char const* c, ValueType t = ValueType::String) noexcept
+      : _valueType(t), _cType(CType::CharPtr), _value(c) {}
 
-  explicit Value(int32_t i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::Int64), _unindexed(false) {
-    _value.i = static_cast<int64_t>(i);
-  }
+  constexpr explicit Value(int32_t i, ValueType t = ValueType::Int) noexcept
+      : _valueType(t), _cType(CType::Int64), _value(static_cast<int64_t>(i)) {}
 
-  explicit Value(uint32_t u, ValueType t = ValueType::UInt) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
-    _value.u = static_cast<uint64_t>(u);
-  }
+  constexpr explicit Value(uint32_t u, ValueType t = ValueType::UInt) noexcept
+      : _valueType(t), _cType(CType::UInt64), _value(static_cast<uint64_t>(u)) {}
 
-  explicit Value(int64_t i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::Int64), _unindexed(false) {
-    _value.i = i;
-  }
+  constexpr explicit Value(int64_t i, ValueType t = ValueType::Int) noexcept
+      : _valueType(t), _cType(CType::Int64), _value(i) {}
 
-  explicit Value(uint64_t u, ValueType t = ValueType::UInt) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
-    _value.u = u;
-  }
+  constexpr explicit Value(uint64_t u, ValueType t = ValueType::UInt) noexcept
+      : _valueType(t), _cType(CType::UInt64), _value(u) {}
 
 #ifdef __APPLE__
   // MacOS uses the following typedefs:
@@ -131,85 +126,121 @@ class Value {
 
   // however, defining the method on Linux and with MSVC will lead
   // to ambiguous overloads, so this is restricted to __APPLE__ only
-  explicit Value(unsigned long i, ValueType t = ValueType::Int) noexcept
-      : _valueType(t), _cType(CType::UInt64), _unindexed(false) {
-    _value.i = static_cast<uint64_t>(i);
-  }
+  constexpr explicit Value(unsigned long i, ValueType t = ValueType::UInt) noexcept
+      : _valueType(t), _cType(CType::UInt64), _value(static_cast<uint64_t>(i)) {}
 #endif
 
-  explicit Value(std::string const& s, ValueType t = ValueType::String) noexcept
-      : _valueType(t), _cType(CType::String), _unindexed(false) {
-    _value.s = &s;
-  }
+  constexpr explicit Value(std::string const& s, ValueType t = ValueType::String) noexcept
+      : _valueType(t), _cType(CType::String), _value(&s) {}
 
-  ValueType valueType() const { return _valueType; }
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+  constexpr explicit Value(std::string_view const& sv, ValueType t = ValueType::String) noexcept
+      : _valueType(t), _cType(CType::StringView), _value(&sv) {}
+#endif
 
-  CType cType() const { return _cType; }
+  constexpr ValueType valueType() const noexcept { return _valueType; }
 
-  bool isString() const { return _valueType == ValueType::String; }
+  constexpr CType cType() const noexcept { return _cType; }
 
-  bool getBool() const {
+  // whether or not the underlying Array/Object can be unindexed.
+  // it is only allowed to call this for Array/Object types!
+  bool unindexed() const;
+
+  constexpr bool isString() const noexcept { return _valueType == ValueType::String; }
+
+  constexpr bool getBool() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Bool);
+#endif
     return _value.b;
   }
 
-  double getDouble() const {
+  constexpr double getDouble() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Double);
+#endif
     return _value.d;
   }
 
-  int64_t getInt64() const {
+  constexpr int64_t getInt64() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::Int64);
+#endif
     return _value.i;
   }
 
-  uint64_t getUInt64() const {
+  constexpr uint64_t getUInt64() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::UInt64);
+#endif
     return _value.u;
   }
 
-  std::string const* getString() const {
+  constexpr std::string const* getString() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::String);
+#endif
     return _value.s;
   }
 
-  void const* getExternal() const {
+#ifdef VELOCYPACK_HAS_STRING_VIEW
+  constexpr std::string_view const* getStringView() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
+    VELOCYPACK_ASSERT(_cType == CType::StringView);
+#endif
+    return _value.sv;
+  }
+#endif
+
+  constexpr void const* getExternal() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::VoidPtr);
+#endif
     return _value.e;
   }
 
-  char const* getCharPtr() const {
+  constexpr char const* getCharPtr() const noexcept {
+#if __cplusplus >= 201300
+    // extended constexpr functions are only available from C++14 onwards
     VELOCYPACK_ASSERT(_cType == CType::CharPtr);
+#endif
     return _value.c;
   }
 };
 
 class ValuePair {
   uint8_t const* _start;
-  uint64_t _size;
-  ValueType _type;
+  uint64_t const _size;
+  ValueType const _type;
 
  public:
-  ValuePair(uint8_t const* start, uint64_t size,
-            ValueType type = ValueType::Binary) noexcept
+  constexpr ValuePair(uint8_t const* start, uint64_t size,
+                      ValueType type = ValueType::Binary) noexcept
       : _start(start), _size(size), _type(type) {}
 
   ValuePair(char const* start, uint64_t size,
             ValueType type = ValueType::Binary) noexcept
       : ValuePair(reinterpret_cast<uint8_t const*>(start), size, type) {}
 
-  explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
+  constexpr explicit ValuePair(uint64_t size, ValueType type = ValueType::Binary) noexcept
       : _start(nullptr), _size(size), _type(type) {}
 
   explicit ValuePair(StringRef const& value, ValueType type = ValueType::Binary) noexcept;
 
-  uint8_t const* getStart() const { return _start; }
+  uint8_t const* getStart() const noexcept { return _start; }
 
-  uint64_t getSize() const { return _size; }
+  uint64_t getSize() const noexcept { return _size; }
 
-  ValueType valueType() const { return _type; }
+  ValueType valueType() const noexcept { return _type; }
 
-  bool isString() const { return _type == ValueType::String; }
+  bool isString() const noexcept { return _type == ValueType::String; }
 };
 
 }  // namespace arangodb::velocypack

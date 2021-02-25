@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,10 +86,10 @@ bool Scheduler::start() {
 void Scheduler::shutdown() {
   TRI_ASSERT(isStopping());
 
-  {
-    std::unique_lock<std::mutex> guard(_cronQueueMutex);
-    _croncv.notify_one();
-  }
+  std::unique_lock<std::mutex> guard(_cronQueueMutex);
+  guard.unlock();
+
+  _croncv.notify_one();
   _cronThread.reset();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -122,7 +122,7 @@ void Scheduler::runCronThread() {
         guard.unlock();
 
         // It is time to schedule this task, try to get the lock and obtain a shared_ptr
-        // If this fails a default WorkItem is constructed which has disabled == true
+        // If this fails a default DelayedWorkItem is constructed which has disabled == true
         try {
           auto item = top.second.lock();
           if (item) {
@@ -131,7 +131,7 @@ void Scheduler::runCronThread() {
         } catch (std::exception const& ex) {
           LOG_TOPIC("6d997", WARN, Logger::THREADS) << "caught exception in runCronThread: " << ex.what();
         }
-        
+
         // always lock again, as we are going into the wait_for below
         guard.lock();
 
@@ -148,22 +148,23 @@ void Scheduler::runCronThread() {
 }
 
 std::pair<bool, Scheduler::WorkHandle> Scheduler::queueDelay(
-    RequestLane lane, clock::duration delay, std::function<void(bool cancelled)> handler) {
+    RequestLane lane, clock::duration delay, fu2::unique_function<void(bool cancelled)> handler) {
   TRI_ASSERT(!isStopping());
 
   if (delay < std::chrono::milliseconds(1)) {
     // execute directly
     bool queued =
-        queue(lane, [handler = std::move(handler)]() { handler(false); });
+        queue(lane, [handler = std::move(handler)]() mutable { handler(false); });
     return std::make_pair(queued, nullptr);
   }
 
-  auto item = std::make_shared<WorkItem>(std::move(handler), lane, this);
+  auto item = std::make_shared<DelayedWorkItem>(std::move(handler), lane, this);
   {
     std::unique_lock<std::mutex> guard(_cronQueueMutex);
     _cronQueue.emplace(clock::now() + delay, item);
 
     if (delay < std::chrono::milliseconds(50)) {
+      guard.unlock();
       // wakeup thread
       _croncv.notify_one();
     }

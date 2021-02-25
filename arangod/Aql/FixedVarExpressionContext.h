@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,11 +39,13 @@ class AqlItemBlock;
 
 class FixedVarExpressionContext final : public QueryExpressionContext {
  public:
-  explicit FixedVarExpressionContext(Query* query);
+  explicit FixedVarExpressionContext(transaction::Methods& trx,
+                                     QueryContext& query,
+                                     AqlFunctionsInternalCache& cache);
 
   ~FixedVarExpressionContext() override = default;
 
-  size_t numRegisters() const override;
+  bool isDataFromCollection(Variable const* variable) const override;
 
   AqlValue getVariableValue(Variable const* variable, bool doCopy,
                             bool& mustDestroy) const override;
@@ -52,7 +54,8 @@ class FixedVarExpressionContext final : public QueryExpressionContext {
 
   void setVariableValue(Variable const*, AqlValue const&);
 
-  void serializeAllVariables(transaction::Methods*, arangodb::velocypack::Builder&) const;
+  void serializeAllVariables(velocypack::Options const& opts,
+                             arangodb::velocypack::Builder&) const;
 
  private:
   /// @brief temporary storage for expression data context

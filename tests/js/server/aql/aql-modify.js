@@ -33,6 +33,7 @@ const db = require("@arangodb").db;
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
+const isCluster = require('@arangodb/cluster').isCluster();
 
 const collectionName = "UnitTestAqlModify";
 let col;
@@ -46,16 +47,17 @@ const genInvalidValue = function () {
   ++invCounter;
   return `invalid${invCounter}`;
 };
+const initialDocuments = 2000;
 
 const setUp = function () {
   tearDown();
   col = db._create(collectionName, { numberOfShards: 3 });
   let list = [];
-  for (let i = 0; i < 2000; ++i) {
+  for (let i = 0; i < initialDocuments; ++i) {
     list.push({ val: i });
   }
   col.save(list);
-  assertEqual(2000, col.count());
+  assertEqual(initialDocuments, col.count());
 };
 
 const tearDown = function () {
@@ -1160,11 +1162,49 @@ function aqlUpsertOptionsSuite() {
       assertEqual(NEW.value2, {});
     },
 
+    testUpsertSkipAndHardLimit: function () {
+      const countBefore = col.count();
+      let q = `
+        FOR value IN 1..10
+        UPSERT {value} INSERT {value} UPDATE {value} INTO ${collectionName}
+        LIMIT 5,0 /* We skip 5, and ignore the remaining 5 */
+        RETURN $NEW
+      `;
+      const res = db._query(q);
+      const { writesExecuted, writesIgnored } = res.getExtra().stats;
+      assertEqual(0, writesIgnored);
+      assertEqual(10, writesExecuted);
+      assertEqual(0, res.toArray().length);
+      assertEqual(10, col.count()- countBefore, `Did not insert enough documents, we need to insert all 10, but just report the first 5`);
+    },
+
+    testUpsertSkipAndHardLimitInSubquery: function () {
+      const countBefore = col.count();
+      let q = `
+        FOR fv0 IN 1..3
+        LET sq1 = (
+          FOR fv2 IN ${collectionName}
+          UPSERT {value: fv2.value} INSERT {value: 98 }  UPDATE {value: 51, updated: true} IN ${collectionName}
+          LIMIT 5,0
+          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")}
+        )
+        FILTER fv0 < 8
+        LIMIT 14,13
+        RETURN {fv0, sq1}
+      `;
+      const res = db._query(q);
+      const { writesExecuted, writesIgnored } = res.getExtra().stats;
+      assertEqual(0, writesIgnored);
+      // We update every document once per subquery execution
+      assertEqual(3 * countBefore, writesExecuted);
+      assertEqual(0, res.toArray().length);
+      assertEqual(countBefore, col.count(), `Only updates no inserts`);
+    }
+
     /* We cannot yet solve this. If you need to ensure _rev value checks put them in the UPDATE {} clause
     testUpsertSingleWithInvalidRevInMatch : function () {
       const invalid = genInvalidValue();
       let q = `UPSERT {_key: @key, _rev: "invalid"} INSERT {} UPDATE {val: "${invalid}"} IN ${collectionName} OPTIONS {ignoreRevs: false}`;
-      db._explain(q, {key: "1"});
       let docs = buildSetOfDocs(1);
       for (let d of docs) {
         try {
@@ -1286,9 +1326,134 @@ function aqlUpsertOptionsSuite() {
   };
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+function aqlUpsertReadCompleteInputSuite() {
+
+  return {
+    setUp: function () {
+      db._drop(collectionName);
+      db._create(collectionName, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(collectionName);
+    },
+
+    testReadCompleteInput: function () {
+      const expected = [
+        collectionName + "/key_1",
+        collectionName + "/key_2",
+        collectionName + "/key_3",
+        collectionName + "/key_1",
+      ];
+      
+      const query1 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN ' + collectionName + ' RETURN NEW._id';
+
+      let result = db._query(query1).toArray();
+      assertEqual(expected, result);
+
+      db[collectionName].truncate({ compact: false });
+      
+      const query2 = 'FOR d IN [ {_key: "key_1", value: 1}, {_key: "key_2", value: 2}, {_key: "key_3", value: 3}, {_key: "key_1", value: 1} ] UPSERT { _key: d._key } INSERT d UPDATE d IN @@collection RETURN NEW._id';
+      result = db._query(query2, { "@collection": collectionName }).toArray();
+      assertEqual(expected, result);
+    },
+
+  };
+};
+
+function aqlBts195Suite() {
+  return {
+    setUp: function () {
+      db._drop(collectionName);
+      db._create(collectionName, { numberOfShards: 3 });
+    },
+
+    tearDown: function () {
+      db._drop(collectionName);
+    },
+    
+    testKeepNullFalseOnMain: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { sub: true, mustBeGone: null } IN ${collectionName} OPTIONS { keepNull: false, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertTrue(doc.sub);
+      assertFalse(doc.hasOwnProperty("mustBeGone"));
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertTrue(doc.sub);
+      assertFalse(doc.hasOwnProperty("mustBeGone"));
+    },
+    
+    testKeepNullTrueOnMain: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { sub: true, mustBeGone: null } IN ${collectionName} OPTIONS { keepNull: true, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertTrue(doc.sub);
+      assertTrue(doc.hasOwnProperty("mustBeGone"));
+      assertNull(doc.mustBeGone);
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertTrue(doc.sub);
+      assertTrue(doc.hasOwnProperty("mustBeGone"));
+      assertNull(doc.mustBeGone);
+    },
+
+    testKeepNullFalseOnSub: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { test: { sub: true, mustBeGone: null } } IN ${collectionName} OPTIONS { keepNull: false, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertEqual({ sub: true }, doc.test);
+      assertFalse(doc.test.hasOwnProperty("mustBeGone"));
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertEqual({ sub: true }, doc.test);
+      assertFalse(doc.test.hasOwnProperty("mustBeGone"));
+    },
+    
+    testKeepNullTrueOnSub: function () {
+      let c = db._collection(collectionName);
+      c.insert({});
+
+      const query = `FOR doc IN ${collectionName} UPDATE doc WITH { test: { sub: true, mustBeGone: null } } IN ${collectionName} OPTIONS { keepNull: true, mergeObjects: true } RETURN NEW`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      let doc = result[0];
+      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertTrue(doc.test.hasOwnProperty("mustBeGone"));
+      assertNull(doc.test.mustBeGone);
+     
+      // execute again - result should not change
+      result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      doc = result[0];
+      assertEqual({ sub: true, mustBeGone: null }, doc.test);
+      assertTrue(doc.test.hasOwnProperty("mustBeGone"));
+      assertNull(doc.test.mustBeGone);
+    },
+
+  };
+};
 
 jsunity.run(aqlUpdateOptionsSuite);
 jsunity.run(aqlUpdateWithOptionsSuite);
@@ -1298,4 +1463,9 @@ jsunity.run(aqlReplaceWithOptionsSuite);
 jsunity.run(aqlReplaceWithRevOptionsSuite);
 jsunity.run(aqlRemoveOptionsSuite);
 jsunity.run(aqlUpsertOptionsSuite);
+if (!isCluster) {
+  // TODO: remove the !isCluster() once it has been made working in cluster
+  jsunity.run(aqlUpsertReadCompleteInputSuite);
+}
+jsunity.run(aqlBts195Suite);
 return jsunity.done();

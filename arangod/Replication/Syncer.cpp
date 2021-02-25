@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Indexes.h"
@@ -69,8 +69,8 @@ arangodb::velocypack::StringRef const databaseRef("database");
 arangodb::velocypack::StringRef const globallyUniqueIdRef("globallyUniqueId");
 
 /// @brief extract the collection id from VelocyPack
-TRI_voc_cid_t getCid(arangodb::velocypack::Slice const& slice) {
-  return arangodb::basics::VelocyPackHelper::extractIdValue(slice);
+arangodb::DataSourceId getCid(arangodb::velocypack::Slice const& slice) {
+  return arangodb::DataSourceId{arangodb::basics::VelocyPackHelper::extractIdValue(slice)};
 }
 
 /// @brief extract the collection name from VelocyPack
@@ -80,7 +80,7 @@ std::string getCName(arangodb::velocypack::Slice const& slice) {
 
 /// @brief extract the collection by either id or name, may return nullptr!
 std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
-    TRI_vocbase_t& vocbase, TRI_voc_cid_t cid, std::string const& name) {
+    TRI_vocbase_t& vocbase, arangodb::DataSourceId cid, std::string const& name) {
   auto idCol = vocbase.lookupCollection(cid);
   std::shared_ptr<arangodb::LogicalCollection> nameCol;
 
@@ -118,12 +118,18 @@ std::shared_ptr<arangodb::LogicalCollection> getCollectionByIdOrName(
 
 /// @brief apply the data from a collection dump or the continuous log
 arangodb::Result applyCollectionDumpMarkerInternal(
-    arangodb::Syncer::SyncerState const& state,
-    arangodb::transaction::Methods& trx, arangodb::LogicalCollection* coll,
-    arangodb::TRI_replication_operation_e type, VPackSlice const& slice) {
+    arangodb::Syncer::SyncerState const& state, arangodb::transaction::Methods& trx,
+    arangodb::LogicalCollection* coll, arangodb::TRI_replication_operation_e type,
+    VPackSlice const& slice, std::string& conflictingDocumentKey) {
   using arangodb::OperationOptions;
   using arangodb::OperationResult;
   using arangodb::Result;
+
+  // key must not be empty
+  auto const keySlice = slice.get(arangodb::StaticStrings::KeyString);
+  if (!keySlice.isString() || keySlice.getStringLength() == 0) {
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
 
   if (type == arangodb::TRI_replication_operation_e::REPLICATION_MARKER_DOCUMENT) {
     // {"type":2300,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
@@ -137,23 +143,30 @@ arangodb::Result applyCollectionDumpMarkerInternal(
     }
     // we want the conflicting other key returned in case of unique constraint
     // violation
-    options.indexOperationMode = arangodb::Index::OperationMode::internal;
+    options.indexOperationMode = arangodb::IndexOperationMode::internal;
 
     try {
-      OperationResult opRes;
+      OperationResult opRes(Result(), options);
+      auto potentiallyConflictingKey = std::string{};
       bool useReplace = false;
-      VPackSlice keySlice = arangodb::transaction::helpers::extractKeyFromDocument(slice);
 
-      // if we are about to process a single document marker we first check if the target 
-      // document exists. if yes, we don't try an insert (which would fail anyway) but carry 
-      // on with a replace.
-      if (keySlice.isString()) {
-        arangodb::LocalDocumentId const oldDocumentId =
-            coll->getPhysical()->lookupKey(&trx, keySlice);
-        if (oldDocumentId.isSet()) {
-          useReplace = true;
-          opRes.result.reset(TRI_ERROR_NO_ERROR, keySlice.copyString());
+      // if we are about to process a single document marker we first check if
+      // the target document exists. if yes, we don't try an insert (which would
+      // fail anyway) but carry on with a replace.
+      std::pair<arangodb::LocalDocumentId, arangodb::RevisionId> lookupResult;
+      if (coll->getPhysical()->lookupKey(&trx, keySlice.stringRef(), lookupResult).ok()) {
+        // determine if we already have this revision or need to replace the
+        // one we have
+        arangodb::RevisionId rid = arangodb::RevisionId::fromSlice(slice);
+        if (rid.isSet() && rid == lookupResult.second) {
+          // we already have exactly this document, don't replace, just
+          // consider it already applied and bail
+          return {};
         }
+
+        // need to replace the one we have
+        useReplace = true;
+        potentiallyConflictingKey = keySlice.copyString();
       }
 
       if (!useReplace) {
@@ -161,29 +174,29 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         opRes = trx.insert(coll->name(), slice, options);
         if (opRes.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
           useReplace = true;
+          // In this case (and this case only), the errorMessage contains the
+          // conflicting document's key.
+          potentiallyConflictingKey = opRes.errorMessage();
+        } else {
+          potentiallyConflictingKey.clear();
         }
       }
 
       if (useReplace) {
-        // conflicting key is contained in opRes.errorMessage() now
-        if (keySlice.isString()) {
-          // let's check if the key we have got is the same as the one
-          // that we would like to insert
-          if (keySlice.copyString() != opRes.errorMessage()) {
-            // different key
-            if (trx.isSingleOperationTransaction()) {
-              // return a special error code from here, with the key of
-              // the conflicting document as the error message :-|
-              return Result(TRI_ERROR_ARANGO_TRY_AGAIN, opRes.errorMessage());
-            }
+        if (keySlice.stringView() != potentiallyConflictingKey) {
+          // different key
+          if (trx.isSingleOperationTransaction()) {
+            // return the conflicting document's key to retry
+            conflictingDocumentKey = potentiallyConflictingKey;
+            return Result(TRI_ERROR_ARANGO_TRY_AGAIN);
+          }
 
-            VPackBuilder tmp;
-            tmp.add(VPackValue(opRes.errorMessage()));
+          VPackBuilder tmp;
+          tmp.add(VPackValue(opRes.errorMessage()));
 
-            opRes = trx.remove(coll->name(), tmp.slice(), options);
-            if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-              useReplace = false;
-            }
+          opRes = trx.remove(coll->name(), tmp.slice(), options);
+          if (opRes.ok() || !opRes.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+            useReplace = false;
           }
         }
 
@@ -205,7 +218,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
           // in case we get a unique constraint violation in a multi-document transaction,
           // we can remove the conflicting document and try again
-          options.indexOperationMode = arangodb::Index::OperationMode::normal;
+          options.indexOperationMode = arangodb::IndexOperationMode::normal;
 
           VPackBuilder tmp;
           tmp.add(VPackValue(opRes.errorMessage()));
@@ -214,7 +227,7 @@ arangodb::Result applyCollectionDumpMarkerInternal(
         }
       }
 
-      return Result(opRes.result);
+      return std::move(opRes.result);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(),
                     std::string("document insert/replace operation failed: ") + ex.what());
@@ -452,7 +465,7 @@ SyncerId newSyncerId() {
 }
 
 Syncer::SyncerState::SyncerState(Syncer* syncer, ReplicationApplierConfiguration const& configuration)
-    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, master{configuration} {}
+    : syncerId{newSyncerId()}, applier{configuration}, connection{syncer, configuration}, leader{configuration} {}
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _state{this, configuration} {
@@ -475,22 +488,18 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     
   // get our own server-id
   _state.localServerId = ServerIdFeature::getId();
-  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId);
+  _state.localServerIdString = basics::StringUtils::itoa(_state.localServerId.id());
 
-  _state.master.endpoint = _state.applier._endpoint;
+  _state.leader.endpoint = _state.applier._endpoint;
 }
 
-Syncer::~Syncer() {
-  if (!_state.isChildSyncer) {
-    _state.barrier.remove(_state.connection);
-  }
-}
+Syncer::~Syncer() = default;
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
   TRI_ASSERT(s != nullptr);
-  if (location.substr(0, 5) == "/_db/") {
+  if (location.compare(0, 5, "/_db/", 5) == 0) {
     // location already contains /_db/
     return location;
   }
@@ -499,14 +508,6 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
     return "/_db/" + s->_state.databaseName + location;
   }
   return "/_db/" + s->_state.databaseName + "/" + location;
-}
-
-/// @brief steal the barrier id from the syncer
-TRI_voc_tick_t Syncer::stealBarrier() {
-  auto id = _state.barrier.id;
-  _state.barrier.id = 0;
-  _state.barrier.updateTime = 0;
-  return id;
 }
 
 void Syncer::setAborted(bool value) { _state.connection.setAborted(value); }
@@ -536,7 +537,8 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
   if (it == _state.vocbases.end()) {
     // automatically checks for id in string
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    auto& server = _state.applier._server;
+    TRI_vocbase_t* vocbase = server.getFeature<DatabaseFeature>().lookupDatabase(name);
 
     if (vocbase != nullptr) {
       _state.vocbases.try_emplace(name, *vocbase); //we can not be lazy because of the guard requires a valid ref
@@ -553,9 +555,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
   // extract "cid"
-  TRI_voc_cid_t cid = ::getCid(slice);
+  DataSourceId cid = ::getCid(slice);
 
-  if (!_state.master.simulate32Client() || cid == 0) {
+  if (!_state.leader.simulate32Client() || cid.empty()) {
     VPackSlice uuid;
 
     if ((uuid = slice.get(::cuidRef)).isString()) {
@@ -565,7 +567,7 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
     }
   }
 
-  if (cid == 0) {
+  if (cid.empty()) {
     LOG_TOPIC("fbf1a", ERR, Logger::REPLICATION)
         << "Invalid replication response: Was unable to resolve"
         << " collection from marker: " << slice.toJson();
@@ -585,12 +587,14 @@ std::shared_ptr<LogicalCollection> Syncer::resolveCollection(
 
 Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalCollection* coll,
                                          TRI_replication_operation_e type,
-                                         VPackSlice const& slice) {
+                                         VPackSlice const& slice,
+                                         std::string& conflictingDocumentKey) {
   if (_state.applier._lockTimeoutRetries > 0) {
     decltype(_state.applier._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
+      Result res = ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice,
+                                                       conflictingDocumentKey);
 
       if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
@@ -609,7 +613,8 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx, LogicalColle
       // retry
     }
   } else {
-    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice);
+    return ::applyCollectionDumpMarkerInternal(_state, trx, coll, type, slice,
+                                               conflictingDocumentKey);
   }
 }
 
@@ -641,13 +646,13 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   auto col = resolveCollection(vocbase, slice);
 
   if (col != nullptr && col->type() == type &&
-      (!_state.master.simulate32Client() || col->name() == name)) {
+      (!_state.leader.simulate32Client() || col->name() == name)) {
     // collection already exists. TODO: compare attributes
     return Result();
   }
 
   bool forceRemoveCid = false;
-  if (col != nullptr && _state.master.simulate32Client()) {
+  if (col != nullptr && _state.leader.simulate32Client()) {
     forceRemoveCid = true;
     LOG_TOPIC("01f9f", INFO, Logger::REPLICATION)
         << "would have got a wrong collection!";
@@ -659,7 +664,7 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
 
   if (col != nullptr) {
     if (col->system()) {
-      TRI_ASSERT(!_state.master.simulate32Client() || col->guid() == col->name());
+      TRI_ASSERT(!_state.leader.simulate32Client() || col->guid() == col->name());
       SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
                                       *col, AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS);
@@ -689,9 +694,9 @@ Result Syncer::createCollection(TRI_vocbase_t& vocbase,
   VPackBuilder s;
 
   s.openObject();
-  s.add("isSystem", VPackValue(true));
+  s.add(StaticStrings::DataSourceSystem, VPackValue(true));
 
-  if ((uuid.isString() && !_state.master.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 master
+  if ((uuid.isString() && !_state.leader.simulate32Client()) || forceRemoveCid) {  // need to use cid for 3.2 leader
     // if we received a globallyUniqueId from the remote, then we will always
     // use this id so we can discard the "cid" and "id" values for the
     // collection
@@ -804,11 +809,11 @@ void Syncer::createIndexInternal(VPackSlice const& idxDef, LogicalCollection& co
   // check any identifier conflicts first
   {
     // check ID first
-    TRI_idx_iid_t iid = 0;
+    IndexId iid = IndexId::none();
     std::string name;  // placeholder for now
     CollectionNameResolver resolver(col.vocbase());
     Result res = methods::Indexes::extractHandle(&col, &resolver, idxDef, iid, name);
-    if (res.ok() && iid != 0) {
+    if (res.ok() && iid.isSet()) {
       // lookup by id
       auto byId = physical->lookupIndex(iid);
       auto byDef = physical->lookupIndex(idxDef);
@@ -867,7 +872,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
                     "id not found in index drop slice");
     }
 
-    TRI_idx_iid_t const iid = basics::StringUtils::uint64(id);
+    IndexId const iid{basics::StringUtils::uint64(id)};
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
 
     if (vocbase == nullptr) {
@@ -881,7 +886,7 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
     }
 
     try {
-      CollectionGuard guard(vocbase, col);
+      CollectionGuard guard(vocbase, col->id());
       bool result = guard.collection()->dropIndex(iid);
 
       if (!result) {
@@ -971,8 +976,8 @@ Result Syncer::createView(TRI_vocbase_t& vocbase, arangodb::velocypack::Slice co
                                                /*nullMeansRemove*/ true);
 
   try {
-    LogicalView::ptr view;  // ignore result
-    return LogicalView::create(view, vocbase, merged.slice());
+    LogicalView::ptr empty;  // ignore result
+    return LogicalView::create(empty, vocbase, merged.slice());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

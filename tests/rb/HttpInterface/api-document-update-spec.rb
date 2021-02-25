@@ -22,10 +22,10 @@ describe ArangoDB do
         ArangoDB.drop_collection(@cn)
       end
 
-      it "returns an error if document handle is missing" do
+      it "returns an error if document identifier is missing" do
         cmd = "/_api/document"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-missing-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-missing-identifier", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -36,10 +36,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is corrupted" do
+      it "returns an error if document identifier is corrupted" do
         cmd = "/_api/document/123456"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-bad-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-bad-identifier", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -50,10 +50,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is corrupted with empty cid" do
+      it "returns an error if document identifier is corrupted with empty cid" do
         cmd = "/_api/document//123456"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-bad-handle2", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-bad-identifier2", cmd, :body => body)
 
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
@@ -78,10 +78,10 @@ describe ArangoDB do
         ArangoDB.size_collection(@cid).should eq(0)
       end
 
-      it "returns an error if document handle is unknown" do
+      it "returns an error if document identifier is unknown" do
         cmd = "/_api/document/#{@cid}/234567"
         body = "{}"
-        doc = ArangoDB.log_put("#{prefix}-unknown-handle", cmd, :body => body)
+        doc = ArangoDB.log_put("#{prefix}-unknown-identifier", cmd, :body => body)
 
         doc.code.should eq(404)
         doc.parsed_response['error'].should eq(true)
@@ -113,6 +113,177 @@ describe ArangoDB do
         doc.code.should eq(400)
         doc.parsed_response['error'].should eq(true)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+      
+      it "create a document and update it with invalid JSON" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+        did = doc.parsed_response['_id']
+
+        # update document
+        cmd = "/_api/document/#{did}"
+        body = "{ \"World\" : \"Hallo\xff\" }"
+        doc = ArangoDB.log_put("#{prefix}", cmd, :body => body)
+
+        doc.code.should eq(400)
+        doc.parsed_response['error'].should eq(true)
+        doc.parsed_response['errorNum'].should eq(600)
+        doc.parsed_response['code'].should eq(400)
+      end
+
+      it "create a document and replace it, using ignoreRevs=false" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document, different revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"658993\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(412)
+        doc.parsed_response['error'].should eq(true)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should eq(rev)
+
+        # update document, same revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"#{rev}\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : false }"
+        doc = ArangoDB.put(cmd, :body => body)
+
+        # wait for dbservers to pick up the change
+        sleep 2
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"#{rev2}\", \"World\" : \"Hallo2\" }"
+        doc3 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc3.code.should eq(202)
+        doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev3 = doc3.parsed_response['_rev']
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false&waitForSync=true"
+        body = "{ \"_rev\": \"#{rev3}\", \"World\" : \"Hallo3\" }"
+        doc4 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc4.code.should eq(201)
+        doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev4 = doc4.parsed_response['_rev']
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "create a document and replace it, using ignoreRevs=false (with key)" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"_key\" : \"hello\", \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document, different revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\" : \"658993\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(412)
+        doc.parsed_response['error'].should eq(true)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should eq(rev)
+
+        # update document, same revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\": \"#{rev}\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : false }"
+        doc = ArangoDB.put(cmd, :body => body)
+
+        # wait for dbservers to pick up the change
+        sleep 2
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\": \"#{rev2}\", \"World\" : \"Hallo2\" }"
+        doc3 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc3.code.should eq(202)
+        doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev3 = doc3.parsed_response['_rev']
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false&waitForSync=true"
+        body = "{ \"_key\" : \"hello\", \"_rev\": \"#{rev3}\", \"World\" : \"Hallo3\" }"
+        doc4 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc4.code.should eq(201)
+        doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev4 = doc4.parsed_response['_rev']
 
         ArangoDB.delete(location)
 
@@ -181,7 +352,7 @@ describe ArangoDB do
         did = doc.parsed_response['_id']
         rev = doc.parsed_response['_rev']
 
-        # update document, different revision
+        # replace document, different revision
         cmd = "/_api/document/#{did}"
         hdr = { "if-match" => "\"658993\"" }
         body = "{ \"World\" : \"Hallo\" }"
@@ -557,7 +728,158 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(400)
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
       end
-    end
 
+      it "create a document and update it, using ignoreRevs=false" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document, different revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"658993\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(412)
+        doc.parsed_response['error'].should eq(true)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should eq(rev)
+
+        # update document, same revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"#{rev}\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : false }"
+        doc = ArangoDB.put(cmd, :body => body)
+
+        # wait for dbservers to pick up the change
+        sleep 2
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_rev\": \"#{rev2}\", \"World\" : \"Hallo2\" }"
+        doc3 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc3.code.should eq(202)
+        doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev3 = doc3.parsed_response['_rev']
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false&waitForSync=true"
+        body = "{ \"_rev\": \"#{rev3}\", \"World\" : \"Hallo3\" }"
+        doc4 = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc4.code.should eq(201)
+        doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev4 = doc4.parsed_response['_rev']
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+
+      it "create a document and update it, using ignoreRevs=false (with key)" do
+        cmd = "/_api/document?collection=#{@cid}"
+        body = "{ \"_key\" : \"hello\", \"Hallo\" : \"World\" }"
+        doc = ArangoDB.post(cmd, :body => body)
+
+        doc.code.should eq(201)
+
+        location = doc.headers['location']
+        location.should be_kind_of(String)
+
+        did = doc.parsed_response['_id']
+        rev = doc.parsed_response['_rev']
+
+        # update document, different revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\" : \"658993\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(412)
+        doc.parsed_response['error'].should eq(true)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+        
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should eq(rev)
+
+        # update document, same revision
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\" : \"#{rev}\", \"World\" : \"Hallo\" }"
+        doc = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+
+        did2 = doc.parsed_response['_id']
+        did2.should be_kind_of(String)
+        did2.should eq(did)
+
+        rev2 = doc.parsed_response['_rev']
+        rev2.should be_kind_of(String)
+        rev2.should_not eq(rev)
+
+        cmd = "/_api/collection/#{@cid}/properties"
+        body = "{ \"waitForSync\" : false }"
+        doc = ArangoDB.put(cmd, :body => body)
+
+        # wait for dbservers to pick up the change
+        sleep 2
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false"
+        body = "{ \"_key\" : \"hello\", \"_rev\": \"#{rev2}\", \"World\" : \"Hallo2\" }"
+        doc3 = ArangoDB.log_put("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc3.code.should eq(202)
+        doc3.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev3 = doc3.parsed_response['_rev']
+
+        # update document 
+        cmd = "/_api/document/#{did}?ignoreRevs=false&waitForSync=true"
+        body = "{ \"_key\" : \"hello\", \"_rev\": \"#{rev3}\", \"World\" : \"Hallo3\" }"
+        doc4 = ArangoDB.log_patch("#{prefix}-ignore-revs-false", cmd, :body => body)
+
+        doc4.code.should eq(201)
+        doc4.headers['content-type'].should eq("application/json; charset=utf-8")
+        rev4 = doc4.parsed_response['_rev']
+
+        ArangoDB.delete(location)
+
+        ArangoDB.size_collection(@cid).should eq(0)
+      end
+    end
   end
 end

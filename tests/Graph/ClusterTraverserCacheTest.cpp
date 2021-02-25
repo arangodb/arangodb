@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,8 +27,10 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
+#include "Aql/QueryWarnings.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
+#include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
@@ -45,73 +48,57 @@ namespace cluster_traverser_cache_test {
 
 class ClusterTraverserCacheTest : public ::testing::Test {
  protected:
-  ServerState* ss;
   ServerState::RoleEnum oldRole;
+  
+  graph::GraphTestSetup s;
+  graph::MockGraphDatabase gdb;
 
   ClusterTraverserCacheTest()
-      : ss(ServerState::instance()), oldRole(ss->getRole()) {
-    ss->setRole(ServerState::ROLE_COORDINATOR);
-  }
+      : gdb(s.server, "testVocbase") {}
 
-  ~ClusterTraverserCacheTest() { ss->setRole(oldRole); }
+  ~ClusterTraverserCacheTest() = default;
 };
 
 TEST_F(ClusterTraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
-  std::unordered_map<ServerID, traverser::TraverserEngineID> engines;
+  std::unordered_map<ServerID, aql::EngineId> engines;
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
+  
+  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
-  fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
-  fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
-      .Do([&](int code, char const* message) {
-        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
-      });
-
-  traverser::TraverserOptions opts{&query};
-  ClusterTraverserCache testee(&query, &engines, &opts);
+  traverser::TraverserOptions opts{*q};
+  ClusterTraverserCache testee(*q, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
-  AqlValue val = testee.fetchVertexAqlResult(arangodb::velocypack::StringRef(vertexId));
+  AqlValue val;
+  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), val);
   ASSERT_TRUE(val.isNull(false));
-  fakeit::Verify(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
-      .Exactly(1);
+  auto all = q->warnings().all();
+  ASSERT_TRUE(all.size() == 1);
+  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_TRUE(all[0].second == expectedMessage);
 }
 
 TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_cached) {
-  std::unordered_map<ServerID, traverser::TraverserEngineID> engines;
+  std::unordered_map<ServerID, aql::EngineId> engines;
   std::string vertexId = "UnitTest/Vertex";
   std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
-  fakeit::Mock<transaction::Methods> trxMock;
-  transaction::Methods& trx = trxMock.get();
-
-  fakeit::Mock<Query> queryMock;
-  Query& query = queryMock.get();
-  fakeit::When(Method(queryMock, trx)).AlwaysReturn(&trx);
-  fakeit::When(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
-      .Do([&](int code, char const* message) {
-        ASSERT_EQ(code, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-        ASSERT_EQ(strcmp(message, expectedMessage.c_str()), 0);
-      });
-
+  auto q = gdb.getQuery("RETURN 1", std::vector<std::string>{});
   VPackBuilder result;
-  traverser::TraverserOptions opts{&query};
-  ClusterTraverserCache testee(&query, &engines, &opts);
+  traverser::TraverserOptions opts{*q};
+  ClusterTraverserCache testee(*q, &engines, &opts);
 
   // NOTE: we do not put anything into the cache, so we get null for any vertex
-  testee.insertVertexIntoResult(arangodb::velocypack::StringRef(vertexId), result);
+  testee.appendVertex(arangodb::velocypack::StringRef(vertexId), result);
 
   VPackSlice sl = result.slice();
   ASSERT_TRUE(sl.isNull());
-
-  fakeit::Verify(OverloadedMethod(queryMock, registerWarning, void(int, const char*)))
-      .Exactly(1);
+  
+  auto all = q->warnings().all();
+  ASSERT_TRUE(all.size() == 1);
+  ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+  ASSERT_TRUE(all[0].second == expectedMessage);
 }
 
 }  // namespace cluster_traverser_cache_test

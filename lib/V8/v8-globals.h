@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +32,10 @@
 
 #include <v8.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
 #include "V8/JavaScriptSecurityContext.h"
 
@@ -81,6 +83,28 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
       .ToLocalChecked();
 }
 
+static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
+                                                        void const* ptr, std::size_t length) {
+  if (ADB_UNLIKELY(length > (unsigned int)std::numeric_limits<int>::max())) {
+    throw std::overflow_error("string length out of range");
+  }
+  return v8Utf8StringFactory(isolate, ptr, static_cast<int>(length));
+}
+
+template <typename T, typename U = std::decay_t<T>,
+          std::enable_if_t<std::is_same_v<U, std::string> || std::is_same_v<U, std::string_view> ||
+                               std::is_same_v<U, char const*> || std::is_same_v<U, arangodb::basics::StringBuffer>,
+                           int> = 0>
+v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, T const&);
+
+template <std::size_t n>
+v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, char const (&arg)[n]) {
+  // Note that "n" includes the terminating null byte
+  static_assert(n > 0);
+  TRI_ASSERT(arg[n-1] == '\0');
+  return v8Utf8StringFactory(isolate, arg, n-1);
+}
+
 /// @brief shortcut for creating a v8 symbol for the specified string
 #define TRI_V8_ASCII_STRING(isolate, name) \
   v8OneByteStringFactory(isolate, (name), (int)strlen(name))
@@ -94,11 +118,11 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 /// @brief shortcut for creating a v8 symbol for the specified string of unknown
 /// length
 #define TRI_V8_STRING(isolate, name) \
-  v8Utf8StringFactory(isolate, (name), (int)strlen(name))
+  v8Utf8StringFactoryT(isolate, (name))
 
 /// @brief shortcut for creating a v8 symbol for the specified string
 #define TRI_V8_STD_STRING(isolate, name) \
-  v8Utf8StringFactory(isolate, (name).data(), (int)(name).size())
+  v8Utf8StringFactoryT(isolate, (name))
 
 /// @brief shortcut for creating a v8 symbol for the specified string of known
 /// length
@@ -240,12 +264,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
     return;                              \
   } while (0)
 
-/// @brief "not yet implemented" handler for sharding
-#define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection && ServerState::instance()->isCoordinator()) {       \
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
-  }
-
 /// @brief Return undefined (default..)
 ///   implicitly requires 'args and 'isolate' to be available
 #define TRI_V8_RETURN_UNDEFINED()                    \
@@ -301,6 +319,16 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
                                 .FromMaybe(v8::Local<v8::String>()));                          \
   return
 
+/// @brief return a std::string_view
+///   implicitly requires 'args and 'isolate' to be available
+/// @param WHAT the name of the std::string_view variable
+#define TRI_V8_RETURN_STD_STRING_VIEW(WHAT)                                     \
+  args.GetReturnValue().Set(v8::String::NewFromUtf8(isolate, WHAT.data(),       \
+                                                    v8::NewStringType::kNormal, \
+                                                    (int)WHAT.length())         \
+                                .FromMaybe(v8::Local<v8::String>()));           \
+  return
+
 /// @brief return a std::string
 ///   implicitly requires 'args and 'isolate' to be available
 /// @param WHAT the name of the std::string variable
@@ -346,6 +374,10 @@ inline bool TRI_HasProperty(v8::Local<v8::Context> &context, v8::Isolate* isolat
   return obj->Has(context, key).FromMaybe(false);
 }
 
+inline bool TRI_HasRealNamedProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, v8::Local<v8::String> const& key) {
+  return obj->HasRealNamedProperty(context, key).FromMaybe(false);
+}
+
 inline v8::Local<v8::Value> TRI_GetProperty(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::Object> const& obj, char const *key) {
   return obj->Get(context, TRI_V8_ASCII_STRING(isolate, key)).FromMaybe(v8::Local<v8::Value>());
 }
@@ -367,6 +399,15 @@ inline v8::Local<v8::Object> TRI_ToObject(v8::Local<v8::Context> &context, v8::H
 
 inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Handle<v8::Value> const &val) {
   return val->ToString(context).FromMaybe(v8::Local<v8::String>());
+}
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::MaybeLocal<v8::Value> const&val) {
+  v8::String::Utf8Value x(isolate, val.FromMaybe(v8::Local<v8::Value>())->ToString(context).FromMaybe(v8::Local<v8::String>()));
+  return std::string(*x, x.length());
+}
+
+inline std::string TRI_ObjectToString(v8::Local<v8::Context> &context, v8::Isolate* isolate, v8::Local<v8::String> const&val) {
+  v8::String::Utf8Value x(isolate, val);
+  return std::string(*x, x.length());
 }
 
 /// @brief retrieve the instance of the TRI_v8_global_t of the current thread
@@ -396,6 +437,13 @@ inline v8::Local<v8::String> TRI_ObjectToString(v8::Local<v8::Context> &context,
 #define TRI_GET_GLOBAL(WHICH, TYPE) \
   auto WHICH = v8::Local<TYPE>::New(isolate, v8g->WHICH)
 
+namespace arangodb {
+namespace transaction {
+class V8Context;
+}
+class TransactionState;
+}
+
 /// @brief globals stored in the isolate
 struct TRI_v8_global_t {
   /// @brief wrapper around a v8::Persistent to hold a shared_ptr and cleanup
@@ -422,7 +470,8 @@ struct TRI_v8_global_t {
     std::shared_ptr<void> _value;
   };
 
-  explicit TRI_v8_global_t(v8::Isolate*, size_t id);
+  explicit TRI_v8_global_t(arangodb::application_features::ApplicationServer&,
+                           v8::Isolate*, size_t id);
 
   ~TRI_v8_global_t();
 
@@ -475,9 +524,9 @@ struct TRI_v8_global_t {
   v8::Persistent<v8::ObjectTemplate> GeneralGraphTempl;
 
 #ifdef USE_ENTERPRISE
-  /// @brief smart graph class template
+  /// @brief SmartGraph class template
   v8::Persistent<v8::ObjectTemplate> SmartGraphTempl;
-  // there is no smart graph module becuase they are
+  // there is no SmartGraph module because they are
   // identical, just return different graph instances.
 #endif
 
@@ -487,8 +536,8 @@ struct TRI_v8_global_t {
   /// @brief stream query cursor templace
   v8::Persistent<v8::FunctionTemplate> StreamQueryCursorTempl;
 
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerTempl; // IResearch analyzer instance template
-  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzersTempl; // IResearch analyzers feature template
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerInstanceTempl;
+  v8::Persistent<v8::ObjectTemplate> IResearchAnalyzerManagerTempl;
 
   /// @brief "Buffer" constant
   v8::Persistent<v8::String> BufferConstant;
@@ -610,6 +659,12 @@ struct TRI_v8_global_t {
   /// @brief "overwrite" key
   v8::Persistent<v8::String> OverwriteKey;
 
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> OverwriteModeKey;
+
+  /// @brief "overwriteMode" key
+  v8::Persistent<v8::String> SkipDocumentValidationKey;
+
   /// @brief "parameters" key name
   v8::Persistent<v8::String> ParametersKey;
 
@@ -694,6 +749,9 @@ struct TRI_v8_global_t {
   /// @brief "waitForSync" key name
   v8::Persistent<v8::String> WaitForSyncKey;
 
+  /// @brief "compact" key name
+  v8::Persistent<v8::String> CompactKey;
+
   /// @brief "_dbCache" key name
   v8::Persistent<v8::String> _DbCacheKey;
 
@@ -714,7 +772,12 @@ struct TRI_v8_global_t {
   v8::Handle<v8::Value> _currentResponse;
 
   /// @brief information about the currently running transaction
-  void* _transactionContext;
+  arangodb::transaction::V8Context* _transactionContext;
+  
+  std::shared_ptr<arangodb::TransactionState> _transactionState;
+
+  /// @brief current AQL expressionContext
+  void* _expressionContext;
 
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;
@@ -741,7 +804,9 @@ struct TRI_v8_global_t {
   std::atomic<size_t> _heapMax;
 
   std::atomic<size_t> _heapLow;
-  
+
+  arangodb::application_features::ApplicationServer& _server;
+
  private:
   /// @brief shared pointer mapping for weak pointers, holds shared pointers so
   ///        they don't get deallocated while in use by V8
@@ -750,15 +815,19 @@ struct TRI_v8_global_t {
 };
 
 /// @brief creates a global context
-TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate*, size_t id);
+TRI_v8_global_t* TRI_CreateV8Globals(arangodb::application_features::ApplicationServer&,
+                                     v8::Isolate*, size_t id);
 
 /// @brief gets the global context
 TRI_v8_global_t* TRI_GetV8Globals(v8::Isolate*);
 
 /// @brief adds a method to the prototype of an object
 template <typename TARGET>
-bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                           v8::FunctionCallback callback, bool isHidden = false) {
+bool TRI_V8_AddProtoMethod(v8::Isolate* isolate,
+                           TARGET tpl,
+                           v8::Handle<v8::String> name,
+                           v8::FunctionCallback callback,
+                           bool isHidden = false) {
   // hidden method
   if (isHidden) {
     tpl->PrototypeTemplate()->Set(name, v8::FunctionTemplate::New(isolate, callback),
@@ -773,44 +842,26 @@ bool TRI_V8_AddProtoMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::Stri
 }
 
 /// @brief adds a method to an object
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
+inline bool TRI_V8_AddMethod(v8::Isolate* isolate,
+                             v8::Function tpl,
+                             v8::Handle<v8::String> name,
                              v8::Handle<v8::FunctionTemplate> callback,
                              bool isHidden = false) {
+  auto context = TRI_IGETC;
   // hidden method
   if (isHidden) {
     return tpl
-        ->DefineOwnProperty(TRI_IGETC, name, callback->GetFunction(), v8::DontEnum)
+      .DefineOwnProperty(context,
+                         name,
+                         callback->GetFunction(context).FromMaybe(v8::Local<v8::Function>()),
+                         v8::DontEnum)
         .FromMaybe(false);
   }
   // normal method
   else {
-    return tpl->Set(name, callback->GetFunction());
+    return tpl.Set(context, name, callback->GetFunction(context).FromMaybe(v8::Local<v8::Value>())).FromMaybe(false);
   }
-}
-
-template <typename TARGET>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, TARGET tpl, v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden = false) {
-  // hidden method
-  if (isHidden) {
-    return tpl
-        ->DefineOwnProperty(TRI_IGETC, name,
-                            v8::FunctionTemplate::New(isolate, callback)->GetFunction(),
-                            v8::DontEnum)
-        .FromMaybe(false);  // Ignore ret
-  }
-  // normal method
-  else {
-    return tpl->Set(name, v8::FunctionTemplate::New(isolate, callback)->GetFunction());
-  }
-}
-
-template <>
-inline bool TRI_V8_AddMethod(v8::Isolate* isolate, v8::Handle<v8::FunctionTemplate> tpl,
-                             v8::Handle<v8::String> name,
-                             v8::FunctionCallback callback, bool isHidden) {
-  return TRI_V8_AddMethod(isolate, tpl->GetFunction(), name, callback, isHidden);
+  return false;
 }
 
 /// @brief adds a method to an object

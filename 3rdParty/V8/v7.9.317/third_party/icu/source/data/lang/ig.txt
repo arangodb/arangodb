@@ -1,0 +1,105 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ig{
+    Languages{
+        ak{"Akan"}
+        am{"Amariikị"}
+        ar{"Arabiikị"}
+        be{"Belaruusu"}
+        bg{"Bọlụgarịa"}
+        bn{"Bengali"}
+        cs{"Cheekị"}
+        de{"Asụsụ Jaman"}
+        de_AT{"Jaman ndị Austria"}
+        de_CH{"Jaman Izugbe ndị Switzerland"}
+        el{"Giriikị"}
+        en{"Asụsụ Bekee"}
+        en_AU{"Bekee ndị Australia"}
+        en_CA{"Bekee ndị Canada"}
+        en_GB{"Bekee ndị Britain"}
+        en_US{"Bekee ndị America"}
+        es{"Asụsụ Spanish"}
+        es_419{"Asụsụ Spanish ndị Latin America"}
+        es_ES{"Asụsụ Spanish ndị Europe"}
+        es_MX{"Asụsụ Spanish ndị Mexico"}
+        fa{"Peshan"}
+        fr{"Asụsụ Fụrench"}
+        fr_CA{"Fụrench ndị Canada"}
+        fr_CH{"Fụrench ndị Switzerland"}
+        ha{"Awụsa"}
+        hi{"Hindi"}
+        hu{"Magịya"}
+        id{"Indonisia"}
+        ig{"Asụsụ Igbo"}
+        it{"Asụsụ Italian"}
+        ja{"Asụsụ Japanese"}
+        jv{"Java"}
+        km{"Keme, Etiti"}
+        ko{"Koria"}
+        ms{"Maleyi"}
+        my{"Mịanma"}
+        ne{"Nepali"}
+        nl{"Dọọch"}
+        pa{"Punjabi"}
+        pl{"Poliishi"}
+        pt{"Asụsụ Portuguese"}
+        pt_BR{"Asụsụ Portuguese ndị Brazil"}
+        pt_PT{"Asụsụ Portuguese ndị Europe"}
+        ro{"Rumenia"}
+        ru{"Asụsụ Russian"}
+        rw{"Rụwanda"}
+        so{"Somali"}
+        sv{"Sụwidiishi"}
+        ta{"Tamụlụ"}
+        th{"Taị"}
+        tr{"Tọkiishi"}
+        uk{"Ukureenị"}
+        und{"Asụsụ amaghị"}
+        ur{"Urudu"}
+        vi{"Viyetịnaamụ"}
+        yo{"Yoruba"}
+        zh{"Mandarịịnị"}
+        zh_Hans{"Asụsụ Chinese dị mfe"}
+        zh_Hant{"Asụsụ Chinese Izugbe"}
+        zu{"Zulu"}
+    }
+    Languages%short{
+        en_GB{"Bekee ndị UK"}
+        en_US{"Bekee ndị US"}
+    }
+    Scripts{
+        Arab{"Mkpụrụ Okwu Arabic"}
+        Cyrl{"Mkpụrụ Okwu Cyrillic"}
+        Hans{"Nke dị mfe"}
+        Hant{"Izugbe"}
+        Latn{"Latin"}
+        Zxxx{"Edeghị ede"}
+        Zzzz{"Mkpụrụ okwu amaghị"}
+    }
+    Scripts%stand-alone{
+        Hans{"Han di mfe"}
+        Hant{"Han Izugbe"}
+    }
+    Types{
+        calendar{
+            gregorian{"Kalenda Gregory"}
+        }
+        collation{
+            standard{"Usoro Nhazi"}
+        }
+        numbers{
+            latn{"Ọnụ Ọgụgụ Mpaghara Ọdịda Anyanwụ"}
+        }
+    }
+    Version{"2.1.48.45"}
+    codePatterns{
+        language{"Asụsụ: {0}"}
+        script{"Mkpụrụ Okwu: {0}"}
+        territory{"Mpaghara: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
+    }
+}

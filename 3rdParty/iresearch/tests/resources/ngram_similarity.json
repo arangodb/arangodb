@@ -1,0 +1,18 @@
+[
+  { "seq" : 1, "field": [ "at", "tl", "la", "as", "ss", "si", "ia", "an" ] },
+  { "seq" : 2, "field": [ "at", "tl", "la", "as" ] },
+  { "seq" : 3, "field": [ "la", "as", "ss", "si" ] },
+  { "seq" : 4, "field": [ "pa", "al", "la", "as"] },
+  { "seq" : 5, "field": [ "pa", "al", "la", "as", "sa", "at", "tl", "la", "as", "ss", "si", "ia", "an", "at", "tl", "la", "as"] },
+  { "seq" : 6, "field": [ "la", "ss", "as", "si" ] },
+  { "seq" : 7, "field": [ "la", "al", "ll", "ss" ] },
+  { "seq" : 8, "field": [ "at", "ss", "at", "tl", "la", "ss",  "at", "tl", "la", "as"] },
+  { "seq" : 9, "field": [ "at", "ss", "at", "tl"] },
+  { "seq" : 10, "field": [ "at", "at", "ss", "at", "at", "tl"] },
+  { "seq" : 11, "field": ["at", "la", "ll", "ll", "ll", "ll"] },
+  { "seq" : 12, "field": ["at", "la", "ll", "ll", "ss", "ll"] },
+  { "seq" : 13, "field": ["at", "la", "as", "tl", "as"] },
+  { "seq" : 14, "field": ["at", "ll", "as", "at", "at"] },
+  { "seq" : 15, "field": ["ll", "at", "at", "at", "at"] },
+  { "seq" : 16, "field": ["ll", "as", "la", "tl", "at"] }
+]

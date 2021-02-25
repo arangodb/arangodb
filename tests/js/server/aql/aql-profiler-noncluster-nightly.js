@@ -53,13 +53,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -92,7 +92,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR d IN @@col RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes
@@ -111,8 +111,7 @@ function ahuacatlProfilerTestSuite () {
 
           const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
 
-          // This is more complex due to two reasons:
-          // - mmfiles lies about hasMore and may result in +1
+          // This is more complex due to the following reason
           // - the current EnumerateCollectionBlock::getSome implementation
           //   stops after iterating over the whole collection.
           // The second point in turn means that
@@ -132,10 +131,6 @@ function ahuacatlProfilerTestSuite () {
 
           // Number of batches at the return node
           let endBatches = optimalBatches;
-          if (db._engine().name === 'mmfiles') {
-            endBatches = [optimalBatches, optimalBatches + 1];
-          }
-
 
           const expected = [
             {type: SingletonBlock, items: 1, calls: 1},
@@ -167,7 +162,7 @@ function ahuacatlProfilerTestSuite () {
       const query = `FOR i IN 1..@listRows FOR k IN 1..@collectionRows FOR d IN @@col FILTER d.value == k RETURN d.value`;
 
       for (const collectionRows of collectionRowCounts) {
-        col.truncate();
+        col.truncate({ compact: false });
         col.insert(_.range(1, collectionRows + 1).map((i) => ({value: i})));
         for (const listRows of listRowCounts) {
           // forbid reordering of the enumeration nodes as well as removal
@@ -271,8 +266,16 @@ function ahuacatlProfilerTestSuite () {
 
           const listBatches = Math.ceil(listRows / defaultBatchSize);
           const totalRows = listRows * collectionRows;
+          const calcOptBatches = () => {
+            const opt =  Math.ceil(totalRows / defaultBatchSize);
+            if (totalRows % defaultBatchSize === 0) {
+              // In this case the traversal may, or may not know that there is more data.
+              return [opt, opt + 1];
+            }
+            return opt;
+          };
 
-          const optimalBatches = Math.ceil(totalRows / defaultBatchSize);
+          const optimalBatches = calcOptBatches();
 
           const expected = [
             {type: SingletonBlock, calls: 1, items: 1},

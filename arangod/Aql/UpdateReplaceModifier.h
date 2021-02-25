@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,8 @@
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorInfos.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 
@@ -40,10 +43,12 @@ class UpdateReplaceModifierCompletion {
 
   ModifierOperationType accumulate(ModificationExecutorAccumulator& accu,
                                    InputAqlItemRow& row);
-  OperationResult transact(VPackSlice const& data);
+  OperationResult transact(transaction::Methods& trx, VPackSlice const data);
 
  private:
   ModificationExecutorInfos& _infos;
+
+  arangodb::velocypack::Builder _keyDocBuilder;
 };
 
 }  // namespace aql

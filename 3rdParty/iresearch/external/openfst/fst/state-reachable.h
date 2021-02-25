@@ -78,7 +78,7 @@ class IntervalReachVisitor {
     return true;
   }
 
-  FST_CONSTEXPR bool TreeArc(StateId, const Arc &) const { return true; }
+  constexpr bool TreeArc(StateId, const Arc &) const { return true; }
 
   bool BackArc(StateId s, const Arc &arc) {
     FSTERROR() << "IntervalReachVisitor: Cyclic input";

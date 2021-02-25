@@ -18,104 +18,95 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "prefix_filter.hpp"
-#include "range_query.hpp"
+
+#include "shared.hpp"
+#include "search/limited_sample_collector.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/iterators.hpp"
 
-#include <boost/functional/hash.hpp>
+namespace {
 
-NS_ROOT
+using namespace irs;
 
-filter::prepared::ptr by_prefix::prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& /*ctx*/) const {
-  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
-  range_query::states_t states(rdr.size());
+template<typename Visitor>
+void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    Visitor& visitor) {
+  // find term
+  auto terms = reader.iterator();
 
-  auto& prefix = term();
-
-  /* iterate over the segments */
-  const string_ref field = this->field();
-  for (const auto& sr : rdr ) {
-    /* get term dictionary for field */
-    const term_reader* tr = sr.field(field);
-    if (!tr) {
-      continue;
-    }
-
-    seek_term_iterator::ptr terms = tr->iterator();
-
-    /* seek to prefix */
-    if (SeekResult::END == terms->seek_ge(prefix)) {
-      continue;
-    }
-
-    /* get term metadata */
-    auto& meta = terms->attributes().get<term_meta>();
-
-    if (starts_with(terms->value(), prefix)) {
-      terms->read();
-
-      /* get state for current segment */
-      auto& state = states.insert(sr);
-      state.reader = tr;
-      state.min_term = terms->value();
-      state.min_cookie = terms->cookie();
-      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
-
-      do {
-        // fill scoring candidates
-        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
-        ++state.count;
-
-        /* collect cost */
-        if (meta) {
-          state.estimation += meta->docs_count;
-        }
-
-        if (!terms->next()) {
-          break;
-        }
-
-        terms->read();
-      } while (starts_with(terms->value(), prefix));
-    }
+  // seek to prefix
+  if (IRS_UNLIKELY(!terms) || SeekResult::END == terms->seek_ge(prefix)) {
+    return;
   }
 
-  scorer.score(rdr, ord);
+  const auto& value = terms->value();
+  if (starts_with(value, prefix)) {
+    terms->read();
 
-  return memory::make_shared<range_query>(std::move(states), this->boost() * boost);
+    visitor.prepare(segment, reader, *terms);
+
+    do {
+      visitor.visit(no_boost());
+
+      if (!terms->next()) {
+        break;
+      }
+
+      terms->read();
+    } while (starts_with(value, prefix));
+  }
 }
 
-DEFINE_FILTER_TYPE(by_prefix)
+}
+
+namespace iresearch {
+
 DEFINE_FACTORY_DEFAULT(by_prefix)
 
-by_prefix::by_prefix() NOEXCEPT
-  : by_term(by_prefix::type()) {
+/*static*/ filter::prepared::ptr by_prefix::prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const bytes_ref& prefix,
+    size_t scored_terms_limit) {
+  limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
+  multiterm_query::states_t states(index.size());
+  multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
+
+  // iterate over the segments
+  for (const auto& segment: index) {
+    // get term dictionary for field
+    const auto* reader = segment.field(field);
+
+    if (!reader) {
+      continue;
+    }
+
+    ::visit(segment, *reader, prefix, mtv);
+  }
+
+  std::vector<bstring> stats;
+  collector.score(index, ord, stats);
+
+  return memory::make_managed<multiterm_query>(
+    std::move(states), std::move(stats),
+    boost, sort::MergeType::AGGREGATE);
 }
 
-size_t by_prefix::hash() const NOEXCEPT {
-  size_t seed = 0;
-  ::boost::hash_combine(seed, by_term::hash());
-  ::boost::hash_combine(seed, scored_terms_limit_);
-  return seed;
+/*static*/ void by_prefix::visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const bytes_ref& prefix,
+    filter_visitor& visitor) {
+  ::visit(segment, reader, prefix, visitor);
 }
 
-bool by_prefix::equals(const filter& rhs) const NOEXCEPT {
-  const auto& trhs = static_cast<const by_prefix&>(rhs);
-  return by_term::equals(rhs) && scored_terms_limit_ == trhs.scored_terms_limit_;
-}
-
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

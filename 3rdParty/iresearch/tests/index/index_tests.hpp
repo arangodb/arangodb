@@ -36,13 +36,15 @@
 #include "utils/locale_utils.hpp"
 #include "utils/timer_utils.hpp"
 
-NS_ROOT
+using namespace std::chrono_literals;
+
+namespace iresearch {
 
 struct term_attribute;
 
-NS_END // NS_ROOT
+} // namespace iresearch {
 
-NS_BEGIN(tests)
+namespace tests {
 
 class directory_mock: public irs::directory {
  public:
@@ -50,58 +52,58 @@ class directory_mock: public irs::directory {
 
   using directory::attributes;
 
-  virtual irs::attribute_store& attributes() NOEXCEPT override {
+  virtual irs::attribute_store& attributes() noexcept override {
     return impl_.attributes();
   }
 
   virtual irs::index_output::ptr create(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.create(name);
   }
 
   virtual bool exists(
     bool& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.exists(result, name);
   }
 
   virtual bool length(
     uint64_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.length(result, name);
   }
 
   virtual irs::index_lock::ptr make_lock(
     const std::string& name
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.make_lock(name);
   }
 
   virtual bool mtime(
     std::time_t& result, const std::string& name
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.mtime(result, name);
   }
 
   virtual irs::index_input::ptr open(
     const std::string& name,
     irs::IOAdvice advice
-  ) const NOEXCEPT override {
+  ) const noexcept override {
     return impl_.open(name, advice);
   }
 
-  virtual bool remove(const std::string& name) NOEXCEPT override {
+  virtual bool remove(const std::string& name) noexcept override {
     return impl_.remove(name);
   }
 
   virtual bool rename(
     const std::string& src, const std::string& dst
-  ) NOEXCEPT override {
+  ) noexcept override {
     return impl_.rename(src, dst);
   }
 
-  virtual bool sync(const std::string& name) NOEXCEPT override {
+  virtual bool sync(const std::string& name) noexcept override {
     return impl_.sync(name);
   }
 
@@ -118,17 +120,17 @@ struct blocking_directory : directory_mock {
     : tests::directory_mock(impl), blocker(blocker) {
   }
 
-  irs::index_output::ptr create(const std::string& name) NOEXCEPT {
+  irs::index_output::ptr create(const std::string& name) noexcept {
     auto stream = tests::directory_mock::create(name);
 
     if (name == blocker) {
       {
-        SCOPED_LOCK_NAMED(policy_lock, guard);
+        auto guard = irs::make_unique_lock(policy_lock);
         policy_applied.notify_all();
       }
 
       // wait for intermediate commits to be applied
-      SCOPED_LOCK_NAMED(intermediate_commits_lock, guard);
+      auto guard = irs::make_unique_lock(intermediate_commits_lock);
     }
 
     return stream;
@@ -141,8 +143,8 @@ struct blocking_directory : directory_mock {
     while (!has) {
       exists(has, blocker);
 
-      SCOPED_LOCK_NAMED(policy_lock, policy_guard);
-      policy_applied.wait_for(policy_guard, std::chrono::milliseconds(1000));
+      auto policy_guard = irs::make_unique_lock(policy_lock);
+      policy_applied.wait_for(policy_guard, 1000ms);
     }
   }
 
@@ -152,25 +154,27 @@ struct blocking_directory : directory_mock {
   std::mutex intermediate_commits_lock;
 }; // blocking_directory
 
-typedef std::tuple<dir_factory_f, const char*> index_test_context;
+struct format_info {
+  constexpr format_info(
+      const char* codec = nullptr,
+      const char* module = nullptr) noexcept
+    : codec(codec),
+      module(module) {
+  }
+
+  const char* codec;
+  const char* module;
+};
+
+typedef std::tuple<dir_factory_f, format_info> index_test_context;
 
 std::string to_string(const testing::TestParamInfo<index_test_context>& info);
 
 class index_test_base : public virtual test_param_base<index_test_context> {
  protected:
-  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const {
-    dir_factory_f factory;
-    std::tie(factory, std::ignore) = GetParam();
+  std::shared_ptr<irs::directory> get_directory(const test_base& ctx) const;
 
-    return (*factory)(&ctx).first;
-  }
-
-  irs::format::ptr get_codec() const {
-    const char* codec_name;
-    std::tie(std::ignore, codec_name) = GetParam();
-
-    return irs::formats::get(codec_name);
-  }
+  irs::format::ptr get_codec() const;
 
   irs::directory& dir() const { return *dir_; }
   irs::format::ptr codec() { return codec_; }
@@ -200,13 +204,14 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     return irs::directory_reader::open(*dir_, codec_);
   }
 
-  void assert_index(const irs::flags& features, size_t skip = 0) const {
-    tests::assert_index(dir(), codec_, index(), features, skip);
+  void assert_index(const irs::flags& features,
+                    size_t skip = 0,
+                    irs::automaton_table_matcher* matcher = nullptr) const {
+    tests::assert_index(dir(), codec_, index(), features, skip, matcher);
   }
 
   virtual void SetUp() {
     test_base::SetUp();
-    MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
 
     // set directory
     dir_ = get_directory(*this);
@@ -221,7 +226,7 @@ class index_test_base : public virtual test_param_base<index_test_context> {
     dir_ = nullptr;
     codec_ = nullptr;
     test_base::TearDown();
-    iresearch::timer_utils::init_stats(); // disable profile state tracking
+    irs::timer_utils::init_stats(); // disable profile state tracking
   }
 
   void write_segment(
@@ -283,20 +288,18 @@ class index_test_base : public virtual test_param_base<index_test_context> {
   irs::format::ptr codec_;
 }; // index_test_base
 
-NS_BEGIN(templates)
+namespace templates {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class token_stream_payload
 /// @brief token stream wrapper which sets payload equal to term value
 //////////////////////////////////////////////////////////////////////////////
-class token_stream_payload: public irs::token_stream {
+class token_stream_payload final : public irs::token_stream {
  public:
   explicit token_stream_payload(irs::token_stream* impl);
-  bool next(); 
+  bool next();
 
-  const irs::attribute_view& attributes() const NOEXCEPT {
-    return impl_->attributes();
-  }
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type);
 
  private:
   const irs::term_attribute* term_;
@@ -313,7 +316,7 @@ class text_field : public tests::field_base {
  public:
   text_field(
       const irs::string_ref& name, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")) {
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
          throw irs::illegal_state();
@@ -325,7 +328,7 @@ class text_field : public tests::field_base {
 
   text_field(
       const irs::string_ref& name, const T& value, bool payload = false
-  ): token_stream_(irs::analysis::analyzers::get("text", irs::text_format::json, "{\"locale\":\"C\", \"stopwords\":[]}")),
+  ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -336,7 +339,7 @@ class text_field : public tests::field_base {
     this->name(name);
   }
 
-  text_field(text_field&& other) NOEXCEPT
+  text_field(text_field&& other) noexcept
     : pay_stream_(std::move(other.pay_stream_)),
       token_stream_(std::move(other.token_stream_)),
       value_(std::move(other.value_)) {
@@ -348,8 +351,8 @@ class text_field : public tests::field_base {
 
   const irs::flags& features() const {
     static irs::flags features{
-      iresearch::frequency::type(), iresearch::position::type(),
-      iresearch::offset::type(), iresearch::payload::type()
+      irs::type<irs::frequency>::get(), irs::type<irs::position>::get(),
+      irs::type<irs::offset>::get(), irs::type<irs::payload>::get()
     };
     return features;
   }
@@ -447,7 +450,7 @@ class europarl_doc_template: public delim_doc_generator::doc_template {
   irs::doc_id_t idval_ = 0;
 }; // europarl_doc_template
 
-NS_END // templates
+} // templates
 
 void generic_json_field_factory(
   tests::document& doc,
@@ -461,6 +464,12 @@ void payloaded_json_field_factory(
   const json_doc_generator::json_value& data
 );
 
-NS_END // tests
+void normalized_string_json_field_factory(
+  tests::document& doc,
+  const std::string& name,
+  const json_doc_generator::json_value& data
+);
+
+} // tests
 
 #endif // IRESEARCH_INDEX_TESTS_H

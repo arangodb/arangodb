@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,19 +26,23 @@
 
 #include <velocypack/Buffer.h>
 #include <chrono>
-#include <utility>
 #include <set>
+#include <utility>
 
 #include "Aql/Query.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationResult.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+struct ServerDefaults;
+
 namespace graph {
 
 class EdgeDefinition {
@@ -92,8 +97,8 @@ class Graph {
    *
    * @return A graph object corresponding to this document
    */
-  static std::unique_ptr<Graph> fromPersistence(velocypack::Slice document,
-                                                TRI_vocbase_t& vocbase);
+  static std::unique_ptr<Graph> fromPersistence(TRI_vocbase_t& vocbase,
+                                                velocypack::Slice document);
 
   /**
    * @brief Create graph from user input.
@@ -106,12 +111,13 @@ class Graph {
    *
    * @return A graph object corresponding to the user input
    */
-  static std::unique_ptr<Graph> fromUserInput(std::string&& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase, std::string&& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
   // Wrapper for Move constructor
-  static std::unique_ptr<Graph> fromUserInput(std::string const& name,
+  static std::unique_ptr<Graph> fromUserInput(TRI_vocbase_t& vocbase,
+                                              std::string const& name,
                                               velocypack::Slice collectionInformation,
                                               velocypack::Slice options);
 
@@ -119,9 +125,9 @@ class Graph {
   /**
    * @brief Create graph from persistence.
    *
-   * @param info The stored document
+   * @param slice The stored document
    */
-  explicit Graph(velocypack::Slice const& info);
+  explicit Graph(velocypack::Slice const& slice, ServerDefaults const& serverDefaults);
 
   /**
    * @brief Create graph from user input.
@@ -130,13 +136,18 @@ class Graph {
    * @param info Collection information, including relations and orphans
    * @param options The options to be used for collections
    */
-  Graph(std::string&& graphName, velocypack::Slice const& info,
-        velocypack::Slice const& options);
+  Graph(TRI_vocbase_t& vocbase, std::string&& graphName,
+        velocypack::Slice const& info, velocypack::Slice const& options);
+
+  /**
+   * @brief virtual copy constructor
+   */
+  virtual auto clone() const -> std::unique_ptr<Graph>;
 
  public:
   virtual ~Graph() = default;
 
-  static Result validateOrphanCollection(const velocypack::Slice& orphanDefinition);
+  [[nodiscard]] static Result validateOrphanCollection(velocypack::Slice const& orphanDefinition);
 
   virtual void createCollectionOptions(VPackBuilder& builder, bool waitForSync) const;
 
@@ -159,12 +170,14 @@ class Graph {
   bool hasEdgeCollection(std::string const& collectionName) const;
   bool hasVertexCollection(std::string const& collectionName) const;
   bool hasOrphanCollection(std::string const& collectionName) const;
-
   bool renameCollections(std::string const& oldName, std::string const& newName);
 
-  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(std::string const& collectionName) const;
+  std::optional<std::reference_wrapper<EdgeDefinition const>> getEdgeDefinition(
+      std::string const& collectionName) const;
 
   virtual bool isSmart() const;
+  virtual bool isDisjoint() const;
+  virtual bool isSatellite() const;
 
   uint64_t numberOfShards() const;
   uint64_t replicationFactor() const;
@@ -204,6 +217,7 @@ class Graph {
    * @return TRUE if we are safe to use it.
    */
   virtual Result validateCollection(LogicalCollection& col) const;
+  virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
   void verticesToVpack(VPackBuilder& builder) const;
@@ -294,6 +308,9 @@ class Graph {
 
   /// @brief revision of this graph
   std::string _rev;
+
+  /// @brief whether this graph is a SatelliteGraph
+  bool _isSatellite = false;
 };
 
 // helper functions

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_CACHE_H
 #define ARANGODB_CACHE_CACHE_H
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
 #include "Basics/SharedCounter.h"
@@ -37,7 +36,8 @@
 #include "Cache/Metadata.h"
 #include "Cache/Table.h"
 
-#include <stdint.h>
+#include <cstdint>
+#include <limits>
 #include <list>
 #include <memory>
 
@@ -60,7 +60,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   class ConstructionGuard {
    private:
-    ConstructionGuard();
+    ConstructionGuard() = default;
     friend class PlainCache;
     friend class TransactionalCache;
   };
@@ -68,40 +68,44 @@ class Cache : public std::enable_shared_from_this<Cache> {
  public:
   typedef FrequencyBuffer<uint8_t> StatBuffer;
 
-  static const uint64_t minSize;
-  static const uint64_t minLogSize;
+  static const std::uint64_t minSize;
+  static const std::uint64_t minLogSize;
+
+  static constexpr std::uint64_t triesGuarantee =
+      std::numeric_limits<std::uint64_t>::max();
 
  public:
-  Cache(ConstructionGuard guard, Manager* manager, uint64_t id,
+  Cache(ConstructionGuard guard, Manager* manager, std::uint64_t id,
         Metadata&& metadata, std::shared_ptr<Table> table, bool enableWindowedStats,
-        std::function<Table::BucketClearer(Metadata*)> bucketClearer, size_t slotsPerBucket);
+        std::function<Table::BucketClearer(Metadata*)> bucketClearer,
+        std::size_t slotsPerBucket);
   virtual ~Cache() = default;
 
   // primary functionality; documented in derived classes
-  virtual Finding find(void const* key, uint32_t keySize) = 0;
+  virtual Finding find(void const* key, std::uint32_t keySize) = 0;
   virtual Result insert(CachedValue* value) = 0;
-  virtual Result remove(void const* key, uint32_t keySize) = 0;
-  virtual Result blacklist(void const* key, uint32_t keySize) = 0;
+  virtual Result remove(void const* key, std::uint32_t keySize) = 0;
+  virtual Result banish(void const* key, std::uint32_t keySize) = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the ID for this cache.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t id() const { return _id; }
+  std::uint64_t id() const { return _id; }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the total memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t size() const;
+  std::uint64_t size() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the limit on data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usageLimit() const;
+  std::uint64_t usageLimit() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the current data memory usage for this cache in bytes.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t usage() const;
+  std::uint64_t usage() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Gives hint to attempt to preallocate space for an incoming load.
@@ -109,7 +113,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   /// The parameter specifies an expected number of elements to be inserted.
   /// This allows for migration to an appropriately-sized table.
   //////////////////////////////////////////////////////////////////////////////
-  void sizeHint(uint64_t numElements);
+  void sizeHint(std::uint64_t numElements);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the cache hit-rates.
@@ -141,16 +145,21 @@ class Cache : public std::enable_shared_from_this<Cache> {
   //////////////////////////////////////////////////////////////////////////////
   inline bool isShutdown() const { return _shutdown.load(); }
 
+  struct Inserter {
+    Inserter(Cache& cache, void const* key, std::size_t keySize, void const* value,
+             std::size_t valueSize, std::function<bool(Result const&)> retry);
+    Result status;
+  };
+
  protected:
-  static constexpr uint64_t triesFast = 200;
-  static constexpr uint64_t triesSlow = 10000;
-  static constexpr uint64_t triesGuarantee = UINT64_MAX;
+  static constexpr std::uint64_t triesFast = 200;
+  static constexpr std::uint64_t triesSlow = 10000;
 
  protected:
   basics::ReadWriteSpinLock _taskLock;
   std::atomic<bool> _shutdown;
 
-  static uint64_t _findStatsCapacity;
+  static std::uint64_t _findStatsCapacity;
   bool _enableWindowedStats;
   std::unique_ptr<StatBuffer> _findStats;
   mutable basics::SharedCounter<64> _findHits;
@@ -158,7 +167,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
   // allow communication with manager
   Manager* _manager;
-  uint64_t _id;
+  std::uint64_t _id;
   Metadata _metadata;
 
   // manage the actual table
@@ -167,12 +176,12 @@ class Cache : public std::enable_shared_from_this<Cache> {
   std::atomic<Table*> _table;
 
   Table::BucketClearer _bucketClearer;
-  size_t _slotsPerBucket;
+  std::size_t _slotsPerBucket;
 
   // manage eviction rate
   basics::SharedCounter<64> _insertsTotal;
   basics::SharedCounter<64> _insertEvictions;
-  static constexpr uint64_t _evictionMask = 4095;  // check roughly every 4096 insertions
+  static constexpr std::uint64_t _evictionMask = 4095;  // check roughly every 4096 insertions
   static constexpr double _evictionRateThreshold = 0.01;  // if more than 1%
                                                           // evictions in past 4096
                                                           // inserts, migrate
@@ -188,21 +197,21 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   // shutdown cache and let its memory be reclaimed
-  static void destroy(std::shared_ptr<Cache> cache);
+  static void destroy(std::shared_ptr<Cache> const& cache);
 
   void requestGrow();
-  void requestMigrate(uint32_t requestedLogSize = 0);
+  void requestMigrate(std::uint32_t requestedLogSize = 0);
 
   static void freeValue(CachedValue* value);
-  bool reclaimMemory(uint64_t size);
+  bool reclaimMemory(std::uint64_t size);
 
-  uint32_t hashKey(void const* key, size_t keySize) const;
+  std::uint32_t hashKey(void const* key, std::size_t keySize) const;
   void recordStat(Stat stat);
 
   bool reportInsert(bool hadEviction);
 
   // management
-  Metadata* metadata();
+  Metadata& metadata();
   std::shared_ptr<Table> table() const;
   void shutdown();
   bool canResize();
@@ -210,7 +219,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   bool freeMemory();
   bool migrate(std::shared_ptr<Table> newTable);
 
-  virtual uint64_t freeMemoryFrom(uint32_t hash) = 0;
+  virtual std::uint64_t freeMemoryFrom(std::uint32_t hash) = 0;
   virtual void migrateBucket(void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
                              std::shared_ptr<Table> newTable) = 0;
 };

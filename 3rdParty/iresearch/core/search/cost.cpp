@@ -18,18 +18,11 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "shared.hpp"
 #include "cost.hpp"
+#include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::cost)
-
-NS_END // ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // ROOT

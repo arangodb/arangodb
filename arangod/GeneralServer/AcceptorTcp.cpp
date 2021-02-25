@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,6 +28,7 @@
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/EndpointIp.h"
 #include "GeneralServer/GeneralServer.h"
+#include "GeneralServer/H2CommTask.h"
 #include "GeneralServer/HttpCommTask.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -128,18 +130,25 @@ void AcceptorTcp<T>::close() {
     _asioSocket->timer.cancel();
   }
   if (_open) {
+    _open = false;  // make sure the _open flag is `false` before we
+                    // cancel/close the acceptor, since otherwise the
+                    // handleError method will restart async_accept.
     _acceptor.close();
-    if (_asioSocket) {
-      asio_ns::error_code ec;
-      _asioSocket->shutdown(ec);
-    }
+    _asioSocket.reset();
   }
-  _open = false;
+}
+
+template<SocketType T>
+void AcceptorTcp<T>::cancel() {
+  _acceptor.cancel();
 }
 
 template <>
 void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
   _asioSocket.reset(new AsioSocket<SocketType::Tcp>(_server.selectIoContext()));
@@ -180,6 +189,27 @@ void AcceptorTcp<SocketType::Tcp>::performHandshake(std::unique_ptr<AsioSocket<S
   TRI_ASSERT(false);  // MSVC requires the implementation to exist
 }
 
+namespace {
+bool tls_h2_negotiated(SSL* ssl) {
+
+  const unsigned char *next_proto = nullptr;
+  unsigned int next_proto_len = 0;
+
+#if OPENSSL_VERSION_NUMBER >= 0x10002000L
+    SSL_get0_alpn_selected(ssl, &next_proto, &next_proto_len);
+#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
+
+  // allowed value is "h2"
+  // http://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml
+  if (next_proto != nullptr && next_proto_len == 2 &&
+      memcmp(next_proto, "h2", 2) == 0) {
+    return true;
+  }
+  return false;
+}
+}
+
+
 template <>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
@@ -189,8 +219,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     if (ec) {  // canceled
       return;
     }
-    asio_ns::error_code err;
-    ptr->shutdown(err);  // ignore error
+    ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
   });
 
   auto cb = [this, as = std::move(proto)](asio_ns::error_code const& ec) mutable {
@@ -198,8 +227,7 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
     if (ec) {
       LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
           << "error during TLS handshake: '" << ec.message() << "'";
-      asio_ns::error_code err;
-      as->shutdown(err);  // ignore error
+      as.reset(); // ungraceful shutdown
       return;
     }
 
@@ -213,24 +241,31 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(std::unique_ptr<AsioSocket<S
 
     info.clientAddress = as->peer.address().to_string();
     info.clientPort = as->peer.port();
-
-    auto commTask =
-        std::make_unique<HttpCommTask<SocketType::Ssl>>(_server, std::move(info),
-                                                        std::move(as));
-    _server.registerTask(std::move(commTask));
+    
+    std::shared_ptr<CommTask> task;
+    if (tls_h2_negotiated(as->socket.native_handle())) {
+      task = std::make_shared<H2CommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    } else {
+      task = std::make_shared<HttpCommTask<SocketType::Ssl>>(_server, std::move(info), std::move(as));
+    }
+    
+    _server.registerTask(std::move(task));
   };
   ptr->handshake(std::move(cb));
 }
 
 template <>
 void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
-  TRI_ASSERT(!_asioSocket);
+  // In most cases _asioSocket will be nullptr here, however, if
+  // the async_accept returns with an error, then an old _asioSocket
+  // is already set. Therefore, we do no longer assert here that
+  // _asioSocket is nullptr.
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::SSL);
 
   // select the io context for this socket
   auto& ctx = _server.selectIoContext();
 
-  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContext());
+  _asioSocket = std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto handler = [this](asio_ns::error_code const& ec) {
     if (ec) {
       handleError(ec);

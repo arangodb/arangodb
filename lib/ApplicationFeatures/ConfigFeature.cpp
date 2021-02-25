@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,11 +29,11 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/FileResultString.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/directories.h"
+#include "Basics/exitcodes.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -67,16 +68,16 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   // variable!
   options->addOption("--config", "the configuration file or 'none'",
                      new StringParameter(&_file),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--define,-D",
                      "define key=value for a @key@ entry in config file",
                      new VectorParameter<StringParameter>(&_defines),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--check-configuration", "check the configuration and exit",
                      new BooleanParameter(&_checkConfiguration),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
                                                   arangodb::options::Flags::Command));
 }
 
@@ -101,23 +102,22 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   bool fatal = true;
 
-  auto& server = application_features::ApplicationServer::server();
-  if (server.hasFeature<VersionFeature>()) {
-    fatal = !server.getFeature<VersionFeature>().printVersion();
+  if (server().hasFeature<VersionFeature>()) {
+    fatal = !server().getFeature<VersionFeature>().printVersion();
   }
 
   // always prefer an explicitly given config file
   if (!_file.empty()) {
     if (!FileUtils::exists(_file)) {
       LOG_TOPIC("f21f9", FATAL, Logger::CONFIG) << "cannot read config file '" << _file << "'";
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_CONFIG_NOT_FOUND);
     }
 
     auto local = _file + ".local";
 
     IniFileParser parser(options.get());
 
-    if (FileUtils::exists(local)) {
+    if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
       LOG_TOPIC("9b20a", DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
       if (!parser.parse(local, true)) {
@@ -207,7 +207,7 @@ void ConfigFeature::loadConfigFile(std::shared_ptr<ProgramOptions> options,
 
   LOG_TOPIC("f6420", TRACE, Logger::CONFIG) << "checking override '" << local << "'";
 
-  if (FileUtils::exists(local)) {
+  if (FileUtils::exists(local) && FileUtils::isRegularFile(local)) {
     LOG_TOPIC("3d2d0", DEBUG, Logger::CONFIG) << "loading override '" << local << "'";
 
     if (!parser.parse(local, true)) {

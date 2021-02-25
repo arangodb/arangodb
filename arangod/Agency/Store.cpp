@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,15 +26,18 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 
 #include <velocypack/Buffer.h>
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/StringRef.h>
@@ -114,6 +117,15 @@ Store& Store::operator=(Store&& rhs) {
 /// Default dtor
 Store::~Store() = default;
 
+index_t Store::applyTransactions(std::vector<log_t> const& queries) {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+
+  for (auto const& query : queries) {
+    applies(Slice(query.entry->data()));
+  }
+  return queries.empty() ? 0 : queries.back().index;
+}
+
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
 std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
@@ -173,9 +185,10 @@ std::vector<apply_ret_t> Store::applyTransactions(query_t const& query,
     }
 
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(30000,
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AGENCY_MALFORMED_TRANSACTION,
                                    "Agency request syntax is [[<queries>]]");
   }
+
   return success;
 }
 
@@ -184,24 +197,29 @@ check_ret_t Store::applyTransaction(Slice const& query) {
   check_ret_t ret(true);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  switch (query.length()) {
+
+  if (query.isObject()) {
+    ret.successful(applies(query.get("query")));
+  } else {
+    switch (query.length()) {
     case 1:  // No precondition
-      applies(query[0]);
+      ret.successful(applies(query[0]));
       break;
     case 2:  // precondition
     case 3:  // precondition + clientId
       ret = check(query[1], CheckMode::FULL);
       if (ret.successful()) {
-        applies(query[0]);
+        ret.successful(applies(query[0]));
       } else {  // precondition failed
         LOG_TOPIC("ded9e", TRACE, Logger::AGENCY) << "Precondition failed!";
       }
       break;
     default:  // Wrong
       LOG_TOPIC("18f6d", ERR, Logger::AGENCY)
-          << "We can only handle log entry with or without precondition! "
-          << "However we received " << query.toJson();
+        << "We can only handle log entry with or without precondition! "
+        << "However we received " << query.toJson();
       break;
+    }
   }
   // Wake up TTL processing
   {
@@ -270,15 +288,17 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
                 MUTEX_LOCKER(storeLocker, _storeLock);
                 auto ret = _observedTable.equal_range(uri);
                 for (auto it = ret.first; it != ret.second; ++it) {
-                  in.emplace(it->second,
-                             std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
+                  in.emplace(
+                    it->second,
+                    std::make_shared<notify_t>(it->first, j.key.copyString(), oper));
                 }
               }
               size_t pos = uri.find_last_of('/');
               if (pos == std::string::npos || pos == 0) {
                 break;
               } else {
-                uri = uri.substr(0, pos);
+                // this is superior to  uri = uri.substr(0, pos);
+                uri.resize(pos);
               }
             }
           }
@@ -293,10 +313,10 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
     for (auto it = in.begin(), end = in.end(); it != end; it = in.upper_bound(it->first)) {
       urls.push_back(it->first);
     }
-    
+
     auto const& nf = _server.getFeature<arangodb::NetworkFeature>();
     network::ConnectionPool* cp = nf.pool();
-    
+
     network::RequestOptions reqOpts;
     reqOpts.timeout = network::Timeout(2);
 
@@ -338,23 +358,39 @@ std::vector<bool> Store::applyLogEntries(arangodb::velocypack::Builder const& qu
 
       std::string endpoint, path;
       if (endpointPathFromUrl(url, endpoint, path)) {
-        
-        Agent* agent = _agent;
-        network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path,
-                             *buffer, reqOpts).thenValue([=](network::Response r) {
-          if (r.fail() || r.response->statusCode() >= 400) {
-            LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
-              << url << "(" << r.response->statusCode() << ", " << fuerte::to_string(r.error)
-              << "): " << r.slice().toJson();
 
-            if (r.ok() && r.response->statusCode() == 404 && _agent != nullptr) {
-              LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY) << "dropping dead callback at " << url;
-              agent->trashStoreCallback(url, VPackSlice(buffer->data()));
-            }
-          }
-          
-        });
-        
+        LOG_TOPIC("9dbfc", TRACE, Logger::AGENCY) << "Sending callback to " << url;
+        Agent* agent = _agent;
+        try {
+          network::sendRequest(cp, endpoint, fuerte::RestVerb::Post, path, *buffer, reqOpts).thenValue(
+            [=](network::Response r) {
+                if (r.fail()) {
+                  LOG_TOPIC("9dbf1", TRACE, Logger::AGENCY)
+                      << url << "(no response, " << fuerte::to_string(r.error)
+                      << "): " << r.slice().toJson();
+                } else {
+                  if (r.statusCode() >= 400) {
+                    LOG_TOPIC("9dbf0", TRACE, Logger::AGENCY)
+                        << url << "(" << r.statusCode() << ", "
+                        << fuerte::to_string(r.error) << "): " << r.slice().toJson();
+
+                    if (r.statusCode() == 404 && _agent != nullptr) {
+                      LOG_TOPIC("9dbfa", DEBUG, Logger::AGENCY)
+                          << "dropping dead callback at " << url;
+                      agent->trashStoreCallback(url, VPackSlice(buffer->data()));
+                    }
+                  } else {
+                    LOG_TOPIC("9dbfb", TRACE, Logger::AGENCY) << "Successfully sent callback to " << url;
+                  }
+                }
+              });
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("c4612", DEBUG, Logger::AGENCY)
+            << "Failed to deliver callback to endpoint " << endpoint << ": " << ex.what();
+        } catch (...) {
+          LOG_TOPIC("e931c", DEBUG, Logger::AGENCY)
+            << "Failed to deliver callback to endpoint " << endpoint;
+        }
       } else {
         LOG_TOPIC("76aca", WARN, Logger::AGENCY) << "Malformed URL " << url;
       }
@@ -474,13 +510,118 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
+        } else if (oper == PREC_IS_WRITE_LOCKED) {  // is-write-locked
+          // the lock is write locked by the given entity, if node and the value
+          // are strings and both are equal.
+          if (found && op.value.isString() && node->slice().isString()) {
+            if (node->slice().isEqualString(op.value.stringRef())) {
+              continue;
+            }
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
+        } else if (oper == PREC_IS_READ_LOCKED) {  // is-read-locked
+          // the lock is read locked by the given entity, if node is an
+          // array of strings and the value is a string and if the value is
+          // contained in the node array.
+          if (found && op.value.isString() && node->slice().isArray()) {
+            bool isValid = false;
+            for (auto const& i : VPackArrayIterator(node->slice())) {
+              if (!i.isString()) {
+                isValid = false;
+                break;  // invalid, only strings allowed
+              }
+              if (i.isEqualString(op.value.stringRef())) {
+                isValid = true;
+              }
+            }
+            if (isValid) {
+              continue;
+            }
+          }
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
+        } else if (oper == PREC_CAN_READ_LOCK) {  // can-read-lock
+          // a lock can be read locked if the node is either not found
+          // or the node is readLockable.
+          if (!found) {
+            continue;
+          }
+          if (!op.value.isString() || !node->isReadLockable(op.value.stringRef())) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
+        } else if (oper == PREC_CAN_WRITE_LOCK) {  // can-write-lock
+          // a lock can be write locked if the node is either not found
+          // or the node is writeLockable.
+          if (!found) {
+            continue;
+          }
+          if (!op.value.isString() || !node->isWriteLockable(op.value.stringRef())) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
+        } else if (oper == "intersectionEmpty") {  // in
+          auto const nslice = node->slice();
+          if (!op.value.isArray()) { // right hand side must be array will
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          } else {
+            if (!found) {
+              continue;
+            }
+            if (nslice.isArray()) {
+              bool found_ = false;
+              std::unordered_set<
+                VPackSlice, arangodb::velocypack::NormalizedCompare::Hash,
+                arangodb::velocypack::NormalizedCompare::Equal> elems;
+              Slice shorter, longer;
+
+              if (nslice.length() <= op.value.length()) {
+                longer = op.value;
+                shorter = nslice;
+              } else {
+                shorter = nslice;
+                longer = op.value;
+              }
+
+              for (auto const i : VPackArrayIterator(shorter)) {
+                elems.emplace(i);
+              }
+              for (auto const i : VPackArrayIterator(longer)) {
+                if (elems.find(i) != elems.end()) {
+                  found_ = true;
+                  break;
+                }
+              }
+              if (!found_) {
+                continue;
+              }
+              ret.push_back(precond.key);
+              if (mode == FIRST_FAIL) {
+                break;
+              }
+            }
+          }
         } else {
-          // Objects without any of the above cases are not considered to
-          // be a precondition:
+          ret.push_back(precond.key);
+          if (mode == FIRST_FAIL) {
+            break;
+          }
           LOG_TOPIC("44419", WARN, Logger::AGENCY)
-              << "Malformed object-type precondition was ignored: "
-              << "key: " << precond.key.toJson()
-              << " value: " << precond.value.toJson();
+            << "Malformed object-type precondition was failed: "
+            << "key: " << precond.key.toJson()
+            << " value: " << precond.value.toJson();
         }
       }
     } else {
@@ -517,15 +658,14 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   bool showHidden = false;
 
   // Collect all paths
-  std::vector<std::string> query_strs;
-  if (query.isArray()) {
-    for (auto const& sub_query : VPackArrayIterator(query)) {
-      std::string subqstr = sub_query.copyString();
-      query_strs.push_back(subqstr);
-      showHidden |= (subqstr.find("/.") != std::string::npos);
-    }
-  } else {
+  if (!query.isArray()) {
     return false;
+  }
+  
+  std::vector<std::string> query_strs;
+  for (auto const& sub_query : VPackArrayIterator(query)) {
+    query_strs.emplace_back(sub_query.copyString());
+    showHidden |= (query_strs.back().find("/.") != std::string::npos);
   }
 
   // Remove double ranges (inclusion / identity)
@@ -661,19 +801,19 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   _storeLock.assertLockedByCurrentThread();
 
   auto it = VPackObjectIterator(transaction);
-  
+
   std::vector<std::string> abskeys;
   abskeys.reserve(it.size());
-  
+
   std::vector<std::pair<size_t, VPackSlice>> idx;
   idx.reserve(it.size());
 
   size_t counter = 0;
   while (it.valid()) {
     VPackStringRef key = it.key().stringRef();
-   
+
     // push back an empty string first, so we can avoid a later move
-    abskeys.emplace_back(); 
+    abskeys.emplace_back();
 
     // and now work on this string
     std::string& absoluteKey = abskeys.back();
@@ -709,12 +849,13 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
   }
 
   std::sort(idx.begin(), idx.end(),
-       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept { 
-    return abskeys[i1.first] < abskeys[i2.first]; 
+       [&abskeys](std::pair<size_t, VPackSlice> const& i1, std::pair<size_t, VPackSlice> const& i2) noexcept {
+    return abskeys[i1.first] < abskeys[i2.first];
   });
 
+  bool success = true;
   for (const auto& i : idx) {
-    Slice value = i.second; 
+    Slice value = i.second;
 
     if (value.isObject() && value.hasKey("op")) {
       Slice const op = value.get("op");
@@ -726,7 +867,7 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           continue;
         }
       }
-      auto uri = Node::normalize(abskeys.at(i.first));
+      auto uri = Store::normalize(abskeys.at(i.first));
       if (op.isEqualString("observe")) {
         bool found = false;
         if (value.get("url").isString()) {
@@ -762,14 +903,15 @@ bool Store::applies(arangodb::velocypack::Slice const& transaction) {
           }
         }
       } else {
-        _node.hasAsWritableNode(abskeys.at(i.first)).first.applieOp(value);
+        auto ret = _node.hasAsWritableNode(abskeys.at(i.first)).first.applyOp(value);
+        success &= ret.ok();
       }
     } else {
-      _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
+      success &= _node.hasAsWritableNode(abskeys.at(i.first)).first.applies(value);
     }
   }
 
-  return true;
+  return success;
 }
 
 // Clear my data
@@ -786,41 +928,44 @@ Store& Store::operator=(VPackSlice const& s) {
   TRI_ASSERT(s.isObject());
   TRI_ASSERT(s.hasKey("readDB"));
   auto const& slice = s.get("readDB");
-  TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  _node.applies(slice[0]);
+  if (slice.isArray()) {
+    TRI_ASSERT(slice.length() == 4);
+    _node.applies(slice[0]);
 
-  if (s.hasKey("version")) {
-    TRI_ASSERT(slice[1].isObject());
-    for (auto const& entry : VPackObjectIterator(slice[1])) {
-      if (entry.value.isNumber()) {
-        auto const& key = entry.key.copyString();
-        if (_node.has(key)) {
-          auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
-          _node(key).timeToLive(tp);
-          _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+    if (s.hasKey("version")) {
+      TRI_ASSERT(slice[1].isObject());
+      for (auto const& entry : VPackObjectIterator(slice[1])) {
+        if (entry.value.isNumber()) {
+          auto const& key = entry.key.copyString();
+          if (_node.has(key)) {
+            auto tp = TimePoint(std::chrono::seconds(entry.value.getNumber<int>()));
+            _node(key).timeToLive(tp);
+            _timeTable.emplace(std::pair<TimePoint, std::string>(tp, key));
+          }
         }
       }
     }
-  }
 
-  TRI_ASSERT(slice[2].isArray());
-  for (VPackSlice entry : VPackArrayIterator(slice[2])) {
-    TRI_ASSERT(entry.isObject());
-    _observerTable.emplace(
+    TRI_ASSERT(slice[2].isArray());
+    for (VPackSlice entry : VPackArrayIterator(slice[2])) {
+      TRI_ASSERT(entry.isObject());
+      _observerTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
                                             entry.valueAt(0).copyString()));
-  }
+    }
 
-  TRI_ASSERT(slice[3].isArray());
-  for (VPackSlice entry : VPackArrayIterator(slice[3])) {
-    TRI_ASSERT(entry.isObject());
-    _observedTable.emplace(
+    TRI_ASSERT(slice[3].isArray());
+    for (VPackSlice entry : VPackArrayIterator(slice[3])) {
+      TRI_ASSERT(entry.isObject());
+      _observedTable.emplace(
         std::pair<std::string, std::string>(entry.keyAt(0).copyString(),
                                             entry.valueAt(0).copyString()));
+    }
+  } else if (slice.isObject()) {
+    _node.applies(slice);
   }
-
   return *this;
 }
 
@@ -866,6 +1011,12 @@ std::unordered_multimap<std::string, std::string> const& Store::observedTable() 
   return _observedTable;
 }
 
+/// Get node at path under mutex and store it in velocypack
+void Store::get(std::string const& path, arangodb::velocypack::Builder& b, bool showHidden) const {
+  MUTEX_LOCKER(storeLocker, _storeLock);
+  _node.hasAsNode(path).first.toBuilder(b, showHidden);
+}
+
 /// Get node at path under mutex
 Node Store::get(std::string const& path) const {
   MUTEX_LOCKER(storeLocker, _storeLock);
@@ -892,7 +1043,40 @@ void Store::removeTTL(std::string const& uri) {
   }
 }
 
-/// @brief Split strings by forward slashes, omitting empty strings
+std::string Store::normalize(char const* key, size_t length) {
+  VPackStringRef const path(key, length);
+
+  std::string normalized;
+  normalized.reserve(path.size() + 1);
+  size_t offset = 0;
+
+  while (true) {
+    if (normalized.empty() || normalized.back() != '/') {
+      normalized.push_back('/');
+    }
+    size_t pos = path.find('/', offset);
+    if (pos != std::string::npos) {
+      normalized.append(path.data() + offset, pos - offset);
+      offset = pos + 1;
+    } else {
+      normalized.append(path.data() + offset, path.size() - offset);
+      break;
+    }
+  }
+
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  if (normalized.size() > 1 && normalized.back() == '/') {
+    normalized.pop_back();
+  }
+  TRI_ASSERT(!normalized.empty());
+  TRI_ASSERT(normalized.front() == '/');
+  TRI_ASSERT(normalized.find("//") == std::string::npos);
+  return normalized;
+}
+
+/// @brief Split strings by forward slashes, omitting empty strings,
+/// and ignoring multiple subsequent forward slashes
 std::vector<std::string> Store::split(std::string const& str) {
   std::vector<std::string> result;
 
@@ -903,7 +1087,7 @@ std::vector<std::string> Store::split(std::string const& str) {
   while (p != e && *p == '/') {
     ++p;
   }
-  
+
   // strip trailing forward slashes
   while (p != e && *(e - 1) == '/') {
     --e;
@@ -929,4 +1113,12 @@ std::vector<std::string> Store::split(std::string const& str) {
   }
 
   return result;
+}
+
+/**
+ * @brief Unguarded pointer to a node path in this store.
+ *        Caller must enforce locking.
+ */
+Node const* Store::nodePtr(std::string const& path) const {
+  return &_node(path);
 }

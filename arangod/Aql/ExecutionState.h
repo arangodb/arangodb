@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -42,7 +43,20 @@ enum class ExecutionState {
   WAITING
 };
 
+enum class ExecutorState {
+  // done with this block, definitely no more results
+  DONE,
+  // (potentially) more results available. this may "lie" and
+  // report that there are more results when in fact there are
+  // none (background: to accurately determine that there are
+  // more results we may need to execute expensive operations
+  // on the preceeding blocks, which we want to avoid)
+  HASMORE
+};
+
 std::ostream& operator<<(std::ostream& ostream, ExecutionState state);
+
+std::ostream& operator<<(std::ostream& ostream, ExecutorState state);
 
 }  // namespace aql
 }  // namespace arangodb

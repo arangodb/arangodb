@@ -1,0 +1,32 @@
+# Copyright 2018 the V8 project authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+[
+[ALWAYS, {
+  # https://bugs.chromium.org/p/v8/issues/detail?id=8633
+  'limits': [SKIP],
+  'proposals/reference-types/limits': [SKIP],
+  # TODO(v8:9673): Enable these spec tests once they exist, and the out-dated
+  # tests have been removed.
+  'proposals/JS-BigInt-integration/*': [SKIP],
+}], # ALWAYS
+
+['arch == s390 or arch == s390x or system == aix', {
+  # https://bugs.chromium.org/p/v8/issues/detail?id=8402
+  'instance/constructor': [SKIP],
+  'constructor/instantiate': [SKIP],
+}],  # 'arch == s390 or arch == s390x or system == aix'
+
+##############################################################################
+['lite_mode or variant == jitless', {
+  # TODO(v8:7777): Re-enable once wasm is supported in jitless mode.
+  '*': [SKIP],
+}], # lite_mode or variant == jitless
+
+##############################################################################
+['variant == jitless and not embedded_builtins', {
+  '*': [SKIP],
+}], # variant == jitless and not embedded_builtins
+
+]

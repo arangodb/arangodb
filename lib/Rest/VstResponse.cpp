@@ -1,7 +1,7 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _messageId(id) {
+    : GeneralResponse(code, id) {
   _contentType = ContentType::VPACK;
 }
 
@@ -51,7 +51,7 @@ void VstResponse::reset(ResponseCode code) {
   _responseCode = code;
   _headers.clear();
   _contentType = ContentType::VPACK;
-  _generateBody = false;  // payload has to be set
+  _payload.clear();
 }
 
 void VstResponse::addPayload(VPackSlice const& slice,
@@ -101,11 +101,11 @@ void VstResponse::addPayload(VPackSlice const& slice,
     // just copy
     _payload.append(slice.startAs<char>(), slice.byteSize());
   } else if (_contentType == rest::ContentType::JSON) {
-    StringBuffer plainBuffer;
-    arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
-    dumper.dumpValue(slice);
-    _payload.reset();
-    _payload.append(plainBuffer.data(), plainBuffer.length());
+    // simon: usually we escape unicode char sequences,
+    // but JSON over VST is not consumed by node.js or browsers
+    velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
+    VPackDumper dumper(&sink, options);
+    dumper.dump(slice);
   } else {
     _payload.reset();
     _payload.append(slice.start(), slice.byteSize());
@@ -123,6 +123,22 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
   if (!options) {
     options = &VPackOptions::Options::Defaults;
   }
+  
+  auto handleBuffer = [this, options](VPackBuffer<uint8_t>&& buff) {
+    if (ADB_UNLIKELY(_contentType == rest::ContentType::JSON)) {
+      // simon: usually we escape unicode char sequences,
+      // but JSON over VST is not consumed by node.js or browsers
+      velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
+      VPackDumper dumper(&sink, options);
+      dumper.dump(VPackSlice(buff.data()));
+    } else {
+      if (_payload.empty()) {
+        _payload = std::move(buff);
+      } else {
+        _payload.append(buff.data(), buff.size());
+      }
+    }
+  };
 
   // only copy buffer if it contains externals
   if (resolveExternals) {
@@ -134,43 +150,12 @@ void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       VPackBuilder builder(tmpBuffer, options);
       VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
-      if (_contentType == rest::ContentType::VPACK) {
-        if (_payload.empty()) {
-          _payload = std::move(tmpBuffer);
-        } else {
-          _payload.append(tmpBuffer.data(), tmpBuffer.size());
-        }
-      } else if (_contentType == rest::ContentType::JSON) {
-        VPackSlice finalSlice(tmpBuffer.data());
-        StringBuffer plainBuffer;
-        arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
-        dumper.dumpValue(finalSlice);
-        _payload.reset();
-        _payload.append(plainBuffer.data(), plainBuffer.length());
-      } else {
-        _payload.reset();
-        _payload = buffer;
-      }
+      handleBuffer(std::move(tmpBuffer));
       return;
     }
+    // fallthrough to non-resolve case
   }
-  if (_contentType == rest::ContentType::VPACK) {
-    if (_payload.empty()) {
-      _payload = std::move(buffer);
-    } else {
-      _payload.append(buffer.data(), buffer.size());
-    }
-  } else if (_contentType == rest::ContentType::JSON) {
-    VPackSlice finalSlice(buffer.data());
-    StringBuffer plainBuffer;
-    arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
-    dumper.dumpValue(finalSlice);
-    _payload.reset();
-    _payload.append(plainBuffer.data(), plainBuffer.length());
-  } else {
-    _payload.reset();
-    _payload = buffer;
-  }
+  handleBuffer(std::move(buffer));
 }
 
 void VstResponse::addRawPayload(VPackStringRef payload) {
@@ -179,7 +164,7 @@ void VstResponse::addRawPayload(VPackStringRef payload) {
 
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
-  builder.openArray();
+  VPackArrayBuilder array(&builder, /*unindexed*/true);
   builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
   builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));  // 3 == request - return code
@@ -204,7 +189,7 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   };
   
   std::string currentHeader;
-  builder.openObject();  // 4 == meta
+  VPackObjectBuilder meta(&builder, /*unindexed*/true);  // 4 == meta
   for (auto& item : _headers) {
 
     if (_contentType != ContentType::CUSTOM &&
@@ -216,12 +201,14 @@ void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(item.second));
   }
+  if (!generateBody()) {
+    std::string len = std::to_string(_payload.size());
+    builder.add(StaticStrings::ContentLength, VPackValue(len));
+  }
   if (_contentType != ContentType::VPACK &&
       _contentType != ContentType::CUSTOM) { // fuerte uses VPack as default
     currentHeader = StaticStrings::ContentTypeHeader;
     fixCase(currentHeader);
     builder.add(currentHeader, VPackValue(rest::contentTypeToString(_contentType)));
   }
-  builder.close();
-  builder.close();
 }

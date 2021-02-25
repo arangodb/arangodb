@@ -21,42 +21,51 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "scorers.hpp"
+
+#include "shared.hpp"
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
   #include "tfidf.hpp"
   #include "bm25.hpp"
+  #include "boost_sort.hpp"
 #endif
-
 #include "utils/register.hpp"
-#include "scorers.hpp"
+#include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 struct entry_key_t {
-  const irs::text_format::type_id& args_format_;
+  irs::type_info args_format_;
   const irs::string_ref name_;
+
   entry_key_t(
-      const irs::string_ref& name, const irs::text_format::type_id& args_format
-  ): args_format_(args_format), name_(name) {}
-  bool operator==(const entry_key_t& other) const NOEXCEPT {
-    return &args_format_ == &other.args_format_ && name_ == other.name_;
+      const irs::string_ref& name,
+      const irs::type_info& args_format)
+    : args_format_(args_format), name_(name) {
+  }
+
+  bool operator==(const entry_key_t& other) const noexcept {
+    return args_format_ == other.args_format_ && name_ == other.name_;
   }
 };
 
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<entry_key_t> {
   size_t operator()(const entry_key_t& value) const {
-    return std::hash<irs::string_ref>()(value.name_);
+    return irs::hash_combine(
+          std::hash<irs::type_info::type_id>()(value.args_format_.id()),
+          std::hash<irs::string_ref>()(value.name_));
   }
 }; // hash
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libscorer-");
 
@@ -83,24 +92,22 @@ class scorer_register:
   }
 };
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 /*static*/ bool scorers::exists(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
-    bool load_library /*= true*/
-) {
+    const type_info& args_format,
+    bool load_library /*= true*/) {
   return nullptr != scorer_register::instance().get(entry_key_t(name, args_format),load_library);
 }
 
 /*static*/ sort::ptr scorers::get(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
+    const type_info& args_format,
     const string_ref& args,
-    bool load_library /*= true*/
-) NOEXCEPT {
+    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = scorer_register::instance().get(
       entry_key_t(name, args_format), load_library
@@ -109,7 +116,6 @@ NS_ROOT
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting a scorer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -119,6 +125,7 @@ NS_ROOT
   #ifndef IRESEARCH_DLL
     irs::bm25_sort::init();
     irs::tfidf_sort::init();
+    irs::boost_sort::init();
   #endif
 }
 
@@ -127,8 +134,7 @@ NS_ROOT
 }
 
 /*static*/ bool scorers::visit(
-  const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
-) {
+    const std::function<bool(const string_ref&, const type_info&)>& visitor) {
   scorer_register::visitor_t wrapper = [&visitor](const entry_key_t& key)->bool {
     return visitor(key.name_, key.args_format_);
   };
@@ -141,17 +147,15 @@ NS_ROOT
 // -----------------------------------------------------------------------------
 
 scorer_registrar::scorer_registrar(
-    const sort::type_id& type,
-    const irs::text_format::type_id& args_format,
+    const type_info& type,
+    const type_info& args_format,
     sort::ptr(*factory)(const irs::string_ref& args),
-    const char* source /*= nullptr*/
-) {
+    const char* source /*= nullptr*/) {
   irs::string_ref source_ref(source);
   auto entry = scorer_register::instance().set(
     entry_key_t(type.name(), args_format),
     factory,
-    source_ref.null() ? nullptr : &source_ref
-  );
+    source_ref.null() ? nullptr : &source_ref);
 
   registered_ = entry.second;
 
@@ -184,16 +188,10 @@ scorer_registrar::scorer_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }}
 
-scorer_registrar::operator bool() const NOEXCEPT {
+scorer_registrar::operator bool() const noexcept {
   return registered_;
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

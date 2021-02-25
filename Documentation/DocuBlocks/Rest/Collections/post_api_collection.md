@@ -21,15 +21,6 @@ The name of the collection.
 If *true* then the data is synchronized to disk before returning from a
 document create, update, replace or removal operation. (default: false)
 
-@RESTBODYPARAM{doCompact,boolean,optional,}
-whether or not the collection will be compacted (default is *true*)
-This option is meaningful for the MMFiles storage engine only.
-
-@RESTBODYPARAM{journalSize,integer,optional,int64}
-The maximal size of a journal or datafile in bytes. The value
-must be at least `1048576` (1 MiB). (The default is a configuration parameter)
-This option is meaningful for the MMFiles storage engine only.
-
 @RESTBODYPARAM{isSystem,boolean,optional,}
 If *true*, create a  system collection. In this case *collection-name*
 should start with an underscore. End users should normally create non-system
@@ -37,18 +28,10 @@ collections only. API implementors may be required to create system
 collections in very special occasions, but normally a regular collection will do.
 (The default is *false*)
 
-@RESTBODYPARAM{isVolatile,boolean,optional,}
-If *true* then the collection data is kept in-memory only and not made persistent.
-Unloading the collection will cause the collection data to be discarded. Stopping
-or re-starting the server will also cause full loss of data in the
-collection. Setting this option will make the resulting collection be
-slightly faster than regular collections because ArangoDB does not
-enforce any synchronization to disk and does not calculate any CRC
-checksums for datafiles (as there are no datafiles). This option
-should therefore be used for cache-type collections only, and not
-for data that cannot be re-created otherwise.
-(The default is *false*)
-This option is meaningful for the MMFiles storage engine only.
+@RESTBODYPARAM{schema,object,optional,}
+Optional object that specifies the collection level schema for
+documents. The attribute keys `rule`, `level` and `message` must follow the
+rules documented in [Document Schema Validation](https://www.arangodb.com/docs/devel/document-schema-validation.html)
 
 @RESTBODYPARAM{keyOptions,object,optional,post_api_collection_opts}
 additional options for key generation. If specified, then *keyOptions*
@@ -57,9 +40,10 @@ should be a JSON array containing the following attributes:
 @RESTSTRUCT{type,post_api_collection_opts,string,required,string}
 specifies the type of the key generator. The currently available generators are
 *traditional*, *autoincrement*, *uuid* and *padded*.<br>
-The *traditional* key generator generates numerical keys in ascending order.
+The *traditional* key generator generates numerical keys in ascending order.<br>
 The *autoincrement* key generator generates numerical keys in ascending order,
-the inital offset and the spacing can be configured
+the initial offset and the spacing can be configured (**note**: *autoincrement* is currently only 
+supported for non-sharded collections).<br>
 The *padded* key generator generates keys of a fixed length (16 bytes) in
 ascending lexicographical sort order. This is ideal for usage with the _RocksDB_
 engine, which will slightly benefit keys that are inserted in lexicographically
@@ -89,21 +73,6 @@ The following values for *type* are valid:<br>
 - *2*: document collection
 - *3*: edge collection
 
-@RESTBODYPARAM{indexBuckets,integer,optional,int64}
-The number of buckets into which indexes using a hash
-table are split. The default is 16 and this number has to be a
-power of 2 and less than or equal to 1024.
-
-For very large collections one should increase this to avoid long pauses
-when the hash table has to be initially built or resized, since buckets
-are resized individually and can be initially built in parallel. For
-example, 64 might be a sensible value for a collection with 100
-000 000 documents. Currently, only the edge index respects this
-value, but other index types might follow in future ArangoDB versions.
-Changes (see below) are applied when the collection is loaded the next
-time.
-This option is meaningful for the MMFiles storage engine only.
-
 @RESTBODYPARAM{numberOfShards,integer,optional,int64}
 (The default is *1*): in a cluster, this value determines the
 number of shards to create for the collection. In a single
@@ -120,28 +89,26 @@ and the hash value is used to determine the target shard.
 
 @RESTBODYPARAM{replicationFactor,integer,optional,int64}
 (The default is *1*): in a cluster, this attribute determines how many copies
-of each shard are kept on different DBServers. The value 1 means that only one
+of each shard are kept on different DB-Servers. The value 1 means that only one
 copy (no synchronous replication) is kept. A value of k means that k-1 replicas
-are kept. Any two copies reside on different DBServers. Replication between them is
+are kept. It can also be the string `"satellite"` for a SatelliteCollection,
+where the replication factor is matched to the number of DB-Servers
+(Enterprise Edition only).
+
+Any two copies reside on different DB-Servers. Replication between them is
 synchronous, that is, every write operation to the "leader" copy will be replicated
 to all "follower" replicas, before the write operation is reported successful.
 
 If a server fails, this is detected automatically and one of the servers holding
 copies take over, usually without an error being reported.
 
-@RESTBODYPARAM{minReplicationFactor,integer,optional,int64}
-(optional, default is 1): in a cluster, this attribute determines how many
-desired copies of each shard are kept on different DBServers. The value 1 means
-that only one copy (no synchronous replication) is kept. A value of k means
-that desired k-1 replicas are kept.  If in a failover scenario a shard of a
-collection has less than minReplicationFactor many insync followers it will go
-into "read-only" mode and will reject writes until enough followers are insync
-again.
-
-**In more detail**: Having `minReplicationFactor == 1` means as soon as a
-"master-copy" is available of the data writes are allowed.  Having
-`minReplicationFactor > 1` requires additional insync copies on follower
-servers to allow writes.
+@RESTBODYPARAM{writeConcern,integer,optional,int64}
+Write concern for this collection (default: 1).
+It determines how many copies of each shard are required to be
+in sync on the different DB-Servers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{distributeShardsLike,string,optional,string}
 (The default is *""*): in an Enterprise Edition cluster, this attribute binds
@@ -183,7 +150,7 @@ benefit, but it may later in case other sharding strategies are added.
 @RESTBODYPARAM{smartJoinAttribute,string,optional,string}
 In an *Enterprise Edition* cluster, this attribute determines an attribute
 of the collection that must contain the shard key value of the referred-to
-smart join collection. Additionally, the shard key for a document in this
+SmartJoin collection. Additionally, the shard key for a document in this
 collection must contain the value of this attribute, followed by a colon,
 followed by the actual primary key of the document.
 

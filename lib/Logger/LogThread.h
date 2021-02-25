@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@
 #include <boost/lockfree/queue.hpp>
 
 namespace arangodb {
+class LogGroup;
 namespace application_features {
 class ApplicationServer;
 }
@@ -40,10 +41,10 @@ class ConditionVariable;
 struct LogMessage;
 
 class LogThread final : public Thread {
- public:
-  static bool log(std::unique_ptr<LogMessage>&);
-  // flush all pending log messages
-  static void flush();
+  struct MessageEnvelope {
+    LogGroup* group;
+    LogMessage* msg;
+  };
 
  public:
   explicit LogThread(application_features::ApplicationServer& server,
@@ -51,21 +52,26 @@ class LogThread final : public Thread {
   ~LogThread();
 
  public:
-  bool isSystem() override { return true; }
-  bool isSilent() override { return true; }
+  bool isSystem() const override { return true; }
+  bool isSilent() const override { return true; }
   void run() override;
 
+  bool log(LogGroup&, std::unique_ptr<LogMessage>&);
+  // flush all pending log messages
+  void flush() noexcept;
+
   // whether or not the log thread has messages queued
-  bool hasMessages();
+  bool hasMessages() const noexcept;
   // wake up the log thread from the outside
-  void wakeup();
+  void wakeup() noexcept;
+ 
+  // handle all queued messages - normally this should not be called
+  // by anyone, except from the crash handler
+  bool processPendingMessages();
 
  private:
-  static arangodb::basics::ConditionVariable* CONDITION;
-  static boost::lockfree::queue<LogMessage*>* MESSAGES;
-
   arangodb::basics::ConditionVariable _condition;
-  boost::lockfree::queue<LogMessage*> _messages;
+  boost::lockfree::queue<MessageEnvelope> _messages;
 };
 }  // namespace arangodb
 

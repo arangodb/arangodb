@@ -35,11 +35,6 @@ var internal = require('internal');
 var wait = internal.wait;
 var ArangoCollection = arangodb.ArangoCollection;
 
-var mmfilesEngine = false;
-if (db._engine().name === 'mmfiles') {
-  mmfilesEngine = true;
-}
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite: buckets
 // //////////////////////////////////////////////////////////////////////////////
@@ -67,17 +62,8 @@ function EdgeIndexBucketsSuite () {
       db._drop(en3);
 
       var options = {};
-      if (mmfilesEngine) {
-        options = { indexBuckets: 1 };
-      }
       edge1 = db._createEdgeCollection(en1, options);
-      if (mmfilesEngine) {
-        options = { indexBuckets: 16 };
-      }
       edge2 = db._createEdgeCollection(en2, options);
-      if (mmfilesEngine) {
-        options = { indexBuckets: 128 };
-      }
       edge3 = db._createEdgeCollection(en3, options);
 
       db._drop(vn);

@@ -34,22 +34,25 @@ void EpsNormalize(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
   EpsNormalize<Arc, GALLIC>(ifst, ofst, type);
 }
 
-// Same as above, expect allows specifying explicitely the gallic weight type.
+// Same as above, except allows specifying explicitly the gallic weight type.
 template <class Arc, GallicType G>
 void EpsNormalize(const Fst<Arc> &ifst, MutableFst<Arc> *ofst,
                   EpsNormalizeType type) {
   VectorFst<GallicArc<Arc, G>> gfst;
+  std::unique_ptr<SymbolTable> symbols;
   if (type == EPS_NORM_INPUT) {
     ArcMap(ifst, &gfst, ToGallicMapper<Arc, G>());
+    if (ifst.OutputSymbols()) symbols.reset(ifst.OutputSymbols()->Copy());
   } else {  // type == EPS_NORM_OUTPUT
     ArcMap(InvertFst<Arc>(ifst), &gfst, ToGallicMapper<Arc, G>());
+    if (ifst.InputSymbols()) symbols.reset(ifst.InputSymbols()->Copy());
   }
   RmEpsilon(&gfst);
   FactorWeightFst<GallicArc<Arc, G>,
                   GallicFactor<typename Arc::Label, typename Arc::Weight, G>>
       fwfst(gfst);
   ArcMap(fwfst, ofst, FromGallicMapper<Arc, G>());
-  ofst->SetOutputSymbols(ifst.OutputSymbols());
+  ofst->SetOutputSymbols(symbols.get());
   if (type == EPS_NORM_OUTPUT) Invert(ofst);
 }
 

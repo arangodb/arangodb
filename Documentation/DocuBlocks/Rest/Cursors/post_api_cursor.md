@@ -104,9 +104,9 @@ is not served from the query cache. Set to *2* the query will include execution 
 per query plan node in sub-attribute *stats.nodes* of the *extra* return attribute.
 Additionally the query plan is returned in the sub-attribute *extra.plan*.
 
-@RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,boolean,optional,}
-This *Enterprise Edition* parameter allows to configure how long a DBServer will have time
-to bring the satellite collections involved in the query into sync.
+@RESTSTRUCT{satelliteSyncWait,post_api_cursor_opts,number,optional,double}
+This *Enterprise Edition* parameter allows to configure how long a DB-Server will have time
+to bring the SatelliteCollections involved in the query into sync.
 The default value is *60.0* (seconds). When the max time has been reached the query
 will be stopped.
 

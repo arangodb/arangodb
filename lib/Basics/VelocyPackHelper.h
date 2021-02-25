@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
@@ -85,7 +86,7 @@ struct VPackHashedSlice {
     return *this;
   }
 
-  ~VPackHashedSlice() {}
+  ~VPackHashedSlice() = default;
 };
 
 class VelocyPackHelper {
@@ -99,8 +100,6 @@ class VelocyPackHelper {
   static void disableAssemblerFunctions();
 
   static arangodb::velocypack::AttributeTranslator* getTranslator();
-  
-  static arangodb::velocypack::Options* optionsWithUniquenessCheck();
 
   struct VPackHash {
     size_t operator()(arangodb::velocypack::Slice const&) const;
@@ -172,7 +171,7 @@ class VelocyPackHelper {
   struct AttributeSorterUTF8 {
     bool operator()(std::string const& l, std::string const& r) const;
   };
-  
+
   struct AttributeSorterUTF8StringRef {
     bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const;
   };
@@ -180,10 +179,22 @@ class VelocyPackHelper {
   struct AttributeSorterBinary {
     bool operator()(std::string const& l, std::string const& r) const noexcept;
   };
-  
+
   struct AttributeSorterBinaryStringRef {
     bool operator()(arangodb::velocypack::StringRef const& l, arangodb::velocypack::StringRef const& r) const noexcept;
   };
+
+
+  /// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
+  template <typename... Ts>
+  static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
+    return slice.template unpackTuple<Ts...>();
+  }
+
+  template <typename... Ts>
+  static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
+    return iter.template unpackPrefixAsTuple<Ts...>();
+  }
 
   /// @brief returns a numeric value
   template <typename T>
@@ -265,7 +276,7 @@ class VelocyPackHelper {
     }
     return sub.getNumericValue<T>();
   }
-  
+
   /// @return string ref, or the defaultValue if slice is not a string
   static arangodb::velocypack::StringRef getStringRef(
       arangodb::velocypack::Slice slice,
@@ -346,7 +357,7 @@ class VelocyPackHelper {
                      arangodb::velocypack::Options const* options = &arangodb::velocypack::Options::Defaults,
                      arangodb::velocypack::Slice const* lhsBase = nullptr,
                      arangodb::velocypack::Slice const* rhsBase = nullptr) ADB_WARN_UNUSED_RESULT;
-  
+
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
   static bool equal(arangodb::velocypack::Slice lhs,
@@ -356,18 +367,6 @@ class VelocyPackHelper {
                     arangodb::velocypack::Slice const* rhsBase = nullptr) {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
-
-  /// @brief Merges two VelocyPack Slices
-  static arangodb::velocypack::Builder merge(arangodb::velocypack::Slice const&,
-                                             arangodb::velocypack::Slice const&,
-                                             bool, bool);
-
-  /// @brief Transforms any VelocyPack to a double value. The second parameter
-  ///        indicates if the transformation was successful.
-  static double toDouble(VPackSlice const&, bool&);
-
-  // modify a VPack double value in place
-  static void patchDouble(VPackSlice slice, double value);
 
   static bool hasNonClientTypes(arangodb::velocypack::Slice,
                                 bool checkExternals, bool checkCustom);
@@ -379,12 +378,10 @@ class VelocyPackHelper {
                                      bool sanitizeExternals, bool sanitizeCustom,
                                      bool allowUnindexed = false);
 
-  static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
-      arangodb::velocypack::Slice,
-      VPackOptions const* options = &VPackOptions::Options::Defaults,
-      bool sanitizeExternals = true, bool sanitizeCustom = true);
-
   static uint64_t extractIdValue(VPackSlice const& slice);
+
+  static arangodb::velocypack::Options strictRequestValidationOptions;
+  static arangodb::velocypack::Options looseRequestValidationOptions;
 
   static uint8_t const KeyAttribute = 0x31;
   static uint8_t const RevAttribute = 0x32;
@@ -411,21 +408,6 @@ struct less<arangodb::velocypack::StringRef> {
   bool operator()(arangodb::velocypack::StringRef const& lhs,
                   arangodb::velocypack::StringRef const& rhs) const noexcept {
     return lhs.compare(rhs) < 0;
-  }
-};
-
-template <>
-struct hash<arangodb::basics::VPackHashedSlice> {
-  inline size_t operator()(arangodb::basics::VPackHashedSlice const& slice) const noexcept {
-    return slice.hash;
-  }
-};
-
-template <>
-struct equal_to<arangodb::basics::VPackHashedSlice> {
-  bool operator()(arangodb::basics::VPackHashedSlice const& lhs,
-                  arangodb::basics::VPackHashedSlice const& rhs) const {
-    return lhs.slice.binaryEquals(rhs.slice);
   }
 };
 

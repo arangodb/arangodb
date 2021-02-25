@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,13 +20,13 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_ITERATOR_H
 #define VELOCYPACK_ITERATOR_H 1
 
 #include <iosfwd>
+#include <tuple>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -37,14 +36,22 @@
 namespace arangodb {
 namespace velocypack {
 
-class ArrayIterator {
+class ArrayIterator : public std::iterator<std::forward_iterator_tag, Slice> {
  public:
+  using iterator_category = std::forward_iterator_tag;
+
+  struct Empty {};
+
   ArrayIterator() = delete;
+
+  // optimization for an empty array
+  explicit ArrayIterator(Empty) noexcept
+      : _slice(Slice::emptyArraySlice()), _size(0), _position(0), _current(nullptr), _first(nullptr) {}
 
   explicit ArrayIterator(Slice slice)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
-    
-    uint8_t const head = slice.head();     
+
+    uint8_t const head = slice.head();
 
     if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Array)) {
       throw Exception(Exception::InvalidValueType, "Expecting Array slice");
@@ -81,8 +88,11 @@ class ArrayIterator {
     return result;
   }
 
+  bool operator==(ArrayIterator const& other) const noexcept {
+    return _position == other._position;
+  }
   bool operator!=(ArrayIterator const& other) const noexcept {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   Slice operator*() const {
@@ -93,13 +103,13 @@ class ArrayIterator {
     // be performed by Slice::getNthOffset()
     return Slice(_slice.begin() + _slice.getNthOffset(_position));
   }
-  
-  ArrayIterator begin() const { 
+
+  ArrayIterator begin() const {
     auto it = ArrayIterator(*this);
     it._position = 0;
     return it;
   }
-  
+
   ArrayIterator end() const {
     auto it = ArrayIterator(*this);
     it._position = it._size;
@@ -139,16 +149,35 @@ class ArrayIterator {
       } else {
         _position += count;
         _current = _slice.at(_position).start();
-      } 
+      }
     }
   }
-    
+
   inline void reset() {
     _position = 0;
     _current = _first;
   }
 
+  template<typename... Ts>
+  std::tuple<Ts...> unpackPrefixAsTuple() {
+    return unpackTupleInternal(unpack_helper<Ts...>{});
+  }
+
  private:
+  template<typename...>
+  struct unpack_helper {};
+
+  template<typename T, typename... Ts>
+  std::tuple<T, Ts...> unpackTupleInternal(unpack_helper<T, Ts...>) {
+    auto slice = value(); // this does out-of-bounds checking
+    next();
+    return std::tuple_cat(std::make_tuple(slice.extract<T>()), unpackTupleInternal(unpack_helper<Ts...>{}));
+  }
+
+  std::tuple<> unpackTupleInternal(unpack_helper<>) const {
+    return std::make_tuple<>();
+  }
+
   Slice _slice;
   ValueLength _size;
   ValueLength _position;
@@ -156,13 +185,16 @@ class ArrayIterator {
   uint8_t const* _first;
 };
 
-class ObjectIterator {
+struct ObjectIteratorPair {
+  ObjectIteratorPair(Slice key, Slice value) noexcept
+      : key(key), value(value) {}
+  Slice const key;
+  Slice const value;
+};
+
+class ObjectIterator : public std::iterator<std::forward_iterator_tag, ObjectIteratorPair> {
  public:
-  struct ObjectPair {
-    ObjectPair(Slice key, Slice value) noexcept : key(key), value(value) {}
-    Slice const key;
-    Slice const value;
-  };
+  using ObjectPair = ObjectIteratorPair;
 
   ObjectIterator() = delete;
 
@@ -171,8 +203,8 @@ class ObjectIterator {
   // index. The default `false` is to use the index if it is there.
   explicit ObjectIterator(Slice slice, bool useSequentialIteration = false)
       : _slice(slice), _size(0), _position(0), _current(nullptr), _first(nullptr) {
-    
-    uint8_t const head = slice.head();     
+
+    uint8_t const head = slice.head();
 
     if (VELOCYPACK_UNLIKELY(slice.type(head) != ValueType::Object)) {
       throw Exception(Exception::InvalidValueType, "Expecting Object slice");
@@ -212,8 +244,12 @@ class ObjectIterator {
     return result;
   }
 
+  bool operator==(ObjectIterator const& other) const {
+    return _position == other._position;
+  }
+
   bool operator!=(ObjectIterator const& other) const {
-    return _position != other._position;
+    return !operator==(other);
   }
 
   ObjectPair operator*() const {
@@ -224,8 +260,8 @@ class ObjectIterator {
     Slice key(_slice.getNthKeyUntranslated(_position));
     return ObjectPair(key.makeKey(), Slice(key.begin() + key.byteSize()));
   }
-  
-  ObjectIterator begin() const { 
+
+  ObjectIterator begin() const {
     auto it = ObjectIterator(*this);
     it._position = 0;
     return it;
@@ -272,7 +308,7 @@ class ObjectIterator {
   inline bool isFirst() const noexcept { return (_position == 0); }
 
   inline bool isLast() const noexcept { return (_position + 1 >= _size); }
-  
+
   inline void reset() {
     _position = 0;
     _current = _first;

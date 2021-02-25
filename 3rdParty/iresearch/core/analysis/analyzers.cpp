@@ -31,67 +31,73 @@
   #include "text_token_stemming_stream.hpp"
   #include "text_token_stream.hpp"
   #include "token_masking_stream.hpp"
+  #include "pipeline_token_stream.hpp"
 #endif
 
-#include "analyzers.hpp"
+#include "analysis/analyzers.hpp"
+#include "utils/hash_utils.hpp"
 
-NS_LOCAL
+namespace {
+
+using namespace irs;
 
 struct key {
-  key(const irs::string_ref& name,
-      const irs::text_format::type_id& args_format)
-    : args_format(args_format),
-      name(name) {
+  key(const string_ref& type,
+      const irs::type_info& args_format)
+    : type(type),
+      args_format(args_format) {
   }
 
-  bool operator==(const key& other) const NOEXCEPT {
-    return &args_format == &other.args_format && name == other.name;
+  bool operator==(const key& other) const noexcept {
+    return args_format == other.args_format && type == other.type;
   }
 
-  bool operator!=(const key& other) const NOEXCEPT {
+  bool operator!=(const key& other) const noexcept {
     return !(*this == other);
   }
 
-  const irs::text_format::type_id& args_format;
-  const irs::string_ref name;
+  string_ref type;
+  irs::type_info args_format;
 };
 
 struct value{
   explicit value(
-      irs::analysis::factory_f factory = nullptr,
-      irs::analysis::normalizer_f normalizer = nullptr)
+      analysis::factory_f factory = nullptr,
+      analysis::normalizer_f normalizer = nullptr)
     : factory(factory),
       normalizer(normalizer) {
   }
 
-  bool empty() const NOEXCEPT { return nullptr == factory;  }
+  bool empty() const noexcept { return nullptr == factory;  }
 
-  bool operator==(const value& other) const NOEXCEPT {
+  bool operator==(const value& other) const noexcept {
     return factory == other.factory && normalizer == other.normalizer;
   }
 
-  bool operator!=(const value& other) const NOEXCEPT {
+  bool operator!=(const value& other) const noexcept {
     return !(*this == other);
   }
 
-  const irs::analysis::factory_f factory;
-  const irs::analysis::normalizer_f normalizer;
+  const analysis::factory_f factory;
+  const analysis::normalizer_f normalizer;
 };
  
-NS_END
+}
 
-NS_BEGIN(std)
+namespace std {
 
 template<>
 struct hash<::key> {
-  size_t operator()(const ::key& value) const NOEXCEPT {
-    return std::hash<irs::string_ref>()(value.name);
+  size_t operator()(const ::key& value) const noexcept {
+    return irs::hash_combine(
+      std::hash<irs::type_info::type_id>()(value.args_format.id()),
+      value.type);
   }
 }; // hash
 
-NS_END // std
+} // std
 
-NS_LOCAL
+namespace {
 
 const std::string FILENAME_PREFIX("libanalyzer-");
 
@@ -99,66 +105,87 @@ class analyzer_register
     : public irs::tagged_generic_register<::key, ::value, irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
-    auto& name = key.name;
+    const auto& name = key.type;
     std::string filename(FILENAME_PREFIX.size() + name.size(), 0);
 
     std::memcpy(
       &filename[0],
       FILENAME_PREFIX.c_str(),
-      FILENAME_PREFIX.size()
-    );
+      FILENAME_PREFIX.size());
 
     irs::string_ref::traits_type::copy(
       &filename[0] + FILENAME_PREFIX.size(),
       name.c_str(),
-      name.size()
-    );
+      name.size());
 
     return filename;
   }
 };
 
-NS_END
+}
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 /*static*/ bool analyzers::exists(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
-    bool load_library /*= true*/
-) {
+    const type_info& args_format,
+    bool load_library /*= true*/) {
   return !analyzer_register::instance().get(::key(name, args_format), load_library).empty();
 }
 
 /*static*/ bool analyzers::normalize(
     std::string& out,
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
+    const type_info& args_format,
     const string_ref& args,
-    bool load_library /*= true*/
-) NOEXCEPT {
+    bool load_library /*= true*/) noexcept {
   try {
     auto* normalizer = analyzer_register::instance().get(
       ::key(name, args_format),
-      load_library
-    ).normalizer;
+      load_library).normalizer;
 
     return normalizer ? normalizer(args, out) : false;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while normalizing analyzer '%s' arguments", name.c_str());
-    IR_LOG_EXCEPTION();
   }
 
   return false;
 }
 
+/*static*/ result analyzers::get(
+    analyzer::ptr& analyzer,
+    const string_ref& name,
+    const type_info& args_format,
+    const string_ref& args,
+    bool load_library /*= true*/) noexcept {
+  try {
+    auto* factory = analyzer_register::instance().get(
+      ::key(name, args_format),
+      load_library).factory;
+
+    if (!factory) {
+      return result::make<result::NOT_FOUND>();
+    }
+
+    analyzer = factory(args);
+  } catch (const std::exception& e) {
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance",
+      e.what());
+  } catch (...) {
+    return result::make<result::INVALID_ARGUMENT>(
+      "Caught exception while getting an analyzer instance");
+  }
+
+  return {};
+}
+
 /*static*/ analyzer::ptr analyzers::get(
     const string_ref& name,
-    const irs::text_format::type_id& args_format,
+    const type_info& args_format,
     const string_ref& args,
-    bool load_library /*= true*/
-) NOEXCEPT {
+    bool load_library /*= true*/) noexcept {
   try {
     auto* factory = analyzer_register::instance().get(
       ::key(name, args_format),
@@ -168,7 +195,6 @@ NS_BEGIN(analysis)
     return factory ? factory(args) : nullptr;
   } catch (...) {
     IR_FRMT_ERROR("Caught exception while getting an analyzer instance");
-    IR_LOG_EXCEPTION();
   }
 
   return nullptr;
@@ -182,6 +208,7 @@ NS_BEGIN(analysis)
     irs::analysis::text_token_stemming_stream::init();
     irs::analysis::text_token_stream::init();
     irs::analysis::token_masking_stream::init();
+    irs::analysis::pipeline_token_stream::init();
   #endif
 }
 
@@ -190,10 +217,9 @@ NS_BEGIN(analysis)
 }
 
 /*static*/ bool analyzers::visit(
-  const std::function<bool(const string_ref&, const irs::text_format::type_id&)>& visitor
-) {
+    const std::function<bool(const string_ref&, const type_info&)>& visitor) {
   analyzer_register::visitor_t wrapper = [&visitor](const ::key& key)->bool {
-    return visitor(key.name, key.args_format);
+    return visitor(key.type, key.args_format);
   };
 
   return analyzer_register::instance().visit(wrapper);
@@ -204,13 +230,12 @@ NS_BEGIN(analysis)
 // -----------------------------------------------------------------------------
 
 analyzer_registrar::analyzer_registrar(
-    const analyzer::type_id& type,
-    const irs::text_format::type_id& args_format,
-    analyzer::ptr(*factory)(const irs::string_ref& args),
-    bool(*normalizer)(const irs::string_ref& args, std::string& config),
-    const char* source /*= nullptr*/
-) {
-  irs::string_ref source_ref(source);
+    const type_info& type,
+    const type_info& args_format,
+    analyzer::ptr(*factory)(const string_ref& args),
+    bool(*normalizer)(const string_ref& args, std::string& config),
+    const char* source /*= nullptr*/) {
+  const string_ref source_ref(source);
   const auto new_entry = ::value(factory, normalizer);
   auto entry = analyzer_register::instance().set(
     ::key(type.name(), args_format),
@@ -249,10 +274,8 @@ analyzer_registrar::analyzer_registrar(
         type.name().c_str()
       );
     }
-
-    IR_LOG_STACK_TRACE();
   }
 }
 
-NS_END // analysis
-NS_END
+} // analysis
+}

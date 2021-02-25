@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,18 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DocumentExpressionContext.h"
+
 #include "Aql/AqlValue.h"
 
 using namespace arangodb::aql;
 
-DocumentExpressionContext::DocumentExpressionContext(Query* query,
-                                                     arangodb::velocypack::Slice document)
-    : QueryExpressionContext(query), _document(document) {}
-
-size_t DocumentExpressionContext::numRegisters() const {
-  // hard-coded
-  return 1;
-}
+DocumentExpressionContext::DocumentExpressionContext(arangodb::transaction::Methods& trx,
+                                                     QueryContext& query,
+                                                     AqlFunctionsInternalCache& cache,
+                                                     arangodb::velocypack::Slice document) noexcept
+    : QueryExpressionContext(trx, query, cache), _document(document) {}
 
 AqlValue DocumentExpressionContext::getVariableValue(Variable const*, bool doCopy,
                                                      bool& mustDestroy) const {

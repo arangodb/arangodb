@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,41 +24,47 @@
 #ifndef ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H
 #define ARANGOD_IRESEARCH_ROCKSDB_RECOVERY_HELPER_H 1
 
-#include "RocksDBEngine/RocksDBRecoveryHelper.h"
-#include "VocBase/voc-types.h"
-
-#include <velocypack/velocypack-aliases.h>
+#include <cstdint>
 #include <set>
 
-struct TRI_vocbase_t;
+#include <rocksdb/slice.h>
+#include <rocksdb/types.h>
+
+#include "Basics/Identifier.h"
+#include "RocksDBEngine/RocksDBRecoveryHelper.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 
-class Result;
 class DatabaseFeature;
-class LogicalCollection;
 class RocksDBEngine;
 
 namespace iresearch {
-
-class IResearchLink;
 
 class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
  public:
   struct IndexId {
     TRI_voc_tick_t db;
-    TRI_voc_cid_t cid;
-    TRI_idx_iid_t iid;
+    DataSourceId cid;
+    arangodb::IndexId iid;
 
-    IndexId(TRI_voc_tick_t db, TRI_voc_cid_t cid, TRI_idx_iid_t iid) noexcept
+    IndexId(TRI_voc_tick_t db, DataSourceId cid, arangodb::IndexId iid) noexcept
         : db(db), cid(cid), iid(iid) {}
 
     bool operator<(IndexId const& rhs) const noexcept {
-      return db < rhs.db && cid < rhs.cid && iid < rhs.iid;
+      return (db < rhs.db) ||
+               (db == rhs.db &&
+                  (cid < rhs.cid ||
+                    (cid == rhs.cid &&  iid < rhs.iid)));
     }
   };
 
-  IResearchRocksDBRecoveryHelper() = default;
+  explicit IResearchRocksDBRecoveryHelper(application_features::ApplicationServer&);
 
   virtual ~IResearchRocksDBRecoveryHelper() override = default;
 
@@ -89,6 +95,7 @@ class IResearchRocksDBRecoveryHelper final : public RocksDBRecoveryHelper {
                       const rocksdb::Slice& key,
                       rocksdb::SequenceNumber tick);
 
+  application_features::ApplicationServer& _server;
   std::set<IndexId> _recoveredIndexes;  // set of already recovered indexes
   DatabaseFeature* _dbFeature{};
   RocksDBEngine* _engine{};

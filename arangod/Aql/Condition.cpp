@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
@@ -35,8 +36,10 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
+#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
@@ -292,7 +295,6 @@ ConditionPartCompareResult const ResultsTableMultiValued[3][7][7] = {
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, OTHER_CONTAINED_IN_SELF,
       OTHER_CONTAINED_IN_SELF, DISJOINT},
      {DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT, DISJOINT}}};
-
 }  // namespace
 
 ConditionPart::ConditionPart(Variable const* variable, std::string const& attributeName,
@@ -561,7 +563,7 @@ std::unique_ptr<Condition> Condition::fromVPack(ExecutionPlan* plan, arangodb::v
 
   if (slice.isObject() && slice.length() != 0) {
     // note: the AST is responsible for freeing the AstNode later!
-    AstNode* node = new AstNode(plan->getAst(), slice);
+    AstNode* node = plan->getAst()->createNode(slice);
     condition->andCombine(node);
   }
 
@@ -613,32 +615,36 @@ std::pair<bool, bool> Condition::findIndexes(EnumerateCollectionNode const* node
                                              SortCondition const* sortCondition) {
   TRI_ASSERT(usedIndexes.empty());
   Variable const* reference = node->outVariable();
-  std::string collectionName = node->collection()->name();
+  aql::Collection const& coll = *node->collection();
+  std::string collectionName = coll.name();
 
-  transaction::Methods* trx = _ast->query()->trx();
-
+  transaction::Methods& trx = _ast->query().trxForOptimization();
+  if (trx.isInaccessibleCollection(collectionName)) {
+    return {false, false};
+  }
+  
   size_t itemsInIndex;
   if (!collectionName.empty() && collectionName[0] == '_' &&
-      collectionName.substr(0, 11) == "_statistics") {
+      collectionName.compare(0, 11, StaticStrings::StatisticsCollection, 11) == 0) {
     // use hard-coded number of items in index, because we are dealing with
     // the statistics collection here. this saves a roundtrip to the DB servers
     // for statistics queries that do not need a fully accurate collection count
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = node->collection()->count(trx);
+    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
   }
   if (_root == nullptr) {
     size_t dummy;
     return std::make_pair<bool, bool>(
-        false, trx->getIndexForSortCondition(collectionName, sortCondition, reference, itemsInIndex,
-                                             node->hint(), usedIndexes, dummy));
+        false, arangodb::aql::utils::getIndexForSortCondition(coll, sortCondition, reference, itemsInIndex,
+        node->hint(), usedIndexes, dummy));
   }
-
-  return trx->getBestIndexHandlesForFilterCondition(collectionName, _ast, _root,
-                                                    reference, sortCondition,
-                                                    itemsInIndex, node->hint(),
-                                                    usedIndexes, _isSorted);
+  
+  return arangodb::aql::utils::getBestIndexHandlesForFilterCondition(coll, _ast, _root,
+                                                                     reference, sortCondition,
+                                                                     itemsInIndex, node->hint(),
+                                                                     usedIndexes, _isSorted);
 }
 
 /// @brief get the attributes for a sub-condition that are const
@@ -747,20 +753,26 @@ std::vector<std::vector<arangodb::basics::AttributeName>> Condition::getConstAtt
 
 /// @brief normalize the condition
 /// this will convert the condition into its disjunctive normal form
-void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/) {
+void Condition::normalize(ExecutionPlan* plan, bool multivalued /*= false*/,
+                          ConditionOptimization conditionOptimization /*= ConditionOptimization::Auto*/) {
   if (_isNormalized) {
     // already normalized
     return;
   }
 
-  _root = transformNodePreorder(_root);
-  _root = transformNodePostorder(_root);
+  _root = transformNodePreorder(_root, conditionOptimization);
+  _root = transformNodePostorder(_root, conditionOptimization);
   _root = fixRoot(_root, 0);
-
-  optimize(plan, multivalued);
+  if (conditionOptimization != ConditionOptimization::Auto) {
+    // DNF conversion is skipped. So condition tree could have arbitrary depth and
+    // standart optimization cold not be applied. Let`s do simpler version
+    optimizeNonDnf();
+  } else {
+    optimize(plan, multivalued);
+  }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_root != nullptr) {
+  if (_root != nullptr && conditionOptimization == ConditionOptimization::Auto) {
     // _root->dump(0);
     validateAst(_root, 0);
   }
@@ -811,6 +823,9 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable co
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
 
+      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
+      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
+
       clearAttributeAccess(result);
 
       // only remove the condition if the index is exactly on the same attribute
@@ -835,6 +850,9 @@ void Condition::collectOverlappingMembers(ExecutionPlan const* plan, Variable co
     if (allowOps) {
       auto lhs = operand->getMember(0);
       auto rhs = operand->getMember(1);
+      
+      lhs = const_cast<AstNode*>(plan->resolveVariableAlias(lhs));
+      rhs = const_cast<AstNode*>(plan->resolveVariableAlias(rhs));
 
       if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
           (isFromTraverser && lhs->type == NODE_TYPE_EXPANSION)) {
@@ -969,7 +987,7 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable const*> const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars) {
   if (_root == nullptr) {
     return false;
   }
@@ -985,7 +1003,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
 
   // handle sub nodes of top-level OR node
   size_t const n = _root->numMembers();
-  ::arangodb::containers::HashSet<Variable const*> varsUsed;
+  VarSet varsUsed;
 
   for (size_t i = 0; i < n; ++i) {
     auto oldAndNode = _root->getMemberUnchecked(i);
@@ -1011,7 +1029,7 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
       }
 
       if (invalid) {
-        andNode->removeMemberUnchecked(j);
+        andNode->removeMemberUncheckedUnordered(j);
         // repeat with some member index
         TRI_ASSERT(nAnd > 0);
         --nAnd;
@@ -1027,13 +1045,129 @@ bool Condition::removeInvalidVariables(::arangodb::containers::HashSet<Variable 
   return isEmpty;
 }
 
+
+/// @brief recursively deduplicates and sorts members in  IN nodes in subtree
+/// also deduplicated AND/OR  nodes
+void Condition::deduplicateComparisonsRecursive(AstNode* p) {
+  const auto numMembers = p->numMembers();
+  for (size_t j = 0; j < numMembers; ++j) {
+    auto op = p->getMemberUnchecked(j);
+    auto newNode = _ast->shallowCopyForModify(op);
+    p->changeMember(j, newNode);
+    TRI_DEFER(FINALIZE_SUBTREE(newNode));
+    if (newNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      auto deduplicated = deduplicateInOperation(newNode);
+      p->changeMember(j, deduplicated);
+      continue;
+    }
+    deduplicateComparisonsRecursive(newNode);
+    // now all internal nodes collapsed where possible
+    // could try to collapse this node
+    if (op->type == NODE_TYPE_OPERATOR_NARY_AND ||
+        op->type == NODE_TYPE_OPERATOR_NARY_OR) {
+      deduplicateJunctionNode(newNode);
+    }
+  }
+}
+
+/// @brief optimize the condition expression tree which is non-DnfConverted
+void Condition::optimizeNonDnf() {
+  auto oldRoot = _root;
+  _root = _ast->shallowCopyForModify(oldRoot);
+  TRI_DEFER(FINALIZE_SUBTREE(_root));
+  // Sorting and deduplicating all IN/AND/OR nodes
+  deduplicateComparisonsRecursive(_root);
+}
+
+/// @brief deduplicates conditions in AND/OR node
+void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
+  TRI_ASSERT(unlockedNode != nullptr);
+  TRI_ASSERT(unlockedNode->type == NODE_TYPE_OPERATOR_NARY_AND ||
+             unlockedNode->type == NODE_TYPE_OPERATOR_NARY_OR);
+  TRI_ASSERT(!unlockedNode->hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  bool duplicateFound;
+  do {
+    duplicateFound = false;
+    size_t andNumMembers = unlockedNode->numMembers();
+    VariableUsageType variableUsage;
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> varAccess;
+    for (size_t j = 0; j < andNumMembers; ++j) {
+      auto operand = unlockedNode->getMemberUnchecked(j);
+      if (operand->isComparisonOperator()) {
+        AstNode const* lhs = operand->getMember(0);
+        AstNode const* rhs = operand->getMember(1);
+
+        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          if (lhs->isConstant()) {
+            lhs = _ast->resolveConstAttributeAccess(lhs);
+          }
+          storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
+        }
+        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
+          if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
+            rhs = _ast->resolveConstAttributeAccess(rhs);
+          }
+          storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
+        }
+      }
+    }
+    for (auto const& it : variableUsage) {  // iterate node with itself only
+      auto variable = it.first;
+      for (auto const& it2 : it.second) {
+        auto const& attributeName = it2.first;
+        auto const& positions = it2.second;
+
+        if (positions.size() <= 1) {
+          // none or only one occurence of the attribute
+          continue;
+        }
+        // multiple occurrences of the same attribute
+        size_t i = 0;
+        do {
+          size_t leftPos = positions[i].first;
+          auto leftNode = unlockedNode->getMemberUnchecked(leftPos);
+          ConditionPart current(variable, attributeName, leftNode, positions[i].second, nullptr);
+          if (!current.valueNode->isConstant()) {
+            continue;
+          }
+          size_t j = i + 1;
+          while (j < positions.size()) {
+            TRI_ASSERT(j != 0);
+            auto rightPos = positions[j].first;
+            auto rightNode = unlockedNode->getMemberUnchecked(rightPos);
+            ConditionPart other(variable, attributeName, rightNode, positions[j].second, nullptr);
+            if (!other.valueNode->isConstant()) {
+              ++j;
+              continue;
+            }
+            if (current.whichCompareOperation() == other.whichCompareOperation() &&
+              CompareAstNodes(current.valueNode, other.valueNode, true) == 0) {// duplicate comparison detected - remove it
+              TRI_ASSERT(!positions.empty());
+              TRI_ASSERT(j < positions.size());
+              unlockedNode->removeMemberUncheckedUnordered(rightPos);
+              duplicateFound = true; // one duplicate collapsed. Need to re check resulting node and refill positions
+              break;
+            }
+            ++j;
+          }
+          ++i;
+        } while (i < positions.size() - 1 && !duplicateFound);
+        if (duplicateFound) {
+          break;
+        }
+      }
+      if (duplicateFound) {
+        break;
+      }
+    }
+  } while (duplicateFound);
+}
+
 /// @brief optimize the condition expression tree
 void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
   if (_root == nullptr) {
     return;
   }
-
-  transaction::Methods* trx = plan->getAst()->query()->trx();
 
   TRI_ASSERT(_root != nullptr);
   TRI_ASSERT(_root->type == NODE_TYPE_OPERATOR_NARY_OR);
@@ -1152,13 +1286,17 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
           if (lhs->isConstant()) {
-            lhs = Ast::resolveConstAttributeAccess(lhs);
+            lhs = _ast->resolveConstAttributeAccess(lhs);
+          } else {
+            lhs = plan->resolveVariableAlias(lhs);
           }
           storeAttributeAccess(varAccess, variableUsage, lhs, j, ATTRIBUTE_LEFT);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS || rhs->type == NODE_TYPE_EXPANSION) {
           if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
-            rhs = Ast::resolveConstAttributeAccess(rhs);
+            rhs = _ast->resolveConstAttributeAccess(rhs);
+          } else {
+            rhs = plan->resolveVariableAlias(rhs);
           }
           storeAttributeAccess(varAccess, variableUsage, rhs, j, ATTRIBUTE_RIGHT);
         }
@@ -1220,8 +1358,8 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               auto merged =
                   _ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN,
                                                  leftNode->getMemberUnchecked(0),
-                                                 mergeInOperations(trx, leftNode, rightNode));
-              andNode->removeMemberUnchecked(rightPos);
+                                                 mergeInOperations(leftNode, rightNode));
+              andNode->removeMemberUncheckedUnordered(rightPos);
               andNode->changeMember(leftPos, merged);
               goto restartThisOrItem;
             } else if (rightNode->isSimpleComparisonOperator()) {
@@ -1248,7 +1386,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
 
               if (inNode->numMembers() == 0) {
                 // no values left after merging -> IMPOSSIBLE
-                _root->removeMemberUnchecked(r);
+                _root->removeMemberUncheckedUnordered(r);
                 retry = true;
                 goto fastForwardToNextOrItem;
               }
@@ -1257,7 +1395,7 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               leftNode->changeMember(1, inNode);
 
               // remove the other operator
-              andNode->removeMemberUnchecked(rightPos);
+              andNode->removeMemberUncheckedUnordered(rightPos);
               goto restartThisOrItem;
             }
           }
@@ -1273,25 +1411,26 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
               // impossible condition
               // j = positions.size();
               // we remove this one, so fast forward the loops to their end:
-              _root->removeMemberUnchecked(r);
+              _root->removeMemberUncheckedUnordered(r);
               retry = true;
               goto fastForwardToNextOrItem;
             }
             case CompareResult::SELF_CONTAINED_IN_OTHER: {
               TRI_ASSERT(!positions.empty());
-              andNode->removeMemberUnchecked(positions.at(0).first);
+              andNode->removeMemberUncheckedUnordered(positions.at(0).first);
               goto restartThisOrItem;
             }
             case CompareResult::OTHER_CONTAINED_IN_SELF: {
               TRI_ASSERT(j < positions.size());
-              andNode->removeMemberUnchecked(positions.at(j).first);
+              andNode->removeMemberUncheckedUnordered(positions.at(j).first);
               goto restartThisOrItem;
             }
             case CompareResult::CONVERT_EQUAL: {  // both ok, now transform to a
                                                   // == x (== y)
               TRI_ASSERT(!positions.empty());
               TRI_ASSERT(j < positions.size());
-              andNode->removeMemberUnchecked(positions.at(j).first);
+              TRI_ASSERT(positions.at(j).first > positions.at(0).first); // in this case remove will not spoil members indexes
+              andNode->removeMemberUncheckedUnordered(positions.at(j).first);
               auto origNode = andNode->getMemberUnchecked(positions.at(0).first);
               auto newNode = plan->getAst()->createNode(NODE_TYPE_OPERATOR_BINARY_EQ);
               for (size_t iMemb = 0; iMemb < origNode->numMembers(); iMemb++) {
@@ -1493,8 +1632,7 @@ AstNode* Condition::deduplicateInOperation(AstNode* operation) {
 }
 
 /// @brief merge the values from two IN operations
-AstNode* Condition::mergeInOperations(transaction::Methods* trx,
-                                      AstNode const* lhs, AstNode const* rhs) {
+AstNode* Condition::mergeInOperations(AstNode const* lhs, AstNode const* rhs) {
   TRI_ASSERT(lhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
   TRI_ASSERT(rhs->type == NODE_TYPE_OPERATOR_BINARY_IN);
 
@@ -1602,8 +1740,10 @@ AstNode* normalizeCompare(Ast* ast, AstNode* node) {
   return node;
 }
 
-/// @brief converts binary to n-ary, comparision normal and negation normal form
-AstNode* Condition::transformNodePreorder(AstNode* node) {
+/// @brief converts binary to n-ary, comparison normal and negation normal form
+AstNode* Condition::transformNodePreorder(
+    AstNode* node,
+    ConditionOptimization conditionOptimization /*= ConditionOptimization::Auto*/) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1616,18 +1756,18 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
     // create a new n-ary node
     node = _ast->createNode(Ast::NaryOperatorType(old->type));
     node->reserve(2);
-    node->addMember(transformNodePreorder(old->getMember(0)));
-    node->addMember(transformNodePreorder(old->getMember(1)));
-
+    node->addMember(transformNodePreorder(old->getMember(0), conditionOptimization));
+    node->addMember(transformNodePreorder(old->getMember(1), conditionOptimization));
     return node;
   }
 
   if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     // push down logical negations
     auto sub = node->getMemberUnchecked(0);
-
-    if (sub->type == NODE_TYPE_OPERATOR_NARY_AND || sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-        sub->type == NODE_TYPE_OPERATOR_NARY_OR || sub->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    const bool negationConversion =   conditionOptimization != ConditionOptimization::None &&
+                                      conditionOptimization != ConditionOptimization::NoNegation;
+    if (negationConversion && (sub->type == NODE_TYPE_OPERATOR_NARY_AND || sub->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+        sub->type == NODE_TYPE_OPERATOR_NARY_OR || sub->type == NODE_TYPE_OPERATOR_BINARY_OR)) {
       size_t const n = sub->numMembers();
 
       AstNode* newOperator = nullptr;
@@ -1652,11 +1792,11 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
 
     if (sub->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
       // eliminate double-negatives
-      return transformNodePreorder(sub->getMemberUnchecked(0));
+      return transformNodePreorder(sub->getMemberUnchecked(0), conditionOptimization);
     }
 
     auto replacement = _ast->shallowCopyForModify(node);
-    replacement->changeMember(0, transformNodePreorder(sub));
+    replacement->changeMember(0, transformNodePreorder(sub, conditionOptimization));
 
     return replacement;
   }
@@ -1666,7 +1806,9 @@ AstNode* Condition::transformNodePreorder(AstNode* node) {
 }
 
 /// @brief converts from negation normal to disjunctive normal form
-AstNode* Condition::transformNodePostorder(AstNode* node) {
+AstNode* Condition::transformNodePostorder(
+    AstNode* node,
+    ConditionOptimization conditionOptimization /*= ConditionOptimization::Auto*/) {
   if (node == nullptr) {
     return node;
   }
@@ -1682,7 +1824,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
 
     for (size_t i = 0; i < n; ++i) {
       // process subnodes first
-      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i), conditionOptimization);
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {
@@ -1698,7 +1840,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
       n = node->numMembers();
     }
 
-    if (distributeOverChildren) {
+    if (distributeOverChildren && conditionOptimization == ConditionOptimization::Auto) {
       // we found an AND with at least one OR child, e.g.
       //        AND
       //   OR          c
@@ -1787,7 +1929,7 @@ AstNode* Condition::transformNodePostorder(AstNode* node) {
     bool mustCollapse = false;
 
     for (size_t i = 0; i < n; ++i) {
-      auto sub = transformNodePostorder(node->getMemberUnchecked(i));
+      auto sub = transformNodePostorder(node->getMemberUnchecked(i), conditionOptimization);
       node->changeMember(i, sub);
 
       if (sub->type == NODE_TYPE_OPERATOR_NARY_OR) {

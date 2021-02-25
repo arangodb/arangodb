@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -53,17 +54,18 @@ void traverseReadOnly(AstNode* node, AstNode* parentNode, size_t childNumber,
 template<typename T>
 struct TraversalState {
   Variable const* variable;
-  latematerialized::NodeWithAttrs<T>& nodeAttrs;
+  T& nodeAttrs;
   bool optimize;
   bool wasAccess;
 };
+
 }
 
 // determines attributes referenced in an expression for the specified out variable
 template<typename T>
 bool latematerialized::getReferencedAttributes(AstNode* node,
                                                Variable const* variable,
-                                               NodeWithAttrs<T>& nodeAttrs) {
+                                               T& nodeAttrs) {
   TraversalState<T> state{variable, nodeAttrs, true, false};
 
   auto preVisitor = [&state](AstNode const* node,
@@ -75,11 +77,11 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
     switch (node->type) {
       case NODE_TYPE_ATTRIBUTE_ACCESS:
         if (!state.wasAccess) {
-          T afData;
+          typename T::DataType afData;
           afData.parentNode = parentNode;
           afData.childNumber = childNumber;
           state.nodeAttrs.attrs.emplace_back(
-            typename NodeWithAttrs<T>::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
+            typename T::AttributeAndField{std::vector<arangodb::basics::AttributeName>{
               {std::string(node->getStringValue(), node->getStringLength()), false}}, std::move(afData)});
           state.wasAccess = true;
         } else {
@@ -124,15 +126,46 @@ bool latematerialized::getReferencedAttributes(AstNode* node,
   return state.optimize;
 }
 
-template struct latematerialized::NodeWithAttrs<latematerialized::AstAndFieldData>;
-template struct latematerialized::NodeWithAttrs<latematerialized::AstAndColumnFieldData>;
+bool latematerialized::isPrefix(std::vector<arangodb::basics::AttributeName> const& prefix,
+                                std::vector<arangodb::basics::AttributeName> const& attrs,
+                                bool ignoreExpansionInLast,
+                                std::vector<std::string>& postfix) {
+  TRI_ASSERT(postfix.empty());
+  if (prefix.size() > attrs.size()) {
+    return false;
+  }
+
+  size_t i = 0;
+  for (; i < prefix.size(); ++i) {
+    if (prefix[i].name != attrs[i].name) {
+      return false;
+    }
+    if (prefix[i].shouldExpand != attrs[i].shouldExpand) {
+      if (!ignoreExpansionInLast) {
+        return false;
+      }
+      if (i != prefix.size() - 1) {
+        return false;
+      }
+    }
+  }
+  if (i < attrs.size()) {
+    postfix.reserve(attrs.size() - i);
+    std::transform(attrs.cbegin() + static_cast<ptrdiff_t>(i),
+                   attrs.cend(), std::back_inserter(postfix), [](auto const& attr) {
+      return attr.name;
+    });
+  }
+
+  return true;
+}
 
 template bool latematerialized::getReferencedAttributes(
   AstNode* node,
   Variable const* variable,
-  NodeWithAttrs<latematerialized::AstAndFieldData>& nodeAttrs);
+  NodeExpressionWithAttrs& nodeAttrs);
 
 template bool latematerialized::getReferencedAttributes(
   AstNode* node,
   Variable const* variable,
-  NodeWithAttrs<latematerialized::AstAndColumnFieldData>& nodeAttrs);
+  NodeWithAttrsColumn& nodeAttrs);

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,17 +24,15 @@
 #ifndef ARANGOD_GRAPH_TRAVERSER_CACHE_H
 #define ARANGOD_GRAPH_TRAVERSER_CACHE_H 1
 
-#include <memory>
+#include "Basics/Common.h"
+#include "Basics/StringHeap.h"
+#include "VocBase/ManagedDocumentResult.h"
+
+#include <velocypack/HashedStringRef.h>
+
 #include <unordered_set>
 
-#include "Basics/Common.h"
-
-#include <velocypack/StringRef.h>
-#include <map>
-
 namespace arangodb {
-class ManagedDocumentResult;
-class StringHeap;
 
 namespace transaction {
 class Methods;
@@ -41,12 +40,13 @@ class Methods;
 
 namespace velocypack {
 class Builder;
+class StringRef;
 class Slice;
 }  // namespace velocypack
 
 namespace aql {
 struct AqlValue;
-class Query;
+class QueryContext;
 }  // namespace aql
 
 namespace graph {
@@ -63,7 +63,7 @@ struct BaseOptions;
 
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::Query* query, BaseOptions const* opts);
+  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts);
 
   virtual ~TraverserCache();
 
@@ -78,21 +78,17 @@ class TraverserCache {
                                     velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document identified by the _id string
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void insertVertexIntoResult(arangodb::velocypack::StringRef idString, velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
+  /// @brief Append the vertex for the given id
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result);
+  virtual bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result);
 
   size_t getAndResetInsertedDocuments() {
     size_t tmp = _insertedDocuments;
@@ -110,7 +106,9 @@ class TraverserCache {
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef const idString);
+  arangodb::velocypack::StringRef persistString(arangodb::velocypack::StringRef idString);
+  
+  arangodb::velocypack::HashedStringRef persistString(arangodb::velocypack::HashedStringRef idString);
 
   void increaseFilterCounter() { _filteredDocuments++; }
 
@@ -121,23 +119,15 @@ class TraverserCache {
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup a document from the database.
-  ///        The Slice returned here is only valid until the NEXT call of this
-  ///        function.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::velocypack::Slice lookupInCollection(arangodb::velocypack::StringRef idString);
-
- protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Reusable ManagedDocumentResult that temporarily takes
   ///        responsibility for one document.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
+  ManagedDocumentResult _mmdr;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
   //////////////////////////////////////////////////////////////////////////////
-  arangodb::aql::Query* _query;
+  arangodb::aql::QueryContext& _query;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Transaction to access data, This class is NOT responsible for it.
@@ -158,13 +148,13 @@ class TraverserCache {
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
   //////////////////////////////////////////////////////////////////////////////
-  std::unique_ptr<arangodb::StringHeap> _stringHeap;
+  arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::StringRef> _persistedStrings;
+  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
   BaseOptions const* _baseOptions;
 };

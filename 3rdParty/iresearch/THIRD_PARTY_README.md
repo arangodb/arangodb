@@ -2,7 +2,7 @@ IResearch search engine
 
 Third Party Software Read Me
 
-Copyright© 2017 ArangoDB GmbH. All rights reserved.
+Copyright© 2017-2020 ArangoDB GmbH. All rights reserved.
 Published October, 2017
 
 Copyright© 2016-2017 EMC Corporation. All rights reserved.
@@ -50,7 +50,7 @@ number of components produced by third parties
     - License: [BSD 3-clauses](http://snowball.tartarus.org/license.html)
     - How it's used: Statically or dynamically linked into the library
 6.  Title: ICU 
-    - Copyright: UNICODE, INC. 
+    - Copyright: UNICODE, INC.
     - License: [UNICODE INC. LICENSE AGREEMENT](   http://www.unicode.org/copyright.html#License)
     - How it's used: Dynamically linked into the library
 7.  Title: Bison
@@ -73,6 +73,14 @@ number of components produced by third parties
     - Copyright: Daniel Lemire
     - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
     - How it's used: compression library
+12. Title: frozen
+    - Copyright: serge-sans-paille <sguelton@quarkslab.com>
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: immutable compile time std-like containers
+13. Title: Kaldi
+    - Copyright: Daniel Povey <dpovey@gmail.com>
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: a set of extensions for OpenFST library
 
 ## Third Party Open Source Software licenses
 
@@ -289,7 +297,7 @@ The above copyright notice and this permission notice shall be included in all c
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-### Boost
+### Boost, utfcpp
 Boost Software License - Version 1.0 - August 17th, 2003
 
 Permission is hereby granted, free of charge, to any person or organization

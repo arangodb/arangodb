@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,13 +26,15 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Replication/utilities.h"
 #include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "VocBase/Identifiers/ServerId.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 typedef uint64_t RocksDBReplicationId;
 
@@ -41,7 +44,7 @@ class RocksDBReplicationManager {
   /// @brief create a contexts repository
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit RocksDBReplicationManager();
+  explicit RocksDBReplicationManager(RocksDBEngine&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroy a contexts repository
@@ -56,8 +59,9 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext(double ttl, SyncerId syncerId,
-                                           TRI_server_id_t clientId);
+  RocksDBReplicationContext* createContext(RocksDBEngine&, double ttl,
+                                           SyncerId syncerId, ServerId clientId,
+                                           std::string const& patchCount);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -81,7 +85,7 @@ class RocksDBReplicationManager {
   /// may be used concurrently on used contexts
   /// populates clientId
   //////////////////////////////////////////////////////////////////////////////
-  ResultT<std::tuple<SyncerId, TRI_server_id_t, std::string>> extendLifetime(
+  ResultT<std::tuple<SyncerId, ServerId, std::string>> extendLifetime(
       RocksDBReplicationId, double ttl = replutils::BatchInfo::DefaultTimeout);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -95,6 +99,12 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   void drop(TRI_vocbase_t*);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief drop contexts by collection (at least mark them as deleted)
+  //////////////////////////////////////////////////////////////////////////////
+  //
+  void drop(LogicalCollection*);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief drop all contexts (at least mark them as deleted)

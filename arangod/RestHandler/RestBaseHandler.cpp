@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,14 +25,13 @@
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
-#include "Meta/conversion.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
 
 using namespace arangodb;
@@ -50,13 +49,15 @@ RestBaseHandler::RestBaseHandler(application_features::ApplicationServer& server
 arangodb::velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
-    VPackOptions optionsWithUniquenessCheck = VPackOptions::Defaults;
-    optionsWithUniquenessCheck.checkAttributeUniqueness = true;
-    return _request->payload(&optionsWithUniquenessCheck);
+    return _request->payload(true);
   } catch (VPackException const& e) {
+    // simon: do not mess with the error message format, tests break
     std::string errmsg("VPackError error: ");
     errmsg.append(e.what());
+    LOG_TOPIC("414a9", DEBUG, arangodb::Logger::REQUESTS) << errmsg;
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, errmsg);
+  } catch (...) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON, "unknown exception");
   }
   success = false;
   return VPackSlice::noneSlice();
@@ -73,18 +74,14 @@ void RestBaseHandler::handleError(Exception const& ex) {
 template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload) {
   resetResponse(code);
-  VPackOptions options(VPackOptions::Defaults);
-  options.escapeUnicode = true;
-  writeResult(std::forward<Payload>(payload), options);
+  writeResult(std::forward<Payload>(payload), VPackOptions::Defaults);
 }
 
 template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      VPackOptions const* options) {
   resetResponse(code);
-  VPackOptions tmpoptions(*options);
-  tmpoptions.escapeUnicode = true;
-  writeResult(std::forward<Payload>(payload), tmpoptions);
+  writeResult(std::forward<Payload>(payload), *options);
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates a result from VelocyPack
@@ -94,13 +91,13 @@ template <typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
                                      std::shared_ptr<transaction::Context> context) {
   resetResponse(code);
-  writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
+  writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
 
 /// convenience function akin to generateError,
 /// renders payload in 'result' field
 /// adds proper `error`, `code` fields
-void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload) {
   resetResponse(code);
 
   try {
@@ -109,12 +106,12 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice const& payl
     tmp.add(VPackValue(VPackValueType::Object, true));
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-    tmp.add("result", payload);
+    if (!payload.isNone()) {
+      tmp.add("result", payload);
+    }
     tmp.close();
-
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(std::move(buffer), options);
+    
+    writeResult(std::move(buffer), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -133,9 +130,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackBuilder const& pa
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(tmp.slice(), options);
+    writeResult(tmp.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }
@@ -156,11 +151,10 @@ void RestBaseHandler::generateCanceled() {
 template <typename Payload>
 void RestBaseHandler::writeResult(Payload&& payload, VPackOptions const& options) {
   try {
-    TRI_ASSERT(options.escapeUnicode);
     if (_request != nullptr) {
       _response->setContentType(_request->contentTypeResponse());
     }
-    _response->setPayload(std::forward<Payload>(payload), /*generateBody*/true, options);
+    _response->setPayload(std::forward<Payload>(payload), options);
   } catch (basics::Exception const& ex) {
     generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
   } catch (std::exception const& ex) {

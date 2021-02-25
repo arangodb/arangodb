@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,8 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/vocbase.h"
 
 #include <rocksdb/options.h>
@@ -49,6 +51,9 @@ class Snapshot;
 }  // namespace rocksdb
 
 namespace arangodb {
+class LogicalCollection;
+class RocksDBEngine;
+
 namespace basics {
 class StringBuffer;
 }
@@ -80,6 +85,8 @@ class RocksDBReplicationContext {
     /// @brief number of documents in this collection
     /// only set in a very specific use-case
     uint64_t numberDocuments;
+     /// @brief number of documents we iterated over in /dump
+    uint64_t numberDocumentsDumped;
     /// @brief snapshot and number documents were fetched exclusively
     bool isNumberDocumentsExclusive;
 
@@ -119,31 +126,42 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext(double ttl, SyncerId syncerId, TRI_server_id_t clientId);
+  RocksDBReplicationContext(RocksDBEngine&, double ttl, SyncerId syncerId, ServerId clientId);
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const;  // batchId
+  rocksdb::Snapshot const* snapshot();
   uint64_t snapshotTick();
 
   /// invalidate all iterators with that vocbase
   void removeVocbase(TRI_vocbase_t&);
+  /// invalidate all iterators with that collection
+  bool removeCollection(LogicalCollection&);
 
   /// remove matching iterator
-  void releaseIterators(TRI_vocbase_t&, TRI_voc_cid_t);
+  void releaseIterators(TRI_vocbase_t&, DataSourceId);
 
-  std::tuple<Result, TRI_voc_cid_t, uint64_t> bindCollectionIncremental(
+  std::tuple<Result, DataSourceId, uint64_t> bindCollectionIncremental(
       TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                       bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
+  
+  // returns inventory for a single shard (DB server only!)
+  Result getInventory(TRI_vocbase_t& vocbase, std::string const& collectionName,
+                      velocypack::Builder&);
+
+  void setPatchCount(std::string const& patchCount);
+  std::string const& patchCount() const;
 
   // ========================= Dump API =============================
 
   struct DumpResult {
-    explicit DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
-    DumpResult(int res, bool hm, uint64_t tick)
+    explicit DumpResult(ErrorCode res)
+        : hasMore(false), includedTick(0), _result(res) {}
+    DumpResult(ErrorCode res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;
     uint64_t includedTick;  // tick increases for each fetch
@@ -151,9 +169,9 @@ class RocksDBReplicationContext {
     // forwarded methods
     bool ok() const { return _result.ok(); }
     bool fail() const { return _result.fail(); }
-    int errorNumber() const { return _result.errorNumber(); }
-    std::string errorMessage() const { return _result.errorMessage(); }
-    bool is(int code) const { return _result.is(code); }
+    ErrorCode errorNumber() const { return _result.errorNumber(); }
+    std::string_view errorMessage() const { return _result.errorMessage(); }
+    bool is(ErrorCode code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }
@@ -166,26 +184,28 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize);
+                      basics::StringBuffer&, uint64_t chunkSize,
+                      bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
-                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize);
+                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize,
+                       bool useEnvelope);
 
   // ==================== Incremental Sync ===========================
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
   // per chunk. Distance between min and maxKey should be chunkSize
-  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpKeyChunks(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  velocypack::Builder& outBuilder, uint64_t chunkSize);
   /// dump all keys from collection
-  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpKeys(TRI_vocbase_t& vocbase, DataSourceId cid,
                             velocypack::Builder& outBuilder, size_t chunk,
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
-  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  arangodb::Result dumpDocuments(TRI_vocbase_t& vocbase, DataSourceId cid,
                                  velocypack::Builder& b, size_t chunk,
                                  size_t chunkSize, size_t offsetInChunk,
                                  size_t maxChunkSize, std::string const& lowKey,
@@ -207,9 +227,7 @@ class RocksDBReplicationContext {
     return _syncerId;
   }
 
-  TRI_server_id_t replicationClientServerId() const {
-    return _clientId;
-  }
+  ServerId replicationClientServerId() const { return _clientId; }
 
   std::string const& clientInfo() const {
     return _clientInfo;
@@ -218,21 +236,28 @@ class RocksDBReplicationContext {
  private:
   void lazyCreateSnapshot();
 
-  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, TRI_voc_cid_t cid,
+  CollectionIterator* getCollectionIterator(TRI_vocbase_t& vocbase, DataSourceId cid,
                                             bool sorted, bool allowCreate);
 
   void releaseDumpIterator(CollectionIterator*);
 
  private:
+  RocksDBEngine& _engine;
   TRI_voc_tick_t const _id;  // batch id
   mutable Mutex _contextLock;
   SyncerId const _syncerId;
-  TRI_server_id_t const _clientId;
+  ServerId const _clientId;
   std::string const _clientInfo;
+
+  /// @brief collection for which we are allowed to patch counts. this can
+  /// be empty, meaning that the counts should not be patched for any collection.
+  /// if this is set to the name of any collection/shard, it is expected that the
+  /// context will only be used for exactly one collection/shard.
+  std::string _patchCount;
 
   uint64_t _snapshotTick;  // tick in WAL from _snapshot
   rocksdb::Snapshot const* _snapshot;
-  std::map<TRI_voc_cid_t, std::unique_ptr<CollectionIterator>> _iterators;
+  std::map<DataSourceId, std::unique_ptr<CollectionIterator>> _iterators;
 
   double const _ttl;
   /// @brief expiration time, updated under lock by ReplicationManager

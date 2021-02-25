@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Agency/TimeString.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/HeartbeatThread.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,13 +44,20 @@ inline static std::chrono::system_clock::duration secs_since_epoch() {
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription const& desc)
-    : _feature(feature), _description(desc), _state(READY), _progress(0),
+    : _feature(feature),
+      _description(desc),
+      _state(READY),
+      _progress(0),
       _priority(desc.priority()) {
   init();
 }
 
 ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
-    : _feature(feature), _description(std::move(desc)), _state(READY), _progress(0), _priority(desc.priority()) {
+    : _feature(feature),
+      _description(std::move(desc)),
+      _state(READY),
+      _progress(0),
+      _priority(desc.priority()) {
   init();
 }
 
@@ -69,10 +77,10 @@ ActionBase::~ActionBase() = default;
 
 void ActionBase::notify() {
   LOG_TOPIC("df020", DEBUG, Logger::MAINTENANCE)
-      << "Job " << _description << " calling syncDBServerStatusQuo";
+      << "Job " << _description << " notifing maintenance";
   auto& server = _feature.server();
   if (server.hasFeature<ClusterFeature>()) {
-    server.getFeature<ClusterFeature>().syncDBServerStatusQuo();
+    server.getFeature<ClusterFeature>().notify();
   }
 }
 
@@ -166,12 +174,12 @@ void ActionBase::endStats() {
 
 }  // ActionBase::endStats
 
-Result arangodb::actionError(int errorCode, std::string const& errorMessage) {
+Result arangodb::actionError(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
 
-Result arangodb::actionWarn(int errorCode, std::string const& errorMessage) {
+Result arangodb::actionWarn(ErrorCode errorCode, std::string const& errorMessage) {
   LOG_TOPIC("abe54", WARN, Logger::MAINTENANCE) << errorMessage;
   return Result(errorCode, errorMessage);
 }
@@ -183,10 +191,18 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
   builder.add("state", VPackValue(_state));
   builder.add("progress", VPackValue(_progress));
 
-  builder.add("created", VPackValue(timepointToString(_actionCreated.load())));
-  builder.add("started", VPackValue(timepointToString(_actionStarted.load())));
-  builder.add("lastStat", VPackValue(timepointToString(_actionLastStat.load())));
-  builder.add("done", VPackValue(timepointToString(_actionDone.load())));
+  builder.add("created", VPackValue(timepointToString(
+                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                 _actionCreated.load()))));
+  builder.add("started", VPackValue(timepointToString(
+                             std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                 _actionStarted.load()))));
+  builder.add("lastStat", VPackValue(timepointToString(
+                              std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                                  _actionLastStat.load()))));
+  builder.add("done", VPackValue(timepointToString(
+                          std::chrono::duration_cast<std::chrono::system_clock::duration>(
+                              _actionDone.load()))));
 
   builder.add("result", VPackValue(_result.errorNumber()));
 
@@ -206,15 +222,14 @@ VPackBuilder ActionBase::toVelocyPack() const {
 
 ActionState ActionBase::getState() const { return _state; }
 
-void ActionBase::setState(ActionState state) { _state = state; }
-
-/**
- * kill() operation is an expected future feature.  Not supported in the
- *  original ActionBase derivatives
- */
-arangodb::Result ActionBase::kill(Signal const& signal) {
-  return actionError(TRI_ERROR_ACTION_OPERATION_UNABORTABLE,
-                     "Kill operation not supported on this action.");
+void ActionBase::setState(ActionState state) {
+  // We want to make sure that we get another maintenance run
+  // when we shift from any state to complete or failed 
+  if ((COMPLETE == state || FAILED == state) && _state != state && _description.has(DATABASE)) {
+    _feature.addDirty(_description.get(DATABASE));
+    TRI_ASSERT(!_description.get(DATABASE).empty());
+  }
+  _state = state;
 }
 
 /**

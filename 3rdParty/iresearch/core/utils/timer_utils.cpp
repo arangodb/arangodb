@@ -28,19 +28,17 @@
 #include <unordered_map>
 #include <map>
 
-NS_LOCAL
+namespace {
 
-class timer_states: public iresearch::singleton<timer_states> {
+class timer_states: public irs::singleton<timer_states> {
  public:
   typedef std::string key_type;
-  typedef iresearch::timer_utils::timer_stat_t entry_type;
+  typedef irs::timer_utils::timer_stat_t entry_type;
   typedef std::unordered_map<key_type, entry_type> state_map_t;
 
   timer_states(): track_all_keys_(false) {}
 
-  entry_type& find(
-    const key_type& key
-  ) {
+  entry_type& find(const key_type& key) {
     if (track_all_keys_) {
       std::lock_guard<std::mutex> lock(mutex_);
       auto itr = state_map_.emplace(std::piecewise_construct, std::forward_as_tuple(key), std::forward_as_tuple());
@@ -59,9 +57,8 @@ class timer_states: public iresearch::singleton<timer_states> {
   }
 
   void init(
-    bool track_all_keys = false,
-    const std::unordered_set<key_type>& tracked_keys = std::unordered_set<key_type>()
-  ) {
+      bool track_all_keys = false,
+      const std::unordered_set<key_type>& tracked_keys = std::unordered_set<key_type>()) {
     std::lock_guard<std::mutex> lock(mutex_);
 
     for (auto& entry: state_map_) {
@@ -97,18 +94,14 @@ class timer_states: public iresearch::singleton<timer_states> {
   bool track_all_keys_;
 };
 
-NS_END // NS_LOCAL
+} // namespace {
 
-NS_ROOT
-NS_BEGIN(timer_utils)
+namespace iresearch {
+namespace timer_utils {
 
 scoped_timer::scoped_timer(timer_stat_t& stat):
   start_(std::chrono::system_clock::now().time_since_epoch().count()), stat_(stat) {
   ++(stat_.count);
-}
-
-scoped_timer::scoped_timer(scoped_timer&& other) NOEXCEPT
-  : start_(other.start_), stat_(other.stat_) {
 }
 
 scoped_timer::~scoped_timer() {
@@ -176,9 +169,5 @@ void flush_stats(std::ostream &out) {
   }
 }
 
-NS_END // timer_utils
-NS_END // NS_ROOT
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+} // timer_utils
+} // namespace iresearch {

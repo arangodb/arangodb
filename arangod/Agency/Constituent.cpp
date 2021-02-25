@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,8 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
@@ -73,8 +73,9 @@ void Constituent::configure(Agent* agent) {
 Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
-      _queryRegistry(nullptr),
       _term(0),
+      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
+               "arangodb_agency_term", _term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),
@@ -107,6 +108,7 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
   term_t tmp = _term;
   _term = t;
+  _gterm = t;
   std::string tmpVotedFor = _votedFor;
   _votedFor = votedFor;
 
@@ -138,28 +140,17 @@ void Constituent::termNoLock(term_t t, std::string const& votedFor) {
 
     options.waitForSync = _agent->config().waitForSync();
     options.silent = true;
-
-    OperationResult result;
-
-    if (tmp != t) {
-      try {
-        result = trx.insert("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
-            << "Failed to insert RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
-    } else {
-      try {
-        result = trx.replace("election", body.slice(), options);
-      } catch (std::exception const& e) {
-        LOG_TOPIC("ac75f", FATAL, Logger::AGENCY)
-            << "Failed to replace  RAFT election ballot: " << e.what() << ". Bailing out.";
-        FATAL_ERROR_EXIT();
-      }
+    try {
+      OperationResult result = (tmp != t)
+                                   ? trx.insert("election", body.slice(), options)
+                                   : trx.replace("election", body.slice(), options);
+      res = trx.finish(result.result);
+    } catch (std::exception const& e) {
+      LOG_TOPIC("334ae", FATAL, Logger::AGENCY)
+          << "Failed to " << ((tmp != t) ? "insert" : "replace")
+          << " RAFT election ballot: " << e.what() << ". Bailing out.";
+      FATAL_ERROR_EXIT();
     }
-
-    res = trx.finish(result.errorNumber());
   }
 }
 
@@ -193,8 +184,7 @@ bool Constituent::logMatches(arangodb::consensus::index_t prevLogIndex,
 
 /// My role
 role_t Constituent::role() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role;
+  return _role.load(std::memory_order_relaxed);
 }
 
 /// Become follower in term
@@ -238,7 +228,7 @@ void Constituent::lead(term_t term) {
     }
 
     // if we already lead, ignore this request
-    if (_role == LEADER) {
+    if (_role.load(std::memory_order_relaxed) == LEADER) {
       TRI_ASSERT(_leaderID == _id);
       return;
     }
@@ -271,7 +261,7 @@ void Constituent::candidate() {
         << "Set _leaderID to NO_LEADER in Constituent::candidate";
   }
 
-  if (_role != CANDIDATE) {
+  if (_role.load(std::memory_order_relaxed) != CANDIDATE) {
     _role = CANDIDATE;
     LOG_TOPIC("aefab", INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
 
@@ -283,20 +273,17 @@ void Constituent::candidate() {
 
 /// Leading?
 bool Constituent::leading() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == LEADER;
+  return _role.load(std::memory_order_relaxed) == LEADER;
 }
 
 /// Following?
 bool Constituent::following() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == FOLLOWER;
+  return _role.load(std::memory_order_relaxed) == FOLLOWER;
 }
 
 /// Running as candidate?
 bool Constituent::running() const {
-  MUTEX_LOCKER(guard, _termVoteLock);
-  return _role == CANDIDATE;
+  return _role.load(std::memory_order_relaxed) == CANDIDATE;
 }
 
 /// Get current leader's id
@@ -352,7 +339,7 @@ bool Constituent::checkLeader(term_t term, std::string const& id,
     }
 
     TRI_ASSERT(_leaderID != _id);
-    if (_role != FOLLOWER) {
+    if (_role.load(std::memory_order_relaxed) != FOLLOWER) {
       followNoLock(0);  // do not adjust _term or _votedFor
     }
   }
@@ -377,7 +364,7 @@ bool Constituent::vote(term_t termOfPeer, std::string const& id,
       << ", prev-log-term: " << prevLogTerm << ") in (my) term " << _term;
 
   if (termOfPeer > _term) {
-    if (_role != FOLLOWER) {
+    if (_role.load(std::memory_order_relaxed) != FOLLOWER) {
       followNoLock(termOfPeer, NO_LEADER);
     } else {
       termNoLock(termOfPeer, NO_LEADER);
@@ -451,8 +438,6 @@ void Constituent::callElection() {
     _leaderID = NO_LEADER;
   }
 
-  std::stringstream path;
-
   int64_t electionEventCount = countRecentElectionEvents(3600);
   if (electionEventCount <= 0) {
     electionEventCount = 1;
@@ -466,16 +451,15 @@ void Constituent::callElection() {
                                     << electionEventCount << " for next term...";
   }
 
-  path << "/_api/agency_priv/requestVote?term=" << savedTerm
-       << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term
-       << "&timeoutMult=" << electionEventCount;
-
   auto const& nf = _agent->server().getFeature<arangodb::NetworkFeature>();
   network::ConnectionPool* cp = nf.pool();
   
   network::RequestOptions reqOpts;
   reqOpts.timeout = timeout;
+  reqOpts.param("term", std::to_string(savedTerm)).param("candidateId", _id)
+         .param("prevLogIndex", std::to_string(_agent->lastLog().index))
+         .param("prevLogTerm", std::to_string(_agent->lastLog().term))
+         .param("timeoutMult", std::to_string(electionEventCount));
   
   // Ask everyone for their vote
   // Collect ballots. I vote for myself.
@@ -488,9 +472,9 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, path.str(),
+    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get, "/_api/agency_priv/requestVote",
                          VPackBuffer<uint8_t>(), reqOpts).thenValue([=](network::Response r) {
-      if (r.ok() && r.response->statusCode() == 200) {
+      if (r.ok() && r.statusCode() == 200) {
         VPackSlice slc = r.slice();
 
         // Got ballot
@@ -502,7 +486,7 @@ void Constituent::callElection() {
             maxTermReceived->compare_exchange_strong(expectedT, receivedT);
           } else {
             // Check result and counts
-            if (slc.get("voteGranted").getBool()) {  // majority in favour?
+            if (slc.get("voteGranted").getBool()) {  // majority in favor?
               yea->fetch_add(1);
               // Vote is counted as yea
               return;
@@ -558,7 +542,7 @@ void Constituent::callElection() {
 void Constituent::update(std::string const& leaderID, term_t t) {
   MUTEX_LOCKER(guard, _termVoteLock);
   _term = t;
-
+  _gterm = t;
   if (_leaderID != leaderID) {
     LOG_TOPIC("fe299", INFO, Logger::AGENCY)
         << "Constituent::update: setting _leaderID to '" << leaderID
@@ -577,10 +561,9 @@ void Constituent::beginShutdown() {
 }
 
 /// Start operation
-bool Constituent::start(TRI_vocbase_t* vocbase, aql::QueryRegistry* queryRegistry) {
+bool Constituent::start(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase != nullptr);
   _vocbase = vocbase;
-  _queryRegistry = queryRegistry;
 
   return Thread::start();
 }
@@ -591,18 +574,15 @@ void Constituent::run() {
   _id = _agent->config().id();
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto bindVars = std::make_shared<VPackBuilder>();
-  bindVars->openObject();
-  bindVars->close();
 
   // Most recent vote
   {
     std::string const aql(
         "FOR l IN election SORT l._key DESC LIMIT 1 RETURN l");
-    arangodb::aql::Query query(false, *_vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*_vocbase),
+                               arangodb::aql::QueryString(aql), nullptr);
 
-    aql::QueryResult queryResult = query.executeSync(_queryRegistry);
+    aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -615,12 +595,10 @@ void Constituent::run() {
         auto ii = i.resolveExternals();
         try {
           MUTEX_LOCKER(locker, _termVoteLock);
-          _term = ii.get("term").getUInt();
-          _votedFor = ii.get("voted_for").copyString();
+          termNoLock(ii.get("term").getUInt(), ii.get("voted_for").copyString());
         } catch (std::exception const&) {
           LOG_TOPIC("404be", ERR, Logger::AGENCY)
-              << "Persisted election entries corrupt! Defaulting term,vote "
-                 "(0,0)";
+            << "Persisted election entries corrupt! Defaulting term,vote (0,0)";
         }
       }
     }
@@ -639,21 +617,21 @@ void Constituent::run() {
     MUTEX_LOCKER(guard, _termVoteLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC("66f72", INFO, Logger::AGENCY)
-        << "Set _leaderID to '" << _leaderID << "' in term " << _term;
+      << "Set _leaderID to '" << _leaderID << "' in term " << _term;
   } else {
     {
       MUTEX_LOCKER(guard, _termVoteLock);
-      LOG_TOPIC("29175", INFO, Logger::AGENCY) << "Setting role to follower"
-                                         " in term "
-                                      << _term;
+      LOG_TOPIC("29175", INFO, Logger::AGENCY)
+        << "Setting role to follower  in term " << _term;
       _role = FOLLOWER;
     }
+
+    std::chrono::steady_clock::time_point constituentLoopStart;
+
     while (!this->isStopping()) {
-      role_t role;
-      {
-        MUTEX_LOCKER(guard, _termVoteLock);
-        role = _role;
-      }
+      constituentLoopStart = std::chrono::steady_clock::now();
+
+      role_t role = _role.load(std::memory_order_relaxed);
 
       if (role == FOLLOWER) {
         static double const M = 1.0e6;
@@ -736,6 +714,7 @@ void Constituent::run() {
                 double diff = now - it->second;
                 if (diff >= interval) {
                   needed = true;
+                  nextWakeup = 0;
                 } else {
                   // diff < interval, so only needed again in interval-diff s
                   double waitOnly = interval - diff;
@@ -747,19 +726,41 @@ void Constituent::run() {
                 }
               }
             }
+            LOG_TOPIC("ddeea", DEBUG, Logger::AGENCY) << "Considering empty AppendEntriesRPC for follower "
+              << followerId << " needed: " << needed;
             if (needed) {
+              auto startTime = std::chrono::steady_clock::now();
               _agent->sendEmptyAppendEntriesRPC(followerId);
+              auto endTime = std::chrono::steady_clock::now();
+              if (endTime - startTime > std::chrono::milliseconds(100)) {
+                LOG_TOPIC("ddeeb", DEBUG, Logger::AGENCY)
+                  << "Call to sendEmptyAppendEntriesRPC took longer than 0.1 s: time needed: "
+                  << std::chrono::duration<double>(endTime - startTime).count();
+              }
             }
           }
         }
 
+        auto beforeWaitTime = std::chrono::steady_clock::now();
+
         // This is the smallest time until any of the followers need a
         // new empty heartbeat:
         uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
-        {
+        if (timeout > 0) {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(timeout);
         }
+        auto afterWaitTime = std::chrono::steady_clock::now();
+        if (afterWaitTime - constituentLoopStart > std::chrono::seconds(1) * _agent->config().minPing() * _agent->config().timeoutMult()) {
+          LOG_TOPIC("aa123", WARN, Logger::AGENCY)
+            << "Constituent loop delayed: First part took "
+            << (beforeWaitTime - constituentLoopStart).count()
+            << ", second part took "
+            << (afterWaitTime - beforeWaitTime).count()
+            << ", which is together more than minPing="
+            << _agent->config().minPing() * _agent->config().timeoutMult();
+        }
+
       }
     }
   }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,14 +31,12 @@
 #include "Replication/common-defines.h"
 #include "Replication/utilities.h"
 #include "Utils/DatabaseGuard.h"
+#include "VocBase/Identifiers/ServerId.h"
 #include "VocBase/ticks.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace application_features {
-class ApplicationServer;
-}
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
@@ -134,9 +132,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     /// @brief configuration
     ReplicationApplierConfiguration applier;
 
-    /// @brief information about the replication barrier
-    replutils::BarrierInfo barrier{};
-
     /// @brief object holding the HTTP client and all connection machinery
     replutils::Connection connection;
 
@@ -154,13 +149,13 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     std::string leaderId{};
 
     /// @brief local server id
-    TRI_server_id_t localServerId{0};
+    ServerId localServerId{ServerId::none()};
 
     /// @brief local server id
     std::string localServerIdString{};
 
-    /// @brief information about the master state
-    replutils::MasterInfo master;
+    /// @brief information about the leader state
+    replutils::LeaderInfo leader;
 
     /// @brief lazy loaded list of vocbases
     std::unordered_map<std::string, DatabaseGuard> vocbases{};
@@ -178,9 +173,6 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
-  /// @brief steal the barrier id from the syncer
-  TRI_voc_tick_t stealBarrier();
-
   void setLeaderId(std::string const& leaderId) { _state.leaderId = leaderId; }
 
   // TODO worker-safety
@@ -197,10 +189,14 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
   void reloadUsers();
 
   /// @brief apply a single marker from the collection dump
+  /// If the returned Result is TRI_ERROR_ARANGO_TRY_AGAIN,
+  /// conflictingDocumentKey will be set to the key of the conflicting document.
+  /// Otherwise, it will be untouched.
   // TODO worker-safety
   Result applyCollectionDumpMarker(transaction::Methods&, LogicalCollection* coll,
                                    TRI_replication_operation_e,
-                                   arangodb::velocypack::Slice const&);
+                                   arangodb::velocypack::Slice const&,
+                                   std::string& conflictingDocumentKey);
 
   /// @brief creates a collection, based on the VelocyPack provided
   // TODO worker safety - create/drop phase

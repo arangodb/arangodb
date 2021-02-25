@@ -27,7 +27,9 @@
 #include "index/iterators.hpp"
 #include "index/index_tests.hpp"
 
-NS_LOCAL
+using namespace std::chrono_literals;
+
+namespace {
 
 class skip_writer_test : public test_base {
   virtual void SetUp() {
@@ -131,7 +133,7 @@ class skip_reader_test : public test_base {
   }
 };
 
-NS_END
+}
 
 TEST_F(skip_writer_test, prepare) {
   // empty doc count
@@ -495,7 +497,7 @@ TEST_F(skip_reader_test, seek) {
 
           if (in.eof()) {
             lower = upper;
-            upper = irs::type_limits<irs::type_t::doc_id_t>::eof();
+            upper = irs::doc_limits::eof();
           } else {
             if (!level) {
               lower = in.read_vlong();
@@ -621,7 +623,7 @@ TEST_F(skip_reader_test, seek) {
       {
         ASSERT_EQ(1928, reader.seek(1928));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
 
       // seek after the last doc in a skip-list
@@ -629,7 +631,7 @@ TEST_F(skip_reader_test, seek) {
         calls_count = 0;
         ASSERT_EQ(1928, reader.seek(1930));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
         ASSERT_EQ(0, calls_count);
       }
 
@@ -638,16 +640,16 @@ TEST_F(skip_reader_test, seek) {
         calls_count = 0;
         ASSERT_EQ(1928, reader.seek(1935));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
         ASSERT_EQ(0, calls_count);
       }
 
       // seek to NO_MORE_DOCS
       {
         calls_count = 0;
-        ASSERT_EQ(1928, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::eof()));
+        ASSERT_EQ(1928, reader.seek(irs::doc_limits::eof()));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
         ASSERT_EQ(0, calls_count);
       }
 
@@ -656,7 +658,7 @@ TEST_F(skip_reader_test, seek) {
         calls_count = 0;
         ASSERT_EQ(1928, reader.seek(767));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
         ASSERT_EQ(0, calls_count);
       }
 
@@ -690,9 +692,9 @@ TEST_F(skip_reader_test, seek) {
       // reset && seek to irs::NO_MORE_DOCS
       {
         reader.reset();
-        ASSERT_EQ(1928, reader.seek(irs::type_limits<irs::type_t::doc_id_t>::eof()));
+        ASSERT_EQ(1928, reader.seek(irs::doc_limits::eof()));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
 
       // reset && seek to 1928 
@@ -700,7 +702,7 @@ TEST_F(skip_reader_test, seek) {
         reader.reset();
         ASSERT_EQ(1928, reader.seek(1928));
         ASSERT_EQ(1927, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
 
       // reset && seek to 1927 
@@ -791,7 +793,7 @@ TEST_F(skip_reader_test, seek) {
 
           if (in.eof()) {
             lower = upper;
-            upper = irs::type_limits<irs::type_t::doc_id_t>::eof();
+            upper = irs::doc_limits::eof();
           } else {
             if (!level) {
               lower = in.read_vlong();
@@ -924,14 +926,14 @@ TEST_F(skip_reader_test, seek) {
       {
         ASSERT_EQ(7192, reader.seek(7192));
         ASSERT_EQ(7191, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
 
       // seek to after the last doc in a skip-list
       {
         ASSERT_EQ(7192, reader.seek(7193));
         ASSERT_EQ(7191, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
     }
   }
@@ -1002,7 +1004,7 @@ TEST_F(skip_reader_test, seek) {
           last_level = level;
 
           if (in.eof()) {
-            upper = irs::type_limits<irs::type_t::doc_id_t>::eof();
+            upper = irs::doc_limits::eof();
           } else {
             upper = in.read_vlong();
           }
@@ -1111,7 +1113,7 @@ TEST_F(skip_reader_test, seek) {
       {
         ASSERT_EQ(14720, reader.seek(14721));
         ASSERT_EQ(14719, lower);
-        ASSERT_TRUE(irs::type_limits<irs::type_t::doc_id_t>::eof(upper));
+        ASSERT_TRUE(irs::doc_limits::eof(upper));
       }
     }
   }
@@ -1179,7 +1181,7 @@ TEST_F(skip_reader_test, seek) {
           last_level = level;
 
           if (in.eof()) {
-            upper = irs::type_limits<irs::type_t::doc_id_t>::eof();
+            upper = irs::doc_limits::eof();
           } else {
             upper = in.read_vlong();
           }
@@ -1212,7 +1214,3 @@ TEST_F(skip_reader_test, seek) {
     }
   }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

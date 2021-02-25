@@ -18,77 +18,81 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TERM_FILTER_H
 #define IRESEARCH_TERM_FILTER_H
 
-#include "filter.hpp"
+#include "search/filter.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
+
+class by_term;
+struct filter_visitor;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_term_options
+/// @brief options for term filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_term_options {
+  using filter_type = by_term;
+
+  bstring term;
+
+  bool operator==(const by_term_options& rhs) const noexcept {
+    return term == rhs.term;
+  }
+
+  size_t hash() const noexcept {
+    return std::hash<bstring>()(term);
+  }
+}; // by_term_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_term 
 /// @brief user-side term filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_term : public filter {
+class IRESEARCH_API by_term : public filter_base<by_term_options> {
  public:
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_term();
-
-  by_term& field(std::string fld) {
-    fld_ = std::move(fld); 
-    return *this;
-  }
-
-  const std::string& field() const { 
-    return fld_; 
-  }
-
-  by_term& term(bstring&& term) {
-    term_ = std::move(term);
-    return *this;
-  }
-
-  by_term& term(const bytes_ref& term) {
-    term_ = term;
-    return *this;
-  }
-
-  by_term& term(const string_ref& term) {
-    return this->term(ref_cast<byte_type>(term));
-  }
-
-  using filter::prepare;
-
-  virtual filter::prepared::ptr prepare(
+  static prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost,
-    const attribute_view& ctx
-  ) const override;
+    const string_ref& field,
+    const bytes_ref& term);
 
-  const bstring& term() const { 
-    return term_;
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& field,
+    const bytes_ref& term,
+    filter_visitor& visitor);
+
+  using filter::prepare;
+
+  virtual prepared::ptr prepare(
+      const index_reader& rdr,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_provider* /*ctx*/) const override {
+    return prepare(rdr, ord, boost*this->boost(),
+                   field(), options().term);
   }
+}; // by_term
 
-  virtual size_t hash() const NOEXCEPT override;
+}
 
- protected:
-  by_term(const type_id& type);
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
+namespace std {
 
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string fld_;
-  bstring term_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
+template<>
+struct hash<::iresearch::by_term_options> {
+  size_t operator()(const ::iresearch::by_term_options& v) const noexcept {
+    return v.hash();
+  }
 };
 
-NS_END
+}
 
-#endif
+#endif // IRESEARCH_TERM_FILTER_H

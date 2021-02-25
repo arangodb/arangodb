@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -206,7 +206,7 @@ size_t TRI_StringInt8InPlace(int8_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +231,7 @@ size_t TRI_StringUInt8InPlace(uint8_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -272,7 +272,7 @@ size_t TRI_StringInt16InPlace(int16_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,7 +303,7 @@ size_t TRI_StringUInt16InPlace(uint16_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,7 +359,7 @@ size_t TRI_StringInt32InPlace(int32_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +405,7 @@ size_t TRI_StringUInt32InPlace(uint32_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,7 +498,7 @@ size_t TRI_StringInt64InPlace(int64_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -579,7 +579,7 @@ size_t TRI_StringUInt64InPlace(uint64_t attr, char* buffer) {
   *p++ = (char)(attr % 10 + '0');
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -619,7 +619,7 @@ size_t TRI_StringUInt32HexInPlace(uint32_t attr, char* buffer) {
   *p++ = HEX[attr % 0x10];
   *p = '\0';
 
-  return (p - buffer);
+  return static_cast<size_t>(p - buffer);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

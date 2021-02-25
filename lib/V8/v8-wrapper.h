@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,6 @@ class V8Wrapper {
   V8Wrapper(v8::Isolate* isolate, STRUCT* object, void (*free)(STRUCT* object),
             v8::Handle<v8::Object> result)
       : _refs(0), _object(object), _free(free), _isolate(isolate) {
-    // sanity checks
     TRI_ASSERT(_handle.IsEmpty());
     TRI_ASSERT(result->InternalFieldCount() > 0);
 
@@ -80,8 +79,6 @@ class V8Wrapper {
 
   virtual ~V8Wrapper() {
     if (!_handle.IsEmpty()) {
-      TRI_ASSERT(_handle.IsNearDeath());
-
       _handle.ClearWeak();
       v8::Local<v8::Object> data = v8::Local<v8::Object>::New(_isolate, _handle);
       data->SetInternalField(0, v8::Undefined(_isolate));
@@ -170,7 +167,6 @@ class V8Wrapper {
 
     TRI_ASSERT(persistent == &obj->_handle);
     TRI_ASSERT(!obj->_refs);
-    TRI_ASSERT(persistent->IsNearDeath());
     delete obj;
   }
 

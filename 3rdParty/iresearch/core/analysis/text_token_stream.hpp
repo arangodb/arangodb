@@ -19,20 +19,25 @@
 ///
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
+/// @author Andrei Lobov
+/// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
 #define IRESEARCH_IQL_TEXT_TOKEN_STREAM_H
 
-#include "analyzers.hpp"
 #include "shared.hpp"
+#include "analyzers.hpp"
 #include "token_stream.hpp"
 #include "token_attributes.hpp"
+#include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
-class text_token_stream : public analyzer, util::noncopyable {
+class text_token_stream final
+  : public frozen_attributes<3, analyzer>,
+    private util::noncopyable {
  public:
   typedef std::unordered_set<std::string> stopwords_t;
   struct options_t {
@@ -59,40 +64,14 @@ class text_token_stream : public analyzer, util::noncopyable {
 
   struct state_t;
 
-  class bytes_term : public irs::term_attribute {
-   public:
-    void clear() {
-      buf_.clear();
-      value_ = irs::bytes_ref::NIL;
-    }
-
-    using irs::term_attribute::value;
-
-    void value(irs::bstring&& data) {
-      buf_ = std::move(data);
-      value(buf_);
-    }
-
-    void value(const irs::bytes_ref& data) {
-      value_ = data;
-    }
-
-   private:
-    irs::bstring buf_; // buffer for value if value cannot be referenced directly
-  };
-
   static char const* STOPWORD_PATH_ENV_VARIABLE;
 
-  DECLARE_ANALYZER_TYPE();
-
-  // for use with irs::order::add<T>() and default args (static build)
-  DECLARE_FACTORY(const irs::string_ref& locale);
+  static constexpr string_ref type_name() noexcept { return "text"; }
+  static void init(); // for triggering registration in a static build
+  static ptr make(const irs::string_ref& locale);
+  static void clear_cache();
 
   text_token_stream(const options_t& options, const stopwords_t& stopwords);
-  virtual const irs::attribute_view& attributes() const noexcept override {
-    return attrs_;
-  }
-  static void init(); // for triggering registration in a static build
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
@@ -101,14 +80,14 @@ class text_token_stream : public analyzer, util::noncopyable {
   bool next_ngram();
 
  private:
-  irs::attribute_view attrs_;
   std::shared_ptr<state_t> state_;
-  irs::offset offs_;
-  irs::increment inc_;
-  bytes_term term_;
+  bstring term_buf_; // buffer for value if value cannot be referenced directly
+  offset offs_;
+  increment inc_;
+  term_attribute term_;
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

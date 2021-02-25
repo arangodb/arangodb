@@ -30,8 +30,8 @@ const time = require('internal').time;
 const fs = require('fs');
 const yaml = require('js-yaml');
 
-const pu = require('@arangodb/process-utils');
-const tu = require('@arangodb/test-utils');
+const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -64,7 +64,11 @@ const testPaths = {
 function arangosh (options) {
   let ret = { failed: 0 };
   [
+    'testArangoshExitCodeConnectAny',
+    'testArangoshExitCodeConnectAnyIp6',
     'testArangoshExitCodeNoConnect',
+    'testArangoshExitCodeSyntaxError',
+    'testArangoshExitCodeSyntaxErrorInSubScript',
     'testArangoshExitCodeFail',
     'testArangoshExitCodeFailButCaught',
     'testArangoshExitCodeEmpty',
@@ -76,6 +80,12 @@ function arangosh (options) {
     'testArangoshShebang'
   ].forEach(function (what) {
     ret[what] = {
+      failed: 0,
+      status: true,
+      total: 0
+    };
+    ret[what + '_file'] = {
+      failed: 0,
       status: true,
       total: 0
     };
@@ -85,6 +95,7 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
     print(title);
     print('--------------------------------------------------------------------------------');
+
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
     let tmpPath = fs.getTempPath();
     let tmp = fs.join(tmpPath, weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3]);
@@ -93,6 +104,9 @@ function arangosh (options) {
     process.env.TMP = tmp;
     fs.makeDirectoryRecursive(process.env.TMPDIR);
     pu.cleanupDBDirectoriesAppend(tmp);
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // run command from a .js file
     let args = pu.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
@@ -126,22 +140,97 @@ function arangosh (options) {
       print(rc);
       print('expect rc: ' + expectedReturnCode);
     }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    // run command from a .js file
+    print('\n--------------------------------------------------------------------------------');
+    print(title + ' With js file');
+    print('--------------------------------------------------------------------------------');
+
+
+    var execFile = fs.getTempFile();
+
+    fs.write(execFile, command);
+    section += '_file';
+    let args2 = pu.makeArgs.arangosh(options);
+    args2['javascript.execute'] = execFile;
+    args2['log.level'] = 'error';
+
+    for (let op in opts) {
+      args2[op] = opts[op];
+    }
+
+    const startTime2 = time();
+    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0 /*, coverageEnvironment() */);
+    const deltaTime2 = time() - startTime;
+    const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
+
+    if (!failSuccess) {
+      ret.failed += 1;
+      ret[section].failed = 1;
+      ret[section]['message'] =
+        'didn\'t get expected return code (' + expectedReturnCode + '): \n' +
+        yaml.safeDump(rc2);
+    } else {
+      ret[section].failed = 0;
+    }
+
+    ++ret[section]['total'];
+    ret[section]['status'] = failSuccess;
+    ret[section]['duration'] = deltaTime;
+    print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
+    if (options.extremeVerbosity) {
+      print(toArgv(args2));
+      print(ret[section]);
+      print(rc2);
+      print('expect rc: ' + expectedReturnCode);
+    }
+
+
     // re-set the environment
     process.env.TMPDIR = tmpPath;
     process.env.TEMP = tmpPath;
     process.env.TMP = tmpPath;
-
   }
+
+  runTest('testArangoshExitCodeConnectAny',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://0.0.0.0:8529'});
+  print();
+  
+  runTest('testArangoshExitCodeConnectAnyIp6',
+          'Starting arangosh with failing connect:',
+          'db._databases();',
+          1,
+          {'server.endpoint': 'tcp://[::]:8529'});
+  print();
 
   runTest('testArangoshExitCodeNoConnect',
           'Starting arangosh with failing connect:',
           'db._databases();',
           1,
           {'server.endpoint': 'tcp://127.0.0.1:0'});
-
   print();
 
-  runTest('testArangoshExitCodeFail', 'Starting arangosh with exception throwing script:', 'throw(\'foo\')', 1, 
+  runTest('testArangoshExitCodeSyntaxError',
+          'Starting arangosh with unparseable script:',
+          'tis not js!',
+          1, 
+          {'server.endpoint': 'none'});
+  print();
+
+  runTest('testArangoshExitCodeSyntaxErrorInSubScript',
+          'Starting arangosh with unparseable script:',
+          'let x="tis not js!"; require("internal").executeScript(`${x}`, undefined, "/tmp/1")',
+          1, 
+          {'server.endpoint': 'none'});
+  print();
+
+  runTest('testArangoshExitCodeFail',
+          'Starting arangosh with exception throwing script:', 'throw(\'foo\')',
+          1,
           {'server.endpoint': 'none'});
   print();
 

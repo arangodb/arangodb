@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 #include "Basics/tri-strings.h"
@@ -41,43 +42,17 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo, char const* header,
-                         size_t length, bool allowMethodOverride)
-    : GeneralRequest(connectionInfo),
-      _contentLength(0),
-      _vpackBuilder(nullptr),
-      _version(ProtocolVersion::UNKNOWN),
-      _allowMethodOverride(allowMethodOverride) {
-        _contentType = ContentType::UNSET;
-        _contentTypeResponse = ContentType::JSON;
-  if (0 < length) {
-    auto buff = std::make_unique<char[]>(length + 1);
-    memcpy(buff.get(), header, length);
-    (buff.get())[length] = 0;
-    parseHeader(buff.get(), length);
-  }
-}
-
-// HACK HACK HACK
-// This should only be called by createFakeRequest in ClusterComm
-// as the Request is not fully constructed. This 2nd constructor
-// avoids the need of a additional FakeRequest class.
-HttpRequest::HttpRequest(ContentType contentType, char const* body, int64_t contentLength,
-                         std::unordered_map<std::string, std::string> const& headers)
-    : GeneralRequest(ConnectionInfo()),
-      _contentLength(contentLength),
-      _vpackBuilder(nullptr),
-      _version(ProtocolVersion::UNKNOWN),
-      _allowMethodOverride(false) {
-  _contentType = contentType;
-  _contentTypeResponse = contentType;
-  _body.append(body, contentLength);
-  GeneralRequest::_headers = headers;
+HttpRequest::HttpRequest(ConnectionInfo const& connectionInfo,
+                         uint64_t mid, bool allowMethodOverride)
+    : GeneralRequest(connectionInfo, mid),
+      _allowMethodOverride(allowMethodOverride),
+      _validatedPayload(false) {
+  _contentType = ContentType::UNSET;
+  _contentTypeResponse = ContentType::JSON;
 }
 
 void HttpRequest::parseHeader(char* start, size_t length) {
   char* end = start + length;
-  size_t const versionLength = strlen("http/1.x");
 
   // current line number
   int lineNum = 0;
@@ -157,26 +132,6 @@ void HttpRequest::parseHeader(char* start, size_t length) {
               valueEnd = e;
 
               // HTTP protocol version is expected next
-              // trim value
-              while (e < end && *e == ' ') {
-                ++e;
-              }
-
-              if ((size_t)(end - e) > versionLength) {
-                if ((e[0] == 'h' || e[0] == 'H') && (e[1] == 't' || e[1] == 'T') &&
-                    (e[2] == 't' || e[2] == 'T') && (e[3] == 'p' || e[3] == 'P') &&
-                    e[4] == '/' && e[5] == '1' && e[6] == '.') {
-                  if (e[7] == '1') {
-                    _version = ProtocolVersion::HTTP_1_1;
-                  } else if (e[7] == '0') {
-                    _version = ProtocolVersion::HTTP_1_0;
-                  } else {
-                    _version = ProtocolVersion::UNKNOWN;
-                  }
-
-                  e += versionLength;
-                }
-              }
 
               // go on until eol
               while (e < end && *e != '\n') {
@@ -448,24 +403,24 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     tmp.push_back(path[i]);
     if (path[i] == '/') {
-      while (i + 1 < length && path[i+1] == '/') {
+      while (i + 1 < length && path[i + 1] == '/') {
         ++i;
       }
     }
   }
-  
+
   const char* start = tmp.data();
   const char* end = start + tmp.size();
   // look for database name in URL
   if (end - start >= 5) {
     char const* q = start;
-    
+
     // check if the prefix is "_db"
     if (q[0] == '/' && q[1] == '_' && q[2] == 'd' && q[3] == 'b' && q[4] == '/') {
       // request contains database name
       q += 5;
       start = q;
-      
+
       // read until end of database name
       while (q < end) {
         if (*q == '/' || *q == '?' || *q == ' ' || *q == '\n' || *q == '\r') {
@@ -473,32 +428,36 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
         }
         ++q;
       }
-      
+
       TRI_ASSERT(q >= start);
-      _databaseName = std::string(start, q - start);
+      _databaseName.assign(start, q - start);
       _fullUrl.assign(q, end - q);
-      
+
       start = q;
     } else {
-      _fullUrl.assign(start, end - start); 
+      _fullUrl.assign(start, end - start);
     }
   } else {
     _fullUrl.assign(start, end - start);
   }
+
+  if (_fullUrl.empty()) {
+    _fullUrl.push_back('/');
+  }
   TRI_ASSERT(!_fullUrl.empty());
-  
+
   char const* q = start;
   while (q != end && *q != '?') {
     ++q;
   }
-  
+
   if (q == end || *q == '?') {
     _requestPath.assign(start, q - start);
   }
   if (q == end) {
     return;
   }
-  
+
   bool keyPhase = true;
   const char* keyBegin = ++q;
   const char* keyEnd = keyBegin;
@@ -514,10 +473,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
       ++q;
       continue;
     }
-      
+
     if (q + 1 == end || *(q + 1) == '&') {
       ++q; // skip ahead
-      
+
       std::string val = ::url_decode(valueBegin, q);
       if (keyEnd - keyBegin > 2 && *(keyEnd - 2) == '[' && *(keyEnd - 1) == ']') {
         // found parameter xxx[]
@@ -536,26 +495,33 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
 
 void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
   StringUtils::tolowerInPlace(key); // always lowercase key
-  
+
   if (key == StaticStrings::ContentLength) {
-    _contentLength = NumberUtils::atoi_zero<int64_t>(value.c_str(), value.c_str() + value.size());
+    size_t len = NumberUtils::atoi_zero<uint64_t>(value.c_str(), value.c_str() + value.size());
+    if (_payload.capacity() < len) {
+      // lets not reserve more than 64MB at once
+      uint64_t maxReserve = std::min<uint64_t>(2 << 26, len);
+      _payload.reserve(maxReserve);
+    }
     // do not store this header
     return;
   }
-  
-  if (key == StaticStrings::Accept && value == StaticStrings::MimeTypeVPack) {
-    _contentTypeResponse = ContentType::VPACK;
-  } else if ((_contentType == ContentType::UNSET) && (key == StaticStrings::ContentTypeHeader)) {
-    if (value == StaticStrings::MimeTypeVPack) {
-      _contentType = ContentType::VPACK; // don't insert this header!!
-      return;
+
+  if (key == StaticStrings::Accept) {
+    _contentTypeResponse = rest::stringToContentType(value, /*default*/ContentType::JSON);
+    if (value.find(',') != std::string::npos) {
+      _contentTypeResponsePlain = value;
+    } else {
+      _contentTypeResponsePlain.clear();
     }
-    else if ((value.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-             (memcmp(value.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                     StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
-      // ignore encoding etc.
-      _contentType = ContentType::JSON;
+    return;
+  } else if ((_contentType == ContentType::UNSET) &&
+             (key == StaticStrings::ContentTypeHeader)) {
+    auto res = rest::stringToContentType(value, /*default*/ContentType::UNSET);
+    // simon: the "@arangodb/requests" module by default the "text/plain" content-types for JSON
+    // in most tests. As soon as someone fixes all the tests we can enable these again.
+    if (res == ContentType::JSON || res == ContentType::VPACK || res == ContentType::DUMP) {
+      _contentType = res;
       return;
     }
   } else if (key == StaticStrings::AcceptEncoding) {
@@ -567,15 +533,15 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       _acceptEncoding = EncodingType::DEFLATE;
     }
   }
-  
+
   if (key == "cookie") {
     parseCookies(value.c_str(), value.size());
     return;
   }
-  
+
   if (_allowMethodOverride && key.size() >= 13 && key[0] == 'x' && key[1] == '-') {
     // handle x-... headers
-    
+
     // override HTTP method?
     if (key == "x-http-method" ||
         key == "x-method-override" ||
@@ -586,7 +552,7 @@ void HttpRequest::setHeaderV2(std::string&& key, std::string&& value) {
       return;
     }
   }
-  
+
   _headers[std::move(key)] = std::move(value);
 }
 
@@ -713,7 +679,6 @@ void HttpRequest::setHeader(char const* key, size_t keyLength,
 
   if (keyLength == StaticStrings::ContentLength.size() &&
       memcmp(key, StaticStrings::ContentLength.c_str(), keyLength) == 0) {  // 14 = strlen("content-length")
-    _contentLength = NumberUtils::atoi_zero<int64_t>(value, value + valueLength);
     // do not store this header
     return;
   }
@@ -872,7 +837,7 @@ void HttpRequest::parseCookies(char const* buffer, size_t length) {
 
     // check for missing value phase
     if (valueBegin == nullptr) {
-      valueBegin = value = key;
+      valueBegin = key;
     } else {
       *value = '\0';
     }
@@ -904,37 +869,32 @@ std::string const& HttpRequest::cookieValue(std::string const& key, bool& found)
 }
 
 VPackStringRef HttpRequest::rawPayload() const {
-  return VPackStringRef(reinterpret_cast<const char*>(_body.data()), _body.size());
+  return VPackStringRef(reinterpret_cast<const char*>(_payload.data()), _payload.size());
 };
 
-VPackSlice HttpRequest::payload(VPackOptions const* options) {
-  TRI_ASSERT(options != nullptr);
+VPackSlice HttpRequest::payload(bool strictValidation) {
   if ((_contentType == ContentType::UNSET) || (_contentType == ContentType::JSON)) {
-    if (!_body.empty()) {
+    if (!_payload.empty()) {
       if (!_vpackBuilder) {
+        TRI_ASSERT(!_validatedPayload);
+        VPackOptions const* options = validationOptions(strictValidation);
         VPackParser parser(options);
-        parser.parse(_body.data(),
-                     _body.size());
+        parser.parse(_payload.data(), _payload.size());
         _vpackBuilder = parser.steal();
+        _validatedPayload = true;
       }
+      TRI_ASSERT(_validatedPayload);
       return VPackSlice(_vpackBuilder->slice());
     }
     return VPackSlice::noneSlice();  // no body
   } else if (_contentType == ContentType::VPACK) {
-    VPackOptions validationOptions = *options;  // intentional copy
-    validationOptions.validateUtf8Strings = true;
-    validationOptions.checkAttributeUniqueness = true;
-    validationOptions.disallowExternals = true;
-    validationOptions.disallowCustom = true;
-    VPackValidator validator(&validationOptions);
-    validator.validate(_body.data(), _body.length()); // throws on error
-    return VPackSlice(reinterpret_cast<uint8_t const*>(_body.data()));
+    if (!_validatedPayload) {
+      VPackOptions const* options = validationOptions(strictValidation);
+      VPackValidator validator(options);
+      _validatedPayload = validator.validate(_payload.data(), _payload.length()); // throws on error
+    }
+    TRI_ASSERT(_validatedPayload);
+    return VPackSlice(reinterpret_cast<uint8_t const*>(_payload.data()));
   }
   return VPackSlice::noneSlice();
-}
-
-HttpRequest* HttpRequest::createHttpRequest(
-    ContentType contentType, char const* body, int64_t contentLength,
-    std::unordered_map<std::string, std::string> const& headers) {
-  return new HttpRequest(contentType, body, contentLength, headers);
 }

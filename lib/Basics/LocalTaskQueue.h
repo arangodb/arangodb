@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,15 +24,19 @@
 #ifndef ARANGODB_BASICS_LOCAL_TASK_QUEUE_H
 #define ARANGODB_BASICS_LOCAL_TASK_QUEUE_H 1
 
+#include <atomic>
+#include <condition_variable>
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <queue>
 
-#include "Basics/Common.h"
-#include "Basics/ConditionVariable.h"
-#include "Basics/Mutex.h"
+#include "Basics/Result.h"
 
 namespace arangodb {
+namespace application_features {
+class ApplicationServer;
+}
 namespace basics {
 
 class LocalTaskQueue;
@@ -44,48 +48,30 @@ class LocalTask : public std::enable_shared_from_this<LocalTask> {
   LocalTask& operator=(LocalTask const&) = delete;
 
   explicit LocalTask(std::shared_ptr<LocalTaskQueue> const& queue);
-  virtual ~LocalTask() {}
+  virtual ~LocalTask();
 
   virtual void run() = 0;
-  void dispatch();
+  bool dispatch();
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying queue
-  //////////////////////////////////////////////////////////////////////////////
-
   std::shared_ptr<LocalTaskQueue> _queue;
 };
 
-class LocalCallbackTask : public std::enable_shared_from_this<LocalCallbackTask> {
+/// @brief a helper task type to dispatch simple lambdas
+class LambdaTask : public LocalTask {
  public:
-  LocalCallbackTask() = delete;
-  LocalCallbackTask(LocalCallbackTask const&) = delete;
-  LocalCallbackTask& operator=(LocalCallbackTask const&) = delete;
+  LambdaTask(std::shared_ptr<LocalTaskQueue> const&, std::function<Result()>&&);
 
-  LocalCallbackTask(std::shared_ptr<LocalTaskQueue> const& queue,
-                    std::function<void()> const& cb);
-  virtual ~LocalCallbackTask() {}
+  void run() override;
 
-  virtual void run();
-  void dispatch();
-
- protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the underlying queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<LocalTaskQueue> _queue;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the callback executed by run() (any exceptions will be caught and
-  /// ignored; must not call queue->setStatus() or queue->enqueue())
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::function<void()> _cb;
+ private:
+  std::function<Result()> _fn;
 };
 
 class LocalTaskQueue {
+  friend class LocalTask;
+
  public:
   typedef std::function<bool(std::function<void()>)> PostFn;
 
@@ -93,7 +79,7 @@ class LocalTaskQueue {
   LocalTaskQueue(LocalTaskQueue const&) = delete;
   LocalTaskQueue& operator=(LocalTaskQueue const&) = delete;
 
-  explicit LocalTaskQueue(PostFn poster);
+  explicit LocalTaskQueue(application_features::ApplicationServer& server, PostFn poster);
 
   ~LocalTaskQueue();
 
@@ -107,25 +93,11 @@ class LocalTaskQueue {
   void enqueue(std::shared_ptr<LocalTask>);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief enqueue a callback task to be run after all normal tasks finish;
-  /// useful for cleanup tasks
-  //////////////////////////////////////////////////////////////////////////////
-
-  void enqueueCallback(std::shared_ptr<LocalCallbackTask>);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief post a function to the scheduler. Should only be used internally
   /// by task dispatch.
   //////////////////////////////////////////////////////////////////////////////
 
-  void post(std::function<bool()> fn);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief join a single task. reduces the number of waiting tasks and wakes
-  /// up the queues's dispatchAndWait() routine
-  //////////////////////////////////////////////////////////////////////////////
-
-  void join();
+  bool post(std::function<bool()>&& fn);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dispatch all tasks, including those that are queued while running,
@@ -139,15 +111,26 @@ class LocalTaskQueue {
   /// @brief set status of queue
   //////////////////////////////////////////////////////////////////////////////
 
-  void setStatus(int);
+  void setStatus(Result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return overall status of queue tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  int status();
+  Result status();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief set limit for concurrently dispatched tasks
+  //////////////////////////////////////////////////////////////////////////////
+
+  void setConcurrency(std::size_t);
 
  private:
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief underlying application server
+  //////////////////////////////////////////////////////////////////////////////
+  application_features::ApplicationServer& _server;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief post task to scheduler/io_service
   //////////////////////////////////////////////////////////////////////////////
@@ -161,40 +144,40 @@ class LocalTaskQueue {
   std::queue<std::shared_ptr<LocalTask>> _queue;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief internal callback task queue
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::queue<std::shared_ptr<LocalCallbackTask>> _callbackQueue;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief condition variable
   //////////////////////////////////////////////////////////////////////////////
 
-  arangodb::basics::ConditionVariable _condition;
+  std::condition_variable _condition;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal mutex
   //////////////////////////////////////////////////////////////////////////////
 
-  Mutex _mutex;
+  std::mutex _mutex;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of dispatched, non-joined tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _missing;
+  std::atomic<std::size_t> _dispatched;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief maximum number of concurrently dispatched tasks
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::size_t _concurrency;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief number of dispatched and started tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  size_t _started;
+  std::atomic<std::size_t> _started;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief overall status of queue tasks
   //////////////////////////////////////////////////////////////////////////////
 
-  int _status;
+  Result _status;
 };
 
 }  // namespace basics

@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global AQL_EXPLAIN */
+/*global AQL_EXPLAIN, assertTrue */
 
 "use strict";
 
@@ -53,10 +53,6 @@ const _ = require('lodash');
 // abort after iterating over the collection once and return the items fetched
 // so far instead of filling up the result. (see aql-profiler-noncluster*.js)
 
-// NOTE EnumerateCollectionBlock is suboptimal on mmfiles, is it returns HASMORE
-// instead of DONE when asked for exactly all documents in the collection.
-// (low impact) (see aql-profiler-noncluster*.js)
-
 // TODO IndexBlock is still suboptimal, as it can return HASMORE when there are no
 // items left. (low impact) (see aql-profiler-noncluster*.js)
 
@@ -72,13 +68,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -347,6 +343,10 @@ function ahuacatlProfilerTestSuite () {
     testFilterBlock2 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 != 0 RETURN i';
       const genNodeList = (rows, batches) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 !== 0);
+        });
         const rowsAfterFilter = rows - Math.floor(rows / 13);
         const batchesAfterFilter = Math.ceil(rowsAfterFilter / defaultBatchSize);
 
@@ -369,6 +369,10 @@ function ahuacatlProfilerTestSuite () {
     testFilterBlock3 : function () {
       const query = 'FOR i IN 1..@rows FILTER i % 13 == 0 RETURN i';
       const genNodeList = (rows, batches) => {
+        // This is an array 1..rows where true means it passes the filter
+        const list = Array.from(Array(rows)).map((_, index ) => {
+          return ((index + 1) % 13 === 0);
+        });
         const rowsAfterFilter = Math.floor(rows / 13);
         const batchesAfterFilter = Math.max(1, Math.ceil(rowsAfterFilter / defaultBatchSize));
 
@@ -504,7 +508,7 @@ function ahuacatlProfilerTestSuite () {
       const genNodeList = (rows) => [
         {type: SingletonBlock, calls: 1, items: 1},
         {type: CalculationBlock, calls: 1, items: 1},
-        {type: EnumerateListBlock, calls: limitBatches(rows) + skipOffsetBatches(rows), items: limit(rows) + offset(rows)},
+        {type: EnumerateListBlock, calls: limitBatches(rows), items: limit(rows) + offset(rows)},
         {type: LimitBlock, calls: limitBatches(rows), items: limit(rows)},
         {type: ReturnBlock, calls: limitBatches(rows), items: limit(rows)},
       ];
@@ -524,13 +528,13 @@ function ahuacatlProfilerTestSuite () {
     testNoResultsBlock1: function() {
       const query = 'FOR i IN 1..@rows FILTER 1 == 0 RETURN i';
 
-      // As the descendant blocks of NoResultsBlock don't get a single getSome
-      // call, they don't show up in the statistics.
+      // Also if we have no results, we do send a drop-all to dependecies
+      // potentielly we have modifiaction nodes that need to be executed.
 
       const genNodeList = () => [
-        {type: SingletonBlock, calls: 0, items: 0},
-        {type: CalculationBlock, calls: 0, items: 0},
-        {type: EnumerateListBlock, calls: 0, items: 0},
+        {type: SingletonBlock, calls: 1, items: 0},
+        {type: CalculationBlock, calls: 1, items: 0},
+        {type: EnumerateListBlock, calls: 1, items: 0},
         {type: NoResultsBlock, calls: 1, items: 0},
         {type: ReturnBlock, calls: 1, items: 0},
       ];
@@ -630,7 +634,7 @@ function ahuacatlProfilerTestSuite () {
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : skipOffsetBatches(rows) + limitMinusSkipBatches(rows), items : limit(rows) },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : limit(rows) },
         { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
         { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
       ];
@@ -651,13 +655,11 @@ function ahuacatlProfilerTestSuite () {
 
     testSortLimitBlock2 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
-      const remainder = rows => rows - limit(rows);
-      const remainderBatches = rows => remainder(rows) === 0 ? 0 : 1;
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1 },
         { type : CalculationBlock, calls : 1, items : 1 },
         { type : EnumerateListBlock, calls : batches, items : rows },
-        { type : ConstrainedSortBlock, calls : skipOffsetBatches(rows) + limitMinusSkipBatches(rows) + remainderBatches(rows), items : rows },
+        { type : ConstrainedSortBlock, calls : limitMinusSkipBatches(rows), items : rows },
         { type : LimitBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) },
         { type : ReturnBlock, calls : limitMinusSkipBatches(rows), items : limitMinusSkip(rows) }
       ];
@@ -748,6 +750,149 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock4 : function () {
+      // example:
+      // for @rows = 5,  x is [1,2,0,1,2]
+      // for @rows = 12, x is [1,2,3,4,5,0,1,2,3,4,5,0]
+      const query = 'FOR i IN 1..@rows ' +
+        'COLLECT AGGREGATE y = MIN(i) OPTIONS {method: "sorted"} ' +
+        'RETURN y';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = 1;
+        const batchesAfterCollect = 1;
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock + CountCollectBlock
+/// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlock : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : limit(rows) },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test LimitBlock with fullCount + CountCollectBlock
+/// This is a regression test for ES-692.
+/// Introduced and fixed in https://github.com/arangodb/arangodb/pull/12719.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithCountCollectBlockAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @offset, @limit
+          COLLECT WITH COUNT INTO c
+          RETURN c
+      `;
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        { type : EnumerateListBlock, calls : 1, items : rows },
+        { type : LimitBlock, calls : 1, items : limitMinusSkip(rows) },
+        { type : CountCollectBlock, calls : 1, items : 1 },
+        { type : ReturnBlock, calls : 1, items : 1 }
+      ];
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        offset: offset(rows),
+        // ~1/2 of rows:
+        limit: limitMinusSkip(rows),
+      });
+      const genStats = rows => ({
+        fullCount: rows
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test two adjacent LimitBlocks with fullCount.
+/// NOTE That this is currently suboptimal! Currently, fullCount is passed
+/// through the upper limit block, forcing upstream blocks to iterate everything.
+////////////////////////////////////////////////////////////////////////////////
+
+    testLimitBlockWithLimitAndFullCount : function () {
+      const query = `
+        FOR i IN 1..@rows
+          LIMIT @upperOffset, @upperLimit
+          LIMIT @lowerOffset, @lowerLimit
+          RETURN i
+      `;
+
+      // The lower limit works with the rows passing through the upper limit,
+      // so rows are divided roughly like this:
+      // |                                rows                           |
+      // | upperOffset |               upperLimit             |
+      // |             | lowerOffset | lowerLimit |
+      const upperOffset = rows => offset(rows);
+      const upperLimit = rows => limitMinusSkip(rows);
+      const lowerOffset = rows => offset(limitMinusSkip(rows));
+      const lowerLimit = rows => limitMinusSkip(limitMinusSkip(rows));
+      const batches = rows => Math.ceil(rows / defaultBatchSize);
+
+      const genNodeList = (rows) => [
+        { type : SingletonBlock, calls : 1, items : 1 },
+        { type : CalculationBlock, calls : 1, items : 1 },
+        // NOTE: `items: rows` should *really* be upperOffset(rows) + upperLimit(rows).
+        //       That still needs to be implemented.
+        { type : EnumerateListBlock, calls : batches(lowerLimit(rows)), items : rows },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : upperLimit(rows) },
+        { type : LimitBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) },
+        { type : ReturnBlock, calls : batches(lowerLimit(rows)), items : lowerLimit(rows) }
+      ];
+
+      const bind = rows => ({
+        rows,
+        // ~1/4 of rows:
+        upperOffset: upperOffset(rows),
+        // ~1/2 of rows:
+        upperLimit: upperLimit(rows),
+        // ~1/8 of rows:
+        lowerOffset: lowerOffset(rows),
+        // ~1/4 of rows:
+        lowerLimit: lowerLimit(rows),
+      });
+      const genStats = rows => ({
+        fullCount: Math.min(rows, upperLimit(rows)),
+      });
+      profHelper.runDefaultChecks({query, bind, genNodeList, genStats, options: {fullCount: true}});
+    },
 
 // TODO Every block must be tested separately. Here follows the list of blocks
 // (partly grouped due to the inheritance hierarchy). Intermediate blocks
@@ -773,7 +918,6 @@ function ahuacatlProfilerTestSuite () {
 // *SortBlock
 // *SortedCollectBlock
 // *SortingGatherBlock
-// SubqueryBlock
 // *TraversalBlock
 // *UnsortingGatherBlock
 //

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <atomic>
+#include <cstdint>
 
 #include "Cache/TransactionalBucket.h"
 
@@ -27,17 +30,14 @@
 #include "Basics/debugging.h"
 #include "Cache/CachedValue.h"
 
-#include <stdint.h>
-#include <atomic>
-
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 TransactionalBucket::TransactionalBucket() {
   _state.lock();
   clear();
 }
 
-bool TransactionalBucket::lock(uint64_t maxTries) {
+bool TransactionalBucket::lock(std::uint64_t maxTries) {
   return _state.lock(maxTries);
 }
 
@@ -53,16 +53,16 @@ bool TransactionalBucket::isMigrated() const {
   return _state.isSet(BucketState::Flag::migrated);
 }
 
-bool TransactionalBucket::isFullyBlacklisted() const {
+bool TransactionalBucket::isFullyBanished() const {
   TRI_ASSERT(isLocked());
-  return (haveOpenTransaction() && _state.isSet(BucketState::Flag::blacklisted));
+  return (haveOpenTransaction() && _state.isSet(BucketState::Flag::banished));
 }
 
 bool TransactionalBucket::isFull() const {
   TRI_ASSERT(isLocked());
   bool hasEmptySlot = false;
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == nullptr) {
       hasEmptySlot = true;
       break;
@@ -72,12 +72,12 @@ bool TransactionalBucket::isFull() const {
   return !hasEmptySlot;
 }
 
-CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
-                                       size_t keySize, bool moveToFront) {
+CachedValue* TransactionalBucket::find(std::uint32_t hash, void const* key,
+                                       std::size_t keySize, bool moveToFront) {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (size_t i = 0; i < slotsData; i++) {
+  for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {
       break;
     }
@@ -93,11 +93,11 @@ CachedValue* TransactionalBucket::find(uint32_t hash, void const* key,
   return result;
 }
 
-void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
+void TransactionalBucket::insert(std::uint32_t hash, CachedValue* value) {
   TRI_ASSERT(isLocked());
-  TRI_ASSERT(!isBlacklisted(hash));  // checks needs to be done outside
+  TRI_ASSERT(!isBanished(hash));  // checks needs to be done outside
 
-  for (size_t i = 0; i < slotsData; i++) {
+  for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedData[i] == nullptr) {
       // found an empty slot
       _cachedHashes[i] = hash;
@@ -110,7 +110,8 @@ void TransactionalBucket::insert(uint32_t hash, CachedValue* value) {
   }
 }
 
-CachedValue* TransactionalBucket::remove(uint32_t hash, void const* key, size_t keySize) {
+CachedValue* TransactionalBucket::remove(std::uint32_t hash, void const* key,
+                                         std::size_t keySize) {
   TRI_ASSERT(isLocked());
   CachedValue* value = find(hash, key, keySize, false);
   if (value != nullptr) {
@@ -120,7 +121,8 @@ CachedValue* TransactionalBucket::remove(uint32_t hash, void const* key, size_t 
   return value;
 }
 
-CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key, size_t keySize) {
+CachedValue* TransactionalBucket::banish(std::uint32_t hash, void const* key,
+                                            std::size_t keySize) {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
     return nullptr;
@@ -129,48 +131,48 @@ CachedValue* TransactionalBucket::blacklist(uint32_t hash, void const* key, size
   // remove key if it's here
   CachedValue* value = (keySize == 0) ? nullptr : remove(hash, key, keySize);
 
-  if (isBlacklisted(hash)) {
+  if (isBanished(hash)) {
     return value;
   }
 
-  for (size_t i = 0; i < slotsBlacklist; i++) {
-    if (_blacklistHashes[i] == 0) {
+  for (std::size_t i = 0; i < slotsBanish; i++) {
+    if (_banishHashes[i] == 0) {
       // found an empty slot
-      _blacklistHashes[i] = hash;
+      _banishHashes[i] = hash;
       return value;
     }
   }
 
-  // no empty slot found, fully blacklist
-  _state.toggleFlag(BucketState::Flag::blacklisted);
+  // no empty slot found, fully banish
+  _state.toggleFlag(BucketState::Flag::banished);
   return value;
 }
 
-bool TransactionalBucket::isBlacklisted(uint32_t hash) const {
+bool TransactionalBucket::isBanished(std::uint32_t hash) const {
   TRI_ASSERT(isLocked());
   if (!haveOpenTransaction()) {
     return false;
   }
 
-  if (isFullyBlacklisted()) {
+  if (isFullyBanished()) {
     return true;
   }
 
-  bool blacklisted = false;
-  for (size_t i = 0; i < slotsBlacklist; i++) {
-    if (_blacklistHashes[i] == hash) {
-      blacklisted = true;
+  bool banished = false;
+  for (std::size_t i = 0; i < slotsBanish; i++) {
+    if (_banishHashes[i] == hash) {
+      banished = true;
       break;
     }
   }
 
-  return blacklisted;
+  return banished;
 }
 
 CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == nullptr) {
       continue;
     }
@@ -184,8 +186,8 @@ CachedValue* TransactionalBucket::evictionCandidate(bool ignoreRefCount) const {
 
 void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == value) {
       // found a match
       _cachedHashes[slot] = 0;
@@ -199,34 +201,34 @@ void TransactionalBucket::evict(CachedValue* value, bool optimizeForInsertion) {
 void TransactionalBucket::clear() {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
-  for (size_t i = 0; i < slotsBlacklist; ++i) {
-    _blacklistHashes[i] = 0;
+  for (std::size_t i = 0; i < slotsBanish; ++i) {
+    _banishHashes[i] = 0;
   }
-  _blacklistTerm = 0;
-  for (size_t i = 0; i < slotsData; ++i) {
+  _banishTerm = 0;
+  for (std::size_t i = 0; i < slotsData; ++i) {
     _cachedHashes[i] = 0;
     _cachedData[i] = nullptr;
   }
   _state.unlock();
 }
 
-void TransactionalBucket::updateBlacklistTerm(uint64_t term) {
-  if (term > _blacklistTerm) {
-    _blacklistTerm = term;
+void TransactionalBucket::updateBanishTerm(std::uint64_t term) {
+  if (term > _banishTerm) {
+    _banishTerm = term;
 
-    if (isFullyBlacklisted()) {
-      _state.toggleFlag(BucketState::Flag::blacklisted);
+    if (isFullyBanished()) {
+      _state.toggleFlag(BucketState::Flag::banished);
     }
 
-    memset(_blacklistHashes, 0, (slotsBlacklist * sizeof(uint32_t)));
+    memset(_banishHashes, 0, (slotsBanish * sizeof(std::uint32_t)));
   }
 }
 
-void TransactionalBucket::moveSlot(size_t slot, bool moveToFront) {
+void TransactionalBucket::moveSlot(std::size_t slot, bool moveToFront) {
   TRI_ASSERT(isLocked());
-  uint32_t hash = _cachedHashes[slot];
+  std::uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
-  size_t i = slot;
+  std::size_t i = slot;
   if (moveToFront) {
     // move slot to front
     for (; i >= 1; i--) {
@@ -247,5 +249,6 @@ void TransactionalBucket::moveSlot(size_t slot, bool moveToFront) {
 bool TransactionalBucket::haveOpenTransaction() const {
   TRI_ASSERT(isLocked());
   // only have open transactions if term is odd
-  return ((_blacklistTerm & 1ULL) > 0);
+  return ((_banishTerm & static_cast<uint64_t>(1)) > 0);
+}
 }

@@ -11,7 +11,9 @@ const aql = arangodb.aql;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const expect = require('chai').expect;
 const download = require('internal').download;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
+
+require("@arangodb/test-helper").waitForFoxxInitialized();
 
 describe('Foxx Manager', function () {
   describe('(CRUD operation) ', function () {

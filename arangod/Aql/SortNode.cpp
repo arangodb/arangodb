@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -98,7 +98,8 @@ void SortNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   nodes.close();
 }
 
-class SortNodeFindMyExpressions : public WalkerWorker<ExecutionNode> {
+class SortNodeFindMyExpressions
+    : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
   size_t _foundCalcNodes;
   SortElementVector _elms;
@@ -231,24 +232,30 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   std::vector<SortRegister> sortRegs;
+  auto inputRegs = RegIdSet{};
   for (auto const& element : _elements) {
     auto it = getRegisterPlan()->varInfo.find(element.var->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     RegisterId id = it->second.registerId;
     sortRegs.emplace_back(id, element);
+    inputRegs.emplace(id);
   }
-  SortExecutorInfos infos(std::move(sortRegs), _limit, engine.itemBlockManager(),
-                          getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                          getRegisterPlan()->nrRegs[getDepth()],
-                          getRegsToClear(), calcRegsToKeep(),
-                          engine.getQuery()->trx()->transactionContextPtr()->getVPackOptions(),
-                          _stable);
+  auto registerInfos = createRegisterInfos(std::move(inputRegs), {});
+  auto executorInfos =
+      SortExecutorInfos(registerInfos.numberOfInputRegisters(),
+                        registerInfos.numberOfOutputRegisters(),
+                        registerInfos.registersToClear(), std::move(sortRegs),
+                        _limit, engine.itemBlockManager(),
+                        &engine.getQuery().vpackOptions(),
+                        engine.getQuery().resourceMonitor(),
+                        _stable);
   if (sorterType() == SorterType::Standard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(&engine, this,
-                                                              std::move(infos));
+                                                              std::move(registerInfos),
+                                                              std::move(executorInfos));
   } else {
-    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(&engine, this,
-                                                                         std::move(infos));
+    return std::make_unique<ExecutionBlockImpl<ConstrainedSortExecutor>>(
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   }
 }
 

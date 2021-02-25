@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,9 +31,7 @@ using velocypack::StringRef;
 RestPleaseUpgradeHandler::RestPleaseUpgradeHandler(application_features::ApplicationServer& server,
                                                    GeneralRequest* request,
                                                    GeneralResponse* response)
-    : RestHandler(server, request, response) {
-  _allowDirectExecution = true;
-}
+    : RestHandler(server, request, response) {}
 
 RestStatus RestPleaseUpgradeHandler::execute() {
   resetResponse(rest::ResponseCode::OK);
@@ -43,10 +41,6 @@ RestStatus RestPleaseUpgradeHandler::execute() {
   _response->addRawPayload(StringRef(_request->databaseName()));
   _response->addRawPayload(StringRef("\r\n\r\n"));
   _response->addRawPayload(StringRef("It appears that your database must be upgraded. "));
-  _response->addRawPayload(StringRef("Normally this can be done using\r\n\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 stop\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 upgrade\r\n"));
-  _response->addRawPayload(StringRef("  /etc/init.d/arangodb3 start\r\n\r\n"));
   _response->addRawPayload(StringRef("Please check the log file for details.\r\n"));
 
   return RestStatus::DONE;

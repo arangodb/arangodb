@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -39,7 +40,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/HexDump.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -48,13 +49,14 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 /// @return a collection exists in database or a wildcard was specified
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result existsCollection(std::string const& database, std::string const& collection) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (!server.hasFeature<arangodb::DatabaseFeature>()) {
+arangodb::Result existsCollection(v8::Isolate* isolate, std::string const& database,
+                                  std::string const& collection) {
+  TRI_GET_GLOBALS();
+  if (!v8g->_server.hasFeature<arangodb::DatabaseFeature>()) {
     return arangodb::Result(TRI_ERROR_INTERNAL,
                             "failure to find feature 'Database'");
   }
-  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto& databaseFeature = v8g->_server.getFeature<arangodb::DatabaseFeature>();
 
   static const std::string wildcard("*");
 
@@ -117,10 +119,7 @@ void StoreUser(v8::FunctionCallbackInfo<v8::Value> const& args, bool replace) {
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
-    if (r != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(r);
-    }
+    TRI_V8ToVPack(isolate, extras, args[3], false, false);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -165,10 +164,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder extras;
   if (args.Length() >= 4) {
-    int r = TRI_V8ToVPackSimple(isolate, extras, args[3]);
-    if (r != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(r);
-    }
+    TRI_V8ToVPack(isolate, extras, args[3], false, false);
   }
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
@@ -356,7 +352,7 @@ static void JS_GrantCollection(v8::FunctionCallbackInfo<v8::Value> const& args) 
 
   // validate that the collection is present
   {
-    auto res = existsCollection(db, coll);
+    auto res = existsCollection(isolate, db, coll);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -408,7 +404,7 @@ static void JS_RevokeCollection(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   // validate that the collection is present
   {
-    auto res = existsCollection(db, coll);
+    auto res = existsCollection(isolate, db, coll);
 
     if (!res.ok()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -444,10 +440,7 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
   VPackBuilder merge;
   if (args.Length() > 2) {
     VPackBuilder value;
-    int res = TRI_V8ToVPackSimple(isolate, value, args[2]);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, value, args[2], false, false);
     merge.add(key, value.slice());
   } else {
     merge.add(key, VPackSlice::nullSlice());
@@ -461,7 +454,7 @@ static void JS_UpdateConfigData(v8::FunctionCallbackInfo<v8::Value> const& args)
 
   Result r = um->updateUser(username, [&](auth::User& u) {
     VPackBuilder updated =
-        VelocyPackHelper::merge(u.configData(), merge.slice(), true, true);
+        velocypack::Collection::merge(u.configData(), merge.slice(), true, true);
     u.setConfigData(std::move(updated));
     return TRI_ERROR_NO_ERROR;
   });
@@ -511,6 +504,8 @@ static void JS_GetConfigData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  auto context = TRI_IGETC;
+
   if (args.Length() > 3 || args.Length() == 0 || !args[0]->IsString() ||
       (args.Length() > 1 && !args[1]->IsString()) ||
       (args.Length() > 2 && !args[2]->IsString())) {
@@ -545,12 +540,13 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // return the current database permissions
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
+    TRI_GET_GLOBALS();
+    v8g->_server.getFeature<DatabaseFeature>().enumerateDatabases([&](TRI_vocbase_t& vocbase) -> void {
       auto lvl = um->databaseAuthLevel(username, vocbase.name());
 
       if (lvl != auth::Level::NONE) {  // hide non accessible collections
-        result->Set(TRI_V8_STD_STRING(isolate, vocbase.name()),
-                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl)));
+        result->Set(context, TRI_V8_STD_STRING(isolate, vocbase.name()),
+                    TRI_V8_STD_STRING(isolate, auth::convertFromAuthLevel(lvl))).FromMaybe(false);
       }
     });
     TRI_V8_RETURN(result);
@@ -620,10 +616,10 @@ void TRI_InitV8Users(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
   // ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"));
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ArangoUsersCtor"),
-                               ft->GetFunction(), true);
+                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
 
   // register the global object
-  v8::Handle<v8::Object> aa = rt->NewInstance();
+  v8::Handle<v8::Object> aa = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ArangoUsers"), aa);

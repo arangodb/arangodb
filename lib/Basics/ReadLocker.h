@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,7 +31,8 @@
 #include "Basics/debugging.h"
 
 #ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -111,7 +112,8 @@ class ReadLocker {
 #ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("8e47e", INFO, arangodb::Logger::PERFORMANCE)
-          << "ReadLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "ReadLocker for lock [" << _readWriteLock << "] " << _file << ":"
+          << _line << " took " << _time << " s";
     }
 #endif
   }
@@ -129,7 +131,7 @@ class ReadLocker {
 
   bool tryLock() {
     TRI_ASSERT(!_isLocked);
-    if (_readWriteLock->tryReadLock()) {
+    if (_readWriteLock->tryLockRead()) {
       _isLocked = true;
     }
     return _isLocked;
@@ -138,7 +140,7 @@ class ReadLocker {
   /// @brief acquire the read lock, blocking
   void lock() {
     TRI_ASSERT(!_isLocked);
-    _readWriteLock->readLock();
+    _readWriteLock->lockRead();
     _isLocked = true;
   }
 

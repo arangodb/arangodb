@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_SLICE_STATIC_DATA_H
@@ -289,7 +287,7 @@ struct SliceStaticData {
     /* 0xe8 */ VT::None,     /* 0xe9 */ VT::None,
     /* 0xea */ VT::None,     /* 0xeb */ VT::None,
     /* 0xec */ VT::None,     /* 0xed */ VT::None,
-    /* 0xee */ VT::None,     /* 0xef */ VT::None,
+    /* 0xee */ VT::Tagged,   /* 0xef */ VT::Tagged,
     /* 0xf0 */ VT::Custom,   /* 0xf1 */ VT::Custom,
     /* 0xf2 */ VT::Custom,   /* 0xf3 */ VT::Custom,
     /* 0xf4 */ VT::Custom,   /* 0xf5 */ VT::Custom,

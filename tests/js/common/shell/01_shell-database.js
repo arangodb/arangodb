@@ -86,6 +86,29 @@ function DatabaseSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test create with too long names function
+////////////////////////////////////////////////////////////////////////////////
+
+    testLongName : function () {
+      const prefix = "UnitTestsDatabase";
+      let name = prefix + Array(64 + 1 - prefix.length).join("x");
+      assertEqual(64, name.length);
+          
+      assertTrue(internal.db._createDatabase(name));
+      assertTrue(internal.db._dropDatabase(name));
+
+      name += 'x';
+      assertEqual(65, name.length);
+
+      try {
+        internal.db._createDatabase(name);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_ARANGO_DATABASE_NAME_INVALID.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test _name function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -120,7 +143,7 @@ function DatabaseSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testQueryMemoryLimitSufficient : function () {
-      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 }).toArray().length);
+      assertEqual(10000, internal.db._query("FOR i IN 1..10000 RETURN i", {}, { memoryLimit: 100000 + 4096 }).toArray().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,6 +200,26 @@ function DatabaseSuite () {
     testQueryHelper : function () {
       var query = require("@arangodb").query;
       assertEqual([ 1 ], query`RETURN 1`.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test query helper as function
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryHelperAsFunction : function () {
+      var query = require("@arangodb").query;
+      assertEqual([ 1 ], query()`RETURN 1`.toArray());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test query helper with options
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryHelperWithOptions : function () {
+      var query = require("@arangodb").query;
+      var result = query({fullCount: true})`RETURN 1`;
+      assertEqual([ 1 ], result.toArray());
+      assertEqual(1, result.getExtra().stats.fullCount);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -388,6 +431,7 @@ function DatabaseSuite () {
 
     testCreateDatabaseNonSystem : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -397,6 +441,7 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       // creation of new databases should fail here
       try {
@@ -415,6 +460,7 @@ function DatabaseSuite () {
       }
 
       internal.db._useDatabase("_system");
+      assertTrue(internal.db._isSystem());
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
 
@@ -524,6 +570,7 @@ function DatabaseSuite () {
 
     testUseDatabase : function () {
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -533,12 +580,15 @@ function DatabaseSuite () {
       internal.db._createDatabase("UnitTestsDatabase0");
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("UnitTestsDatabase0");
       assertEqual("UnitTestsDatabase0", internal.db._name());
+      assertFalse(internal.db._isSystem());
 
       internal.db._useDatabase("_system");
       assertEqual("_system", internal.db._name());
+      assertTrue(internal.db._isSystem());
 
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
 

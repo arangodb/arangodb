@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,22 +29,24 @@
 
 #include "ClusterNodes.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/GraphNode.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RemoteExecutor.h"
 #include "Aql/ScatterExecutor.h"
 #include "Aql/SingleRemoteModificationExecutor.h"
@@ -125,52 +127,30 @@ arangodb::velocypack::StringRef toString(GatherNode::SortMode mode) noexcept {
 /// @brief constructor for RemoteNode
 RemoteNode::RemoteNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : DistributeConsumerNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _server(base.get("server").copyString()),
-      _queryId(base.get("queryId").copyString()) {
-  // Backwards compatibility (3.4.x)(3.5.0) and earlier, coordinator might send ownName.
-  arangodb::velocypack::StringRef tmpId(getDistributeId());
-  tmpId = VelocyPackHelper::getStringRef(base, "ownName", tmpId);
-  if (tmpId != getDistributeId()) {
-    setDistributeId(tmpId.toString());
-  }
-}
+      _queryId(base.get("queryId").copyString()) {}
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoteNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = nrOutRegs;
+  auto const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
+  auto const nrInRegs = nrOutRegs;
 
-  std::unordered_set<RegisterId> regsToKeep{};
-  {  // This block sets regsToKeep.
-    // It's essentially a copy of ExecutionNode::calcRegsToKeep(), but it
-    // doesn't use the previous node, which we do not have here.
-    regsToKeep.reserve(getVarsUsedLater().size());
-    std::unordered_map<VariableId, VarInfo> const& varInfo = getRegisterPlan()->varInfo;
-    for (auto const var : getVarsUsedLater()) {
-      auto const it = varInfo.find(var->id);
-      TRI_ASSERT(it != varInfo.end());
-      RegisterId const reg = it->second.registerId;
-      if (reg < nrInRegs) {
-        bool inserted;
-        std::tie(std::ignore, inserted) = regsToKeep.emplace(reg);
-        TRI_ASSERT(inserted);
-      }
-    }
-  }
-
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  auto regsToKeep = getRegsToKeepStack();
+  auto regsToClear = getRegsToClear();
 
   // Everything that is cleared here could and should have been cleared before,
   // i.e. before sending it over the network.
   TRI_ASSERT(regsToClear.empty());
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  auto infos = RegisterInfos({}, {}, nrInRegs, nrOutRegs,
+                             std::move(regsToClear), std::move(regsToKeep));
 
-  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(
-      &engine, this, std::move(infos), server(), getDistributeId(), queryId());
+  return std::make_unique<ExecutionBlockImpl<RemoteExecutor>>(&engine, this,
+                                                              std::move(infos), server(),
+                                                              getDistributeId(),
+                                                              queryId());
 }
 
 /// @brief toVelocyPack, for RemoteNode
@@ -214,16 +194,12 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  auto registerInfos = createRegisterInfos({}, {});
+  auto executorInfos = ScatterExecutorInfos(_clients);
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
-
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
   return std::make_unique<ExecutionBlockImpl<ScatterExecutor>>(&engine, this,
-                                                               std::move(infos), _clients);
+                                                               std::move(registerInfos),
+                                                               std::move(executorInfos));
 }
 
 /// @brief toVelocyPack, for ScatterNode
@@ -284,26 +260,30 @@ CostEstimate ScatterNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems * _clients.size();
   return estimate;
 }
+  
+DistributeNode::DistributeNode(ExecutionPlan* plan, ExecutionNodeId id,
+                               ScatterNode::ScatterType type, Collection const* collection,
+                               Variable const* variable, ExecutionNodeId targetNodeId)
+    : ScatterNode(plan, id, type),
+      CollectionAccessingNode(collection),
+      _variable(variable),
+      _targetNodeId(targetNodeId) {}
 
 /// @brief construct a distribute node
 DistributeNode::DistributeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ScatterNode(plan, base),
       CollectionAccessingNode(plan, base),
-      _variable(nullptr),
-      _alternativeVariable(nullptr),
-      _createKeys(base.get("createKeys").getBoolean()),
-      _allowKeyConversionToObject(base.get("allowKeyConversionToObject").getBoolean()),
-      _allowSpecifiedKeys(false) {
-  if (base.hasKey("variable") && base.hasKey("alternativeVariable")) {
-    _variable = Variable::varFromVPack(plan->getAst(), base, "variable");
-    _alternativeVariable =
-        Variable::varFromVPack(plan->getAst(), base, "alternativeVariable");
-  } else {
-    _variable = plan->getAst()->variables()->getVariable(
-        base.get("varId").getNumericValue<VariableId>());
-    _alternativeVariable = plan->getAst()->variables()->getVariable(
-        base.get("alternativeVarId").getNumericValue<VariableId>());
-  }
+      _variable(Variable::varFromVPack(plan->getAst(), base, "variable")) {}
+  
+/// @brief clone ExecutionNode recursively
+ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
+                                     bool withProperties) const {
+  auto c = std::make_unique<DistributeNode>(plan, _id, getScatterType(),
+                                            collection(), _variable, _targetNodeId);
+  c->copyClients(clients());
+  CollectionAccessingNode::cloneInto(*c);
+
+  return cloneHelper(std::move(c), withDependencies, withProperties);
 }
 
 /// @brief creates corresponding ExecutionBlock
@@ -312,45 +292,24 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  RegisterId const nrOutRegs = getRegisterPlan()->nrRegs[getDepth()];
-  RegisterId const nrInRegs = getRegisterPlan()->nrRegs[previousNode->getDepth()];
+  // get the variable to inspect . . .
+  VariableId varId = _variable->id;
 
-  std::unordered_set<RegisterId> regsToKeep = calcRegsToKeep();
-  std::unordered_set<RegisterId> regsToClear = getRegsToClear();
+  // get the register id of the variable to inspect . . .
+  auto it = getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  RegisterId regId = (*it).second.registerId;
 
-  ExecutorInfos infos({}, {}, nrInRegs, nrOutRegs, std::move(regsToClear),
-                      std::move(regsToKeep));
+  TRI_ASSERT(regId.isValid());
 
-  RegisterId regId;
-  RegisterId alternativeRegId = RegisterPlan::MaxRegisterId;
+  auto inRegs = RegIdSet{regId};
+  auto registerInfos = createRegisterInfos(inRegs, {});
+  auto infos = DistributeExecutorInfos(clients(), collection(), 
+                                       regId, getScatterType());
 
-  {  // set regId and alternativeRegId:
-
-    // get the variable to inspect . . .
-    VariableId varId = _variable->id;
-
-    // get the register id of the variable to inspect . . .
-    auto it = getRegisterPlan()->varInfo.find(varId);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    regId = (*it).second.registerId;
-
-    TRI_ASSERT(regId < RegisterPlan::MaxRegisterId);
-
-    if (_alternativeVariable != _variable) {
-      // use second variable
-      auto it = getRegisterPlan()->varInfo.find(_alternativeVariable->id);
-      TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-      alternativeRegId = (*it).second.registerId;
-
-      TRI_ASSERT(alternativeRegId < RegisterPlan::MaxRegisterId);
-    } else {
-      TRI_ASSERT(alternativeRegId == RegisterPlan::MaxRegisterId);
-    }
-  }
-
-  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
-      &engine, this, std::move(infos), clients(), collection(), regId, alternativeRegId,
-      _allowSpecifiedKeys, _allowKeyConversionToObject, _createKeys);
+  return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(&engine, this,
+                                                                  std::move(registerInfos),
+                                                                  std::move(infos));
 }
 
 /// @brief toVelocyPack, for DistributedNode
@@ -365,26 +324,16 @@ void DistributeNode::toVelocyPackHelper(VPackBuilder& builder, unsigned flags,
   // serialize clients
   writeClientsToVelocyPack(builder);
 
-  builder.add("createKeys", VPackValue(_createKeys));
-  builder.add("allowKeyConversionToObject", VPackValue(_allowKeyConversionToObject));
   builder.add(VPackValue("variable"));
-  _variable->toVelocyPack(builder);
-  builder.add(VPackValue("alternativeVariable"));
-  _alternativeVariable->toVelocyPack(builder);
-
-  // legacy format, remove in 3.4
-  builder.add("varId", VPackValue(static_cast<int>(_variable->id)));
-  builder.add("alternativeVarId",
-              VPackValue(static_cast<int>(_alternativeVariable->id)));
+  _variable->toVelocyPack(builder);;
 
   // And close it:
   builder.close();
 }
 
 /// @brief getVariablesUsedHere, modifying the set in-place
-void DistributeNode::getVariablesUsedHere(::arangodb::containers::HashSet<Variable const*>& vars) const {
+void DistributeNode::getVariablesUsedHere(VarSet& vars) const {
   vars.emplace(_variable);
-  vars.emplace(_alternativeVariable);
 }
 
 /// @brief estimateCost
@@ -397,22 +346,53 @@ CostEstimate DistributeNode::estimateCost() const {
 /*static*/ Collection const* GatherNode::findCollection(GatherNode const& root) noexcept {
   ExecutionNode const* node = root.getFirstDependency();
 
+  auto remotesSeen = 0;
+
   while (node) {
     switch (node->getType()) {
-      case ENUMERATE_COLLECTION:
-        return castTo<EnumerateCollectionNode const*>(node)->collection();
-      case INDEX:
-        return castTo<IndexNode const*>(node)->collection();
+      case UPDATE:
+      case REMOVE:
+      case INSERT:
+      case UPSERT:
+      case REPLACE:
+      case MATERIALIZE:
       case TRAVERSAL:
       case SHORTEST_PATH:
       case K_SHORTEST_PATHS:
-        return castTo<GraphNode const*>(node)->collection();
+      case INDEX:
+      case ENUMERATE_COLLECTION: {
+        auto const* cNode = castTo<CollectionAccessingNode const*>(node);
+        if (!cNode->isUsedAsSatellite() && cNode->prototypeCollection() == nullptr) {
+          return cNode->collection();
+        }
+        break;
+      }
+      case ENUMERATE_IRESEARCH_VIEW:
+        // Views are instantiated per DBServer, not per Shard, and are not
+        // CollectionAccessingNodes. And we don't know the number of DBServers
+        // at this point.
+        return nullptr;
+      case REMOTE:
+        ++remotesSeen;
+        if (remotesSeen > 1) {
+          TRI_ASSERT(false);
+          return nullptr;  // diamond boundary
+        }
+        break;
       case SCATTER:
+      case DISTRIBUTE:
+        TRI_ASSERT(false);
         return nullptr;  // diamond boundary
+      case REMOTESINGLE:
+        // While being a CollectionAccessingNode, it lives on the Coordinator.
+        // However it should thus not be encountered here.
+        TRI_ASSERT(false);
+        return nullptr;
       default:
-        node = node->getFirstDependency();
         break;
     }
+
+    node = node->getFirstDependency();
   }
 
   return nullptr;
@@ -422,10 +402,10 @@ CostEstimate DistributeNode::estimateCost() const {
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
                        SortElementVector const& elements)
     : ExecutionNode(plan, base),
-      _vocbase(&(plan->getAst()->query()->vocbase())),
+      _vocbase(&(plan->getAst()->query().vocbase())),
       _elements(elements),
       _sortmode(SortMode::MinElement),
-      _parallelism(Parallelism::Undefined), 
+      _parallelism(Parallelism::Undefined),
       _limit(0) {
   if (!_elements.empty()) {
     auto const sortModeSlice = base.get("sortmode");
@@ -436,18 +416,18 @@ GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& b
              "creating 'GatherNode' from vpack";
     }
 
-    _limit =
-        basics::VelocyPackHelper::getNumericValue<decltype(_limit)>(base,
-                                                                    "limit", 0);
+    _limit = VelocyPackHelper::getNumericValue<decltype(_limit)>(base, "limit", 0);
   }
-    
-  setParallelism(parallelismFromString(VelocyPackHelper::getStringValue(base, "parellelism", "")));
+
+  setParallelism(parallelismFromString(
+      VelocyPackHelper::getStringValue(base, "parellelism", "")));
 }
 
-GatherNode::GatherNode(ExecutionPlan* plan, size_t id, SortMode sortMode, Parallelism parallelism) noexcept
-    : ExecutionNode(plan, id), 
-      _vocbase(&(plan->getAst()->query()->vocbase())),
-      _sortmode(sortMode), 
+GatherNode::GatherNode(ExecutionPlan* plan, ExecutionNodeId id,
+                       SortMode sortMode, Parallelism parallelism) noexcept
+    : ExecutionNode(plan, id),
+      _vocbase(&(plan->getAst()->query().vocbase())),
+      _sortmode(sortMode),
       _parallelism(parallelism),
       _limit(0) {}
 
@@ -456,7 +436,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                     std::unordered_set<ExecutionNode const*>& seen) const {
   // call base class method
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
- 
+
   nodes.add("parallelism", VPackValue(toString(_parallelism)));
 
   if (_elements.empty()) {
@@ -483,7 +463,7 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
       }
     }
   }
-  
+
   // And close it:
   nodes.close();
 }
@@ -493,40 +473,36 @@ std::unique_ptr<ExecutionBlock> GatherNode::createBlock(
     ExecutionEngine& engine, std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+  auto registerInfos = createRegisterInfos({}, {});
   if (_elements.empty()) {
     TRI_ASSERT(getRegisterPlan()->nrRegs[previousNode->getDepth()] ==
                getRegisterPlan()->nrRegs[getDepth()]);
-    if (ServerState::instance()->isCoordinator() && _parallelism == Parallelism::Parallel) {
-      ParallelUnsortedGatherExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                                                calcRegsToKeep(), getRegsToClear());
+    if (_parallelism == Parallelism::Parallel) {
       return std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
-          &engine, this, std::move(infos));
+          &engine, this, std::move(registerInfos), EmptyExecutorInfos());
     } else {
-      IdExecutorInfos infos(getRegisterPlan()->nrRegs[getDepth()],
-                            calcRegsToKeep(), getRegsToClear());
+      auto executorInfos = IdExecutorInfos(false);
 
-      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(&engine, this,
-                                                                           std::move(infos));
+      return std::make_unique<ExecutionBlockImpl<UnsortedGatherExecutor>>(
+          &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
   }
-  
+
   Parallelism p = _parallelism;
   if (ServerState::instance()->isDBServer()) {
     p = Parallelism::Serial; // not supported in v36
   }
-  
+
   std::vector<SortRegister> sortRegister;
   SortRegister::fill(*plan(), *getRegisterPlan(), _elements, sortRegister);
-  SortingGatherExecutorInfos infos(make_shared_unordered_set(),
-                                   make_shared_unordered_set(),
-                                   getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                   getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                   calcRegsToKeep(), std::move(sortRegister),
-                                   _plan->getAst()->query()->trx(), sortMode(),
-                                   constrainedSortLimit(), p);
 
-  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(&engine, this,
-                                                                     std::move(infos));
+  auto executorInfos =
+      SortingGatherExecutorInfos(std::move(sortRegister),
+                                 _plan->getAst()->query(), sortMode(),
+                                 constrainedSortLimit(), p);
+
+  return std::make_unique<ExecutionBlockImpl<SortingGatherExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 /// @brief estimateCost
@@ -546,70 +522,33 @@ bool GatherNode::isSortingGather() const noexcept {
   return !elements().empty();
 }
 
-/// @brief is the node parallelizable?
-struct ParallelizableFinder final : public WalkerWorker<ExecutionNode> {
-  bool const _parallelizeWrites;
-  bool _isParallelizable;
-
-  explicit ParallelizableFinder(TRI_vocbase_t const& _vocbase)
-      : _parallelizeWrites(_vocbase.server().getFeature<OptimizerRulesFeature>().parallelizeGatherWrites()),
-        _isParallelizable(true) {}
-
-  ~ParallelizableFinder() = default;
-
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) override final {
-    return false;
-  }
-
-  bool before(ExecutionNode* node) override final {
-    if (node->getType() == ExecutionNode::SCATTER ||
-        node->getType() == ExecutionNode::GATHER ||
-        node->getType() == ExecutionNode::DISTRIBUTE) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-    // write operations of type REMOVE, REPLACE and UPDATE
-    // can be parallelized, provided the rest of the plan
-    // does not prohibit this
-    if (node->isModificationNode() &&
-        _parallelizeWrites &&
-        (node->getType() != ExecutionNode::REMOVE &&
-         node->getType() != ExecutionNode::REPLACE && 
-         node->getType() != ExecutionNode::UPDATE)) {
-      _isParallelizable = false;
-      return true;  // true to abort the whole walking process
-    }
-
-    // continue inspecting
-    return false;
-  }
-};
-
-/// no modification nodes, ScatterNodes etc
-bool GatherNode::isParallelizable() const {
-  if (_parallelism == Parallelism::Serial) {
-    // node already defined to be serial
-    return false;
-  }
-
-  ParallelizableFinder finder(*_vocbase);
-  for (ExecutionNode* e : _dependencies) {
-    e->walk(finder);
-    if (!finder._isParallelizable) {
-      return false;
-    }
-  }
-  return true;
-}
-
 void GatherNode::setParallelism(GatherNode::Parallelism value) {
-  TRI_ASSERT(value != Parallelism::Parallel || isParallelizable());
   _parallelism = value;
 }
 
+GatherNode::SortMode GatherNode::evaluateSortMode(size_t numberOfShards,
+                                                  size_t shardsRequiredForHeapMerge) noexcept {
+  return numberOfShards >= shardsRequiredForHeapMerge ? SortMode::Heap : SortMode::MinElement;
+}
+
+GatherNode::Parallelism GatherNode::evaluateParallelism(Collection const& collection) noexcept {
+  // single-sharded collections don't require any parallelism. collections with more than
+  // one shard are eligible for later parallelization (the Undefined allows this)
+  return (((collection.isSmart() && collection.type() == TRI_COL_TYPE_EDGE) ||
+           (collection.numberOfShards() <= 1 && !collection.isSatellite()))
+              ? Parallelism::Serial
+              : Parallelism::Undefined);
+}
+
+void GatherNode::getVariablesUsedHere(VarSet& vars) const {
+  for (auto const& p : _elements) {
+    vars.emplace(p.var);
+  }
+}
+
 SingleRemoteOperationNode::SingleRemoteOperationNode(
-    ExecutionPlan* plan, size_t id, NodeType mode, bool replaceIndexNode,
-    std::string const& key, Collection const* collection,
+    ExecutionPlan* plan, ExecutionNodeId id, NodeType mode,
+    bool replaceIndexNode, std::string const& key, Collection const* collection,
     ModificationOptions const& options, Variable const* in, Variable const* out,
     Variable const* OLD, Variable const* NEW)
     : ExecutionNode(plan, id),
@@ -654,34 +593,49 @@ std::unique_ptr<ExecutionBlock> SingleRemoteOperationNode::createBlock(
   OperationOptions options =
       ModificationExecutorHelpers::convertOptions(_options, _outVariableNew, _outVariableOld);
 
-  SingleRemoteModificationInfos infos(
-      in, outputNew, outputOld, out,
-      getRegisterPlan()->nrRegs[previousNode->getDepth()] /*nr input regs*/,
-      getRegisterPlan()->nrRegs[getDepth()] /*nr output regs*/, getRegsToClear(),
-      calcRegsToKeep(), _plan->getAst()->query()->trx(), std::move(options),
-      _collection, ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
+  auto readableInputRegisters = RegIdSet{};
+  if (in.isValid()) {
+    readableInputRegisters.emplace(in);
+  }
+  auto writableOutputRegisters = RegIdSet{};
+  if (out.isValid()) {
+    writableOutputRegisters.emplace(out);
+  }
+  if (outputNew.isValid()) {
+    writableOutputRegisters.emplace(outputNew);
+  }
+  if (outputOld.isValid()) {
+    writableOutputRegisters.emplace(outputOld);
+  }
+
+  auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
+                                           std::move(writableOutputRegisters));
+
+  auto executorInfos = SingleRemoteModificationInfos(
+      in, outputNew, outputOld, out, _plan->getAst()->query(), std::move(options),
+      collection(), ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors),
       IgnoreDocumentNotFound(_options.ignoreDocumentNotFound), _key,
       this->hasParent(), this->_replaceIndexNode);
 
   if (_mode == NodeType::INDEX) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<IndexTag>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::INSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Insert>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::REMOVE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Remove>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::REPLACE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Replace>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::UPDATE) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Update>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else if (_mode == NodeType::UPSERT) {
     return std::make_unique<ExecutionBlockImpl<SingleRemoteModificationExecutor<Upsert>>>(
-        &engine, this, std::move(infos));
+        &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
     TRI_ASSERT(false);
     return nullptr;
@@ -744,4 +698,26 @@ void SingleRemoteOperationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned
 CostEstimate SingleRemoteOperationNode::estimateCost() const {
   CostEstimate estimate = _dependencies[0]->getCost();
   return estimate;
+}
+
+std::vector<Variable const*> SingleRemoteOperationNode::getVariablesSetHere() const {
+  std::vector<Variable const*> vec;
+
+  if (_outVariable) {
+    vec.push_back(_outVariable);
+  }
+  if (_outVariableNew) {
+    vec.push_back(_outVariableNew);
+  }
+  if (_outVariableOld) {
+    vec.push_back(_outVariableOld);
+  }
+
+  return vec;
+}
+
+void SingleRemoteOperationNode::getVariablesUsedHere(VarSet& vars) const {
+  if (_inVariable) {
+    vars.emplace(_inVariable);
+  }
 }

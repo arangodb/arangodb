@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,7 +39,7 @@ bool EqualCollection(CollectionNameResolver const* resolver, std::string const& 
     return true;
   }
 
-  if (collectionName == std::to_string(collection->id())) {
+  if (collectionName == std::to_string(collection->id().id())) {
     return true;
   }
 
@@ -77,8 +77,9 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
 ) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
+  auto context = TRI_IGETC;
   TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   if (result.IsEmpty()) {
     return scope.Escape<v8::Object>(result);
@@ -105,15 +106,17 @@ v8::Handle<v8::Object> WrapCollection( // wrap collection
   TRI_GET_GLOBAL_STRING(_IdKey);
   TRI_GET_GLOBAL_STRING(_DbNameKey);
   TRI_GET_GLOBAL_STRING(VersionKeyHidden);
-  result->DefineOwnProperty( // define own property
-    TRI_IGETC, // context
-    _IdKey, // key
-    TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->id()), // value
-    v8::ReadOnly // attributes
-  ).FromMaybe(false); // Ignore result...
-  result->Set( // set value
+  result
+      ->DefineOwnProperty(  // define own property
+          TRI_IGETC,        // context
+          _IdKey,           // key
+          TRI_V8UInt64String<DataSourceId::BaseType>(isolate, collection->id().id()),  // value
+          v8::ReadOnly  // attributes
+          )
+      .FromMaybe(false);  // Ignore result...
+  result->Set(context, // set value
     _DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase().name()) // args
-  );
+  ).FromMaybe(false);
   result->DefineOwnProperty( // define own property
     TRI_IGETC, // context
     VersionKeyHidden, // key

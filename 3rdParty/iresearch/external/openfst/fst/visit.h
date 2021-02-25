@@ -66,11 +66,11 @@ void Visit(const FST &fst, Visitor *visitor, Queue *queue, ArcFilter filter,
     return;
   }
   // An FST's state's visit color.
-  static FST_CONSTEXPR const uint8 kWhiteState = 0x01;  // Undiscovered.
-  static FST_CONSTEXPR const uint8 kGreyState = 0x02;   // Discovered & unfinished.
-  static FST_CONSTEXPR const uint8 kBlackState = 0x04;  // Finished.
+  static constexpr uint8 kWhiteState = 0x01;  // Undiscovered.
+  static constexpr uint8 kGreyState = 0x02;   // Discovered & unfinished.
+  static constexpr uint8 kBlackState = 0x04;  // Finished.
   // We destroy an iterator as soon as possible and mark it so.
-  static FST_CONSTEXPR const uint8 kArcIterDone = 0x08;
+  static constexpr uint8 kArcIterDone = 0x08;
   std::vector<uint8> state_status;
   std::vector<ArcIterator<FST> *> arc_iterator;
   MemoryPool<ArcIterator<FST>> aiter_pool;

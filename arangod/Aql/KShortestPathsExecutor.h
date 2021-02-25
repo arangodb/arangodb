@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,9 +24,14 @@
 #ifndef ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
 #define ARANGOD_AQL_KSHORTEST_PATHS_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
+#include "Graph/KShortestPathsFinder.h"
+#include "Graph/KPathFinder.h"
 
 #include <velocypack/Builder.h>
 
@@ -39,6 +45,7 @@ class Slice;
 
 namespace graph {
 class KShortestPathsFinder;
+class KPathFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
 class TraverserCache;
@@ -49,83 +56,81 @@ namespace aql {
 template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
-class NoStats;
+class TraversalStats;
+class QueryContext;
 
-class KShortestPathsExecutorInfos : public ExecutorInfos {
+template <class FinderType>
+class KShortestPathsExecutorInfos {
+  using InputVertex = GraphNode::InputVertex;
+
  public:
-  struct InputVertex {
-    enum { CONSTANT, REGISTER } type;
-    // TODO make the following two a union instead
-    RegisterId reg;
-    std::string value;
-
-    // cppcheck-suppress passedByValue
-    explicit InputVertex(std::string value)
-        : type(CONSTANT), reg(0), value(std::move(value)) {}
-    explicit InputVertex(RegisterId reg)
-        : type(REGISTER), reg(reg), value("") {}
-  };
-
-  KShortestPathsExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                              std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                              RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                              std::unordered_set<RegisterId> registersToClear,
-                              std::unordered_set<RegisterId> registersToKeep,
-                              std::unique_ptr<graph::KShortestPathsFinder>&& finder,
+  KShortestPathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
+                              std::unique_ptr<FinderType>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
   KShortestPathsExecutorInfos() = delete;
 
-  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&);
+  KShortestPathsExecutorInfos(KShortestPathsExecutorInfos&&) = default;
   KShortestPathsExecutorInfos(KShortestPathsExecutorInfos const&) = delete;
-  ~KShortestPathsExecutorInfos();
+  ~KShortestPathsExecutorInfos() = default;
 
-  arangodb::graph::KShortestPathsFinder& finder() const;
+  [[nodiscard]] auto finder() const -> FinderType&;
 
+  aql::QueryContext& query() noexcept;
+  
   /**
    * @brief test if we use a register or a constant input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  bool useRegisterForInput(bool isTarget) const;
+  [[nodiscard]] auto useRegisterForSourceInput() const -> bool;
+  [[nodiscard]] auto useRegisterForTargetInput() const -> bool;
 
   /**
    * @brief get the register used for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  RegisterId getInputRegister(bool isTarget) const;
+  [[nodiscard]] auto getSourceInputRegister() const -> RegisterId;
+  [[nodiscard]] auto getTargetInputRegister() const -> RegisterId;
 
   /**
    * @brief get the const value for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  std::string const& getInputValue(bool isTarget) const;
+  [[nodiscard]] auto getSourceInputValue() const -> std::string const&;
+  [[nodiscard]] auto getTargetInputValue() const -> std::string const&;
 
   /**
    * @brief get the output register for the given type
    */
-  RegisterId getOutputRegister() const;
+  [[nodiscard]] auto getOutputRegister() const -> RegisterId;
 
-  graph::TraverserCache* cache() const;
+  [[nodiscard]] auto cache() const -> graph::TraverserCache*;
+
+  [[nodiscard]] auto getSourceVertex() const noexcept -> InputVertex;
+  [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
  private:
+  QueryContext& _query;
+
   /// @brief the shortest path finder.
-  std::unique_ptr<arangodb::graph::KShortestPathsFinder> _finder;
+  std::unique_ptr<FinderType> _finder;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 
-  RegisterId const _outputRegister;
+  RegisterId _outputRegister;
 };
 
 /**
  * @brief Implementation of ShortestPath Node
  */
+template <class FinderType>
 class KShortestPathsExecutor {
  public:
   struct Properties {
@@ -134,28 +139,33 @@ class KShortestPathsExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = KShortestPathsExecutorInfos;
-  using Stats = NoStats;
+  using Infos = KShortestPathsExecutorInfos<FinderType>;
+  using Stats = TraversalStats;
+
+  using InputVertex = GraphNode::InputVertex;
 
   KShortestPathsExecutor() = delete;
   KShortestPathsExecutor(KShortestPathsExecutor&&) = default;
 
   KShortestPathsExecutor(Fetcher& fetcher, Infos&);
-  ~KShortestPathsExecutor();
+  ~KShortestPathsExecutor() = default;
 
   /**
    * @brief Shutdown will be called once for every query
    *
    * @return ExecutionState and no error.
    */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
+  [[nodiscard]] auto shutdown(int errorCode) -> std::pair<ExecutionState, Result>;
 
   /**
    * @brief produce the next Row of Aql Values.
    *
    * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
   /**
@@ -163,28 +173,25 @@ class KShortestPathsExecutor {
    *
    * @return false if we are done and no path could be found.
    */
-  bool fetchPaths();
+  [[nodiscard]] auto fetchPaths(AqlItemBlockInputRange& input) -> bool;
+  auto doOutputPath(OutputAqlItemRow& output) -> void;
 
   /**
-   * @brief compute the correct return state
-   *
-   * @return DONE if no more is expected
+   * @brief get the id of an input vertex
    */
+  [[nodiscard]] auto getVertexId(InputVertex const& vertex, InputAqlItemRow& row,
+                                 arangodb::velocypack::Builder& builder,
+                                 arangodb::velocypack::Slice& id) -> bool;
 
-  ExecutionState computeState() const;
-
-  /**
-   * @brief get the id of a input vertex
-   */
-  bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
+  [[nodiscard]] auto stats() -> Stats;
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
-  InputAqlItemRow _input;
+  transaction::Methods _trx;
+  InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.
-  arangodb::graph::KShortestPathsFinder& _finder;
+  FinderType& _finder;
 
   /// @brief temporary memory mangement for source id
   arangodb::velocypack::Builder _sourceBuilder;

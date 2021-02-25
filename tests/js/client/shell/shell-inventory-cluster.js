@@ -63,6 +63,13 @@ function clusterInventorySuite () {
       assertEqual("number", typeof view.consolidationPolicy.threshold);
     }
     assertTrue(Array.isArray(view.primarySort));
+    assertEqual("string", typeof view.primarySortCompression);
+    assertTrue(Array.isArray(view.storedValues));
+    view.storedValues.forEach(function(storedValue) {
+      assertEqual("object", typeof storedValue);
+      assertTrue(Array.isArray(storedValue.fields));
+      assertEqual("string", typeof storedValue.compression);
+    });
     //assertEqual("number", typeof view.version);
     assertEqual("number", typeof view.writebufferActive);
     assertEqual("number", typeof view.writebufferIdle);
@@ -85,6 +92,8 @@ function clusterInventorySuite () {
       assertEqual("boolean", typeof link.includeAllFields);
       assertTrue(Array.isArray(link.primarySort));
       assertTrue(link.hasOwnProperty("storeValues"));
+      assertTrue(link.hasOwnProperty("storedValues"));
+      assertTrue(Array.isArray(link.storedValues));
       assertEqual("boolean", typeof link.trackListPositions);
     });
   };
@@ -324,7 +333,7 @@ function clusterInventorySuite () {
       assertEqual("UnitTestsDumpViewEmpty", view.name);
       assertEqual(2, view.cleanupIntervalStep);
       assertEqual(1000, view.commitIntervalMsec);
-      assertEqual(10000, view.consolidationIntervalMsec);
+      assertEqual(1000, view.consolidationIntervalMsec);
       assertEqual("tier", view.consolidationPolicy.type);
       assertEqual([], view.primarySort);
     },

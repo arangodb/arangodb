@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,7 @@
 #include "InAndOutRowExpressionContext.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
@@ -31,11 +33,22 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) {
+  if (id == std::numeric_limits<std::size_t>::max()) {
+    return true;
+  }
+  TRI_ASSERT(id < regs.size());
+  return regs[id].value() == RegisterId::maxRegisterId;
+}
+
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(
-    Query* query, std::vector<Variable const*> const&& vars,
-    std::vector<RegisterId> const&& regs, size_t vertexVarIdx,
+    transaction::Methods& trx,
+    QueryContext& context,
+    AqlFunctionsInternalCache& cache,
+    std::vector<Variable const*> vars,
+    std::vector<RegisterId> regs, size_t vertexVarIdx,
     size_t edgeVarIdx, size_t pathVarIdx)
-    : QueryExpressionContext(query),
+    : QueryExpressionContext(trx, context, cache),
       _input{CreateInvalidInputRowHint()},
       _vars(std::move(vars)),
       _regs(std::move(regs)),
@@ -43,12 +56,9 @@ InAndOutRowExpressionContext::InAndOutRowExpressionContext(
       _edgeVarIdx(edgeVarIdx),
       _pathVarIdx(pathVarIdx) {
   TRI_ASSERT(_vars.size() == _regs.size());
-  TRI_ASSERT(_vertexVarIdx < _vars.size() ||
-             _vertexVarIdx == std::numeric_limits<std::size_t>::max());
-  TRI_ASSERT(_edgeVarIdx < _vars.size() ||
-             _edgeVarIdx == std::numeric_limits<std::size_t>::max());
-  TRI_ASSERT(_pathVarIdx < _vars.size() ||
-             _pathVarIdx == std::numeric_limits<std::size_t>::max());
+  TRI_ASSERT(testInternalIdValid(_vertexVarIdx, _regs));
+  TRI_ASSERT(testInternalIdValid(_edgeVarIdx, _regs));
+  TRI_ASSERT(testInternalIdValid(_pathVarIdx, _regs));
 }
 
 void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
@@ -58,6 +68,24 @@ void InAndOutRowExpressionContext::setInputRow(InputAqlItemRow input) {
 
 void InAndOutRowExpressionContext::invalidateInputRow() {
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
+}
+
+bool InAndOutRowExpressionContext::isDataFromCollection(Variable const* variable) const {
+  for (size_t i = 0; i < _vars.size(); ++i) {
+    auto const& v = _vars[i];
+    if (v->id == variable->id) {
+      if (variable->isDataFromCollection) {
+        return true;
+      }
+      TRI_ASSERT(i < _regs.size());
+      if (i == _vertexVarIdx ||
+          i == _edgeVarIdx ||
+          i == _pathVarIdx) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable, bool doCopy,
@@ -80,7 +108,7 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNrRegisters());
+        TRI_ASSERT(regId < _input.getNumRegisters());
         return _input.getValue(regId).clone();
       } else {
         mustDestroy = false;
@@ -95,7 +123,7 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
         }
         // Search InputRow
         RegisterId const& regId = _regs[i];
-        TRI_ASSERT(regId < _input.getNrRegisters());
+        TRI_ASSERT(regId < _input.getNumRegisters());
         return _input.getValue(regId);
       }
     }
@@ -106,10 +134,6 @@ AqlValue InAndOutRowExpressionContext::getVariableValue(Variable const* variable
   // NOTE: PRUNE is the only feature using this context.
   msg.append("' in PRUNE statement");
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg.c_str());
-}
-
-size_t InAndOutRowExpressionContext::numRegisters() const {
-  return _regs.size();
 }
 
 bool InAndOutRowExpressionContext::needsVertexValue() const {

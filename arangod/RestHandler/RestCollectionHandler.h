@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,20 +45,32 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
-  void collectionRepresentation(std::string const& name, bool showProperties,
-                                bool showFigures, bool showCount, bool detailedCount);
+  enum class FiguresType {
+    None = 0,
+    Standard = 1,
+    Detailed = 2
+  };
 
-  void collectionRepresentation(LogicalCollection& coll, bool showProperties,
-                                bool showFigures, bool showCount, bool detailedCount);
+  enum class CountType {
+    None = 0,
+    Standard = 1,
+    Detailed = 2
+  };
+
+  void collectionRepresentation(std::string const& name, bool showProperties,
+                                FiguresType showFigures, CountType showCount);
+
+  void collectionRepresentation(std::shared_ptr<LogicalCollection> coll, bool showProperties,
+                                FiguresType showFigures, CountType showCount);
 
   void collectionRepresentation(methods::Collections::Context& ctxt, bool showProperties,
-                                bool showFigures, bool showCount, bool detailedCount);
+                                FiguresType showFigures, CountType showCount);
 
   futures::Future<futures::Unit> collectionRepresentationAsync(
       methods::Collections::Context& ctxt, bool showProperties,
-      bool showFigures, bool showCount, bool detailedCount);
+      FiguresType showFigures, CountType showCount);
 
-  virtual Result handleExtraCommandPut(LogicalCollection& coll, std::string const& command,
+  virtual Result handleExtraCommandPut(std::shared_ptr<LogicalCollection> coll, std::string const& command,
                                        velocypack::Builder& builder) = 0;
 
  private:

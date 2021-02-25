@@ -25,21 +25,21 @@
 #ifndef ARANGO_CXX_DRIVER_MESSAGE
 #define ARANGO_CXX_DRIVER_MESSAGE
 
-#include <string>
-#include <vector>
-
 #include <fuerte/asio_ns.h>
 #include <fuerte/types.h>
-
 #include <velocypack/Buffer.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+#include <string>
+#include <vector>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
 const std::string fu_accept_key("accept");
 const std::string fu_authorization_key("authorization");
 const std::string fu_content_length_key("content-length");
 const std::string fu_content_type_key("content-type");
+const std::string fu_content_encoding_key("content-encoding");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
@@ -49,7 +49,7 @@ struct MessageHeader {
 
  public:
   // Header metadata helpers#
-  template<typename K, typename V>
+  template <typename K, typename V>
   void addMeta(K&& key, V&& value) {
     if (fu_accept_key == key) {
       _acceptType = to_ContentType(value);
@@ -61,6 +61,8 @@ struct MessageHeader {
       if (_contentType != ContentType::Custom) {
         return;
       }
+    } else if (fu_content_encoding_key == key) {
+      _contentEncoding = to_ContentEncoding(value);
     }
     this->_meta.emplace(std::forward<K>(key), std::forward<V>(value));
   }
@@ -75,11 +77,10 @@ struct MessageHeader {
   }
   std::string const& metaByKey(std::string const& key, bool& found) const;
 
+  ContentEncoding contentEncoding() const { return _contentEncoding; }
   // content type accessors
   ContentType contentType() const { return _contentType; }
-  void contentType(ContentType type) {
-    _contentType = type;
-  }
+  void contentType(ContentType type) { _contentType = type; }
   void contentType(std::string const& type) {
     addMeta(fu_content_type_key, type);
   }
@@ -88,7 +89,8 @@ struct MessageHeader {
   StringMap _meta;  /// Header meta data (equivalent to HTTP headers)
   short _version;
   ContentType _contentType = ContentType::Unset;
-  ContentType _acceptType = ContentType::Unset;
+  ContentType _acceptType = ContentType::VPack;
+  ContentEncoding _contentEncoding = ContentEncoding::Identity;
 };
 
 struct RequestHeader final : public MessageHeader {
@@ -109,7 +111,7 @@ struct RequestHeader final : public MessageHeader {
   ContentType acceptType() const { return _acceptType; }
   void acceptType(ContentType type) { _acceptType = type; }
   void acceptType(std::string const& type);
-  
+
   // query parameter helpers
   void addParameter(std::string const& key, std::string const& value);
 
@@ -124,17 +126,14 @@ struct ResponseHeader final : public MessageHeader {
   /// Response code
   StatusCode responseCode = StatusUndefined;
 
-  MessageType responseType() const { return _responseType; }
-
- private:
-  MessageType _responseType = MessageType::Response;
+  MessageType responseType() const { return MessageType::Response; }
 };
 
 // Message is base class for message being send to (Request) or
 // from (Response) a server.
 class Message {
  protected:
-  Message() = default;
+  Message() : _timestamp(std::chrono::steady_clock::now()) {}
   virtual ~Message() = default;
 
  public:
@@ -165,6 +164,9 @@ class Message {
     return velocypack::Slice::noneSlice();
   }
 
+  /// content-encoding header type
+  ContentEncoding contentEncoding() const;
+
   /// content-type header accessors
   ContentType contentType() const;
 
@@ -172,13 +174,20 @@ class Message {
   bool isContentTypeVPack() const;
   bool isContentTypeHtml() const;
   bool isContentTypeText() const;
+
+  std::chrono::steady_clock::time_point timestamp() const { return _timestamp; }
+  // set timestamp when it was sent
+  void timestamp(std::chrono::steady_clock::time_point t) { _timestamp = t; }
+
+ private:
+  std::chrono::steady_clock::time_point _timestamp;
 };
 
 // Request contains the message send to a server in a request.
 class Request final : public Message {
  public:
   static constexpr std::chrono::milliseconds defaultTimeout =
-      std::chrono::milliseconds(300 * 1000);
+      std::chrono::seconds(300);
 
   Request(RequestHeader messageHeader = RequestHeader())
       : header(std::move(messageHeader)), _timeout(defaultTimeout) {}
@@ -213,6 +222,7 @@ class Request final : public Message {
   std::vector<velocypack::Slice> slices() const override;
   asio_ns::const_buffer payload() const override;
   std::size_t payloadSize() const override;
+  velocypack::Buffer<uint8_t>&& moveBuffer() && { return std::move(_payload); }
 
   // get timeout, 0 means no timeout
   inline std::chrono::milliseconds timeout() const { return _timeout; }
@@ -236,7 +246,7 @@ class Response : public Message {
   /// @brief request header
   ResponseHeader header;
 
-  MessageType type() const override { return header._responseType; }
+  MessageType type() const override { return header.responseType(); }
   MessageHeader const& messageHeader() const override { return header; }
   ///////////////////////////////////////////////
   // get / check status
@@ -244,6 +254,7 @@ class Response : public Message {
 
   // statusCode returns the (HTTP) status code for the request (200==OK).
   StatusCode statusCode() const noexcept { return header.responseCode; }
+
   // checkStatus returns true if the statusCode equals one of the given valid
   // code, false otherwise.
   bool checkStatus(std::initializer_list<StatusCode> validStatusCodes) const {

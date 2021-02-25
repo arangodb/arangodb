@@ -45,6 +45,7 @@ const defaultBatchSize = 1000;
 const defaultTestRowCounts = [1, 2, 10, 100, 999, 1000, 1001, 1500, 2000, 10500];
 const defaultClusterTestRowCounts = [1, 999, 1000, 1001];
 
+const AsyncNode = 'AsyncNode';
 const CalculationNode = 'CalculationNode';
 const CollectNode = 'CollectNode';
 const DistributeNode = 'DistributeNode';
@@ -56,6 +57,7 @@ const GatherNode = 'GatherNode';
 const IndexNode = 'IndexNode';
 const InsertNode = 'InsertNode';
 const LimitNode = 'LimitNode';
+const MutexNode = 'MutexNode';
 const NoResultsNode = 'NoResultsNode';
 const RemoteNode = 'RemoteNode';
 const RemoveNode = 'RemoveNode';
@@ -65,19 +67,19 @@ const ScatterNode = 'ScatterNode';
 const ShortestPathNode = 'ShortestPathNode';
 const SingletonNode = 'SingletonNode';
 const SortNode = 'SortNode';
-const SubqueryNode = 'SubqueryNode';
 const TraversalNode = 'TraversalNode';
 const UpdateNode = 'UpdateNode';
 const UpsertNode = 'UpsertNode';
 
 const nodeTypesList = [
-  CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
+  AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
   EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
-  InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
+  InsertNode, LimitNode, MutexNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
   ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-  SubqueryNode, TraversalNode, UpdateNode, UpsertNode
+  TraversalNode, UpdateNode, UpsertNode
 ];
 
+const AsyncBlock = 'AsyncNode';
 const CalculationBlock = 'CalculationNode';
 const ConstrainedSortBlock = 'SortLimitNode';
 const CountCollectBlock = 'CountCollectNode';
@@ -88,6 +90,7 @@ const FilterBlock = 'FilterNode';
 const HashedCollectBlock = 'HashedCollectNode';
 const IndexBlock = 'IndexNode';
 const LimitBlock = 'LimitNode';
+const MutexBlock = 'MutexNode';
 const NoResultsBlock = 'NoResultsNode';
 const RemoteBlock = 'RemoteNode';
 const ReturnBlock = 'ReturnNode';
@@ -96,7 +99,6 @@ const SingletonBlock = 'SingletonNode';
 const SortBlock = 'SortNode';
 const SortedCollectBlock = 'SortedCollectNode';
 const SortingGatherBlock = 'SortingGatherNode';
-const SubqueryBlock = 'SubqueryNode';
 const TraversalBlock = 'TraversalNode';
 const UnsortingGatherBlock = 'UnsortingGatherNode';
 const RemoveBlock = 'RemoveNode';
@@ -111,11 +113,11 @@ const IResearchViewBlock = 'IResearchViewNode';
 const IResearchViewOrderedBlock = 'IResearchOrderedViewNode';
 
 const blockTypesList = [
-  CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
+  AsyncBlock, CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
   EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
-  HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
+  HashedCollectBlock, IndexBlock, LimitBlock, MutexBlock, NoResultsBlock, RemoteBlock,
   ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-  SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+  SortedCollectBlock, SortingGatherBlock, TraversalBlock,
   UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
   UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
   IResearchViewBlock, IResearchViewOrderedBlock
@@ -123,7 +125,7 @@ const blockTypesList = [
 
 let translateType = function(nodes, node) {
   let types = {};
-  nodes.forEach(function(node) { 
+  nodes.forEach(function(node) {
     let type = node.type;
     if (type === 'CollectNode') {
       if (node.collectOptions.method === 'sorted') {
@@ -197,14 +199,14 @@ function zipPlanNodesIntoStatsNodes (profile) {
     },
     {}
   );
-  
+
   // Note: We need to take the order plan.nodes here, not stats.nodes,
   // as stats.nodes is sorted by id.
   return profile.plan.nodes.map(node => (
-    { 
-      id: node.id, 
-      type: translateType(profile.plan.nodes, node), 
-      fromStats: statsNodesById[node.id], fromPlan: node 
+    {
+      id: node.id,
+      type: translateType(profile.plan.nodes, node),
+      fromStats: statsNodesById[node.id], fromPlan: node
     }
   ));
 }
@@ -233,8 +235,7 @@ function getPlanNodesWithId (profile) {
 function getStatsNodesWithId (profile) {
   return profile.stats.nodes.map(
     node => ({
-      id: node.id,
-      type: node.type,
+      id: node.id
     })
   );
 }
@@ -374,9 +375,10 @@ function assertIsProfilePlanObject (plan) {
   // TODO add deep checks for plan.collections
 
   for (let variable of plan.variables) {
-    expect(variable).to.have.all.keys([
+    expect(variable).to.include.all.keys([
       'id',
       'name',
+      'isDataFromCollection',
     ]);
 
     expect(variable.id).to.be.a('number');
@@ -457,6 +459,18 @@ function assertStatsNodesMatchPlanNodes (profile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief assert that the key/value pairs in expectedStats have matching
+/// key/value pairs in profile.stats. Keys would for example be fullCount,
+/// scannedFull, or scannedIndex.
+////////////////////////////////////////////////////////////////////////////////
+
+function assertStatsMatchGenStats(profile, expectedStats) {
+  for (const key of Object.keys(expectedStats)) {
+    assert.assertEqual(expectedStats[key], profile.stats[key], `when comparing stats.${key}`);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Compares lists of nodes with items and calls, i.e., expected and
 /// actual both have the structure [ { type, calls, items } ].
 /// details may contain an object that will be output when the test fails,
@@ -513,7 +527,8 @@ function runDefaultChecks (
   {
     query,
     genNodeList,
-    prepare = () => {},
+    genStats = () => ({}),
+    prepare = () => ({}),
     bind = rows => ({rows}),
     options = {},
     testRowCounts = defaultTestRowCounts,
@@ -521,20 +536,22 @@ function runDefaultChecks (
   }
 ) {
   const {fullCount} = options;
+  const profile = options.hasOwnProperty('profile') ? Math.max(2, options.profile) : 2;
   testRowCounts = _.uniq(testRowCounts.concat(additionalTestRowCounts).sort());
   for (const rows of testRowCounts) {
     prepare(rows);
-    const profile = db._query(query, bind(rows),
-      _.merge(options, {profile: 2, defaultBatchSize})
+    const queryResults = db._query(query, bind(rows),
+      _.merge(options, {profile, defaultBatchSize})
     ).getExtra();
-
-    assertIsLevel2Profile(profile, {fullCount});
-    assertStatsNodesMatchPlanNodes(profile);
 
     const batches = Math.ceil(rows / defaultBatchSize);
 
+    assertIsLevel2Profile(queryResults, {fullCount});
+    assertStatsNodesMatchPlanNodes(queryResults);
+    assertStatsMatchGenStats(queryResults, genStats(rows, batches));
+
     const expected = genNodeList(rows, batches);
-    const actual = getCompactStatsNodes(profile);
+    const actual = getCompactStatsNodes(queryResults);
 
     assertNodesItemsAndCalls(expected, actual,
      {query, bind: bind(rows), rows, batches, expected, actual});
@@ -720,6 +737,7 @@ exports.viewName = viewName;
 exports.edgeColName = edgeColName;
 exports.defaultBatchSize = defaultBatchSize;
 exports.defaultTestRowCounts = defaultTestRowCounts;
+exports.AsyncNode = AsyncNode;
 exports.CalculationNode = CalculationNode;
 exports.CollectNode = CollectNode;
 exports.DistributeNode = DistributeNode;
@@ -731,6 +749,7 @@ exports.GatherNode = GatherNode;
 exports.IndexNode = IndexNode;
 exports.InsertNode = InsertNode;
 exports.LimitNode = LimitNode;
+exports.MutexNode = MutexNode;
 exports.NoResultsNode = NoResultsNode;
 exports.RemoteNode = RemoteNode;
 exports.RemoveNode = RemoveNode;
@@ -740,11 +759,11 @@ exports.ScatterNode = ScatterNode;
 exports.ShortestPathNode = ShortestPathNode;
 exports.SingletonNode = SingletonNode;
 exports.SortNode = SortNode;
-exports.SubqueryNode = SubqueryNode;
 exports.TraversalNode = TraversalNode;
 exports.UpdateNode = UpdateNode;
 exports.UpsertNode = UpsertNode;
 exports.nodeTypesList = nodeTypesList;
+exports.AsyncBlock = AsyncBlock;
 exports.CalculationBlock = CalculationBlock;
 exports.ConstrainedSortBlock = ConstrainedSortBlock;
 exports.CountCollectBlock = CountCollectBlock;
@@ -755,6 +774,7 @@ exports.FilterBlock = FilterBlock;
 exports.HashedCollectBlock = HashedCollectBlock;
 exports.IndexBlock = IndexBlock;
 exports.LimitBlock = LimitBlock;
+exports.MutexBlock = MutexBlock;
 exports.NoResultsBlock = NoResultsBlock;
 exports.RemoteBlock = RemoteBlock;
 exports.ReturnBlock = ReturnBlock;
@@ -763,7 +783,6 @@ exports.SingletonBlock = SingletonBlock;
 exports.SortBlock = SortBlock;
 exports.SortedCollectBlock = SortedCollectBlock;
 exports.SortingGatherBlock = SortingGatherBlock;
-exports.SubqueryBlock = SubqueryBlock;
 exports.TraversalBlock = TraversalBlock;
 exports.UnsortingGatherBlock = UnsortingGatherBlock;
 exports.RemoveBlock = RemoveBlock;

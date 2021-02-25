@@ -28,6 +28,7 @@
 #include "utils/type_limits.hpp"
 #include "utils/lz4compression.hpp"
 #include "index/merge_writer.hpp"
+#include "index/comparer.hpp"
 
 namespace tests {
   class merge_writer_tests: public ::testing::Test {
@@ -43,17 +44,16 @@ namespace tests {
 
   template<typename T>
   void validate_terms(
-    const iresearch::sub_reader& segment,
-    const iresearch::term_reader& terms,
-    uint64_t doc_count,
-    const iresearch::bytes_ref& min,
-    const iresearch::bytes_ref& max,
-    size_t term_size,
-    const iresearch::flags& term_features,
-    std::unordered_map<T, std::unordered_set<iresearch::doc_id_t>>& expected_terms,
-    size_t* frequency = nullptr,
-    std::vector<uint32_t>* position = nullptr
-  ) {
+      const irs::sub_reader& segment,
+      const irs::term_reader& terms,
+      uint64_t doc_count,
+      const irs::bytes_ref& min,
+      const irs::bytes_ref& max,
+      size_t term_size,
+      const irs::flags& term_features,
+      std::unordered_map<T, std::unordered_set<irs::doc_id_t>>& expected_terms,
+      size_t* frequency = nullptr,
+      std::vector<uint32_t>* position = nullptr) {
     ASSERT_EQ(doc_count, terms.docs_count());
     ASSERT_EQ((max), (terms.max)());
     ASSERT_EQ((min), (terms.min)());
@@ -66,26 +66,24 @@ namespace tests {
       ASSERT_NE(expected_terms.end(), itr);
 
       for (auto docs_itr = segment.mask(term_itr->postings(term_features)); docs_itr->next();) {
-        auto& attrs = docs_itr->attributes();
-
         ASSERT_EQ(1, itr->second.erase(docs_itr->value()));
-        ASSERT_EQ(1 + (frequency ? 1 : 0) + (position ? 1 : 0), attrs.size());
-        ASSERT_TRUE(attrs.contains(iresearch::document::type()));
+        ASSERT_TRUE(docs_itr->get(irs::type<irs::document>::id()));
 
         if (frequency) {
-          ASSERT_TRUE(attrs.contains(iresearch::frequency::type()));
-          ASSERT_EQ(*frequency, attrs.get<iresearch::frequency>()->value);
+          ASSERT_TRUE(docs_itr->get(irs::type<irs::frequency>::id()));
+          ASSERT_EQ(*frequency, irs::get<irs::frequency>(*docs_itr)->value);
         }
 
         if (position) {
-          ASSERT_TRUE(attrs.contains(iresearch::position::type()));
+          auto* docs_itr_pos = irs::get_mutable<irs::position>(docs_itr.get());
+          ASSERT_TRUE(docs_itr_pos);
 
           for (auto pos: *position) {
-            ASSERT_TRUE(attrs.get<iresearch::position>()->next());
-            ASSERT_EQ(pos, attrs.get<iresearch::position>()->value());
+            ASSERT_TRUE(docs_itr_pos->next());
+            ASSERT_EQ(pos, docs_itr_pos->value());
           }
 
-          ASSERT_FALSE(attrs.get<iresearch::position>()->next());
+          ASSERT_FALSE(docs_itr_pos->next());
         }
       }
 
@@ -104,8 +102,14 @@ using namespace tests;
 // -----------------------------------------------------------------------------
 
 TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
-  iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
-  iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+  const irs::flags STRING_FIELD_FEATURES{
+    irs::type<irs::frequency>::get(), irs::type<irs::position>::get()
+  };
+
+  const irs::flags TEXT_FIELD_FEATURES{
+    irs::type<irs::frequency>::get(), irs::type<irs::position>::get(),
+    irs::type<irs::offset>::get(), irs::type<irs::payload>::get()
+  };
 
   std::string string1;
   std::string string2;
@@ -124,7 +128,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
   doc1.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 1);
   }
   doc1.insert(
@@ -132,17 +136,17 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   );
 
   doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
-  doc2.insert(std::make_shared<tests::int_field>()); 
+  doc2.insert(std::make_shared<tests::int_field>());
   {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 2);
   }
 
   doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 3);
   }
 
@@ -154,8 +158,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
   // populate directory
   {
-    auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
@@ -167,10 +171,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
   }
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
   irs::merge_writer writer(dir, column_info);
 
   ASSERT_EQ(2, reader.size());
@@ -192,16 +196,16 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         { 1 * 42, 1 },
         { 3 * 42, 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvint(in);
+        const auto actual_value = irs::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -229,7 +233,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         { "string1_data", 1 },
         { "string3_data", 2 }
       };
@@ -289,7 +293,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         { 2 * 42, 1 },
       };
 
@@ -297,7 +301,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
-        const auto actual_value = iresearch::read_zvint(stream);
+        const auto actual_value = irs::read_zvint(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -325,16 +329,16 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         { "string2_data", 1 },
         { "string4_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
-        const auto actual_value = iresearch::read_string<std::string>(stream);
+        const auto actual_value = irs::read_string<std::string>(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -362,15 +366,15 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'another_column' column
     {
-      std::unordered_map <std::string, iresearch::doc_id_t > expected_values{
+      std::unordered_map <std::string, irs::doc_id_t > expected_values{
         { "another_value", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& in) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& in) {
         ++calls_count;
         irs::bytes_ref_input stream(in);
-        const auto actual_value = iresearch::read_string<std::string>(stream);
+        const auto actual_value = irs::read_string<std::string>(stream);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -426,7 +430,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         // segment 0
         { 1 * 42, 1 },
         { 3 * 42, 2 },
@@ -435,10 +439,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvint(in);
+        const auto actual_value = irs::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -466,7 +470,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         // segment 0
         { "string1_data", 1 },
         { "string3_data", 2 },
@@ -475,10 +479,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        const auto actual_value = irs::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -513,8 +517,8 @@ TEST_F(merge_writer_tests, test_merge_writer_columns_remove) {
 }
 
 TEST_F(merge_writer_tests, test_merge_writer_columns) {
-  iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
-  iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+  irs::flags STRING_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() };
+  irs::flags TEXT_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() };
 
   std::string string1;
   std::string string2;
@@ -534,7 +538,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc1.insert(std::make_shared<tests::int_field>()); 
   {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 1);
   }
   doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
@@ -542,7 +546,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
   doc2.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 2);
   }
   
@@ -550,7 +554,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   doc3.insert(std::make_shared<tests::int_field>()); 
   {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 3);
   }
 
@@ -562,7 +566,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
   // populate directory
   {
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer, doc1.indexed.end(), doc1.indexed.end(), doc1.stored.begin(), doc1.stored.end()));
     ASSERT_TRUE(insert(*writer, doc3.indexed.end(), doc3.indexed.end(), doc3.stored.begin(), doc3.stored.end()));
     writer->commit();
@@ -572,10 +576,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
   }
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
   irs::merge_writer writer(dir, column_info);
 
   ASSERT_EQ(2, reader.size());
@@ -598,16 +602,16 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         { 1 * 42, 1 },
         { 3 * 42, 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvint(in);
+        const auto actual_value = irs::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -635,16 +639,16 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         { "string1_data", 1 },
         { "string3_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        const auto actual_value = irs::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -692,7 +696,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         { 2 * 42, 1 },
       };
 
@@ -700,7 +704,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvint(in);
+        const auto actual_value = irs::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -728,16 +732,16 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         { "string2_data", 1 },
         { "string4_data", 2 }
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        const auto actual_value = irs::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -793,7 +797,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_int' column
     {
-      std::unordered_map<int, iresearch::doc_id_t> expected_values{
+      std::unordered_map<int, irs::doc_id_t> expected_values{
         // segment 0
         { 1 * 42, 1 },
         { 3 * 42, 2 },
@@ -802,10 +806,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvint(in);
+        const auto actual_value = irs::read_zvint(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -833,7 +837,7 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
 
     // check 'doc_string' column
     {
-      std::unordered_map <irs::string_ref, iresearch::doc_id_t > expected_values{
+      std::unordered_map <irs::string_ref, irs::doc_id_t > expected_values{
         // segment 0
         { "string1_data", 1 },
         { "string3_data", 2 },
@@ -843,10 +847,10 @@ TEST_F(merge_writer_tests, test_merge_writer_columns) {
       };
 
       size_t calls_count = 0;
-      auto reader = [&calls_count, &expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&calls_count, &expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         ++calls_count;
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_string<std::string>(in);
+        const auto actual_value = irs::read_string<std::string>(in);
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -879,16 +883,16 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_NE(nullptr, codec_ptr);
   irs::memory_directory dir;
 
-  iresearch::bstring bytes1;
-  iresearch::bstring bytes2;
-  iresearch::bstring bytes3;
+  irs::bstring bytes1;
+  irs::bstring bytes2;
+  irs::bstring bytes3;
 
-  bytes1.append(iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes1_data")));
-  bytes2.append(iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data")));
-  bytes3.append(iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data")));
+  bytes1.append(irs::ref_cast<irs::byte_type>(irs::string_ref("bytes1_data")));
+  bytes2.append(irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data")));
+  bytes3.append(irs::ref_cast<irs::byte_type>(irs::string_ref("bytes3_data")));
 
-  iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
-  iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+  irs::flags STRING_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() };
+  irs::flags TEXT_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() };
 
   std::string string1;
   std::string string2;
@@ -916,127 +920,127 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // norm for 'doc_bytes' in 'doc1' : 1/sqrt(4)
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes1);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes1);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes1);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
   doc1.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc1.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes1);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
 
   // do not track norms for 'doc_bytes' in 'doc2'
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes2);
   }
   doc2.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc2.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes2);
   }
 
   // norm for 'doc_bytes' in 'doc3' : 1/sqrt(2)
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes3);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
   doc3.insert(std::make_shared<tests::binary_field>()); {
     auto& field = doc3.indexed.back<tests::binary_field>();
-    field.name(iresearch::string_ref("doc_bytes"));
+    field.name(irs::string_ref("doc_bytes"));
     field.value(bytes3);
-    field.features().add<iresearch::norm>();
+    field.features().add<irs::norm>();
   }
 
   doc1.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc1.indexed.back<tests::double_field>();
-    field.name(iresearch::string_ref("doc_double"));
+    field.name(irs::string_ref("doc_double"));
     field.value(2.718281828 * 1);
   }
   doc2.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc2.indexed.back<tests::double_field>();
-    field.name(iresearch::string_ref("doc_double"));
+    field.name(irs::string_ref("doc_double"));
     field.value(2.718281828 * 2);
   }
   doc3.insert(std::make_shared<tests::double_field>()); {
     auto& field = doc3.indexed.back<tests::double_field>();
-    field.name(iresearch::string_ref("doc_double"));
+    field.name(irs::string_ref("doc_double"));
     field.value(2.718281828 * 3);
   }
   doc1.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc1.indexed.back<tests::float_field>();
-    field.name(iresearch::string_ref("doc_float"));
+    field.name(irs::string_ref("doc_float"));
     field.value(3.1415926535f * 1);
   }
   doc2.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc2.indexed.back<tests::float_field>();
-    field.name(iresearch::string_ref("doc_float"));
+    field.name(irs::string_ref("doc_float"));
     field.value(3.1415926535f * 2);
   }
   doc3.insert(std::make_shared<tests::float_field>()); {
     auto& field = doc3.indexed.back<tests::float_field>();
-    field.name(iresearch::string_ref("doc_float"));
+    field.name(irs::string_ref("doc_float"));
     field.value(3.1415926535f * 3);
   }
   doc1.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc1.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 1);
   }
   doc2.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc2.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 2);
   }
   doc3.insert(std::make_shared<tests::int_field>()); {
     auto& field = doc3.indexed.back<tests::int_field>();
-    field.name(iresearch::string_ref("doc_int"));
+    field.name(irs::string_ref("doc_int"));
     field.value(42 * 3);
   }
   doc1.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc1.indexed.back<tests::long_field>();
-    field.name(iresearch::string_ref("doc_long"));
+    field.name(irs::string_ref("doc_long"));
     field.value(12345 * 1);
   }
   doc2.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc2.indexed.back<tests::long_field>();
-    field.name(iresearch::string_ref("doc_long"));
+    field.name(irs::string_ref("doc_long"));
     field.value(12345 * 2);
   }
   doc3.insert(std::make_shared<tests::long_field>()); {
     auto& field = doc3.indexed.back<tests::long_field>();
-    field.name(iresearch::string_ref("doc_long"));
+    field.name(irs::string_ref("doc_long"));
     field.value(12345 * 3);
   }
   doc1.insert(std::make_shared<tests::templates::string_field>("doc_string", string1));
   doc2.insert(std::make_shared<tests::templates::string_field>("doc_string", string2));
   doc3.insert(std::make_shared<tests::templates::string_field>("doc_string", string3));
   doc4.insert(std::make_shared<tests::templates::string_field>("doc_string", string4));
-  doc1.indexed.push_back(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text1));
-  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text2));
-  doc3.indexed.push_back(std::make_shared<tests::templates::text_field<iresearch::string_ref>>("doc_text", text3));
+  doc1.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text1));
+  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text2));
+  doc3.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>("doc_text", text3));
 
   // populate directory
   {
-    auto query_doc4 = iresearch::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    auto query_doc4 = irs::iql::query_builder().build("doc_string==string4_data", std::locale::classic());
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
 
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
@@ -1066,10 +1070,10 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   };
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
-  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
   irs::merge_writer writer(dir, column_info);
 
   ASSERT_EQ(2, reader.size());
@@ -1096,14 +1100,14 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::binary_field().features();
-      features.add<iresearch::norm>();
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      features.add<irs::norm>();
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes1_data"))].emplace(1);
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes1_data"))].emplace(1);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data"))].emplace(2);
 
       ASSERT_EQ(2, docs_count(segment, "doc_bytes"));
-      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
+      ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // 'norm' attribute has been specified
       ASSERT_EQ(features, field.features);
       validate_terms(
         segment,
@@ -1116,13 +1120,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         expected_terms
       );
 
-      std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+      std::unordered_map<float_t, irs::doc_id_t> expected_values{
         { 0.5f, 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+        const auto actual_value = irs::read_zvfloat(in); // read norm value
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -1151,26 +1155,26 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::double_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 2));
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((double_t) (2.718281828 * 1));
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 1));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 2));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_double"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -1179,8 +1183,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         8,
         features,
         expected_terms
@@ -1193,26 +1197,26 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::float_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 2));
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((float_t) (3.1415926535 * 1));
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 1));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 2));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_float"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1221,8 +1225,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1235,26 +1239,26 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::int_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset(42 * 2);
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset(42 * 1);
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset(42 * 1);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset(42 * 2);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_int"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1263,8 +1267,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         3,
         features,
         expected_terms
@@ -1277,22 +1281,22 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::long_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((int64_t) 12345 * 2);
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((int64_t) 12345 * 1);
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 1);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 2);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
       }
 
       ASSERT_EQ(2, docs_count(segment, "doc_long"));
@@ -1304,8 +1308,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         2,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         5,
         features,
         expected_terms
@@ -1319,22 +1323,22 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string1_data"))].emplace(1);
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string1_data"))].emplace(1);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string2_data"))].emplace(2);
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
         *terms,
         2,
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string1)),
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string2)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(string1)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(string2)),
         2,
         features,
         expected_terms,
@@ -1350,22 +1354,22 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text1_data"))].emplace(1);
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text1_data"))].emplace(1);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text2_data"))].emplace(2);
 
       ASSERT_EQ(2, docs_count(segment, "doc_text"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
         *terms,
         2,
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text1)),
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text2)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(text1)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(text2)),
         2,
         features,
         expected_terms,
@@ -1377,7 +1381,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // ...........................................................................
     // validate documents
     // ...........................................................................
-    std::unordered_set<iresearch::bytes_ref> expected_bytes;
+    std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
     auto bytes_values = column->values();
@@ -1402,7 +1406,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, column);
     auto string_values = column->values();
 
-    expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2) };
+    expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2) };
     expected_double = { 2.718281828 * 1, 2.718281828 * 2 };
     expected_float = { (float)(3.1415926535 * 1), (float)(3.1415926535 * 2) };
     expected_int = { 42 * 1, 42 * 2 };
@@ -1413,7 +1417,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+      const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
       ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
       ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
 
@@ -1461,12 +1465,12 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::binary_field().features();
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
-      features.add<iresearch::norm>();
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(1);
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
+      features.add<irs::norm>();
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes3_data"))].emplace(1);
 
       ASSERT_EQ(1, docs_count(segment, "doc_bytes"));
-      ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
+      ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
@@ -1480,13 +1484,13 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         expected_terms
       );
 
-      std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+      std::unordered_map<float_t, irs::doc_id_t> expected_values{
         { float(1./std::sqrt(2)), 1 },
       };
 
-      auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+      auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
         irs::bytes_ref_input in(value);
-        const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+        const auto actual_value = irs::read_zvfloat(in); // read norm value
 
         auto it = expected_values.find(actual_value);
         if (it == expected_values.end()) {
@@ -1515,20 +1519,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::double_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((double_t) (2.718281828 * 3));
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((double_t) (2.718281828 * 3));
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((double_t) (2.718281828 * 3));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_double"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -1537,8 +1541,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1551,20 +1555,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::float_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((float_t) (3.1415926535 * 3));
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((float_t) (3.1415926535 * 3));
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((float_t) (3.1415926535 * 3));
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_float"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1573,8 +1577,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         2,
         features,
         expected_terms
@@ -1587,20 +1591,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::int_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset(42 * 3);
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset(42 * 3);
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset(42 * 3);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_int"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1609,8 +1613,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         2,
         features,
         expected_terms
@@ -1623,20 +1627,20 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       ASSERT_NE(nullptr, terms);
       auto& field = terms->meta();
       auto features = tests::long_field().features();
-      iresearch::numeric_token_stream max;
+      irs::numeric_token_stream max;
       max.reset((int64_t) 12345 * 3);
-      iresearch::numeric_token_stream min;
+      irs::numeric_token_stream min;
       min.reset((int64_t) 12345 * 3);
-      std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
       {
-        iresearch::numeric_token_stream itr;
+        irs::numeric_token_stream itr;
         itr.reset((int64_t) 12345 * 3);
-        for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+        for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
       }
 
       ASSERT_EQ(1, docs_count(segment, "doc_long"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -1645,8 +1649,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
         segment,
         *terms,
         1,
-        min.attributes().get<iresearch::term_attribute>()->value(),
-        max.attributes().get<iresearch::term_attribute>()->value(),
+        irs::get<irs::term_attribute>(min)->value,
+        irs::get<irs::term_attribute>(max)->value,
         4,
         features,
         expected_terms
@@ -1660,22 +1664,22 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = STRING_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(1);
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string4_data"))];
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string3_data"))].emplace(1);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string4_data"))];
 
       ASSERT_EQ(2, docs_count(segment, "doc_string"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
         *terms,
         2,
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string3)),
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string4)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(string3)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(string4)),
         2,
         features,
         expected_terms,
@@ -1691,21 +1695,21 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       auto& field = terms->meta();
       auto& features = TEXT_FIELD_FEATURES;
       size_t frequency = 1;
-      std::vector<uint32_t> position = { 0 };
-      std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+      std::vector<uint32_t> position = { irs::pos_limits::min() };
+      std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-      expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(1);
+      expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text3_data"))].emplace(1);
 
       ASSERT_EQ(1, docs_count(segment, "doc_text"));
-      ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+      ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
       ASSERT_EQ(features, field.features);
       ASSERT_NE(nullptr, terms);
       validate_terms(
         segment,
         *terms,
         1,
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text3)),
-        iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text3)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(text3)),
+        irs::ref_cast<irs::byte_type>(irs::string_ref(text3)),
         1,
         features,
         expected_terms,
@@ -1717,7 +1721,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     // ...........................................................................
     // validate documents
     // ...........................................................................
-    std::unordered_set<iresearch::bytes_ref> expected_bytes;
+    std::unordered_set<irs::bytes_ref> expected_bytes;
     auto column = segment.column_reader("doc_bytes");
     ASSERT_NE(nullptr, column);
     auto bytes_values = column->values();
@@ -1742,7 +1746,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, column);
     auto string_values = column->values();
 
-    expected_bytes = { iresearch::bytes_ref(bytes3) };
+    expected_bytes = { irs::bytes_ref(bytes3) };
     expected_double = { 2.718281828 * 3 };
     expected_float = { (float)(3.1415926535 * 3) };
     expected_int = { 42 * 3 };
@@ -1753,7 +1757,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     irs::bytes_ref value;
     irs::bytes_ref_input in;
     for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-      const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+      const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
       ASSERT_EQ(!expected_bytes.empty(), bytes_values(doc, value)); in.reset(value);
       expected_bytes.erase(irs::read_string<irs::bstring>(in));
 
@@ -1808,15 +1812,15 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::binary_field().features();
-    features.add<iresearch::norm>();
-    std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    features.add<irs::norm>();
+    std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes1_data"))].emplace(1);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes2_data"))].emplace(2);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("bytes3_data"))].emplace(3);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes1_data"))].emplace(1);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes2_data"))].emplace(2);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("bytes3_data"))].emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_bytes"));
-    ASSERT_TRUE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
+    ASSERT_TRUE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
@@ -1830,14 +1834,14 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       expected_terms
     );
 
-    std::unordered_map<float_t, iresearch::doc_id_t> expected_values{
+    std::unordered_map<float_t, irs::doc_id_t> expected_values{
       { 0.5f, 1 },                    // norm value for 'doc_bytes' in 'doc1'
       { float_t(1/std::sqrt(2)), 3 }, // norm value for 'doc_bytes' in 'doc3'
     };
 
-    auto reader = [&expected_values] (iresearch::doc_id_t doc, const irs::bytes_ref& value) {
+    auto reader = [&expected_values] (irs::doc_id_t doc, const irs::bytes_ref& value) {
       irs::bytes_ref_input in(value);
-      const auto actual_value = iresearch::read_zvfloat(in); // read norm value
+      const auto actual_value = irs::read_zvfloat(in); // read norm value
 
       auto it = expected_values.find(actual_value);
       if (it == expected_values.end()) {
@@ -1866,32 +1870,32 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::double_field().features();
-    iresearch::numeric_token_stream max;
+    irs::numeric_token_stream max;
     max.reset((double_t) (2.718281828 * 3));
-    iresearch::numeric_token_stream min;
+    irs::numeric_token_stream min;
     min.reset((double_t) (2.718281828 * 1));
-    std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 1));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 2));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((double_t) (2.718281828 * 3));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_double"));
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -1900,8 +1904,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<iresearch::term_attribute>()->value(),
-      max.attributes().get<iresearch::term_attribute>()->value(),
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       12,
       features,
       expected_terms
@@ -1914,32 +1918,32 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::float_field().features();
-    iresearch::numeric_token_stream max;
+    irs::numeric_token_stream max;
     max.reset((float_t) (3.1415926535 * 3));
-    iresearch::numeric_token_stream min;
+    irs::numeric_token_stream min;
     min.reset((float_t) (3.1415926535 * 1));
-    std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 1));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 2));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((float_t) (3.1415926535 * 3));
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_float"));
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1948,8 +1952,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<iresearch::term_attribute>()->value(),
-      max.attributes().get<iresearch::term_attribute>()->value(),
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       6,
       features,
       expected_terms
@@ -1962,32 +1966,32 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::int_field().features();
-    iresearch::numeric_token_stream max;
+    irs::numeric_token_stream max;
     max.reset(42 * 3);
-    iresearch::numeric_token_stream min;
+    irs::numeric_token_stream min;
     min.reset(42 * 1);
-    std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset(42 * 1);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset(42 * 2);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset(42 * 3);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_int"));
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next()); // skip to last value
@@ -1996,8 +2000,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<iresearch::term_attribute>()->value(),
-      max.attributes().get<iresearch::term_attribute>()->value(),
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       4,
       features,
       expected_terms
@@ -2010,32 +2014,32 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     ASSERT_NE(nullptr, terms);
     auto& field = terms->meta();
     auto features = tests::long_field().features();
-    iresearch::numeric_token_stream max;
+    irs::numeric_token_stream max;
     max.reset((int64_t) 12345 * 3);
-    iresearch::numeric_token_stream min;
+    irs::numeric_token_stream min;
     min.reset((int64_t) 12345 * 1);
-    std::unordered_map<iresearch::bstring, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::unordered_map<irs::bstring, std::unordered_set<irs::doc_id_t>> expected_terms;
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 1);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(1));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(1));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 2);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(2));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(2));
     }
 
     {
-      iresearch::numeric_token_stream itr;
+      irs::numeric_token_stream itr;
       itr.reset((int64_t) 12345 * 3);
-      for (; itr.next(); expected_terms[iresearch::bstring(itr.attributes().get<iresearch::term_attribute>()->value())].emplace(3));
+      for (; itr.next(); expected_terms[irs::bstring(irs::get<irs::term_attribute>(itr)->value)].emplace(3));
     }
 
     ASSERT_EQ(3, docs_count(segment, "doc_long"));
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     ASSERT_TRUE(max.next() && max.next() && max.next() && max.next()); // skip to last value
@@ -2044,8 +2048,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      min.attributes().get<iresearch::term_attribute>()->value(),
-      max.attributes().get<iresearch::term_attribute>()->value(),
+      irs::get<irs::term_attribute>(min)->value,
+      irs::get<irs::term_attribute>(max)->value,
       6,
       features,
       expected_terms
@@ -2059,23 +2063,23 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = terms->meta();
     auto& features = STRING_FIELD_FEATURES;
     size_t frequency = 1;
-    std::vector<uint32_t> position = { 0 };
-    std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::vector<uint32_t> position = { irs::pos_limits::min() };
+    std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string1_data"))].emplace(1);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string2_data"))].emplace(2);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("string3_data"))].emplace(3);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string1_data"))].emplace(1);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string2_data"))].emplace(2);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("string3_data"))].emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_string"));
-    ASSERT_FALSE(iresearch::type_limits<iresearch::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
+    ASSERT_FALSE(irs::type_limits<irs::type_t::field_id_t>::valid(field.norm)); // norm attribute has not been specified
     ASSERT_EQ(features, field.features);
     ASSERT_NE(nullptr, terms);
     validate_terms(
       segment,
       *terms,
       3,
-      iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string1)),
-      iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(string3)),
+      irs::ref_cast<irs::byte_type>(irs::string_ref(string1)),
+      irs::ref_cast<irs::byte_type>(irs::string_ref(string3)),
       3,
       features,
       expected_terms,
@@ -2091,12 +2095,12 @@ TEST_F(merge_writer_tests, test_merge_writer) {
     auto& field = terms->meta();
     auto& features = TEXT_FIELD_FEATURES;
     size_t frequency = 1;
-    std::vector<uint32_t> position = { 0 };
-    std::unordered_map<iresearch::bytes_ref, std::unordered_set<iresearch::doc_id_t>> expected_terms;
+    std::vector<uint32_t> position = { irs::pos_limits::min() };
+    std::unordered_map<irs::bytes_ref, std::unordered_set<irs::doc_id_t>> expected_terms;
 
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text1_data"))].emplace(1);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text2_data"))].emplace(2);
-    expected_terms[iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("text3_data"))].emplace(3);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text1_data"))].emplace(1);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text2_data"))].emplace(2);
+    expected_terms[irs::ref_cast<irs::byte_type>(irs::string_ref("text3_data"))].emplace(3);
 
     ASSERT_EQ(3, docs_count(segment, "doc_text"));
     ASSERT_EQ(features, field.features);
@@ -2105,8 +2109,8 @@ TEST_F(merge_writer_tests, test_merge_writer) {
       segment,
       *terms,
       3,
-      iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text1)),
-      iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref(text3)),
+      irs::ref_cast<irs::byte_type>(irs::string_ref(text1)),
+      irs::ref_cast<irs::byte_type>(irs::string_ref(text3)),
       3,
       features,
       expected_terms,
@@ -2118,7 +2122,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   // ...........................................................................
   // validate documents
   // ...........................................................................
-  std::unordered_set<iresearch::bytes_ref> expected_bytes;
+  std::unordered_set<irs::bytes_ref> expected_bytes;
   auto column = segment.column_reader("doc_bytes");
   ASSERT_NE(nullptr, column);
   auto bytes_values = column->values();
@@ -2143,7 +2147,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   ASSERT_NE(nullptr, column);
   auto string_values = column->values();
 
-  expected_bytes = { iresearch::bytes_ref(bytes1), iresearch::bytes_ref(bytes2), iresearch::bytes_ref(bytes3) };
+  expected_bytes = { irs::bytes_ref(bytes1), irs::bytes_ref(bytes2), irs::bytes_ref(bytes3) };
   expected_double = { 2.718281828 * 1, 2.718281828 * 2, 2.718281828 * 3 };
   expected_float = { (float)(3.1415926535 * 1), (float)(3.1415926535 * 2), (float)(3.1415926535 * 3) };
   expected_int = { 42 * 1, 42 * 2, 42 * 3 };
@@ -2154,7 +2158,7 @@ TEST_F(merge_writer_tests, test_merge_writer) {
   irs::bytes_ref value;
   irs::bytes_ref_input in;
   for (size_t i = 0, count = segment.docs_count(); i < count; ++i) {
-    const auto doc = iresearch::doc_id_t((iresearch::type_limits<iresearch::type_t::doc_id_t>::min)() + i);
+    const auto doc = irs::doc_id_t((irs::type_limits<irs::type_t::doc_id_t>::min)() + i);
 
     ASSERT_TRUE(bytes_values(doc, value)); in.reset(value);
     ASSERT_EQ(1, expected_bytes.erase(irs::read_string<irs::bstring>(in)));
@@ -2221,7 +2225,7 @@ TEST_F(merge_writer_tests, test_merge_writer_add_segments) {
   // merge 33 segments to writer (segments > 32 to trigger GCC 8.2.0 optimizer bug)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;
@@ -2281,7 +2285,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   // test default progress (false)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;
@@ -2307,7 +2311,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   // test always-false progress
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;
@@ -2337,7 +2341,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   // test always-true progress
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::memory_directory dir;
@@ -2364,7 +2368,7 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
   ASSERT_TRUE(progress_call_count); // there should have been at least some calls
 
   irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-    return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
   };
 
   // test limited-true progress
@@ -2397,8 +2401,8 @@ TEST_F(merge_writer_tests, test_merge_writer_flush_progress) {
 }
 
 TEST_F(merge_writer_tests, test_merge_writer_field_features) {
-  //iresearch::flags STRING_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type() };
-  //iresearch::flags TEXT_FIELD_FEATURES{ iresearch::frequency::type(), iresearch::position::type(), iresearch::offset::type(), iresearch::payload::type() };
+  //irs::flags STRING_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() };
+  //irs::flags TEXT_FIELD_FEATURES{ irs::type<irs::frequency>::get(), irs::type<irs::position>::get(), irs::type<irs::offset>::get(), irs::type<irs::payload>::get() };
 
   std::string field("doc_string");
   std::string data("string_data");
@@ -2406,7 +2410,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   tests::document doc2; // text
 
   doc1.insert(std::make_shared<tests::templates::string_field>(field, data));
-  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<iresearch::string_ref>>(field, data, true));
+  doc2.indexed.push_back(std::make_shared<tests::templates::text_field<irs::string_ref>>(field, data, true));
 
   ASSERT_TRUE(doc1.indexed.get(field)->features().is_subset_of(doc2.indexed.get(field)->features()));
   ASSERT_FALSE(doc2.indexed.get(field)->features().is_subset_of(doc1.indexed.get(field)->features()));
@@ -2417,7 +2421,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
 
   // populate directory
   {
-    auto writer = iresearch::index_writer::make(dir, codec_ptr, iresearch::OM_CREATE);
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE);
     ASSERT_TRUE(insert(*writer,
       doc1.indexed.begin(), doc1.indexed.end(),
       doc1.stored.begin(), doc1.stored.end()
@@ -2430,7 +2434,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
     writer->commit();
   }
 
-  auto reader = iresearch::directory_reader::open(dir, codec_ptr);
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
 
   ASSERT_EQ(2, reader.size());
   ASSERT_EQ(1, reader[0].docs_count());
@@ -2439,7 +2443,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   // test merge existing with feature subset (success)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::merge_writer writer(dir, column_info);
@@ -2455,7 +2459,7 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   // test merge existing with feature superset (fail)
   {
     irs::column_info_provider_t column_info = [](const irs::string_ref&) {
-      return irs::column_info(irs::compression::lz4::type(), irs::compression::options{}, true );
+      return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true );
     };
 
     irs::merge_writer writer(dir, column_info);
@@ -2469,6 +2473,125 @@ TEST_F(merge_writer_tests, test_merge_writer_field_features) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+namespace {
+struct binary_comparer : public irs::comparer {
+ protected:
+  bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const override {
+    if (rhs.null() != lhs.null()) {
+      return lhs.null();
+    }
+    if (!lhs.null()) {
+      return lhs < rhs;
+    }
+    return false;
+  }
+};
+} // namespace
+
+TEST_F(merge_writer_tests, test_merge_writer_sorted) {
+  std::string field("title");
+  std::string field2("trigger"); // field present in all docs with same term -> will trigger out of order
+  std::string value2{ "AAA" };
+  std::string data1("A");
+  std::string data2("C");
+  std::string data3("B");
+  std::string data4("D");
+  tests::document doc1;
+  tests::document doc2;
+  tests::document doc3;
+  tests::document doc4;
+
+  doc1.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc1.insert(std::make_shared<tests::templates::string_field>(field, data1));
+  doc1.sorted = doc1.indexed.find(field)[0];
+  doc2.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc2.insert(std::make_shared<tests::templates::string_field>(field, data2));
+  doc2.sorted = doc2.indexed.find(field)[0];
+  doc3.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc3.insert(std::make_shared<tests::templates::string_field>(field, data3));
+  doc3.sorted = doc3.indexed.find(field)[0];
+  doc4.insert(std::make_shared<tests::templates::string_field>(field2, value2));
+  doc4.insert(std::make_shared<tests::templates::string_field>(field, data4));
+  doc4.sorted = doc4.indexed.find(field)[0];
+
+  auto codec_ptr = irs::formats::get("1_3");
+  ASSERT_NE(nullptr, codec_ptr);
+  irs::memory_directory dir;
+  binary_comparer test_comparer;
+  irs::column_info_provider_t column_info = [](const irs::string_ref&) {
+    return irs::column_info(irs::type<irs::compression::lz4>::get(), irs::compression::options{}, true);
+  };
+  // populate directory
+  {
+    irs::index_writer::init_options opts;
+    opts.comparator = &test_comparer;
+    opts.column_info = column_info;
+    auto writer = irs::index_writer::make(dir, codec_ptr, irs::OM_CREATE, opts);
+    ASSERT_TRUE(insert(*writer,
+      doc1.indexed.begin(), doc1.indexed.end(),
+      doc1.stored.begin(), doc1.stored.end(),
+      doc1.sorted));
+    ASSERT_TRUE(insert(*writer,
+      doc2.indexed.begin(), doc2.indexed.end(),
+      doc2.stored.begin(), doc2.stored.end(),
+      doc2.sorted));
+    writer->commit();
+
+    ASSERT_TRUE(insert(*writer,
+      doc3.indexed.begin(), doc3.indexed.end(),
+      doc3.stored.begin(), doc3.stored.end(),
+      doc3.sorted));
+    ASSERT_TRUE(insert(*writer,
+      doc4.indexed.begin(), doc4.indexed.end(),
+      doc4.stored.begin(), doc4.stored.end(),
+      doc4.sorted));
+    writer->commit();
+
+    // this missing doc will trigger sorting error in merge writer as it will be mapped to eof
+    // and block all documents from same segment to be written in correct order.
+    // to trigger error documents from second segment need docuemnt from first segment to maintain merged order
+    auto query_doc1 = irs::iql::query_builder().build(field + "==A", std::locale::classic());
+    writer->documents().remove(std::move(query_doc1.filter));
+    writer->commit();
+  }
+
+
+  auto reader = irs::directory_reader::open(dir, codec_ptr);
+
+  ASSERT_EQ(2, reader.size());
+  ASSERT_EQ(2, reader[0].docs_count());
+  ASSERT_EQ(2, reader[1].docs_count());
+  ASSERT_EQ(1, reader[0].live_docs_count());
+  ASSERT_EQ(2, reader[1].live_docs_count());
+
+
+  irs::merge_writer writer(dir, column_info, &test_comparer);
+  writer.add(reader[0]);
+  writer.add(reader[1]);
+
+  irs::index_meta::index_segment_t index_segment;
+
+  index_segment.meta.codec = codec_ptr;
+  ASSERT_TRUE(writer.flush(index_segment));
+
+  auto segment = irs::segment_reader::open(dir, index_segment.meta);
+  ASSERT_EQ(3, segment.docs_count());
+  ASSERT_EQ(3, segment.live_docs_count());
+  auto docs = segment.docs_iterator();
+  auto column = segment.column_reader(field);
+  auto bytes_values = column->values();
+
+  auto expected_id = irs::doc_limits::min();
+  irs::bytes_ref value;
+  irs::bytes_ref_input in;
+  std::vector<std::string> expected_columns{ "B", "C", "D" };
+  size_t idx = 0;
+  while (docs->next()) {
+    SCOPED_TRACE(testing::Message("Doc id ") << expected_id);
+    EXPECT_EQ(expected_id, docs->value());
+    ASSERT_TRUE(bytes_values(expected_id, value)); in.reset(value);
+    auto actual = irs::read_string<std::string>(in);
+    EXPECT_EQ(expected_columns[idx++], actual);
+    ++expected_id;
+  }
+}

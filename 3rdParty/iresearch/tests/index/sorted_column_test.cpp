@@ -36,7 +36,7 @@
 // FIXME check gaps && deleted docs
 
 TEST(sorted_column_test, ctor) {
-  irs::sorted_column col({ irs::compression::lz4::type(), {}, false });
+  irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -44,7 +44,7 @@ TEST(sorted_column_test, ctor) {
 }
 
 TEST(sorted_column_test, flush_empty) {
-  irs::sorted_column col({ irs::compression::lz4::type(), {}, false });
+  irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, false });
   ASSERT_TRUE(col.empty());
   ASSERT_EQ(0, col.size());
   ASSERT_EQ(0, col.memory_active());
@@ -59,7 +59,7 @@ TEST(sorted_column_test, flush_empty) {
   ASSERT_NE(nullptr, codec);
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -120,7 +120,7 @@ TEST(sorted_column_test, insert_duplicates) {
   };
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -160,7 +160,7 @@ TEST(sorted_column_test, insert_duplicates) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col({ irs::compression::raw::type(), {}, true });
+    irs::sorted_column col({ irs::type<irs::compression::none>::get(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
@@ -208,7 +208,7 @@ TEST(sorted_column_test, insert_duplicates) {
     ASSERT_NE(nullptr, column);
 
     auto it = column->iterator();
-    auto& payload = it->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*it);
     ASSERT_FALSE(payload);
 
     irs::doc_id_t doc = irs::type_limits<irs::type_t::doc_id_t>::min();
@@ -231,7 +231,7 @@ TEST(sorted_column_test, sort) {
   };
 
   struct comparator final : irs::comparer {
-    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const NOEXCEPT override {
+    virtual bool less(const irs::bytes_ref& lhs, const irs::bytes_ref& rhs) const noexcept override {
       const auto* plhs = lhs.c_str();
       const auto* prhs = rhs.c_str();
 
@@ -271,7 +271,7 @@ TEST(sorted_column_test, sort) {
 
     writer->prepare(dir, segment);
 
-    irs::sorted_column col({ irs::compression::lz4::type(), {}, true });
+    irs::sorted_column col({ irs::type<irs::compression::lz4>::get(), {}, true });
     ASSERT_TRUE(col.empty());
     ASSERT_EQ(0, col.size());
     ASSERT_EQ(0, col.memory_active());
@@ -330,7 +330,7 @@ TEST(sorted_column_test, sort) {
     ASSERT_NE(nullptr, column);
 
     auto it = column->iterator();
-    auto& payload = it->attributes().get<irs::payload>();
+    auto* payload = irs::get<irs::payload>(*it);
     ASSERT_TRUE(payload);
 
     auto begin = sorted_values.begin();

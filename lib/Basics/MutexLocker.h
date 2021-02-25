@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,8 @@
 #include "Basics/debugging.h"
 
 #ifdef ARANGODB_SHOW_LOCK_TIME
-#include "Logger/Logger.h"
+#include "Basics/system-functions.h"
+#include "Logger/LogMacros.h"
 #endif
 
 #include <thread>
@@ -108,7 +109,8 @@ class MutexLocker {
 #ifdef ARANGODB_SHOW_LOCK_TIME
     if (_time > TRI_SHOW_LOCK_THRESHOLD) {
       LOG_TOPIC("bb435", INFO, arangodb::Logger::PERFORMANCE)
-          << "MutexLocker " << _file << ":" << _line << " took " << _time << " s";
+          << "MutexLocker for lock [" << _mutex << "]" << _file << ":" << _line
+          << " took " << _time << " s";
     }
 #endif
   }

@@ -80,17 +80,20 @@ let allNodesOfTypeAreRestrictedToShard = function(nodes, typeName, collection) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlModifySuite () {
-  var errors = internal.errors;
-  var cn = "UnitTestsAhuacatlModify";
+  const errors = internal.errors;
+  const cn = "UnitTestsAhuacatlModify";
+  const cn2 = "UnitTestsAhuacatlModify2";
 
   return {
 
     setUp : function () {
       db._drop(cn);
+      db._drop(cn2);
     },
 
     tearDown : function () {
       db._drop(cn);
+      db._drop(cn2);
     },
 
     // use default shard key (_key)
@@ -117,7 +120,7 @@ function ahuacatlModifySuite () {
         assertEqual(1, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate();
+        c.truncate({ compact: false });
       }
 
       // RestrictToSingleShard
@@ -165,7 +168,7 @@ function ahuacatlModifySuite () {
         assertTrue(hasDistributeNode(plan.nodes));
         assertFalse(allNodesOfTypeAreRestrictedToShard(plan.nodes, 'ReplaceNode', c));
         assertEqual(-1, plan.rules.indexOf("restrict-to-single-shard"));
-        c.truncate();
+        c.truncate({ compact: false });
       }
 
       // RestrictToSingleShard
@@ -215,7 +218,7 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -260,7 +263,7 @@ function ahuacatlModifySuite () {
         assertEqual(expected, sanitizeStats(actual.stats));
       }
       assertEqual(30, c.count());
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -316,7 +319,7 @@ function ahuacatlModifySuite () {
         assertEqual("test" + i, r[0]._key);
         assertEqual(cn + "/test" + i, r[0]._id);
       }
-      c.truncate();
+      c.truncate({ compact: false });
 
       // RestrictToSingleShard
       for (let i = 0; i < 30; ++i) {
@@ -396,7 +399,7 @@ function ahuacatlModifySuite () {
         assertEqual(2000, c.count());
         assertEqual(0, actual.json.length);
         assertEqual(expected, sanitizeStats(actual.stats));
-        c.truncate();
+        c.truncate({ compact: false });
       }
       // RestrictToSingleShard
       let actual = getModifyQueryResultsRaw(query);
@@ -1579,6 +1582,48 @@ function ahuacatlModifySuite () {
       assertEqual(expected, sanitizeStats(actual.stats));
     },
 
+    // Regression test for a bug in ExecutionPlan::instantiateFromPlan, where
+    // the false branch was not part of the plan anymore (at least, not visible
+    // from the root) if the condition was `true` at compile time.
+    testTernaryEvaluateBothTrue : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = true ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+      db._query(query);
+      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([2], c2.toArray().map(o => o.value));
+    },
+
+    // Complementary test to testTernaryEvaluateBothTrue, with a constant `false`
+    // condition.
+    testTernaryEvaluateBothFalse : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = false ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+      db._query(query);
+      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([2], c2.toArray().map(o => o.value));
+    },
+
+    // Complementary test to testTernaryEvaluateBothTrue, with a non-constant
+    // condition.
+    testTernaryEvaluateBothRand : function () {
+      const c1 = db._create(cn);
+      const c2 = db._create(cn2);
+
+      const query = `LET x = RAND() < 0.5 ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
+
+      for (let i = 0; i < 10; ++i) {
+        db._query(query);
+        assertEqual([1], c1.toArray().map(o => o.value));
+        assertEqual([2], c2.toArray().map(o => o.value));
+        c1.truncate({ compact: false });
+        c2.truncate({ compact: false });
+      }
+    },
+
   };
 }
 
@@ -1704,8 +1749,159 @@ function ahuacatlModifySkipSuite () {
   };
 }
 
+function ahuacatlGeneratedSuite() {
+  var cn = "SubqueryChaosCollection0";
+  var cn2 = "SubqueryChaosCollection1";
+  var cn3 = "SubqueryChaosCollection2";
+  const cleanup = () => {
+    try {
+      db._drop(cn);
+    } catch (e) { }
+    try {
+      db._drop(cn2);
+    } catch (e) { }
+    try {
+      db._drop(cn3);
+    } catch (e) { }
+  };
+
+  return {
+    setUp: function () {
+      cleanup();
+      let c = db._create(cn, { numberOfShards: 5 });
+      let c1 = db._create(cn2, { numberOfShards: 5 });
+      let c2 = db._create(cn3, { numberOfShards: 5 });
+      const docs = [];
+      for (let i = 1; i < 11; ++i) {
+        docs.push({ value: i });
+      }
+      c.save(docs);
+      c1.save(docs);
+      c2.save(docs);
+    },
+
+    tearDown: function () {
+      cleanup();
+    },
+
+    testNonSplicedExecutor: function () {
+      const q = `
+	FOR fv0 IN ${cn}
+	  LET sq1 = (FOR fv2 IN ${cn2}
+	    UPSERT {value: fv0.value}
+	      INSERT {value: 24}
+	      UPDATE {updated: true} IN ${cn2}
+	    LIMIT 14,5
+	    RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
+	  LIMIT 3,2
+	  RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id",  "_key")}`;
+      const res = db._query(q);
+      assertEqual(100, res.getExtra().stats.writesExecuted);
+      assertEqual(2, res.toArray().length);
+    },
+
+    testNonSplicedViolatesPassthrough: function () {
+      const q = `
+        FOR fv0 IN ${cn} 
+        LET sq1 = (FOR fv2 IN ${cn2} 
+          LIMIT 2,13
+          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key")})
+        LET sq3 = (FOR fv4 IN ${cn2} 
+          UPSERT {value: fv4.value  }  INSERT {value: 71 }  UPDATE {value: 21, updated: true} IN ${cn2}
+          LIMIT 11,2
+          RETURN {fv4: UNSET_RECURSIVE(fv4,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
+        "_key")})
+        LIMIT 8,3
+        RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
+        "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")}`;
+
+      const res = db._query(q);
+      assertEqual(100, res.getExtra().stats.writesExecuted);
+      assertEqual(2, 2, res.toArray().length);
+    },
+
+    testSubquerySkipReporting: function () {
+      const q = `
+        FOR fv0 IN ${cn} 
+          LET sq1 = (FOR fv2 IN ${cn2} 
+            LET sq3 = (FOR fv4 IN ${cn3} 
+              UPSERT {value: fv4.value  }  INSERT {value: fv4.value }  UPDATE { updated: true } IN ${cn3}
+              LIMIT 14,4
+              RETURN {fv4: UNSET_RECURSIVE(fv4,"_rev", "_id", "_key")})
+            LIMIT 0,17
+            RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")})
+          LIMIT 19,11
+          COLLECT WITH COUNT INTO counter 
+          RETURN {counter: UNSET_RECURSIVE(counter,"_rev", "_id", "_key")}
+      `;
+
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(1, res.toArray().length);
+    },
+
+    testSubqueryChaos4: function () {
+      const q = `
+      FOR fv0 IN ${cn} 
+        LET sq1 = (FOR fv2 IN ${cn2} 
+          LET sq3 = (FOR fv4 IN ${cn3} 
+            /* UPSERT { value: fv2.value } INSERT { value: fv2.value } UPDATE {updated: true} IN ${cn3} */
+            UPDATE  fv4 WITH {updated: true} IN ${cn3}
+            LIMIT 3,12
+            RETURN {fv4: UNSET_RECURSIVE(fv4,"_rev", "_id", "_key")})
+          FILTER fv0 < 14
+          LIMIT 3,19
+          RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")})
+        LIMIT 4,12
+        RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", "_key")}
+      `;
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(6, res.toArray().length);
+    },
+
+    testSkipOverModifySubquery: function() {
+      const cn = "UnitTestModifySubquery";
+      try {
+        db._create(cn);
+        const q = `
+          FOR i IN 1..2
+            LET noModSub = (
+              LET modSub = (
+                FOR j IN 1..2
+                INSERT {} INTO ${cn}
+              )
+              RETURN modSub
+            )
+          LIMIT 1,0
+          RETURN noModSub`;
+        let res = db._query(q);
+        assertEqual([], res.toArray());
+        assertEqual(db[cn].count(), 4);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    testChaosGenerated15: function() {
+      const q = 
+        `FOR fv0 IN 1..10 /* SubqueryChaosCollection0  */
+           LET sq1 = (FOR fv2 IN SubqueryChaosCollection1 
+             LET sq3 = (FOR fv4 IN SubqueryChaosCollection2
+               UPDATE { _key: fv4._key } WITH {updated: true} IN SubqueryChaosCollection2 
+               RETURN {fv4})
+             LIMIT 5,3
+           RETURN {fv2: UNSET_RECURSIVE(fv2,"_rev", "_id", "_key"), sq3})
+         RETURN sq1`;
+
+      const res = db._query(q);
+      assertEqual(1000, res.getExtra().stats.writesExecuted);
+      assertEqual(10, res.toArray().length);
+    }
+  };
+};
 
 jsunity.run(ahuacatlModifySuite);
 jsunity.run(ahuacatlModifySkipSuite);
+jsunity.run(ahuacatlGeneratedSuite);
 
 return jsunity.done();

@@ -20,8 +20,6 @@ The time (in seconds) after a document's creation after which the
 documents count as "expired".
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
 Creates a TTL index for the collection *collection-name* if it
 does not already exist. The call expects an object containing the index
 details.

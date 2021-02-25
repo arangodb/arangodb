@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,8 +27,8 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/Query.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
@@ -50,6 +50,13 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Save the nrItems going into the subquery to restore later at the
+  // corresponding SubqueryEndNode.
+  estimate.saveEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 
@@ -73,14 +80,11 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
   auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
 
-  // The const_cast has been taken from previous implementation.
-  ExecutorInfos infos(inputRegisters, outputRegisters,
-                      getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                      getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                      calcRegsToKeep());
+  auto registerInfos = createRegisterInfos({}, {});
+
   // On purpose exclude the _subqueryOutVariable
-  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this,
-                                                                     std::move(infos));
+  return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(&engine, this, registerInfos,
+                                                                     RegisterInfos{registerInfos});
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -92,12 +96,10 @@ ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan, bool withDependenci
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
   // On purpose exclude the _subqueryOutVariable
-  try {
-    SubqueryStartNode const& p = dynamic_cast<SubqueryStartNode const&>(other);
-    return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast&) {
+  if (other.getType() != ExecutionNode::SUBQUERY_START) {
     return false;
   }
+  return ExecutionNode::isEqualTo(other);
 }
 
 }  // namespace aql

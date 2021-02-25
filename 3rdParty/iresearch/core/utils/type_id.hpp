@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 by EMC Corporation, All Rights Reserved
+/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -15,65 +15,59 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is EMC Corporation
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_TYPE_ID_H
 #define IRESEARCH_TYPE_ID_H
 
-#include "shared.hpp"
-#include "string.hpp"
+#include "type_info.hpp"
+#include "misc.hpp"
 
-#include <functional>
+namespace iresearch {
 
-NS_ROOT
+namespace detail {
+DEFINE_HAS_MEMBER(type_name);
+} // detail
 
-struct IRESEARCH_API type_id {
-  type_id() : hash(compute_hash(this)) { }
-
-  bool operator==(const type_id& rhs) const NOEXCEPT {
-    return this == &rhs;
+////////////////////////////////////////////////////////////////////////////////
+/// @class type
+/// @tparam T type for which one needs access meta information
+/// @brief convenient helper for accessing meta information
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+struct type {
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns an instance of "type_info" object holding meta information of
+  ///          type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr type_info get() noexcept {
+    return type_info{id(), name()};
   }
 
-  bool operator!=(const type_id& rhs) const NOEXCEPT {
-    return !(*this == rhs);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type name of a type denoted by template parameter "T"
+  /// @note Do never persist type name provided by detail::ctti<T> as
+  ///       it's platform dependent
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr string_ref name() noexcept {
+    if constexpr (detail::has_member_type_name_v<T>) {
+      return T::type_name();
+    }
+
+    return ctti<T>();
   }
 
-  /* boost::hash_combile support */
-  friend size_t hash_value(const type_id& type) { return type.hash; }
-    
-  operator const type_id*() const { return this; }
-
-  size_t hash;
-
- private:
-  static size_t compute_hash(const type_id* ptr) {
-    return irs::hash_utils::hash(
-      irs::string_ref(reinterpret_cast<const char*>(ptr), sizeof(ptr))
-    );
+  //////////////////////////////////////////////////////////////////////////////
+  /// @returns type identifier of a type denoted by template parameter "T"
+  //////////////////////////////////////////////////////////////////////////////
+  static constexpr type_info::type_id id() noexcept {
+    return &get;
   }
-}; // type_id
+}; // type
 
-#define DECLARE_TYPE_ID( type_id_name ) static const type_id_name& type()
-#define DEFINE_TYPE_ID(class_name, type_id_name) const type_id_name& class_name::type() 
-
-NS_END // root 
-
-NS_BEGIN( std )
-
-template<>
-struct hash<iresearch::type_id> {
-  typedef iresearch::type_id argument_type;
-  typedef size_t result_type;
-
-  result_type operator()( const argument_type& key ) const {
-    return key.hash;
-  }
-};
-
-NS_END // std
+}
 
 #endif

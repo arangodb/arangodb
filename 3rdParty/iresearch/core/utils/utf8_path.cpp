@@ -27,7 +27,7 @@
 #include "error/error.hpp"
 #include "utf8_path.hpp"
 
-NS_LOCAL
+namespace {
 
 typedef irs::basic_string_ref<wchar_t> wstring_ref;
 
@@ -74,8 +74,8 @@ inline bool append_path(std::string& buf, const wstring_ref& value) {
     value.c_str(),
     value.c_str() + value.size(),
     from_next,
-    &buf[start],
-    &buf[buf.size()],
+    const_cast<char*>(buf.c_str() + start),
+    const_cast<char*>(buf.c_str() + buf.size()),
     to_next
   );
 
@@ -106,8 +106,8 @@ inline bool append_path(std::wstring& buf, const irs::string_ref& value) {
     value.c_str(),
     value.c_str() + value.size(),
     from_next,
-    &buf[start],
-    &buf[buf.size()],
+    const_cast<wchar_t*>(buf.c_str() + start),
+    const_cast<wchar_t*>(buf.c_str() + buf.size()),
     to_next
   );
 
@@ -133,9 +133,9 @@ inline bool append_path(std::wstring& buf, const wstring_ref& value) {
   #pragma GCC diagnostic pop
 #endif
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 utf8_path::utf8_path(bool current_working_path /*= false*/) {
   if (current_working_path) {
@@ -281,10 +281,10 @@ utf8_path& utf8_path::operator/=(const string_ref& utf8_name) {
 }
 
 utf8_path& utf8_path::operator/=(const wchar_t* ucs2_name) {
-  return (*this) /= iresearch::basic_string_ref<wchar_t>(ucs2_name);
+  return (*this) /= basic_string_ref<wchar_t>(ucs2_name);
 }
 
-utf8_path& utf8_path::operator/=(const iresearch::basic_string_ref<wchar_t>& ucs2_name) {
+utf8_path& utf8_path::operator/=(const basic_string_ref<wchar_t>& ucs2_name) {
   if (!path_.empty()) {
     path_.append(1, file_path_delimiter);
   }
@@ -310,44 +310,44 @@ utf8_path& utf8_path::operator/=(const std::wstring &ucs2_name) {
 return *this;
 }
 
-bool utf8_path::absolute(bool& result) const NOEXCEPT {
+bool utf8_path::absolute(bool& result) const noexcept {
   return irs::file_utils::absolute(result, c_str());
 }
 
-bool utf8_path::chdir() const NOEXCEPT {
+bool utf8_path::chdir() const noexcept {
   return irs::file_utils::set_cwd(c_str());
 }
 
-bool utf8_path::exists(bool& result) const NOEXCEPT {
+bool utf8_path::exists(bool& result) const noexcept {
   return irs::file_utils::exists(result, c_str());
 }
 
-bool utf8_path::exists_directory(bool& result) const NOEXCEPT {
+bool utf8_path::exists_directory(bool& result) const noexcept {
   return irs::file_utils::exists_directory(result, c_str());
 }
 
-bool utf8_path::exists_file(bool& result) const NOEXCEPT {
+bool utf8_path::exists_file(bool& result) const noexcept {
   return irs::file_utils::exists_file(result, c_str());
 }
 
-bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
+bool utf8_path::file_size(uint64_t& result) const noexcept {
   return irs::file_utils::byte_size(result, c_str());
 }
 
-bool utf8_path::mtime(time_t& result) const NOEXCEPT {
+bool utf8_path::mtime(time_t& result) const noexcept {
   return irs::file_utils::mtime(result, c_str());
 }
 
 
-bool utf8_path::mkdir(bool createNew /* = true*/) const NOEXCEPT {
+bool utf8_path::mkdir(bool createNew /* = true*/) const noexcept {
   return irs::file_utils::mkdir(c_str(), createNew); 
 }
 
-bool utf8_path::remove() const NOEXCEPT {
+bool utf8_path::remove() const noexcept {
   return irs::file_utils::remove(c_str());
 }
 
-bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
+bool utf8_path::rename(const utf8_path& destination) const noexcept {
   return irs::file_utils::move(c_str(), destination.c_str());
 }
 
@@ -368,11 +368,11 @@ void utf8_path::clear() {
   path_.clear();
 }
 
-const utf8_path::native_char_t* utf8_path::c_str() const NOEXCEPT {
+const utf8_path::native_char_t* utf8_path::c_str() const noexcept {
   return path_.c_str();
 }
 
-const utf8_path::native_str_t& utf8_path::native() const NOEXCEPT {
+const utf8_path::native_str_t& utf8_path::native() const noexcept {
   return path_;
 }
 
@@ -405,8 +405,4 @@ std::string utf8_path::utf8_absolute() const {
   return path.utf8();
 }
 
-NS_END
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}

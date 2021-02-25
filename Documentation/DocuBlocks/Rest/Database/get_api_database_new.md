@@ -7,22 +7,26 @@
 @RESTBODYPARAM{name,string,required,string}
 Has to contain a valid database name.
 
-@RESTBODYPARAM{options,object,optional,get_api_database_new_USERS}
+@RESTBODYPARAM{options,object,optional,get_api_database_new_OPTIONS}
 Optional object which can contain the following attributes:
 
-@RESTSTRUCT{sharding,get_api_database_new_USERS,string,optional,string}
+@RESTSTRUCT{sharding,get_api_database_new_OPTIONS,string,optional,}
 The sharding method to use for new collections in this database. Valid values
-are: "", "flexible", or "single". The first two are equivalent.
+are: "", "flexible", or "single". The first two are equivalent. _(cluster only)_
 
-@RESTSTRUCT{replicationFactor,get_api_database_new_USERS,string,optional,}
+@RESTSTRUCT{replicationFactor,get_api_database_new_OPTIONS,integer,optional,}
 Default replication factor for new collections created in this database.
 Special values include "satellite", which will replicate the collection to
-every DB-server, and 1, which disables replication.
+every DB-Server (Enterprise Edition only), and 1, which disables replication.
+_(cluster only)_
 
-@RESTSTRUCT{writeConcern,get_api_database_new_USERS,number,optional,}
-Default minimum replication factor for new collections created in this database.
-If there are less than minReplicationFactor replicas available the collection
-will become read-only.
+@RESTSTRUCT{writeConcern,get_api_database_new_OPTIONS,number,optional,}
+Default write concern for new collections created in this database.
+It determines how many copies of each shard are required to be
+in sync on the different DB-Servers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTBODYPARAM{users,array,optional,get_api_database_new_USERS}
 Has to be an array of user objects to initially create for the new database.
@@ -32,20 +36,21 @@ If *users* is not specified or does not contain any users, a default user
 new database will be accessible after it is created.
 Each user object can contain the following attributes:
 
-@RESTSTRUCT{username,get_api_database_new_USERS,string,required,string}
-Login name of the user to be created
+@RESTSTRUCT{username,get_api_database_new_USERS,string,required,}
+Login name of the user to be created.
 
-@RESTSTRUCT{passwd,get_api_database_new_USERS,string,required,string}
+@RESTSTRUCT{passwd,get_api_database_new_USERS,string,optional,password}
 The user password as a string. If not specified, it will default to an empty string.
 
-@RESTSTRUCT{active,get_api_database_new_USERS,boolean,required,}
+@RESTSTRUCT{active,get_api_database_new_USERS,boolean,optional,}
 A flag indicating whether the user account should be activated or not.
 The default value is *true*. If set to *false*, the user won't be able to
-log into the database.
+log into the database. The default is *true*.
 
 @RESTSTRUCT{extra,get_api_database_new_USERS,object,optional,}
-A JSON object with extra user information. The data contained in *extra*
-will be stored for the user but not be interpreted further by ArangoDB.
+A JSON object with extra user information. It is used by the web interface
+to store graph viewer settings and saved queries. Should not be set or
+modified by end users, as custom attributes will not be preserved.
 
 @RESTDESCRIPTION
 Creates a new database

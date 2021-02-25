@@ -18,167 +18,107 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_RANGE_FILTER_H
 #define IRESEARCH_RANGE_FILTER_H
 
-#include "filter.hpp"
+#include "search/filter.hpp"
+#include "search/search_range.hpp"
 #include "utils/string.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-enum class Bound {
-  MIN, MAX
-}; 
+class by_range;
+struct filter_visitor;
 
-enum class Bound_Type {
-  UNBOUNDED, INCLUSIVE, EXCLUSIVE
-};
+struct IRESEARCH_API by_range_filter_options {
+  using range_type = search_range<bstring>;
 
-NS_BEGIN(detail)
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief search range
+  //////////////////////////////////////////////////////////////////////////////
+  range_type range;
 
-template<typename T>
-struct range {
-  T min{};
-  T max{};
-  Bound_Type min_type = Bound_Type::UNBOUNDED;
-  Bound_Type max_type = Bound_Type::UNBOUNDED;
-
-  bool operator==(const range& rhs) const {
-    return min == rhs.min && min_type == rhs.min_type
-      && max == rhs.max && max_type == rhs.max_type;
+  bool operator==(const by_range_filter_options& rhs) const noexcept {
+    return range == rhs.range;
   }
 
-  bool operator!=(const range& rhs) const {
-    return !(*this == rhs); 
+  size_t hash() const noexcept {
+    return std::hash<range_type>()(range);
   }
-}; // range
+}; // by_range_filter_options
 
-NS_END // detail
+////////////////////////////////////////////////////////////////////////////////
+/// @struct by_prefix_options
+/// @brief options for prefix filter
+////////////////////////////////////////////////////////////////////////////////
+struct IRESEARCH_API by_range_options : by_range_filter_options {
+  using filter_type = by_range;
+  using filter_options = by_range_filter_options;
 
-class term_selector;
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief the maximum number of most frequent terms to consider for scoring
+  //////////////////////////////////////////////////////////////////////////////
+  size_t scored_terms_limit{1024};
+
+  bool operator==(const by_range_options& rhs) const noexcept {
+    return filter_options::operator==(rhs) &&
+      scored_terms_limit == rhs.scored_terms_limit;
+  }
+
+  size_t hash() const noexcept {
+    return hash_combine(filter_options::hash(),
+                        std::hash<decltype(scored_terms_limit)>()(scored_terms_limit));
+  }
+}; // by_range_options
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_range : public filter {
+class IRESEARCH_API by_range : public filter_base<by_range_options> {
  public:
-  DECLARE_FILTER_TYPE();
   DECLARE_FACTORY();
 
-  by_range() NOEXCEPT;
+  static prepared::ptr prepare(
+    const index_reader& index,
+    const order::prepared& ord,
+    boost_t boost,
+    const string_ref& field,
+    const options_type::range_type& rng,
+    size_t scored_terms_limit);
+
+  static void visit(
+    const sub_reader& segment,
+    const term_reader& reader,
+    const options_type::range_type& rng,
+    filter_visitor& visitor);
 
   using filter::prepare;
 
   virtual filter::prepared::ptr prepare(
-    const index_reader& rdr,
-    const order::prepared& ord,
-    boost_t boost,
-    const attribute_view& ctx
-  ) const override;
-
-  by_range& field(std::string fld) {
-    fld_ = std::move(fld); 
-    return *this;
+      const index_reader& index,
+      const order::prepared& ord,
+      boost_t boost,
+      const attribute_provider* /*ctx*/) const override {
+    return prepare(index, ord, this->boost()*boost,
+                   field(), options().range,
+                   options().scored_terms_limit);
   }
-
-  const std::string& field() const { 
-    return fld_; 
-  }
-
-  template<Bound B>
-  const bstring& term() const {
-    return get<B>::term(const_cast<range_t&>(rng_));
-  }
-
-  template<Bound B>
-  by_range& term(bstring&& term) {
-    get<B>::term(rng_) = std::move(term);
-
-    if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
-    }
-
-    return *this;
-  }
-
-  template<Bound B>
-  by_range& term(const bytes_ref& term) {
-    get<B>::term(rng_) = term;
-
-    if (term.null()) {
-      get<B>::type(rng_) = Bound_Type::UNBOUNDED;
-    } else if (Bound_Type::UNBOUNDED == get<B>::type(rng_)) {
-      get<B>::type(rng_) = Bound_Type::EXCLUSIVE;
-    }
-
-    return *this;
-  }
-
-  template<Bound B>
-  by_range& term(const string_ref& term) {
-    return this->term<B>(ref_cast<byte_type>(term));
-  }
-
-  template<Bound B>
-  by_range& include(bool incl) {
-    get<B>::type(rng_) = incl ? Bound_Type::INCLUSIVE : Bound_Type::EXCLUSIVE;
-    return *this;
-  }
-
-  template<Bound B>
-  bool include() const {
-    return Bound_Type::INCLUSIVE == get<B>::type(rng_);
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  by_range& scored_terms_limit(size_t limit) {
-    scored_terms_limit_ = limit;
-    return *this;
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief the maximum number of most frequent terms to consider for scoring
-  //////////////////////////////////////////////////////////////////////////////
-  size_t scored_terms_limit() const {
-    return scored_terms_limit_;
-  }
-
-  virtual size_t hash() const NOEXCEPT override;
-
- protected:
-  virtual bool equals(const filter& rhs) const NOEXCEPT override;
-
- private: 
-  typedef detail::range<bstring> range_t;
-  template<Bound B> struct get;
-
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::string fld_;
-  range_t rng_;
-  size_t scored_terms_limit_{1024};
-  IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // by_range 
 
-template<> struct by_range::get<Bound::MIN> {
-  static bstring& term(range_t& rng) { return rng.min; }
-  static const bstring& term(const range_t& rng) { return rng.min; }
-  static Bound_Type& type(range_t& rng) { return rng.min_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.min_type; }
-}; // get<Bound::MAX>
+} // ROOT
 
-template<> struct by_range::get<Bound::MAX> {
-  static bstring& term(range_t& rng) { return rng.max; }
-  static const bstring& term(const range_t& rng) { return rng.max; }
-  static Bound_Type& type(range_t& rng) { return rng.max_type; }
-  static const Bound_Type& type(const range_t& rng) { return rng.max_type; }
-}; // get<Bound::MAX>
+namespace std {
 
-NS_END // ROOT
+template<>
+struct hash<::iresearch::by_range_options> {
+  size_t operator()(const ::iresearch::by_range_options& v) const noexcept {
+    return v.hash();
+  }
+};
+
+}
 
 #endif // IRESEARCH_RANGE_FILTER_H

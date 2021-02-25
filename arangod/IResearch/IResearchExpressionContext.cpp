@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,8 +25,12 @@
 #include "IResearchExpressionContext.h"
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/QueryContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+
+#include <Containers/HashSet.h>
 
 namespace arangodb {
 namespace iresearch {
@@ -33,12 +38,52 @@ namespace iresearch {
 using namespace arangodb::aql;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                              ViewExpressionContext implementation
+// --SECTION--                          ViewExpressionContextBase implementation
 // -----------------------------------------------------------------------------
 
-size_t ViewExpressionContext::numRegisters() const {
-  return _numRegs;
+void ViewExpressionContextBase::registerWarning(ErrorCode errorCode, char const* msg) {
+  _query->warnings().registerWarning(errorCode, msg);
 }
+
+void ViewExpressionContextBase::registerError(ErrorCode errorCode, char const* msg) {
+  _query->warnings().registerError(errorCode, msg);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(char const* ptr, size_t length,
+                                                             bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildRegexMatcher(ptr, length, caseInsensitive);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(char const* ptr, size_t length,
+                                                            bool caseInsensitive) {
+  return _aqlFunctionsInternalCache->buildLikeMatcher(ptr, length, caseInsensitive);
+}
+
+icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(AqlValue splitExpression,
+                                                             velocypack::Options const* opts,
+                                                             bool& isEmptyExpression) {
+  return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts, isEmptyExpression);
+}
+
+arangodb::ValidatorBase* ViewExpressionContextBase::buildValidator(arangodb::velocypack::Slice const& params) {
+  return _aqlFunctionsInternalCache->buildValidator(params);
+}
+
+TRI_vocbase_t& ViewExpressionContextBase::vocbase() const {
+  return _trx->vocbase();
+}
+
+transaction::Methods& ViewExpressionContextBase::trx() const {
+  return *_trx;
+}
+
+bool ViewExpressionContextBase::killed() const  {
+  return _query->killed();
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                              ViewExpressionContext implementation
+// -----------------------------------------------------------------------------
 
 AqlValue ViewExpressionContext::getVariableValue(Variable const* var, bool doCopy,
                                                  bool& mustDestroy) const {

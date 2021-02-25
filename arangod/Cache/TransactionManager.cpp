@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,92 +18,82 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <atomic>
+#include <cstdint>
+
 #include "Cache/TransactionManager.h"
+
 #include "Basics/cpu-relax.h"
+#include "Basics/debugging.h"
 #include "Cache/Transaction.h"
 
-#include <stdint.h>
-#include <atomic>
-
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 TransactionManager::TransactionManager()
-    : _openReads(0), _openSensitive(0), _openWrites(0), _term(0), _lock(false) {}
+    : _state({{0,0,0}, 0}) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
   Transaction* tx = new Transaction(readOnly);
 
-  lock();
-
+  State newState;
   if (readOnly) {
-    _openReads++;
-    if (_openWrites.load() > 0) {
-      tx->sensitive = true;
-      _openSensitive++;
-    }
+    State state = _state.load(std::memory_order_relaxed);
+    do {
+      tx->sensitive = false;
+      newState = state;
+      newState.counters.openReads++;
+      if (newState.counters.openWrites > 0) {
+        tx->sensitive = true;
+        newState.counters.openSensitive++;
+      }
+    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   } else {
     tx->sensitive = true;
-    if (_openSensitive.load() == 0) {
-      _term++;
-    }
-    if (_openWrites.load() == 0) {
-      _openSensitive = _openReads.load() + _openWrites.load();
-    }
-    _openWrites++;
-    _openSensitive++;
+    State state = _state.load(std::memory_order_relaxed);
+    do {
+      newState = state;
+      if (newState.counters.openSensitive == 0) {
+        newState.term++;
+      }
+      if (newState.counters.openWrites++ == 0) {
+        newState.counters.openSensitive = state.counters.openReads + 1;
+      } else {
+        newState.counters.openSensitive++;
+      }
+    } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
   }
-
-  tx->term = _term.load();
-
-  unlock();
-
+  tx->term = newState.term;
   return tx;
 }
 
 void TransactionManager::end(Transaction* tx) noexcept {
   TRI_ASSERT(tx != nullptr);
-  lock();
 
-  // if currently in sensitive phase, and transaction term is old, it was
-  // upgraded to sensitive status
-  if (((_term & static_cast<uint64_t>(1)) > 0) && (_term > tx->term)) {
-    tx->sensitive = true;
-  }
+  State state = _state.load(std::memory_order_relaxed);
+  State newState;
+  do {
+    if (((state.term & static_cast<uint64_t>(1)) > 0) && (state.term > tx->term)) {
+      tx->sensitive = true;
+    }
 
-  if (tx->readOnly) {
-    _openReads--;
-  } else {
-    _openWrites--;
-  }
+    newState = state;
+    if (tx->readOnly) {
+      newState.counters.openReads--;
+    } else {
+      newState.counters.openWrites--;
+    }
 
-  if (tx->sensitive && (--_openSensitive == 0)) {
-    _term++;
-  }
-
-  unlock();
+    if (tx->sensitive && (--newState.counters.openSensitive == 0)) {
+      newState.term++;
+    }
+  } while (!_state.compare_exchange_strong(state, newState, std::memory_order_acq_rel, std::memory_order_relaxed));
 
   delete tx;
 }
 
-uint64_t TransactionManager::term() { return _term.load(); }
+uint64_t TransactionManager::term() { return _state.load(std::memory_order_acquire).term; }
 
-void TransactionManager::lock() {
-  while (true) {
-    while (_lock.load(std::memory_order_relaxed)) {
-      basics::cpu_relax();
-    }
-    bool expected = false;
-    if (_lock.compare_exchange_weak(expected, true, std::memory_order_acq_rel,
-                                    std::memory_order_relaxed)) {
-      return;
-    }
-    basics::cpu_relax();
-  }
-}
-
-void TransactionManager::unlock() {
-  _lock.store(false, std::memory_order_release);
-}
+}  // namespace arangodb::cache

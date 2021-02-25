@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -45,7 +46,7 @@ static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
               "AccessMode::Type total order fail");
 
 /// @brief check if a collection is locked in a specific mode in a transaction
-bool TransactionCollection::isLocked(AccessMode::Type accessType, int nestingLevel) const {
+bool TransactionCollection::isLocked(AccessMode::Type accessType) const {
   if (accessType > _accessType) {
     // wrong lock type
     LOG_TOPIC("39ef2", WARN, arangodb::Logger::ENGINES)
@@ -63,70 +64,20 @@ bool TransactionCollection::isLocked() const {
   return _lockType > AccessMode::Type::NONE;
 }
 
-/// @brief request a main-level lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
-/// no other error occurred returns any other error code otherwise
-int TransactionCollection::lockRecursive() {
-  return lockRecursive(_accessType, 0);
-}
-
-/// @brief request a lock for a collection
-/// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-/// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
-/// no other error occurred returns any other error code otherwise
-int TransactionCollection::lockRecursive(AccessMode::Type accessType, int nestingLevel) {
+Result TransactionCollection::updateUsage(AccessMode::Type accessType) {
   if (AccessMode::isWriteOrExclusive(accessType) &&
       !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (isLocked()) {
-    // already locked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doLock(accessType, nestingLevel);
-}
-
-/// @brief request an unlock for a collection
-int TransactionCollection::unlockRecursive(AccessMode::Type accessType, int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    // wrong lock type: write-unlock requested but collection is read-only
-    return TRI_ERROR_INTERNAL;
-  }
-
-  if (!isLocked()) {
-    // already unlocked
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  return doUnlock(accessType, nestingLevel);
-}
-
-Result TransactionCollection::updateUsage(AccessMode::Type accessType, 
-                                          int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) &&
-      !AccessMode::isWriteOrExclusive(_accessType)) {
-    if (nestingLevel > 0) {
-      // trying to write access a collection that is only marked with
-      // read-access
+    if (_transaction->status() != transaction::Status::CREATED) {
+      // trying to write access a collection that is marked read-access
       return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
                     std::string(TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) + ": " + collectionName() + 
                     " [" + AccessMode::typeString(accessType) + "]");
     }
 
-    TRI_ASSERT(nestingLevel == 0);
-
     // upgrade collection type to write-access
     _accessType = accessType;
   }
-    
-  adjustNestingLevel(nestingLevel); 
-
+  
   // all correct
   return {};
 }
-

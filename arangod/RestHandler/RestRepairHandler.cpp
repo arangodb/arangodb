@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -28,6 +29,8 @@
 #include <thread>
 #include <valarray>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AsyncJobManager.h"
@@ -52,8 +55,7 @@ RestRepairHandler::RestRepairHandler(application_features::ApplicationServer& se
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestRepairHandler::execute() {
-  auto& server = application_features::ApplicationServer::server();
-  if (server.isStopping()) {
+  if (server().isStopping()) {
     generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_SHUTTING_DOWN);
     return RestStatus::DONE;
   }
@@ -66,8 +68,7 @@ RestStatus RestRepairHandler::execute() {
       _pretendOnly = true;
       break;
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
       return RestStatus::DONE;
   }
@@ -116,12 +117,22 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
       return RestStatus::DONE;
     }
     ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
+    AgencyCache& agencyCache = server().getFeature<ClusterFeature>().agencyCache();
 
-    clusterInfo.loadPlan();
-    std::shared_ptr<VPackBuilder> planBuilder = clusterInfo.getPlan();
+    auto waitForNewPlan = [&clusterInfo] {
+      using namespace std::chrono_literals;
+      auto fRes = clusterInfo.fetchAndWaitForPlanVersion(10.0s);
+      // Note that get() might throw
+      return fRes.get();
+    };
 
-    VPackSlice plan = planBuilder->slice();
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      generateError(res);
+      return RestStatus::DONE;
+    }
 
+    auto [b, i] = agencyCache.get("arango/Plan");
+    VPackSlice plan = b->slice().get(std::vector<std::string>{AgencyCommHelper::path(), "Plan"});
     VPackSlice planCollections = plan.get("Collections");
 
     ResultT<VPackBufferPtr> healthResult = getFromAgency("Supervision/Health");
@@ -186,16 +197,18 @@ RestStatus RestRepairHandler::repairDistributeShardsLike() {
 
     generateResult(responseCode, response, errorOccurred);
 
-    clusterInfo.loadPlan();
+    if (auto res = waitForNewPlan(); !res.ok()) {
+      LOG_TOPIC("293c5", WARN, arangodb::Logger::CLUSTER)
+          << "RestRepairHandler::repairDistributeShardsLike: "
+          << "failed to wait for new plan version after successful operation: "
+          << res.errorMessage();
+      return RestStatus::DONE;
+    }
   } catch (basics::Exception const& e) {
     LOG_TOPIC("78521", ERR, arangodb::Logger::CLUSTER)
         << "RestRepairHandler::repairDistributeShardsLike: "
         << "Caught exception: " << e.message();
     generateError(rest::ResponseCode::SERVER_ERROR, e.code());
-
-    if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
-    }
   }
   return RestStatus::DONE;
 }
@@ -206,19 +219,19 @@ bool RestRepairHandler::repairAllCollections(
     VPackBuilder& response) {
   bool allCollectionsSucceeded = true;
 
-  std::unordered_map<CollectionID, DatabaseID> databaseByCollectionId;
+  std::unordered_map<CollectionID, DatabaseID> databaseByDataSourceId;
 
   for (auto const& dbIt : VPackObjectIterator(planCollections)) {
     DatabaseID database = dbIt.key.copyString();
     for (auto const& colIt : VPackObjectIterator(dbIt.value)) {
       CollectionID collectionId = colIt.key.copyString();
-      databaseByCollectionId[collectionId] = database;
+      databaseByDataSourceId[collectionId] = database;
     }
   }
 
   for (auto const& it : repairOperationsByCollection) {
     CollectionID collectionId = it.first;
-    DatabaseID databaseId = databaseByCollectionId.at(collectionId);
+    DatabaseID databaseId = databaseByDataSourceId.at(collectionId);
     auto repairOperationsResult = it.second;
     auto nameResult = getDbAndCollectionName(planCollections, collectionId);
     if (nameResult.fail()) {
@@ -323,7 +336,7 @@ ResultT<bool> RestRepairHandler::jobFinished(std::string const& jobId) {
         << "Failed to get job status: "
         << "[" << jobStatus.errorNumber() << "] " << jobStatus.errorMessage();
 
-    return ResultT<bool>::error(std::move(jobStatus.result()));
+    return ResultT<bool>::error(std::move(jobStatus).result());
   }
 
   return ResultT<bool>::success(false);
@@ -333,7 +346,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
                                                   CollectionID const& collectionId,
                                                   std::string const& dbAndCollectionName,
                                                   std::list<RepairOperation> const& repairOperations) {
-  AgencyComm comm;
+  AgencyComm comm(server());
 
   size_t opNum = 0;
   for (auto& op : repairOperations) {
@@ -350,9 +363,7 @@ Result RestRepairHandler::executeRepairOperations(DatabaseID const& databaseId,
         << "Sending a transaction to the agency";
 
     AgencyCommResult result = comm.sendTransactionWithFailover(wtrx);
-    if (server().hasFeature<ClusterFeature>()) {
-      server().getFeature<ClusterFeature>().clusterInfo().loadPlan();
-    }
+
     if (!result.successful()) {
       std::stringstream errMsg;
       errMsg << "Failed to send and execute operation. "
@@ -426,14 +437,14 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     std::array<std::string const, N> const& agencyKeyArray) {
   std::array<VPackBufferPtr, N> resultArray;
 
-  AgencyComm agency;
+  AgencyComm agency(server());
 
   std::vector<std::string> paths;
 
-  // apply AgencyCommManager::path on every element and copy to vector
+  // apply AgencyCommHelper::path on every element and copy to vector
   std::transform(agencyKeyArray.begin(), agencyKeyArray.end(),
                  std::back_inserter(paths), [](std::string const& key) {
-                   return AgencyCommManager::path(key);
+                   return AgencyCommHelper::path(key);
                  });
 
   AgencyCommResult result =
@@ -454,7 +465,7 @@ ResultT<std::array<VPackBufferPtr, N>> RestRepairHandler::getFromAgency(
     }
 
     std::vector<std::string> agencyPath =
-        basics::StringUtils::split(AgencyCommManager::path(agencyKey), '/');
+        basics::StringUtils::split(AgencyCommHelper::path(agencyKey), '/');
 
     agencyPath.erase(std::remove(agencyPath.begin(), agencyPath.end(), ""),
                      agencyPath.end());
@@ -522,8 +533,8 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
   for (auto const& db : VPackObjectIterator{planCollections}) {
     std::string dbName = db.key.copyString();
     for (auto const& collection : VPackObjectIterator{db.value}) {
-      std::string currentCollectionId = collection.key.copyString();
-      if (currentCollectionId == collectionID) {
+      std::string currentDataSourceId = collection.key.copyString();
+      if (currentDataSourceId == collectionID) {
         return dbName + "/" + collection.value.get("name").copyString();
       }
     }
@@ -649,7 +660,6 @@ ResultT<bool> RestRepairHandler::checkReplicationFactor(DatabaseID const& databa
   }
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
 
-  clusterInfo.loadPlan();
   std::shared_ptr<LogicalCollection> const collection =
       clusterInfo.getCollection(databaseId, collectionId);
   std::shared_ptr<ShardMap> const shardMap = collection->shardIds();
@@ -686,9 +696,7 @@ void RestRepairHandler::generateResult(rest::ResponseCode code,
 
     tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
 
-    VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    writeResult(tmp.slice(), options);
+    writeResult(tmp.slice(), VPackOptions::Defaults);
   } catch (...) {
     // Building the error response failed
   }

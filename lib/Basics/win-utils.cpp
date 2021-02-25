@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #include <shellapi.h>
 #include <windows.h>
 
-
 #include <errno.h>
 #include <fcntl.h>
 #include <io.h>
@@ -39,6 +38,9 @@
 #include <iomanip>
 #include <locale>
 
+#include "Basics/Common.h"
+#include "Basics/operating-system.h"
+
 #include "win-utils.h"
 
 #include <VersionHelpers.h>
@@ -47,56 +49,45 @@
 #include <malloc.h>
 #include <string.h>
 
-#include "Basics/Common.h"
-
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/directories.h"
+#include "Basics/error.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-#include "dbghelp.h"
-#endif
-#endif
-
 using namespace arangodb::basics;
 
-// .............................................................................
-// Some global variables which may be required later
-// .............................................................................
-
-_invalid_parameter_handler oldInvalidHandleHandler;
-_invalid_parameter_handler newInvalidHandleHandler;
-
-// Windows variant for getpagesize()
-int getpagesize(void) {
-  static int pageSize = 0;  // only define it once
-
-  if (!pageSize) {
-    // first time, so call the system info function
-    SYSTEM_INFO systemInfo;
-    GetSystemInfo(&systemInfo);
-    pageSize = systemInfo.dwPageSize;
-  }
-
-  return pageSize;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
-// Sets up a handler when invalid (win) handles are passed to a windows
-// function.
-// This is not of much use since no values can be returned. All we can do
-// for now is to ignore error and hope it goes away!
+// Callback function that is called when invalid parameters are passed to a CRT
+// function. The MS documentations states:
+//   > When the runtime calls the invalid parameter function, it usually means
+//   > that a nonrecoverable error occurred. The invalid parameter handler
+//   > function you supply should save any data it can and then abort. It should
+//   > not return control to the main function unless you're confident that the
+//   > error is recoverable.
+// https://docs.microsoft.com/en-us/cpp/c-runtime-library/reference/set-invalid-parameter-handler-set-thread-local-invalid-parameter-handler
+//
+// The behavior of the default invalid_parameter_handler is to simulate an
+// unhandled SEH exception and let the Windows Error Reporting take over.
+// However, there are potentially some cases that would trigger this callback.
+// For example, ManagedDirectory::File::File has previously called TRI_DUP
+// with an invalid file descriptor, which would result in a call to the
+// invalid_parameter_handler.
+//
+// Since we cannot be sure whether there are some other cases, we use a custom
+// callback that does _NOT_ follow the MS recommendation to abort the process,
+// but simply hope that it is safe to ignore the error.
+// However, we do log a message and that message should be taken VERY seriously!
 ////////////////////////////////////////////////////////////////////////////////
-static void InvalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
+static void invalidParameterHandler(const wchar_t* expression,  // expression sent to function - NULL
                                     const wchar_t* function,  // name of function - NULL
                                     const wchar_t* file,  // file where code resides - NULL
                                     unsigned int line,  // line within file - NULL
@@ -111,16 +102,11 @@ static void InvalidParameterHandler(const wchar_t* expression,  // expression se
 #endif
 
   LOG_TOPIC("e4644", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter passed"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      << buf;
-
-  std::string bt;
-  TRI_GetBacktrace(bt);
-  LOG_TOPIC("967e6", ERR, arangodb::Logger::FIXME)
-      << "Invalid handle parameter Invoked from: " << bt
+      << "Invalid parameter passed: " << buf;
+#else
+      << "Invalid parameter passed";
 #endif
-      ;
 }
 
 int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* data) {
@@ -132,33 +118,6 @@ int initializeWindows(const TRI_win_initialize_e initializeWhat, char const* dat
   switch (initializeWhat) {
     case TRI_WIN_INITIAL_SET_DEBUG_FLAG: {
       _CrtSetDbgFlag(_CrtSetDbgFlag(_CRTDBG_LEAK_CHECK_DF) | _CRTDBG_CHECK_ALWAYS_DF);
-      return 0;
-    }
-
-      // ...........................................................................
-      // Assign a handler for invalid handles
-      // ...........................................................................
-
-    case TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER: {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if ARANGODB_ENABLE_BACKTRACE
-      DWORD error;
-      HANDLE hProcess;
-
-      SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
-
-      hProcess = GetCurrentProcess();
-
-      if (!SymInitialize(hProcess, NULL, true)) {
-        // SymInitialize failed
-        error = GetLastError();
-        LOG_TOPIC("62b0a", ERR, arangodb::Logger::FIXME)
-            << "SymInitialize returned error :" << error;
-      }
-#endif
-#endif
-      newInvalidHandleHandler = InvalidParameterHandler;
-      oldInvalidHandleHandler = _set_invalid_parameter_handler(newInvalidHandleHandler);
       return 0;
     }
 
@@ -270,6 +229,36 @@ int TRI_OPEN_WIN32(char const* filename, int openFlags) {
   return fileDescriptor;
 }
 
+
+TRI_read_return_t TRI_READ_POINTER(HANDLE fd, void* Buffer, size_t length) {
+  char* ptr = static_cast<char*>(Buffer);
+  size_t remainLength = length;
+  while (0 < remainLength) {
+    DWORD read;
+    if (ReadFile(fd, ptr, static_cast<DWORD>(remainLength), &read, nullptr)) {
+      ptr += read;
+      remainLength -= read;
+    } else {
+      auto err = GetLastError();
+      if (err == ERROR_NO_DATA) {
+        continue;
+      } else if (err == ERROR_BROKEN_PIPE) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("87f53", ERR, arangodb::Logger::FIXME)
+          << "cannot read, end-of-file";
+        return static_cast<TRI_read_return_t>(length - remainLength);
+      } else {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        LOG_TOPIC("c9c0d", ERR, arangodb::Logger::FIXME) << "cannot read: " << TRI_LAST_ERROR_STR;
+        return static_cast<TRI_read_return_t>(length - remainLength);
+      }
+    }
+  }
+
+  return static_cast<TRI_read_return_t>(length);
+}
+
+
 FILE* TRI_FOPEN(char const* filename, char const* mode) {
   icu::UnicodeString fn(filename);
   icu::UnicodeString umod(mode);
@@ -329,7 +318,9 @@ int TRI_UNLINK(char const* filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 arangodb::Result translateWindowsError(DWORD error) {
-  return {TRI_MapSystemError(error), windowsErrorToUTF8(error)};
+  errno = TRI_MapSystemError(error);
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  return {res, windowsErrorToUTF8(error)};
 }
 
 std::string windowsErrorToUTF8(DWORD errorNum) {
@@ -601,11 +592,7 @@ void ADB_WindowsEntryFunction() {
   // ...........................................................................
   // res = initializeWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
 
-  res = initializeWindows(TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER, 0);
-
-  if (res != 0) {
-    _exit(EXIT_FAILURE);
-  }
+  _set_invalid_parameter_handler(invalidParameterHandler);
 
   res = initializeWindows(TRI_WIN_INITIAL_SET_MAX_STD_IO, (char const*)(&maxOpenFiles));
 

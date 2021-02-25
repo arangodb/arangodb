@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,9 +53,11 @@ class SslClientConnection final : public GeneralClientConnection {
   /// @brief creates a new client connection
   //////////////////////////////////////////////////////////////////////////////
 
-  SslClientConnection(Endpoint* endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      Endpoint* endpoint, double, double, size_t, uint64_t);
 
-  SslClientConnection(std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
+  SslClientConnection(application_features::ApplicationServer& server,
+                      std::unique_ptr<Endpoint>& endpoint, double, double, size_t, uint64_t);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief destroys a client connection

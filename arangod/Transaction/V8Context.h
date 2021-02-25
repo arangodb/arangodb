@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "Context.h"
 
 struct TRI_vocbase_t;
+struct TRI_v8_global_t;
 
 namespace arangodb {
 
@@ -41,34 +42,33 @@ class V8Context final : public Context {
   V8Context(TRI_vocbase_t& vocbase, bool embeddable);
 
   /// @brief destroy the context
-  ~V8Context() = default;
+  ~V8Context() noexcept;
 
   /// @brief order a custom type handler
-  std::shared_ptr<arangodb::velocypack::CustomTypeHandler> orderCustomTypeHandler() override final;
+  arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
 
-  /// @brief get parent transaction (if any)
-  TransactionState* getParentTransaction() const override;
-
-  /// @brief register the transaction in the context
-  void registerTransaction(TransactionState* trx) override;
+  /// @brief get transaction state, determine commit responsiblity
+  std::shared_ptr<TransactionState> acquireState(transaction::Options const& options,
+                                                 bool& responsibleForCommit) override;
+  
+  void enterV8Context();
+  void exitV8Context();
 
   /// @brief return the resolver
   CollectionNameResolver const& resolver() override final;
 
   /// @brief unregister the transaction from the context
   void unregisterTransaction() noexcept override;
+  
+  std::shared_ptr<Context> clone() const override;
 
   /// @brief whether or not the transaction is embeddable
   bool isEmbeddable() const override;
-
-  /// @brief make this transaction context a global context
-  void makeGlobal();
-
-  /// @brief whether or not the transaction context is a global one
-  bool isGlobal() const;
+  
+  virtual bool isV8Context() override { return true; }
 
   /// @brief return parent transaction state or none
-  static TransactionState* getParentState();
+  static std::shared_ptr<TransactionState> getParentState();
 
   /// @brief check whether the transaction is embedded
   static bool isEmbedded();
@@ -82,13 +82,10 @@ class V8Context final : public Context {
                                                                   bool embeddable);
 
  private:
-  /// @brief the v8 thread-local "global" transaction context
-  transaction::V8Context* _sharedTransactionContext;
-
-  transaction::V8Context* _mainScope;
-
+  TRI_v8_global_t* _v8g;
+ 
   /// @brief the currently ongoing transaction
-  TransactionState* _currentTransaction;
+  std::shared_ptr<TransactionState> _currentTransaction;
 
   /// @brief whether or not further transactions can be embedded
   bool const _embeddable;

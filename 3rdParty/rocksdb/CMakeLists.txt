@@ -4,8 +4,12 @@ project(rocksdb C CXX)
 
 set(FAIL_ON_WARNINGS OFF CACHE BOOL "do not enable -Werror")
 
-set(ARANGO_ROCKSDB_VERSION "6.2")
+set(ARANGO_ROCKSDB_VERSION "6.8")
 set(ARANGO_ROCKSDB_VERSION "${ARANGO_ROCKSDB_VERSION}" PARENT_SCOPE)
+
+# we want the following definitions to be in effect for both rocksdb and arangodb
+add_definitions("-DNROCKSDB_THREAD_STATUS")
+add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
 
 # jemalloc settings
 if (USE_JEMALLOC)
@@ -17,8 +21,8 @@ if (USE_JEMALLOC)
   else ()
     set(WITH_JEMALLOC        ON                                 CACHE BOOL "enable jemalloc")
     set(JEMALLOC_INCLUDE     ${JEMALLOC_HOME}/include           CACHE PATH "include path")
-    set(JEMALLOC_LIB         ${JEMALLOC_HOME}/lib/libjemalloc.a CACHE PATH "library file")
-    set(THIRDPARTY_LIBS      ${JEMALLOC_LIB})
+    set(JEMALLOC_LIBRARIES   jemalloc CACHE PATH "library file")
+    set(THIRDPARTY_LIBS      jemalloc)
   endif ()
 else ()
   set(WITH_JEMALLOC OFF CACHE BOOL "enable jemalloc" FORCE)
@@ -29,6 +33,9 @@ if (WIN32)
 endif ()
 set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 
+set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "build shared libraries")
+set(WITH_TOOLS OFF CACHE BOOL "disable tools")
+set(WITH_CORE_TOOLS OFF CACHE BOOL "disable core tools")
 set(WITH_TESTS OFF CACHE BOOL "disable tests")
 set(WITH_SNAPPY ON CACHE BOOL "force enable snappy")
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,8 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <unordered_set>
 
 #include "Basics/operating-system.h"
 
@@ -60,12 +59,25 @@
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+// Please leave this code in for the next time we have to debug fuerte.
+#if 0
+void LogHackWriter(char const* p) {
+  LOG_DEVEL << p;
+}
+#endif
+
 namespace arangodb {
 
-LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bool threaded)
-  : ApplicationFeature(server, "Logger"),
-    _timeFormatString(LogTimeFormats::defaultFormatName()),
-    _threaded(threaded) {
+LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, 
+                             bool threaded)
+    : ApplicationFeature(server, "Logger"),
+      _timeFormatString(LogTimeFormats::defaultFormatName()),
+      _threaded(threaded) {
+
+  // note: we use the _threaded option to determine whether we are arangod
+  // (_threaded = true) or one of the client tools (_threaded = false). in
+  // the latter case we disable some options for the Logger, which only make
+  // sense when we are running in server mode
   setOptional(false);
 
   startsAfter<ShellColorsFeature>();
@@ -77,124 +89,166 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server, bo
   _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
-LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
+LoggerFeature::~LoggerFeature() {
+  Logger::shutdown();
+  Logger::shutdownLogThread();
+}
 
 void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOldOption("log.tty", "log.foreground-tty");
-  options->addOldOption("log.content-filter", "");
-  options->addOldOption("log.source-filter", "");
-  options->addOldOption("log.application", "");
-  options->addOldOption("log.facility", "");
 
-  options->addOption("--log", "the global or topic-specific log level",
-                     new VectorParameter<StringParameter>(&_levels),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30500);
+  options
+      ->addOption("--log", "the global or topic-specific log level",
+                  new VectorParameter<StringParameter>(&_levels),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30500);
 
   options->addSection("log", "Configure the logging");
 
   options->addOption("--log.color", "use colors for TTY logging",
                      new BooleanParameter(&_useColor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--log.escape", "escape characters when logging",
                      new BooleanParameter(&_useEscaped));
 
-  options->addOption("--log.output,-o",
-                     "log destination(s), e.g. file:///path/to/file (Linux, macOS) "
-                     "or file://C:\\path\\to\\file (Windows)",
-                     new VectorParameter<StringParameter>(&_output));
+  options->addOption(
+      "--log.output,-o",
+      "log destination(s), e.g. file:///path/to/file (Linux, macOS) "
+      "or file://C:\\path\\to\\file (Windows)",
+      new VectorParameter<StringParameter>(&_output));
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
                      new VectorParameter<StringParameter>(&_levels));
-
-  options->addOption("--log.use-local-time", "use local timezone instead of UTC",
-                     new BooleanParameter(&_useLocalTime),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30500);
-
-  options->addOption("--log.use-microtime", "use microtime instead",
-                     new BooleanParameter(&_useMicrotime),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30500);
   
-  options->addOption("--log.time-format", "time format to use in logs",
-                     new DiscreteValuesParameter<StringParameter>(&_timeFormatString, LogTimeFormats::getAvailableFormatNames()))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
+                  new UInt32Parameter(&_maxEntryLength))
+      .setIntroducedIn(30800).setIntroducedIn(30709);
 
-  options->addOption("--log.ids", "log unique message ids", 
-                     new BooleanParameter(&_showIds))
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--log.use-local-time", "use local timezone instead of UTC",
+                  new BooleanParameter(&_useLocalTime),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30500);
+
+  options
+      ->addOption("--log.use-microtime", "use microtime instead",
+                  new BooleanParameter(&_useMicrotime),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30500);
+
+  options
+      ->addOption("--log.time-format", "time format to use in logs",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_timeFormatString, LogTimeFormats::getAvailableFormatNames()))
+      .setIntroducedIn(30500);
+
+  options
+      ->addOption("--log.ids", "log unique message ids", new BooleanParameter(&_showIds))
+      .setIntroducedIn(30500);
 
   options->addOption("--log.role", "log server role", new BooleanParameter(&_showRole));
 
-  options->addOption("--log.file-mode",
-                     "mode to use for new log file, umask will be applied as well",
-                     new StringParameter(&_fileMode))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+  options
+      ->addOption("--log.file-mode",
+                  "mode to use for new log file, umask will be applied as well",
+                  new StringParameter(&_fileMode))
+      .setIntroducedIn(30405)
+      .setIntroducedIn(30500);
+
+  if (_threaded) {
+    // this option only makes sense for arangod, not for arangosh etc.
+    options->addOption("--log.api-enabled",
+                       "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
+                       new StringParameter(&_apiSwitch))
+        .setIntroducedIn(30411)
+        .setIntroducedIn(30506)
+        .setIntroducedIn(30605);
+  }
+
+  options
+      ->addOption("--log.use-json-format", "use json output format",
+                  new BooleanParameter(&_useJson))
+      .setIntroducedIn(30800);
 
 #ifdef ARANGODB_HAVE_SETGID
-  options->addOption("--log.file-group",
-                     "group to use for new log file, user must be a member of this group",
-                     new StringParameter(&_fileGroup))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+  options
+      ->addOption(
+          "--log.file-group",
+          "group to use for new log file, user must be a member of this group",
+          new StringParameter(&_fileGroup))
+      .setIntroducedIn(30405)
+      .setIntroducedIn(30500);
 #endif
 
   options->addOption("--log.prefix", "prefix log message with this string",
                      new StringParameter(&_prefix),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--log.file",
                      "shortcut for '--log.output file://<filename>'",
                      new StringParameter(&_file),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--log.line-number", "append line number and file name",
                      new BooleanParameter(&_lineNumber),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--log.shorten-filenames",
       "shorten filenames in log output (use with --log.line-number)",
       new BooleanParameter(&_shortenFilenames),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addOption("--log.process", "show process identifier (pid) in log message",
+                     new BooleanParameter(&_processId),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30701);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption("--log.thread-name", "show thread name in log message",
                      new BooleanParameter(&_threadName),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
-  options->addOption("--log.performance",
-                     "shortcut for '--log.level performance=trace'",
-                     new BooleanParameter(&_performance),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setDeprecatedIn(30500);
+  options
+      ->addOption("--log.performance",
+                  "shortcut for '--log.level performance=trace'",
+                  new BooleanParameter(&_performance),
+                  arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+      .setDeprecatedIn(30500);
 
-  options->addOption("--log.keep-logrotate",
-                     "keep the old log file after receiving a sighup",
-                     new BooleanParameter(&_keepLogRotate),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+  if (_threaded) {
+    // this option only makes sense for arangod, not for arangosh etc.
+    options->addOption("--log.keep-logrotate",
+                       "keep the old log file after receiving a sighup",
+                       new BooleanParameter(&_keepLogRotate),
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  }
 
   options->addOption("--log.foreground-tty", "also log to tty if backgrounded",
                      new BooleanParameter(&_foregroundTty),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden,
-                                                  arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden,
+                                                         arangodb::options::Flags::Dynamic));
 
   options->addOption("--log.force-direct",
                      "do not start a seperate thread for logging",
                      new BooleanParameter(&_forceDirect),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   options->addOption(
       "--log.request-parameters",
       "include full URLs and HTTP request parameters in trace logs",
       new BooleanParameter(&_logRequestParameters),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+  
+  options->addObsoleteOption("log.content-filter", "", true);
+  options->addObsoleteOption("log.source-filter", "", true);
+  options->addObsoleteOption("log.application", "", true);
+  options->addObsoleteOption("log.facility", "", true);
 }
 
 void LoggerFeature::loadOptions(std::shared_ptr<options::ProgramOptions>,
@@ -220,15 +274,16 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_performance) {
     _levels.push_back("performance=trace");
   }
-  
+
   if (options->processingResult().touched("log.time-format") &&
       (options->processingResult().touched("log.use-microtime") ||
        options->processingResult().touched("log.use-local-time"))) {
     LOG_TOPIC("c3f28", FATAL, arangodb::Logger::FIXME)
-        << "cannot combine `--log.time-format` with either `--log.use-microtime` or `--log.use-local-time`";
+        << "cannot combine `--log.time-format` with either "
+           "`--log.use-microtime` or `--log.use-local-time`";
     FATAL_ERROR_EXIT();
   }
-       
+
   // convert the deprecated options into the new timeformat
   if (options->processingResult().touched("log.use-local-time")) {
     _timeFormatString = "local-datestring";
@@ -242,6 +297,18 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     // if not valid, the following call will throw an exception and
     // abort the startup
     LogTimeFormats::formatFromName(_timeFormatString);
+  }
+
+  if (_apiSwitch == "true" || _apiSwitch == "on" ||
+      _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
   }
 
   if (!_fileMode.empty()) {
@@ -302,6 +369,9 @@ void LoggerFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 #endif
+  
+  // set maximum length for each log entry
+  Logger::defaultLogGroup().maxLogEntryLength(std::max<uint32_t>(256, _maxEntryLength));
 
   Logger::setLogLevel(_levels);
   Logger::setShowIds(_showIds);
@@ -311,22 +381,25 @@ void LoggerFeature::prepare() {
   Logger::setUseEscaped(_useEscaped);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
+  Logger::setShowProcessIdentifier(_processId);
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
+  Logger::setUseJson(_useJson);
 
   for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      LogAppender::addAppender(definition + ".supervisor");
+      LogAppender::addAppender(Logger::defaultLogGroup(),
+                               definition + ".supervisor");
     } else {
-      LogAppender::addAppender(definition);
+      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender("-");
+    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {

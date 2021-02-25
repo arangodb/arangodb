@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -189,7 +190,7 @@ EndpointSrv::EndpointSrv(std::string const& specification)
     : Endpoint(DomainType::SRV, EndpointType::CLIENT, TransportType::HTTP,
                EncryptionType::NONE, specification, 0) {}
 
-EndpointSrv::~EndpointSrv() {}
+EndpointSrv::~EndpointSrv() = default;
 
 bool EndpointSrv::isConnected() const {
   if (_endpoint != nullptr) {
@@ -225,8 +226,6 @@ void EndpointSrv::disconnect() {
     _endpoint->disconnect();
   }
 }
-
-bool EndpointSrv::initIncoming(TRI_socket_t) { return false; }
 
 int EndpointSrv::domain() const {
   if (_endpoint != nullptr) {

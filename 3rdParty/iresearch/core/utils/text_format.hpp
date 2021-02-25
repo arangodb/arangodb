@@ -24,63 +24,34 @@
 #ifndef IRESEARCH_TEXT_FORMAT_H
 #define IRESEARCH_TEXT_FORMAT_H
 
-#include "noncopyable.hpp"
-#include "type_id.hpp"
-
-NS_ROOT
-NS_BEGIN(text_format)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class base type_id for all textual format types
-////////////////////////////////////////////////////////////////////////////////
-class type_id: public irs::type_id, private util::noncopyable {
- public:
-  type_id(const string_ref& name): name_(name) {}
-  operator const type_id*() const { return this; }
-  const string_ref& name() const { return name_; }
-
- private:
-  string_ref name_;
-};
+namespace iresearch {
+namespace text_format {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                            common textual formats
 // -----------------------------------------------------------------------------
 
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wunused-variable"
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @class CSV format type https://en.wikipedia.org/wiki/Comma-separated_values
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API const type_id& csv_t();
-IRESEARCH_IGNORE_UNUSED static const auto& csv = csv_t();
+struct csv { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class jSON format type https://en.wikipedia.org/wiki/JSON
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API const type_id& json_t();
-IRESEARCH_IGNORE_UNUSED static const auto& json = json_t();
+struct json { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class raw text format type without any specific encoding
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API const type_id& text_t();
-IRESEARCH_IGNORE_UNUSED static const auto& text = text_t();
+struct text { };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class XML format type https://en.wikipedia.org/wiki/XML
 ////////////////////////////////////////////////////////////////////////////////
-IRESEARCH_API const type_id& xml_t();
-IRESEARCH_IGNORE_UNUSED static const auto& xml = xml_t();
+struct xml { };
 
-#if !defined(_MSC_VER)
-  #pragma GCC diagnostic pop
-#endif
-
-NS_END // text_format
-NS_END // ROOT
+} // text_format
+} // ROOT
 
 #endif

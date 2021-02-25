@@ -1,0 +1,367 @@
+<%
+    var figuresData = content.figures || {};
+    var revision    = content.revision;
+
+    if (!figuresData.figures) {
+      figuresData.figures = {};
+    }
+%>
+
+        <table id="collectionInfoTable" class="arango-table">
+          <tr id="collectionSyncBox">
+            <th class="collectionInfoTh2">Wait for sync:</th>
+            <th class="collectionInfoTh">
+                <div id="show-collection-sync" class="modal-text">
+                  <%=figuresData.waitForSync%>
+                </div>
+            </th>
+            <th class="tooltipInfoTh">
+              <div>
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Synchronize to disk before returning from a create or update of a document.">
+                </span>
+              </div>
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">ID:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-id" class="modal-text">
+                <%=content.model.get("id")%>
+              </div>
+            <th>
+          </tr>
+
+          <tr id="collectionRevBox">
+            <th class="collectionInfoTh2">Revision:</th>
+            <th class="collectionInfoTh">
+              <div id="show-collection-rev" class="modal-text">
+                <%=revision.revision%>
+              </div>
+            </th>
+            <th class="collectionInfoTh">
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Type:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=content.model.get("type")%></div>
+            </th>
+            <th class="collectionInfoTh">
+            </th>
+          </tr>
+
+          <tr>
+            <th class="collectionInfoTh2">Status:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%=content.model.get("status")%></div>
+            </th>
+            <th class="collectionInfoTh">
+            </th>
+          </tr>
+
+          <% if (figuresData.numberOfShards) { %>
+            <tr>
+              <th class="collectionInfoTh2">Number of shards:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.numberOfShards%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
+          <% if (figuresData.shards) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shards:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text">
+                <% var allShards = Object.keys(figuresData.shards); 
+                   allShards.forEach(function(shardName, index) {
+                %>
+                <%=(index > 0 ? '<br />' : '')%>
+                <%=shardName%>: [ <%=figuresData.shards[shardName].join('  -  ') %> ] 
+                
+                <%});%>
+                </div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
+          <% if (figuresData.replicationFactor) { %>
+            <tr>
+              <th class="collectionInfoTh2">Replication factor:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.replicationFactor%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          <% if (figuresData.writeConcern) { %>
+            <tr>
+              <th class="collectionInfoTh2">Write concern:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.writeConcern%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
+          <% if (figuresData.shardKeys) { %>
+            <tr>
+              <th class="collectionInfoTh2">Shard keys:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=JSON.stringify(figuresData.shardKeys)%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+
+          <% if (figuresData.distributeShardsLike) { %>
+            <tr>
+              <th class="collectionInfoTh2">Distribute shards like:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.distributeShardsLike%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+
+          <% if (figuresData.smartJoinAttribute) { %>
+            <tr>
+              <th class="collectionInfoTh2">SmartJoin attribute:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.smartJoinAttribute%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+          
+          <% if (!frontendConfig.isCluster) { %>
+            <% if (figuresData.figures.compactionStatus) { %>
+              <tr>
+                <th class="collectionInfoTh2">Compaction status:</th>
+                <th class="collectionInfoTh">
+                  <div class="modal-text"><%=figuresData.figures.compactionStatus.message + " (" + figuresData.figures.compactionStatus.time + ")" %></div>
+                </th>
+                <th class="collectionInfoTh">
+                </th>
+              </tr>
+            <% } %> 
+          <% } %>
+          
+          <% if (figuresData.figures.waitingFor) { %>
+            <tr>
+              <th class="collectionInfoTh2">Waiting for:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%=figuresData.figures.waitingFor%></div>
+              </th>
+              <th class="collectionInfoTh">
+              </th>
+            </tr>
+          <% } %>
+        </table>
+
+      </div>
+
+        <% if (figuresData.figures.alive && figuresData.figures.dead && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
+            <div class="infoBox">
+              <h4>Figures</h4>
+              <p>The following information does not contain data stored in the write-ahead log. It can be inaccurate, until the write-ahead log has been completely flushed.</p>
+            </div>
+          <table class="figures1 arango-table">
+            <tr class="figuresHeader">
+              <th>Type</th>
+              <th>Count</th>
+              <th>Size</th>
+              <th>Deletion</th>
+              <th>Info</th>
+            </tr>
+            <tr>
+              <th class="modal-text">Alive</th>
+              <% if (figuresData.walMessage) { %> 
+                <th class="modal-text"><%=figuresData.walMessage%></th>
+              <% } else { %>
+                <th class="modal-text"><%=numeral(figuresData.figures.alive.count).format('0,0')%></th>
+              <% } %>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.alive.size)%>
+                <% } %>
+              </th>
+              <th class="modal-text"> -</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number and size of all living documents.">
+                </span>
+              </th>
+            </tr>
+            <tr>
+              <th class="modal-text">Dead</th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.dead.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.dead.size)%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=figuresData.figures.dead.deletion%>
+                <% } %>
+              </th>
+
+              <th class="tooltipInfoTh">
+                <div>
+                  <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number and size of all dead documents.">
+                  </span>
+              </div>
+              </th>
+
+            </tr>
+            <tr><th><div> </div></th></tr>
+          </table>
+        <% } %>
+
+        <% if (figuresData.figures.datafiles && figuresData.figures.journals && figuresData.figures.compactors && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
+          <table class="figures2 arango-table">
+            <tr class="figuresHeader">
+              <th>Type</th>
+              <th>Count</th>
+              <th>Size</th>
+              <th></th>
+              <th>Info</th>
+            </tr>
+            <tr>
+              <th class="modal-text">Datafiles</th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.datafiles.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%= prettyBytes(figuresData.figures.datafiles.fileSize) %>
+                <% } %>
+              </th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <span class="modalTooltips arangoicon icon_arangodb_info" data-toggle="tooltip" data-placement="left" title="Number and total size of active datafiles.">
+                  </span>
+                </div>
+              </th>
+            </tr>
+            <tr>
+              <th class="modal-text">Journals</th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.journals.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.journals.fileSize)%>
+                <% } %>
+              </th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total size of journal files.">
+                </span>
+              </th>
+            </tr>
+            <tr>
+              <th class="modal-text">Compactors</th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=numeral(figuresData.figures.compactors.count).format('0,0')%>
+                <% } %>
+              </th>
+              <th class="modal-text">
+                <% if (figuresData.walMessage) { %>
+                  <%=figuresData.walMessage%>
+                <% } else { %>
+                  <%=prettyBytes(figuresData.figures.compactors.fileSize)%>
+                <% } %>
+              </th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total size of compactor files."></span>
+              </th>
+            </tr>
+            <tr>
+              <th class="modal-text">Indexes</th>
+              <th class="modal-text">
+                <%=numeral(figuresData.figures.indexes.count).format('0,0')%>
+              </th>
+              <th class="modal-text">
+                <%=prettyBytes(figuresData.figures.indexes.size)%>
+              </th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Number and total memory usage of indexes."></span>
+              </th>
+            </tr>
+          </table>
+        <% } %>
+
+        <% if (figuresData.figures.documentReferences && figuresData.figures.uncollectedLogfileEntries && !frontendConfig.isCluster && frontendConfig.engine === 'mmfiles') { %>
+          <table class="figures3 arango-table">
+            <tr class="figuresHeader">
+              <th>Type</th>
+              <th>Count</th>
+              <th></th>
+              <th></th>
+              <th>Info</th>
+            </tr>
+            <tr>
+              <th class="modal-text">Uncollected</th>
+              <th class="modal-text"><%=figuresData.figures.uncollectedLogfileEntries%></th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number of uncollected WAL entries">
+                </span>
+              </th>
+            </tr>
+            <tr>
+              <th class="modal-text">References</th>
+              <th class="modal-text"><%=figuresData.figures.documentReferences%></th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="modal-text">&nbsp;</th>
+              <th class="tooltipInfoTh">
+                <span class="modalTooltips arangoicon icon_arangodb_info" title="Total number of objects pointing to documents in collection datafiles">
+                </span>
+              </th>
+            </tr>
+          </table>
+        <% } %>
+

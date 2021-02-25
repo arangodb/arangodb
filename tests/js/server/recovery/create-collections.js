@@ -39,8 +39,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   var c = db._create('UnitTestsRecovery1', {
     waitForSync: true,
-    journalSize: 8 * 1024 * 1024,
-    doCompact: false
   });
   c.save({ value1: 1, value2: [ 'the',
       'quick',
@@ -58,9 +56,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery2', {
     waitForSync: false,
-    journalSize: 16 * 1024 * 1024,
-    doCompact: true,
-    isVolatile: (db._engine().name === "mmfiles")
   });
   c.save({ value1: { 'some': 'rubbish' } });
   c.ensureSkiplist('value1');
@@ -68,8 +63,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery3');
   c = db._createEdgeCollection('UnitTestsRecovery3', {
     waitForSync: false,
-    journalSize: 32 * 1024 * 1024,
-    doCompact: true
   });
 
   c.save('UnitTestsRecovery1/foo', 'UnitTestsRecovery2/bar', { value1: { 'some': 'rubbish' } });
@@ -109,26 +102,15 @@ function recoverySuite () {
       prop = c.properties();
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name === "mmfiles") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-        assertFalse(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
-      // isVolatile has no effect on rocksdb
-      assertEqual(db._engine().name  === "mmfiles" ? 0 : 1, c.count());
+      assertEqual(1, c.count());
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
-      if (db._engine().name  === "mmfiles") {
-        assertEqual(16 * 1024 * 1024, prop.journalSize);
-        assertTrue(prop.doCompact);
-        assertTrue(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(2, idx.length);
@@ -141,11 +123,6 @@ function recoverySuite () {
       prop = c.properties();
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
-      if (db._engine().name === "mmfiles") {
-        assertEqual(32 * 1024 * 1024, prop.journalSize);
-        assertTrue(prop.doCompact);
-        assertFalse(prop.isVolatile);
-      }
       assertFalse(prop.isSystem);
       idx = c.getIndexes();
       assertEqual(3, idx.length);

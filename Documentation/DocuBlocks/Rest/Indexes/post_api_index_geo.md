@@ -34,8 +34,6 @@ followed by latitude. This corresponds to the format described in
 http://geojson.org/geojson-spec.html#positions
 
 @RESTDESCRIPTION
-**NOTE** Swagger examples won't work due to the anchor.
-
 Creates a geo-spatial index in the collection *collection-name*, if
 it does not already exist. Expects an object containing the index details.
 

@@ -91,7 +91,7 @@ function getClusterEndpoints() {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -109,7 +109,7 @@ function getLoggerState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -124,7 +124,7 @@ function getApplierState(endpoint) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'));
@@ -142,6 +142,8 @@ function checkInSync(leader, servers, ignore) {
     }
 
     let applier = getApplierState(endpoint);
+
+    print("Checking endpoint ", endpoint, " applier.state.running=", applier.state.running, " applier.endpoint=", applier.endpoint);
     return applier.state.running && applier.endpoint === leader &&
       (compareTicks(applier.state.lastAppliedContinuousTick, leaderTick) >= 0 ||
         compareTicks(applier.state.lastProcessedContinuousTick, leaderTick) >= 0);
@@ -168,7 +170,7 @@ function checkData(server) {
     auth: {
       bearer: jwtRoot,
     },
-    timeout: 300 
+    timeout: 300
   });
 
   assertTrue(res instanceof request.Response);
@@ -187,7 +189,7 @@ function readAgencyValue(path) {
       bearer: jwtSuperuser,
     },
     body: JSON.stringify([[path]]),
-    timeout: 300 
+    timeout: 300
   });
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
@@ -216,7 +218,7 @@ function checkForFailover(leader) {
   print("Waiting for failover of ", leader);
 
   let oldLeaderUUID = "";
-  let i = 5; // 5 * 5s == 25s
+  let i = 24; // 24 * 5s == 120s
   do {
     let res = readAgencyValue("/arango/Supervision/Health");
     let srvHealth = res[0].arango.Supervision.Health;
@@ -259,7 +261,7 @@ function setReadOnly(endpoint, ro) {
     },
     body: {"mode" : str},
     json: true,
-    timeout: 300 
+    timeout: 300
   });
   print(JSON.stringify(res));
 
@@ -320,13 +322,22 @@ function ActiveFailoverSuite() {
       setReadOnly(currentLead, false);
       assertTrue(checkInSync(currentLead, servers));
 
-      internal.wait(5); // settle down
+      let i = 100;
+      do {
+        let endpoints = getClusterEndpoints();
+        if (endpoints.length === servers.length && endpoints[0] === currentLead) {
+          db._collection(cname).truncate({ compact: false });
+          return ;
+        }
+        print("cluster endpoints not as expected: found =", endpoints, " expected =", servers);
+        internal.wait(1); // settle down
+      } while(i --> 0);
 
       let endpoints = getClusterEndpoints();
+      print("endpoints: ", endpoints, " servers: ", servers);
       assertEqual(endpoints.length, servers.length);
       assertEqual(endpoints[0], currentLead);
-
-      db._collection(cname).truncate();
+      db._collection(cname).truncate({ compact: false });
     },
 
     tearDownAll: function () {
@@ -378,7 +389,7 @@ function ActiveFailoverSuite() {
     testLeaderAfterFailover: function () {
       assertTrue(checkInSync(currentLead, servers));
       assertEqual(checkData(currentLead), 10000);
-      
+
       // set it read-only
       setReadOnly(currentLead, true);
 
@@ -442,7 +453,9 @@ function ActiveFailoverSuite() {
       });
 
       // await failover and check that follower get in sync
+      let oldLead = currentLead;
       currentLead = checkForFailover(currentLead);
+      assertTrue(currentLead !== oldLead);
       assertEqual(currentLead, firstLeader, "Did not fail to original leader");
 
       suspended.forEach(arangod => {

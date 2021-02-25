@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,8 +60,6 @@
 #include "Basics/memory.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 extern "C" {
 unsigned long long XXH64(const void* input, size_t length, unsigned long long seed);
@@ -77,7 +75,6 @@ static arangodb::velocypack::StringRef const cidRef("cid");
 
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler>customTypeHandler;
-static VPackOptions optionsWithUniquenessCheck;
 
 template<bool useUtf8, typename Comparator>
 int compareObjects(VPackSlice const& lhs, 
@@ -186,6 +183,9 @@ struct DefaultCustomTypeHandler final : public VPackCustomTypeHandler {
     return "hello from CustomTypeHandler";
   }
 };
+  
+/*static*/ arangodb::velocypack::Options VelocyPackHelper::strictRequestValidationOptions;
+/*static*/ arangodb::velocypack::Options VelocyPackHelper::looseRequestValidationOptions;
 
 /// @brief static initializer for all VPack values
 void VelocyPackHelper::initialize() {
@@ -218,8 +218,30 @@ void VelocyPackHelper::initialize() {
   // order)
   VPackOptions::Defaults.dumpAttributesInIndexOrder = false;
   
-  ::optionsWithUniquenessCheck = VPackOptions::Defaults;
-  ::optionsWithUniquenessCheck.checkAttributeUniqueness = true;
+  // disallow tagged values and BCDs. they are not used in ArangoDB as of now
+  VPackOptions::Defaults.disallowTags = true;
+  VPackOptions::Defaults.disallowBCD = true;
+  
+  // set up options for validating incoming end-user requests
+  strictRequestValidationOptions = VPackOptions::Defaults;
+  strictRequestValidationOptions.checkAttributeUniqueness = true;
+  // note: this value may be overriden by configuration!
+  strictRequestValidationOptions.validateUtf8Strings = true;
+  strictRequestValidationOptions.disallowExternals = true;
+  strictRequestValidationOptions.disallowCustom = true;
+  strictRequestValidationOptions.disallowTags = true;
+  strictRequestValidationOptions.disallowBCD = true;
+  strictRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
+  
+  // set up options for validating requests, without UTF-8 validation
+  looseRequestValidationOptions = VPackOptions::Defaults;
+  looseRequestValidationOptions.checkAttributeUniqueness = true;
+  looseRequestValidationOptions.validateUtf8Strings = false;
+  looseRequestValidationOptions.disallowExternals = true;
+  looseRequestValidationOptions.disallowCustom = true;
+  looseRequestValidationOptions.disallowTags = true;
+  looseRequestValidationOptions.disallowBCD = true;
+  looseRequestValidationOptions.unsupportedTypeBehavior = VPackOptions::FailOnUnsupportedType;
 
   // run quick selfs test with the attribute translator
   TRI_ASSERT(VPackSlice(::translator->translate(StaticStrings::KeyString)).getUInt() ==
@@ -253,11 +275,6 @@ void VelocyPackHelper::disableAssemblerFunctions() {
 /// @brief return the (global) attribute translator instance
 arangodb::velocypack::AttributeTranslator* VelocyPackHelper::getTranslator() {
   return ::translator.get();
-}
-
-/// @brief return the (global) attribute translator instance
-arangodb::velocypack::Options* VelocyPackHelper::optionsWithUniquenessCheck() {
-  return &::optionsWithUniquenessCheck;
 }
 
 bool VelocyPackHelper::AttributeSorterUTF8::operator()(std::string const& l,
@@ -493,7 +510,6 @@ VPackBuilder VelocyPackHelper::velocyPackFromFile(std::string const& path) {
 
 static bool PrintVelocyPack(int fd, VPackSlice const& slice, bool appendNewline) {
   if (slice.isNone()) {
-    // sanity check
     return false;
   }
 
@@ -577,9 +593,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
-
-  if (res < 0) {
+  if (int res = TRI_CLOSE(fd); res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
@@ -587,9 +601,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (auto res = TRI_RenameFile(tmp.c_str(), filename.c_str()); res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
@@ -614,7 +626,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
             << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
-      res = TRI_CLOSE(fd);
+      int res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
@@ -762,89 +774,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       TRI_ASSERT(false);
       return 0;
   }
-}
-
-VPackBuilder VelocyPackHelper::merge(VPackSlice const& lhs, VPackSlice const& rhs,
-                                     bool nullMeansRemove, bool mergeObjects) {
-  return VPackCollection::merge(lhs, rhs, mergeObjects, nullMeansRemove);
-}
-
-double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
-  TRI_ASSERT(!slice.isNone());
-
-  failed = false;
-  switch (slice.type()) {
-    case VPackValueType::None:
-    case VPackValueType::Null:
-      return 0.0;
-    case VPackValueType::Bool:
-      return (slice.getBoolean() ? 1.0 : 0.0);
-    case VPackValueType::Double:
-    case VPackValueType::Int:
-    case VPackValueType::UInt:
-    case VPackValueType::SmallInt:
-      return slice.getNumericValue<double>();
-    case VPackValueType::String: {
-      std::string tmp(slice.copyString());
-      try {
-        // try converting string to number
-        return std::stod(tmp);
-      } catch (...) {
-        if (tmp.empty()) {
-          return 0.0;
-        }
-        // conversion failed
-      }
-      break;
-    }
-    case VPackValueType::Array: {
-      VPackValueLength const n = slice.length();
-
-      if (n == 0) {
-        return 0.0;
-      } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
-      }
-      break;
-    }
-    case VPackValueType::External: {
-      return VelocyPackHelper::toDouble(slice.resolveExternal(), failed);
-    }
-    case VPackValueType::Illegal:
-    case VPackValueType::Object:
-    case VPackValueType::UTCDate:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
-      break;
-  }
-
-  failed = true;
-  return 0.0;
-}
-
-// modify a VPack double value in place
-void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
-  TRI_ASSERT(slice.isDouble());
-  // get pointer to the start of the value
-  uint8_t* p = const_cast<uint8_t*>(slice.begin());
-  // skip one byte for the header and overwrite
-#ifndef TRI_UNALIGNED_ACCESS
-  // some architectures do not support unaligned writes, then copy bytewise
-  uint64_t dv;
-  memcpy(&dv, &value, sizeof(double));
-  VPackValueLength vSize = sizeof(double);
-  for (uint64_t x = dv; vSize > 0; vSize--) {
-    *(++p) = x & 0xff;
-    x >>= 8;
-  }
-#else
-  // other platforms support unaligned writes
-  // cppcheck-suppress *
-  *reinterpret_cast<double*>(p + 1) = value;
-#endif
 }
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {

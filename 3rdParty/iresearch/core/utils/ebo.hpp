@@ -18,7 +18,6 @@
 /// Copyright holder is EMC Corporation
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_EBO_H
@@ -28,7 +27,7 @@
 
 #include "shared.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class compact (empty base optimization)
@@ -76,19 +75,13 @@ template<
   compact(const compact&) = default;
 
   template<typename U = T>
-  compact(U&&) NOEXCEPT { }
+  compact(U&&) noexcept { }
 
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&&) NOEXCEPT { return *this; }
+  compact& operator=(compact&&) noexcept { return *this; }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  CONSTEXPR T& get() NOEXCEPT { return *this; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() NOEXCEPT { return *this; }
-#endif
-  CONSTEXPR const T& get() const NOEXCEPT { return *this; }
+  constexpr T& get() noexcept { return *this; }
+  constexpr const T& get() const noexcept { return *this; }
 }; // compact
 
 template<size_t I, typename T>
@@ -98,40 +91,35 @@ class compact<I, T, false> {
   static const size_t index = I;
 
   compact() = default;
-  compact(const compact& rhs) NOEXCEPT
+  compact(const compact& rhs) noexcept
     : val_(rhs.val_) {}
-  compact(compact&& rhs) NOEXCEPT
+  compact(compact&& rhs) noexcept
     : val_(std::move(rhs.val_)) { }
 
   template<typename U = T>
-  compact(U&& value) NOEXCEPT
+  compact(U&& value) noexcept
     : val_(std::forward<U>(value)) {
+    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
   }
 
   compact& operator=(const compact&) = default;
-  compact& operator=(compact&& rhs) NOEXCEPT {
+  compact& operator=(compact&& rhs) noexcept {
     if (this != &rhs) {
       val_ = std::move(rhs);
     }
     return *this;
   }
-  compact& operator=(const T& value) NOEXCEPT {
+  compact& operator=(const T& value) noexcept {
     val_ = value;
     return *this;
   }
-  compact& operator=(T&& value) NOEXCEPT {
+  compact& operator=(T&& value) noexcept {
     val_ = std::move(value);
     return *this;
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  CONSTEXPR T& get() NOEXCEPT { return val_; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() NOEXCEPT { return val_; }
-#endif
-  CONSTEXPR const T& get() const NOEXCEPT { return val_; }
+  constexpr T& get() noexcept { return val_; }
+  constexpr const T& get() const noexcept { return val_; }
 
  private:
   T val_;
@@ -160,18 +148,12 @@ template<
   compact_ref(const compact_ref&) = default;
 
   template<typename U = T>
-  compact_ref(U&&) NOEXCEPT { }
+  compact_ref(U&&) noexcept { }
 
   compact_ref& operator=(const compact_ref&) = default;
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  CONSTEXPR T& get() NOEXCEPT { return *this; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() NOEXCEPT { return *this; }
-#endif
-  CONSTEXPR const T& get() const NOEXCEPT { return *this; }
+  constexpr T& get() noexcept { return *this; }
+  constexpr const T& get() const noexcept { return *this; }
 }; // compact_ref
 
 template<size_t I, typename T>
@@ -184,37 +166,31 @@ class compact_ref<I, T, false> {
   compact_ref(const compact_ref& rhs) = default;
 
   template<typename U = T>
-  compact_ref(const U& value) NOEXCEPT
+  compact_ref(const U& value) noexcept
     : val_(const_cast<U*>(&value)) {
   }
 
   template<typename U = T>
-  compact_ref(U& value) NOEXCEPT
+  compact_ref(U& value) noexcept
     : val_(&value) {
   }
 
   compact_ref& operator=(const compact_ref&) = default;
 
   template<typename U = T>
-  compact_ref& operator=(const U& value) NOEXCEPT {
+  compact_ref& operator=(const U& value) noexcept {
     val_ = const_cast<U*>(&value);
     return *this;
   }
 
   template<typename U = T>
-  compact_ref& operator=(U&& value) NOEXCEPT {
+  compact_ref& operator=(U&& value) noexcept {
     val_ = &value;
     return *this;
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  CONSTEXPR T& get() NOEXCEPT { return *val_; }
-#else
-  // before c++14 constexpr member function
-  // gets const implicitly
-  T& get() NOEXCEPT { return *val_; }
-#endif
-  CONSTEXPR const T& get() const NOEXCEPT { return *val_; }
+  constexpr T& get() noexcept { return *val_; }
+  constexpr const T& get() const noexcept { return *val_; }
 
  private:
   T* val_;
@@ -233,7 +209,7 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
 
   compact_pair() = default;
   compact_pair(const compact_pair&) = default;
-  compact_pair(compact_pair&& rhs) NOEXCEPT
+  compact_pair(compact_pair&& rhs) noexcept
     : first_compressed_t(std::move(rhs.first())),
       second_compressed_t(std::move(rhs.second())) {
   }
@@ -242,10 +218,11 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
   compact_pair(U0&& v0, U1&& v1) 
     : first_compressed_t(std::forward<U0>(v0)), 
       second_compressed_t(std::forward<U1>(v1)) { 
+    static_assert(std::is_nothrow_move_constructible_v<std::remove_pointer_t<decltype(this)>>);
   }
 
   compact_pair& operator=(const compact_pair&) = default;
-  compact_pair& operator=(compact_pair&& rhs) NOEXCEPT {
+  compact_pair& operator=(compact_pair&& rhs) noexcept {
     if (this != &rhs) {
       first_compressed_t::operator=(std::move(rhs.first()));
       second_compressed_t::operator=(std::move(rhs.second()));
@@ -253,39 +230,21 @@ class compact_pair : private compact<0, T0>, private compact<1, T1> {
     return *this;
   }
 
-  const first_type& first() const NOEXCEPT {
+  const first_type& first() const noexcept {
     return first_compressed_t::get();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  first_type& first() NOEXCEPT {
+  first_type& first() noexcept {
     return first_compressed_t::get();
   }
-#else
-  first_type& first() NOEXCEPT {
-    // force the c++11 compiler to choose constexpr version of "get"
-    return const_cast<first_type&>(
-      const_cast<const compact_pair&>(*this).first()
-    );
-  }
-#endif
 
-  const second_type& second() const NOEXCEPT {
+  const second_type& second() const noexcept {
     return second_compressed_t::get();
   }
 
-#if IRESEARCH_CXX > IRESEARCH_CXX_11
-  second_type& second() NOEXCEPT {
+  second_type& second() noexcept {
     return second_compressed_t::get();
   }
-#else
-  second_type& second() NOEXCEPT {
-    // force the c++11 compiler to choose constexpr version of "get"
-    return const_cast<second_type&>(
-      const_cast<const compact_pair&>(*this).second()
-    );
-  }
-#endif
 }; // compact_pair
 
 template<typename T0, typename T1>
@@ -293,6 +252,6 @@ compact_pair<T0, T1> make_compact_pair(T0&& v0, T1&& v1) {
   return compact_pair<T0, T1>(std::forward<T0>(v0), std::forward<T1>(v1));
 }
 
-NS_END
+}
 
 #endif

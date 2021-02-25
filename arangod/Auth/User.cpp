@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,6 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -54,8 +53,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 // private hash function
-static int HexHashFromData(std::string const& hashMethod,
-                           std::string const& str, std::string& outHash) {
+static ErrorCode HexHashFromData(std::string const& hashMethod,
+                                 std::string const& str, std::string& outHash) {
   char* crypted = nullptr;
   size_t cryptedLength;
 
@@ -144,7 +143,7 @@ static auth::Level AuthLevelFromSlice(VPackSlice const& slice) {
 
 auth::User auth::User::newUser(std::string const& user,
                                std::string const& password, auth::Source source) {
-  auth::User entry("", 0);
+  auth::User entry("", RevisionId::none());
   entry._active = true;
   entry._source = source;
 
@@ -153,7 +152,7 @@ auth::User auth::User::newUser(std::string const& user,
 
   std::string salt = UniformCharacter(8, "0123456789abcdef").random();
   std::string hash;
-  int res = HexHashFromData("sha256", salt + password, hash);
+  auto res = HexHashFromData("sha256", salt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from data");
@@ -231,8 +230,8 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
                                    "cannot extract _key");
   }
 
-  TRI_voc_rid_t rev = transaction::helpers::extractRevFromDocument(slice);
-  if (rev == 0) {
+  RevisionId rev = transaction::helpers::extractRevFromDocument(slice);
+  if (rev.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract _rev");
   }
@@ -256,7 +255,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!simpleSlice.isObject()) {
     LOG_TOPIC("e159f", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract simple";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   VPackSlice const methodSlice = simpleSlice.get("method");
@@ -266,7 +265,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!methodSlice.isString() || !saltSlice.isString() || !hashSlice.isString()) {
     LOG_TOPIC("09122", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract password internals";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   // extract "active" attribute
@@ -275,7 +274,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC("857e0", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract active flag";
-    return auth::User("", 0);
+    return auth::User("", RevisionId::none());
   }
 
   auth::User entry(keySlice.copyString(), rev);
@@ -317,7 +316,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
 // ===================== Constructor =======================
 
-auth::User::User(std::string&& key, TRI_voc_rid_t rid)
+auth::User::User(std::string&& key, RevisionId rid)
     : _key(std::move(key)), _rev(rid), _loaded(TRI_microtime()) {}
 
 // ======================= Methods ==========================
@@ -326,7 +325,7 @@ void auth::User::touch() { _loaded = TRI_microtime(); }
 
 bool auth::User::checkPassword(std::string const& password) const {
   std::string hash;
-  int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
+  auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");
@@ -336,7 +335,7 @@ bool auth::User::checkPassword(std::string const& password) const {
 
 void auth::User::updatePassword(std::string const& password) {
   std::string hash;
-  int res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
+  auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res,
                                    "Could not calculate hex-hash from input");
@@ -354,8 +353,8 @@ VPackBuilder auth::User::toVPackBuilder() const {
     if (!_key.empty()) {
       builder.add(StaticStrings::KeyString, VPackValue(_key));
     }
-    if (_rev > 0) {
-      builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(_rev)));
+    if (_rev.isSet()) {
+      builder.add(StaticStrings::RevString, VPackValue(_rev.toString()));
     }
 
     builder.add("user", VPackValue(_username));
@@ -559,11 +558,11 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   bool isSystem = cname[0] == '_';
   if (isSystem) {
     // disallow access to _system/_users for everyone
-    if (dbname == TRI_VOC_SYSTEM_DATABASE && cname == TRI_COL_NAME_USERS) {
+    if (dbname == StaticStrings::SystemDatabase && cname == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (cname == "_queues") {
+    } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (cname == "_frontend") {
+    } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }
     return databaseAuthLevel(dbname);

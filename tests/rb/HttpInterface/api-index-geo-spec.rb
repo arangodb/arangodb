@@ -130,7 +130,7 @@ describe ArangoDB do
         doc.parsed_response['sparse'].should eq(true)
       end
 
-      it "creating geo index with constraint" do
+      it "creating geo index with constraint 1" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\" ], \"geoJson\" : true, \"constraint\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-geo-json-constraint", cmd, :body => body)
@@ -148,7 +148,7 @@ describe ArangoDB do
         doc.parsed_response['sparse'].should eq(true)
       end
       
-      it "creating geo index with constraint" do
+      it "creating geo index with constraint 2" do
         cmd = api + "?collection=#{@cn}"
         body = "{ \"type\" : \"geo\", \"fields\" : [ \"c\", \"d\" ], \"geoJson\" : false, \"unique\" : true }"
         doc = ArangoDB.log_post("#{prefix}-create-geo-location-constraint", cmd, :body => body)
@@ -194,25 +194,6 @@ describe ArangoDB do
 
         iid = doc.parsed_response['id']
 
-        if RSpec.configuration.STORAGE_ENGINE == "mmfiles"
-          cmd = "/_api/collection/#{@cn}/unload"
-          doc = ArangoDB.put(cmd)
-
-          doc.code.should eq(200)
-
-          cmd = "/_api/collection/#{@cn}"
-          doc = ArangoDB.get(cmd)
-          doc.code.should eq(200)
-
-          i = 0
-          while (doc.parsed_response['status'] != 2) && (i < 100)
-            doc = ArangoDB.get(cmd)
-            doc.code.should eq(200)
-            i += 1
-            sleep 1
-          end
-          expect(i).to be < 100 # Timeout...
-        end
         cmd = api + "/#{iid}"
         doc = ArangoDB.get(cmd)
 

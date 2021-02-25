@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,8 +69,10 @@ std::shared_ptr<PlanCacheEntry> PlanCache::lookup(TRI_vocbase_t* vocbase, uint64
 /// @brief store a plan in the cache
 void PlanCache::store(TRI_vocbase_t* vocbase, uint64_t hash,
                       QueryString const& queryString, ExecutionPlan const* plan) {
-  auto entry = std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX),
-                                                plan->toVelocyPack(plan->getAst(), true));
+  auto entry =
+      std::make_unique<PlanCacheEntry>(queryString.extract(SIZE_MAX),
+                                       plan->toVelocyPack(plan->getAst(), true,
+                                                          ExplainRegisterPlan::Yes));
 
   WRITE_LOCKER(writeLocker, _lock);
 

@@ -67,6 +67,7 @@ static int g_lz4c_legacy_commands = 0;
 /*-************************************
 *  Macros
 ***************************************/
+#define DISPLAYOUT(...)        fprintf(stdout, __VA_ARGS__)
 #define DISPLAY(...)           fprintf(stderr, __VA_ARGS__)
 #define DISPLAYLEVEL(l, ...)   if (displayLevel>=l) { DISPLAY(__VA_ARGS__); }
 static unsigned displayLevel = 2;   /* 0 : no display ; 1: errors only ; 2 : downgradable normal ; 3 : non-downgradable normal; 4 : + information */
@@ -90,12 +91,9 @@ static unsigned displayLevel = 2;   /* 0 : no display ; 1: errors only ; 2 : dow
 /*-************************************
 *  Version modifiers
 ***************************************/
-#define EXTENDED_ARGUMENTS
-#define EXTENDED_HELP
-#define EXTENDED_FORMAT
 #define DEFAULT_COMPRESSOR   LZ4IO_compressFilename
 #define DEFAULT_DECOMPRESSOR LZ4IO_decompressFilename
-int LZ4IO_compressFilename_Legacy(const char* input_filename, const char* output_filename, int compressionlevel);   /* hidden function */
+int LZ4IO_compressFilename_Legacy(LZ4IO_prefs_t* const prefs, const char* input_filename, const char* output_filename, int compressionlevel);   /* hidden function */
 
 
 /*-***************************
@@ -113,6 +111,7 @@ static int usage(const char* exeName)
     DISPLAY( " -9     : High compression \n");
     DISPLAY( " -d     : decompression (default for %s extension)\n", LZ4_EXTENSION);
     DISPLAY( " -z     : force compression \n");
+    DISPLAY( " -D FILE: use FILE as dictionary \n");
     DISPLAY( " -f     : overwrite output without prompting \n");
     DISPLAY( " -k     : preserve source files(s)  (default) \n");
     DISPLAY( "--rm    : remove source file(s) after successful de/compression \n");
@@ -136,26 +135,29 @@ static int usage_advanced(const char* exeName)
     DISPLAY( " -r     : operate recursively on directories (sets also -m) \n");
 #endif
     DISPLAY( " -l     : compress using Legacy format (Linux kernel compression)\n");
-    DISPLAY( " -B#    : Block size [4-7] (default : 7) \n");
-    DISPLAY( " -BD    : Block dependency (improve compression ratio) \n");
+    DISPLAY( " -B#    : cut file into blocks of size # bytes [32+] \n");
+    DISPLAY( "                     or predefined block size [4-7] (default: 7) \n");
+    DISPLAY( " -BI    : Block Independence (default) \n");
+    DISPLAY( " -BD    : Block dependency (improves compression ratio) \n");
     DISPLAY( " -BX    : enable block checksum (default:disabled) \n");
     DISPLAY( "--no-frame-crc : disable stream checksum (default:enabled) \n");
     DISPLAY( "--content-size : compressed frame includes original size (default:not present)\n");
+    DISPLAY( "--list FILE : lists information about .lz4 files (useful for files compressed with --content-size flag)\n");
     DISPLAY( "--[no-]sparse  : sparse mode (default:enabled on file, disabled on stdout)\n");
+    DISPLAY( "--favor-decSpeed: compressed files decompress faster, but are less compressed \n");
+    DISPLAY( "--fast[=#]: switch to ultra fast compression level (default: %i)\n", 1);
+    DISPLAY( "--best  : same as -%d\n", LZ4HC_CLEVEL_MAX);
     DISPLAY( "Benchmark arguments : \n");
     DISPLAY( " -b#    : benchmark file(s), using # compression level (default : 1) \n");
     DISPLAY( " -e#    : test all compression levels from -bX to # (default : 1)\n");
     DISPLAY( " -i#    : minimum evaluation time in seconds (default : 3s) \n");
-    DISPLAY( " -B#    : cut file into independent blocks of size # bytes [32+] \n");
-    DISPLAY( "                     or predefined block size [4-7] (default: 7) \n");
     if (g_lz4c_legacy_commands) {
         DISPLAY( "Legacy arguments : \n");
         DISPLAY( " -c0    : fast compression \n");
         DISPLAY( " -c1    : high compression \n");
-        DISPLAY( " -hc    : high compression \n");
+        DISPLAY( " -c2,-hc: very high compression \n");
         DISPLAY( " -y     : overwrite output without prompting \n");
     }
-    EXTENDED_HELP;
     return 0;
 }
 
@@ -208,14 +210,14 @@ static int usage_longhelp(const char* exeName)
     DISPLAY( "          generator | %s | consumer \n", exeName);
     if (g_lz4c_legacy_commands) {
         DISPLAY( "\n");
-        DISPLAY( "***** Warning  *****\n");
+        DISPLAY( "***** Warning  ***** \n");
         DISPLAY( "Legacy arguments take precedence. Therefore : \n");
-        DISPLAY( "---------------------------------\n");
-        DISPLAY( "          %s -hc filename\n", exeName);
-        DISPLAY( "means 'compress filename in high compression mode'\n");
-        DISPLAY( "It is not equivalent to :\n");
-        DISPLAY( "          %s -h -c filename\n", exeName);
-        DISPLAY( "which would display help text and exit\n");
+        DISPLAY( "--------------------------------- \n");
+        DISPLAY( "          %s -hc filename \n", exeName);
+        DISPLAY( "means 'compress filename in high compression mode' \n");
+        DISPLAY( "It is not equivalent to : \n");
+        DISPLAY( "          %s -h -c filename \n", exeName);
+        DISPLAY( "which displays help text and exits \n");
     }
     return 0;
 }
@@ -252,16 +254,16 @@ static int exeNameMatch(const char* exeName, const char* test)
 }
 
 /*! readU32FromChar() :
-    @return : unsigned integer value read from input in `char` format
-    allows and interprets K, KB, KiB, M, MB and MiB suffix.
-    Will also modify `*stringPtr`, advancing it to position where it stopped reading.
-    Note : function result can overflow if digit string > MAX_UINT */
+ * @return : unsigned integer value read from input in `char` format
+ *  allows and interprets K, KB, KiB, M, MB and MiB suffix.
+ *  Will also modify `*stringPtr`, advancing it to position where it stopped reading.
+ *  Note : function result can overflow if digit string > MAX_UINT */
 static unsigned readU32FromChar(const char** stringPtr)
 {
     unsigned result = 0;
     while ((**stringPtr >='0') && (**stringPtr <='9')) {
         result *= 10;
-        result += **stringPtr - '0';
+        result += (unsigned)(**stringPtr - '0');
         (*stringPtr)++ ;
     }
     if ((**stringPtr=='K') || (**stringPtr=='M')) {
@@ -274,13 +276,39 @@ static unsigned readU32FromChar(const char** stringPtr)
     return result;
 }
 
-typedef enum { om_auto, om_compress, om_decompress, om_test, om_bench } operationMode_e;
+/** longCommandWArg() :
+ *  check if *stringPtr is the same as longCommand.
+ *  If yes, @return 1 and advances *stringPtr to the position which immediately follows longCommand.
+ * @return 0 and doesn't modify *stringPtr otherwise.
+ */
+static int longCommandWArg(const char** stringPtr, const char* longCommand)
+{
+    size_t const comSize = strlen(longCommand);
+    int const result = !strncmp(*stringPtr, longCommand, comSize);
+    if (result) *stringPtr += comSize;
+    return result;
+}
+
+typedef enum { om_auto, om_compress, om_decompress, om_test, om_bench, om_list } operationMode_e;
+
+/** determineOpMode() :
+ *  auto-determine operation mode, based on input filename extension
+ *  @return `om_decompress` if input filename has .lz4 extension and `om_compress` otherwise.
+ */
+static operationMode_e determineOpMode(const char* inputFilename)
+{
+    size_t const inSize  = strlen(inputFilename);
+    size_t const extSize = strlen(LZ4_EXTENSION);
+    size_t const extStart= (inSize > extSize) ? inSize-extSize : 0;
+    if (!strcmp(inputFilename+extStart, LZ4_EXTENSION)) return om_decompress;
+    else return om_compress;
+}
 
 int main(int argc, const char** argv)
 {
     int i,
         cLevel=1,
-        cLevelLast=1,
+        cLevelLast=-10000,
         legacy_format=0,
         forceStdout=0,
         main_pause=0,
@@ -290,12 +318,14 @@ int main(int argc, const char** argv)
     operationMode_e mode = om_auto;
     const char* input_filename = NULL;
     const char* output_filename= NULL;
+    const char* dictionary_filename = NULL;
     char* dynNameSpace = NULL;
-    const char** inFileNames = (const char**) calloc(argc, sizeof(char*));
+    const char** inFileNames = (const char**)calloc((size_t)argc, sizeof(char*));
     unsigned ifnIdx=0;
+    LZ4IO_prefs_t* const prefs = LZ4IO_defaultPreferences();
     const char nullOutput[] = NULL_OUTPUT;
     const char extension[] = LZ4_EXTENSION;
-    size_t blockSize = LZ4IO_setBlockSizeID(LZ4_BLOCKSIZEID_DEFAULT);
+    size_t blockSize = LZ4IO_setBlockSizeID(prefs, LZ4_BLOCKSIZEID_DEFAULT);
     const char* const exeName = lastNameFromPath(argv[0]);
 #ifdef UTIL_HAS_CREATEFILELIST
     const char** extendedFileList = NULL;
@@ -309,13 +339,14 @@ int main(int argc, const char** argv)
         return 1;
     }
     inFileNames[0] = stdinmark;
-    LZ4IO_setOverwrite(0);
+    LZ4IO_setOverwrite(prefs, 0);
 
     /* predefined behaviors, based on binary/link name */
     if (exeNameMatch(exeName, LZ4CAT)) {
         mode = om_decompress;
-        LZ4IO_setOverwrite(1);
-        LZ4IO_setRemoveSrcFile(0);
+        LZ4IO_setOverwrite(prefs, 1);
+        LZ4IO_setPassThrough(prefs, 1);
+        LZ4IO_setRemoveSrcFile(prefs, 0);
         forceStdout=1;
         output_filename=stdoutmark;
         displayLevel=1;
@@ -347,22 +378,46 @@ int main(int argc, const char** argv)
                     || (!strcmp(argument, "--uncompress"))) { mode = om_decompress; continue; }
                 if (!strcmp(argument,  "--multiple")) { multiple_inputs = 1; continue; }
                 if (!strcmp(argument,  "--test")) { mode = om_test; continue; }
-                if (!strcmp(argument,  "--force")) { LZ4IO_setOverwrite(1); continue; }
-                if (!strcmp(argument,  "--no-force")) { LZ4IO_setOverwrite(0); continue; }
+                if (!strcmp(argument,  "--force")) { LZ4IO_setOverwrite(prefs, 1); continue; }
+                if (!strcmp(argument,  "--no-force")) { LZ4IO_setOverwrite(prefs, 0); continue; }
                 if ((!strcmp(argument, "--stdout"))
                     || (!strcmp(argument, "--to-stdout"))) { forceStdout=1; output_filename=stdoutmark; continue; }
-                if (!strcmp(argument,  "--frame-crc")) { LZ4IO_setStreamChecksumMode(1); continue; }
-                if (!strcmp(argument,  "--no-frame-crc")) { LZ4IO_setStreamChecksumMode(0); continue; }
-                if (!strcmp(argument,  "--content-size")) { LZ4IO_setContentSize(1); continue; }
-                if (!strcmp(argument,  "--no-content-size")) { LZ4IO_setContentSize(0); continue; }
-                if (!strcmp(argument,  "--sparse")) { LZ4IO_setSparseFile(2); continue; }
-                if (!strcmp(argument,  "--no-sparse")) { LZ4IO_setSparseFile(0); continue; }
+                if (!strcmp(argument,  "--frame-crc")) { LZ4IO_setStreamChecksumMode(prefs, 1); continue; }
+                if (!strcmp(argument,  "--no-frame-crc")) { LZ4IO_setStreamChecksumMode(prefs, 0); continue; }
+                if (!strcmp(argument,  "--content-size")) { LZ4IO_setContentSize(prefs, 1); continue; }
+                if (!strcmp(argument,  "--no-content-size")) { LZ4IO_setContentSize(prefs, 0); continue; }
+                if (!strcmp(argument,  "--list")) { mode = om_list; continue; }
+                if (!strcmp(argument,  "--sparse")) { LZ4IO_setSparseFile(prefs, 2); continue; }
+                if (!strcmp(argument,  "--no-sparse")) { LZ4IO_setSparseFile(prefs, 0); continue; }
+                if (!strcmp(argument,  "--favor-decSpeed")) { LZ4IO_favorDecSpeed(prefs, 1); continue; }
                 if (!strcmp(argument,  "--verbose")) { displayLevel++; continue; }
                 if (!strcmp(argument,  "--quiet")) { if (displayLevel) displayLevel--; continue; }
-                if (!strcmp(argument,  "--version")) { DISPLAY(WELCOME_MESSAGE); return 0; }
+                if (!strcmp(argument,  "--version")) { DISPLAYOUT(WELCOME_MESSAGE); return 0; }
                 if (!strcmp(argument,  "--help")) { usage_advanced(exeName); goto _cleanup; }
-                if (!strcmp(argument,  "--keep")) { LZ4IO_setRemoveSrcFile(0); continue; }   /* keep source file (default) */
-                if (!strcmp(argument,  "--rm")) { LZ4IO_setRemoveSrcFile(1); continue; }
+                if (!strcmp(argument,  "--keep")) { LZ4IO_setRemoveSrcFile(prefs, 0); continue; }   /* keep source file (default) */
+                if (!strcmp(argument,  "--rm")) { LZ4IO_setRemoveSrcFile(prefs, 1); continue; }
+                if (longCommandWArg(&argument, "--fast")) {
+                        /* Parse optional acceleration factor */
+                        if (*argument == '=') {
+                            U32 fastLevel;
+                            ++argument;
+                            fastLevel = readU32FromChar(&argument);
+                            if (fastLevel) {
+                              cLevel = -(int)fastLevel;
+                            } else {
+                              badusage(exeName);
+                            }
+                        } else if (*argument != 0) {
+                            /* Invalid character following --fast */
+                            badusage(exeName);
+                        } else {
+                            cLevel = -1;  /* default for --fast */
+                        }
+                        continue;
+                    }
+
+                /* For gzip(1) compatibility */
+                if (!strcmp(argument,  "--best")) { cLevel=LZ4HC_CLEVEL_MAX; continue; }
             }
 
             while (argument[1]!=0) {
@@ -370,14 +425,15 @@ int main(int argc, const char** argv)
 
                 if (g_lz4c_legacy_commands) {
                     /* Legacy commands (-c0, -c1, -hc, -y) */
-                    if ((argument[0]=='c') && (argument[1]=='0')) { cLevel=0; argument++; continue; }  /* -c0 (fast compression) */
-                    if ((argument[0]=='c') && (argument[1]=='1')) { cLevel=9; argument++; continue; }  /* -c1 (high compression) */
-                    if ((argument[0]=='h') && (argument[1]=='c')) { cLevel=9; argument++; continue; }  /* -hc (high compression) */
-                    if (argument[0]=='y') { LZ4IO_setOverwrite(1); continue; }                         /* -y (answer 'yes' to overwrite permission) */
+                    if (!strcmp(argument,  "c0")) { cLevel=0; argument++; continue; }  /* -c0 (fast compression) */
+                    if (!strcmp(argument,  "c1")) { cLevel=9; argument++; continue; }  /* -c1 (high compression) */
+                    if (!strcmp(argument,  "c2")) { cLevel=12; argument++; continue; } /* -c2 (very high compression) */
+                    if (!strcmp(argument,  "hc")) { cLevel=12; argument++; continue; } /* -hc (very high compression) */
+                    if (!strcmp(argument,  "y"))  { LZ4IO_setOverwrite(prefs, 1); continue; } /* -y (answer 'yes' to overwrite permission) */
                 }
 
                 if ((*argument>='0') && (*argument<='9')) {
-                    cLevel = readU32FromChar(&argument);
+                    cLevel = (int)readU32FromChar(&argument);
                     argument--;
                     continue;
                 }
@@ -386,18 +442,34 @@ int main(int argc, const char** argv)
                 switch(argument[0])
                 {
                     /* Display help */
-                case 'V': DISPLAY(WELCOME_MESSAGE); goto _cleanup;   /* Version */
+                case 'V': DISPLAYOUT(WELCOME_MESSAGE); goto _cleanup;   /* Version */
                 case 'h': usage_advanced(exeName); goto _cleanup;
                 case 'H': usage_longhelp(exeName); goto _cleanup;
 
                 case 'e':
                     argument++;
-                    cLevelLast = readU32FromChar(&argument);
+                    cLevelLast = (int)readU32FromChar(&argument);
                     argument--;
                     break;
 
                     /* Compression (default) */
                 case 'z': mode = om_compress; break;
+
+                case 'D':
+                    if (argument[1] == '\0') {
+                        /* path is next arg */
+                        if (i + 1 == argc) {
+                            /* there is no next arg */
+                            badusage(exeName);
+                        }
+                        dictionary_filename = argv[++i];
+                    } else {
+                        /* path follows immediately */
+                        dictionary_filename = argument + 1;
+                    }
+                    /* skip to end of argument so that we jump to parsing next argument */
+                    argument += strlen(argument) - 1;
+                    break;
 
                     /* Use Legacy format (ex : Linux kernel compression) */
                 case 'l': legacy_format = 1; blockSize = 8 MB; break;
@@ -406,13 +478,17 @@ int main(int argc, const char** argv)
                 case 'd': mode = om_decompress; break;
 
                     /* Force stdout, even if stdout==console */
-                case 'c': forceStdout=1; output_filename=stdoutmark; break;
+                case 'c':
+                  forceStdout=1;
+                  output_filename=stdoutmark;
+                  LZ4IO_setPassThrough(prefs, 1);
+                  break;
 
                     /* Test integrity */
                 case 't': mode = om_test; break;
 
                     /* Overwrite */
-                case 'f': LZ4IO_setOverwrite(1); break;
+                case 'f': LZ4IO_setOverwrite(prefs, 1); break;
 
                     /* Verbose mode */
                 case 'v': displayLevel++; break;
@@ -421,7 +497,7 @@ int main(int argc, const char** argv)
                 case 'q': if (displayLevel) displayLevel--; break;
 
                     /* keep source file (default anyway, so useless) (for xz/lzma compatibility) */
-                case 'k': LZ4IO_setRemoveSrcFile(0); break;
+                case 'k': LZ4IO_setRemoveSrcFile(prefs, 0); break;
 
                     /* Modify Block Properties */
                 case 'B':
@@ -429,8 +505,9 @@ int main(int argc, const char** argv)
                         int exitBlockProperties=0;
                         switch(argument[1])
                         {
-                        case 'D': LZ4IO_setBlockMode(LZ4IO_blockLinked); argument++; break;
-                        case 'X': LZ4IO_setBlockChecksumMode(1); argument ++; break;   /* disabled by default */
+                        case 'D': LZ4IO_setBlockMode(prefs, LZ4IO_blockLinked); argument++; break;
+                        case 'I': LZ4IO_setBlockMode(prefs, LZ4IO_blockIndependent); argument++; break;
+                        case 'X': LZ4IO_setBlockChecksumMode(prefs, 1); argument ++; break;   /* disabled by default */
                         default :
                             if (argument[1] < '0' || argument[1] > '9') {
                                 exitBlockProperties=1;
@@ -442,16 +519,17 @@ int main(int argc, const char** argv)
                                 argument--;
                                 if (B < 4) badusage(exeName);
                                 if (B <= 7) {
-                                    blockSize = LZ4IO_setBlockSizeID(B);
-                                    BMK_SetBlockSize(blockSize);
+                                    blockSize = LZ4IO_setBlockSizeID(prefs, B);
+                                    BMK_setBlockSize(blockSize);
                                     DISPLAYLEVEL(2, "using blocks of size %u KB \n", (U32)(blockSize>>10));
                                 } else {
                                     if (B < 32) badusage(exeName);
-                                    BMK_SetBlockSize(B);
-                                    if (B >= 1024) {
-                                        DISPLAYLEVEL(2, "bench: using blocks of size %u KB \n", (U32)(B>>10));
+                                    blockSize = LZ4IO_setBlockSize(prefs, B);
+                                    BMK_setBlockSize(blockSize);
+                                    if (blockSize >= 1024) {
+                                        DISPLAYLEVEL(2, "using blocks of size %u KB \n", (U32)(blockSize>>10));
                                     } else {
-                                        DISPLAYLEVEL(2, "bench: using blocks of size %u bytes \n", (U32)(B));
+                                        DISPLAYLEVEL(2, "using blocks of size %u bytes \n", (U32)(blockSize));
                                     }
                                 }
                                 break;
@@ -463,6 +541,10 @@ int main(int argc, const char** argv)
 
                     /* Benchmark */
                 case 'b': mode = om_bench; multiple_inputs=1;
+                    break;
+
+                    /* hidden command : benchmark files, but do not fuse result */
+                case 'S': BMK_setBenchSeparately(1);
                     break;
 
 #ifdef UTIL_HAS_CREATEFILELIST
@@ -481,15 +563,12 @@ int main(int argc, const char** argv)
                         iters = readU32FromChar(&argument);
                         argument--;
                         BMK_setNotificationLevel(displayLevel);
-                        BMK_SetNbSeconds(iters);   /* notification if displayLevel >= 3 */
+                        BMK_setNbSeconds(iters);   /* notification if displayLevel >= 3 */
                     }
                     break;
 
                     /* Pause at the end (hidden option) */
                 case 'p': main_pause=1; break;
-
-                    /* Specific commands for customized versions */
-                EXTENDED_ARGUMENTS;
 
                     /* Unrecognised command */
                 default : badusage(exeName);
@@ -542,8 +621,7 @@ int main(int argc, const char** argv)
                 free((void*)inFileNames);
                 inFileNames = extendedFileList;
                 ifnIdx = fileNamesNb;
-            }
-        }
+        }   }
 #endif
     }
 
@@ -555,9 +633,17 @@ int main(int argc, const char** argv)
     }
 
     if (mode == om_test) {
-        LZ4IO_setTestMode(1);
+        LZ4IO_setTestMode(prefs, 1);
         output_filename = nulmark;
         mode = om_decompress;   /* defer to decompress */
+    }
+
+    if (dictionary_filename) {
+        if (!strcmp(dictionary_filename, stdinmark) && IS_CONSOLE(stdin)) {
+            DISPLAYLEVEL(1, "refusing to read from a console\n");
+            exit(1);
+        }
+        LZ4IO_setDictionaryFilename(prefs, dictionary_filename);
     }
 
     /* compress or decompress */
@@ -567,19 +653,30 @@ int main(int argc, const char** argv)
         DISPLAYLEVEL(1, "refusing to read from a console\n");
         exit(1);
     }
-    /* if input==stdin and no output defined, stdout becomes default output */
-    if (!strcmp(input_filename, stdinmark) && !output_filename)
-        output_filename = stdoutmark;
+    if (!strcmp(input_filename, stdinmark)) {
+        /* if input==stdin and no output defined, stdout becomes default output */
+        if (!output_filename) output_filename = stdoutmark;
+    }
+    else{
+        if (!recursive && !UTIL_isRegFile(input_filename)) {
+            DISPLAYLEVEL(1, "%s: is not a regular file \n", input_filename);
+            exit(1);
+        }
+    }
 
     /* No output filename ==> try to select one automatically (when possible) */
     while ((!output_filename) && (multiple_inputs==0)) {
-        if (!IS_CONSOLE(stdout)) { output_filename=stdoutmark; break; }   /* Default to stdout whenever possible (i.e. not a console) */
+        if (!IS_CONSOLE(stdout)) {
+            /* Default to stdout whenever stdout is not the console.
+             * Note : this policy may change in the future, therefore don't rely on it !
+             * To ensure `stdout` is explicitly selected, use `-c` command flag.
+             * Conversely, to ensure output will not become `stdout`, use `-m` command flag */
+            DISPLAYLEVEL(1, "Warning : using stdout as default output. Do not rely on this behavior: use explicit `-c` instead ! \n");
+            output_filename=stdoutmark;
+            break;
+        }
         if (mode == om_auto) {  /* auto-determine compression or decompression, based on file extension */
-            size_t const inSize  = strlen(input_filename);
-            size_t const extSize = strlen(LZ4_EXTENSION);
-            size_t const extStart= (inSize > extSize) ? inSize-extSize : 0;
-            if (!strcmp(input_filename+extStart, LZ4_EXTENSION)) mode = om_decompress;
-            else mode = om_compress;
+            mode = determineOpMode(input_filename);
         }
         if (mode == om_compress) {   /* compression to file */
             size_t const l = strlen(input_filename);
@@ -607,44 +704,71 @@ int main(int argc, const char** argv)
         break;
     }
 
-    /* Check if output is defined as console; trigger an error in this case */
+    if (mode == om_list){
+        /* Exit if trying to read from stdin as this isn't supported in this mode */
+        if(!strcmp(input_filename, stdinmark)){
+            DISPLAYLEVEL(1, "refusing to read from standard input in --list mode\n");
+            exit(1);
+        }
+        if(!multiple_inputs){
+            inFileNames[ifnIdx++] = input_filename;
+        }
+    }
+    else{
+        if (multiple_inputs==0) assert(output_filename);
+    }
+    /* when multiple_inputs==1, output_filename may simply be useless,
+     * however, output_filename must be !NULL for next strcmp() tests */
     if (!output_filename) output_filename = "*\\dummy^!//";
+
+    /* Check if output is defined as console; trigger an error in this case */
     if (!strcmp(output_filename,stdoutmark) && IS_CONSOLE(stdout) && !forceStdout) {
-        DISPLAYLEVEL(1, "refusing to write to console without -c\n");
+        DISPLAYLEVEL(1, "refusing to write to console without -c \n");
         exit(1);
     }
     /* Downgrade notification level in stdout and multiple file mode */
     if (!strcmp(output_filename,stdoutmark) && (displayLevel==2)) displayLevel=1;
     if ((multiple_inputs) && (displayLevel==2)) displayLevel=1;
 
+    /* Auto-determine compression or decompression, based on file extension */
+    if (mode == om_auto) {
+        mode = determineOpMode(input_filename);
+    }
+
     /* IO Stream/File */
-    LZ4IO_setNotificationLevel(displayLevel);
+    LZ4IO_setNotificationLevel((int)displayLevel);
     if (ifnIdx == 0) multiple_inputs = 0;
     if (mode == om_decompress) {
-        if (multiple_inputs)
-            operationResult = LZ4IO_decompressMultipleFilenames(inFileNames, ifnIdx, !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION);
-        else
-            operationResult = DEFAULT_DECOMPRESSOR(input_filename, output_filename);
+        if (multiple_inputs) {
+            assert(ifnIdx <= INT_MAX);
+            operationResult = LZ4IO_decompressMultipleFilenames(prefs, inFileNames, (int)ifnIdx, !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION);
+        } else {
+            operationResult = DEFAULT_DECOMPRESSOR(prefs, input_filename, output_filename);
+        }
+    } else if (mode == om_list){
+        operationResult = LZ4IO_displayCompressedFilesInfo(inFileNames, ifnIdx);
     } else {   /* compression is default action */
         if (legacy_format) {
-            DISPLAYLEVEL(3, "! Generating compressed LZ4 using Legacy format (deprecated) ! \n");
-            LZ4IO_compressFilename_Legacy(input_filename, output_filename, cLevel);
+            DISPLAYLEVEL(3, "! Generating LZ4 Legacy format (deprecated) ! \n");
+            LZ4IO_compressFilename_Legacy(prefs, input_filename, output_filename, cLevel);
         } else {
-            if (multiple_inputs)
-                operationResult = LZ4IO_compressMultipleFilenames(inFileNames, ifnIdx, LZ4_EXTENSION, cLevel);
-            else
-                operationResult = DEFAULT_COMPRESSOR(input_filename, output_filename, cLevel);
-        }
-    }
+            if (multiple_inputs) {
+                assert(ifnIdx <= INT_MAX);
+                operationResult = LZ4IO_compressMultipleFilenames(prefs, inFileNames, (int)ifnIdx, !strcmp(output_filename,stdoutmark) ? stdoutmark : LZ4_EXTENSION, cLevel);
+            } else {
+                operationResult = DEFAULT_COMPRESSOR(prefs, input_filename, output_filename, cLevel);
+    }   }   }
 
 _cleanup:
     if (main_pause) waitEnter();
-    if (dynNameSpace) free(dynNameSpace);
+    free(dynNameSpace);
 #ifdef UTIL_HAS_CREATEFILELIST
-    if (extendedFileList)
+    if (extendedFileList) {
         UTIL_freeFileList(extendedFileList, fileNamesBuf);
-    else
+        inFileNames = NULL;
+    }
 #endif
-        free((void*)inFileNames);
+    LZ4IO_freePreferences(prefs);
+    free((void*)inFileNames);
     return operationResult;
 }

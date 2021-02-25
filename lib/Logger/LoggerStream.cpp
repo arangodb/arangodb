@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -30,23 +30,34 @@
 
 #include "Logger/Logger.h"
 
-using namespace arangodb;
+namespace arangodb {
 
-LoggerStream::~LoggerStream() {
-  try {
-    Logger::log(_function, _file, _line, _level, _topicId, _out.str());
-  } catch (...) {
-    try {
-      // logging the error may fail as well, and we should never throw in the
-      // dtor
-      std::cerr << "failed to log: " << _out.str() << std::endl;
-    } catch (...) {
-    }
-  }
+LoggerStreamBase::LoggerStreamBase()
+    : _topicId(LogTopic::MAX_LOG_TOPICS),
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+      _topicLevel(LogLevel::DEFAULT),
+#endif
+      _level(LogLevel::DEFAULT),
+      _line(0),
+      _logid(nullptr),
+      _file(nullptr),
+      _function(nullptr) {}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(LogLevel const& level) noexcept {
+  _level = level;
+  return *this;
 }
 
+LoggerStreamBase& LoggerStreamBase::operator<<(LogTopic const& topic) noexcept {
+  _topicId = topic.id();
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+  _topicLevel = topic.level();
+#endif
+  return *this;
+  }
+
 // print a hex representation of the binary data
-LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::BINARY const& binary) {
   try {
     uint8_t const* ptr = static_cast<uint8_t const*>(binary.baseAddress);
     uint8_t const* end = ptr + binary.size;
@@ -69,7 +80,7 @@ LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
 }
 
 // print a character array
-LoggerStream& LoggerStream::operator<<(Logger::CHARS const& data) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::CHARS const& data) {
   try {
     _out.write(data.data, data.size);
   } catch (...) {
@@ -79,7 +90,7 @@ LoggerStream& LoggerStream::operator<<(Logger::CHARS const& data) {
   return *this;
 }
 
-LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::RANGE const& range) {
   try {
     _out << range.baseAddress << " - "
          << static_cast<void const*>(static_cast<char const*>(range.baseAddress) +
@@ -92,7 +103,7 @@ LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
   return *this;
 }
 
-LoggerStream& LoggerStream::operator<<(Logger::FIXED const& value) {
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FIXED const& value) {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
@@ -103,3 +114,46 @@ LoggerStream& LoggerStream::operator<<(Logger::FIXED const& value) {
 
   return *this;
 }
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LINE const& line) noexcept {
+  _line = line._line;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FILE const& file) noexcept {
+  _file = file._file;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::FUNCTION const& function) noexcept {
+  _function = function._function;
+  return *this;
+}
+
+LoggerStreamBase& LoggerStreamBase::operator<<(Logger::LOGID const& logid) noexcept {
+  _logid = logid._logid;
+  return *this;
+}
+
+LoggerStream::~LoggerStream() {
+  try {
+#if ARANGODB_UNCONDITIONALLY_BUILD_LOG_MESSAGES
+    // log maintainer mode disables this if in the macro, do it here:
+    if (!::arangodb::Logger::_isEnabled(_level, _topicLevel)) {
+      return;
+    }
+#endif
+    // TODO: with c++20, we can get a view on the stream's underlying buffer,
+    // without copying it
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
+  } catch (...) {
+    try {
+      // logging the error may fail as well, and we should never throw in the
+      // dtor
+      std::cerr << "failed to log: " << _out.str() << std::endl;
+    } catch (...) {
+    }
+  }
+}
+
+}  // namespace arangodb

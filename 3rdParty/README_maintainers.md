@@ -1,7 +1,11 @@
 3rd Party components and what to do on update
 =============================================
 
-** EDIT ../LICENSES-OTHER-COMPONENTS.md **
+---
+
+**Do not forget to update `../LICENSES-OTHER-COMPONENTS.md`!**
+
+---
 
 ## boost
 
@@ -10,37 +14,13 @@ https://www.boost.org/
 (we don't ship the upstream documentation!)
 To remove some unused doc files, you can run something as follows:
 
-    cd 3rdParty/boost/1.69.0
+    cd 3rdParty/boost/1.71.0
     for i in `find -type d -name "doc"`; do git rm -r "$i"; done
 
 
 ## cmake
 
 Custom boost locator
-
-## curl
-
-HTTP client library https://curl.haxx.se/
-
-We apply several build system patches to avoid unneccessary recompiles, bugfixes.
-
-For example, we commented out curl's check for nroff to avoid documentation
-building (and complaining about it on Windows).
-
-We also deactivated some of curl's install CMake commands, as we don't need
-anything installed (apart from that the vanilla curl install commands don't work
-when compiled as part of ArangoDB).
-
-We also disabled adding the OpenSSL libraries via the following command:
-
-   list(APPEND CURL_LIBS OpenSSL::SSL OpenSSL::Crypto)
-
-and instead are using the command
- 
-   list(APPEND CURL_LIBS ${OPENSSL_LIBRARIES})
-
-from the previous version of curl's CMake file. When not applying this change,
-the static builds try to look for libssl.so, which will not work.
 
 ## date
 
@@ -66,6 +46,22 @@ This contains statically generated files for the IResearch folder, and replaces 
 
 Only used on Linux/Mac, still uses autofoo.
 
+## libunwind
+
+Only used on Linux, still uses autofoo. The "aux" directory has been removed from the
+libtool source because there must not be directories named "aux" on Windows.
+
+In order to update to new versions, run `autogen.sh` and then remove the unnecessary
+generated files, e.g.:
+```
+rm -rf v1.5/aux v1.5/autom4te.cache/ v1.5/config.log v1.5/config.status v1.5/Makefile v1.5/libtool
+```
+
+Note: some files normally excluded by .gitignore need to be added to the build:
+```
+git add -f v1.5/config v1.5/configure v1.5/Makefile.in
+```
+
 ## linenoise-ng
 
 Our maintained fork of linenoise
@@ -73,7 +69,6 @@ https://github.com/arangodb/linenoise-ng
 
 We may want to switch to replxx (uniting our & other forks):
 https://github.com/AmokHuginnsson/replxx
-
 
 ## lz4
 
@@ -100,13 +95,6 @@ On Upgrade:
     +#set(SNAPPY_LIB_DEBUG ${SNAPPY_HOME}/lib/native/debug/amd64/snappy.lib)
     +#set(SNAPPY_LIB_RELEASE ${SNAPPY_HOME}/lib/native/retail/amd64/snappy.lib)
 
-- fix timestamp in `./CMakeLists.txt` to avoid recompilation
-
-    -string(TIMESTAMP GIT_DATE_TIME "%Y/%m/%d %H:%M:%S" UTC)
-    +string(TIMESTAMP TS "%Y/%m/%d %H:%M:%S" UTC )
-    +set(GIT_DATE_TIME "${TS}" CACHE STRING "the time we first built rocksdb")
-
-
 ## s2geometry
 
 http://s2geometry.io/
@@ -115,6 +103,8 @@ http://s2geometry.io/
 
 Compression library
 https://github.com/google/snappy
+
+We change the target `snappy` to `snapy-dyn` so cmake doesn't interfere targets with the static library (that we need)
 
 ## snowball
 
@@ -141,8 +131,8 @@ To upgrade to a newer version:
    `#region ArangoDB-specific changes` and `#endregion`
 8. Verify the changes were applied correctly and discard the old copy of `index.html`
 
-To verify the changes were applied correctly, start ArangoDB and
-open the ArangoDB Rest API documentation in the ArangoDB web interface.
+To verify the changes were applied correctly, start the ArangoDB server and
+open the _Rest API_ documentation (_Support_ tab) in the ArangoDB web interface.
 Routes can be executed by clicking on them to expand their documentation,
 clicking the _Try it out_ button, filling out any required fields and clicking
 the _Execute_ button.
@@ -155,10 +145,10 @@ the _Execute_ button.
 
   This confirms that the change inferring the URL was applied correctly.
 
-* All sections of the API documentation should be expanded to show all
-  routes but NOT fully expanded to reveal descriptions and examples.
+* The sections should be collapsed, NOT showing the individual routes.
 
-  This confirms the change to `docExpansion` was applied correctly.
+  This confirms the `docExpansion` changes work correctly for the
+  server API documentation.
 
 * When using the `POST /_api/cursor` route with a query the authenticated
   user is authorized to execute, the response should not indicate an
@@ -171,9 +161,46 @@ the _Execute_ button.
 
   This indicates the stylistic CSS changes were applied correctly.
 
+* Scroll to the very end of the page and check the bottom right corner.
+  There should be NO badge reading _INVALID_.
+
+  This confirms that validation is disabled correctly (`validatorUrl`).
+
 Note that to account for changes introduced by new versions of swagger-ui,
 the stylistic CSS changes may need to be adjusted manually even when
 applied correctly.
+
+To verify the `docExpansion` changes work correctly in Foxx, navigate to the
+_Services_ tab, reveal system services via the menu in the gear icon, open the
+service `/_api/foxx` and navigate to the _API_ tab within that service.
+
+* All sections of the API documentation should be expanded to show all
+  routes but NOT fully expanded to reveal descriptions and examples.
+
+  This confirms the `docExpansion` changes work correctly for Foxx services.
+
+## taocpp::json
+
+Json Parser library
+Contains TaoCpp PEGTL - PEG Parsing library
+
+Upstream is: https://github.com/taocpp/json
+
+- On upgrade do not add unnecessary files (e.g. src, tests, contrib)
+  and update the commit hash in `./taocpp-json.version`.
+  
+## tzdata
+
+IANA time zone database / Olson database
+Contains information about the world's time zones
+
+Upstream is: https://www.iana.org/time-zones (Data Only Distribution)
+
+Windows builds require windowsZones.xml from the Unicode CLDR project:
+https://github.com/unicode-org/cldr/blob/master/common/supplemental/windowsZones.xml
+
+invoke `Installation/fetch_tz_database.sh` to do this.
+Fix CMakeLists.txt with new zone files if neccessary.
 
 ## V8
 

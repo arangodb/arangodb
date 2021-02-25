@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,35 +27,34 @@
 #include "InputAqlItemRow.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
-#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
+#include <boost/container/flat_set.hpp>
 
+#include <algorithm>
 #include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool InputAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
 SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager,
-                                                    std::unordered_set<RegisterId> const& registers,
-                                                    size_t newNrRegs) const {
-  SharedAqlItemBlockPtr block =
-      manager.requestBlock(1, static_cast<RegisterId>(newNrRegs));
+                                                    RegIdFlatSet const& registers,
+                                                    RegisterCount newNrRegs) const {
+  SharedAqlItemBlockPtr block = manager.requestBlock(1, newNrRegs);
   if (isInitialized()) {
     std::unordered_set<AqlValue> cache;
-    TRI_ASSERT(getNrRegisters() <= newNrRegs);
+    TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
-    for (RegisterId col = 0; col < getNrRegisters(); col++) {
+    for (RegisterId::value_t col = 0; col < getNumRegisters(); col++) {
       if (registers.find(col) == registers.end()) {
         continue;
       }
@@ -132,27 +132,29 @@ void InputAqlItemRow::toSimpleVelocyPack(velocypack::Options const* trxOpts,
   _block->rowToSimpleVPack(_baseIndex, trxOpts, result);
 }
 
-InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex)
+InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept
     : _block(block), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
+  TRI_ASSERT(_baseIndex < _block->numRows());
+  TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 InputAqlItemRow::InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(_block != nullptr);
-  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(!_block->isShadowRow(baseIndex));
 }
 
 AqlValue const& InputAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId.isConstRegister() || registerId < getNumRegisters());
   return block().getValueReference(_baseIndex, registerId);
 }
 
 AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
+  TRI_ASSERT(registerId.isConstRegister() || registerId < getNumRegisters());
   AqlValue const& a = block().getValueReference(_baseIndex, registerId);
   if (!a.isEmpty() && a.requiresDestruction()) {
     // Now no one is responsible for AqlValue a
@@ -162,31 +164,28 @@ AqlValue InputAqlItemRow::stealValue(RegisterId registerId) {
   return a;
 }
 
-RegisterCount InputAqlItemRow::getNrRegisters() const noexcept {
-  return block().getNrRegs();
+RegisterCount InputAqlItemRow::getNumRegisters() const noexcept {
+  return block().numRegisters();
 }
 
-bool InputAqlItemRow::operator==(InputAqlItemRow const& other) const noexcept {
+bool InputAqlItemRow::isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept {
   return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-bool InputAqlItemRow::operator!=(InputAqlItemRow const& other) const noexcept {
-  return !(*this == other);
-}
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool InputAqlItemRow::equates(InputAqlItemRow const& other,
                               velocypack::Options const* const options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-  if (getNrRegisters() != other.getNrRegisters()) {
+  TRI_ASSERT(getNumRegisters() == other.getNumRegisters());
+  if (getNumRegisters() != other.getNumRegisters()) {
     return false;
   }
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+  for (RegisterId::value_t i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }
@@ -194,6 +193,7 @@ bool InputAqlItemRow::equates(InputAqlItemRow const& other,
 
   return true;
 }
+#endif
 
 bool InputAqlItemRow::isInitialized() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -208,59 +208,46 @@ InputAqlItemRow::operator bool() const noexcept { return isInitialized(); }
 
 bool InputAqlItemRow::isFirstDataRowInBlock() const noexcept {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
+  TRI_ASSERT(_baseIndex < block().numRows());
 
-  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+  auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(0);
 
   // Count the number of shadow rows before this row.
-  size_t const numShadowRowsBeforeCurrentRow = [&]() {
-    auto const& begin = shadowRowIndexes.cbegin();
-    auto const& end = shadowRowIndexes.cend();
-
+  size_t const numShadowRowsBeforeCurrentRow = [this, shadowRowsBegin = shadowRowsBegin]() {
     // this is the last shadow row after _baseIndex, i.e.
     // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
-    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    auto [offsetBegin, offsetEnd] = block().getShadowRowIndexesFrom(_baseIndex);
     // But, as _baseIndex must not be a shadow row, it's actually
     // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
     // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+    TRI_ASSERT(offsetBegin == offsetEnd || _baseIndex < *offsetBegin);
 
-    return std::distance(begin, nextShadowRowIt);
+    return std::distance(shadowRowsBegin, offsetBegin);
   }();
-  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= shadowRowIndexes.size());
+  TRI_ASSERT(numShadowRowsBeforeCurrentRow <= static_cast<size_t>(std::distance(shadowRowsBegin, shadowRowsEnd)));
 
   return numShadowRowsBeforeCurrentRow == _baseIndex;
 }
 
-bool InputAqlItemRow::isLastRowInBlock() const noexcept {
-  TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
-  return _baseIndex + 1 == block().size();
-}
-
 bool InputAqlItemRow::blockHasMoreDataRowsAfterThis() const noexcept {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < block().size());
-
-  auto const& shadowRowIndexes = block().getShadowRowIndexes();
+  TRI_ASSERT(_baseIndex < block().numRows());
 
   // Count the number of shadow rows after this row.
-  size_t const numShadowRowsAfterCurrentRow = [&]() {
-    auto const& end = shadowRowIndexes.cend();
-
+  size_t const numShadowRowsAfterCurrentRow = [this]() {
     // this is the last shadow row after _baseIndex, i.e.
-    // nextShadowRowIt := min { it \in shadowRowIndexes | _baseIndex <= it }
-    auto const nextShadowRowIt = shadowRowIndexes.lower_bound(_baseIndex);
+    // shadowRowsBegin := min { it \in shadowRowIndexes | _baseIndex <= it }
+    auto [shadowRowsBegin, shadowRowsEnd] = block().getShadowRowIndexesFrom(_baseIndex);
     // But, as _baseIndex must not be a shadow row, it's actually
-    // nextShadowRowIt = min { it \in shadowRowIndexes | _baseIndex < it }
+    // shadowRowsBegin = min { it \in shadowRowIndexes | _baseIndex < it }
     // so the same as shadowRowIndexes.upper_bound(_baseIndex)
-    TRI_ASSERT(nextShadowRowIt == end || _baseIndex < *nextShadowRowIt);
+    TRI_ASSERT(shadowRowsBegin == shadowRowsEnd || _baseIndex < *shadowRowsBegin);
 
-    return std::distance(nextShadowRowIt, end);
+    return std::distance(shadowRowsBegin, shadowRowsEnd);
   }();
 
   // block().size() is strictly greater than baseIndex
-  size_t const totalRowsAfterCurrentRow = block().size() - _baseIndex - 1;
+  size_t const totalRowsAfterCurrentRow = block().numRows() - _baseIndex - 1;
 
   return totalRowsAfterCurrentRow > numShadowRowsAfterCurrentRow;
 }

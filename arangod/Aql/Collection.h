@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 #define ARANGOD_AQL_COLLECTION_H 1
 
 #include "Cluster/ClusterTypes.h"
+#include "Transaction/CountCache.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/vocbase.h"
 
@@ -34,14 +35,26 @@ namespace arangodb {
 namespace transaction {
 class Methods;
 }
+
+class Index;
+
 namespace aql {
 
 struct Collection {
+  enum class Hint {
+    // either a view (no collection) or collection is known to not exist
+    None,
+    // cluster-wide collection name
+    Collection,
+    // DB-server local shard
+    Shard,
+  };
+
   Collection() = delete;
   Collection(Collection const&) = delete;
   Collection& operator=(Collection const&) = delete;
 
-  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type);
+  Collection(std::string const&, TRI_vocbase_t*, AccessMode::Type accessType, Hint hint);
 
   TRI_vocbase_t* vocbase() const;
 
@@ -55,14 +68,8 @@ struct Collection {
 
   void isReadWrite(bool isReadWrite);
 
-  /// @brief set the current shard
-  void setCurrentShard(std::string const& shard);
-
-  /// @brief remove the current shard
-  void resetCurrentShard();
-
   /// @brief get the collection id
-  TRI_voc_cid_t id() const;
+  DataSourceId id() const;
 
   /// @brief returns the name of the collection, translated for the sharding
   /// case. this will return _currentShard if it is set, and name otherwise
@@ -72,16 +79,13 @@ struct Collection {
   TRI_col_type_e type() const;
 
   /// @brief count the number of documents in the collection
-  size_t count(transaction::Methods* trx) const;
-
-  /// @brief returns the collection's plan id
-  TRI_voc_cid_t getPlanId() const;
+  size_t count(transaction::Methods* trx, transaction::CountType type) const;
 
   /// @brief returns the responsible servers for the collection
   std::unordered_set<std::string> responsibleServers() const;
 
   /// @brief returns the "distributeShardsLike" attribute for the collection
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
 
   /// @brief fills the set with the responsible servers for the collection
   /// returns the number of responsible servers found for the collection
@@ -103,20 +107,17 @@ struct Collection {
   /// @brief whether or not the collection uses the default sharding
   bool usesDefaultSharding() const;
 
-  /// @brief set the underlying collection
-  void setCollection(std::shared_ptr<arangodb::LogicalCollection> const& coll);
-
-  /// @brief either use the set collection or get one from ClusterInfo:
-  std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
-
   /// @brief check smartness of the underlying collection
   bool isSmart() const;
 
-  /// @brief check if collection is a satellite collection
+  /// @brief check if collection is a disjoint (edge) collection
+  bool isDisjoint() const;
+
+  /// @brief check if collection is a SatelliteCollection
   bool isSatellite() const;
 
-  /// @brief return the name of the smart join attribute (empty string
-  /// if no smart join attribute is present)
+  /// @brief return the name of the SmartJoin attribute (empty string
+  /// if no SmartJoin attribute is present)
   std::string const& smartJoinAttribute() const;
 
   /// @brief add a mapping of shard => server id
@@ -126,7 +127,7 @@ struct Collection {
     TRI_ASSERT(_shardToServerMapping.find(sid) == _shardToServerMapping.end());
     _shardToServerMapping.try_emplace(sid, server);
   }
-
+  
   /// @brief lookup the server responsible for the given shard.
   ServerID const& getServerForShard(ShardID const& sid) const {
     auto const& it = _shardToServerMapping.find(sid);
@@ -135,12 +136,37 @@ struct Collection {
     return it->second;
   }
 
+  /// @brief get the index by it's identifier. Will either throw or
+  ///        return a valid index. nullptr is impossible.
+  std::shared_ptr<arangodb::Index> indexByIdentifier(std::string const& idxId) const;
+  
+  std::vector<std::shared_ptr<arangodb::Index>> indexes() const;
+  
+  /// @brief use the already set collection 
+  /// Whenever getCollection() is called, _collection must be a non-nullptr or an 
+  /// assertion will be triggered. In non-maintainer mode an exception will be thrown.
+  /// that means getCollection() must not be called on non-existing collections or
+  /// views
+  std::shared_ptr<arangodb::LogicalCollection> getCollection() const;
+
+  /// @brief whether or not we have a collection object underneath (true for
+  /// existing collections, false for non-existing collections and for views).
+  bool hasCollectionObject() const noexcept;
+  
  private:
+  /// @brief throw if the underlying collection has not been set
+  void ensureCollection() const;
+
+ private:
+  // _collection will only be populated here in the constructor, and not later.
+  // note that it will only be populated for "real" collections and shards though. 
+  // aql::Collection objects can also be created for views and for non-existing 
+  // collections. In these cases it is not possible to populate _collection, at all.
   std::shared_ptr<arangodb::LogicalCollection> _collection;
 
   TRI_vocbase_t* _vocbase;
 
-  std::string _name;
+  std::string const _name;
 
   /// @brief currently handled shard. this is a temporary variable that will
   /// only be filled during plan creation

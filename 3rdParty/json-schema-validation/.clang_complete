@@ -1,0 +1,11 @@
+-Dlinux
+-D__linux__
+-I
+./include
+-I
+./external_libs/googletest
+-I
+./external_libs/json/include
+-I
+./external_libs/velocypack/include
+-std=c++17

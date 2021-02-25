@@ -30,8 +30,6 @@
 
 var jsunity = require("jsunity");
 var internal = require("internal");
-var console = require("console");
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: Creation
@@ -50,7 +48,7 @@ function GeoIndexCreationSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,9 +56,37 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      collection.unload();
-      collection.drop();
-      internal.wait(0.0);
+      internal.db._drop(cn);
+    },
+    
+    testGeo1 : function () {
+      collection.ensureIndex({ type: "geo1", fields: ["loc"], geoJson: false });
+      let indexes = collection.indexes();
+      assertTrue(2, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      assertEqual("geo", indexes[1].type);
+      assertEqual(["loc"], indexes[1].fields);
+      assertFalse(indexes[1].geoJson);
+    },
+    
+    testGeo1GeoJson : function () {
+      collection.ensureIndex({ type: "geo1", fields: ["loc"], geoJson: true });
+      let indexes = collection.indexes();
+      assertTrue(2, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      assertEqual("geo", indexes[1].type);
+      assertEqual(["loc"], indexes[1].fields);
+      assertTrue(indexes[1].geoJson);
+    },
+    
+    testGeo2 : function () {
+      collection.ensureIndex({ type: "geo2", fields: ["a", "b"] });
+      let indexes = collection.indexes();
+      assertTrue(2, indexes.length);
+      assertEqual("primary", indexes[0].type);
+      assertEqual("geo", indexes[1].type);
+      assertEqual(["a", "b"], indexes[1].fields);
+      assertFalse(indexes[1].geoJson);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,8 +94,6 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdates : function () {
-      collection.truncate();
-
       collection.ensureGeoIndex("coordinates", true);
 
       [
@@ -970,7 +994,7 @@ function GeoIndexSimpleQueriesSuite() {
 
     testSaveAfterTruncateWithoutDocs : function () {
       collection.ensureGeoIndex("location");
-      collection.truncate();
+      collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
 
       assertEqual(1, collection.count());
@@ -979,7 +1003,7 @@ function GeoIndexSimpleQueriesSuite() {
     testSaveAfterTruncateWithDocs : function () {
       collection.ensureGeoIndex("location");
       collection.save({location: [1, 1]});
-      collection.truncate();
+      collection.truncate({ compact: false });
       collection.save({location: [1, 1]});
 
       assertEqual(1, collection.count());
@@ -1023,7 +1047,7 @@ function SphericalIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSPIUpdates : function () {
-      collection.truncate();
+      collection.truncate({ compact: false });
 
       //collection.ensureGeoIndex("coordinates", true);
       collection.ensureIndex({type: "geo",

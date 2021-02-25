@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,10 +25,13 @@
 
 #include "Aql/Ast.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Query.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Meta/static_assert_size.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -53,6 +56,15 @@ SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
+SubqueryEndNode::SubqueryEndNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 Variable const* inVariable, Variable const* outVariable)
+    : ExecutionNode(plan, id),
+      _inVariable(inVariable),
+      _outVariable(outVariable) {
+  // _inVariable might be nullptr
+  TRI_ASSERT(_outVariable != nullptr);
+}
+
 void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
   ExecutionNode::toVelocyPackHelperGeneric(nodes, flags, seen);
@@ -71,30 +83,28 @@ void SubqueryEndNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
     ExecutionEngine& engine,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
-  transaction::Methods* trx = _plan->getAst()->query()->trx();
-  TRI_ASSERT(trx != nullptr);
 
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
+  auto inputRegisters = RegIdSet{};
+  auto outputRegisters = RegIdSet{};
 
   auto inReg = variableToRegisterOptionalId(_inVariable);
-  if (inReg != RegisterPlan::MaxRegisterId) {
-    inputRegisters->emplace(inReg);
+  if (inReg.value() != RegisterId::maxRegisterId) {
+    inputRegisters.emplace(inReg);
   }
   auto outReg = variableToRegisterId(_outVariable);
-  outputRegisters->emplace(outReg);
+  outputRegisters.emplace(outReg);
 
-  auto const vpackOptions = trx->transactionContextPtr()->getVPackOptions();
-  SubqueryEndExecutorInfos infos(inputRegisters, outputRegisters,
-                                 getRegisterPlan()->nrRegs[previousNode->getDepth()],
-                                 getRegisterPlan()->nrRegs[getDepth()], getRegsToClear(),
-                                 calcRegsToKeep(), vpackOptions, inReg, outReg);
+  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
-  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(&engine, this,
-                                                                   std::move(infos));
+  auto const& vpackOptions = engine.getQuery().vpackOptions();
+  auto executorInfos =
+      SubqueryEndExecutorInfos(&vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
+
+  return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan, bool withDependencies,
@@ -122,25 +132,37 @@ CostEstimate SubqueryEndNode::estimateCost() const {
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
 
+  // Restore the nrItems that were saved at the corresponding SubqueryStartNode.
+  estimate.restoreEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 
 bool SubqueryEndNode::isEqualTo(ExecutionNode const& other) const {
   TRI_ASSERT(_outVariable != nullptr);
-  if (other.getType() != getType()) {
+  if (other.getType() != ExecutionNode::SUBQUERY_END) {
     return false;
   }
-  try {
-    SubqueryEndNode const& p = dynamic_cast<SubqueryEndNode const&>(other);
-    TRI_ASSERT(p._outVariable != nullptr);
-    if (!CompareVariables(_outVariable, p._outVariable) ||
-        !CompareVariables(_inVariable, p._inVariable)) {
-      // One of the variables does not match
-      return false;
-    }
-    return ExecutionNode::isEqualTo(p);
-  } catch (const std::bad_cast&) {
-    TRI_ASSERT(false);
+  SubqueryEndNode const* p = ExecutionNode::castTo<SubqueryEndNode const*>(&other);
+  TRI_ASSERT(p->_outVariable != nullptr);
+  if (!CompareVariables(_outVariable, p->_outVariable) ||
+      !CompareVariables(_inVariable, p->_inVariable)) {
+    // One of the variables does not match
     return false;
   }
+  return ExecutionNode::isEqualTo(other);
+}
+
+// NOTE: A SubqueryEndNode should never be asked whether its a modification
+//       node, as this information is supposed to be used in optimizer rules,
+//       and subquery splicing runs as the *last* optimizer rule in any case.
+//
+//       If this assumption is changed, you will need to make an implementation
+//       of this function that makes sense (for example by deriving the isModificationNode
+//       from the SubqueryNode).
+bool SubqueryEndNode::isModificationNode() const {
+  TRI_ASSERT(false);
+  return false;
 }

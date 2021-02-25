@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,66 +27,64 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/RegisterInfos.h"
 
 namespace arangodb {
 namespace aql {
 
+class SkipResult;
+class ExecutionEngine;
+class ScatterNode;
+
+class ScatterExecutorInfos : public ClientsExecutorInfos {
+ public:
+  explicit ScatterExecutorInfos(std::vector<std::string> clientIds);
+  ScatterExecutorInfos(ScatterExecutorInfos&&) = default;
+};
+
 // The ScatterBlock is actually implemented by specializing ExecutionBlockImpl,
 // so this class only exists to identify the specialization.
-class ScatterExecutor {};
+class ScatterExecutor {
+ public:
+  using Infos = ScatterExecutorInfos;
+
+  class ClientBlockData {
+   public:
+    ClientBlockData(ExecutionEngine& engine, ExecutionNode const* node,
+                    RegisterInfos const& scatterInfos);
+
+    auto clear() -> void;
+    auto addBlock(SharedAqlItemBlockPtr block, SkipResult skipped) -> void;
+    auto hasDataFor(AqlCall const& call) -> bool;
+
+    auto execute(AqlCallStack callStack, ExecutionState upstreamState)
+        -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
+   private:
+    std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
+    // This is unique_ptr to get away with everything being forward declared...
+    std::unique_ptr<ExecutionBlock> _executor;
+    bool _executorHasMore;
+  };
+
+  explicit ScatterExecutor(Infos const&);
+  ~ScatterExecutor() = default;
+
+  auto distributeBlock(SharedAqlItemBlockPtr const& block, SkipResult skipped,
+                       std::unordered_map<std::string, ClientBlockData>& blockMap) const
+      -> void;
+};
 
 /**
  * @brief See ExecutionBlockImpl.h for documentation.
  */
 template <>
-class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClients {
+class ExecutionBlockImpl<ScatterExecutor> : public BlocksWithClientsImpl<ScatterExecutor> {
  public:
-  // TODO Even if it's not strictly necessary here, for consistency's sake the
-  // non-standard argument (shardIds) should probably be moved into some
-  // ScatterExecutorInfos class.
   ExecutionBlockImpl(ExecutionEngine* engine, ScatterNode const* node,
-                     ExecutorInfos&& infos, std::vector<std::string> const& shardIds);
+                     RegisterInfos registerInfos, ScatterExecutor::Infos&& infos);
 
   ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, Result> initializeCursor(InputAqlItemRow const& input) override;
-
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShard(size_t atMost,
-                                                                   std::string const& shardId) override;
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShard(size_t atMost,
-                                                     std::string const& shardId) override;
-
- private:
-  /// @brief getSomeForShard
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSomeForShardWithoutTrace(
-      size_t atMost, std::string const& shardId);
-
-  /// @brief skipSomeForShard
-  std::pair<ExecutionState, size_t> skipSomeForShardWithoutTrace(size_t atMost,
-                                                                 std::string const& shardId);
-
-  std::pair<ExecutionState, arangodb::Result> getOrSkipSomeForShard(
-      size_t atMost, bool skipping, SharedAqlItemBlockPtr& result,
-      size_t& skipped, std::string const& shardId);
-
-  bool hasMoreForClientId(size_t clientId) const;
-
-  /// @brief getHasMoreStateForClientId: State for client <clientId>?
-  ExecutionState getHasMoreStateForClientId(size_t clientId) const;
-
-  ExecutorInfos const& infos() const { return _infos; }
-
- private:
-  ExecutorInfos _infos;
-
-  Query const& _query;
-
-  /// @brief _posForClient:
-  std::vector<std::pair<size_t, size_t>> _posForClient;
 };
 
 }  // namespace aql

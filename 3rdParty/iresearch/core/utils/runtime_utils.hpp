@@ -24,9 +24,9 @@
 #ifndef IRESEARCH_RUNTIME_UTILS_H
 #define IRESEARCH_RUNTIME_UTILS_H
 
-NS_ROOT
+namespace iresearch {
 
-inline const char* getenv(const char* name) {
+inline const char* getenv(const char* name) noexcept {
   #ifdef _MSC_VER
     #pragma warning(disable : 4996)
   #endif
@@ -38,7 +38,7 @@ inline const char* getenv(const char* name) {
   #endif
 }
 
-inline bool localtime(struct tm& buf, const time_t& time) {
+inline bool localtime(struct tm& buf, const time_t& time) noexcept {
   // use a thread safe conversion function
   #ifdef _MSC_VER
     return 0 == ::localtime_s(&buf, &time);
@@ -47,7 +47,7 @@ inline bool localtime(struct tm& buf, const time_t& time) {
   #endif
 }
 
-inline int setenv(const char *name, const char *value, bool overwrite) {
+inline int setenv(const char *name, const char *value, bool overwrite) noexcept {
   #ifdef _MSC_VER
     UNUSED(overwrite);
     return _putenv_s(name, value);  // OVERWRITE is always true for MSVC
@@ -56,6 +56,14 @@ inline int setenv(const char *name, const char *value, bool overwrite) {
   #endif
 }
 
-NS_END
+inline int unsetenv(const char* name) noexcept {
+  #ifdef _MSC_VER
+    return _putenv_s(name, "");
+  #else
+    return ::unsetenv(name);
+  #endif
+}
+
+}
 
 #endif

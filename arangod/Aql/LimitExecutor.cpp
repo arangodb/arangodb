@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,10 +27,11 @@
 #include "LimitExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
 #include <utility>
@@ -37,254 +39,221 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-LimitExecutorInfos::LimitExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                                       // cppcheck-suppress passedByValue
-                                       std::unordered_set<RegisterId> registersToClear,
-                                       // cppcheck-suppress passedByValue
-                                       std::unordered_set<RegisterId> registersToKeep,
-                                       size_t offset, size_t limit, bool fullCount)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(),
-                    std::make_shared<std::unordered_set<RegisterId>>(),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _offset(offset),
-      _limit(limit),
-      _fullCount(fullCount) {}
+LimitExecutorInfos::LimitExecutorInfos(size_t offset, size_t limit, bool fullCount)
+    : _offset(offset), _limit(limit), _fullCount(fullCount) {}
 
 LimitExecutor::LimitExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _lastRowToOutput(CreateInvalidInputRowHint{}),
-      _stateOfLastRowToOutput(ExecutionState::HASMORE) {}
+    : _infos(infos), _lastRowToOutput(CreateInvalidInputRowHint{}) {}
+
 LimitExecutor::~LimitExecutor() = default;
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::skipOffset() {
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = _fetcher.skipRows(maxRowsLeftToSkip());
-
-  // WAITING => skipped == 0
-  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
-
-  _counter += skipped;
-
-  LimitStats stats{};
-  if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
-  }
-
-  return {state, stats};
+auto LimitExecutor::limitFulfilled() const noexcept -> bool {
+  return remainingOffset() + remainingLimit() == 0;
 }
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::skipRestForFullCount() {
-  ExecutionState state;
-  size_t skipped;
-  LimitStats stats{};
-  // skip ALL the rows
-  std::tie(state, skipped) = _fetcher.skipRows(ExecutionBlock::SkipAllSize());
+auto LimitExecutor::calculateUpstreamCall(AqlCall const& clientCall) const -> AqlCall {
+  auto upstreamCall = AqlCall{};
 
-  if (state == ExecutionState::WAITING) {
-    TRI_ASSERT(skipped == 0);
-    return {state, stats};
+  auto const limitedClientOffset = std::min(clientCall.getOffset(), remainingLimit());
+
+  // Offsets must be added, but the client's offset is limited by our limit.
+  upstreamCall.offset = remainingOffset() + limitedClientOffset;
+
+  // To get the limit for upstream, we must subtract the downstream offset from
+  // our limit, and take the minimum of this and the downstream limit.
+  auto const localLimitMinusDownstreamOffset = remainingLimit() - limitedClientOffset;
+  auto const limit =
+      std::min<AqlCall::Limit>(clientCall.getLimit(), localLimitMinusDownstreamOffset);
+
+  // Generally, we create a hard limit. However, if we get a soft limit from
+  // downstream that is lower than our hard limit, we use that instead.
+  bool const useSoftLimit = !clientCall.hasHardLimit() &&
+                            clientCall.getLimit() < localLimitMinusDownstreamOffset;
+
+  if (useSoftLimit) {
+    // fullCount may only be set with a hard limit
+    TRI_ASSERT(!clientCall.needsFullCount());
+
+    upstreamCall.softLimit = limit;
+    upstreamCall.fullCount = false;
+  } else if (clientCall.needsFullCount() && 0 == clientCall.getLimit() && !_didProduceRows) {
+    // The request is a hard limit of 0 together with fullCount, so we always
+    // need to skip both our offset and our limit, regardless of the client's
+    // offset.
+    // If we ever got a client limit > 0 and thus produced rows, we may not send
+    // a non-zero offset, and thus must avoid this branch.
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(clientCall.hasHardLimit());
+
+    upstreamCall.offset = upstreamCall.offset + remainingLimit();
+    upstreamCall.hardLimit = std::size_t(0);
+    // We need to send fullCount upstream iff this is fullCount-enabled LIMIT
+    // block.
+    upstreamCall.fullCount = infos().isFullCountEnabled();
+  } else {
+    TRI_ASSERT(!useSoftLimit);
+    TRI_ASSERT(!clientCall.needsFullCount() || 0 < clientCall.getLimit() || _didProduceRows);
+
+    upstreamCall.hardLimit = limit;
+    // We need the fullCount if we need to report it ourselves.
+    // If the client needs full count, we need to skip up to our limit upstream.
+    // But currently the execute API does not allow limited skipping after
+    // fetching rows, so we must pass fullCount upstream, even if that's
+    // inefficient.
+    // This is going to be fixed in a later PR.
+    upstreamCall.fullCount = infos().isFullCountEnabled() || clientCall.needsFullCount();
   }
 
-  // We must not update _counter here. It is only used to count until offset+limit
-  // is reached.
-
-  if (infos().isFullCountEnabled()) {
-    stats.incrFullCountBy(skipped);
-  }
-
-  return {state, stats};
+  return upstreamCall;
 }
 
-std::pair<ExecutionState, LimitStats> LimitExecutor::produceRows(OutputAqlItemRow& output) {
-  TRI_IF_FAILURE("LimitExecutor::produceRows") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
-  ExecutionState state;
-  LimitStats stats{};
+auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
+  // I think this *should* be the case, because we're passthrough. However,
+  // isFull() ignores shadow rows in the passthrough case, which it probably
+  // should not.
+  // static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable);
+  // TRI_ASSERT(input.hasDataRow() == !output.isFull());
 
-  while (LimitState::SKIPPING == currentState()) {
-    LimitStats tmpStats;
-    std::tie(state, tmpStats) = skipOffset();
-    stats += tmpStats;
-    if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-      return {state, stats};
-    }
-  }
-  while (LimitState::RETURNING == currentState()) {
-    std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
+  auto const& clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.getOffset() == 0);
 
-    if (state == ExecutionState::WAITING) {
-      return {state, stats};
-    }
+  auto stats = LimitStats{};
 
-    // This executor is pass-through. Thus we will never get asked to write an
-    // output row for which there is no input, as in- and output rows have a
-    // 1:1 correspondence.
-    TRI_ASSERT(input.isInitialized());
+  auto call = output.getClientCall();
+  TRI_ASSERT(call.getOffset() == 0);
+  while (inputRange.skippedInFlight() > 0 || inputRange.hasDataRow()) {
+    if (remainingOffset() > 0) {
+      // First we skip in the input row until we fullfill our local offset.
+      auto const didSkip = inputRange.skip(remainingOffset());
+      // Need to forward the
+      _counter += didSkip;
+      // We do not report this to downstream
+      // But we report it in fullCount
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else if (!output.isFull()) {
+      auto numRowsWritten = size_t{0};
 
-    // We've got one input row
-    _counter++;
-
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCount();
-    }
-
-    // Return one row
-    output.copyRow(input);
-    return {state, stats};
-  }
-
-  // This case is special for two reasons.
-  // First, after this we want to return DONE, regardless of the upstream's
-  // state.
-  // Second, when fullCount is enabled, we need to get the fullCount before
-  // returning the last row, as the count is returned with the stats (and we
-  // would not be asked again by ExecutionBlockImpl in any case).
-  if (LimitState::RETURNING_LAST_ROW == currentState()) {
-    if (_lastRowToOutput.isInitialized()) {
-      // Use previously saved row iff there is one. We can get here only if
-      // fullCount is enabled. If it is, we can get here multiple times (until
-      // we consumed the whole upstream, which might return WAITING repeatedly).
-      TRI_ASSERT(infos().isFullCountEnabled());
-      state = _stateOfLastRowToOutput;
-      TRI_ASSERT(state != ExecutionState::WAITING);
-      input = std::move(_lastRowToOutput);
-      TRI_ASSERT(!_lastRowToOutput.isInitialized()); // rely on the move
+      while (inputRange.hasDataRow()) {
+        // This block is passhthrough.
+        static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+                      "For LIMIT with passthrough to work, there must be "
+                      "exactly enough space for all input in the output.");
+        // So there will always be enough place for all inputRows within
+        // the output.
+        TRI_ASSERT(!output.isFull());
+        // Also this number can be at most remainingOffset.
+        TRI_ASSERT(remainingLimit() > numRowsWritten);
+        output.copyRow(inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{}).second);
+        output.advanceRow();
+        numRowsWritten++;
+        _didProduceRows = true;
+      }
+      _counter += numRowsWritten;
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(numRowsWritten);
+      }
+    } else if (call.needsFullCount()) {
+      // We are done with producing.
+      // ExecutionBlockImpl will now call skipSome for the remainder
+      // There cannot be a dataRow left, as this block is passthrough!
+      TRI_ASSERT(!inputRange.hasDataRow());
+      // There are still skippedInflights;
+      TRI_ASSERT(inputRange.skippedInFlight() > 0);
+      break;
     } else {
-      std::tie(state, input) = _fetcher.fetchRow(maxRowsLeftToFetch());
-
-      if (state == ExecutionState::WAITING) {
-        return {state, stats};
+      // We are done with producing.
+      if (infos().isFullCountEnabled()) {
+        // However we need to report the fullCount from above.
+        stats.incrFullCountBy(inputRange.skipAll());
       }
+      // ExecutionBlockImpl will now call skipSome for the remainder
+      // There cannot be a dataRow left, as this block is passthrough!
+      TRI_ASSERT(!inputRange.hasDataRow());
+      TRI_ASSERT(inputRange.skippedInFlight() == 0);
+      break;
     }
-
-    // This executor is pass-through. Thus we will never get asked to write an
-    // output row for which there is no input, as in- and output rows have a
-    // 1:1 correspondence.
-    TRI_ASSERT(input.isInitialized());
-
-    if (infos().isFullCountEnabled()) {
-      // Save the state now. The _stateOfLastRowToOutput will not be used unless
-      // _lastRowToOutput gets set.
-      _stateOfLastRowToOutput = state;
-      LimitStats tmpStats;
-      std::tie(state, tmpStats) = skipRestForFullCount();
-      stats += tmpStats;
-      if (state == ExecutionState::WAITING) {
-        // Save the row
-        _lastRowToOutput = std::move(input);
-        return {state, stats};
-      }
-    }
-
-    // It's important to increase the counter for the last row only *after*
-    // skipRestForFullCount() is done, because we need currentState() to stay
-    // at RETURNING_LAST_ROW until we've actually returned the last row.
-    _counter++;
-    if (infos().isFullCountEnabled()) {
-      stats.incrFullCount();
-    }
-
-    output.copyRow(input);
-    return {ExecutionState::DONE, stats};
   }
-
-  // We should never be COUNTING, this must already be done in the
-  // RETURNING_LAST_ROW-handler.
-  TRI_ASSERT(LimitState::LIMIT_REACHED == currentState());
-  // When fullCount is enabled, the loop may only abort when upstream is done.
-  TRI_ASSERT(!infos().isFullCountEnabled());
-
-  return {ExecutionState::DONE, stats};
+  // We're passthrough, we must not have any input left when the limit isfulfilled
+  TRI_ASSERT(!limitFulfilled() || !inputRange.hasDataRow());
+  return {inputRange.upstreamState(), stats, calculateUpstreamCall(call)};
 }
 
-std::tuple<ExecutionState, LimitStats, SharedAqlItemBlockPtr> LimitExecutor::fetchBlockForPassthrough(size_t atMost) {
-  switch (currentState()) {
-    case LimitState::LIMIT_REACHED:
-      // We are done with our rows!
-      return {ExecutionState::DONE, LimitStats{}, nullptr};
-    case LimitState::COUNTING: {
-      LimitStats stats{};
-      while (LimitState::LIMIT_REACHED != currentState()) {
-        ExecutionState state;
-        LimitStats tmpStats{};
-        std::tie(state, tmpStats) = skipRestForFullCount();
-        stats += tmpStats;
+auto LimitExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  auto upstreamCall = calculateUpstreamCall(call);
 
-        if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, stats, nullptr};
+  if (ADB_UNLIKELY(inputRange.skippedInFlight() < upstreamCall.getOffset() &&
+                   inputRange.hasDataRow())) {
+    static_assert(Properties::allowsBlockPassthrough == BlockPassthrough::Enable,
+                  "For LIMIT with passthrough to work, there must no input "
+                  "rows before the offset was skipped.");
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                   "Unexpected input while skipping: got data "
+                                   "rows before offset was reached.");
+  }
+  auto stats = LimitStats{};
+  while (inputRange.skippedInFlight() > 0) {
+    if (remainingOffset() > 0) {
+      // First we skip in the input row until we fullfill our local offset.
+      auto const didSkip = inputRange.skip(remainingOffset());
+      // Need to forward the
+      _counter += didSkip;
+      // We do not report this to downstream
+      // But we report it in fullCount
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
+      }
+    } else if (remainingLimit() > 0) {
+      // We do only report to downstream if we have a limit to produce
+      if (call.getOffset() > 0) {
+        // Next we skip as many rows as ordered by the client,
+        // but never more then remainingLimit
+        auto const didSkip =
+            inputRange.skip(std::min(remainingLimit(), call.getOffset()));
+        call.didSkip(didSkip);
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
+        }
+      } else if (call.getLimit() > 0) {
+        // If we get here we need to break out, and let produce rows be called.
+        break;
+      } else if (call.needsFullCount()) {
+        auto const didSkip = inputRange.skip(remainingLimit());
+        call.didSkip(didSkip);
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
+        }
+      } else if (infos().isFullCountEnabled()) {
+        // Skip the remainder, it does not matter if we need to produce
+        // anything or not. This is only for reporting of the skipped numbers
+        auto const didSkip = inputRange.skipAll();
+        _counter += didSkip;
+        if (infos().isFullCountEnabled()) {
+          stats.incrFullCountBy(didSkip);
         }
       }
-      return {ExecutionState::DONE, stats, nullptr};
-    }
-    case LimitState::SKIPPING: {
-      LimitStats stats{};
-      while (LimitState::SKIPPING == currentState()) {
-        ExecutionState state;
-        LimitStats tmpStats{};
-        std::tie(state, tmpStats) = skipOffset();
-        stats += tmpStats;
-        if (state == ExecutionState::WAITING || state == ExecutionState::DONE) {
-          return {state, stats, nullptr};
-        }
+    } else if (infos().isFullCountEnabled()) {
+      // Skip the remainder, it does not matter if we need to produce
+      // anything or not. This is only for reporting of the skipped numbers
+      auto const didSkip = inputRange.skipAll();
+      _counter += didSkip;
+      if (infos().isFullCountEnabled()) {
+        stats.incrFullCountBy(didSkip);
       }
-
-      // We should have reached the next state now
-      TRI_ASSERT(currentState() != LimitState::SKIPPING);
-      // Now jump to the correct case
-      auto rv = fetchBlockForPassthrough(atMost);
-      // Add the stats we collected to the return value
-      std::get<LimitStats>(rv) += stats;
-      return rv;
+    } else {
+      // We are done.
+      // All produced, all skipped, nothing to report
+      // Throw away the leftover skipped-rows from upstream
+      std::ignore = inputRange.skipAll();
+      break;
     }
-    case LimitState::RETURNING_LAST_ROW:
-    case LimitState::RETURNING:
-      auto rv = _fetcher.fetchBlockForPassthrough(std::min(atMost, maxRowsLeftToFetch()));
-      return { rv.first, LimitStats{}, std::move(rv.second) };
   }
-  // The control flow cannot reach this. It is only here to make MSVC happy,
-  // which is unable to figure out that the switch above is complete.
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+  return {inputRange.upstreamState(), stats, call.getSkipCount(),
+          calculateUpstreamCall(call)};
 }
-
-std::tuple<ExecutionState, LimitExecutor::Stats, size_t> LimitExecutor::skipRows(size_t const toSkipRequested) {
-  // fullCount can only be enabled on the last top-level LIMIT block. Thus
-  // skip cannot be called on it! If this requirement is changed for some
-  // reason, the current implementation will not work.
-  TRI_ASSERT(!infos().isFullCountEnabled());
-
-  // If we're still skipping ourselves up to offset, this needs to be done first.
-  size_t const toSkipOffset =
-      currentState() == LimitState::SKIPPING ? maxRowsLeftToSkip() : 0;
-
-  // We have to skip
-  //   our offset (toSkipOffset or maxRowsLeftToSkip()),
-  //   plus what we were requested to skip (toSkipRequested),
-  //   but not more than our total limit (maxRowsLeftToFetch()).
-  size_t const toSkipTotal =
-      std::min(toSkipRequested + toSkipOffset, maxRowsLeftToFetch());
-
-  ExecutionState state;
-  size_t skipped;
-  std::tie(state, skipped) = _fetcher.skipRows(toSkipTotal);
-
-  // WAITING => skipped == 0
-  TRI_ASSERT(state != ExecutionState::WAITING || skipped == 0);
-
-  _counter += skipped;
-
-  // Do NOT report the rows we skipped up to the offset, they don't count.
-  size_t const reportSkipped = toSkipOffset >= skipped ? 0 : skipped - toSkipOffset;
-
-  if (currentState() == LimitState::LIMIT_REACHED) {
-    state = ExecutionState::DONE;
-  }
-
-  return std::make_tuple(state, LimitStats{}, reportSkipped);
-}
-

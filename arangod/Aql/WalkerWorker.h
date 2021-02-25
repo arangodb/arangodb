@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,21 +27,20 @@
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Containers/HashSet.h"
-#endif
 
 namespace arangodb {
 namespace aql {
 
-/// @brief functionality to walk an execution plan recursively
-template <class T>
-class WalkerWorker {
- public:
-  WalkerWorker() = default;
+enum class WalkerUniqueness : std::uint8_t { Unique, NonUnique };
 
-  virtual ~WalkerWorker() = default;
+/// @brief base interface to walk an execution plan recursively.
+template <class T>
+class WalkerWorkerBase {
+ public:
+  WalkerWorkerBase() = default;
+
+  virtual ~WalkerWorkerBase() = default;
 
   /// @brief return true to abort walking, false otherwise
   virtual bool before(T*) {
@@ -51,15 +50,25 @@ class WalkerWorker {
   virtual void after(T*) {}
 
   /// @brief return true to enter subqueries, false otherwise
-  virtual bool enterSubquery(T*, T*) {  // super, sub
-    return true;
-  }
+  virtual bool enterSubquery(T* /*super*/, T* /*sub*/) { return true; }
 
-  virtual void leaveSubquery(T*,  // super,
-                             T*   // sub
-  ) {}
+  virtual void leaveSubquery(T* /*super*/, T* /*sub*/) {}
 
-  virtual bool done(T* en) {
+  virtual bool done(T* /*en*/) { return false; }
+};
+
+/// @brief functionality to walk an execution plan recursively.
+/// if template parameter `unique == true`, this will visit each node once, even
+/// if multiple paths lead to the same node. no assertions are raised if
+/// multiple paths lead to the same node
+template <class T, WalkerUniqueness U>
+class WalkerWorker : public WalkerWorkerBase<T> {
+ public:
+  virtual bool done([[maybe_unused]] T* en) override {
+    if constexpr (U == WalkerUniqueness::Unique) {
+      return !_done.emplace(en).second;
+    }
+
     // this is a no-op in non-maintainer mode
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // make sure a node is only processed once
@@ -77,17 +86,21 @@ class WalkerWorker {
   }
 
   void reset() {
-    // this is a no-op in non-failure mode
+    if constexpr (U == WalkerUniqueness::Unique) {
+      _done.clear();
+      return;
+    }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _done.clear();
 #endif
   }
 
  private:
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   ::arangodb::containers::HashSet<T*> _done;
-#endif
 };
+
+
 }  // namespace aql
 }  // namespace arangodb
 

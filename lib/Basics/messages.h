@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,6 +53,7 @@
 #define TRI_BYE_MESSAGE_GR                                                   \
   "\xce\x95\xce\xb9\xcf\x82\x20\xcf\x84\xce\xbf\x20\xce\xb5\xcf\x80\xce\xb1" \
   "\xce\xbd\xce\xb9\xce\xb4\xce\xb5\xce\xaf\xce\xbd\x21"
+#define TRI_BYE_MESSAGE_ID "Sampai jumpa!"
 #define TRI_BYE_MESSAGE_IL \
   "\xd7\x9c\xd7\x94\xd7\xaa\xd7\xa8\xd7\x90\xd7\x95\xd7\xaa\x21"
 // Should really be the following, but most terminals do not write right
@@ -89,5 +90,5 @@
   " " TRI_BYE_MESSAGE_IT " " TRI_BYE_MESSAGE_NL " " TRI_BYE_MESSAGE_SV  \
   " " TRI_BYE_MESSAGE_FR " " TRI_BYE_MESSAGE_JP " " TRI_BYE_MESSAGE_RU  \
   " " TRI_BYE_MESSAGE_PT " " TRI_BYE_MESSAGE_FA " " TRI_BYE_MESSAGE_LV  \
-  " " TRI_BYE_MESSAGE_GE " " TRI_BYE_MESSAGE_KR
+  " " TRI_BYE_MESSAGE_GE " " TRI_BYE_MESSAGE_KR " " TRI_BYE_MESSAGE_ID
 #endif

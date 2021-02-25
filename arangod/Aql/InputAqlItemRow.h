@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -64,7 +65,7 @@ class InputAqlItemRow {
   constexpr explicit InputAqlItemRow(CreateInvalidInputRowHint)
       : _block(nullptr), _baseIndex(0) {}
 
-  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex);
+  InputAqlItemRow(SharedAqlItemBlockPtr const& block, size_t baseIndex) noexcept;
 
   InputAqlItemRow(SharedAqlItemBlockPtr&& block, size_t baseIndex) noexcept;
 
@@ -86,15 +87,13 @@ class InputAqlItemRow {
    */
   AqlValue stealValue(RegisterId registerId);
 
-  RegisterCount getNrRegisters() const noexcept;
+  RegisterCount getNumRegisters() const noexcept;
 
-  // Note that == and != here check whether the rows are *identical*, that is,
-  // the same row in the same block.
-  // TODO Make this a named method
-  bool operator==(InputAqlItemRow const& other) const noexcept;
+  // This the old operator==. It tests if both rows refer to the _same_ block and
+  // the _same_ index.
+  [[nodiscard]] bool isSameBlockAndIndex(InputAqlItemRow const& other) const noexcept;
 
-  bool operator!=(InputAqlItemRow const& other) const noexcept;
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   // This checks whether the rows are equivalent, in the sense that they hold
   // the same number of registers and their entry-AqlValues compare equal.
   // In maintainer mode, it also asserts that the number of registers of the
@@ -103,6 +102,7 @@ class InputAqlItemRow {
   // Invalid rows are considered equivalent.
   [[nodiscard]] bool equates(InputAqlItemRow const& other,
                              velocypack::Options const* options) const noexcept;
+#endif
 
   bool isInitialized() const noexcept;
 
@@ -110,23 +110,21 @@ class InputAqlItemRow {
 
   bool isFirstDataRowInBlock() const noexcept;
 
-  bool isLastRowInBlock() const noexcept;
-
   bool blockHasMoreDataRowsAfterThis() const noexcept;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /**
    * @brief Compare the underlying block. Only for assertions.
    */
-  bool internalBlockIs(SharedAqlItemBlockPtr const& other) const;
+  bool internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const;
 #endif
 
   /**
    * @brief Clone a new ItemBlock from this row
    */
   SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
-                                     std::unordered_set<RegisterId> const& registers,
-                                     size_t newNrRegs) const;
+                                     RegIdFlatSet const& registers,
+                                     RegisterCount newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor

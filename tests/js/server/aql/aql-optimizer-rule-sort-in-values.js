@@ -240,7 +240,92 @@ function optimizerRuleTestSuite () {
                       );
         }
       });
-    }
+    },
+    
+    testAvoidDuplicateSortWithSorted : function () {
+      let query = "LET values = SORTED(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
+
+      let plan = AQL_EXPLAIN(query).plan;
+      // rule should not kick in, as input is already sorted
+      assertEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
+
+      let nodes = plan.nodes;
+      assertEqual("SingletonNode", nodes[0].type);
+      assertEqual("CalculationNode", nodes[1].type);
+      assertEqual("function call", nodes[1].expression.type);
+      assertEqual("SORTED", nodes[1].expression.name);
+      assertEqual(1, nodes[1].expression.subNodes.length);
+      assertEqual("array", nodes[1].expression.subNodes[0].type);
+      assertEqual(1, nodes[1].expression.subNodes[0].subNodes.length);
+      assertEqual("range", nodes[1].expression.subNodes[0].subNodes[0].type);
+      
+      let outVariableOfSort = nodes[1].outVariable.id;
+
+      assertEqual("CalculationNode", nodes[4].type);
+      assertEqual("compare in", nodes[4].expression.type);
+      assertTrue(nodes[4].expression.sorted);
+      assertEqual("reference", nodes[4].expression.subNodes[0].type);
+      assertEqual("j", nodes[4].expression.subNodes[0].name);
+      assertEqual("reference", nodes[4].expression.subNodes[1].type);
+      assertEqual(outVariableOfSort, nodes[4].expression.subNodes[1].id);
+    },
+    
+    testAvoidDuplicateSortWithSortedUnique : function () {
+      let query = "LET values = SORTED_UNIQUE(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
+
+      let plan = AQL_EXPLAIN(query).plan;
+      // rule should not kick in, as input is already sorted
+      assertEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
+
+      let nodes = plan.nodes;
+      assertEqual("SingletonNode", nodes[0].type);
+      assertEqual("CalculationNode", nodes[1].type);
+      assertEqual("function call", nodes[1].expression.type);
+      assertEqual("SORTED_UNIQUE", nodes[1].expression.name);
+      assertEqual("array", nodes[1].expression.subNodes[0].type);
+      assertEqual(1, nodes[1].expression.subNodes[0].subNodes.length);
+      assertEqual("range", nodes[1].expression.subNodes[0].subNodes[0].type);
+      
+      let outVariableOfSort = nodes[1].outVariable.id;
+
+      assertEqual("CalculationNode", nodes[4].type);
+      assertEqual("compare in", nodes[4].expression.type);
+      assertTrue(nodes[4].expression.sorted);
+      assertEqual("reference", nodes[4].expression.subNodes[0].type);
+      assertEqual("j", nodes[4].expression.subNodes[0].name);
+      assertEqual("reference", nodes[4].expression.subNodes[1].type);
+      assertEqual(outVariableOfSort, nodes[4].expression.subNodes[1].id);
+    },
+
+    testMovingOutOfLoops : function () {
+      let query = "LET values = (FOR i IN 1..10000 RETURN i) FOR j IN 1..100 FILTER j IN values RETURN j";
+
+      let plan = AQL_EXPLAIN(query).plan;
+      // rule should kick in, but the SORTED_UNIQUE calculation is expensive
+      // and should not be moved into the loop
+      assertNotEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
+
+      let nodes = plan.nodes;
+      assertEqual("SingletonNode", nodes[0].type);
+      assertEqual("CalculationNode", nodes[1].type);
+
+      // ignore the entire subquery contents
+      assertEqual("SubqueryStartNode", nodes[2].type);
+      assertEqual("SubqueryEndNode", nodes[4].type);
+
+      assertEqual("CalculationNode", nodes[6].type);
+      assertEqual("function call", nodes[6].expression.type);
+      assertEqual("SORTED_UNIQUE", nodes[6].expression.name);
+      let outVariableOfSort = nodes[6].outVariable.id;
+
+      assertEqual("CalculationNode", nodes[8].type);
+      assertEqual("compare in", nodes[8].expression.type);
+      assertTrue(nodes[8].expression.sorted);
+      assertEqual("reference", nodes[8].expression.subNodes[0].type);
+      assertEqual("j", nodes[8].expression.subNodes[0].name);
+      assertEqual("reference", nodes[8].expression.subNodes[1].type);
+      assertEqual(outVariableOfSort, nodes[8].expression.subNodes[1].id);
+    },
 
   };
 }

@@ -25,7 +25,7 @@ const RightAlign = styled(Cell)`
 text-align: right;
 `;
 
-const InSync = styled(CheckCircle)`
+const InSync = styled(CheckCircle as any)`
   color: #2ecc71;
   width: 12pt;
 `;
@@ -41,7 +41,7 @@ const TableRow = styled(Grid)`
   margin-bottom: 1px;
 `;
 
-const Row = styled(TableRow)`
+const Row = styled(TableRow as any)`
 color: rgb(138, 150, 159);
 font-weight: normal;
 `;

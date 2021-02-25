@@ -1,0 +1,78 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+es_US{
+    %%Parent{"es_419"}
+    Languages{
+        ace{"acehnés"}
+        alt{"altái meridional"}
+        arp{"arapaho"}
+        bas{"basa"}
+        bax{"bamun"}
+        bho{"bhojpuri"}
+        bla{"siksika"}
+        bua{"buriat"}
+        dum{"neerlandés medieval"}
+        enm{"inglés medieval"}
+        eu{"euskera"}
+        frm{"francés medieval"}
+        gan{"gan (China)"}
+        gmh{"alemán de la alta edad media"}
+        grc{"griego antiguo"}
+        gu{"gurayatí"}
+        hak{"hak"}
+        hsn{"xiang (China)"}
+        ht{"criollo haitiano"}
+        kbd{"kabardiano"}
+        krc{"karachay-balkar"}
+        lo{"lao"}
+        lus{"lushai"}
+        mga{"irlandés medieval"}
+        nan{"nan"}
+        nr{"ndebele meridional"}
+        nso{"sotho septentrional"}
+        pcm{"pcm"}
+        rm{"romanche"}
+        rn{"kiroundi"}
+        shu{"árabe chadiano"}
+        sma{"sami meridional"}
+        ss{"siswati"}
+        st{"sesotho meridional"}
+        sw_CD{"swahili del Congo"}
+        syr{"siriaco"}
+        tet{"tetún"}
+        tn{"setchwana"}
+        tyv{"tuviniano"}
+        tzm{"tamazight del Atlas Central"}
+        wo{"wolof"}
+        wuu{"wuu"}
+        xal{"kalmyk"}
+    }
+    Languages%short{
+        en_GB{"inglés (RU)"}
+    }
+    Scripts{
+        Hanb{"hanb"}
+        Mlym{"malayálam"}
+    }
+    Types{
+        collation{
+            ducet{"orden de clasificación de Unicode predeterminado"}
+        }
+        lb{
+            normal{"salto de línea normal"}
+        }
+        ms{
+            uksystem{"sistema imperial"}
+        }
+        numbers{
+            gujr{"dígitos en gujarati"}
+            knda{"números en kannada"}
+            laoo{"números en lao"}
+        }
+    }
+    Version{"2.1.47.86"}
+    characterLabelPattern{
+        historic{"{0} — Históricos"}
+        miscellaneous{"{0} — Varios"}
+    }
+}

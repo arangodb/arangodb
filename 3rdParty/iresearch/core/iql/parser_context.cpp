@@ -30,13 +30,6 @@
 #include <unordered_set>
 #include "parser_context.hpp"
 
-#if defined (__GNUC__)
-  #pragma GCC diagnostic push
-  #if (__GNUC__ >= 7)
-    #pragma GCC diagnostic ignored "-Wimplicit-fallthrough=0"
-  #endif
-#endif
-
 using namespace iresearch::iql;
 
 // -----------------------------------------------------------------------------
@@ -118,7 +111,7 @@ parser::semantic_type parser_context::sequence(
   parser::location_type const& location
 ) {
   if (location.end.column < location.begin.column ||
-      m_sData.size() < location.end.column) {
+      m_sData.size() < static_cast<size_t>(location.end.column)) {
     return *const_cast<parser::semantic_type*>(&UNKNOWN); // index out of bounds
   }
 
@@ -723,6 +716,7 @@ bool parser_context::addOrder(
       if (!node.pFnOrder && !node.pFnSequence) {
         break; // no applicable functions
       }
+    [[fallthrough]];
     case query_node::NodeType::SEQUENCE:
       m_order.emplace_back(nodeId, bAscending);
 
@@ -772,6 +766,7 @@ bool parser_context::setQuery(parser::semantic_type const& value) {
       if (!node.pFnBoolean) {
         break; // only boolean functions allowed as query root
       }
+    [[fallthrough]];
     case query_node::NodeType::UNION: // fall through
     case query_node::NodeType::INTERSECTION: // fall through
     case query_node::NodeType::BOOL_TRUE: // fall through
@@ -1422,11 +1417,3 @@ parser::semantic_type parser_context::try_eval(
 
     return value; // deterministic valuation not possible
 }
-
-#if defined (__GNUC__)
-  #pragma GCC diagnostic pop
-#endif
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------

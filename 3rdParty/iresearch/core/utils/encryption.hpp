@@ -18,7 +18,6 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_ENCRYPTION_H
@@ -26,24 +25,27 @@
 
 #include "store/data_output.hpp"
 #include "store/data_input.hpp"
-#include "utils/attributes.hpp"
+#include "utils/attribute_store.hpp"
 #include "utils/math_utils.hpp"
 #include "utils/noncopyable.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @struct encryption
 /// @brief directory encryption provider
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API encryption : public stored_attribute {
-  DECLARE_ATTRIBUTE_TYPE();
+  // FIXME check if it's possible to rename to iresearch::encryption?
+  static constexpr string_ref type_name() noexcept {
+    return "encryption";
+  }
 
   ////////////////////////////////////////////////////////////////////////////
   /// @struct stream
   ////////////////////////////////////////////////////////////////////////////
   struct stream {
-    DECLARE_UNIQUE_PTR(stream);
+    using ptr = std::unique_ptr<stream>;
 
     virtual ~stream() = default;
 
@@ -64,21 +66,19 @@ struct IRESEARCH_API encryption : public stored_attribute {
   /// @brief an allocated block of header memory for a new file
   virtual bool create_header(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 
   /// @returns a cipher stream for a file given file name
   virtual stream::ptr create_stream(
     const std::string& filename,
-    byte_type* header
-  ) = 0;
+    byte_type* header) = 0;
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           helpers
 // -----------------------------------------------------------------------------
 
-inline irs::encryption* get_encryption(const attribute_store& attrs) NOEXCEPT {
+inline irs::encryption* get_encryption(const attribute_store& attrs) noexcept {
   auto enc = attrs.get<irs::encryption>();
 
   return enc ? enc.get() : nullptr;
@@ -108,6 +108,11 @@ IRESEARCH_API bool decrypt(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+///// @brief reasonable default value for a buffer serving encryption
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t DEFAULT_ENCRYPTION_BUFFER_SIZE = 1024;
+
+////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
@@ -115,20 +120,18 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
   encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t buf_size
-  );
+    size_t num_buffers);
 
   encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
-    size_t buf_size
-  );
+    size_t num_buffers);
 
   virtual void flush() override final;
 
   virtual void close() override final;
 
-  virtual size_t file_pointer() const override final;
+  virtual size_t file_pointer() const noexcept override final;
 
   virtual void write_byte(byte_type b) override final;
 
@@ -148,11 +151,11 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
     return out_->checksum();
   }
 
-  size_t buffer_size() const NOEXCEPT { return buf_size_; }
+  size_t buffer_size() const noexcept { return buf_size_; }
 
-  const index_output& stream() const NOEXCEPT { return *out_; }
+  const index_output& stream() const noexcept { return *out_; }
 
-  index_output::ptr release() NOEXCEPT {
+  index_output::ptr release() noexcept {
     return std::move(managed_out_);
   }
 
@@ -180,31 +183,31 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
     index_input& in,
     encryption::stream& cipher,
     size_t buf_size,
-    size_t padding = 0
-  );
+    size_t padding = 0);
 
   encrypted_input(
     index_input::ptr&& in,
     encryption::stream& cipher,
     size_t buf_size,
-    size_t padding = 0
-  );
+    size_t padding = 0);
 
   virtual index_input::ptr dup() const override final;
 
   virtual index_input::ptr reopen() const override final;
 
-  virtual size_t length() const override final {
+  virtual size_t length() const noexcept override final {
     return length_;
   }
 
   virtual int64_t checksum(size_t offset) const override final;
 
-  const index_input& stream() const NOEXCEPT {
+  size_t buffer_size() const noexcept { return buf_size_; }
+
+  const index_input& stream() const noexcept {
     return *in_;
   }
 
-  index_input::ptr release() NOEXCEPT {
+  index_input::ptr release() noexcept {
     return std::move(managed_in_);
   }
 
@@ -214,8 +217,10 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
   virtual size_t read_internal(byte_type* b, size_t count) override final;
 
  private:
-  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) NOEXCEPT;
+  encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
+  size_t buf_size_;
+  std::unique_ptr<byte_type[]> buf_;
   index_input::ptr managed_in_;
   index_input* in_;
   encryption::stream* cipher_;
@@ -224,6 +229,6 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
 }; // encrypted_input
 
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_ENCRYPTION_H

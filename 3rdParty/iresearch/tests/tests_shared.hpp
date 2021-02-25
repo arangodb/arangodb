@@ -32,13 +32,9 @@
 
 #include "utils/utf8_path.hpp"
 
-NS_BEGIN(cmdline)
+namespace cmdline {
 class parser;
-NS_END // cmdline
-
-inline void TODO_IMPLEMENT() {
-  std::cerr << "\x1b[31mTODO: implement me" << std::endl;
-}
+} // cmdline
 
 class test_env {
  public:
@@ -59,7 +55,7 @@ class test_env {
  private:
   static void make_directories();
   static void parse_command_line(cmdline::parser& vm);
-  static void prepare(const cmdline::parser& vm );
+  static bool prepare(const cmdline::parser& vm );
 
   static int argc_;
   static char** argv_;

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -20,8 +21,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_PREGEL_ALGOS_WCC_H
-#define ARANGODB_PREGEL_ALGOS_WCC_H 1
+#ifndef ARANGODB_PREGEL_ALGOS_CONNECTED_COMPONENTS_H
+#define ARANGODB_PREGEL_ALGOS_CONNECTED_COMPONENTS_H 1
 
 #include "Pregel/Algorithm.h"
 
@@ -34,7 +35,7 @@ namespace algos {
 /// number of supersteps necessary is equal to the length of the maximum
 /// diameter of all components + 1
 /// doesn't necessarily leads to a correct result on unidirected graphs
-struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
+struct ConnectedComponents : public SimpleAlgorithm<uint64_t, uint8_t, uint64_t> {
  public:
   explicit ConnectedComponents(application_features::ApplicationServer& server, VPackSlice userParams)
       : SimpleAlgorithm(server, "ConnectedComponents", userParams) {}
@@ -42,16 +43,16 @@ struct ConnectedComponents : public SimpleAlgorithm<int64_t, int64_t, int64_t> {
   bool supportsAsyncMode() const override { return true; }
   bool supportsCompensation() const override { return true; }
 
-  GraphFormat<int64_t, int64_t>* inputFormat() const override;
+  GraphFormat<uint64_t, uint8_t>* inputFormat() const override;
 
-  MessageFormat<int64_t>* messageFormat() const override {
-    return new IntegerMessageFormat();
+  MessageFormat<uint64_t>* messageFormat() const override {
+    return new IntegerMessageFormat<uint64_t>();
   }
-  MessageCombiner<int64_t>* messageCombiner() const override {
-    return new MinCombiner<int64_t>();
+  MessageCombiner<uint64_t>* messageCombiner() const override {
+    return new MinCombiner<uint64_t>();
   }
-  VertexComputation<int64_t, int64_t, int64_t>* createComputation(WorkerConfig const*) const override;
-  VertexCompensation<int64_t, int64_t, int64_t>* createCompensation(WorkerConfig const*) const override;
+  VertexComputation<uint64_t, uint8_t, uint64_t>* createComputation(WorkerConfig const*) const override;
+  VertexCompensation<uint64_t, uint8_t, uint64_t>* createCompensation(WorkerConfig const*) const override;
 };
 }  // namespace algos
 }  // namespace pregel

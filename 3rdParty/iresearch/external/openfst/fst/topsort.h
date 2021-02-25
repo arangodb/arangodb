@@ -34,13 +34,13 @@ class TopOrderVisitor {
     *acyclic_ = true;
   }
 
-  FST_CONSTEXPR bool InitState(StateId, StateId) const { return true; }
+  constexpr bool InitState(StateId, StateId) const { return true; }
 
-  FST_CONSTEXPR bool TreeArc(StateId, const Arc &) const { return true; }
+  constexpr bool TreeArc(StateId, const Arc &) const { return true; }
 
   bool BackArc(StateId, const Arc &) { return (*acyclic_ = false); }
 
-  FST_CONSTEXPR bool ForwardOrCrossArc(StateId, const Arc &) const { return true; }
+  constexpr bool ForwardOrCrossArc(StateId, const Arc &) const { return true; }
 
   void FinishState(StateId s, StateId, const Arc *) { finish_->push_back(s); }
 

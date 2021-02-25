@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -26,6 +27,7 @@
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/FileUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/Logger.h"
@@ -49,7 +51,7 @@ namespace arangodb {
 ClientFeature::ClientFeature(application_features::ApplicationServer& server,
                              bool allowJwtSecret, double connectionTimeout, double requestTimeout)
     : HttpEndpointProvider(server, "Client"),
-      _databaseName("_system"),
+      _databaseName(StaticStrings::SystemDatabase),
       _endpoint(Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)),
       _username("root"),
       _password(""),
@@ -108,7 +110,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--server.force-json",
                      "force to not use VelocyPack for easier debugging",
                      new BooleanParameter(&_forceJson),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30600);
 
   if (_allowJwtSecret) {
@@ -123,7 +125,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
         "connections - even when a new connection to another server is "
         "created",
         new BooleanParameter(&_askJwtSecret),
-        arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+        arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
     options->addOption("--server.jwt-secret-keyfile",
                        "if this option is specified, the jwt secret will be loaded "
@@ -133,7 +135,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                        "connections - even when a new connection to another server is "
                        "created",
                        new StringParameter(&_jwtSecretFile),
-                       arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   }
 
   options->addOption("--server.connection-timeout",
@@ -149,7 +151,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--server.max-packet-size",
       "maximum packet size (in bytes) for client/server communication",
       new UInt64Parameter(&_maxPacketSize),
-      arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 
   std::unordered_set<uint64_t> const sslProtocols = availableSslProtocols();
 
@@ -160,7 +162,7 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.code-page",
                      "Windows code page to use; defaults to UTF8",
                      new UInt16Parameter(&_codePage),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs, arangodb::options::Flags::OsWindows, arangodb::options::Flags::Hidden));
 #endif
 }
 
@@ -232,7 +234,20 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << "multiple jwt secret sources specified";
     FATAL_ERROR_EXIT();
   }
-
+  
+  if (!_endpoint.empty() &&
+      (_endpoint != "none") &&
+      (_endpoint != Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+    std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(_endpoint));
+    if (endpoint != nullptr && endpoint->isBroadcastBind()) {
+      LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
+        << "invalid value for --server.endpoint ('" << _endpoint <<
+        "') - 0.0.0.0 and :: are only allowed for servers binding - not for clients connecting." <<
+        " Choose an IP address of your machine instead." <<
+        " See https://en.wikipedia.org/wiki/0.0.0.0 for more details.";
+      FATAL_ERROR_EXIT();
+    }
+  }
   SimpleHttpClientParams::setDefaultMaxPacketSize(_maxPacketSize);
 }
 
@@ -321,8 +336,8 @@ std::unique_ptr<GeneralClientConnection> ClientFeature::createConnection(std::st
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return connection;
 }
@@ -346,8 +361,8 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   }
 
   std::unique_ptr<GeneralClientConnection> connection(
-      GeneralClientConnection::factory(endpoint, _requestTimeout, _connectionTimeout,
-                                       _retries, _sslProtocol));
+      GeneralClientConnection::factory(server(), endpoint, _requestTimeout,
+                                       _connectionTimeout, _retries, _sslProtocol));
 
   return std::make_unique<SimpleHttpClient>(connection, params);
 }

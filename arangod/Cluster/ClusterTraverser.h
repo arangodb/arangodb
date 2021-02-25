@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,45 +24,42 @@
 #ifndef ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H
 #define ARANGOD_CLUSTER_CLUSTER_TRAVERSER_H 1
 
-#include "Cluster/TraverserEngineRegistry.h"
+#include "Aql/types.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace arangodb {
-class CollectionNameResolver;
-namespace transaction {
-class Methods;
-}
+#include <velocypack/HashedStringRef.h>
 
+namespace arangodb {
 namespace traverser {
 class ClusterEdgeCursor;
-
-class PathEnumerator;
 
 class ClusterTraverser final : public Traverser {
   friend class ClusterEdgeCursor;
 
  public:
   ClusterTraverser(TraverserOptions* opts,
-                   std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines,
-                   std::string const& dbname, transaction::Methods* trx);
+                   std::unordered_map<ServerID, aql::EngineId> const* engines,
+                   std::string const& dbname);
 
   ~ClusterTraverser() = default;
 
   void setStartVertex(std::string const& id) override;
-  
+
  protected:
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
   ///        Also apppends the _id value of the vertex in the given vector
 
-  bool getVertex(arangodb::velocypack::Slice, std::vector<arangodb::velocypack::StringRef>&) override;
+  bool getVertex(arangodb::velocypack::Slice, arangodb::traverser::EnumeratedPath& path) override;
 
   /// @brief Function to load the other sides vertex of an edge
   ///        Returns true if the vertex passes filtering conditions
-  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef const sourceVertexId,
+  bool getSingleVertex(arangodb::velocypack::Slice edge, arangodb::velocypack::StringRef sourceVertexId,
                        uint64_t depth, arangodb::velocypack::StringRef& targetVertexId) override;
+
+  bool getVertex(arangodb::velocypack::StringRef vertex, size_t depth) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Function to fetch the real data of a vertex into an AQLValue
@@ -81,17 +78,21 @@ class ClusterTraverser final : public Traverser {
   //////////////////////////////////////////////////////////////////////////////
 
   void destroyEngines() override;
+  void clear() override;
 
  private:
   void fetchVertices();
 
-  std::unordered_map<arangodb::velocypack::StringRef, VPackSlice> _vertices;
+  /// @brief build the (single) path enumerator of this traverser
+  void createEnumerator();
 
-  std::string _dbname;
+  std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice> _vertices;
 
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
+  std::string const _dbname;
 
-  std::unordered_set<arangodb::velocypack::StringRef> _verticesToFetch;
+  std::unordered_map<ServerID, aql::EngineId> const* _engines;
+
+  std::unordered_set<arangodb::velocypack::HashedStringRef> _verticesToFetch;
 };
 
 }  // namespace traverser

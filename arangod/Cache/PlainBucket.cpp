@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,8 +18,11 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <atomic>
+#include <cstdint>
 
 #include "Cache/PlainBucket.h"
 
@@ -27,17 +30,14 @@
 #include "Basics/debugging.h"
 #include "Cache/CachedValue.h"
 
-#include <stdint.h>
-#include <atomic>
-
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 PlainBucket::PlainBucket() {
   _state.lock();
   clear();
 }
 
-bool PlainBucket::lock(uint64_t maxTries) { return _state.lock(maxTries); }
+bool PlainBucket::lock(std::uint64_t maxTries) { return _state.lock(maxTries); }
 
 void PlainBucket::unlock() {
   TRI_ASSERT(_state.isLocked());
@@ -65,11 +65,12 @@ bool PlainBucket::isFull() const {
   return !hasEmptySlot;
 }
 
-CachedValue* PlainBucket::find(uint32_t hash, void const* key, size_t keySize, bool moveToFront) {
+CachedValue* PlainBucket::find(std::uint32_t hash, void const* key,
+                               std::size_t keySize, bool moveToFront) {
   TRI_ASSERT(isLocked());
   CachedValue* result = nullptr;
 
-  for (size_t i = 0; i < slotsData; i++) {
+  for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedHashes[i] == 0) {
       break;
     }
@@ -86,9 +87,9 @@ CachedValue* PlainBucket::find(uint32_t hash, void const* key, size_t keySize, b
 }
 
 // requires there to be an open slot, otherwise will not be inserted
-void PlainBucket::insert(uint32_t hash, CachedValue* value) {
+void PlainBucket::insert(std::uint32_t hash, CachedValue* value) {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < slotsData; i++) {
+  for (std::size_t i = 0; i < slotsData; i++) {
     if (_cachedHashes[i] == 0) {
       // found an empty slot
       _cachedHashes[i] = hash;
@@ -101,7 +102,7 @@ void PlainBucket::insert(uint32_t hash, CachedValue* value) {
   }
 }
 
-CachedValue* PlainBucket::remove(uint32_t hash, void const* key, size_t keySize) {
+CachedValue* PlainBucket::remove(std::uint32_t hash, void const* key, std::size_t keySize) {
   TRI_ASSERT(isLocked());
   CachedValue* value = find(hash, key, keySize, false);
   if (value != nullptr) {
@@ -113,8 +114,8 @@ CachedValue* PlainBucket::remove(uint32_t hash, void const* key, size_t keySize)
 
 CachedValue* PlainBucket::evictionCandidate(bool ignoreRefCount) const {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == nullptr) {
       continue;
     }
@@ -128,8 +129,8 @@ CachedValue* PlainBucket::evictionCandidate(bool ignoreRefCount) const {
 
 void PlainBucket::evict(CachedValue* value, bool optimizeForInsertion) {
   TRI_ASSERT(isLocked());
-  for (size_t i = 0; i < slotsData; i++) {
-    size_t slot = slotsData - (i + 1);
+  for (std::size_t i = 0; i < slotsData; i++) {
+    std::size_t slot = slotsData - (i + 1);
     if (_cachedData[slot] == value) {
       // found a match
       _cachedHashes[slot] = 0;
@@ -144,7 +145,7 @@ void PlainBucket::clear() {
   TRI_ASSERT(isLocked());
   _state.clear();  // "clear" will keep the lock!
 
-  for (size_t i = 0; i < slotsData; ++i) {
+  for (std::size_t i = 0; i < slotsData; ++i) {
     _cachedHashes[i] = 0;
     _cachedData[i] = nullptr;
   }
@@ -152,11 +153,11 @@ void PlainBucket::clear() {
   _state.unlock();
 }
 
-void PlainBucket::moveSlot(size_t slot, bool moveToFront) {
+void PlainBucket::moveSlot(std::size_t slot, bool moveToFront) {
   TRI_ASSERT(isLocked());
-  uint32_t hash = _cachedHashes[slot];
+  std::uint32_t hash = _cachedHashes[slot];
   CachedValue* value = _cachedData[slot];
-  size_t i = slot;
+  std::size_t i = slot;
   if (moveToFront) {
     // move slot to front
     for (; i >= 1; i--) {
@@ -173,3 +174,5 @@ void PlainBucket::moveSlot(size_t slot, bool moveToFront) {
   _cachedHashes[i] = hash;
   _cachedData[i] = value;
 }
+
+}  // namespace arangodb::cache

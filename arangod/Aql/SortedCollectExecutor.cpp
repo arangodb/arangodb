@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
+/// @author Lars Maier
 /// @author Tobias Goedderz
 /// @author Michael Hackstein
 /// @author Heiko Kernbach
@@ -26,8 +28,8 @@
 #include "SortedCollectExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/ConditionalDeleter.h"
@@ -35,24 +37,27 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <Logger/LogMacros.h>
 #include <utility>
+
+// Set this to true to activate devel logging
+#define INTERNAL_LOG_SC LOG_DEVEL_IF(false)
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
 static const AqlValue EmptyValue;
 
-SortedCollectExecutor::CollectGroup::CollectGroup(bool count, Infos& infos)
+SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
-      count(count),
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
-      _shouldDeleteBuilderBuffer(true) {
+      _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(Aggregator::fromTypeString(infos.getTransaction(), aggName));
+    aggregators.emplace_back(Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
-};
+}
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
@@ -79,11 +84,8 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
   }
 }
 
-void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
-  _shouldDeleteBuilderBuffer = true;
-  ConditionalDeleter<VPackBuffer<uint8_t>> deleter(_shouldDeleteBuilderBuffer);
-  std::shared_ptr<VPackBuffer<uint8_t>> buffer(new VPackBuffer<uint8_t>, deleter);
-  _builder = VPackBuilder(buffer);
+void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
+  _builder.clear();
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
@@ -118,45 +120,32 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow& input) {
 }
 
 SortedCollectExecutorInfos::SortedCollectExecutorInfos(
-    RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-    std::unordered_set<RegisterId> registersToClear,
-    std::unordered_set<RegisterId> registersToKeep,
-    std::unordered_set<RegisterId>&& readableInputRegisters,
-    std::unordered_set<RegisterId>&& writeableOutputRegisters,
     std::vector<std::pair<RegisterId, RegisterId>>&& groupRegisters,
     RegisterId collectRegister, RegisterId expressionRegister,
     Variable const* expressionVariable, std::vector<std::string>&& aggregateTypes,
-    std::vector<std::pair<std::string, RegisterId>>&& variables,
+    std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    transaction::Methods* trxPtr, bool count)
-    : ExecutorInfos(std::make_shared<std::unordered_set<RegisterId>>(readableInputRegisters),
-                    std::make_shared<std::unordered_set<RegisterId>>(writeableOutputRegisters),
-                    nrInputRegisters, nrOutputRegisters,
-                    std::move(registersToClear), std::move(registersToKeep)),
-      _aggregateTypes(aggregateTypes),
-      _aggregateRegisters(aggregateRegisters),
-      _groupRegisters(groupRegisters),
+    velocypack::Options const* opts)
+    : _aggregateTypes(std::move(aggregateTypes)),
+      _aggregateRegisters(std::move(aggregateRegisters)),
+      _groupRegisters(std::move(groupRegisters)),
       _collectRegister(collectRegister),
       _expressionRegister(expressionRegister),
-      _variables(variables),
+      _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _count(count),
-      _trxPtr(trxPtr) {}
+      _vpackOptions(opts) {}
 
-SortedCollectExecutor::SortedCollectExecutor(Fetcher& fetcher, Infos& infos)
-    : _infos(infos),
-      _fetcher(fetcher),
-      _currentGroup(infos.getCount(), infos),
-      _fetcherDone(false) {
+SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
+    : _infos(infos), _currentGroup(infos) {
   // reserve space for the current row
   _currentGroup.initialize(_infos.getGroupRegisters().size());
   // reset and recreate new group
   // Initialize group with invalid input
   InputAqlItemRow emptyInput{CreateInvalidInputRowHint{}};
   _currentGroup.reset(emptyInput);
-};
+}
 
-void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
+void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow const& input) {
   // remember the last valid row we had
   _lastInputRow = input;
 
@@ -166,7 +155,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
     TRI_ASSERT(!this->aggregators.empty());
     TRI_ASSERT(infos.getAggregatedRegisters().size() > j);
     RegisterId const reg = infos.getAggregatedRegisters()[j].second;
-    if (reg != RegisterPlan::MaxRegisterId) {
+    if (reg.value() != RegisterId::maxRegisterId) {
       it->reduce(input.getValue(reg));
     } else {
       it->reduce(EmptyValue);
@@ -176,24 +165,21 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSome") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (count) {
-      // increase the count
-      groupLength++;
-    } else if (infos.getExpressionVariable() != nullptr) {
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getTransaction(), _builder, false);
+      input.getValue(infos.getExpressionRegister()).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                                 /*resolveExternals*/false,
+                                                                 /*allowUnindexed*/false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
-      for (auto const& pair : infos.getVariables()) {
-        // Only collect input variables, the variable names DO! contain more.
-        // e.g. the group variable name
-        if (pair.second < infos.numberOfInputRegisters()) {
-          _builder.add(VPackValue(pair.first));
-          input.getValue(pair.second).toVelocyPack(infos.getTransaction(), _builder, false);
-        }
+      for (auto const& pair : infos.getInputVariables()) {
+        _builder.add(VPackValue(pair.first));
+        input.getValue(pair.second).toVelocyPack(infos.getVPackOptions(), _builder,
+                                                 /*resolveExternals*/false,
+                                                 /*allowUnindexed*/false);
       }
       _builder.close();
     }
@@ -203,7 +189,7 @@ void SortedCollectExecutor::CollectGroup::addLine(InputAqlItemRow& input) {
   }
 }
 
-bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow& input) {
+bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow const& input) const {
   // if we do not have valid input, return false
   if (!input.isInitialized()) {
     return false;
@@ -213,9 +199,15 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow& input) {
     size_t i = 0;
 
     for (auto& it : infos.getGroupRegisters()) {
+      // Note that `None` and `null` are considered equal by AqlValue::Compare,
+      // which is a problem if we encounter `null` values on the very first row,
+      // when groupValues is still uninitialized and thus `None`.
+      if (this->groupValues[i].isNone()) {
+        return false;
+      }
       // we already had a group, check if the group has changed
       // compare values 1 1 by one
-      int cmp = AqlValue::Compare(infos.getTransaction(), this->groupValues[i],
+      int cmp = AqlValue::Compare(infos.getVPackOptions(), this->groupValues[i],
                                   input.getValue(it.second), false);
 
       if (cmp != 0) {
@@ -232,14 +224,16 @@ bool SortedCollectExecutor::CollectGroup::isSameGroup(InputAqlItemRow& input) {
 void SortedCollectExecutor::CollectGroup::groupValuesToArray(VPackBuilder& builder) {
   builder.openArray();
   for (auto const& value : groupValues) {
-    value.toVelocyPack(infos.getTransaction(), builder, false);
+    value.toVelocyPack(infos.getVPackOptions(), builder,
+                       /*resolveExternals*/false,
+                       /*allowUnindexed*/false);
   }
 
   builder.close();
 }
 
 void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output,
-                                                        InputAqlItemRow& input) {
+                                                        InputAqlItemRow const& input) {
   // Thanks to the edge case that we have to emit a row even if we have no
   // input We cannot assert here that the input row is valid ;(
 
@@ -268,43 +262,79 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(OutputAqlItemRow& output
   }
 
   // set the group values
-  if (infos.getCollectRegister() != RegisterPlan::MaxRegisterId) {
-    if (infos.getCount()) {
-      // only set group count in result register
-      output.cloneValueInto(infos.getCollectRegister(), _lastInputRow,
-                            AqlValue(AqlValueHintUInt(static_cast<uint64_t>(this->groupLength))));
-    } else {
-      TRI_ASSERT(_builder.isOpenArray());
-      _builder.close();
+  if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+    TRI_ASSERT(_builder.isOpenArray());
+    _builder.close();
 
-      auto buffer = _builder.steal();
-      AqlValue val(buffer.get(), _shouldDeleteBuilderBuffer);
-      AqlValueGuard guard{val, true};
+    AqlValue val(std::move(_buffer)); // _buffer still usable after
+    AqlValueGuard guard{val, true};
+    TRI_ASSERT(_buffer.size() == 0);
+    _builder.clear(); // necessary
 
-      output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
-    }
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, guard);
   }
+
+  output.advanceRow();
 }
 
-std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlItemRow& output) {
+[[nodiscard]] auto SortedCollectExecutor::expectedNumberOfRowsNew(
+    AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept -> size_t {
+  if (input.finalState() == ExecutorState::DONE) {
+    // Worst case assumption:
+    // For every input row we have a new group.
+    // If we have an open group right now, we need to add 1 to this estimate.
+    // We will never produce more then asked for
+    auto estOnInput = input.countDataRows();
+    if (_currentGroup.isValid()) {
+      // Have one group still to write,
+      // that is not part of this input.
+      estOnInput += 1;
+    }
+    if (estOnInput == 0 && _infos.getGroupRegisters().empty()) {
+      // Special case, on empty input we will produce 1 output
+      estOnInput = 1;
+    }
+    return std::min(call.getLimit(), estOnInput);
+  }
+  // Otherwise we do not know.
+  return call.getLimit();
+}
+
+auto SortedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
+                                        OutputAqlItemRow& output)
+    -> std::tuple<ExecutorState, Stats, AqlCall> {
   TRI_IF_FAILURE("SortedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  ExecutionState state;
-  InputAqlItemRow input{CreateInvalidInputRowHint{}};
+  AqlCall clientCall = output.getClientCall();
+  TRI_ASSERT(clientCall.offset == 0);
 
-  while (true) {
-    if (_fetcherDone) {
-      if (_currentGroup.isValid()) {
-        _currentGroup.writeToOutput(output, input);
-        InputAqlItemRow input{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
-        TRI_ASSERT(!_currentGroup.isValid());
-        return {ExecutionState::DONE, {}};
+  bool pendingGroup = false;
+
+  while (!output.isFull()) {
+    auto [state, input] = inputRange.peekDataRow();
+
+    INTERNAL_LOG_SC << "SortedCollectExecutor::produceRows " << state << " "
+                 << input.isInitialized();
+
+    if (state == ExecutorState::DONE && !(_haveSeenData || input.isInitialized())) {
+      // we have never been called with data
+      INTERNAL_LOG_SC << "never called with data";
+      if (_infos.getGroupRegisters().empty()) {
+        // by definition we need to emit one collect row
+        _currentGroup.writeToOutput(output, InputAqlItemRow{CreateInvalidInputRowHint{}});
       }
-      return {ExecutionState::DONE, {}};
+      break;
     }
+
+    // either state != DONE or we have an input row
+    TRI_ASSERT(state == ExecutorState::HASMORE || state == ExecutorState::DONE);
+    if (!input.isInitialized() && state != ExecutorState::DONE) {
+      INTERNAL_LOG_SC << "need more input rows";
+      break;
+    }
+
     TRI_IF_FAILURE("SortedCollectBlock::getOrSkipSomeOuter") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -313,73 +343,125 @@ std::pair<ExecutionState, NoStats> SortedCollectExecutor::produceRows(OutputAqlI
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    std::tie(state, input) = _fetcher.fetchRow();
+    if (input.isInitialized()) {
+      _haveSeenData = true;
 
-    if (state == ExecutionState::WAITING) {
-      return {state, {}};
-    }
+      // if we are in the same group, we need to add lines to the current group
+      if (_currentGroup.isSameGroup(input)) {
+        INTERNAL_LOG_SC << "input is same group";
+        _currentGroup.addLine(input);
 
-    if (state == ExecutionState::DONE) {
-      _fetcherDone = true;
-    }
-
-    // if we are in the same group, we need to add lines to the current group
-    if (_currentGroup.isSameGroup(input)) {
-      _currentGroup.addLine(input);
-
-      if (state == ExecutionState::DONE) {
-        TRI_ASSERT(!output.produced());
-        _currentGroup.writeToOutput(output, input);
-        // Invalidate group
-        input = InputAqlItemRow{CreateInvalidInputRowHint{}};
-        _currentGroup.reset(input);
-        return {ExecutionState::DONE, {}};
-      }
-    } else {
-      if (_currentGroup.isValid()) {
+      } else if (_currentGroup.isValid()) {
+        INTERNAL_LOG_SC << "input is new group, writing old group";
         // Write the current group.
         // Start a new group from input
         _currentGroup.writeToOutput(output, input);
-        TRI_ASSERT(output.produced());
+
+        if (output.isFull()) {
+          INTERNAL_LOG_SC << "now output is full, exit early";
+          pendingGroup = true;
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          break;
+        }
         _currentGroup.reset(input);  // reset and recreate new group
-        if (input.isInitialized()) {
-          return {ExecutionState::HASMORE, {}};
-        }
-        TRI_ASSERT(state == ExecutionState::DONE);
-        return {ExecutionState::DONE, {}};
+
       } else {
-        if (!input.isInitialized()) {
-          if (_infos.getGroupRegisters().empty()) {
-            // we got exactly 0 rows as input.
-            // by definition we need to emit one collect row
-            _currentGroup.writeToOutput(output, input);
-            TRI_ASSERT(output.produced());
-          }
-          TRI_ASSERT(state == ExecutionState::DONE);
-          return {ExecutionState::DONE, {}};
-        }
+        INTERNAL_LOG_SC << "generating new group";
         // old group was not valid, do not write it
         _currentGroup.reset(input);  // reset and recreate new group
       }
     }
+
+    inputRange.advanceDataRow();
+
+    bool produceMore = !output.isFull();
+    if (!produceMore) {
+      pendingGroup = true;
+      break;
+    }
+
+    if (state == ExecutorState::DONE) {
+      _currentGroup.writeToOutput(output, input);
+      _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+      break;
+    }
   }
+
+  auto newState = pendingGroup ? ExecutorState::HASMORE : inputRange.upstreamState();
+
+  INTERNAL_LOG_SC << "reporting state: " << newState;
+  return {newState, Stats{}, AqlCall{}};
 }
 
-std::pair<ExecutionState, size_t> SortedCollectExecutor::expectedNumberOfRows(size_t atMost) const {
-  if (!_fetcherDone) {
-    ExecutionState state;
-    size_t expectedRows;
-    std::tie(state, expectedRows) = _fetcher.preFetchNumberOfRows(atMost);
-    if (state == ExecutionState::WAITING) {
-      TRI_ASSERT(expectedRows == 0);
-      return {state, 0};
+auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& clientCall)
+    -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
+  TRI_IF_FAILURE("SortedCollectExecutor::skipRowsRange") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  TRI_ASSERT(clientCall.needSkipMore());
+  while (clientCall.needSkipMore()) {
+    INTERNAL_LOG_SC << "clientCall.getSkipCount() == " << clientCall.getSkipCount();
+    INTERNAL_LOG_SC << "clientCall.needSkipMore() == " << clientCall.needSkipMore();
+
+    auto [state, input] = inputRange.peekDataRow();
+
+    INTERNAL_LOG_SC << "SortedCollectExecutor::skipRowsRange " << state << " "
+                 << std::boolalpha << input.isInitialized();
+
+    if (input.isInitialized()) {
+      // we received data
+      _haveSeenData = true;
+
+      // if we are in the same group, we can skip this line
+      if (_currentGroup.isSameGroup(input)) {
+        INTERNAL_LOG_SC << "input is same group";
+        /* do nothing */
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "input is new group, skipping current group";
+          // The current group is completed, skip it and create a new one
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+          continue;
+        }
+
+        INTERNAL_LOG_SC << "group is invalid, creating new group";
+        _currentGroup.reset(input);
+      }
+      inputRange.advanceDataRow();
     }
-    return {ExecutionState::HASMORE, expectedRows + 1};
+
+    if (!clientCall.needSkipMore()) {
+      INTERNAL_LOG_SC << "stop skipping early, there could be a pending group";
+      break;
+    }
+
+    if (state == ExecutorState::DONE) {
+      if (!_haveSeenData) {
+        // we have never been called with data
+        INTERNAL_LOG_SC << "never called with data";
+        if (_infos.getGroupRegisters().empty()) {
+          // by definition we need to emit one collect row
+          clientCall.didSkip(1);
+        }
+      } else {
+        if (_currentGroup.isValid()) {
+          INTERNAL_LOG_SC << "skipping final group";
+          clientCall.didSkip(1);
+          _currentGroup.reset(InputAqlItemRow{CreateInvalidInputRowHint{}});
+        }
+      }
+      break;
+    } else if (!input.isInitialized()) {
+      TRI_ASSERT(state == ExecutorState::HASMORE);
+      INTERNAL_LOG_SC << "waiting for more data to skip";
+      break;
+    }
   }
-  // The fetcher will NOT send anything any more
-  // We will at most return the current oepn group
-  if (_currentGroup.isValid()) {
-    return {ExecutionState::HASMORE, 1};
-  }
-  return {ExecutionState::DONE, 0};
+
+  INTERNAL_LOG_SC << " skipped rows: " << clientCall.getSkipCount();
+  INTERNAL_LOG_SC << "reporting state: " << inputRange.upstreamState();
+
+  return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(), AqlCall{}};
 }

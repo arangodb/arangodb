@@ -168,7 +168,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
       }
       docsCollection.save(docs);
-      // sanity check. Should be in sync
+      // integrity check. Should be in sync and report correct result
       assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
@@ -230,7 +230,7 @@ function iResearchFeatureAqlServerSideTestSuite () {
         docs.push({ _id: "docs/" + docId, _key: docId, "indexField": i }); 
       }
       docsCollection.save(docs);
-      // sanity check. Should be in sync
+      // integrity check. Should be in sync and report correct result
       assertEqual(docs.length, db._query("FOR u IN " + docsCollectionName + 
                                          " COLLECT WITH COUNT INTO length RETURN length").toArray()[0]);
       assertEqual(docs.length, db._query("FOR u IN " + docsViewName + 
@@ -354,14 +354,11 @@ function iResearchFeatureAqlServerSideTestSuite () {
         let linksCount = 0;
         if (!isCluster) {
           let dbPath = internal.db._path();
-          if (db._engine().name === "rocksdb") {
-            dbPath = fs.safeJoin(internal.db._path(), 'databases');
-            let databases = fs.list(dbPath);
-            assertEqual(1, databases.length);
-            dbPath = fs.safeJoin(dbPath, databases[0]);
-          } else if (db._engine().name !== "mmfiles") {
-            fail("Unknown storage engine"); // if new engine is introduced, test should be updated
-          }          
+          dbPath = fs.safeJoin(internal.db._path(), 'databases');
+          let databases = fs.list(dbPath);
+          assertTrue(databases.length >= 1, databases);
+          dbPath = fs.safeJoin(dbPath, 'database-' + db._id());
+          assertTrue(fs.isDirectory(dbPath));
           let directories = fs.list(dbPath);
           // check only arangosearch-XXXX
           directories.forEach(function(candidate) {
@@ -395,8 +392,21 @@ function iResearchFeatureAqlServerSideTestSuite () {
         // on Single server we could also check fs (on cluster we are on 
         // coordinator, so nothing to do)
         // no new arangosearch folders should be present
-        let afterLinkCount = getLinksCount();
-        assertEqual(beforeLinkCount, afterLinkCount);
+        // due to race conditions in FS (on MACs specifically)
+        // we will do several attempts
+        let tryCount = 3;
+        while (tryCount > 0) {
+          let afterLinkCount = getLinksCount();
+          if (afterLinkCount === beforeLinkCount) {
+            break; // all is ok.
+          }
+          if (tryCount > 0) {
+            tryCount--;
+            require('internal').sleep(5);
+          } else {
+            assertEqual(beforeLinkCount, afterLinkCount);
+          }
+        }
       } finally {
         db._drop(docsCollectionName);
         db._dropView(docsViewName);

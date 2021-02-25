@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,22 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
+
+#include <cstdint>
+#include <cstring>
 
 #include "Cache/CachedValue.h"
 
-#include <stdint.h>
-#include <cstring>
-
 #include "Basics/debugging.h"
 
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
-const size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;
+const std::size_t CachedValue::_headerAllocSize = sizeof(CachedValue) + CachedValue::_padding;
 
 CachedValue* CachedValue::copy() const {
-  uint8_t* buf = new uint8_t[size()];
+  // cppcheck detects a memory leak here for "buf", but this is a false positive.
+  // cppcheck-suppress *
+  std::uint8_t* buf = new std::uint8_t[size()];
   CachedValue* value = nullptr;
   try {
     value = new (buf + offset()) CachedValue(*this);
@@ -42,49 +44,46 @@ CachedValue* CachedValue::copy() const {
     return nullptr;
   }
 
+  // cppcheck-suppress *
   return value;
 }
 
-CachedValue* CachedValue::construct(void const* k, size_t kSize, void const* v, size_t vSize) {
+CachedValue* CachedValue::construct(void const* k, std::size_t kSize,
+                                    void const* v, std::size_t vSize) {
   if (kSize == 0 || k == nullptr || (vSize > 0 && v == nullptr) ||
       kSize > maxKeySize || vSize > maxValueSize) {
     return nullptr;
   }
 
-  uint8_t* buf = new uint8_t[_headerAllocSize + kSize + vSize];
-  CachedValue* cv = nullptr;
-  try {
-    uint8_t* aligned = reinterpret_cast<uint8_t*>(
-        (reinterpret_cast<size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
-    size_t offset = buf - aligned;
-    cv = new (aligned) CachedValue(offset, k, kSize, v, vSize);
-  } catch (...) {
-    delete[] buf;
-    return nullptr;
-  }
-
-  return cv;
+  std::uint8_t* buf = new std::uint8_t[_headerAllocSize + kSize + vSize];
+  std::uint8_t* aligned = reinterpret_cast<std::uint8_t*>(
+      (reinterpret_cast<std::size_t>(buf) + _headerAllocOffset) & _headerAllocMask);
+  std::size_t offset = buf - aligned;
+  // ctor of CachedValue is noexcept
+  return new (aligned) CachedValue(offset, k, kSize, v, vSize);
 }
 
 void CachedValue::operator delete(void* ptr) {
   CachedValue* cv = reinterpret_cast<CachedValue*>(ptr);
-  size_t offset = cv->offset();
+  std::size_t offset = cv->offset();
   cv->~CachedValue();
-  delete[](reinterpret_cast<uint8_t*>(ptr) - offset);
+  delete[](reinterpret_cast<std::uint8_t*>(ptr) - offset);
 }
 
-CachedValue::CachedValue(size_t off, void const* k, size_t kSize, void const* v,
-                         size_t vSize) noexcept
+CachedValue::CachedValue(std::size_t off, void const* k, std::size_t kSize,
+                         void const* v, std::size_t vSize) noexcept
     : _refCount(0),
-      _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
-      _valueSize(static_cast<uint32_t>(vSize)) {
-  std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
+      _keySize(static_cast<std::uint32_t>(kSize + (off << _offsetShift))),
+      _valueSize(static_cast<std::uint32_t>(vSize)) {
+  std::memcpy(const_cast<std::uint8_t*>(key()), k, kSize);
   if (vSize > 0) {
-    std::memcpy(const_cast<uint8_t*>(value()), v, vSize);
+    std::memcpy(const_cast<std::uint8_t*>(value()), v, vSize);
   }
 }
 
 CachedValue::CachedValue(CachedValue const& other) noexcept
     : _refCount(0), _keySize(other._keySize), _valueSize(other._valueSize) {
-  std::memcpy(const_cast<uint8_t*>(key()), other.key(), keySize() + valueSize());
+  std::memcpy(const_cast<std::uint8_t*>(key()), other.key(), keySize() + valueSize());
 }
+
+}  // namespace arangodb::cache

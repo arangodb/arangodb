@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,8 @@
 #include "ShadowAqlItemRow.h"
 
 #include "Basics/VelocyPackHelper.h"
-#include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Transaction/Methods.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -32,50 +33,48 @@ using namespace arangodb::aql;
 ShadowAqlItemRow::ShadowAqlItemRow(SharedAqlItemBlockPtr block, size_t baseIndex)
     : _block(std::move(block)), _baseIndex(baseIndex) {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(_baseIndex < _block->size());
+  TRI_ASSERT(_baseIndex < _block->numRows());
   TRI_ASSERT(_block->isShadowRow(_baseIndex));
 }
 
-RegisterCount ShadowAqlItemRow::getNrRegisters() const noexcept {
-  return block().getNrRegs();
+RegisterCount ShadowAqlItemRow::getNumRegisters() const noexcept {
+  return block().numRegisters();
 }
 
 bool ShadowAqlItemRow::isRelevant() const noexcept { return getDepth() == 0; }
 
 bool ShadowAqlItemRow::isInitialized() const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (_block != nullptr) {
-    // The value needs to always be a positive integer.
-    auto depthVal = block().getShadowRowDepth(_baseIndex);
-    TRI_ASSERT(depthVal.isNumber());
-    TRI_ASSERT(depthVal.toInt64() >= 0);
-  }
-#endif
   return _block != nullptr;
 }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other) const {
-  return _block == other;
+bool ShadowAqlItemRow::internalBlockIs(SharedAqlItemBlockPtr const& other, size_t index) const {
+  return _block == other && _baseIndex == index;
 }
 #endif
 
 AqlValue const& ShadowAqlItemRow::getValue(RegisterId registerId) const {
   TRI_ASSERT(isInitialized());
-  TRI_ASSERT(registerId < getNrRegisters());
-  return block().getValueReference(_baseIndex, registerId);
+  TRI_ASSERT(registerId.isRegularRegister());
+  TRI_ASSERT(registerId < getNumRegisters());
+  return block().getValueReference(_baseIndex, registerId.value());
 }
 
-AqlValue const& ShadowAqlItemRow::getShadowDepthValue() const {
+AqlValue ShadowAqlItemRow::stealAndEraseValue(RegisterId registerId) {
+  TRI_ASSERT(isInitialized());
+  TRI_ASSERT(registerId < getNumRegisters());
+  // caller needs to take immediate ownership.
+  return block().stealAndEraseValue(_baseIndex, registerId);
+}
+
+size_t ShadowAqlItemRow::getShadowDepthValue() const {
   TRI_ASSERT(isInitialized());
   return block().getShadowRowDepth(_baseIndex);
 }
 
 uint64_t ShadowAqlItemRow::getDepth() const {
   TRI_ASSERT(isInitialized());
-  auto value = block().getShadowRowDepth(_baseIndex);
-  TRI_ASSERT(value.toInt64() >= 0);
-  return static_cast<uint64_t>(value.toInt64());
+  return static_cast<uint64_t>(block().getShadowRowDepth(_baseIndex));
 }
 
 AqlItemBlock& ShadowAqlItemRow::block() noexcept {
@@ -88,21 +87,18 @@ AqlItemBlock const& ShadowAqlItemRow::block() const noexcept {
   return *_block;
 }
 
-bool ShadowAqlItemRow::operator==(ShadowAqlItemRow const& other) const noexcept {
-  return this->_block == other._block && this->_baseIndex == other._baseIndex;
+bool ShadowAqlItemRow::isSameBlockAndIndex(ShadowAqlItemRow const& other) const noexcept {
+    return this->_block == other._block && this->_baseIndex == other._baseIndex;
 }
 
-bool ShadowAqlItemRow::operator!=(ShadowAqlItemRow const& other) const noexcept {
-  return !(*this == other);
-}
-
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
                                velocypack::Options const* options) const noexcept {
   if (!isInitialized() || !other.isInitialized()) {
     return isInitialized() == other.isInitialized();
   }
-  TRI_ASSERT(getNrRegisters() == other.getNrRegisters());
-  if (getNrRegisters() != other.getNrRegisters()) {
+  TRI_ASSERT(getNumRegisters() == other.getNumRegisters());
+  if (getNumRegisters() != other.getNumRegisters()) {
     return false;
   }
   if (getDepth() != other.getDepth()) {
@@ -111,7 +107,7 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
   auto const eq = [options](auto left, auto right) {
     return 0 == AqlValue::Compare(options, left, right, false);
   };
-  for (RegisterId i = 0; i < getNrRegisters(); ++i) {
+  for (RegisterId::value_t i = 0; i < getNumRegisters(); ++i) {
     if (!eq(getValue(i), other.getValue(i))) {
       return false;
     }
@@ -119,3 +115,4 @@ bool ShadowAqlItemRow::equates(ShadowAqlItemRow const& other,
 
   return true;
 }
+#endif

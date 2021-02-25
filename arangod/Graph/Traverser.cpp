@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,22 +38,15 @@ using namespace arangodb::traverser;
 using namespace arangodb::graph;
 
 bool Traverser::VertexGetter::getVertex(VPackSlice edge,
-                                        std::vector<arangodb::velocypack::StringRef>& result) {
-  VPackSlice res = edge;
-  if (!res.isString()) {
-    res = transaction::helpers::extractFromFromDocument(edge);
-    if (result.back() == arangodb::velocypack::StringRef(res)) {
-      res = transaction::helpers::extractToFromDocument(edge);
-    }
-  }
-  TRI_ASSERT(res.isString());
-
-  if (!_traverser->vertexMatchesConditions(arangodb::velocypack::StringRef(res),
-                                           result.size())) {
+                                        arangodb::traverser::EnumeratedPath& path) {
+  // getSingleVertex will populate s and register the underlying character data
+  // if the vertex is found.
+  arangodb::velocypack::StringRef s;
+  if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
     return false;
   }
-  result.emplace_back(_traverser->traverserCache()->persistString(
-      arangodb::velocypack::StringRef(res)));
+
+  path.pushVertex(s);
   return true;
 }
 
@@ -63,49 +56,52 @@ bool Traverser::VertexGetter::getSingleVertex(arangodb::velocypack::Slice edge,
                                               arangodb::velocypack::StringRef& result) {
   VPackSlice resSlice = edge;
   if (!resSlice.isString()) {
-    VPackSlice from = transaction::helpers::extractFromFromDocument(edge);
-    if (from.compareString(cmp.data(), cmp.length()) != 0) {
-      resSlice = from;
-    } else {
+    resSlice = transaction::helpers::extractFromFromDocument(edge);
+    if (resSlice.compareString(cmp.data(), cmp.length()) == 0) {
       resSlice = transaction::helpers::extractToFromDocument(edge);
     }
-    TRI_ASSERT(resSlice.isString());
   }
-  result = _traverser->traverserCache()->persistString(
-      arangodb::velocypack::StringRef(resSlice));
-  return _traverser->vertexMatchesConditions(result, depth);
+  TRI_ASSERT(resSlice.isString());
+
+  arangodb::velocypack::StringRef s(resSlice);
+  if (!_traverser->vertexMatchesConditions(s, depth)) {
+    return false;
+  }
+
+  result = _traverser->traverserCache()->persistString(s);
+  return true;
 }
 
 void Traverser::VertexGetter::reset(arangodb::velocypack::StringRef const&) {}
 
-bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge,
-                                              std::vector<arangodb::velocypack::StringRef>& result) {
-  VPackSlice toAdd = edge;
-  if (!toAdd.isString()) {
-    toAdd = transaction::helpers::extractFromFromDocument(edge);
-    arangodb::velocypack::StringRef const& cmp = result.back();
-    TRI_ASSERT(toAdd.isString());
-    if (cmp == arangodb::velocypack::StringRef(toAdd)) {
-      toAdd = transaction::helpers::extractToFromDocument(edge);
-    }
-    TRI_ASSERT(toAdd.isString());
+bool Traverser::VertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+  return _traverser->vertexMatchesConditions(vertex, depth);
+}
+
+bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  // getSingleVertex will populate s and register the underlying character data
+  // if the vertex is found.
+  arangodb::velocypack::StringRef s;
+  if (!getSingleVertex(edge, path.lastVertex(), path.numVertices(), s)) {
+    return false;
   }
 
-  arangodb::velocypack::StringRef toAddStr =
-      _traverser->traverserCache()->persistString(arangodb::velocypack::StringRef(toAdd));
-  // First check if we visited it. If not, then mark
-  if (_returnedVertices.find(toAddStr) != _returnedVertices.end()) {
+  path.pushVertex(s);
+  return true;
+}
+
+bool Traverser::UniqueVertexGetter::getVertex(arangodb::velocypack::StringRef vertex, size_t depth) {
+  if (_returnedVertices.find(vertex) != _returnedVertices.end()) {
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
-  } else {
-    if (!_traverser->vertexMatchesConditions(toAddStr, result.size())) {
-      return false;
-    }
-    _returnedVertices.emplace(toAddStr);
   }
 
-  result.emplace_back(toAddStr);
+  if(!_traverser->vertexMatchesConditions(vertex, depth)) {
+    return false;
+  }
+
+  _returnedVertices.emplace(vertex);
   return true;
 }
 
@@ -122,19 +118,20 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     TRI_ASSERT(resSlice.isString());
   }
 
-  result = _traverser->traverserCache()->persistString(
-      arangodb::velocypack::StringRef(resSlice));
+  arangodb::velocypack::StringRef s(resSlice);
+
   // First check if we visited it. If not, then mark
-  if (_returnedVertices.find(result) != _returnedVertices.end()) {
+  if (_returnedVertices.find(s) != _returnedVertices.end()) {
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   }
 
-  if (!_traverser->vertexMatchesConditions(result, depth)) {
+  if (!_traverser->vertexMatchesConditions(s, depth)) {
     return false;
   }
 
+  result = _traverser->traverserCache()->persistString(s);
   _returnedVertices.emplace(result);
   return true;
 }
@@ -145,12 +142,10 @@ void Traverser::UniqueVertexGetter::reset(arangodb::velocypack::StringRef const&
   _returnedVertices.emplace(startVertex);
 }
 
-Traverser::Traverser(arangodb::traverser::TraverserOptions* opts, transaction::Methods* trx)
-    : _trx(trx),
-      _startIdBuilder(),
+Traverser::Traverser(arangodb::traverser::TraverserOptions* opts)
+    : _trx(opts->trx()),
       _done(true),
-      _opts(opts),
-      _canUseOptimizedNeighbors(false) {
+      _opts(opts) {
   if (opts->uniqueVertices == TraverserOptions::UniquenessLevel::GLOBAL) {
     _vertexGetter = std::make_unique<UniqueVertexGetter>(this);
   } else {
@@ -163,10 +158,7 @@ Traverser::~Traverser() = default;
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            arangodb::velocypack::StringRef vid,
                                                            uint64_t depth, size_t cursorId) {
-  if (!_opts->evaluateEdgeExpression(e, vid, depth, cursorId)) {
-    return false;
-  }
-  return true;
+  return _opts->evaluateEdgeExpression(e, vid, depth, cursorId);
 }
 
 bool arangodb::traverser::Traverser::vertexMatchesConditions(arangodb::velocypack::StringRef v,
@@ -204,12 +196,5 @@ size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {
 }
 
 size_t arangodb::traverser::Traverser::getAndResetHttpRequests() {
-  if (_enumerator != nullptr) {
-    return _enumerator->getAndResetHttpRequests();
-  }
-  return 0;
-}
-
-void arangodb::traverser::Traverser::allowOptimizedNeighbors() {
-  _canUseOptimizedNeighbors = true;
+  return _enumerator->getAndResetHttpRequests();
 }

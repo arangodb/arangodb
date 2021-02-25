@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,6 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "IndexFactory.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FloatingPoint.h"
@@ -28,7 +30,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "IndexFactory.h"
 #include "Indexes/Index.h"
 #include "RestServer/BootstrapFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -44,14 +45,18 @@
 namespace {
 
 struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
+  InvalidIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : IndexTypeFactory(server) {}
+
   bool equal(arangodb::velocypack::Slice const&,
-             arangodb::velocypack::Slice const&) const override {
+             arangodb::velocypack::Slice const&,
+             std::string const&) const override {
     return false;  // invalid definitions are never equal
   }
 
   std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection&,
-                               arangodb::velocypack::Slice const& definition,
-                               TRI_idx_iid_t, bool) const override {
+                                               arangodb::velocypack::Slice const& definition,
+                                               arangodb::IndexId, bool) const override {
     std::string type = arangodb::basics::VelocyPackHelper::getStringValue(
         definition, arangodb::StaticStrings::IndexType, "");
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid index type '" + type + "'");
@@ -70,11 +75,12 @@ struct InvalidIndexFactory : public arangodb::IndexTypeFactory {
   }
 };
 
-InvalidIndexFactory const INVALID;
-
 }  // namespace
 
 namespace arangodb {
+
+IndexTypeFactory::IndexTypeFactory(application_features::ApplicationServer& server)
+    : _server(server) {}
 
 bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
                              arangodb::velocypack::Slice const& lhs,
@@ -169,12 +175,16 @@ bool IndexTypeFactory::equal(arangodb::Index::IndexType type,
   return true;
 }
 
+IndexFactory::IndexFactory(application_features::ApplicationServer& server)
+    : _server(server),
+      _factories(),
+      _invalid(std::make_unique<InvalidIndexFactory>(server)) {}
+
 void IndexFactory::clear() { _factories.clear(); }
 
 Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& factory) {
-  auto& server = arangodb::application_features::ApplicationServer::server();
-  if (server.hasFeature<BootstrapFeature>()) {
-    auto& feature = server.getFeature<BootstrapFeature>();
+  if (_server.hasFeature<BootstrapFeature>()) {
+    auto& feature = _server.getFeature<BootstrapFeature>();
     // ensure new factories are not added at runtime since that would require
     // additional locks
     if (feature.isReady()) {
@@ -263,7 +273,7 @@ const IndexTypeFactory& IndexFactory::factory(std::string const& type) const noe
   auto itr = _factories.find(type);
   TRI_ASSERT(itr == _factories.end() || false == !(itr->second));  // IndexFactory::emplace(...) inserts non-nullptr
 
-  return itr == _factories.end() ? INVALID : *(itr->second);
+  return itr == _factories.end() ? *_invalid : *(itr->second);
 }
 
 std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice definition,
@@ -298,28 +308,28 @@ std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const 
   return std::unordered_map<std::string, std::string>();
 }
 
-TRI_idx_iid_t IndexFactory::validateSlice(arangodb::velocypack::Slice info,
-                                          bool generateKey, bool isClusterConstructor) {
+IndexId IndexFactory::validateSlice(arangodb::velocypack::Slice info,
+                                    bool generateKey, bool isClusterConstructor) {
   if (!info.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "expecting object for index definition");
   }
 
-  TRI_idx_iid_t iid = 0;
+  IndexId iid = IndexId::none();
   auto value = info.get(StaticStrings::IndexId);
 
   if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
+    iid = IndexId{basics::StringUtils::uint64(value.copyString())};
   } else if (value.isNumber()) {
-    iid = basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(
-        info, StaticStrings::IndexId.c_str(), 0);
+    iid = IndexId{basics::VelocyPackHelper::getNumericValue<IndexId::BaseType>(
+        info, StaticStrings::IndexId.c_str(), 0)};
   } else if (!generateKey) {
     // In the restore case it is forbidden to NOT have id
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
+        TRI_ERROR_BAD_PARAMETER, "cannot restore index without index identifier");
   }
 
-  if (iid == 0 && !isClusterConstructor) {
+  if (iid.empty() && !isClusterConstructor) {
     // Restore is not allowed to generate an id
     VPackSlice type = info.get(StaticStrings::IndexType);
     // dont generate ids for indexes of type "primary"
@@ -554,6 +564,10 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
       minWordLength = minLength.getNumericValue<int>();
     } else if (!minLength.isNull() && !minLength.isNone()) {
       return Result(TRI_ERROR_BAD_PARAMETER);
+    }
+
+    if (minWordLength <= 0) {
+      minWordLength = 1;
     }
 
     builder.add("minLength", VPackValue(minWordLength));

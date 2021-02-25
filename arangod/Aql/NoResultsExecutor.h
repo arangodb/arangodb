@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +24,9 @@
 #ifndef ARANGOD_AQL_NORESULTS_EXECUTOR_H
 #define ARANGOD_AQL_NORESULTS_EXECUTOR_H
 
+#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
+#include "Aql/types.h"
 
 #include <memory>
 
@@ -37,9 +39,11 @@ namespace aql {
 
 template <BlockPassthrough>
 class SingleRowFetcher;
-class ExecutorInfos;
+class RegisterInfos;
 class NoStats;
+struct AqlCall;
 class OutputAqlItemRow;
+class AqlItemBlockInputRange;
 
 class NoResultsExecutor {
  public:
@@ -49,23 +53,29 @@ class NoResultsExecutor {
     static constexpr bool inputSizeRestrictsOutputSize = true;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = ExecutorInfos;
+  using Infos = EmptyExecutorInfos;
   using Stats = NoStats;
-  NoResultsExecutor(Fetcher& fetcher, ExecutorInfos&);
+  NoResultsExecutor(Fetcher&, Infos&);
   ~NoResultsExecutor();
 
   /**
-   * @brief produce the next Row of Aql Values.
+   * @brief DO NOT PRODUCE ROWS
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @return DONE, NoStats, HardLimit = 0 Call
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output) const
+      noexcept -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  inline std::pair<ExecutionState, size_t> expectedNumberOfRows(size_t) const {
-    // Well nevermind the input, but we will always return 0 rows here.
-    return {ExecutionState::DONE, 0};
-  }
+  /**
+   * @brief DO NOT SKIP ROWS
+   *
+   ** @return DONE, NoStats, 0, HardLimit = 0 Call
+   */
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call) const
+      noexcept -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
+
+  [[nodiscard]] auto expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,
+                                             AqlCall const& call) const noexcept -> size_t;
 };
 }  // namespace aql
 }  // namespace arangodb

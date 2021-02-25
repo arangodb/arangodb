@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,17 +26,14 @@
 
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
-#include "Aql/SharedAqlItemBlockPtr.h"
+#include "Aql/RegisterInfos.h"
+#include "Aql/Stats.h"
 
 #include <tuple>
 #include <utility>
 
 // There are currently three variants of IdExecutor in use:
 //
-// - IdExecutor<void>
-//     This is a variant of the ReturnBlock. It can optionally count and holds
-//     an output register id.
 // - IdExecutor<ConstFetcher>
 //     This is the SingletonBlock.
 // - IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>
@@ -52,72 +50,42 @@ class Methods;
 }
 
 namespace aql {
+
+struct AqlCall;
+class AqlItemBlockInputRange;
 class ExecutionEngine;
 class ExecutionNode;
-class ExecutorInfos;
-class NoStats;
+class RegisterInfos;
+class CountStats;
 class OutputAqlItemRow;
 
-class IdExecutorInfos : public ExecutorInfos {
+class IdExecutorInfos {
  public:
-  IdExecutorInfos(RegisterId nrInOutRegisters, std::unordered_set<RegisterId> registersToKeep,
-                  std::unordered_set<RegisterId> registersToClear,
-                  std::string distributeId = {""},
-                  bool isResponsibleForInitializeCursor = true);
+  explicit IdExecutorInfos(bool doCount, RegisterId outputRegister = RegisterId(0),
+                           std::string distributeId = {""},
+                           bool isResponsibleForInitializeCursor = true);
 
   IdExecutorInfos() = delete;
   IdExecutorInfos(IdExecutorInfos&&) = default;
   IdExecutorInfos(IdExecutorInfos const&) = delete;
   ~IdExecutorInfos() = default;
 
-  [[nodiscard]] std::string const& distributeId();
+  [[nodiscard]] auto doCount() const noexcept -> bool;
 
-  [[nodiscard]] bool isResponsibleForInitializeCursor() const;
+  [[nodiscard]] auto getOutputRegister() const noexcept -> RegisterId;
+
+  [[nodiscard]] std::string const& distributeId() const noexcept;
+
+  [[nodiscard]] bool isResponsibleForInitializeCursor() const noexcept;
 
  private:
-  std::string const _distributeId;
-
+  bool _doCount;
+  
   bool const _isResponsibleForInitializeCursor;
-};
 
-// forward declaration
-template <class Fetcher>
-class IdExecutor;
+  RegisterId _outputRegister;
 
-// (empty) implementation of IdExecutor<void>
-template <>
-class IdExecutor<void> {};
-
-// implementation of ExecutionBlockImpl<IdExecutor<void>>
-template <>
-class ExecutionBlockImpl<IdExecutor<void>> : public ExecutionBlock {
- public:
-  ExecutionBlockImpl(ExecutionEngine* engine, ExecutionNode const* node,
-                     RegisterId outputRegister, bool doCount);
-
-  ~ExecutionBlockImpl() override = default;
-
-  std::pair<ExecutionState, SharedAqlItemBlockPtr> getSome(size_t atMost) override;
-
-  std::pair<ExecutionState, size_t> skipSome(size_t atMost) override;
-
-  [[nodiscard]] RegisterId getOutputRegisterId() const noexcept;
-
- private:
-  [[nodiscard]] bool isDone() const noexcept;
-
-  [[nodiscard]] ExecutionBlock& currentDependency() const;
-
-  void nextDependency() noexcept;
-
-  [[nodiscard]] bool doCount() const noexcept;
-
-  void countStats(SharedAqlItemBlockPtr& block);
-
- private:
-  size_t _currentDependency;
-  RegisterId const _outputRegister;
-  bool const _doCount;
+  std::string const _distributeId;
 };
 
 template <class UsedFetcher>
@@ -132,23 +100,25 @@ class IdExecutor {
   // Only Supports SingleRowFetcher and ConstFetcher
   using Fetcher = UsedFetcher;
   using Infos = IdExecutorInfos;
-  using Stats = NoStats;
+  using Stats = CountStats;
 
-  IdExecutor(Fetcher& fetcher, IdExecutorInfos&);
+  IdExecutor(Fetcher&, IdExecutorInfos& infos);
   ~IdExecutor();
 
   /**
    * @brief produce the next Row of Aql Values.
    *
-   * @return ExecutionState,
-   *         if something was written output.hasValue() == true
+   * @return ExecutorState, the stats, and a new Call that needs to be send to upstream
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
 
-  std::tuple<ExecutionState, Stats, SharedAqlItemBlockPtr> fetchBlockForPassthrough(size_t atMost);
+  auto skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
+      -> std::tuple<ExecutorState, CountStats, size_t, AqlCall>;
 
  private:
   Fetcher& _fetcher;
+  Infos& _infos;
 };
 }  // namespace aql
 }  // namespace arangodb

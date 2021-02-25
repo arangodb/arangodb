@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DMID.h"
-#include <cmath>
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Pregel/Aggregator.h"
@@ -32,6 +33,8 @@
 #include "Pregel/IncomingCache.h"
 #include "Pregel/MasterContext.h"
 #include "Pregel/VertexComputation.h"
+
+#include <cmath>
 
 using namespace arangodb;
 using namespace arangodb::pregel;
@@ -136,8 +139,8 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
       superstep7(messages);
     }
 
-    int64_t const* iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
-    int64_t it = *iterationCounter;
+    int64_t const& iterationCounter = getAggregatedValueRef<int64_t>(ITERATION_AGG);
+    int64_t it = iterationCounter;
 
     if (globalSuperstep() >= rwFinished + 4 && (it % 3 == 1)) {
       superstep8(messages);
@@ -389,18 +392,18 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
 
   void superstep8(MessageIterator<DMIDMessage> const& messages) {
     DMIDValue* vertexState = mutableVertexData();
-    float const* profitability = getAggregatedValue<float>(PROFITABILITY_AGG);
+    auto const& profitability = getAggregatedValueRef<float>(PROFITABILITY_AGG);
 
     auto const& it = vertexState->membershipDegree.find(this->pregelId());
 
     /** Is this vertex a global leader? Global Leader do not change behavior */
-    if (it == vertexState->membershipDegree.end() || *profitability < 0) {
-      bool const* notAllAssigned = getAggregatedValue<bool>(NOT_ALL_ASSIGNED_AGG);
-      bool const* newMember = getAggregatedValue<bool>(NEW_MEMBER_AGG);
-      if (*notAllAssigned) {
+    if (it == vertexState->membershipDegree.end() || profitability < 0) {
+      bool const& notAllAssigned = getAggregatedValueRef<bool>(NOT_ALL_ASSIGNED_AGG);
+      bool const& newMember = getAggregatedValueRef<bool>(NEW_MEMBER_AGG);
+      if (notAllAssigned) {
         /** There are vertices that are not part of any community */
 
-        if (*newMember == false) {
+        if (newMember == false) {
           /**
            * There are no changes in the behavior cascade but not all
            * vertices are assigned
@@ -506,18 +509,17 @@ struct DMIDComputation : public VertexComputation<DMIDValue, float, DMIDMessage>
         }
       }
       /** profitability threshold */
-      float const* threshold = getAggregatedValue<float>(PROFITABILITY_AGG);
-
-      int64_t const* iterationCounter = getAggregatedValue<int64_t>(ITERATION_AGG);
+      auto const& threshold = getAggregatedValueRef<float>(PROFITABILITY_AGG);
+      auto const& iterationCounter = getAggregatedValueRef<int64_t>(ITERATION_AGG);
 
       size_t m = std::min(getEdgeCount(), messages.size());
-      for (std::pair<PregelID, float> const& pair : membershipCounter) {
+      for (auto const& pair : membershipCounter) {
         // FIXME
         // float const ttt = pair.second / getEdges().size();
         float const ttt = pair.second / m;
-        if (ttt > *threshold) {
+        if (ttt > threshold) {
           /** its profitable to become a member, set value */
-          float deg = 1.0f / std::pow(*iterationCounter / 3.0f, 2.0f);
+          float deg = 1.0f / std::pow(iterationCounter / 3.0f, 2.0f);
           vertexState->membershipDegree[pair.first] = deg;
           aggregate<bool>(NEW_MEMBER_AGG, true);
         }
@@ -584,18 +586,16 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
         _resultField(result),
         _maxCommunities(mc) {}
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        DMIDValue& value) override {
-    // SCCValue* senders = (SCCValue*)targetPtr;
-    // senders->vertexID = vertexIdRange++;
-  }
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice document, DMIDValue& /*value*/,
+                      uint64_t& /*vertexIdRange*/) override {}
 
-  void copyEdgeData(arangodb::velocypack::Slice document, float& targetPtr) override {
+  void copyEdgeData(arangodb::velocypack::Options const&,
+                    arangodb::velocypack::Slice /*document*/, float& targetPtr) override {
     targetPtr = 1.0f;
   }
 
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const DMIDValue* ptr, size_t size) const override {
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, DMIDValue const* ptr) const override {
     if (ptr->membershipDegree.size() > 0) {
       std::vector<std::pair<PregelID, float>> communities;
       for (std::pair<PregelID, float> pair : ptr->membershipDegree) {
@@ -615,7 +615,7 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
       } else {
         // Output for DMID modularity calculator
         b.add(_resultField, VPackValue(VPackValueType::Array));
-        for (std::pair<PregelID, float> const& pair : ptr->membershipDegree) {
+        for (auto const& pair : ptr->membershipDegree) {
           size_t i = arangodb::basics::StringUtils::uint64_trusted(pair.first.key.data(),
                                                                    pair.first.key.size());
           b.openArray();
@@ -637,11 +637,6 @@ struct DMIDGraphFormat : public GraphFormat<DMIDValue, float> {
     }
     return true;
   }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const float* ptr,
-                         size_t size) const override {
-    return false;
-  }
 };
 
 GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
@@ -649,7 +644,7 @@ GraphFormat<DMIDValue, float>* DMID::inputFormat() const {
 }
 
 struct DMIDMasterContext : public MasterContext {
-  DMIDMasterContext() {}  // TODO use _threashold
+  DMIDMasterContext() {}  // TODO use _threshold
 
   void preGlobalSuperstep() override {
     /**

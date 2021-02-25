@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/Rebalancer.h"
@@ -26,7 +26,7 @@
 #include "Basics/voc-errors.h"
 #include "Cache/Manager.h"
 
-using namespace arangodb::cache;
+namespace arangodb::cache {
 
 Rebalancer::Rebalancer(Manager* manager) : _manager(manager) {}
 
@@ -36,3 +36,5 @@ int Rebalancer::rebalance() {
   }
   return TRI_ERROR_INTERNAL;
 }
+
+}  // namespace arangodb::cache

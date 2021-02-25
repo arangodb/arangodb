@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -25,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
@@ -281,10 +283,8 @@ std::shared_ptr<ShardDistributionReporter> ShardDistributionReporter::instance(
         &ci,
         [pool](network::DestinationId const& d, arangodb::fuerte::RestVerb v,
                std::string const& u, velocypack::Buffer<uint8_t> b,
-               network::Timeout t, network::Headers h) -> network::FutureRes {
-          network::RequestOptions options;
-          options.timeout = t;;
-          return sendRequest(pool, d, v, u, std::move(b), options, std::move(h));
+               network::RequestOptions const& opts, network::Headers h) -> network::FutureRes {
+          return sendRequest(pool, d, v, u, std::move(b), opts, std::move(h));
         });
   }
   return _theInstance;
@@ -302,12 +302,12 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
       auto const col = todoSyncStateCheck.front();
       auto allShards = col->shardIds();
-      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+      auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
 
       // Send requests
       for (auto const& s : *(allShards.get())) {
         double timeleft = endtime - TRI_microtime();
-        network::Timeout timeout(timeleft);
+        
         serversToAsk.clear();
         auto curServers = cic->servers(s.first);
         auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
@@ -319,16 +319,18 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0) {
-            std::string path = "/_db/" + basics::StringUtils::urlEncode(dbName) +
-                               "/_api/collection/" +
+            std::string path = "/_api/collection/" +
                                basics::StringUtils::urlEncode(s.first) +
                                "/count";
             VPackBuffer<uint8_t> body;
+            network::RequestOptions reqOpts;
+            reqOpts.database = dbName;
+            reqOpts.timeout = network::Timeout(timeleft);
 
             // First Ask the leader
             network::Headers headers;
             auto leaderF = _send("server:" + s.second.at(0), fuerte::RestVerb::Get,
-                                 path, body, timeout, headers);
+                                 path, body, reqOpts, headers);
 
             // Now figure out which servers need to be asked
             for (auto const& planned : s.second) {
@@ -348,30 +350,29 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             std::vector<network::FutureRes> futures;
             futures.reserve(serversToAsk.size());
             for (auto const& server : serversToAsk) {
-              network::Headers headers;
               auto f = _send("server:" + server, fuerte::RestVerb::Get, path,
-                             body, timeout, headers);
+                             body, reqOpts, headers);
               futures.emplace_back(std::move(f));
             }
 
             // Wait for responses
             // First wait for Leader
             {
-              auto& res = leaderF.get();
-              if (fuerteToArangoErrorCode(res) != TRI_ERROR_NO_ERROR || !res.response) {
+              auto const& res = leaderF.get();
+              if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
               }
 
-              std::vector<VPackSlice> const& slices = res.response->slices();
-              if (slices.empty() || !slices[0].isObject()) {
+              VPackSlice slice = res.slice();
+              if (!slice.isObject()) {
                 LOG_TOPIC("c02b2", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
                     << "distribution inaccurate";
                 continue;
               }
 
-              VPackSlice response = slices[0].get("count");
+              VPackSlice response = slice.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC("fe868", WARN, arangodb::Logger::CLUSTER)
                     << "Received invalid response for count. Shard "
@@ -386,25 +387,23 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             {
               auto responses = futures::collectAll(futures).get();
               for (futures::Try<network::Response> const& response : responses) {
-                if (!response.hasValue() ||
-                    fuerteToArangoErrorCode(response.get()) != TRI_ERROR_NO_ERROR ||
-                    !response.get().response) {
+                if (!response.hasValue() || response.get().fail()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout
                   continue;
                 }
 
-                auto& res = response.get();
-                std::vector<VPackSlice> const& slices = res.response->slices();
-                if (slices.empty() || !slices[0].isObject()) {
+                auto const& res = response.get();
+                VPackSlice slice = res.slice();
+                if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
                       << "distribution inaccurate";
                   continue;
                 }
 
-                VPackSlice answer = slices[0].get("count");
+                VPackSlice answer = slice.get("count");
                 if (!answer.isNumber()) {
                   LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
@@ -492,7 +491,7 @@ bool ShardDistributionReporter::testAllShardsInSync(std::string const& dbName,
   TRI_ASSERT(col != nullptr);
   TRI_ASSERT(shardIds != nullptr);
 
-  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id()));
+  auto cic = _ci->getCollectionCurrent(dbName, std::to_string(col->id().id()));
 
   for (auto const& s : *shardIds) {
     auto curServers = cic->servers(s.first);

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
+/* global getOptions, runSetup, assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for security-related server options
@@ -29,16 +29,21 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
-  let users = require("@arangodb/users");
-  
-  users.save("test_rw", "testi");
-  users.grantDatabase("test_rw", "_system", "rw");
-
   return {
     'server.allow-use-database': 'true',
-    'javascript.files-whitelist': '^.*$',
+    'javascript.files-allowlist': '^.*$',
+    'runSetup': true
   };
 }
+
+if (runSetup === true) {
+  let users = require("@arangodb/users");
+
+  users.save("test_rw", "testi");
+  users.grantDatabase("test_rw", "_system", "rw");
+  return true;
+}
+
 var jsunity = require('jsunity');
 
 function testSuite() {
@@ -50,8 +55,8 @@ function testSuite() {
     setUp: function() {
       try {
         db._dropDatabase("UnitTestsApiTest");
-      } catch (err) {} 
-      
+      } catch (err) {}
+
       db._createDatabase("UnitTestsApiTest");
       db._useDatabase("UnitTestsApiTest");
       db._create("UnitTestsCollection");
@@ -78,7 +83,7 @@ function testSuite() {
       assertEqual(200, result.code);
       assertFalse(result.error);
     },
-    
+
     testReadArbitraryFiles : function() {
       arango.reconnect(endpoint, db._name(), "test_rw", "testi");
 
@@ -96,7 +101,7 @@ function testSuite() {
       assertFalse(result.error);
       assertTrue(Array.isArray(result.result));
     },
-    
+
   };
 }
 jsunity.run(testSuite);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,40 +24,38 @@
 #ifndef CLUSTER_AGENCY_CALLBACK_REGISTRY_H
 #define CLUSTER_AGENCY_CALLBACK_REGISTRY_H 1
 
+#include "Agency/AgencyComm.h"
 #include "Basics/ReadWriteLock.h"
-#include "Cluster/AgencyCallback.h"
+#include "Basics/Result.h"
+#include "RestServer/Metrics.h"
+
+#include <memory>
 
 namespace arangodb {
+class AgencyCallback;
+
+namespace application_features {
+class ApplicationServer;
+}
 
 class AgencyCallbackRegistry {
  public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief ctor
-  //////////////////////////////////////////////////////////////////////////////
-  explicit AgencyCallbackRegistry(std::string const&);
+  explicit AgencyCallbackRegistry(application_features::ApplicationServer&,
+                                  std::string const& callbackBasePath);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief dtor
-  //////////////////////////////////////////////////////////////////////////////
   ~AgencyCallbackRegistry();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  //////////////////////////////////////////////////////////////////////////////
-  bool registerCallback(std::shared_ptr<AgencyCallback>);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb, bool local = true);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief unregister a callback
-  //////////////////////////////////////////////////////////////////////////////
-  bool unregisterCallback(std::shared_ptr<AgencyCallback>);
+  bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get a callback by its key
-  //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<AgencyCallback> getCallback(uint32_t);
+  std::shared_ptr<AgencyCallback> getCallback(uint64_t id);
 
  private:
-  std::string getEndpointUrl(uint32_t);
+  std::string getEndpointUrl(uint64_t id) const;
 
   AgencyComm _agency;
 
@@ -65,7 +63,13 @@ class AgencyCallbackRegistry {
 
   std::string const _callbackBasePath;
 
-  std::unordered_map<uint32_t, std::shared_ptr<AgencyCallback>> _endpoints;
+  std::unordered_map<uint64_t, std::shared_ptr<AgencyCallback>> _callbacks;
+
+  /// @brief total number of callbacks ever registered
+  Counter& _totalCallbacksRegistered;
+  
+  /// @brief current number of callbacks registered
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 }  // namespace arangodb

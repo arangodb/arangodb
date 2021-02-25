@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,24 +41,17 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() const { return _binaryName; }
   std::string runRoot() const { return _runRoot; }
-  void createMiniDumpFilename();
   void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
   void normalizePath(std::string& path, char const* whichPath, bool fatal);
   std::string const& getBinaryPath() const { return _binaryPath; }
   int exit(int ret);
   void installHup();
-  void installSegv();
-  void maskAllSignals();
-  void unmaskStandardSignals();
-  void runStartupChecks();
-  bool useEventLog() { return _useEventLog; }
 
  private:
-  std::string _binaryName;
-  std::string _binaryPath;
+  std::string const _binaryName;
+  std::string const _binaryPath;
   std::string const _runRoot;
   int _ret;
-  bool _useEventLog;
 };
 }  // namespace arangodb
 

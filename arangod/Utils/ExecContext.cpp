@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,6 +23,8 @@
 
 #include "ExecContext.h"
 
+#include "Auth/UserManager.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
@@ -30,8 +33,8 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
-                                   auth::Level::RW, auth::Level::RW);
+ExecContext const ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db*/"",
+                                         auth::Level::RW, auth::Level::RW, true);
 
 /// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
@@ -41,34 +44,35 @@ ExecContext ExecContext::Superuser(ExecContext::Type::Internal, /*name*/"", /*db
   return ExecContext::Superuser;
 }
 
+/// @brief an internal superuser context, is
+///        a singleton instance, deleting is an error
+/*static*/ ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
+
 ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
-            std::string const& database, auth::Level systemLevel, auth::Level dbLevel)
-: _type(type),
-  _user(user),
-  _database(database),
-  _canceled(false),
-  _systemDbAuthLevel(systemLevel),
-  _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
-    TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
-  }
+            std::string const& database, auth::Level systemLevel, auth::Level dbLevel,
+            bool isAdminUser)
+      : _user(user),
+        _database(database),
+        _type(type),
+        _isAdminUser(isAdminUser),
+        _systemDbAuthLevel(systemLevel),
+        _databaseAuthLevel(dbLevel) {
+  TRI_ASSERT(_systemDbAuthLevel != auth::Level::UNDEFINED);
+  TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
+}
 
-
-bool ExecContext::isAuthEnabled() {
+/*static*/ bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   return af->isActive();
 }
-
-/// @brief an internal superuser context, is
-///        a singleton instance, deleting is an error
-ExecContext const& ExecContext::superuser() { return ExecContext::Superuser; }
 
 std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   auth::Level dbLvl = auth::Level::RW;
   auth::Level sysLvl = auth::Level::RW;
+  bool isAdminUser = true;
   if (af->isActive()) {
     auth::UserManager* um = af->userManager();
     TRI_ASSERT(um != nullptr);
@@ -76,12 +80,17 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user, std::s
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to find userManager instance");
     }
-    dbLvl = sysLvl = um->databaseAuthLevel(user, dbname);
-    if (dbname != TRI_VOC_SYSTEM_DATABASE) {
-      sysLvl = um->databaseAuthLevel(user, TRI_VOC_SYSTEM_DATABASE);
+    dbLvl = sysLvl = um->databaseAuthLevel(user, dbname, false);
+    if (dbname != StaticStrings::SystemDatabase) {
+      sysLvl = um->databaseAuthLevel(user, StaticStrings::SystemDatabase, false);
+    }
+    isAdminUser = (sysLvl == auth::Level::RW);
+    if (!isAdminUser && ServerState::readOnly()) {
+      isAdminUser = um->databaseAuthLevel(user, StaticStrings::SystemDatabase, true) == auth::Level::RW;
     }
   }
-  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl);
+  // we cannot use std::make_unique here, as ExecContext has a protected constructor
+  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl, dbLvl, isAdminUser);
   return std::unique_ptr<ExecContext>(ptr);
 }
 
@@ -119,16 +128,21 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   if (!af->isActive()) {
     return auth::Level::RW;
   }
-  // handle fixed permissions here outside auth module.
-  // TODO: move this block above, such that it takes effect
-  //       when authentication is disabled
-  if (dbname == TRI_VOC_SYSTEM_DATABASE && coll == TRI_COL_NAME_USERS) {
-    return auth::Level::NONE;
-  } else if (coll == "_queues") {
-    return auth::Level::RO;
-  } else if (coll == "_frontend") {
-    return auth::Level::RW;
-  }  // intentional fall through
+  
+  if (coll.size() >= 5 && coll[0] == '_') {
+    // _users, _queues, _frontend
+
+    // handle fixed permissions here outside auth module.
+    // TODO: move this block above, such that it takes effect
+    //       when authentication is disabled
+    if (dbname == StaticStrings::SystemDatabase && coll == StaticStrings::UsersCollection) {
+      return auth::Level::NONE;
+    } else if (coll == StaticStrings::QueuesCollection) {
+      return auth::Level::RO;
+    } else if (coll == StaticStrings::FrontendCollection) {
+      return auth::Level::RW;
+    }  // intentional fall through
+  }
 
   auth::UserManager* um = af->userManager();
   TRI_ASSERT(um != nullptr);

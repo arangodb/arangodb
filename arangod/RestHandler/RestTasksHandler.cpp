@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -47,6 +49,11 @@ RestTasksHandler::RestTasksHandler(application_features::ApplicationServer& serv
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestTasksHandler::execute() {
+  if (!server().isEnabled<V8DealerFeature>()) {
+    generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED, "JavaScript operations are disabled");
+    return RestStatus::DONE;
+  }
+
   auto const type = _request->requestType();
 
   switch (type) {
@@ -75,6 +82,11 @@ RestStatus RestTasksHandler::execute() {
 
 /// @brief returns the short id of the server which should handle this request
 ResultT<std::pair<std::string, bool>> RestTasksHandler::forwardingTarget() {
+  auto base = RestVocbaseBaseHandler::forwardingTarget();
+  if (base.ok() && !std::get<0>(base.get()).empty()) {
+    return base;
+  }
+
   rest::RequestType const type = _request->requestType();
   if (type != rest::RequestType::POST && type != rest::RequestType::PUT &&
       type != rest::RequestType::GET && type != rest::RequestType::DELETE_REQ) {
@@ -130,6 +142,20 @@ void RestTasksHandler::registerTask(bool byId) {
     return;
   }
 
+  bool allowTasks;
+  if (!server().isEnabled<V8DealerFeature>()) {
+    allowTasks = false;
+  } else {
+    V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();
+    allowTasks = v8Dealer.allowJavaScriptTasks();
+  }
+
+  if (!allowTasks) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "JavaScript tasks are disabled");
+    return;
+  }
+
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // job id
@@ -162,7 +188,7 @@ void RestTasksHandler::registerTask(bool byId) {
   std::string name =
       VelocyPackHelper::getStringValue(body, "name", "user-defined task");
 
-  bool isSystem = VelocyPackHelper::getBooleanValue(body, "isSystem", false);
+  bool isSystem = VelocyPackHelper::getBooleanValue(body, StaticStrings::DataSourceSystem, false);
 
   // offset in seconds into period or from now on if no period
   double offset = VelocyPackHelper::getNumericValue<double>(body, "offset", 0.0);
@@ -204,18 +230,19 @@ void RestTasksHandler::registerTask(bool byId) {
     JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createRestrictedContext();
     V8ContextGuard guard(&_vocbase, securityContext);
    
-    v8::Isolate* isolate = guard.isolate(); 
+    v8::Isolate* isolate = guard.isolate();
     v8::HandleScope scope(isolate);
+    auto context = TRI_IGETC;
     v8::Handle<v8::Object> bv8 = TRI_VPackToV8(isolate, body).As<v8::Object>();
 
-    if (bv8->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
+    if (bv8->Get(context, TRI_V8_ASCII_STRING(isolate, "command")).FromMaybe(v8::Handle<v8::Value>())->IsFunction()) {
       // need to add ( and ) around function because call will otherwise break
       command = "(" + cmdSlice.copyString() + ")(params)";
     } else {
       command = cmdSlice.copyString();
     }
 
-    if (!Task::tryCompile(isolate, command)) {
+    if (!Task::tryCompile(server(), isolate, command)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cannot compile command");
       return;
@@ -236,7 +263,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, &_vocbase, command, isSystem, res);
 
@@ -288,7 +315,7 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  int res = Task::unregisterTask(suffixes[0], true);
+  auto res = Task::unregisterTask(suffixes[0], true);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;

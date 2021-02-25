@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,7 +28,8 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "VocBase/LocalDocumentId.h"
+#include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 #include <rocksdb/slice.h>
@@ -70,7 +71,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified collection key
   //////////////////////////////////////////////////////////////////////////////
-  void constructCollection(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId);
+  void constructCollection(TRI_voc_tick_t databaseId, DataSourceId collectionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified document key
@@ -129,7 +130,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
   //////////////////////////////////////////////////////////////////////////////
-  void constructView(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId);
+  void constructView(TRI_voc_tick_t databaseId, DataSourceId viewId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a settings value
@@ -156,6 +157,11 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for key generator for a collection
   //////////////////////////////////////////////////////////////////////////////
   void constructKeyGeneratorValue(uint64_t objectId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for revision tree for a collection
+  //////////////////////////////////////////////////////////////////////////////
+  void constructRevisionTreeValue(uint64_t objectId);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -190,16 +196,16 @@ class RocksDBKey {
   /// May be called only on the the following key types: Collection.
   /// Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_cid_t collectionId(RocksDBKey const&);
-  static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
+  static DataSourceId collectionId(RocksDBKey const&);
+  static DataSourceId collectionId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the viewId from a key
   ///
   /// May be called only on View keys. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
-  static TRI_voc_cid_t viewId(RocksDBKey const&);
-  static TRI_voc_cid_t viewId(rocksdb::Slice const&);
+  static DataSourceId viewId(RocksDBKey const&);
+  static DataSourceId viewId(rocksdb::Slice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the objectId from a key
@@ -310,11 +316,11 @@ class RocksDBKey {
 
   // valid on metadata like database, collection, counters, views...
   static TRI_voc_tick_t databaseId(char const* data, size_t size);
-  static TRI_voc_cid_t collectionId(char const* data, size_t size);
-  static TRI_voc_cid_t viewId(char const* data, size_t size);
+  static DataSourceId collectionId(char const* data, size_t size);
+  static DataSourceId viewId(char const* data, size_t size);
 
   // valid on data entries like document, edge, vpack
-  static TRI_voc_cid_t objectId(char const* data, size_t size);
+  static uint64_t objectId(char const* data, size_t size);
   static LocalDocumentId documentId(RocksDBEntryType, char const*, size_t);
   static arangodb::velocypack::StringRef primaryKey(char const* data, size_t size);
   static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);

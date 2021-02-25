@@ -1,11 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for Network/Utils.cpp
-///
-/// @file
-///
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -40,7 +37,7 @@ using namespace arangodb::network;
 
 TEST(NetworkUtilsTest, errorFromBody) {
   const char* str = "{\"errorNum\":1337, \"errorMessage\":\"abc\"}";
-  auto res = network::resultFromBody(VPackParser::fromJson(str), 0);
+  auto res = network::resultFromBody(VPackParser::fromJson(str), TRI_ERROR_NO_ERROR);
   ASSERT_EQ(res.errorNumber(), 1337);
   ASSERT_EQ(res.errorMessage(), "abc");
 }

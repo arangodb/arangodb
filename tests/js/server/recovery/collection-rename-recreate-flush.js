@@ -40,7 +40,6 @@ function runSetup () {
   db._drop('UnitTestsRecovery1');
   db._drop('UnitTestsRecovery2');
   c = db._create('UnitTestsRecovery1');
-  db.UnitTestsRecovery1.properties({ journalSize: 8 * 1024 * 1024, doCompact: false });
 
   for (i = 0; i < 1000; ++i) {
     db.UnitTestsRecovery1.save({ a: i });
@@ -92,10 +91,6 @@ function recoverySuite () {
 
       c = db._collection('UnitTestsRecovery2');
       prop = c.properties();
-      if (db._engine().name !== "rocksdb") {
-        assertEqual(8 * 1024 * 1024, prop.journalSize);
-        assertFalse(prop.doCompact);
-      }
       assertEqual(1000 + 100000, c.count());
     }
 

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -31,7 +32,7 @@
 #include "Aql/VariableGenerator.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/ResultT.h"
+#include "Basics/ResultT.h"
 #include "Graph/Graph.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -43,39 +44,29 @@ namespace graph {
 class GraphManager {
  private:
   TRI_vocbase_t& _vocbase;
-
-  bool _isInTransaction;
-
+  
   std::shared_ptr<transaction::Context> ctx() const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create vertex collection by name
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult findOrCreateVertexCollectionByName(const std::string& name,
-                                                     bool waitForSync, VPackSlice options);
+  Result findOrCreateVertexCollectionByName(const std::string& name,
+                                            bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collection by name and type
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createCollection(std::string const& name, TRI_col_type_e colType,
-                                   bool waitForSync, VPackSlice options);
+  Result createCollection(std::string const& name, TRI_col_type_e colType,
+                          bool waitForSync, VPackSlice options);
 
  public:
-  explicit GraphManager(TRI_vocbase_t& vocbase)
-      : GraphManager(vocbase, false) {}
+  explicit GraphManager(TRI_vocbase_t& vocbase) : _vocbase(vocbase) {}
 
-  GraphManager(TRI_vocbase_t& vocbase, bool isInTransaction)
-      : _vocbase(vocbase), _isInTransaction(isInTransaction) {}
+  Result readGraphs(velocypack::Builder& builder) const;
 
-  OperationResult readGraphs(velocypack::Builder& builder,
-                             arangodb::aql::QueryPart queryPart) const;
+  Result readGraphKeys(velocypack::Builder& builder) const;
 
-  OperationResult readGraphKeys(velocypack::Builder& builder,
-                                arangodb::aql::QueryPart queryPart) const;
-
-  OperationResult readGraphByQuery(velocypack::Builder& builder,
-                                   arangodb::aql::QueryPart queryPart,
-                                   std::string queryStr) const;
+  Result readGraphByQuery(velocypack::Builder& builder, std::string const& queryStr) const;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find and return a collections if available
@@ -101,25 +92,23 @@ class GraphManager {
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find or create collections by EdgeDefinitions
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult findOrCreateCollectionsByEdgeDefinitions(
-      std::map<std::string, EdgeDefinition> const& edgeDefinitions,
-      bool waitForSync, VPackSlice options);
+  Result findOrCreateCollectionsByEdgeDefinitions(Graph const& graph,
+                                                  std::map<std::string, EdgeDefinition> const& edgeDefinitions,
+                                                  bool waitForSync, VPackSlice options);
 
-  OperationResult findOrCreateCollectionsByEdgeDefinition(EdgeDefinition const& edgeDefinition,
-                                                          bool waitForSync,
-                                                          VPackSlice options);
+  Result findOrCreateCollectionsByEdgeDefinition(Graph const& graph,
+                                                 EdgeDefinition const& edgeDefinition,
+                                                 bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create a vertex collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createVertexCollection(std::string const& name,
-                                         bool waitForSync, VPackSlice options);
+  Result createVertexCollection(std::string const& name, bool waitForSync, VPackSlice options);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief create an edge collection
   ////////////////////////////////////////////////////////////////////////////////
-  OperationResult createEdgeCollection(std::string const& name,
-                                       bool waitForSync, VPackSlice options);
+  Result createEdgeCollection(std::string const& name, bool waitForSync, VPackSlice options);
 
   /// @brief rename a collection used in an edge definition
   bool renameGraphCollection(std::string const& oldName, std::string const& newName);
@@ -137,9 +126,8 @@ class GraphManager {
   /// @brief Remove a graph and optional all connected collections
   OperationResult removeGraph(Graph const& graph, bool waitForSync, bool dropCollections);
 
-  OperationResult pushCollectionIfMayBeDropped(const std::string& colName,
-                                               const std::string& graphName,
-                                               std::unordered_set<std::string>& toBeRemoved);
+  Result pushCollectionIfMayBeDropped(const std::string& colName, const std::string& graphName,
+                                      std::unordered_set<std::string>& toBeRemoved);
 
   bool collectionExists(std::string const& collection) const;
 
@@ -153,7 +141,10 @@ class GraphManager {
    *
    * @return Either OK or an error.
    */
-  Result ensureCollections(Graph const* graph, bool waitForSync) const;
+  Result ensureCollections(Graph* graph, bool waitForSync) const;
+
+  /// @brief check if only SatelliteCollections are used
+  bool onlySatellitesUsed(Graph const* graph) const;
 
   /**
    * @brief Store the given graph
@@ -182,8 +173,12 @@ class GraphManager {
 
  private:
 #ifdef USE_ENTERPRISE
+  Result ensureEnterpriseCollectionSharding(Graph const* graph, bool waitForSync,
+                                            std::unordered_set<std::string>& documentCollections) const;
   Result ensureSmartCollectionSharding(Graph const* graph, bool waitForSync,
                                        std::unordered_set<std::string>& documentCollections) const;
+  Result ensureSatelliteCollectionSharding(Graph const* graph, bool waitForSync,
+                                           std::unordered_set<std::string>& documentCollections) const;
 #endif
 
   /**

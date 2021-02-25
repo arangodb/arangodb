@@ -116,7 +116,7 @@ var ArangoError = require('@arangodb').ArangoError;
 // / @brief append the waitForSync parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
+let appendSyncParameter = function (url, waitForSync) {
   if (waitForSync) {
     if (url.indexOf('?') === -1) {
       url += '?';
@@ -128,11 +128,24 @@ ArangoCollection.prototype._appendSyncParameter = function (url, waitForSync) {
   return url;
 };
 
+let appendOverwriteModeParameter = function (url, mode) {
+  if (mode) {
+    if (url.indexOf('?') === -1) {
+      url += '?';
+    }else {
+      url += '&';
+    }
+    url += 'overwriteMode=' + mode;
+  }
+  return url;
+};
+
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief append some boolean parameter to a URL
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype._appendBoolParameter = function (url, name, val) {
+let appendBoolParameter = function (url, name, val) {
   if (url.indexOf('?') === -1) {
     url += '?';
   }else {
@@ -342,24 +355,23 @@ ArangoCollection.prototype.type = function () {
 
 ArangoCollection.prototype.properties = function (properties) {
   var attributes = {
-    'doCompact': true,
-    'journalSize': true,
+    'globallyUniqueId': false,
     'isSmart': false,
     'isSystem': false,
-    'isVolatile': false,
     'waitForSync': true,
     'shardKeys': false,
     'smartGraphAttribute': false,
     'smartJoinAttribute': false,
     'numberOfShards': false,
     'keyOptions': false,
-    'indexBuckets': true,
     'replicationFactor': true,
     'minReplicationFactor': true,
     'writeConcern': true,
     'distributeShardsLike': false,
     'shardingStrategy': false,
-    'cacheEnabled': true
+    'cacheEnabled': true,
+    'syncByRevision': true,
+    'schema' : true,
   };
   var a;
 
@@ -397,19 +409,6 @@ ArangoCollection.prototype.properties = function (properties) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief rotate the journal of a collection
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.rotate = function () {
-  var requestResult = this._database._connection.PUT(this._baseurl('rotate'), null);
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.result;
-};
-
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief recalculate counts of a acollection
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -425,8 +424,8 @@ ArangoCollection.prototype.recalculateCount = function () {
 // / @brief gets the figures of a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.figures = function () {
-  var requestResult = this._database._connection.GET(this._baseurl('figures'));
+ArangoCollection.prototype.figures = function (details) {
+  var requestResult = this._database._connection.GET(this._baseurl('figures') + '?details=' + (details ? 'true' : 'false'));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -532,42 +531,20 @@ ArangoCollection.prototype.truncate = function (options) {
   } else {
     options = options || {};
   }
-
+  if (!options.hasOwnProperty('compact')) {
+    options.compact = true;
+  }
   let headers = {};
   if (options && options.transactionId) {
     headers['x-arango-trx-id'] = options.transactionId;
   }
 
-  var append = (options.waitForSync ? '&waitForSync=true' : '');
+  var append = (options.waitForSync ? '?waitForSync=true' : '');
+  append += (append === '') ? '?' : '&' + (options.compact ? 'compact=true' : 'compact=false');
   var requestResult = this._database._connection.PUT(this._baseurl('truncate') + append, null, headers);
-
   arangosh.checkRequestResult(requestResult);
   // invalidate cache
   this._status = null;
-
-  if (!options.compact) {
-    return;
-  }
-
-  // fetch storage engine type
-  var engine = getEngine(this._database);
-
-  if (engine === 'mmfiles') {
-    try {
-      // after we are done with the truncation, we flush the WAL to move out all
-      // remove operations
-      this._database._connection.PUT(this._prefixurl('/_admin/wal/flush?waitForSync=true&waitForCollector=true&maxWaitTime=5'), null);
-      try {
-        // after the WAL flush, we rotate the collection's active journals, so they can be
-        // compacted
-        this._database._connection.PUT(this._baseurl('rotate'), null);
-      } catch (err) {
-        // this operation is invisible to the user, so we will intentionally ignore all errors here
-      }
-    } catch (err) {
-      // ignore any WAL-flush related error (may be a privilege issue anyway)
-    }
-  }
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -636,8 +613,7 @@ ArangoCollection.prototype.rename = function (name) {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.refresh = function () {
-  var requestResult = this._database._connection.GET(
-    this._database._collectionurl(this._id) + '?useId=true');
+  var requestResult = this._database._connection.GET(this._database._collectionurl(this._id));
 
   arangosh.checkRequestResult(requestResult);
 
@@ -947,29 +923,32 @@ ArangoCollection.prototype.save =
 
     // the following parameters are optional, so we only append them if necessary
     if (options.waitForSync) {
-      url = this._appendSyncParameter(url, options.waitForSync);
-    }
-    if (options.returnNew) {
-      url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+      url = appendSyncParameter(url, options.waitForSync);
     }
 
-    if (options.returnOld) {
-      url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
-    }
+    ["skipDocumentValidation", "returnNew", "returnOld", "silent", "overwrite", "isRestore"].forEach(function(key) {
+      if (options[key]) {
+        url = appendBoolParameter(url, key, options[key]);
+      }
+    });
 
-    if (options.silent) {
-      url = this._appendBoolParameter(url, 'silent', options.silent);
-    }
+    if (options.overwriteMode) {
+      url = appendOverwriteModeParameter(url, options.overwriteMode);
 
-    if (options.overwrite) {
-      url = this._appendBoolParameter(url, 'overwrite', options.overwrite);
+      if (options.keepNull) {
+        url = appendBoolParameter(url, 'keepNull', options.keepNull);
+      }
+
+      if (options.mergeObjects !== undefined) {
+        url = appendBoolParameter(url, 'mergeObjects', options.mergeObjects);
+      }
     }
 
     let headers = {};
     if (options.transactionId) {
       headers['x-arango-trx-id'] = options.transactionId;
     }
-    
+
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
         errorNum: internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code,
@@ -1052,13 +1031,14 @@ ArangoCollection.prototype.remove = function (id, overwrite, waitForSync) {
     url = this._documenturl(id);
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
+
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers = {};
@@ -1159,6 +1139,10 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     if (options.hasOwnProperty('waitForSync')) {
       waitForSync = options.waitForSync;
     }
+
+    if (!options.hasOwnProperty('skipDocumentValidation')) {
+      options.skipDocumentValidation = false;
+    }
   } else {
     if (overwrite) {
       ignoreRevs = true;
@@ -1194,19 +1178,22 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = this._documenturl(id);
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
   if (waitForSync) {
-    url = this._appendSyncParameter(url, waitForSync);
+    url = appendSyncParameter(url, waitForSync);
+  }
+  if (options.skipDocumentValidation) {
+    url = appendBoolParameter(url, 'skipDocumentValidation', options.skipDocumentValidation);
   }
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.returnNew) {
-    url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+    url = appendBoolParameter(url, 'returnNew', options.returnNew);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers ={};
@@ -1216,7 +1203,7 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
   if (rev !== null && !ignoreRevs) {
     headers['if-match'] = JSON.stringify(rev);
   }
-  
+
   let requestResult = this._database._connection.PUT(url, data, headers);
   if (requestResult !== null && requestResult.error === true) {
     if (requestResult.errorNum === internal.errors.ERROR_HTTP_PRECONDITION_FAILED.code) {
@@ -1255,18 +1242,25 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
   var params = '';
   var ignoreRevs = false;
   var options;
+
   if (typeof overwrite === 'object') {
     if (typeof keepNull !== 'undefined') {
       throw 'too many arguments';
     }
     // we assume the caller uses new signature (id, data, options)
     options = overwrite;
+
+    if (!options.hasOwnProperty('skipDocumentValidation')) {
+      options.skipDocumentValidation = false;
+    }
+    params = '?skipDocumentValidation=' + options.skipDocumentValidation;
+
     if (! options.hasOwnProperty('keepNull')) {
       options.keepNull = true;
     }
-    params = '?keepNull=' + options.keepNull;
+    params += '&keepNull=' + options.keepNull;
 
-    if (! options.hasOwnProperty('mergeObjects')) {
+    if (!options.hasOwnProperty('mergeObjects')) {
       options.mergeObjects = true;
     }
     params += '&mergeObjects=' + options.mergeObjects;
@@ -1312,19 +1306,20 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = this._documenturl(id) + params;
   }
 
-  url = this._appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
+  url = appendBoolParameter(url, 'ignoreRevs', ignoreRevs);
   // the following parameters are optional, so we only append them if necessary
   if (waitForSync) {
-    url = this._appendSyncParameter(url, waitForSync);
+    url = appendSyncParameter(url, waitForSync);
   }
+
   if (options.returnOld) {
-    url = this._appendBoolParameter(url, 'returnOld', options.returnOld);
+    url = appendBoolParameter(url, 'returnOld', options.returnOld);
   }
   if (options.returnNew) {
-    url = this._appendBoolParameter(url, 'returnNew', options.returnNew);
+    url = appendBoolParameter(url, 'returnNew', options.returnNew);
   }
   if (options.silent) {
-    url = this._appendBoolParameter(url, 'silent', options.silent);
+    url = appendBoolParameter(url, 'silent', options.silent);
   }
 
   let headers = {};

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -77,72 +79,6 @@ static char const* fixErrorMessage =
     "please check what causes the child process to fail and fix the error "
     "first";
 
-static char const* translateSignal(int signal) {
-  if (signal >= 128) {
-    signal -= 128;
-  }
-  switch (signal) {
-#ifdef SIGHUP
-    case SIGHUP:
-      return "SIGHUP";
-#endif
-#ifdef SIGINT
-    case SIGINT:
-      return "SIGINT";
-#endif
-#ifdef SIGQUIT
-    case SIGQUIT:
-      return "SIGQUIT";
-#endif
-#ifdef SIGKILL
-    case SIGILL:
-      return "SIGILL";
-#endif
-#ifdef SIGTRAP
-    case SIGTRAP:
-      return "SIGTRAP";
-#endif
-#ifdef SIGABRT
-    case SIGABRT:
-      return "SIGABRT";
-#endif
-#ifdef SIGBUS
-    case SIGBUS:
-      return "SIGBUS";
-#endif
-#ifdef SIGFPE
-    case SIGFPE:
-      return "SIGFPE";
-#endif
-#ifdef SIGKILL
-    case SIGKILL:
-      return "SIGKILL";
-#endif
-#ifdef SIGSEGV
-    case SIGSEGV:
-      return "SIGSEGV";
-#endif
-#ifdef SIGPIPE
-    case SIGPIPE:
-      return "SIGPIPE";
-#endif
-#ifdef SIGTERM
-    case SIGTERM:
-      return "SIGTERM";
-#endif
-#ifdef SIGCONT
-    case SIGCONT:
-      return "SIGCONT";
-#endif
-#ifdef SIGSTOP
-    case SIGSTOP:
-      return "SIGSTOP";
-#endif
-    default:
-      return "unknown";
-  }
-}
-
 static void StopHandler(int) {
   LOG_TOPIC("3ca0f", INFO, Logger::STARTUP)
       << "received SIGINT for supervisor; commanding client [" << CLIENT_PID
@@ -181,14 +117,13 @@ void SupervisorFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
   options->addOption("--supervisor",
                      "background the server, starts a supervisor",
                      new BooleanParameter(&_supervisor),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Hidden));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
 void SupervisorFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (_supervisor) {
     try {
-      auto& server = ApplicationServer::server();
-      DaemonFeature& daemon = server.getFeature<DaemonFeature>();
+      DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
       // force daemon mode
       daemon.setDaemon(true);
@@ -216,15 +151,14 @@ void SupervisorFeature::daemonize() {
   int result = EXIT_SUCCESS;
 
   // will be reseted in SchedulerFeature
-  ArangoGlobalContext::CONTEXT->unmaskStandardSignals();
+  arangodb::signals::unmaskAllSignals();
 
-  auto& server = ApplicationServer::server();
-  if (!server.hasFeature<LoggerFeature>()) {
+  if (!server().hasFeature<LoggerFeature>()) {
     LOG_TOPIC("4e6ee", FATAL, Logger::STARTUP) << "unknown feature 'Logger', giving up";
     FATAL_ERROR_EXIT();
   }
 
-  LoggerFeature& logger = server.getFeature<LoggerFeature>();
+  LoggerFeature& logger = server().getFeature<LoggerFeature>();
   logger.setSupervisor(true);
   logger.prepare();
 
@@ -318,7 +252,7 @@ void SupervisorFeature::daemonize() {
             case 15:  // SIGTERM
               LOG_TOPIC("50f4e", INFO, Logger::STARTUP)
                   << "child process " << _clientPid << " terminated normally, exit status "
-                  << s << " (" << translateSignal(s) << "). " << noRestartMessage;
+                  << s << " (" << arangodb::signals::name(s) << "). " << noRestartMessage;
 
               done = true;
               horrible = false;
@@ -331,7 +265,7 @@ void SupervisorFeature::daemonize() {
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC("4a3a6", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << translateSignal(s)
+                    << s << " (" << arangodb::signals::name(s)
                     << "). the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold "
                        "value of "
@@ -349,7 +283,7 @@ void SupervisorFeature::daemonize() {
               } else {
                 LOG_TOPIC("97c53", ERR, Logger::STARTUP)
                     << "child process " << _clientPid << " terminated unexpectedly, signal "
-                    << s << " (" << translateSignal(s) << "). " << restartMessage;
+                    << s << " (" << arangodb::signals::name(s) << "). " << restartMessage;
 
                 done = false;
               }
@@ -388,7 +322,7 @@ void SupervisorFeature::daemonize() {
 #endif
 
       try {
-        DaemonFeature& daemon = server.getFeature<DaemonFeature>();
+        DaemonFeature& daemon = server().getFeature<DaemonFeature>();
 
         // disable daemon mode
         daemon.setDaemon(false);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -685,14 +685,8 @@ std::string tolower(std::string&& str) {
 }
 
 std::string tolower(std::string const& str) {
-  std::string result;
-  result.resize(str.size());
-
-  size_t i = 0;
-  for (auto& c : result) {
-    c = StringUtils::tolower(str[i++]);
-  }
-
+  std::string result = str;
+  tolowerInPlace(result);
   return result;
 }
 
@@ -916,16 +910,15 @@ std::string urlEncode(char const* src, size_t const len) {
   return result;
 }
 
-std::string encodeURIComponent(char const* src, size_t len) {
+void encodeURIComponent(std::string& result, char const* src, size_t len) {
   char const* end = src + len;
 
   // cppcheck-suppress unsignedPositive
-  if (len >= (SIZE_MAX - 1) / 3) {
+  if (result.size() + len >= (SIZE_MAX - 1) / 3) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  std::string result;
-  result.reserve(3 * len);
+  result.reserve(result.size() + 3 * len);
 
   for (; src < end; ++src) {
     if (*src == '-' || *src == '_' || *src == '.' || *src == '!' ||
@@ -942,7 +935,11 @@ std::string encodeURIComponent(char const* src, size_t len) {
       result.push_back(::hexValuesUpper[c % 16]);
     }
   }
+}
 
+std::string encodeURIComponent(char const* src, size_t len) {
+  std::string result;
+  encodeURIComponent(result, src, len);
   return result;
 }
 
@@ -995,24 +992,23 @@ std::string soundex(std::string const& str) {
   return soundex(str.data(), str.size());
 }
 
-unsigned int levenshteinDistance(std::string const& str1, std::string const& str2) {
+unsigned int levenshteinDistance(char const* s1, size_t l1, char const* s2, size_t l2) {
   // convert input strings to vectors of (multi-byte) character numbers
-  std::vector<uint32_t> vect1 = characterCodes(str1);
-  std::vector<uint32_t> vect2 = characterCodes(str2);
+  std::vector<uint32_t> vect1 = characterCodes(s1, l1);
+  std::vector<uint32_t> vect2 = characterCodes(s2, l2);
 
   // calculate levenshtein distance on vectors of character numbers
   return static_cast<unsigned int>(::levenshteinDistance(vect1, vect2));
 }
 
-std::vector<uint32_t> characterCodes(std::string const& str) {
-  char const* s = str.data();
-  char const* e = s + str.size();
+std::vector<uint32_t> characterCodes(char const* s, size_t length) {
+  char const* e = s + length;
 
   std::vector<uint32_t> charNums;
   // be conservative, and reserve space for one number of input
   // string byte. this may be too much, but it avoids later
   // reallocation of the vector
-  charNums.reserve(str.size());
+  charNums.reserve(length);
 
   while (s < e) {
     // note: consume advances the *s* pointer by one byte
@@ -1406,6 +1402,68 @@ size_t itoa(uint64_t attr, char* buffer) {
   return p - buffer;
 }
 
+void itoa(uint64_t attr, std::string& out) {
+  if (10000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000000ULL) % 10 + '0'));
+  }
+  if (10000000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000000ULL) % 10 + '0'));
+  }
+  if (1000000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000000ULL) % 10 + '0'));
+  }
+  if (100000000000ULL <= attr) {
+    out.push_back(char((attr / 100000000000ULL) % 10 + '0'));
+  }
+  if (10000000000ULL <= attr) {
+    out.push_back(char((attr / 10000000000ULL) % 10 + '0'));
+  }
+  if (1000000000ULL <= attr) {
+    out.push_back(char((attr / 1000000000ULL) % 10 + '0'));
+  }
+  if (100000000ULL <= attr) {
+    out.push_back(char((attr / 100000000ULL) % 10 + '0'));
+  }
+  if (10000000ULL <= attr) {
+    out.push_back(char((attr / 10000000ULL) % 10 + '0'));
+  }
+  if (1000000ULL <= attr) {
+    out.push_back(char((attr / 1000000ULL) % 10 + '0'));
+  }
+  if (100000ULL <= attr) {
+    out.push_back(char((attr / 100000ULL) % 10 + '0'));
+  }
+  if (10000ULL <= attr) {
+    out.push_back(char((attr / 10000ULL) % 10 + '0'));
+  }
+  if (1000ULL <= attr) {
+    out.push_back(char((attr / 1000ULL) % 10 + '0'));
+  }
+  if (100ULL <= attr) {
+    out.push_back(char((attr / 100ULL) % 10 + '0'));
+  }
+  if (10ULL <= attr) {
+    out.push_back(char((attr / 10ULL) % 10 + '0'));
+  }
+
+  out.push_back(char(attr % 10 + '0'));
+}
+
 std::string ftoa(double i) {
   char buffer[24];
   int length = fpconv_dtoa(i, &buffer[0]);
@@ -1430,24 +1488,6 @@ bool boolean(std::string const& str) {
   }
   return false;
 }
-
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int64_t int64(std::string const& value) {
-  try {
-    return std::stoll(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-
-uint64_t uint64(std::string const& value) {
-  try {
-    return std::stoull(value, nullptr, 10);
-  } catch (...) {
-    return 0;
-  }
-}
-#endif
 
 uint64_t uint64_trusted(char const* value, size_t length) {
   uint64_t result = 0;
@@ -1516,88 +1556,6 @@ uint64_t uint64_trusted(char const* value, size_t length) {
 
   return result;
 }
-
-#ifndef ARANGODB_STRING_UTILS_USE_FROM_CHARS
-int32_t int32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (int32_t)strtol(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-int32_t int32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOL_R
-  struct reent buffer;
-  return strtol_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOL_R
-  struct reent buffer;
-  return _strtol_r(&buffer, value, 0, 10);
-#else
-  return (int32_t)strtol(value, nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(std::string const& str) {
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, str.c_str(), 0, 10);
-#else
-  return (uint32_t)strtoul(str.c_str(), nullptr, 10);
-#endif
-#endif
-}
-
-uint32_t uint32(char const* value, size_t size) {
-  char tmp[22];
-
-  if (value[size] != '\0') {
-    if (size >= sizeof(tmp)) {
-      size = sizeof(tmp) - 1;
-    }
-
-    memcpy(tmp, value, size);
-    tmp[size] = '\0';
-    value = tmp;
-  }
-
-#ifdef TRI_HAVE_STRTOUL_R
-  struct reent buffer;
-  return strtoul_r(&buffer, value, 0, 10);
-#else
-#ifdef TRI_HAVE__STRTOUL_R
-  struct reent buffer;
-  return _strtoul_r(&buffer, value, 0, 10);
-#else
-  return (uint32_t)strtoul(value, nullptr, 10);
-#endif
-#endif
-}
-#endif
 
 double doubleDecimal(std::string const& str) {
   return doubleDecimal(str.c_str(), str.size());
@@ -1912,78 +1870,6 @@ std::string correctPath(std::string const& incorrectPath) {
 #else
   return replace(incorrectPath, "\\", "/");
 #endif
-}
-
-// In a list str = "xx,yy,zz ...", entry(n,str,',') returns the nth entry of the
-// list delimited
-// by ','. E.g entry(2,str,',') = 'yy'
-
-std::string entry(size_t const pos, std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (pos == 0) {
-    return "";
-  }
-
-  if (delLength == 0 || sourceLength == 0) {
-    return sourceStr;
-  }
-
-  size_t k = 0;
-  size_t offSet = 0;
-
-  while (true) {
-    size_t delPos = sourceStr.find(delimiter, offSet);
-
-    if ((delPos == sourceStr.npos) || (delPos >= sourceLength) || (offSet >= sourceLength)) {
-      return sourceStr.substr(offSet);
-    }
-
-    ++k;
-
-    if (k == pos) {
-      return sourceStr.substr(offSet, delPos - offSet);
-    }
-
-    offSet = delPos + delLength;
-  }
-
-  return sourceStr;
-}
-
-/// Determines the number of entries in a list str = "xx,yyy,zz,www".
-/// numEntries(str,',') = 4.
-
-size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
-  size_t delLength = delimiter.length();
-  size_t sourceLength = sourceStr.length();
-
-  if (sourceLength == 0) {
-    return (0);
-  }
-
-  if (delLength == 0) {
-    return (1);
-  }
-
-  size_t k = 1;
-
-  for (size_t j = 0; j < sourceLength; ++j) {
-    bool match = true;
-    for (size_t i = 0; i < delLength; ++i) {
-      if (sourceStr[j + i] != delimiter[i]) {
-        match = false;
-        break;
-      }
-    }
-    if (match) {
-      j += (delLength - 1);
-      ++k;
-      continue;
-    }
-  }
-  return k;
 }
 
 std::string encodeHex(char const* value, size_t length) {

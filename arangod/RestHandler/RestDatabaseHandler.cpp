@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,6 +24,10 @@
 #include "RestDatabaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -72,13 +77,13 @@ RestStatus RestDatabaseHandler::getDatabases() {
       if (!_vocbase.isSystem()) {
         res.reset(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
       } else {
-        names = methods::Databases::list(std::string());
+        names = methods::Databases::list(server(), std::string());
       }
     } else if (suffixes[0] == "user") {
       if (!_request->authenticated() && ExecContext::isAuthEnabled()) {
         res.reset(TRI_ERROR_FORBIDDEN);
       } else {
-        names = methods::Databases::list(_request->user());
+        names = methods::Databases::list(server(), _request->user());
       }
     }
 
@@ -89,6 +94,16 @@ RestStatus RestDatabaseHandler::getDatabases() {
     builder.close();
   } else if (suffixes[0] == "current") {
     _vocbase.toVelocyPack(builder);
+  } else if (suffixes[0] == "shardStatistics") {
+    // shard statistics for the database
+    if (!ServerState::instance()->isCoordinator()) {
+      res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    } else {
+      std::string const& restrictServer = _request->value("DBserver");
+      ClusterInfo& ci =
+          server().getFeature<ClusterFeature>().clusterInfo();
+      res = ci.getShardStatisticsForDatabase(_vocbase.name(), restrictServer, builder);
+    }
   }
 
   if (res.fail()) {
@@ -108,7 +123,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::CreateDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE), _context);
     return RestStatus::DONE;
   }
 
@@ -117,13 +132,13 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!suffixes.empty() || !parseSuccess) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::CreateDatabase("", TRI_ERROR_BAD_PARAMETER);
+    events::CreateDatabase("", Result(TRI_ERROR_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
   VPackSlice nameVal = body.get("name");
   if (!nameVal.isString()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
-    events::CreateDatabase("", TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
+    events::CreateDatabase("", Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID), _context);
     return RestStatus::DONE;
   }
   std::string dbName = nameVal.copyString();
@@ -131,7 +146,7 @@ RestStatus RestDatabaseHandler::createDatabase() {
   VPackSlice options = body.get("options");
   VPackSlice users = body.get("users");
 
-  Result res = methods::Databases::create(server(), dbName, users, options);
+  Result res = methods::Databases::create(server(), _context, dbName, users, options);
   if (res.ok()) {
     generateOk(rest::ResponseCode::CREATED, VPackSlice::trueSlice());
   } else {
@@ -152,18 +167,18 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   if (!_vocbase.isSystem()) {
     generateError(GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
                   TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    events::DropDatabase("", TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
+    events::DropDatabase("", Result(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE), _context);
     return RestStatus::DONE;
   }
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
-    events::DropDatabase("", TRI_ERROR_HTTP_BAD_PARAMETER);
+    events::DropDatabase("", Result(TRI_ERROR_HTTP_BAD_PARAMETER), _context);
     return RestStatus::DONE;
   }
 
   std::string const& dbName = suffixes[0];
-  Result res = methods::Databases::drop(&_vocbase, dbName);
+  Result res = methods::Databases::drop(_context, &_vocbase, dbName);
 
   if (res.ok()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());

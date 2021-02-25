@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,19 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CacheManagerFeature.h"
 
-#ifdef _WIN32
-#include <stdio.h>
-#include <windows.h>
-#endif
-
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
+#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Cache/CacheManagerFeatureThreads.h"
 #include "Cache/Manager.h"
@@ -51,18 +49,16 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-Manager* CacheManagerFeature::MANAGER = nullptr;
-const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
-
 CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CacheManager"),
       _manager(nullptr),
       _rebalancer(nullptr),
-      _cacheSize((TRI_PhysicalMemory >= (static_cast<uint64_t>(4) << 30))
-                     ? static_cast<uint64_t>(
-                           (TRI_PhysicalMemory - (static_cast<uint64_t>(2) << 30)) * 0.25)
-                     : (256 << 20)),
-      _rebalancingInterval(static_cast<uint64_t>(2 * 1000 * 1000)) {
+      _cacheSize(
+          (PhysicalMemory::getValue() >= (static_cast<std::uint64_t>(4) << 30))
+              ? static_cast<std::uint64_t>(
+                    (PhysicalMemory::getValue() - (static_cast<std::uint64_t>(2) << 30)) * 0.25)
+              : (256 << 20)),
+      _rebalancingInterval(static_cast<std::uint64_t>(2 * 1000 * 1000)) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 }
@@ -74,7 +70,7 @@ void CacheManagerFeature::collectOptions(std::shared_ptr<options::ProgramOptions
 
   options->addOption("--cache.size", "size of cache in bytes",
                      new UInt64Parameter(&_cacheSize),
-                     arangodb::options::makeFlags(arangodb::options::Flags::Dynamic));
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options->addOption("--cache.rebalancing-interval",
                      "microseconds between rebalancing attempts",
@@ -106,14 +102,16 @@ void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+      return scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
     } catch (...) {
       return false;
     }
   };
-  _manager.reset(new Manager(postFn, _cacheSize));
-  MANAGER = _manager.get();
-  _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
+
+  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
+  _manager = std::make_unique<Manager>(sharedPRNG, postFn, _cacheSize);
+
+  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }
@@ -131,6 +129,6 @@ void CacheManagerFeature::stop() {
   }
 }
 
-void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 }  // namespace arangodb

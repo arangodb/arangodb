@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Common.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -120,22 +122,21 @@ SimpleModifier<ModifierCompletion, Enable>::OutputIterator::end() const {
 
 template <typename ModifierCompletion, typename Enable>
 void SimpleModifier<ModifierCompletion, Enable>::reset() {
-  _accumulator = std::make_unique<ModificationExecutorAccumulator>();
+  _accumulator.reset();
   _operations.clear();
-  _results = OperationResult{};
+  _results.reset();
 }
 
 template <typename ModifierCompletion, typename Enable>
 Result SimpleModifier<ModifierCompletion, Enable>::accumulate(InputAqlItemRow& row) {
-  TRI_ASSERT(_accumulator != nullptr);
-  auto result = _completion.accumulate(*_accumulator.get(), row);
+  auto result = _completion.accumulate(_accumulator, row);
   _operations.push_back({result, row});
   return Result{};
 }
 
 template <typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::transact() {
-  _results = _completion.transact(_accumulator->closeAndGetContents());
+void SimpleModifier<ModifierCompletion, Enable>::transact(transaction::Methods& trx) {
+  _results = _completion.transact(trx, _accumulator.closeAndGetContents());
 
   throwOperationResultException(_infos, _results);
 }
@@ -147,7 +148,7 @@ size_t SimpleModifier<ModifierCompletion, Enable>::nrOfOperations() const {
 
 template <typename ModifierCompletion, typename Enable>
 size_t SimpleModifier<ModifierCompletion, Enable>::nrOfDocuments() const {
-  return _accumulator->nrOfDocuments();
+  return _accumulator.nrOfDocuments();
 }
 
 template <typename ModifierCompletion, typename Enable>
@@ -200,7 +201,7 @@ VPackArrayIterator SimpleModifier<ModifierCompletion, Enable>::getResultsIterato
     TRI_ASSERT(_results.hasSlice() && _results.slice().isArray());
     return VPackArrayIterator{_results.slice()};
   }
-  return VPackArrayIterator{VPackSlice::emptyArraySlice()};
+  return VPackArrayIterator(VPackArrayIterator::Empty{});
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

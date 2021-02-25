@@ -128,22 +128,50 @@ void Intersect(const Fst<Arc> &ifst1, const Fst<Arc> &ifst2,
                MutableFst<Arc> *ofst,
                const IntersectOptions &opts = IntersectOptions()) {
   using M = Matcher<Fst<Arc>>;
-  if (opts.filter_type == AUTO_FILTER) {
-    CacheOptions nopts;
-    nopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = IntersectFst<Arc>(ifst1, ifst2, nopts);
-  } else if (opts.filter_type == SEQUENCE_FILTER) {
-    IntersectFstOptions<Arc> iopts;
-    iopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
-  } else if (opts.filter_type == ALT_SEQUENCE_FILTER) {
-    IntersectFstOptions<Arc, M, AltSequenceComposeFilter<M>> iopts;
-    iopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
-  } else if (opts.filter_type == MATCH_FILTER) {
-    IntersectFstOptions<Arc, M, MatchComposeFilter<M>> iopts;
-    iopts.gc_limit = 0;  // Cache only the last state for fastest copy.
-    *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+  // In each case, we cache only the last state for fastest copy.
+  switch (opts.filter_type) {
+    case AUTO_FILTER: {
+      CacheOptions nopts;
+      nopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, nopts);
+      break;
+    }
+    case SEQUENCE_FILTER: {
+      IntersectFstOptions<Arc> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
+    case ALT_SEQUENCE_FILTER: {
+      IntersectFstOptions<Arc, M, AltSequenceComposeFilter<M>> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
+    case MATCH_FILTER: {
+      IntersectFstOptions<Arc, M, MatchComposeFilter<M>> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
+    case NO_MATCH_FILTER: {
+      IntersectFstOptions<Arc, M, NoMatchComposeFilter<M>> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
+    case NULL_FILTER: {
+      IntersectFstOptions<Arc, M, NullComposeFilter<M>> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
+    case TRIVIAL_FILTER: {
+      IntersectFstOptions<Arc, M, TrivialComposeFilter<M>> iopts;
+      iopts.gc_limit = 0;
+      *ofst = IntersectFst<Arc>(ifst1, ifst2, iopts);
+      break;
+    }
   }
   if (opts.connect) Connect(ofst);
 }

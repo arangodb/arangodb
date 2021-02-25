@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,9 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
@@ -86,19 +89,26 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
 
-  auto& server = application_features::ApplicationServer::server();
+  bool allowTasks = v8Dealer.allowJavaScriptTasks() ||
+                    (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
+  if (!allowTasks) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "JavaScript tasks are disabled");
+  }
+
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
-  } else if (server.isStopping()) {
+  } else if (v8g->_server.isStopping()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
-
-  TRI_GET_GLOBALS();
 
   if (ExecContext::current().databaseAuthLevel() != auth::Level::RW) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -204,7 +214,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if (!Task::tryCompile(isolate, command)) {
+  if (!Task::tryCompile(v8g->_server, isolate, command)) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 
@@ -212,19 +222,16 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto parameters = std::make_shared<VPackBuilder>();
 
   if (TRI_HasProperty(context, isolate, obj, "params")) {
-    int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_IGETC,
-                                     TRI_V8_ASCII_STRING(isolate, "params"))
-                                .FromMaybe(v8::Local<v8::Value>()),
-                            false);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
+    TRI_V8ToVPack(isolate, *parameters,
+                  obj->Get(TRI_IGETC,
+                           TRI_V8_ASCII_STRING(isolate, "params"))
+                      .FromMaybe(v8::Local<v8::Value>()),
+                  false);
   }
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  ErrorCode res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, v8g->_vocbase, command, isSystem, res);
 
@@ -276,7 +283,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "registerTask() needs db RW permissions");
   }
 
-  int res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
+  auto res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -336,7 +343,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "createQueue() needs db RW permissions");
   }
 
-  const std::string runAsUser = exec.user();
+  std::string const runAsUser = exec.user();
   TRI_ASSERT(exec.isAdminUser() || !runAsUser.empty());
   
   std::string key = TRI_ObjectToString(isolate, args[0]);
@@ -354,7 +361,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("aeb56", TRACE, Logger::FIXME) << "Adding queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
 
   if (!res.ok()) {
@@ -362,11 +369,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.insert("_queues", doc.slice(), opts);
-
-  if (result.fail() && result.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED)) {
-    result = trx.replace("_queues", doc.slice(), opts);
-  }
+  opts.overwriteMode = OperationOptions::OverwriteMode::Replace;
+  OperationResult result = trx.insert(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 
@@ -405,7 +409,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LOG_TOPIC("2cef9", TRACE, Logger::FIXME) << "Removing queue " << key;
   ExecContextSuperuserScope exscope;
   auto ctx = transaction::V8Context::Create(*vocbase, true);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, StaticStrings::QueuesCollection, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
 
@@ -414,7 +418,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions opts;
-  OperationResult result = trx.remove("_queues", doc.slice(), opts);
+  OperationResult result = trx.remove(StaticStrings::QueuesCollection, doc.slice(), opts);
 
   res = trx.finish(result.result);
 
@@ -451,14 +455,4 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
-}
-
-void TRI_ShutdownV8Dispatcher() {
-  using arangodb::Task;
-  Task::shutdownTasks();
-}
-
-void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) {
-  using arangodb::Task;
-  Task::removeTasksForDatabase(name);
 }

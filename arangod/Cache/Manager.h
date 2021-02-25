@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,16 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_MANAGER_H
 #define ARANGODB_CACHE_MANAGER_H
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
+#include "Basics/SpinLocker.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
@@ -36,15 +35,19 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
 
-#include <stdint.h>
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <stack>
 #include <utility>
 
 namespace arangodb {
+class SharedPRNGFeature;
+
 namespace cache {
 
 class Cache;           // forward declaration
@@ -67,7 +70,7 @@ class Rebalancer;      // forward declaration
 /// have more space.
 ///
 /// There should be a single Manager instance exposed via
-/// CacheManagerFeature::MANAGER --- use this unless you are very certain you
+/// CacheManagerFeature::manager() --- use this unless you are very certain you
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
@@ -75,7 +78,7 @@ class Manager {
   typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
-  static const uint64_t minSize;
+  static const std::uint64_t minSize;
   typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
   typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
@@ -86,7 +89,9 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(PostFn schedulerPost, uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG,
+          PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -102,13 +107,14 @@ class Manager {
   /// lifetime. It should likely only be set to a non-default value for
   /// infrequently accessed or short-lived caches.
   //////////////////////////////////////////////////////////////////////////////
-  std::shared_ptr<Cache> createCache(CacheType type, bool enableWindowedStats = false,
-                                     uint64_t maxSize = UINT64_MAX);
+  std::shared_ptr<Cache> createCache(
+      CacheType type, bool enableWindowedStats = false,
+      std::uint64_t maxSize = std::numeric_limits<std::uint64_t>::max());
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Destroy the given cache.
   //////////////////////////////////////////////////////////////////////////////
-  void destroyCache(std::shared_ptr<Cache> cache);
+  static void destroyCache(std::shared_ptr<Cache> const& cache);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Prepare for shutdown.
@@ -123,12 +129,12 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Change the global usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  bool resize(uint64_t newGlobalLimit);
+  bool resize(std::uint64_t newGlobalLimit);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report the current global usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t globalLimit();
+  std::uint64_t globalLimit();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Report the current amoutn of memory allocated to all caches.
@@ -138,7 +144,7 @@ class Manager {
   /// additional synchronization between the caches and slow things down
   /// considerably.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t globalAllocation();
+  std::uint64_t globalAllocation();
 
   std::pair<double, double> globalHitRates();
 
@@ -160,16 +166,22 @@ class Manager {
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
+  
+  SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
   // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
   // most libraries
-  static constexpr uint64_t cacheRecordOverhead = sizeof(std::shared_ptr<Cache>) + 64;
+  static constexpr std::uint64_t cacheRecordOverhead =
+      sizeof(std::shared_ptr<Cache>) + 64;
   // assume at most 16 slots in each stack -- TODO: check validity
-  static constexpr uint64_t tableListsOverhead = 32 * 16 * sizeof(std::shared_ptr<Cache>);
-  static constexpr uint64_t triesFast = 100;
-  static constexpr uint64_t triesSlow = 1000;
+  static constexpr std::uint64_t tableListsOverhead =
+      32 * 16 * sizeof(std::shared_ptr<Cache>);
+  static constexpr std::uint64_t triesFast = 100;
+  static constexpr std::uint64_t triesSlow = 1000;
+
+  SharedPRNGFeature& _sharedPRNG;
 
   // simple state variables
   basics::ReadWriteSpinLock _lock;
@@ -188,19 +200,20 @@ class Manager {
   basics::SharedCounter<64> _findMisses;
 
   // registry to keep track of registered caches
-  std::map<uint64_t, std::shared_ptr<Cache>> _caches;
-  uint64_t _nextCacheId;
+  std::map<std::uint64_t, std::shared_ptr<Cache>> _caches;
+  std::uint64_t _nextCacheId;
 
   // actual tables to lease out
-  std::stack<std::shared_ptr<Table>> _tables[32];
+
+  std::array<std::stack<std::shared_ptr<Table>>, 32> _tables;
 
   // global statistics
-  uint64_t _globalSoftLimit;
-  uint64_t _globalHardLimit;
-  uint64_t _globalHighwaterMark;
-  uint64_t _fixedAllocation;
-  uint64_t _spareTableAllocation;
-  uint64_t _globalAllocation;
+  std::uint64_t _globalSoftLimit;
+  std::uint64_t _globalHardLimit;
+  std::uint64_t _globalHighwaterMark;
+  std::uint64_t _fixedAllocation;
+  std::uint64_t _spareTableAllocation;
+  std::uint64_t _globalAllocation;
 
   // transaction management
   TransactionManager _transactions;
@@ -208,10 +221,10 @@ class Manager {
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
-  uint64_t _resizeAttempt;
-  basics::SharedAtomic<uint64_t> _outstandingTasks;
-  basics::SharedAtomic<uint64_t> _rebalancingTasks;
-  basics::SharedAtomic<uint64_t> _resizingTasks;
+  std::uint64_t _resizeAttempt;
+  std::atomic<std::uint64_t> _outstandingTasks;
+  std::atomic<std::uint64_t> _rebalancingTasks;
+  std::atomic<std::uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
@@ -225,27 +238,27 @@ class Manager {
 
  private:  // used by caches
   // register and unregister individual caches
-  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(uint64_t fixedSize,
-                                                                   uint64_t maxSize);
-  void unregisterCache(uint64_t id);
+  std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(std::uint64_t fixedSize,
+                                                                   std::uint64_t maxSize);
+  void unregisterCache(std::uint64_t id);
 
   // allow individual caches to request changes to their allocations
   std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
   std::pair<bool, Manager::time_point> requestMigrate(Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
-  void reportAccess(uint64_t id);
+  void reportAccess(std::uint64_t id);
   void reportHitStat(Stat stat);
 
  private:  // used internally and by tasks
   static constexpr double highwaterMultiplier = 0.8;
-  static const uint64_t minCacheAllocation;
+  static const std::uint64_t minCacheAllocation;
   static const std::chrono::milliseconds rebalancingGracePeriod;
 
   // check if shutdown or shutting down
-  bool isOperational() const;
+  [[nodiscard]] bool isOperational() const;
   // check if there is already a global process running
-  bool globalProcessRunning() const;
+  [[nodiscard]] bool globalProcessRunning() const;
 
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
@@ -257,23 +270,25 @@ class Manager {
   // helpers for global resizing
   void shrinkOvergrownCaches(TaskEnvironment environment);
   void freeUnusedTables();
-  bool adjustGlobalLimitsIfAllowed(uint64_t newGlobalLimit);
+  bool adjustGlobalLimitsIfAllowed(std::uint64_t newGlobalLimit);
 
   // methods to adjust individual caches
-  void resizeCache(TaskEnvironment environment, Cache* cache, uint64_t newLimit);
-  void migrateCache(TaskEnvironment environment, Cache* cache, std::shared_ptr<Table>& table);
-  std::shared_ptr<Table> leaseTable(uint32_t logSize);
-  void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
+  void resizeCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
+                   Cache* cache, uint64_t newLimit);
+  void migrateCache(TaskEnvironment environment, basics::SpinLocker&& metaGuard,
+                    Cache* cache, std::shared_ptr<Table>& table);
+  std::shared_ptr<Table> leaseTable(std::uint32_t logSize);
+  void reclaimTable(std::shared_ptr<Table> table, bool internal);
 
   // helpers for individual allocations
-  bool increaseAllowed(uint64_t increase, bool privileged = false) const;
+  [[nodiscard]] bool increaseAllowed(uint64_t increase, bool privileged = false) const;
 
   // helper for lr-accessed heuristics
   std::shared_ptr<PriorityList> priorityList();
 
   // helper for wait times
-  Manager::time_point futureTime(uint64_t millisecondsFromNow);
-  bool pastRebalancingGracePeriod() const;
+  [[nodiscard]] static Manager::time_point futureTime(std::uint64_t millisecondsFromNow);
+  [[nodiscard]] bool pastRebalancingGracePeriod() const;
 };
 
 };  // end namespace cache

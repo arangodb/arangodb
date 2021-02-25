@@ -1,0 +1,151 @@
+routines (
+  R1 R2 RV
+  initial_morph
+  mark_regions
+  noun_sfx
+  deriv
+  verb_sfx
+)
+
+externals ( stem )
+
+integers ( pV p1 p2 )
+
+groupings ( v )
+
+stringescapes {}
+
+/* Accented characters */
+
+stringdef a'   '{U+00E1}'  // a-acute
+stringdef e'   '{U+00E9}'  // e-acute
+stringdef i'   '{U+00ED}'  // i-acute
+stringdef o'   '{U+00F3}'  // o-acute
+stringdef u'   '{U+00FA}'  // u-acute
+
+define v 'aeiou{a'}{e'}{i'}{o'}{u'}'
+
+define mark_regions as (
+
+    $pV = limit
+    $p1 = limit
+    $p2 = limit  // defaults
+
+    do (
+        gopast v setmark pV
+    )
+    do (
+        gopast v gopast non-v setmark p1
+        gopast v gopast non-v setmark p2
+    )
+)
+
+define initial_morph as (
+  [substring] among (
+    'h-' 'n-' 't-' //nAthair -> n-athair, but alone are problematic
+    (delete)
+
+    // verbs
+    'd{'}'
+    (delete)
+    'd{'}fh'
+    (<- 'f')
+    // other contractions
+    'm{'}' 'b{'}'
+    (delete)
+
+    'sh'
+    (<- 's')
+
+    'mb'
+    (<- 'b')
+    'gc'
+    (<- 'c')
+    'nd'
+    (<- 'd')
+    'bhf'
+    (<- 'f')
+    'ng'
+    (<- 'g')
+    'bp'
+    (<- 'p')
+    'ts'
+    (<- 's')
+    'dt'
+    (<- 't')
+
+    // Lenition
+    'bh'
+    (<- 'b')
+    'ch'
+    (<- 'c')
+    'dh'
+    (<- 'd')
+    'fh'
+    (<- 'f')
+    'gh'
+    (<- 'g')
+    'mh'
+    (<- 'm')
+    'ph'
+    (<- 'p')
+    'th'
+    (<- 't')
+  )
+)
+
+backwardmode (
+
+  define RV as $pV <= cursor
+  define R1 as $p1 <= cursor
+  define R2 as $p2 <= cursor
+
+  define noun_sfx as (
+    [substring] among (
+      'amh' 'eamh' 'abh' 'eabh'
+      'aibh' 'ibh' 'aimh' 'imh'
+      'a{i'}ocht' '{i'}ocht' 'a{i'}ochta' '{i'}ochta'
+      (R1 delete)
+      'ire' 'ir{i'}' 'aire' 'air{i'}'
+      (R2 delete)
+    )
+  )
+  define deriv as (
+    [substring] among (
+      'acht' 'eacht' 'ach' 'each' 'eacht{u'}il' 'eachta' 'acht{u'}il' 'achta'
+      (R2 delete)  //siopadóireacht -> siopadóir but not poblacht -> pobl
+      'arcacht' 'arcachta{i'}' 'arcachta'
+      (<- 'arc') // monarcacht -> monarc
+      'gineach' 'gineas' 'ginis'
+      (<- 'gin')
+      'grafa{i'}och' 'grafa{i'}ocht' 'grafa{i'}ochta' 'grafa{i'}ochta{i'}'
+      (<- 'graf')
+      'paite' 'patach' 'pataigh' 'patacha'
+      (<- 'paite')
+      '{o'}ideach' '{o'}ideacha' '{o'}idigh'
+      (<- '{o'}id')
+    )
+  )
+  define verb_sfx as (
+    [substring] among (
+      'imid' 'aimid' '{i'}mid' 'a{i'}mid'
+      'faidh' 'fidh'
+      (RV delete)
+      'ain'
+      'eadh' 'adh'
+      '{a'}il'
+      'tear' 'tar'
+      (R1 delete)
+    )
+  )
+)
+
+define stem as (
+  do initial_morph
+  do mark_regions
+  backwards (
+    do noun_sfx
+    do deriv
+    do verb_sfx
+  )
+)

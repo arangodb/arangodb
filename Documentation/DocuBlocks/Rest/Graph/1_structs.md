@@ -12,9 +12,6 @@ Documents within these collections do not have edges within this graph.
 @RESTSTRUCT{numberOfShards,graph_representation,integer,required,}
 Number of shards created for every new collection in the graph.
 
-@RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
-The replication factor used for every new collection in the graph.
-
 @RESTSTRUCT{_id,graph_representation,string,required,}
 The internal id value of this graph.
 
@@ -24,19 +21,28 @@ concurrent modifications to this graph.
 
 @RESTSTRUCT{replicationFactor,graph_representation,integer,required,}
 The replication factor used for every new collection in the graph.
+Can also be the string `"satellite"` for a SatelliteGraph
+(Enterprise Edition only).
 
 @RESTSTRUCT{writeConcern,graph_representation,integer,optional,}
-how many copies of each shard are required to be in sync on the different
-DBServers for every new collection in the graph. If there are less then these
-many copies in the cluster a shard will refuse to write.  Writes to shards with
-enough up-to-date copies will succeed at the same time however. The value of
-*writeConcern* can not be larger than *replicationFactor*.
+Default write concern for new collections in the graph.
+It determines how many copies of each shard are required to be
+in sync on the different DB-Servers. If there are less then these many copies
+in the cluster a shard will refuse to write. Writes to shards with enough
+up-to-date copies will succeed at the same time however. The value of
+*writeConcern* can not be larger than *replicationFactor*. _(cluster only)_
 
 @RESTSTRUCT{isSmart,graph_representation,boolean,required,}
-Flag if the graph is a SmartGraph (Enterprise Edition only) or not.
+Whether the graph is a SmartGraph (Enterprise Edition only).
+
+@RESTSTRUCT{isDisjoint,graph_representation,boolean,required,}
+Whether the graph is a Disjoint SmartGraph (Enterprise Edition only).
 
 @RESTSTRUCT{smartGraphAttribute,graph_representation,string,optional,}
-The name of the sharding attribute in smart graph case (Enterprise Edition only)
+Name of the sharding attribute in the SmartGraph case (Enterprise Edition only).
+
+@RESTSTRUCT{isSatellite,graph_representation,boolean,required,}
+Flag if the graph is a SatelliteGraph (Enterprise Edition only) or not.
 
 @RESTSTRUCT{_id,vertex_representation,string,required,}
 The _id value of the stored data.

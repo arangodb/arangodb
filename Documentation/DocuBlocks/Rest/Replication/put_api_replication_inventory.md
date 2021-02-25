@@ -10,17 +10,29 @@
 Include system collections in the result. The default value is *true*.
 
 @RESTQUERYPARAM{global,boolean,optional}
-Include alll databases in the response. Only works on `_system` The default value is *false*.
+Include all databases in the response. Only works on `_system` The default value is *false*.
 
 @RESTQUERYPARAM{batchId,number,required}
-The RocksDB engine requires a valid batchId for this API call
+A valid batchId is required for this API call
+
+@RESTQUERYPARAM{collection,string,optional}
+If this parameter is set, the response will be restricted to a single collection (the one
+specified), and no views will be returned. This can be used as an optimization to reduce
+the size of the response.
 
 @RESTDESCRIPTION
-Returns the array of collections and indexes available on the server. This
-array can be used by replication clients to initiate an initial sync with the
-server.
+Returns the array of collections and their indexes, and the array of views available. These
+arrays can be used by replication clients to initiate an initial synchronization with the
+server. 
+The response will contain all collections, their indexes and views in the requested database
+if *global* is not set, and all collections, indexes and views in all databases if *global*
+is set.
+In case *global* is not set, it is possible to restrict the response to a single collection
+by setting the *collection* parameter. In this case the response will contain only information
+about the requested collection in the *collections* array, and no information about views
+(i.e. the *views* response attribute will be an empty array).
 
-The response will contain a JSON object with the *collection* and *state* and
+The response will contain a JSON object with the *collections*, *views*, *state* and
 *tick* attributes.
 
 *collections* is an array of collections with the following sub-attributes:
@@ -39,6 +51,8 @@ contains the following sub-attributes:
 - *lastLogTick*: the value of the last tick the replication logger has written
 
 - *time*: the current time on the server
+
+*views* is an array of available views.
 
 Replication clients should note the *lastLogTick* value returned. They can then
 fetch collections' data using the dump method up to the value of lastLogTick, and
@@ -75,13 +89,13 @@ server, the following additional steps need to be carried out:
   response will be empty and clients can go to sleep for a while and try again
   later.
 
-**Note**: on a coordinator, this request must have the query parameter
-*DBserver* which must be an ID of a DBserver.
-The very same request is forwarded synchronously to that DBserver.
-It is an error if this attribute is not bound in the coordinator case.
+**Note**: on a Coordinator, this request must have the query parameter
+*DBserver* which must be an ID of a DB-Server.
+The very same request is forwarded synchronously to that DB-Server.
+It is an error if this attribute is not bound in the Coordinator case.
 
-**Note:**: Using the `global` parameter the top-level object contains a key `databases`
-under which each key represents a datbase name, and the value conforms to the above describtion.
+**Note**: Using the `global` parameter the top-level object contains a key `databases`
+under which each key represents a database name, and the value conforms to the above description.
 
 @RESTRETURNCODES
 
@@ -94,20 +108,21 @@ is returned when an invalid HTTP method is used.
 @RESTRETURNCODE{500}
 is returned if an error occurred while assembling the response.
 
-@EXAMPLES
+<!-- TODO How to find out the RocksDB batchId?
+ EXAMPLES
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventory_mmfiles}
+ EXAMPLE_ARANGOSH_RUN{RestReplicationInventory_mmfiles}
     var url = "/_api/replication/inventory";
     var response = logCurlRequest('GET', url);
 
     assert(response.code === 200);
 
     logJsonResponse(response);
-@END_EXAMPLE_ARANGOSH_RUN
+ END_EXAMPLE_ARANGOSH_RUN
 
 With some additional indexes:
 
-@EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
+ EXAMPLE_ARANGOSH_RUN{RestReplicationInventoryIndexes_mmfiles}
     db._drop("IndexedCollection1");
     var c1 = db._create("IndexedCollection1");
     c1.ensureHashIndex("name");
@@ -127,5 +142,6 @@ With some additional indexes:
     db._flushCache();
     db._drop("IndexedCollection1");
     db._drop("IndexedCollection2");
-@END_EXAMPLE_ARANGOSH_RUN
+ END_EXAMPLE_ARANGOSH_RUN
+-->
 @endDocuBlock

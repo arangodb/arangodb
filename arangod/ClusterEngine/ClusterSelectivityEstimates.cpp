@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ void ClusterSelectivityEstimates::flush() {
   std::atomic_store(&_data, std::shared_ptr<InternalData>());
 }
 
-IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TRI_voc_tid_t tid) {
+IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdating, TransactionId tid) {
   auto data = std::atomic_load<ClusterSelectivityEstimates::InternalData>(&_data);
 
   if (allowUpdating) {
@@ -106,7 +106,7 @@ void ClusterSelectivityEstimates::set(IndexEstMap const& estimates) {
   auto indexes = _collection.getIndexes();
 
   for (std::shared_ptr<Index>& idx : indexes) {
-    auto it = estimates.find(std::to_string(idx->id()));
+    auto it = estimates.find(std::to_string(idx->id().id()));
 
     if (it != estimates.end()) {
       idx->updateClusterSelectivityEstimate(it->second);

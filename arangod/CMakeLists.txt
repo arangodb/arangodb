@@ -12,6 +12,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 #generate inside the source tree
 
 if (USE_MAINTAINER_MODE AND NOT MSVC)
+  set_directory_properties(PROPERTIES CLEAN_NO_CUSTOM "On")
+
   add_custom_command(
     OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/Aql/tokens.cpp
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
@@ -50,39 +52,51 @@ find_package(IResearch REQUIRED)
 add_library(arango_iresearch
   STATIC
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
+  IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   IResearch/Containers.cpp IResearch/Containers.h
+  IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
+  IResearch/Geo.cpp IResearch/Geo.h
+  IResearch/GeoAnalyzer.cpp IResearch/GeoAnalyzer.h
+  IResearch/GeoFilter.cpp IResearch/GeoFilter.h
   IResearch/IResearchAnalyzerFeature.cpp IResearch/IResearchAnalyzerFeature.h
+  IResearch/IResearchAqlAnalyzer.cpp IResearch/IResearchAqlAnalyzer.h
   IResearch/IResearchCommon.cpp IResearch/IResearchCommon.h
+  IResearch/IResearchCompression.cpp IResearch/IResearchCompression.h
+  IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
+  IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
+  IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
+  IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
+  IResearch/IResearchIdentityAnalyzer.cpp IResearch/IResearchIdentityAnalyzer.h
   IResearch/IResearchKludge.cpp IResearch/IResearchKludge.h
   IResearch/IResearchLink.cpp IResearch/IResearchLink.h
   IResearch/IResearchLinkCoordinator.cpp IResearch/IResearchLinkCoordinator.h
   IResearch/IResearchLinkHelper.cpp IResearch/IResearchLinkHelper.h
   IResearch/IResearchLinkMeta.cpp IResearch/IResearchLinkMeta.h
-  IResearch/IResearchMMFilesLink.cpp IResearch/IResearchMMFilesLink.h
+  IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
+  IResearch/IResearchPDP.cpp IResearch/IResearchPDP.h
+  IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
   IResearch/IResearchRocksDBLink.cpp IResearch/IResearchRocksDBLink.h
   IResearch/IResearchRocksDBRecoveryHelper.cpp
   IResearch/IResearchRocksDBRecoveryHelper.h
-  IResearch/IResearchView.cpp IResearch/IResearchView.h
   IResearch/IResearchVPackComparer.cpp IResearch/IResearchVPackComparer.h
+  IResearch/IResearchView.cpp IResearch/IResearchView.h
+  IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
+  IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
   IResearch/IResearchViewSort.cpp IResearch/IResearchViewSort.h
   IResearch/IResearchViewStoredValues.cpp IResearch/IResearchViewStoredValues.h
-  IResearch/IResearchViewCoordinator.cpp IResearch/IResearchViewCoordinator.h
-  IResearch/IResearchExpressionContext.cpp IResearch/IResearchExpressionContext.h
-  IResearch/IResearchViewMeta.cpp IResearch/IResearchViewMeta.h
-  IResearch/IResearchFeature.cpp IResearch/IResearchFeature.h
-  IResearch/IResearchDocument.cpp IResearch/IResearchDocument.h
-  IResearch/IResearchPrimaryKeyFilter.cpp IResearch/IResearchPrimaryKeyFilter.h
-  IResearch/IResearchFilterFactory.cpp IResearch/IResearchFilterFactory.h
-  IResearch/IResearchOrderFactory.cpp IResearch/IResearchOrderFactory.h
   IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
-  IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
-  IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   RestHandler/RestAnalyzerHandler.cpp RestHandler/RestAnalyzerHandler.h
 )
 
 target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
+
+set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
+
+
+get_target_property(IRESEARCH_INCLUDE
+  ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)
 
 target_include_directories(arango_iresearch
   PUBLIC ${IRESEARCH_INCLUDE}
@@ -92,12 +106,6 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_iresearch
     PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
   )
-endif()
-
-if(MSVC)
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static-scrt) # use static + staticCRT to match ArangoDB
-else()
-  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
 endif()
 
 target_link_libraries(arango_iresearch
@@ -152,22 +160,25 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Cluster/CallbackGuard.cpp
   Cluster/ClusterEdgeCursor.cpp
   Cluster/ClusterTraverser.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/TraverserEngine.cpp
-  Cluster/TraverserEngineRegistry.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp
+  Graph/ClusterGraphDatalake.cpp
   Graph/ClusterTraverserCache.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/Graph.cpp
   Graph/GraphManager.cpp
   Graph/GraphOperations.cpp
+  Graph/KPathFinder.cpp
   Graph/KShortestPathsFinder.cpp
   Graph/NeighborsEnumerator.cpp
   Graph/PathEnumerator.cpp
   Graph/ShortestPathFinder.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
+  Graph/ShortestPathType.cpp
   Graph/SingleServerEdgeCursor.cpp
   Graph/SingleServerTraverser.cpp
   Graph/Traverser.cpp
@@ -175,9 +186,39 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
   Graph/TraverserOptions.cpp
+  Graph/WeightedEnumerator.cpp
+  Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
+  Graph/Cache/RefactoredTraverserCache.cpp
+  Graph/Enumerators/TwoSidedEnumerator.cpp
+  Graph/Helpers/TraceEntry.cpp
+  Graph/Queues/QueueTracer.cpp
+  Graph/PathManagement/PathResult.cpp
+  Graph/PathManagement/PathStore.cpp
+  Graph/PathManagement/PathStoreTracer.cpp
+  Graph/PathManagement/PathValidator.cpp
+  Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/SingleServerProvider.cpp
+  Graph/Providers/BaseProviderOptions.cpp
+  Graph/Providers/ProviderTracer.cpp
+  Graph/Types/UniquenessLevel.cpp
+  Graph/Types/ValidationResult.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   RestHandler/RestGraphHandler.cpp
-  RestServer/TraverserEngineRegistryFeature.cpp
+)
+
+set(LIB_ARANGO_PREGEL_AIR_SOURCES
+  Pregel/Algos/AIR/AIR.cpp
+  Pregel/Algos/AIR/AbstractAccumulator.cpp
+  Pregel/Algos/AIR/AccumulatorOptions.cpp
+  Pregel/Algos/AIR/Accumulators.cpp
+  Pregel/Algos/AIR/EdgeData.cpp
+  Pregel/Algos/AIR/GraphFormat.cpp
+  Pregel/Algos/AIR/MasterContext.cpp
+  Pregel/Algos/AIR/MessageData.cpp
+  Pregel/Algos/AIR/MessageFormat.cpp
+  Pregel/Algos/AIR/VertexComputation.cpp
+  Pregel/Algos/AIR/VertexData.cpp
+  Pregel/Algos/AIR/WorkerContext.cpp
 )
 
 set(LIB_ARANGO_PREGEL_SOURCES
@@ -197,6 +238,7 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/Algos/SLPA.cpp
   Pregel/Algos/SSSP.cpp
   Pregel/Algos/ShortestPath.cpp
+  Pregel/Algos/WCC.cpp
   Pregel/Conductor.cpp
   Pregel/GraphStore.cpp
   Pregel/IncomingCache.cpp
@@ -204,6 +246,8 @@ set(LIB_ARANGO_PREGEL_SOURCES
   Pregel/OutgoingCache.cpp
   Pregel/PregelFeature.cpp
   Pregel/Recovery.cpp
+  Pregel/Reports.cpp
+  Pregel/Reports.h
   Pregel/Utils.cpp
   Pregel/Worker-templates-algorithms.cpp
   Pregel/Worker-templates-native-types.cpp
@@ -216,12 +260,19 @@ set(LIB_ARANGO_PREGEL_SOURCES
 set(LIB_ARANGO_AQL_SOURCES
   Aql/Aggregator.cpp
   Aql/AllRowsFetcher.cpp
+  Aql/AqlCall.cpp
+  Aql/AqlCallList.cpp
+  Aql/AqlCallSet.cpp
+  Aql/AqlCallStack.cpp
+  Aql/AqlExecuteResult.cpp
   Aql/AqlFunctionFeature.cpp
+  Aql/AqlFunctionsInternalCache.cpp
   Aql/AqlItemBlock.cpp
+  Aql/AqlItemBlockInputMatrix.cpp
+  Aql/AqlItemBlockInputRange.cpp
   Aql/AqlItemBlockManager.cpp
   Aql/AqlItemBlockUtils.cpp
   Aql/AqlItemMatrix.cpp
-  Aql/AqlResult.cpp
   Aql/AqlTransaction.cpp
   Aql/AqlValue.cpp
   Aql/AqlValueGroup.cpp
@@ -230,16 +281,19 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/Ast.cpp
   Aql/AstHelper.cpp
   Aql/AstNode.cpp
+  Aql/AstResources.cpp
+  Aql/AsyncExecutor.cpp
   Aql/AttributeAccessor.cpp
-  Aql/BaseExpressionContext.cpp
+  Aql/AttributeNamePath.cpp
   Aql/BindParameters.cpp
-  Aql/BlockCollector.cpp
   Aql/BlocksWithClients.cpp
   Aql/CalculationExecutor.cpp
+  Aql/CalculationNodeVarFinder.cpp
   Aql/ClusterNodes.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
+  Aql/CollectionAccess.cpp
   Aql/CollectionAccessingNode.cpp
   Aql/Collections.cpp
   Aql/Condition.cpp
@@ -250,11 +304,14 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/CountCollectExecutor.cpp
   Aql/DependencyProxy.cpp
   Aql/DistinctCollectExecutor.cpp
+  Aql/DistributeClientBlock.cpp
   Aql/DistributeConsumerNode.cpp
   Aql/DistributeExecutor.cpp
   Aql/DocumentExpressionContext.cpp
+  Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
+  Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
@@ -263,11 +320,11 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ExecutionBlockImpl.cpp
   Aql/ExecutionEngine.cpp
   Aql/ExecutionNode.cpp
+  Aql/ExecutionNodeId.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionState.cpp
   Aql/ExecutionStats.cpp
   Aql/ExecutorExpressionContext.cpp
-  Aql/ExecutorInfos.cpp
   Aql/Expression.cpp
   Aql/FilterExecutor.cpp
   Aql/FixedVarExpressionContext.cpp
@@ -291,13 +348,17 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/KShortestPathsNode.cpp
   Aql/LateMaterializedOptimizerRulesCommon.cpp
   Aql/LimitExecutor.cpp
+  Aql/LimitStats.cpp
   Aql/MaterializeExecutor.cpp
   Aql/ModificationExecutor.cpp
   Aql/ModificationExecutorHelpers.cpp
   Aql/ModificationExecutorInfos.cpp
   Aql/ModificationNodes.cpp
   Aql/ModificationOptions.cpp
+  Aql/MultiAqlItemBlockInputRange.cpp
   Aql/MultiDependencySingleRowFetcher.cpp
+  Aql/MutexExecutor.cpp
+  Aql/MutexNode.cpp
   Aql/NoResultsExecutor.cpp
   Aql/NodeFinder.cpp
   Aql/Optimizer.cpp
@@ -305,25 +366,30 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/OptimizerRulesCluster.cpp
   Aql/OptimizerRulesFeature.cpp
   Aql/OptimizerRulesReplaceFunctions.cpp
+  Aql/OptimizerUtils.cpp
   Aql/OutputAqlItemRow.cpp
+  Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/Parser.cpp
+  Aql/Projections.cpp
   Aql/Quantifier.cpp
   Aql/Query.cpp
   Aql/QueryCache.cpp
+  Aql/QueryContext.cpp
   Aql/QueryExecutionState.cpp
   Aql/QueryExpressionContext.cpp
   Aql/QueryList.cpp
   Aql/QueryOptions.cpp
   Aql/QueryProfile.cpp
   Aql/QueryRegistry.cpp
-  Aql/QueryResources.cpp
   Aql/QuerySnippet.cpp
   Aql/QueryString.cpp
+  Aql/QueryWarnings.cpp
   Aql/Range.cpp
-  Aql/RemoveModifier.cpp
-  Aql/RegexCache.cpp
+  Aql/RegisterId.cpp
+  Aql/RegisterInfos.cpp
   Aql/RegisterPlan.cpp
   Aql/RemoteExecutor.cpp
+  Aql/RemoveModifier.cpp
   Aql/RestAqlHandler.cpp
   Aql/ReturnExecutor.cpp
   Aql/ScatterExecutor.cpp
@@ -338,6 +404,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SimpleModifier.cpp
   Aql/SingleRemoteModificationExecutor.cpp
   Aql/SingleRowFetcher.cpp
+  Aql/SkipResult.cpp
   Aql/SortCondition.cpp
   Aql/SortExecutor.cpp
   Aql/SortNode.cpp
@@ -345,20 +412,23 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/SortedCollectExecutor.cpp
   Aql/SortingGatherExecutor.cpp
   Aql/SubqueryEndExecutionNode.cpp
-  Aql/SubqueryExecutor.cpp
   Aql/SubqueryEndExecutor.cpp
+  Aql/SubqueryExecutor.cpp
   Aql/SubqueryStartExecutionNode.cpp
   Aql/SubqueryStartExecutor.cpp
+  Aql/Timing.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalExecutor.cpp
   Aql/TraversalNode.cpp
-  Aql/ParallelUnsortedGatherExecutor.cpp
   Aql/UnsortedGatherExecutor.cpp
   Aql/UpdateReplaceModifier.cpp
   Aql/UpsertModifier.cpp
   Aql/V8Executor.cpp
+  Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
+  Aql/WindowNode.cpp
+  Aql/WindowExecutor.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
 )
@@ -371,8 +441,13 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
   Utils/SingleCollectionTransaction.cpp
+  VocBase/Identifiers/DataSourceId.cpp
+  VocBase/Identifiers/IndexId.cpp
+  VocBase/Identifiers/LocalDocumentId.cpp
+  VocBase/Identifiers/RevisionId.cpp
+  VocBase/Identifiers/ServerId.cpp
+  VocBase/Identifiers/TransactionId.cpp
   VocBase/KeyGenerator.cpp
-  VocBase/KeyLockInfo.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalDataSource.cpp
   VocBase/LogicalView.cpp
@@ -381,37 +456,41 @@ set(LIB_ARANGO_VOCBASE_SOURCES
   VocBase/Methods/Collections.cpp
   VocBase/Methods/Databases.cpp
   VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Queries.cpp
   VocBase/Methods/Tasks.cpp
   VocBase/Methods/Transactions.cpp
   VocBase/Methods/Ttl.cpp
   VocBase/Methods/Upgrade.cpp
   VocBase/Methods/UpgradeTasks.cpp
   VocBase/Methods/Version.cpp
+  VocBase/Validators.cpp
+  VocBase/VocbaseInfo.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
-  VocBase/VocbaseInfo.cpp
 )
 
 set(LIB_ARANGO_UTILS_SOURCES
-  Utils/CollectionKeys.cpp
-  Utils/CollectionKeysRepository.cpp
   Utils/ExecContext.cpp
   Utils/FlushThread.cpp
-  Utils/OperationCursor.cpp
+  Utils/OperationOptions.cpp
   Utils/UrlHelper.cpp
   ${ENTERPRISE_FILES}
+)
+
+set(LIB_ARANGO_HEALTH_SOURCES
+  StorageEngine/HealthData.cpp
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_SOURCES
   StorageEngine/EngineSelectorFeature.cpp
   StorageEngine/HotBackup.cpp
   StorageEngine/PhysicalCollection.cpp
-  StorageEngine/RocksDBOptionFeature.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
 )
 
 set(LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES
+  StorageEngine/ReplicationIterator.cpp
   StorageEngine/WalAccess.cpp
 )
 
@@ -457,6 +536,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/ReplicationApplierState.cpp
   Replication/ReplicationClients.cpp
   Replication/ReplicationFeature.cpp
+  Replication/ReplicationMetricsFeature.cpp
   Replication/Syncer.cpp
   Replication/SyncerId.cpp
   Replication/TailingSyncer.cpp
@@ -471,14 +551,15 @@ set (LIB_ARANGO_METRICS_SOURCES
   )
 
 set(LIB_ARANGO_AGENCY_SOURCES
-  Agency/AgentConfiguration.cpp
-  Agency/ResignLeadership.cpp
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
+  Agency/AgencyPaths.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
+  Agency/AgentConfiguration.cpp
+  Agency/AsyncAgencyComm.cpp
   Agency/CleanOutServer.cpp
   Agency/Compactor.cpp
   Agency/Constituent.cpp
@@ -490,7 +571,9 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
+  Agency/PathComponent.cpp
   Agency/RemoveFollower.cpp
+  Agency/ResignLeadership.cpp
   Agency/RestAgencyHandler.cpp
   Agency/RestAgencyPrivHandler.cpp
   Agency/State.cpp
@@ -500,8 +583,9 @@ set(LIB_ARANGO_AGENCY_SOURCES
 )
 
 set(LIB_ARANGO_V8SERVER_SOURCES
+  Cluster/v8-cluster.cpp
   Transaction/V8Context.cpp
-  V8Server/FoxxQueuesFeature.cpp
+  V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
   V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
@@ -543,22 +627,20 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
+  Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
-  Cluster/AgencyPaths.cpp
   Cluster/ClusterCollectionCreationInfo.cpp
-  Cluster/ClusterComm.cpp
   Cluster/ClusterFeature.cpp
   Cluster/ClusterHelpers.cpp
   Cluster/ClusterInfo.cpp
   Cluster/ClusterRepairDistributeShardsLike.cpp
   Cluster/ClusterRepairOperations.cpp
-  Cluster/ClusterUpgradeFeature.cpp
   Cluster/ClusterTrxMethods.cpp
   Cluster/ClusterTypes.cpp
+  Cluster/ClusterUpgradeFeature.cpp
   Cluster/CreateCollection.cpp
   Cluster/CreateDatabase.cpp
-  Cluster/CriticalThread.cpp
   Cluster/DBServerAgencySync.cpp
   Cluster/DropCollection.cpp
   Cluster/DropDatabase.cpp
@@ -570,18 +652,16 @@ set(LIB_ARANGOSERVER_SOURCES
   Cluster/MaintenanceFeature.cpp
   Cluster/MaintenanceRestHandler.cpp
   Cluster/MaintenanceWorker.cpp
-  Cluster/NonAction.cpp
-  Cluster/PathComponent.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
   Cluster/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
+  Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
   Cluster/SynchronizeShard.cpp
   Cluster/TakeoverShardLeadership.cpp
   Cluster/UpdateCollection.cpp
-  Cluster/v8-cluster.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp
@@ -599,6 +679,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralServer.cpp
   GeneralServer/GeneralServerFeature.cpp
+  GeneralServer/H2CommTask.cpp
   GeneralServer/HttpCommTask.cpp
   GeneralServer/IoContext.cpp
   GeneralServer/RestHandler.cpp
@@ -607,6 +688,7 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/SslServerFeature.cpp
   GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
+  RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminExecuteHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -614,12 +696,12 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
-  RestHandler/RestAqlReloadHandler.cpp
   RestHandler/RestAqlUserFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
+  RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
@@ -634,11 +716,14 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestRedirectHandler.cpp
   RestHandler/RestRepairHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
   RestHandler/RestStatusHandler.cpp
+  RestHandler/RestSupervisionStateHandler.cpp
+  RestHandler/RestSystemReportHandler.cpp
   RestHandler/RestTasksHandler.cpp
   RestHandler/RestTimeHandler.cpp
   RestHandler/RestTransactionHandler.cpp
@@ -720,7 +805,6 @@ endif()
 
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
-include(MMFiles/CMakeLists.txt)
 
 add_library(arango_graph STATIC
   ${LIB_ARANGO_GRAPH_SOURCES}
@@ -729,11 +813,16 @@ add_library(arango_graph STATIC
 
 add_library(arango_pregel STATIC
   ${LIB_ARANGO_PREGEL_SOURCES}
+  ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
 add_library(arango_aql STATIC
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
+)
+
+add_library(arango_health STATIC
+  ${LIB_ARANGO_HEALTH_SOURCES}
 )
 
 add_library(arango_vocbase STATIC
@@ -753,7 +842,7 @@ add_library(arango_storage_engine STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
 )
 
-# arango_storage_engine uses arango_mmfiles and arango_rocksdb.
+# arango_storage_engine uses arango_rocksdb.
 # In turn, arango_storage_engine_common provides something for both.
 add_library(arango_storage_engine_common STATIC
   ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
@@ -779,24 +868,28 @@ add_library(arango_agency STATIC
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
-add_library(arangoserver STATIC 
+add_library(arangoserver STATIC
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
-  ${ProductVersionFiles}
 )
 
 add_library(arango_network STATIC
   ${LIB_ARANGO_NETWORK_SOURCES}
 )
 
-add_library(arango_mmfiles STATIC
-  ${MMFILES_SOURCES} 
-)
-
 add_library(arango_rocksdb STATIC
-  ${ROCKSDB_SOURCES} 
+  ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
+
+add_dependencies(arango_rocksdb snappy-static)
+
+set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
+
+if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
+  target_compile_options(arango_rocksdb PUBLIC "-maes")
+endif ()
 
 add_library(arango_cluster_engine STATIC
   ${CLUSTER_ENGINE_SOURCES}
@@ -831,6 +924,7 @@ target_include_directories(llhttp PUBLIC "${PROJECT_SOURCE_DIR}/3rdParty/llhttp/
 # .
 
 target_link_libraries(arango_agency arango)
+target_link_libraries(arango_agency arango_health)
 target_link_libraries(arango_agency arango_iresearch)
 target_link_libraries(arango_agency arango_metrics)
 
@@ -839,57 +933,67 @@ target_link_libraries(arango_aql arango_graph)
 target_link_libraries(arango_aql arango_indexes)
 target_link_libraries(arango_aql arango_iresearch)
 target_link_libraries(arango_aql arango_network)
+target_link_libraries(arango_aql immer)
 
 target_link_libraries(arango_cache arango)
 target_link_libraries(arango_cache boost_system)
+target_link_libraries(arango_cache arango::validation)
 
+target_link_libraries(arango_cluster_engine arango_health)
 target_link_libraries(arango_cluster_engine arango_indexes)
 target_link_libraries(arango_cluster_engine boost_boost)
+
+target_include_directories(arango_cluster_engine
+    PUBLIC ${IRESEARCH_INCLUDE}
+)
 
 target_link_libraries(arango_cluster_methods arango)
 target_link_libraries(arango_cluster_methods arango_network)
 
 target_link_libraries(arango_common_rest_handler arango_cluster_methods)
 target_link_libraries(arango_common_rest_handler arango_utils)
+target_link_libraries(arango_common_rest_handler arango_iresearch)
 
+target_link_libraries(arango_graph arango)
+target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
 
 target_link_libraries(arango_indexes arango_geo)
 target_link_libraries(arango_indexes boost_boost)
+target_link_libraries(arango_indexes arango::validation)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_metrics arango)
 
-target_link_libraries(arango_mmfiles arango_geo)
-target_link_libraries(arango_mmfiles arango_indexes)
-target_link_libraries(arango_mmfiles arango_storage_engine_common)
-target_link_libraries(arango_mmfiles arango_utils)
-target_link_libraries(arango_mmfiles boost_boost)
-target_link_libraries(arango_mmfiles boost_system)
-target_link_libraries(arango_mmfiles llhttp)
-
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
 target_link_libraries(arango_network llhttp)
+target_link_libraries(arango_network nghttp2)
+target_link_libraries(arango_network arango::validation)
 
 target_link_libraries(arango_pregel arango_agency)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
+target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
+target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
 target_link_libraries(arango_rocksdb arango_common_rest_handler)
 target_link_libraries(arango_rocksdb arango_geo)
+target_link_libraries(arango_rocksdb arango_health)
 target_link_libraries(arango_rocksdb arango_indexes)
 target_link_libraries(arango_rocksdb arango_storage_engine_common)
 target_link_libraries(arango_rocksdb boost_boost)
+target_link_libraries(arango_rocksdb arango::validation)
+target_link_libraries(arango_storage_engine_common arango::validation)
 
 if (USE_ENTERPRISE)
   # this is required for hotbackup. Views need to be flushed.
@@ -900,21 +1004,25 @@ endif()
 
 target_link_libraries(arango_storage_engine arango_cluster_engine)
 target_link_libraries(arango_storage_engine arango_cluster_methods)
-target_link_libraries(arango_storage_engine arango_mmfiles)
 target_link_libraries(arango_storage_engine arango_rocksdb)
+target_link_libraries(arango_storage_engine arango::validation)
 
 target_link_libraries(arango_utils boost_boost)
+target_link_libraries(arango_utils arango::validation)
 
 target_link_libraries(arango_v8server arango_agency)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
-target_link_libraries(arango_v8server arango_v8 ${V8_LIBS})
+target_link_libraries(arango_v8server arango_v8)
+target_link_libraries(arango_v8server arango_v8_no_deadline)
+target_link_libraries(arango_v8server ${V8_LIBS})
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
 target_link_libraries(arango_vocbase arango_indexes)
 target_link_libraries(arango_vocbase arango_replication)
 target_link_libraries(arango_vocbase boost_system)
+target_link_libraries(arango_vocbase arango::validation)
 
 target_link_libraries(arangoserver arango_agency)
 target_link_libraries(arangoserver arango_aql)
@@ -972,6 +1080,7 @@ endif()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
+  ${ProductVersionFiles}
 )
 
 target_link_libraries(${BIN_ARANGOD}
@@ -994,9 +1103,9 @@ else ()
 endif ()
 
 if (USE_JEMALLOC)
-  add_dependencies(arangod jemalloc)
+  add_dependencies(arangod jemalloc_build)
 endif ()
-  
+
 foreach(TARGET
   arango_agency
   arango_aql
@@ -1005,9 +1114,9 @@ foreach(TARGET
   arango_cluster_methods
   arango_common_rest_handler
   arango_graph
+  arango_health
   arango_indexes
   arango_metrics
-  arango_mmfiles
   arango_pregel
   arango_replication
   arango_rocksdb
@@ -1029,17 +1138,6 @@ foreach(TARGET
     endif ()
   endif ()
 endforeach()
-
-################################################################################
-## arango-dfdb
-################################################################################
-
-install_command_alias(${BIN_ARANGOD}
-  ${CMAKE_INSTALL_SBINDIR}
-  arango-dfdb
-)
-
-install_config(arango-dfdb)
 
 ################################################################################
 ## arango-secure-installation

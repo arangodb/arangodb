@@ -9,20 +9,19 @@
  * Licensed under the MIT license.
  * http://www.opensource.org/licenses/mit-license.php
  */
-
 var counter; // crying
 var jsUnity = exports.jsUnity = (function () {
   function fmt(str) {
     var internal = require("internal");
     var a = Array.prototype.slice.call(arguments, 1);
-    return "at assertion #" + counter + ": " + str.replace(/\?/g, function () { 
+    return "at assertion #" + counter + ": " + str.replace(/\?/g, function () {
       internal.startCaptureMode();
       internal.print(a.shift());
 
       var outputWithoutNewline = internal.stopCaptureMode();
       return outputWithoutNewline.substr(0, outputWithoutNewline.length - 1);
     });
-    
+
   }
 
   function hash(v, seen = []) {
@@ -30,7 +29,7 @@ var jsUnity = exports.jsUnity = (function () {
       var arr = [];
       var sorted = Object.keys(v).sort(), n = sorted.length;
       seen.push(v);
-      
+
       for (var i = 0; i < n; i++) {
         var p = sorted[i];
         if (v.hasOwnProperty(p)) {
@@ -43,13 +42,13 @@ var jsUnity = exports.jsUnity = (function () {
           }
         }
       }
-      
+
       return arr.join("#");
     } else {
       return String(v);
     }
   }
-  
+
   var defaultAssertions = {
     assertException: function (fn, message) {
       counter++;
@@ -74,7 +73,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertTrue", actual, err.stack);
       }
     },
-    
+
     assertFalse: function (actual, message) {
       counter++;
       if (actual) {
@@ -83,7 +82,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertFalse", actual, err.stack);
       }
     },
-    
+
     assertIdentical: function (expected, actual, message) {
       counter++;
       if (expected !== actual) {
@@ -111,7 +110,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertEqual", actual, expected, err.stack);
       }
     },
-    
+
     assertNotEqual: function (expected, actual, message) {
       counter++;
       if (hash(expected) === hash(actual)) {
@@ -120,7 +119,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotEqual", actual, expected, err.stack);
       }
     },
-    
+
     assertMatch: function (re, actual, message) {
       counter++;
       if (! re.test(actual)) {
@@ -129,7 +128,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertMatch", actual, re, err.stack);
       }
     },
-    
+
     assertNotMatch: function (re, actual, message) {
       counter++;
       if (re.test(actual)) {
@@ -138,7 +137,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotMatch", actual, re, err.stack);
       }
     },
-    
+
     assertTypeOf: function (typ, actual, message) {
       counter++;
       if (typeof actual !== typ) {
@@ -156,7 +155,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotTypeOf", actual, typ, err.stack);
       }
     },
-    
+
     assertInstanceOf: function (cls, actual, message) {
       counter++;
       if (!(actual instanceof cls)) {
@@ -183,7 +182,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNull", actual, err.stack);
       }
     },
-    
+
     assertNotNull: function (actual, message) {
       counter++;
       if (actual === null) {
@@ -192,7 +191,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotNull", actual, err.stack);
       }
     },
-    
+
     assertUndefined: function (actual, message) {
       counter++;
       if (actual !== undefined) {
@@ -201,7 +200,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertUndefined", actual, err.stack);
       }
     },
-    
+
     assertNotUndefined: function (actual, message) {
       counter++;
       if (actual === undefined) {
@@ -210,7 +209,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotUndefined", actual, err.stack);
       }
     },
-    
+
     assertNaN: function (actual, message) {
       counter++;
       if (!isNaN(actual)) {
@@ -219,7 +218,7 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNaN", actual, err.stack);
       }
     },
-    
+
     assertNotNaN: function (actual, message) {
       counter++;
       if (isNaN(actual)) {
@@ -228,14 +227,14 @@ var jsUnity = exports.jsUnity = (function () {
                   message || "assertNotNaN", actual, err.stack);
       }
     },
-    
+
     fail: function (message) {
       throw message || "fail";
     }
   };
-  
+
   function empty() {}
-  
+
   function plural(cnt, unit) {
     return cnt + " " + unit + (cnt === 1 ? "" : "s");
   }
@@ -244,13 +243,13 @@ var jsUnity = exports.jsUnity = (function () {
     var tokens =
       /^[\s\r\n]*function[\s\r\n]*([^\(\s\r\n]*?)[\s\r\n]*\([^\)\s\r\n]*\)[\s\r\n]*\{((?:[^}]*\}?)+)\}[\s\r\n]*$/
       .exec(fn);
-    
+
     return {
       name: tokens[1].length ? tokens[1] : undefined,
       body: tokens[2]
     };
   }
-  
+
   var probeOutside = function () {
     try {
       return eval(
@@ -272,7 +271,7 @@ var jsUnity = exports.jsUnity = (function () {
     while ((tokens = tokenRe.exec(str))) {
       var token = tokens[1];
       var fn;
-      
+
       if (!obj[token]
           && (fn = probeInside(token))
           && fn !== probeOutside(token)) {
@@ -298,7 +297,7 @@ var jsUnity = exports.jsUnity = (function () {
 
     for (var i = 0; i < tests.length; i++) {
       var item = tests[i];
-      
+
       if (!obj[item]) {
         switch (typeof item) {
         case "function":
@@ -334,7 +333,7 @@ var jsUnity = exports.jsUnity = (function () {
         }
       }
     }
-    
+
     return suite;
   }
 
@@ -344,7 +343,7 @@ var jsUnity = exports.jsUnity = (function () {
     info: 3,
     debug: 4
   };
-  
+
   var logStream = {
     write: empty,
     level: "info"
@@ -381,11 +380,11 @@ var jsUnity = exports.jsUnity = (function () {
     beginSetUpAll: function(index, testName) {},
 
     endSetUpAll: function(index, testName) {},
-        
+
     beginSetUp: function(index, testName) {},
 
     endSetUp: function(index, testName) {},
-        
+
     pass: function (index, testName) {
       jsUnity.tap.write(fmt("ok ? - ?", index, testName));
       jsUnity.log.info("[PASSED] " + testName);
@@ -398,15 +397,15 @@ var jsUnity = exports.jsUnity = (function () {
       jsUnity.tap.write("  ...");
       jsUnity.log.info(fmt("[FAILED] ?: ?", testName, message));
     },
-    
+
     beginTeardown: function(index, testName) {},
 
     endTeardown: function(index, testName) {},
-    
+
     beginTeardownAll: function(index, testName) {},
 
     endTeardownAll: function(index, testName) {},
-    
+
     end: function (passed, failed, duration) {
       jsUnity.log.info(plural(passed, "test") + " passed");
       jsUnity.log.info(plural(failed, "test") + " failed");
@@ -442,7 +441,7 @@ var jsUnity = exports.jsUnity = (function () {
         return new Date();
       }
     },
-    
+
     attachAssertions: function (scope) {
       scope = scope || this.env.defaultScope;
 
@@ -478,7 +477,7 @@ var jsUnity = exports.jsUnity = (function () {
     run: function () {
       var getFixtureUtil = function (fnName, suite) {
         var fn = suite[fnName];
-        
+
         return fn
           ? function (testName) {
             fn.call(suite.scope, testName);
@@ -503,11 +502,10 @@ var jsUnity = exports.jsUnity = (function () {
 
         this.results.begin(cnt, suite.suiteName);
         // when running multiple suites, report counts at end?
-        
+
         suiteNames.push(suite.suiteName);
         results.total += cnt;
-        
-        
+
         var setUp = getFixtureUtil("setUp", suite);
         var tearDown = getFixtureUtil("tearDown", suite);
         var setUpAll = getFixtureUtil("setUpAll", suite);
@@ -531,7 +529,7 @@ var jsUnity = exports.jsUnity = (function () {
         if (runSuite) {
           for (var j = 0; j < cnt; j++) {
             var test = suite.tests[j];
-            
+
             counter = 0;
             let didSetUp = false;
             let didTest = false;
@@ -541,7 +539,7 @@ var jsUnity = exports.jsUnity = (function () {
 
             while (1) {
               try {
-                if (!didSetUp) {
+                if (!didSetUp && !skipTest) {
                   this.results.beginSetUp(suite.scope, test.name);
                   setUp(test.name);
                   this.results.endSetUp(suite.scope, test.name);
@@ -551,13 +549,13 @@ var jsUnity = exports.jsUnity = (function () {
                   test.fn.call(suite.scope, test.name);
                   didTest = true;
                 }
-                if (!didTearDown) {
+                if (!didTearDown && !skipTest) {
                   this.results.beginTeardown(suite.scope, test.name);
                   tearDown(test.name);
                   this.results.endTeardown(suite.scope, test.name);
                   didTearDown = true;
                 }
- 
+
                 if (messages.length === 0) {
                   this.results.pass(j + 1, test.name);
                   results.passed++;
@@ -566,8 +564,14 @@ var jsUnity = exports.jsUnity = (function () {
                 }
                 break;
               } catch (e) {
+                let arangodb = require("@arangodb");
                 if ( typeof e === "string" ) {
                   e = new Error(e);
+                } else if (e instanceof arangodb.ArangoError && (
+                           (e.errorNum === arangodb.errors.ERROR_CLUSTER_TIMEOUT) ||
+                           (e.errorNum === arangodb.errors.ERROR_LOCK_TIMEOUT)
+                )) {
+                  skipTest = true;
                 }
                 if (!didSetUp) {
                   this.results.endSetUp(suite.scope, test.name);
@@ -591,7 +595,7 @@ var jsUnity = exports.jsUnity = (function () {
             }
           }
         }
-        
+
         try {
           this.results.beginTeardownAll(suite.scope);
           tearDownAll(suite.suiteName);

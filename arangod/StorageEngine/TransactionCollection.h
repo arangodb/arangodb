@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -44,19 +45,15 @@ class TransactionCollection {
   TransactionCollection(TransactionCollection const&) = delete;
   TransactionCollection& operator=(TransactionCollection const&) = delete;
 
-  TransactionCollection(TransactionState* trx, 
-                        TRI_voc_cid_t cid, 
-                        AccessMode::Type accessType,
-                        int nestingLevel)
+  TransactionCollection(TransactionState* trx, DataSourceId cid, AccessMode::Type accessType)
       : _transaction(trx),
         _cid(cid),
         _accessType(accessType),
-        _lockType(AccessMode::Type::NONE),
-        _nestingLevel(nestingLevel) {}
+        _lockType(AccessMode::Type::NONE) {}
 
   virtual ~TransactionCollection();
 
-  inline TRI_voc_cid_t id() const { return _cid; }
+  inline DataSourceId id() const { return _cid; }
 
   std::shared_ptr<LogicalCollection> const& collection() const {
     return _collection;  // vocbase collection pointer
@@ -66,26 +63,11 @@ class TransactionCollection {
 
   AccessMode::Type accessType() const { return _accessType; }
   
-  Result updateUsage(AccessMode::Type accessType, int nestingLevel);
-
-  /// @brief request a main-level lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
-  /// and no other error occurred returns any other error code otherwise
-  int lockRecursive();
-
-  /// @brief request a lock for a collection
-  /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
-  /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired
-  /// and no other error occurred returns any other error code otherwise
-  int lockRecursive(AccessMode::Type, int nestingLevel);
-
-  /// @brief request an unlock for a collection
-  int unlockRecursive(AccessMode::Type, int nestingLevel);
+  Result updateUsage(AccessMode::Type accessType);
 
   /// @brief check whether a collection is locked in a specific mode in a
   /// transaction
-  bool isLocked(AccessMode::Type, int nestingLevel) const;
+  bool isLocked(AccessMode::Type) const;
 
   /// @brief check whether a collection is locked at all
   bool isLocked() const;
@@ -93,32 +75,22 @@ class TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   virtual bool hasOperations() const = 0;
 
-  virtual void freeOperations(transaction::Methods* activeTrx, bool mustRollback) = 0;
-
   virtual bool canAccess(AccessMode::Type accessType) const = 0;
 
-  virtual int use(int nestingLevel) = 0;
-  virtual void unuse(int nestingLevel) = 0;
-  virtual void release() = 0;
+  virtual Result lockUsage() = 0;
+  virtual void releaseUsage() = 0;
 
- protected:
-  void adjustNestingLevel(int nestingLevel) {
-    if (nestingLevel < _nestingLevel) {
-      _nestingLevel = nestingLevel;
-    }
-  }
-  
  protected:
   TransactionState* _transaction;                  // the transaction state
-  TRI_voc_cid_t const _cid;                        // collection id
+  DataSourceId const _cid;                         // collection id
   std::shared_ptr<LogicalCollection> _collection;  // vocbase collection pointer
   AccessMode::Type _accessType;                    // access type (read|write)
-  AccessMode::Type _lockType;                      // lock type
-  int _nestingLevel;  // the transaction level that added this collection
+  AccessMode::Type _lockType;                      // actual held lock type
 
  private:
-  virtual int doLock(AccessMode::Type, int nestingLevel) = 0;
-  virtual int doUnlock(AccessMode::Type, int nestingLevel) = 0;
+  // perform lock, sets _lockType
+  virtual Result doLock(AccessMode::Type) = 0;
+  virtual Result doUnlock(AccessMode::Type) = 0;
 };
 
 }  // namespace arangodb

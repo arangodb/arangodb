@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,13 +18,12 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Daniel H. Larkin
+/// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_CACHE_METADATA_H
 #define ARANGODB_CACHE_METADATA_H
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 
 #include <atomic>
@@ -41,16 +40,16 @@ class Cache;  // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 struct Metadata {
   // info about allocated memory
-  uint64_t fixedSize;
-  uint64_t tableSize;
-  uint64_t maxSize;
-  uint64_t allocatedSize;
-  uint64_t deservedSize;
+  std::uint64_t fixedSize;
+  std::uint64_t tableSize;
+  std::uint64_t maxSize;
+  std::uint64_t allocatedSize;
+  std::uint64_t deservedSize;
 
   // vital information about memory usage
-  std::atomic<uint64_t> usage;
-  uint64_t softUsageLimit;
-  uint64_t hardUsageLimit;
+  std::atomic<std::uint64_t> usage;
+  std::uint64_t softUsageLimit;
+  std::uint64_t hardUsageLimit;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Default constructor for placeholder objects.
@@ -60,53 +59,22 @@ struct Metadata {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record with given information.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata(uint64_t usage, uint64_t fixed, uint64_t table, uint64_t max);
+  Metadata(std::uint64_t usage, std::uint64_t fixed, std::uint64_t table, std::uint64_t max);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata(Metadata&& other);
+  Metadata(Metadata&& other) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes record from an existing record.
   //////////////////////////////////////////////////////////////////////////////
-  Metadata& operator=(Metadata&& other);
+  Metadata& operator=(Metadata&& other) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Locks the record for reading
+  /// @brief Returns the lock for the metadata structure
   //////////////////////////////////////////////////////////////////////////////
-  void readLock() const noexcept { _lock.readLock(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Locks the record for writing
-  //////////////////////////////////////////////////////////////////////////////
-  void writeLock() const noexcept { _lock.writeLock(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Unlocks the record. Requires record to be read-locked.
-  //////////////////////////////////////////////////////////////////////////////
-  void readUnlock() const {
-    TRI_ASSERT(isLocked());
-    _lock.readUnlock();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Unlocks the record. Requires record to be write-locked.
-  //////////////////////////////////////////////////////////////////////////////
-  void writeUnlock() const noexcept {
-    TRI_ASSERT(isWriteLocked());
-    _lock.writeUnlock();
-  }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns true if the record is locked, false otherwise.
-  //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const noexcept { return _lock.isLocked(); }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns true if the record is write-locked, false otherwise.
-  //////////////////////////////////////////////////////////////////////////////
-  bool isWriteLocked() const noexcept { return _lock.isWriteLocked(); }
+  basics::ReadWriteSpinLock& lock() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Adjusts usage by the specified amount if it will not violate
@@ -116,24 +84,24 @@ struct Metadata {
   /// in a single operation to determine whether they can afford to store a new
   /// value.
   //////////////////////////////////////////////////////////////////////////////
-  bool adjustUsageIfAllowed(int64_t usageChange) noexcept;
+  bool adjustUsageIfAllowed(std::int64_t usageChange) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the soft and hard usage limits. Requires record to be
   /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept;
+  bool adjustLimits(std::uint64_t softLimit, std::uint64_t hardLimit) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the deserved size. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t adjustDeserved(uint64_t deserved) noexcept;
+  std::uint64_t adjustDeserved(std::uint64_t deserved) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Calculates the new usage limit based on deserved size and other
   /// values. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t newLimit() const noexcept;
+  std::uint64_t newLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks feasibility of new table size prior to migration. Requires
@@ -142,13 +110,13 @@ struct Metadata {
   /// If migrating to table of new size would exceed either deserved or maximum
   /// size, then returns false.
   //////////////////////////////////////////////////////////////////////////////
-  bool migrationAllowed(uint64_t newTableSize) noexcept;
+  bool migrationAllowed(std::uint64_t newTableSize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the table size after migration. Requires record to be
   /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void changeTable(uint64_t newTableSize) noexcept;
+  void changeTable(std::uint64_t newTableSize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks if cache is migrating. Requires record to be read-locked.

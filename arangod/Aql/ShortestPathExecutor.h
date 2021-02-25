@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,9 +24,13 @@
 #ifndef ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
 #define ARANGOD_AQL_SHORTEST_PATH_EXECUTOR_H
 
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/RegisterInfos.h"
+#include "Graph/ShortestPathFinder.h"
+#include "Graph/ShortestPathResult.h"
 
 #include <velocypack/Builder.h>
 
@@ -50,19 +55,20 @@ class SingleRowFetcher;
 class OutputAqlItemRow;
 class NoStats;
 
-class ShortestPathExecutorInfos : public ExecutorInfos {
+class ShortestPathExecutorInfos {
  public:
   struct InputVertex {
-    enum { CONSTANT, REGISTER } type;
+    enum class Type { CONSTANT, REGISTER };
+    Type type;
     // TODO make the following two a union instead
     RegisterId reg;
     std::string value;
 
     // cppcheck-suppress passedByValue
     explicit InputVertex(std::string value)
-        : type(CONSTANT), reg(0), value(std::move(value)) {}
+        : type(Type::CONSTANT), reg(0), value(std::move(value)) {}
     explicit InputVertex(RegisterId reg)
-        : type(REGISTER), reg(reg), value("") {}
+        : type(Type::REGISTER), reg(reg), value("") {}
   };
 
   enum OutputName { VERTEX, EDGE };
@@ -70,20 +76,15 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
     size_t operator()(OutputName v) const noexcept { return size_t(v); }
   };
 
-  ShortestPathExecutorInfos(std::shared_ptr<std::unordered_set<RegisterId>> inputRegisters,
-                            std::shared_ptr<std::unordered_set<RegisterId>> outputRegisters,
-                            RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
-                            std::unordered_set<RegisterId> registersToClear,
-                            std::unordered_set<RegisterId> registersToKeep,
-                            std::unique_ptr<graph::ShortestPathFinder>&& finder,
+  ShortestPathExecutorInfos(std::unique_ptr<graph::ShortestPathFinder>&& finder,
                             std::unordered_map<OutputName, RegisterId, OutputNameHash>&& registerMapping,
                             InputVertex&& source, InputVertex&& target);
 
   ShortestPathExecutorInfos() = delete;
 
-  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&);
+  ShortestPathExecutorInfos(ShortestPathExecutorInfos&&) = default;
   ShortestPathExecutorInfos(ShortestPathExecutorInfos const&) = delete;
-  ~ShortestPathExecutorInfos();
+  ~ShortestPathExecutorInfos() = default;
 
   arangodb::graph::ShortestPathFinder& finder() const;
 
@@ -92,38 +93,44 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  bool useRegisterForInput(bool isTarget) const;
+  [[nodiscard]] bool useRegisterForSourceInput() const;
+  [[nodiscard]] bool useRegisterForTargetInput() const;
 
   /**
    * @brief get the register used for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  RegisterId getInputRegister(bool isTarget) const;
+  [[nodiscard]] RegisterId getSourceInputRegister() const;
+  [[nodiscard]] RegisterId getTargetInputRegister() const;
 
   /**
    * @brief get the const value for the input
    *
    * @param isTarget defines if we look for target(true) or source(false)
    */
-  std::string const& getInputValue(bool isTarget) const;
+  [[nodiscard]] std::string const& getSourceInputValue() const;
+  [[nodiscard]] std::string const& getTargetInputValue() const;
 
   /**
    * @brief test if we have an output register for this type
    *
    * @param type: Either VERTEX or EDGE
    */
-  bool usesOutputRegister(OutputName type) const;
+  [[nodiscard]] bool usesOutputRegister(OutputName type) const;
 
   /**
    * @brief get the output register for the given type
    */
-  RegisterId getOutputRegister(OutputName type) const;
+  [[nodiscard]] RegisterId getOutputRegister(OutputName type) const;
 
-  graph::TraverserCache* cache() const;
+  [[nodiscard]] graph::TraverserCache* cache() const;
+
+  [[nodiscard]] InputVertex getSourceVertex() const noexcept;
+  [[nodiscard]] InputVertex getTargetVertex() const noexcept;
 
  private:
-  RegisterId findRegisterChecked(OutputName type) const;
+  [[nodiscard]] RegisterId findRegisterChecked(OutputName type) const;
 
  private:
   /// @brief the shortest path finder.
@@ -133,10 +140,10 @@ class ShortestPathExecutorInfos : public ExecutorInfos {
   std::unordered_map<OutputName, RegisterId, OutputNameHash> _registerMapping;
 
   /// @brief Information about the source vertex
-  InputVertex const _source;
+  InputVertex _source;
 
   /// @brief Information about the target vertex
-  InputVertex const _target;
+  InputVertex _target;
 };
 
 /**
@@ -157,57 +164,51 @@ class ShortestPathExecutor {
   ShortestPathExecutor(ShortestPathExecutor&&) = default;
 
   ShortestPathExecutor(Fetcher& fetcher, Infos&);
-  ~ShortestPathExecutor();
+  ~ShortestPathExecutor() = default;
 
   /**
-   * @brief Shutdown will be called once for every query
-   *
-   * @return ExecutionState and no error.
-   */
-  std::pair<ExecutionState, Result> shutdown(int errorCode);
-  /**
    * @brief produce the next Row of Aql Values.
-   *
-   * @return ExecutionState, and if successful exactly one new Row of AqlItems.
    */
-  std::pair<ExecutionState, Stats> produceRows(OutputAqlItemRow& output);
+  [[nodiscard]] auto produceRows(AqlItemBlockInputRange& input, OutputAqlItemRow& output)
+      -> std::tuple<ExecutorState, Stats, AqlCall>;
+  [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
+      -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
   /**
-   * @brief Fetch input row(s) and compute path
-   *
-   * @return false if we are done and no path could be found.
+   *  @brief fetches a path given the current row in input.
+   *  a flag indicating whether we found a path, put it into the
+   *  internal state.
    */
-  bool fetchPath();
+  [[nodiscard]] auto fetchPath(AqlItemBlockInputRange& input) -> bool;
+  [[nodiscard]] auto pathLengthAvailable() -> size_t;
 
   /**
-   * @brief compute the correct return state
-   *
-   * @return DONE if no more is expected
+   *  @brief produce the output from the currently stored path until either
+   *  the path is exhausted or there is no output space left.
    */
-
-  ExecutionState computeState() const;
-
+  auto doOutputPath(OutputAqlItemRow& output) -> void;
+  auto doSkipPath(AqlCall& call) -> size_t;
   /**
    * @brief get the id of a input vertex
-   * Result will be in id parameter, it
-   * is guaranteed that the memory
-   * is managed until the next call of fetchPath.
-   *
-   * @return DONE if no more is expected
+   * Result will be written into the given Slice.
+   * This is either managed by the handed in builder (might be overwritten),
+   * or by the handed in row, or a constant value in the options.
+   * In any case it will stay valid at least until the reference to the input
+   * row is lost, or the builder is resetted.
    */
-  bool getVertexId(bool isTarget, arangodb::velocypack::Slice& id);
+  [[nodiscard]] auto getVertexId(ShortestPathExecutorInfos::InputVertex const& vertex,
+                                 InputAqlItemRow& row, arangodb::velocypack::Builder& builder, arangodb::velocypack::Slice& id) -> bool;
 
  private:
   Infos& _infos;
-  Fetcher& _fetcher;
-  InputAqlItemRow _input;
-  ExecutionState _rowState;
+  InputAqlItemRow _inputRow;
+
   /// @brief the shortest path finder.
   arangodb::graph::ShortestPathFinder& _finder;
+
   /// @brief current computed path.
   std::unique_ptr<graph::ShortestPathResult> _path;
-
   size_t _posInPath;
 
   /// @brief temporary memory mangement for source id

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -47,14 +47,12 @@ typedef TRI_voc_tick_t CursorId;
 
 class Cursor {
  public:
-  enum CursorType { CURSOR_VPACK, CURSOR_EXPORT };
-
   Cursor(Cursor const&) = delete;
   Cursor& operator=(Cursor const&) = delete;
 
   Cursor(CursorId id, size_t batchSize, double ttl, bool hasCount)
       : _id(id),
-        _batchSize(batchSize),
+        _batchSize(batchSize == 0 ? 1 : batchSize),
         _ttl(ttl),
         _expires(TRI_microtime() + _ttl),
         _hasCount(hasCount),
@@ -92,8 +90,6 @@ class Cursor {
     TRI_ASSERT(_isUsed);
     _isUsed = false;
   }
-
-  virtual CursorType type() const = 0;
 
   virtual void kill() {}
 
