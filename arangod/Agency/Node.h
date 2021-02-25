@@ -114,13 +114,15 @@ class SmallBuffer {
     return *this;
   }
   SmallBuffer& operator=(SmallBuffer&& other) noexcept {
-    if (!empty()) {
-      delete[] _start;
+    if (this != &other) {
+      if (!empty()) {
+        delete[] _start;
+      }
+      _start = other._start;
+      other._start = nullptr;
+      _size = other._size;
+      other._size = 0;
     }
-    _start = other._start;
-    other._start = nullptr;
-    _size = other._size;
-    other._size = 0;
     return *this;
   }
   ~SmallBuffer() {
