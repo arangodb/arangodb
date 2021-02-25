@@ -161,8 +161,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--log.file-mode",
                   "mode to use for new log file, umask will be applied as well",
                   new StringParameter(&_fileMode))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
 #ifdef ARANGODB_HAVE_SETGID
   options
@@ -170,8 +169,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--log.file-group",
           "group to use for new log file, user must be a member of this group",
           new StringParameter(&_fileGroup))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 #endif
 
   options->addOption("--log.prefix", "prefix log message with this string",
