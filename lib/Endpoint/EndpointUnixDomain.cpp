@@ -33,6 +33,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -141,7 +142,7 @@ void EndpointUnixDomain::disconnect() {
     TRI_invalidatesocket(&_socket);
 
     if (_type == EndpointType::SERVER) {
-      if (!FileUtils::remove(_path)) {
+      if (FileUtils::remove(_path) != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("9a8d6", TRACE, arangodb::Logger::FIXME)
             << "unable to remove socket file '" << _path << "': " << TRI_last_error();
       }

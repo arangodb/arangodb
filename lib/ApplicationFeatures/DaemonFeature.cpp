@@ -160,7 +160,7 @@ void DaemonFeature::unprepare() {
   }
 
   // remove pid file
-  if (!FileUtils::remove(_pidFile)) {
+  if (FileUtils::remove(_pidFile) != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC("1b46c", ERR, arangodb::Logger::FIXME)
         << "cannot remove pid file '" << _pidFile << "'";
   }
@@ -216,7 +216,7 @@ void DaemonFeature::checkPidFile() {
               << "pid-file '" << _pidFile << " exists, but no process with pid "
               << oldPid << " exists";
 
-          if (!FileUtils::remove(_pidFile)) {
+          if (FileUtils::remove(_pidFile) != TRI_ERROR_NO_ERROR) {
             LOG_TOPIC("fddfc", FATAL, arangodb::Logger::FIXME)
                 << "pid-file '" << _pidFile << "' exists, no process with pid "
                 << oldPid << " exists, but pid-file cannot be removed";

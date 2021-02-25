@@ -305,14 +305,14 @@ void spit(std::string const& filename, StringBuffer const& content, bool sync) {
   spit(filename, content.data(), content.length(), sync);
 }
 
-bool remove(std::string const& fileName) {
+ErrorCode remove(std::string const& fileName) {
   auto const success = 0 == std::remove(fileName.c_str());
 
   if (!success) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  return success;
+  return TRI_ERROR_NO_ERROR;
 }
 
 bool createDirectory(std::string const& name, ErrorCode* errorNumber) {

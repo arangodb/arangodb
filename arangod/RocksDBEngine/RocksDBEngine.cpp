@@ -1250,8 +1250,7 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::CreateDatab
 }
 
 // TODO -- should take info
-std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
-    arangodb::CreateDatabaseInfo&& info,
+std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
                                                              ErrorCode& status) {
   status = TRI_ERROR_NO_ERROR;
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));

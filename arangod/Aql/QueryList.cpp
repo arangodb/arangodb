@@ -92,9 +92,9 @@ void QueryEntryCopy::toVelocyPack(velocypack::Builder& out) const {
   out.add("runTime", VPackValue(runTime));
   out.add("state", VPackValue(aql::QueryExecutionState::toString(state)));
   out.add("stream", VPackValue(stream));
-  if (resultCode != TRI_ERROR_NO_ERROR) {
+  if (resultCode.has_value()) {
     // exit code can only be determined if query is fully finished
-    out.add("exitCode", resultCode.has_value() ? VPackValue(*resultCode) : VPackValue(-1));
+    out.add("exitCode", VPackValue(*resultCode));
   }
   out.close();
 }

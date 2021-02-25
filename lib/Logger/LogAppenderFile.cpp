@@ -239,7 +239,8 @@ void LogAppenderFile::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    FileUtils::remove(backup);
+    // TODO Is it acceptable here to ignore failures?
+    std::ignore = FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -263,7 +264,8 @@ void LogAppenderFile::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      FileUtils::remove(backup);
+      // TODO Is it acceptable here to ignore failures?
+      std::ignore = FileUtils::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change

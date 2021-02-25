@@ -44,7 +44,7 @@ void AcceptorUnixDomain::open() {
         << "socket file '" << path << "' already exists.";
 
     // delete previously existing socket file
-    if (basics::FileUtils::remove(path)) {
+    if (basics::FileUtils::remove(path) == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("2b5b6", WARN, arangodb::Logger::FIXME)
           << "deleted previously existing socket file '" << path << "'";
     } else {
@@ -107,7 +107,7 @@ void AcceptorUnixDomain::close() {
                     // right away
     _acceptor.close();
     std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
-    if (!basics::FileUtils::remove(path)) {
+    if (basics::FileUtils::remove(path) != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
           << "unable to remove socket file '" << path << "'";
     }

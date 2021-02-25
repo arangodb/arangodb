@@ -42,6 +42,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
