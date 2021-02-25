@@ -218,7 +218,7 @@ protected:
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool useAgencyMockConnection = true, bool startFeatures = true);
+  MockDBServer(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
@@ -230,7 +230,7 @@ class MockDBServer : public MockClusterServer {
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool useAgencyMockConnection = true, bool startFeatures = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;

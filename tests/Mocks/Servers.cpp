@@ -485,9 +485,12 @@ void MockClusterServer::startFeatures() {
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+
   if (_useAgencyMockPool) {
+    LOG_DEVEL << "USing old variant"
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
   } else {
+    LOG_DEVEL << "Using new prepared response connection pool";
     _pool = std::make_unique<PreparedResponseConnectionPool>(
         _server.getFeature<ClusterFeature>().agencyCache(), poolConfig);
 
@@ -500,7 +503,6 @@ void MockClusterServer::startFeatures() {
   AsyncAgencyCommManager::INSTANCE->pool(_pool.get());
   AsyncAgencyCommManager::INSTANCE->updateEndpoints({"tcp://localhost:4000/"});
   arangodb::AgencyComm(server()).ensureStructureInitialized();
-
   std::string st = "{\"" + arangodb::ServerState::instance()->getId() +
                    "\":{\"rebootId\":1}}";
   agencyTrx("/arango/Current/ServersKnown", st);
@@ -687,7 +689,7 @@ props.add(toIndex->slice());
   return clusterInfo.getCollection(dbName, collectionName);
 }
 
-MockDBServer::MockDBServer(bool useAgencyMock, bool start)
+MockDBServer::MockDBServer(bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock) {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
   addFeature<arangodb::FlushFeature>(false);        // do not start the thread
@@ -696,7 +698,9 @@ MockDBServer::MockDBServer(bool useAgencyMock, bool start)
     startFeatures();
     createDatabase("_system");
   }
+  if (!useAgencyMock) {
    ServerState::instance()->setId("PRMR_0001");
+  }
 }
 
 MockDBServer::~MockDBServer() = default;
@@ -797,7 +801,7 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
   }
 }
 
-MockCoordinator::MockCoordinator(bool useAgencyMock, bool start)
+MockCoordinator::MockCoordinator(bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock) {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
   if (start) {

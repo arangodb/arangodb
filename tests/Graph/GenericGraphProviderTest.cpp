@@ -109,7 +109,7 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses;
       uint64_t engineId = 0;
       {
-        arangodb::tests::mocks::MockDBServer server{};
+        arangodb::tests::mocks::MockDBServer server{true, true};
         graph.prepareServer(server);
 
         auto queryString = arangodb::aql::QueryString("RETURN 1");
@@ -159,7 +159,7 @@ class GraphProviderTest : public ::testing::Test {
         }*/
       }
 
-      server = std::make_unique<mocks::MockCoordinator>(false);
+      server = std::make_unique<mocks::MockCoordinator>(false, true);
       mocks::MockCoordinator* srv = static_cast<mocks::MockCoordinator*>(server.get());
       graph.prepareServer(*srv);
       auto dbServerEndpoint = srv->registerFakedDBServer("PRMR_0001");
