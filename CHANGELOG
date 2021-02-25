@@ -1,6 +1,8 @@
 devel
 -----
 
+* Make all AQL cursors return compact result arrays.
+
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
   its results instantly. This led to some confusion in streaming queries, which
