@@ -44,7 +44,7 @@ function random_walk_program(
         "resultField": resultField,
         "maxGSS": 1000,
         "vertexAccumulators": {
-            "terminted_paths": {
+            "terminated_paths": {
                 "accumulatorType": "list",
                 "valueType": "any"
             },
@@ -165,7 +165,7 @@ function random_walk_program(
                                         ],
                                         [
                                             "send-to-accum",
-                                            "terminted_paths",
+                                            "terminated_paths",
                                             [
                                                 "var-ref",
                                                 "start-vertex"
