@@ -23,8 +23,17 @@
 
 #ifndef ARANGOD_FUTURES_UTILITIES_H
 #define ARANGOD_FUTURES_UTILITIES_H 1
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 #include <mellon/collector.h>
 #include <mellon/utilities.h>
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
 #include "Future.h"
 
 namespace arangodb::futures {
