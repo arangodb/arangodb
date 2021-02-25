@@ -563,7 +563,7 @@ ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) 
       promptError = true;
     }
 
-    if (v8connection != nullptr) {
+    if (v8connection != nullptr && v8connection->isConnected()) {
       v8connection->setInterrupted(false);
     }
 

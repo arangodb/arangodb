@@ -116,12 +116,9 @@ class BenchmarkThread : public arangodb::Thread {
   }
 
   void aggregateValues(double& minTime, double& maxTime, double& avgTime, uint64_t& counter) {
-      if (minTime == -1.0 || minTime < _minTime) {
-        minTime = _minTime;
-      }
-      if (_maxTime > maxTime) {
-        maxTime = _maxTime;
-      }
+      minTime = std::min(_minTime, minTime);
+      maxTime = std::max(_maxTime, maxTime);
+
       if (counter == 0) {
         avgTime = _avgTime;
         counter = _counter;
