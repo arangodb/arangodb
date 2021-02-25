@@ -13,3 +13,4 @@ agency-restart
 recovery_cluster
 dump_jwt
 dump_no_envelope
+dump_with_crashes
