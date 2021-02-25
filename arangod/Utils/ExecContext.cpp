@@ -124,7 +124,9 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   //       when authentication is disabled
   if (dbname == TRI_VOC_SYSTEM_DATABASE && coll == TRI_COL_NAME_USERS) {
     return auth::Level::NONE;
-  } else if (coll == "_queues") {
+  } else if (coll == "_queues" ||
+             coll == "_statistics" || 
+             coll == "_statistics15") {
     return auth::Level::RO;
   } else if (coll == "_frontend") {
     return auth::Level::RW;
