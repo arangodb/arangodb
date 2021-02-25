@@ -239,7 +239,6 @@ void LogAppenderFile::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    // TODO Is it acceptable here to ignore failures?
     std::ignore = FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
