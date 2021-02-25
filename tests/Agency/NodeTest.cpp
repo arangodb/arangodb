@@ -56,7 +56,7 @@ TEST(SmallBufferTest, defaultConstructor) {
 TEST(SmallBufferTest, sizeConstructor) {
   for (size_t i : std::vector<size_t>({10, 123, 2049, 65536, 1237235})) {
     SmallBuffer sb(i);
-    ASSERT_TRUE(sb.data() != nullptr);
+    ASSERT_NE(sb.data(), nullptr);
     ASSERT_EQ(i, sb.size());
     ASSERT_FALSE(sb.empty());
   }
@@ -68,8 +68,8 @@ TEST(SmallBufferTest, copyConstructor) {
     sb1.data()[i] = (uint8_t)i;
   }
   SmallBuffer sb2(sb1);
-  ASSERT_TRUE(sb2.data() != nullptr);
-  ASSERT_TRUE(sb2.data() != sb1.data());
+  ASSERT_NE(sb2.data(), nullptr);
+  ASSERT_NE(sb2.data(), sb1.data());
   ASSERT_FALSE(sb2.empty());
   ASSERT_EQ(123, sb2.size());
   for (size_t i = 0; i < 123; ++i) {
@@ -104,8 +104,8 @@ TEST(SmallBufferTest, copyAssignment) {
   }
   SmallBuffer sb2;
   sb2 = sb1;
-  ASSERT_TRUE(sb2.data() != nullptr);
-  ASSERT_TRUE(sb2.data() != sb1.data());
+  ASSERT_NE(sb2.data(), nullptr);
+  ASSERT_NE(sb2.data(), sb1.data());
   ASSERT_FALSE(sb2.empty());
   ASSERT_EQ(123, sb2.size());
   for (size_t i = 0; i < 123; ++i) {
@@ -113,8 +113,8 @@ TEST(SmallBufferTest, copyAssignment) {
   }
   SmallBuffer sb3(147);
   sb3 = sb1;
-  ASSERT_TRUE(sb3.data() != nullptr);
-  ASSERT_TRUE(sb3.data() != sb1.data());
+  ASSERT_NE(sb3.data(), nullptr);
+  ASSERT_NE(sb3.data(), sb1.data());
   ASSERT_FALSE(sb3.empty());
   ASSERT_EQ(123, sb3.size());
   for (size_t i = 0; i < 123; ++i) {
@@ -469,6 +469,5 @@ TEST_F(NodeTest, node_applyOp_lock) {
 }
 
 }}} //namespace
-
 
 

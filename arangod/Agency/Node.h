@@ -79,22 +79,24 @@ class SmallBuffer {
   uint8_t* _start;
   size_t _size;
  public:
-  SmallBuffer() : _start(nullptr), _size(0) {}
-  SmallBuffer(size_t size) : _start(new uint8_t[size]), _size(size) {}
-  SmallBuffer(SmallBuffer const& other) {
-    if (other.empty()) {
-      _start = nullptr;
-      _size = 0;
-    } else {
+  SmallBuffer() noexcept : _start(nullptr), _size(0) {}
+  explicit SmallBuffer(size_t size) : SmallBuffer() {
+    if (size > 0) {
+      _start = new uint8_t[size];
+      _size = size;
+    }
+  }
+  SmallBuffer(SmallBuffer const& other) 
+      : SmallBuffer() {
+    if (!other.empty()) {
       _start = new uint8_t[other._size];
       _size = other._size;
       memcpy(_start, other._start, other._size);
     }
   }
-  SmallBuffer(SmallBuffer&& other) {
-    _start = other._start;
+  SmallBuffer(SmallBuffer&& other) noexcept
+      : _start(other._start), _size(other._size) {
     other._start = nullptr;
-    _size = other._size;
     other._size = 0;
   }
   SmallBuffer& operator=(SmallBuffer const& other) {
@@ -111,7 +113,7 @@ class SmallBuffer {
     }
     return *this;
   }
-  SmallBuffer& operator=(SmallBuffer&& other) {
+  SmallBuffer& operator=(SmallBuffer&& other) noexcept {
     if (!empty()) {
       delete[] _start;
     }
@@ -228,7 +230,6 @@ class Node final {
   VPackBuilder toBuilder() const;
 
   /// @brief Access children
-  //Children& children();
 
   /// @brief Access for unit tests:
   void addChild(std::string const& name, std::shared_ptr<Node>& node);
