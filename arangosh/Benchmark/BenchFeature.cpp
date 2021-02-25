@@ -68,7 +68,6 @@ using namespace arangodb::rest;
 /// We use an evil global pointer here.
 ////////////////////////////////////////////////////////////////////////////////
 
-BenchFeature* ARANGOBENCH;
 #include "Benchmark/test-cases.h"
 
 BenchFeature::BenchFeature(application_features::ApplicationServer& server, int* result)
@@ -160,18 +159,10 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "test for duration seconds instead of a fixed test count",
                      new UInt64Parameter(&_duration));
 
-  std::unordered_set<std::string> cases = {
-      "version",         "stream-cursor",
-      "document",        "collection",
-      "import-document", "hash",
-      "skiplist",        "edge",
-      "shapes",          "shapes-append",
-      "random-shapes",   "crud",
-      "crud-append",     "crud-write-read",
-      "aqltrx",          "counttrx",
-      "multitrx",        "multi-collection",
-      "aqlinsert",       "aqlv8"};
-
+  std::unordered_set<std::string> cases;
+  for (auto& [name, _] : BenchmarkOperation::allBenchmarks()) {
+    cases.emplace(name);
+  };
   options->addOption("--test-case", "test case to use",
                      new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 
@@ -199,6 +190,13 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--progress", "log intermediate progress",
                      new BooleanParameter(&_progress));
 
+  options->addOption("--custom-query", "the query to be used in the 'custom-query' testcase",
+                     new StringParameter(&_customQuery)).setIntroducedIn(30800);
+                     
+  options->addOption("--custom-query-file", "path to a file with the query to be used in the 'custom-query' testcase. "
+                     "If --custom-query is specified as well, it has higher priority.",
+                     new StringParameter(&_customQueryFile)).setIntroducedIn(30800);
+                     
   options->addOption("--verbose",
                      "print out replies if the HTTP header indicates DB errors",
                      new BooleanParameter(&_verbose));
@@ -219,7 +217,7 @@ void BenchFeature::updateStartCounter() { ++_started; }
 int BenchFeature::getStartCounter() { return _started; }
 
 void BenchFeature::start() {
-  double minTime = -1.0;
+  double minTime = std::numeric_limits<double>::infinity();
   double maxTime = 0.0;
   double avgTime = 0.0;
   uint64_t counter = 0;
@@ -264,12 +262,10 @@ void BenchFeature::start() {
   int ret = EXIT_SUCCESS;
 
   *_result = ret;
-  ARANGOBENCH = this;
 
-  std::unique_ptr<BenchmarkOperation> benchmark(GetTestCase(_testCase));
+  std::unique_ptr<BenchmarkOperation> benchmark = BenchmarkOperation::createBenchmark(_testCase, *this);
 
   if (benchmark == nullptr) {
-    ARANGOBENCH = nullptr;
     LOG_TOPIC("ee2a5", FATAL, arangodb::Logger::FIXME)
         << "invalid test case name '" << _testCase << "'";
     FATAL_ERROR_EXIT();
@@ -618,5 +614,3 @@ void BenchFeature::printResult(BenchRunResult const& result, VPackBuilder& build
         << result._incomplete << " arangobench requests with incomplete results!";
   }
 }
-
-void BenchFeature::unprepare() { ARANGOBENCH = nullptr; }

@@ -343,7 +343,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
     TRI_ASSERT(_queryResultPos < block->numRows());
 
     while (rowsWritten < batchSize() && _queryResultPos < block->numRows()) {
-      if (!silent) {
+      if (!silent && resultRegister.isValid()) {
         AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
           value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,

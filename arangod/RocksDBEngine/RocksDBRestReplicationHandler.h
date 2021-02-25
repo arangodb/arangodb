@@ -79,6 +79,11 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// Manage RocksDBReplicationContext containing the dump state for the initial
   /// sync and incremental sync
   RocksDBReplicationManager* _manager;
+  uint64_t _quickKeysNumDocsLimit;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void adjustQuickKeysNumDocsLimit();
+#endif  
 };
 }  // namespace arangodb
 

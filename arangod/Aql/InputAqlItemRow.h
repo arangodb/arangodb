@@ -123,7 +123,8 @@ class InputAqlItemRow {
    * @brief Clone a new ItemBlock from this row
    */
   SharedAqlItemBlockPtr cloneToBlock(AqlItemBlockManager& manager,
-                                     RegIdFlatSet const& registers, size_t newNrRegs) const;
+                                     RegIdFlatSet const& registers,
+                                     RegisterCount newNrRegs) const;
 
   /// @brief toVelocyPack, transfer a single AqlItemRow to Json, the result can
   /// be used to recreate the AqlItemBlock via the Json constructor
