@@ -193,8 +193,31 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
   testee->execute();
 
   fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  // this is necessary to reset the wakeup handler, which otherwise holds a
+  // shared_ptr to testee.
+  testee->shutdownExecute(true);
 
   auto const responseBodySlice = fakeResponse->_payload.slice();
+
+  {  // release the query, so the AQL feature doesn't wait on it during shutdown
+    auto const idSlice = responseBodySlice.get("id");
+    ASSERT_FALSE(idSlice.isNone());
+    ASSERT_TRUE(idSlice.isString());
+    auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+    fakeRequest->setRequestType(arangodb::rest::RequestType::DELETE_REQ);
+    fakeRequest->addSuffix(idSlice.copyString());
+    auto fakeResponse = std::make_unique<GeneralResponseMock>();
+    auto restHandler =
+        std::make_shared<arangodb::RestCursorHandler>(server->server(),
+                                                      fakeRequest.release(),
+                                                      fakeResponse.release(), registry);
+    restHandler->execute();
+    fakeResponse.reset(
+        dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  }
+
+  auto wp = std::weak_ptr{testee};
+  testee.reset();
 
   ASSERT_TRUE(responseBodySlice.isObject());
 
