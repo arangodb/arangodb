@@ -85,8 +85,8 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
   // this idea is based on suggestions from @dothebart and @mpoeter for reducing the 
   // number of updates to the shared global memory usage counter, which very likely
   // would be a source of contention in case multiple queries execute in parallel.
-  std::uint64_t const previousChunks = numChunks(previous);
-  std::uint64_t const currentChunks = numChunks(current);
+  std::int64_t const previousChunks = numChunks(previous);
+  std::int64_t const currentChunks = numChunks(current);
   TRI_ASSERT(currentChunks >= previousChunks);
   auto diff = currentChunks - previousChunks;
   
@@ -94,19 +94,20 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     auto rollback = [this, value, diff]() {
       // When rolling back, we have to consider that our change to the local memory usage
       // might have affected other threads.
-      // Suppose we have a blocksize of 3 and a global memory limit of 9 (=3*3).
-      //   - Thread A increments local memory by 5 (=5) and global memory by 1*3
-      //   - Thread B increments local memory by 8 (=13) and attempts to update global memory by 3*3,
-      //     which would exceed the limit, but before we can rollback the update to the local memory,
-      //     Thread A already decreases by 5 again (=8), so Thread A would decrease global memory by 2*3!
-      // Thread A first increases by 1*3, but later decreases by 2*3 - this can cause the global memory
+      // Suppose we have a blocksize of 10 and a global memory limit of 20 (=2*10).
+      //   - Thread A increments local memory by 18 (=> exact global=18) and global memory by 1*10
+      //   - Thread B increments local memory by 13 (=> exact global=31) and attempts to update global
+      //     memory by 2*10, which would exceed the limit, but before we can rollback the update to
+      //     the local memory, Thread A already decreases by 18 again (=> exact global=13), so Thread A
+      //     would decrease global memory by 2*10!
+      // Thread A first increases by 1*10, but later decreases by 2*10 - this can cause the global memory
       // to underflow! The reason for this difference is due to the change to local memory by Thread B,
       // so any such difference has to be considered during rollback.
       // 
-      // When Thread B now performs its rollback - decreasing by 8 (=0) - we would decrease global
-      // memory by 2*3, but our initial attempt to increase was 3*3 - this is exactly the difference
-      // of 1*3 that Thread A has decreased more, so we have to take this into account and increase
-      // global memory by 1*3 to balance this out.
+      // When Thread B now performs its rollback - decreasing by 13 (=> exact global=0) - we would
+      // decrease global memory by 1*10, but our initial attempt to increase was 2*10 - this is exactly
+      // the difference of 1*10 that Thread A has decreased more, so we have to take this into account
+      // and increase global memory by 1*10 to balance this out.
       std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
       std::uint64_t adjustedCurrent = adjustedPrevious - value;
   
@@ -170,7 +171,7 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   TRI_ASSERT(previous >= value);
   std::uint64_t const current = previous - value;
   
-  std::int64_t diff = numChunks(previous) - numChunks(current);
+  std::int64_t const diff = numChunks(previous) - numChunks(current);
 
   if (diff != 0) {
     // number of chunks has changed. now we will update the global counter!

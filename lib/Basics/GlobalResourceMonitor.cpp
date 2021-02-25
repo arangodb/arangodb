@@ -35,7 +35,7 @@ namespace arangodb {
 
 /// @brief set the global memory limit
 void GlobalResourceMonitor::memoryLimit(std::int64_t value) noexcept {
-  TRI_ASSERT(value > 0);
+  TRI_ASSERT(value >= 0);
   _limit = value;
 }
   
