@@ -143,7 +143,7 @@ TEST(SmallBufferTest, moveAssignment) {
   }
 
   SmallBuffer sb3(147);
-  sb3 = std::move(sb1);
+  sb3 = std::move(sb2);
 
   ASSERT_EQ(nullptr, sb2.data());
   ASSERT_EQ(0, sb2.size());
