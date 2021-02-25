@@ -2,6 +2,8 @@ devel
 -----
 * added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
 
+* added list-repeat AIR primitive.
+
 * Prevent arangosh from trying to connect after every executed command.
   This fixes the case when arangosh is started with default options, but no
   server is running on localhost:8529. In this particular case, arangosh will
