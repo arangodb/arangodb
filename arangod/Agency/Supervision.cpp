@@ -1700,6 +1700,10 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
 
   auto const& jobs = snapshot.hasAsChildren(prefix).first;
   if (jobs.size() <= maximalNumberTransferJobs + 6) {
+    // We tolerate some more jobs before we take action. This is to
+    // avoid that we go through all jobs every second. Oasis takes
+    // a hotbackup every 2h, so this number 6 would lead to the list
+    // being traversed approximately every 12h.
     return;
   }
   typedef std::pair<std::string, std::string> keyDate;
