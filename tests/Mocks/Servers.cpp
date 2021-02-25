@@ -487,10 +487,8 @@ void MockClusterServer::startFeatures() {
   poolConfig.verifyHosts = false;
 
   if (_useAgencyMockPool) {
-    LOG_DEVEL << "USing old variant"
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
   } else {
-    LOG_DEVEL << "Using new prepared response connection pool";
     _pool = std::make_unique<PreparedResponseConnectionPool>(
         _server.getFeature<ClusterFeature>().agencyCache(), poolConfig);
 
