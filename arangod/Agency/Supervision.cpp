@@ -1649,16 +1649,16 @@ void Supervision::cleanupFinishedAndFailedJobs() {
 }
 
 // Guarded by caller
-void Supervision::cleanupHotbackupTransferJobs() {
+void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope) {
   // This deletes old Hotbackup transfer jobs in 
   // /Target/HotBackup/TransferJobs according to their time stamp.
   // We keep at most 100 transfer jobs which are completed.
-  _lock.assertLockedByCurrentThread();
-
   constexpr uint64_t maximalNumberTransferJobs = 100;
   constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
 
-  auto const& jobs = snapshot().hasAsChildren(prefix).first;
+  auto const& jobs = snapshot.hasAsChildren(prefix).first;
   if (jobs.size() <= maximalNumberTransferJobs + 6) {
     return;
   }
@@ -1702,21 +1702,33 @@ void Supervision::cleanupHotbackupTransferJobs() {
                                            << " old transfer jobs"
                                               " in "
                                            << prefix;
-  VPackBuilder trx;  // We build a transaction here
-  {                  // Pair for operation, no precondition here
-    VPackArrayBuilder guard1(&trx);
+  // We build a transaction here
+  for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+    envelope->add(VPackValue(prefix + it->first));
     {
-      VPackObjectBuilder guard2(&trx);
-      for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
-        trx.add(VPackValue(prefix + it->first));
-        {
-          VPackObjectBuilder guard2(&trx);
-          trx.add("op", VPackValue("delete"));
-        }
-      }
+      VPackObjectBuilder guard2(envelope.get());
+      envelope->add("op", VPackValue("delete"));
     }
   }
-  singleWriteTransaction(_agent, trx, false);  // do not care about the result
+}
+
+void Supervision::cleanupHotbackupTransferJobs() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard1(envelope.get());
+    VPackObjectBuilder guard2(envelope.get());
+    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+        snapshot(), envelope);
+  }
+  if (envelope->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+    }
+  }
 }
 
 // Guarded by caller
