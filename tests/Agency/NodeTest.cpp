@@ -36,6 +36,8 @@
 
 #include "Agency/Node.h"
 
+#include <vector>
+
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace fakeit;
@@ -43,6 +45,118 @@ using namespace fakeit;
 namespace arangodb {
 namespace tests {
 namespace node_test {
+
+TEST(SmallBufferTest, defaultConstructor) {
+  SmallBuffer sb;
+  ASSERT_EQ(nullptr, sb.data());
+  ASSERT_EQ(0, sb.size());
+  ASSERT_TRUE(sb.empty());
+}
+
+TEST(SmallBufferTest, sizeConstructor) {
+  for (size_t i : std::vector<size_t>({10, 123, 2049, 65536, 1237235})) {
+    SmallBuffer sb(i);
+    ASSERT_TRUE(sb.data() != nullptr);
+    ASSERT_EQ(i, sb.size());
+    ASSERT_FALSE(sb.empty());
+  }
+}
+
+TEST(SmallBufferTest, copyConstructor) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  SmallBuffer sb2(sb1);
+  ASSERT_TRUE(sb2.data() != nullptr);
+  ASSERT_TRUE(sb2.data() != sb1.data());
+  ASSERT_FALSE(sb2.empty());
+  ASSERT_EQ(123, sb2.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, moveConstructor) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  uint8_t* p = sb1.data();
+  SmallBuffer sb2(std::move(sb1));
+
+  ASSERT_EQ(nullptr, sb1.data());
+  ASSERT_EQ(0, sb1.size());
+  ASSERT_TRUE(sb1.empty());
+
+  ASSERT_EQ(p, sb2.data());
+  ASSERT_EQ(123, sb2.size());
+  ASSERT_FALSE(sb2.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, copyAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  SmallBuffer sb2;
+  sb2 = sb1;
+  ASSERT_TRUE(sb2.data() != nullptr);
+  ASSERT_TRUE(sb2.data() != sb1.data());
+  ASSERT_FALSE(sb2.empty());
+  ASSERT_EQ(123, sb2.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+  SmallBuffer sb3(147);
+  sb3 = sb1;
+  ASSERT_TRUE(sb3.data() != nullptr);
+  ASSERT_TRUE(sb3.data() != sb1.data());
+  ASSERT_FALSE(sb3.empty());
+  ASSERT_EQ(123, sb3.size());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+  }
+}
+
+TEST(SmallBufferTest, moveAssignment) {
+  SmallBuffer sb1(123);
+  for (size_t i = 0; i < 123; ++i) {
+    sb1.data()[i] = (uint8_t)i;
+  }
+  uint8_t* p = sb1.data();
+  SmallBuffer sb2;
+  sb2 = std::move(sb1);
+
+  ASSERT_EQ(nullptr, sb1.data());
+  ASSERT_EQ(0, sb1.size());
+  ASSERT_TRUE(sb1.empty());
+
+  ASSERT_EQ(p, sb2.data());
+  ASSERT_EQ(123, sb2.size());
+  ASSERT_FALSE(sb2.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb2.data()[i]);
+  }
+
+  SmallBuffer sb3(147);
+  sb3 = std::move(sb1);
+
+  ASSERT_EQ(nullptr, sb2.data());
+  ASSERT_EQ(0, sb2.size());
+  ASSERT_TRUE(sb2.empty());
+
+  ASSERT_EQ(p, sb3.data());
+  ASSERT_EQ(123, sb3.size());
+  ASSERT_FALSE(sb3.empty());
+  for (size_t i = 0; i < 123; ++i) {
+    ASSERT_EQ((uint8_t) i, sb3.data()[i]);
+  }
+
+}
 
 class NodeTest
   : public ::testing::Test,

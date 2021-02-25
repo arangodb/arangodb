@@ -81,8 +81,6 @@ class SmallBuffer {
  public:
   SmallBuffer() : _start(nullptr), _size(0) {}
   SmallBuffer(size_t size) : _start(new uint8_t[size]), _size(size) {}
-  SmallBuffer(uint8_t* start, size_t size)
-    : _start(start), _size(size) { }
   SmallBuffer(SmallBuffer const& other) {
     if (other.empty()) {
       _start = nullptr;
