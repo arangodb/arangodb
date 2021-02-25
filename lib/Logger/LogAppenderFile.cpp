@@ -263,7 +263,6 @@ void LogAppenderFile::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      // TODO Is it acceptable here to ignore failures?
       std::ignore = FileUtils::remove(backup);
     }
 
