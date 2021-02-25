@@ -139,8 +139,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.file-mode",
                      "mode to use for new log file, umask will be applied as well",
                      new StringParameter(&_fileMode))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 
   options->addOption("--log.api-enabled",
                      "whether the log api is enabled (true) or not (false), or only enabled for superuser JWT (jwt)",
@@ -154,8 +153,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.file-group",
                      "group to use for new log file, user must be a member of this group",
                      new StringParameter(&_fileGroup))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 #endif
 
   options->addOption("--log.prefix", "prefix log message with this string",

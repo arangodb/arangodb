@@ -343,8 +343,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "startup, in order to startup reduce IO",
                   new BooleanParameter(&_limitOpenFilesAtStartup),
                   arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   options
       ->addOption("--rocksdb.allow-fallocate",
@@ -352,8 +351,7 @@ void RocksDBOptionFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                   "fallocate calls are bypassed",
                   new BooleanParameter(&_allowFAllocate),
                   arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
   options
       ->addOption("--rocksdb.exclusive-writes",
                   "if true, writes are exclusive. This allows the RocksDB engine to mimic "
