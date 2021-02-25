@@ -404,8 +404,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         log();
 
         _resultBuilderOptions = std::make_unique<VPackOptions>(VPackOptions::Defaults);
-        _resultBuilderOptions->buildUnindexedArrays = true;
-        _resultBuilderOptions->buildUnindexedObjects = true;
+        // Index the result array to avoid a performance problem in the current java
+        // driver; this is removed in 3.8. See #13476 for details.
+        _resultBuilderOptions->buildUnindexedArrays = false;
+        _resultBuilderOptions->buildUnindexedObjects = false;
 
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
@@ -483,9 +485,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
         }
 
-        // Index the result array to avoid a performance problem in the current java
-        // driver; this is removed in 3.8. See #13476 for details.
-        _resultBuilderOptions->buildUnindexedArrays = false;
         // must close result array here because it must be passed as a closed
         // array to the query cache
         _resultBuilder->close();
