@@ -40,6 +40,12 @@
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 namespace arangodb::futures {
 struct arangodb_tag {};
 
@@ -191,5 +197,10 @@ auto makePromise() -> std::pair<Future<T>, Promise<T>> {
 }
 
 }
+
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // ARANGOD_FUTURES_FUTURE_H
