@@ -1461,7 +1461,7 @@ void Supervision::cleanupHotbackupTransferJobs() {
     VPackArrayBuilder guard1(envelope.get());
     VPackObjectBuilder guard2(envelope.get());
     arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
-        snapshot(), envelope);
+        _snapshot, envelope);
   }
   if (envelope->slice()[0].length() > 0) {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
