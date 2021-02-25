@@ -130,14 +130,16 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   }
   
   if (coll.size() >= 5 && coll[0] == '_') {
-    // _users, _queues, _frontend
+    // _users, _queues, _frontend, _statistics
 
     // handle fixed permissions here outside auth module.
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
     if (dbname == StaticStrings::SystemDatabase && coll == StaticStrings::UsersCollection) {
       return auth::Level::NONE;
-    } else if (coll == StaticStrings::QueuesCollection) {
+    } else if (coll == StaticStrings::QueuesCollection ||
+               coll == StaticStrings::StatisticsCollection ||
+               coll == StaticStrings::Statistics15Collection) {
       return auth::Level::RO;
     } else if (coll == StaticStrings::FrontendCollection) {
       return auth::Level::RW;

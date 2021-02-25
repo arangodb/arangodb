@@ -119,6 +119,16 @@ class v8_action_t final : public TRI_action_t {
 
     // allow use database execution in rest calls?
     bool allowUseDatabase = _allowUseDatabase || _actionFeature.allowUseDatabase();
+    if (!allowUseDatabase) {
+      // _admin/aardvark/statistics/coordshort must be allowed to switch into the _system
+      // database to query statistics from _statistics15 in the _system database
+      auto const& suffixes = request->suffixes();
+      if (suffixes.size() == 4 &&
+          suffixes[0] == "_admin" && suffixes[1] == "aardvark" &&
+          suffixes[2] == "statistics" && suffixes[3] == "coordshort") {
+        allowUseDatabase = true;
+      }
+    }
 
     // get a V8 context
     V8ContextGuard guard(vocbase, _isSystem ?
