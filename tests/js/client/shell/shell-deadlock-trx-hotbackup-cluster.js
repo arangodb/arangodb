@@ -26,18 +26,19 @@
 
 // tests for deadlocks in the cluster with writing trxs and hotbackup
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
-const isCluster = internal.isCluster();
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+const fs = require('fs');
 const time = internal.time;
 const wait = internal.wait;
+const request = require('@arangodb/request');
 
 function trxWriteHotbackupDeadlock () {
   'use strict';
-  var cn = 'UnitTestsDeadlockHotbackup';
-  var c = null;
+  const cn = 'UnitTestsDeadlockHotbackup';
+  let c = null;
 
   return {
 
@@ -51,11 +52,23 @@ function trxWriteHotbackupDeadlock () {
       db._drop(cn);
     },
 
-    testRunAQLWritingTransactionsDuringHotbackup: function () {
-      if (!isCluster) {
-        return true;
-      }
+    tearDownAll: function () {
+      let dirs = JSON.parse(internal.env.INSTANCEINFO).arangods.filter((s) => s.role === 'dbserver').map((s) => s.rootDir);
+      dirs.forEach((d) => {
+        // remove all the hotbackups that we created, because they will consume a
+        // lot of disk space
+        try {
+          let path = fs.join(d, 'data', 'backups');
+          if (fs.exists(path)) {
+            fs.removeDirectoryRecursive(path);
+          }
+        } catch (err) {
+          require("console").warn("unable to remove hotbackups from base directory " + d, err);
+        }
+      });
+    },
 
+    testRunAQLWritingTransactionsDuringHotbackup: function () {
       let start = time();
       // This will create lots of hotbackups for approximately 60 seconds
       let res = arango.POST_RAW("/_api/transaction",
@@ -75,6 +88,11 @@ function trxWriteHotbackupDeadlock () {
                       } catch(e) {
                         console.error("Caught exception when creating a hotbackup!", e);
                         bad++;
+                      }
+
+                      if (internal.db._collection("${cn}") === null) {
+                        /* the other task is done with its work */
+                        break;
                       }
                     }
                     return {good, bad};
@@ -105,6 +123,8 @@ function trxWriteHotbackupDeadlock () {
       let diff = time() - start;
       print("Done 750 exclusive transactions in", diff, "seconds!");
       assertTrue(diff < 60, "750 transactions took too long, probably some deadlock with hotbackups");
+      // by dropping the collection we signal to the other task that it can finish
+      db._drop(cn);
       while (time() - start < 80) {
         res = arango.PUT(`/_api/job/${jobid}`, {});
         if (res.code !== 204) {
@@ -113,7 +133,7 @@ function trxWriteHotbackupDeadlock () {
           print("Managed to perform", res.result.good, "hotbackups.");
           return;
         }
-        wait(1.0);
+        wait(1.0, false);
         print("Waiting for hotbackups to finish...");
       }
       arango.DELETE(`/_api/job/${jobid}`);
