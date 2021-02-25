@@ -88,8 +88,7 @@ void Node::rebuildVecBuf() const {
         }
       }
     }
-    _vecBuf = std::make_unique<SmallBuffer>(tmp.size());
-    memcpy(_vecBuf->data(), tmp.data(), tmp.size());
+    _vecBuf = std::make_unique<SmallBuffer>(tmp.data(), tmp.size());
     _vecBufDirty = false;
   }
 }
@@ -146,6 +145,7 @@ Node::Node(Node const& other)
       _isArray(other._isArray) {
   if (other._children) {
     _children = std::make_unique<Children>();
+    _children->reserve(other._children->size());
     for (auto const& p : *other._children) {
       auto copy = std::make_shared<Node>(*p.second);
       copy->_parent = this;  // new children have us as _parent!
@@ -171,15 +171,12 @@ Node& Node::operator=(VPackSlice const& slice) {
     _value = std::make_unique<std::vector<SmallBuffer>>();
     _value->reserve(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
-      _value->emplace_back(slice[i].byteSize());
-      memcpy((*_value)[i].data(), slice[i].start(), slice[i].byteSize());
+      _value->emplace_back(slice[i].start(), slice[i].byteSize());
     }
   } else {
     _isArray = false;
     _value = std::make_unique<std::vector<SmallBuffer>>();
-    _value->reserve(1);
-    _value->emplace_back(slice.byteSize());
-    memcpy(_value->front().data(), slice.start(), slice.byteSize());
+    _value->emplace_back(slice.start(), slice.byteSize());
   }
   _vecBufDirty = true;
   return *this;
@@ -224,6 +221,7 @@ Node& Node::operator=(Node const& rhs) {
     } else {
       _children = std::make_unique<Children>();
     }
+    _children->reserve(rhs._children->size());
     for (auto const& p : *rhs._children) {
       auto copy = std::make_shared<Node>(*p.second);
       copy->_parent = this;  // new child copy has us as _parent

@@ -62,6 +62,16 @@ TEST(SmallBufferTest, sizeConstructor) {
   }
 }
 
+TEST(SmallBufferTest, memcpyConstructor) {
+  char const* x = "The quick brown fox jumps over the lazy dog.";
+  size_t s = strlen(x);
+  SmallBuffer sb((uint8_t const*) x, s);
+  ASSERT_NE(sb.data(), nullptr);
+  ASSERT_EQ(s, sb.size());
+  ASSERT_FALSE(sb.empty());
+  ASSERT_EQ(0, strncmp(x, (char const*) sb.data(), s));
+}
+
 TEST(SmallBufferTest, copyConstructor) {
   SmallBuffer sb1(123);
   for (size_t i = 0; i < 123; ++i) {

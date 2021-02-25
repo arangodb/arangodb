@@ -86,6 +86,9 @@ class SmallBuffer {
       _size = size;
     }
   }
+  explicit SmallBuffer(uint8_t const* data, size_t size) : SmallBuffer(size) {
+    memcpy(_start, data, size);
+  }
   SmallBuffer(SmallBuffer const& other) 
       : SmallBuffer() {
     if (!other.empty()) {
