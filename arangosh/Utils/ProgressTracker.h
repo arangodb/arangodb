@@ -25,7 +25,7 @@
 #define ARANGOSH_UTILS_PROGRESS_TRACKER_H 1
 
 #include "ManagedDirectory.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/FileUtils.h"
 
 namespace arangodb {
 template <typename T>
@@ -39,6 +39,7 @@ struct ProgressTracker {
 
   T getStatus(std::string const& collectionName);
   void updateStatus(std::string const& collectionName, T const& status);
+  void cleanup();
 
   ManagedDirectory& directory;
   std::shared_mutex _collectionStatesMutex;
@@ -49,7 +50,7 @@ struct ProgressTracker {
 
 template <typename T>
 void ProgressTracker<T>::updateStatus(std::string const& collectionName,
-                                                      T const& status) {
+                                      T const& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
     _collectionStates[collectionName] = status;
@@ -92,7 +93,7 @@ template <typename T>
 ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExisting)
     : directory(directory) {
   if (ignoreExisting) {
-    return ;
+    return;
   }
 
   VPackBuilder progressBuilder = directory.vpackFromJsonFile("continue.json");
@@ -106,6 +107,14 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
   for (auto&& [key, value] : VPackObjectIterator(progress)) {
     _collectionStates[key.copyString()] = T(value);
   }
+}
+
+template <typename T>
+void ProgressTracker<T>::cleanup() {
+  // remove continue.json file, e.g. when the restore completed successfully
+  std::unique_lock guard(_writeFileMutex);
+  
+  [[maybe_unused]] bool result = basics::FileUtils::remove(directory.pathToFile("continue.json"));
 }
 
 }

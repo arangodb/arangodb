@@ -147,6 +147,108 @@ function BaseTestConfig () {
       clearFailurePoints();
       db._drop(cn);
     },
+    
+    testInsertRemoveInsertRemove: function () {
+      let c = db._create(cn);
+      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      c.remove("a");
+      let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      c.remove("a");
+
+      assertEqual("_b5TF-Oy---", rev1);
+      assertEqual("_b5TF-Oy---", rev2);
+
+      connectToFollower();
+      db._flushCache();
+      c = db._create(cn);
+      
+      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
+      assertEqual("_b5TF-Oy---", c.document("a")._rev);
+      assertEqual("_b5TF-Oz---", c.insert({ _rev: "_b5TF-Oz---", _key: "b" }, { isRestore: true })._rev);
+      assertEqual("_b5TF-Oz---", c.document("b")._rev);
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+     
+      checkCountConsistency(cn, 0);
+    },
+    
+    testInsertRemoveInsertRemoveInsert: function () {
+      let c = db._create(cn);
+      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      c.remove("a");
+      let rev2 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+      c.remove("a");
+      let rev3 = c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev;
+
+      assertEqual("_b5TF-Oy---", rev1);
+      assertEqual("_b5TF-Oy---", rev2);
+      assertEqual("_b5TF-Oy---", rev3);
+
+      connectToFollower();
+      db._flushCache();
+      c = db._create(cn);
+      
+      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "a" }, { isRestore: true })._rev);
+      assertEqual("_b5TF-Oy---", c.document("a")._rev);
+      assertEqual("_b5TF-Oz---", c.insert({ _rev: "_b5TF-Oz---", _key: "b" }, { isRestore: true })._rev);
+      assertEqual("_b5TF-Oz---", c.document("b")._rev);
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+     
+      assertEqual(rev1, c.document("a")._rev);
+     
+      checkCountConsistency(cn, 1);
+    },
+
+    testSecondaryIndexConflicts: function () {
+      let c = db._create(cn);
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      let rev1 = c.insert({ _rev: "_b5TF-Oy---", _key: "a", value: 1 }, { isRestore: true })._rev;
+      let rev2 = c.insert({ _rev: "_b5TGvDC---", _key: "b", value: 2 }, { isRestore: true })._rev;
+      let rev3 = c.insert({ _rev: "_b5TGwvm---", _key: "c", value: 3 }, { isRestore: true })._rev;
+      
+      assertEqual("_b5TF-Oy---", rev1);
+      assertEqual("_b5TGvDC---", rev2);
+      assertEqual("_b5TGwvm---", rev3);
+
+      connectToFollower();
+      db._flushCache();
+      c = db._create(cn);
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+      
+      assertEqual("_b5TF-Oy---", c.insert({ _rev: "_b5TF-Oy---", _key: "b", value: 3 }, { isRestore: true })._rev);
+      assertEqual("_b5TGwvm---", c.insert({ _rev: "_b5TGwvm---", _key: "c", value: 2 }, { isRestore: true })._rev);
+
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+      
+      assertEqual(rev1, c.document("a")._rev);
+      assertEqual(rev2, c.document("b")._rev);
+      assertEqual(rev3, c.document("c")._rev);
+     
+      checkCountConsistency(cn, 3);
+    },
 
     // create different state on follower
     testDowngradeManyRevisions: function () {
@@ -169,7 +271,7 @@ function BaseTestConfig () {
       c = db._collection(cn);
      
       db._query("FOR doc IN " + cn + " REPLACE doc WITH { value: doc.value + 1 } IN " + cn);
-      
+
       replication.syncCollection(cn, {
         endpoint: leaderEndpoint,
         verbose: true,
@@ -895,6 +997,47 @@ function BaseTestConfig () {
       
       checkCountConsistency(cn, expected);
     }, 
+    // create large AQL operation on leader using AQL
+    testIncrementalQuickKeys: function () {
+      let c = db._create(cn);
+      let rev = c.insert({_key: "testi", value: 1 })._rev;
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(1, c.document("testi").value);
+      assertEqual(rev, c.document("testi")._rev);
+
+      c.replace("testi", {_key: "testi", value: 2 });
+
+      connectToLeader();
+      db._flushCache();
+      c = db._collection(cn);
+
+      setFailurePoint("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100");
+      db._query("FOR i IN 1..10000 INSERT { _key: CONCAT('testmann', i) } INTO " + cn);
+
+      rev = c.replace("testi", { _key: "testi", value: 3 })._rev;
+
+      connectToFollower();
+      replication.syncCollection(cn, {
+        endpoint: leaderEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      c = db._collection(cn);
+      assertEqual(3, c.document("testi").value);
+      assertEqual(rev, c.document("testi")._rev);
+
+      checkCountConsistency(cn, 10001);
+    },
   };
 }
 

@@ -489,22 +489,14 @@ void SupervisedScheduler::runSupervisor() {
     startOneThread();
   }
 
-  uint64_t lastJobsDone = 0, lastJobsSubmitted = 0;
-  uint64_t jobsStallingTick = 0, lastQueueLength = 0;
-
+  uint64_t lastJobsSubmitted = 0;
+  uint64_t lastQueueLength = 0;
   uint64_t roundCount = 0;
 
   while (!_stopping) {
     uint64_t jobsSubmitted = _jobsSubmitted.load(std::memory_order_acquire);
     uint64_t jobsDone = _jobsDone.load(std::memory_order_acquire);
     uint64_t jobsDequeued = _jobsDequeued.load(std::memory_order_relaxed);
-
-    if (jobsDone == lastJobsDone && (jobsDequeued < jobsSubmitted)) {
-      jobsStallingTick++;
-    } else if (jobsStallingTick != 0) {
-      jobsStallingTick--;
-    }
-
     uint64_t queueLength = jobsSubmitted - jobsDequeued;
 
     uint64_t numAwake = _numAwake.load(std::memory_order_relaxed);
@@ -521,7 +513,6 @@ void SupervisedScheduler::runSupervisor() {
                             ((queueLength == 0) && (lastQueueLength == 0))) &&
                            ((rand() & 0x3F) == 0) && sleeperFound;
 
-    lastJobsDone = jobsDone;
     lastQueueLength = queueLength;
     lastJobsSubmitted = jobsSubmitted;
 
@@ -541,7 +532,6 @@ void SupervisedScheduler::runSupervisor() {
       bool haveStartedThread = false;
 
       if (doStartOneThread && _numWorkers < _maxNumWorkers) {
-        jobsStallingTick = 0;
         startOneThread();
         haveStartedThread = true;
       } else if (doStopOneThread && _numWorkers > _minNumWorkers) {
