@@ -157,7 +157,6 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _highscoreSet(false),
       _highscore(0),
       _bingo(false),
-      _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate() {
   // cppcheck-suppress *
@@ -173,7 +172,6 @@ void AttributeWeightShortestPathFinder::clear() {
   _highscoreSet = false;
   _highscore = 0;
   _bingo = false;
-  _resultCode = TRI_ERROR_NO_ERROR;
   _intermediateSet = false;
   _intermediate = arangodb::velocypack::StringRef{};
 }

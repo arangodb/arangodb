@@ -132,7 +132,7 @@ bool RocksDBShaCalculatorThread::shaCalcFile(std::string const& filename) {
       newfile += ".hash";
       LOG_TOPIC("80257", DEBUG, arangodb::Logger::ENGINES)
           << "shaCalcFile: done " << filename << " result: " << newfile;
-      int ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
+      auto ret_val = TRI_WriteFile(newfile.c_str(), "", 0);
       if (TRI_ERROR_NO_ERROR != ret_val) {
         good = false;
         LOG_TOPIC("8f7ef", DEBUG, arangodb::Logger::ENGINES)
@@ -169,7 +169,7 @@ bool RocksDBShaCalculatorThread::deleteFile(std::string const& filename) {
       if (69 < it.size() && 0 == it.compare(0, basename.size(), basename) &&
           0 == it.substr(basename.size(), 5).compare(".sha.")) {
         std::string deletefile = basics::FileUtils::buildFilename(dirname, it);
-        int ret_val = TRI_UnlinkFile(deletefile.c_str());
+        auto ret_val = TRI_UnlinkFile(deletefile.c_str());
         good = (TRI_ERROR_NO_ERROR == ret_val);
         if (!good) {
           LOG_TOPIC("acb34", DEBUG, arangodb::Logger::ENGINES)
@@ -241,8 +241,8 @@ void RocksDBShaCalculatorThread::checkMissingShaFiles(std::string const& pathnam
       temppath = basics::FileUtils::buildFilename(pathname, *iter);
       int64_t now = ::time(nullptr);
       int64_t modTime;
-      int r = TRI_MTimeFile(temppath.c_str(), &modTime);
-      if (r == 0 && (now - modTime) >= requireAge) {
+      auto r = TRI_MTimeFile(temppath.c_str(), &modTime);
+      if (r == TRI_ERROR_NO_ERROR && (now - modTime) >= requireAge) {
         LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
             << "checkMissingShaFiles:"
                " Computing checksum for "

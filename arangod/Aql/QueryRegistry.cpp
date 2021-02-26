@@ -194,8 +194,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
-                                                          int errorCode) {
+std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase,
+                                                          QueryId id, ErrorCode errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -266,10 +266,10 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 }
 
 /// used for a legacy shutdown
-bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
+bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
   std::string vocbase;
   QueryId qId = 0;
-  
+
   {
     WRITE_LOCKER(writeLocker, _lock);
 
