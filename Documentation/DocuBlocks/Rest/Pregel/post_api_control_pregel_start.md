@@ -1,7 +1,7 @@
 @startDocuBlock post_api_control_pregel_start
 @brief Start the execution of a Pregel algorithm
 
-@RESTHEADER{POST /_api/control_pregel, Start Pregel execution}
+@RESTHEADER{POST /_api/control_pregel, Start Pregel job execution}
 
 @RESTBODYPARAM{algorithm,string,required,string}
 Name of the algorithm. One of:
@@ -19,15 +19,24 @@ Name of the algorithm. One of:
 @RESTBODYPARAM{graphName,string,optional,string}
 Name of a graph. Either this or the parameters `vertexCollections` and
 `edgeCollections` are required.
+Please note that there are special sharding requirements for graphs in order
+to be used with Pregel.
 
 @RESTBODYPARAM{vertexCollections,array,optional,string}
 List of vertex collection names.
+Please note that there are special sharding requirements for collections in order
+to be used with Pregel.
 
 @RESTBODYPARAM{edgeCollections,array,optional,string}
 List of edge collection names.
+Please note that there are special sharding requirements for collections in order
+to be used with Pregel.
 
 @RESTBODYPARAM{params,object,optional,}
 General as well as algorithm-specific options.
+
+The most important general option is "store", which controls whether the results
+computed by the Pregel job are written back into the source collections or not.
 
 @RESTDESCRIPTION
 To start an execution you need to specify the algorithm name and a named graph
@@ -38,10 +47,22 @@ algorithm, see [Pregel - Available Algorithms](https://www.arangodb.com/docs/sta
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-TODO
+HTTP 200 is returned in case the Pregel was successfully created.
 
-@RESTRETURNCODE{XXX}
-TODO
+@RESTRETURNCODE{400}
+An HTTP 400 error is returned if the set of collections for the Pregel job includes
+a system collection, or if the collections to not conform to the sharding requirements
+for Pregel jobs.
+
+@RESTRETURNCODE{403}
+An HTTP 403 error is returned if there are not sufficient privileges to access
+the collections specified for the Pregel job.
+
+
+@RESTRETURNCODE{404}
+An HTTP 404 error is returned if the specified "algorithm" is not found, or the
+graph specified in "graphName" is not found, or at least one the collections 
+specified in "vertexCollections" or "edgeCollections" is not found.
 
 @EXAMPLES
 
