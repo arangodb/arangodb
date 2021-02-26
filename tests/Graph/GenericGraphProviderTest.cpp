@@ -159,7 +159,7 @@ class GraphProviderTest : public ::testing::Test {
         }*/
       }
 
-      server = std::make_unique<mocks::MockCoordinator>(false, true);
+      server = std::make_unique<mocks::MockCoordinator>(true, false);
       mocks::MockCoordinator* srv = static_cast<mocks::MockCoordinator*>(server.get());
       graph.prepareServer(*srv);
       auto dbServerEndpoint = srv->registerFakedDBServer("PRMR_0001");
