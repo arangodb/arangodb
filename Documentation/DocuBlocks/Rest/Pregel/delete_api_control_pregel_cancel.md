@@ -24,7 +24,7 @@ documents have no or stale results from a previous execution.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 will returned in TODO
+HTTP 200 will be returned in case the job execution id was valid.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
