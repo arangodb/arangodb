@@ -1,7 +1,7 @@
 @startDocuBlock get_api_control_pregel_status
 @brief Get the status of a Pregel execution
 
-@RESTHEADER{GET /_api/control_pregel/{id}, Get Pregel execution status}
+@RESTHEADER{GET /_api/control_pregel/{id}, Get Pregel job execution status}
 
 @RESTQUERYPARAMETERS
 
@@ -10,34 +10,56 @@ Pregel execution identifier.
 
 @RESTDESCRIPTION
 Returns the current state of the execution, the current global superstep, the
-runtime, the global aggregator values as well as the number of send and
+runtime, the global aggregator values as well as the number of sent and
 received messages.
-
-<!--
-State	Description
-"running"	Algorithm is executing normally.
-"in error"	The execution is in an error state. This can be caused by primary DB-Servers being not reachable or being non responsive. The execution might recover later, or switch to “canceled” if it was not able to recover successfully
-"recovering"	The execution is actively recovering, will switch back to “running” if the recovery was successful
-"canceled"	The execution was permanently canceled, either by the user or by an error.
-"storing"	The algorithm finished, but the results are still being written back into the collections. Occurs if the store parameter is set to true only.
-"done"	The execution is done. In version 3.7.1 and later, this means that storing is also done. In earlier versions, the results may not be written back into the collections yet. This event is announced in the server log (requires at least info log level for the pregel topic).
--->
 
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-TODO
+HTTP 200 will be returned in case the job execution id was valid and the state is
+returned along with the response.
 
 @RESTREPLYBODY{state,string,required,string}
 State of the execution.
 
-@RESTRETURNCODE{XXX}
-TODO
+The following values can be returned:
+* "running": Algorithm is executing normally.
+* "storing": The algorithm finished, but the results are still being written back into the collections. Occurs only if the store parameter is set to true.
+* "done": The execution is done. In version 3.7.1 and later, this means that storing is also done. In earlier versions, the results may not be written back into the collections yet. This event is announced in the server log (requires at least info log level for the pregel log topic).
+* "canceled": The execution was permanently canceled, either by the user or by an error.
+* "fatal error": The execution has failed and cannot recover.
+* "in error" (currently unused): The execution is in an error state. This can be caused by DB-Servers being not reachable or being non responsive. The execution might recover later, or switch to “canceled” if it was not able to recover successfully. 
+* "recovering" (currently unused): The execution is actively recovering, will switch back to “running” if the recovery was successful.
 
-<!--
-BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES
-SERVER_ERROR, TRI_ERROR_INTERNAL, pregel feature not available
-NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND, Execution number is invalid
--->
+@RESTREPLYBODY{gss,number,required,string}
+The number of global supersteps executed.
+
+@RESTREPLYBODY{totalRuntime,number,required,float}
+Total runtime of the execution up to now (if the execution is still ongoing).
+
+@RESTREPLYBODY{startupTime,number,required,float}
+Startup runtime of the execution.
+The startup time includes the data loading time and can be substantial.
+The startup time will be reported as 0 if the startup is still ongoing.
+
+@RESTREPLYBODY{computationTime,number,required,float}
+Algorithm execution time. The computation time will be reported as 0 if the 
+computation still ongoing.
+
+@RESTREPLYBODY{storageTime,number,optional,float}
+Time for storing the results if the job includes results storage.
+The storage time be reported as 0 if storing the results is still ongoing.
+
+@RESTREPLYBODY{reports.vertexCount,number,optional,}
+Total number of vertices processed. This value will only be populated once the
+algorithm has finished.
+
+@RESTREPLYBODY{reports.edgeCount,number,optional,}
+Total number of edges processed. This value will only be populated once the
+algorithm has finished.
+
+@RESTRETURNCODE{404}
+An HTTP 404 error is returned if no Pregel job with the specified execution number
+is found or the execution number is invalid.
 
 @endDocuBlock
