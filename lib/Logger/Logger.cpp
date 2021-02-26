@@ -39,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
@@ -131,7 +132,8 @@ bool Logger::_showRole(false);
 bool Logger::_useJson(false);
 char Logger::_role('\0');
 TRI_pid_t Logger::_cachedPid(0);
-std::string Logger::_outputPrefix("");
+std::string Logger::_outputPrefix;
+std::string Logger::_hostname;
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
 
@@ -210,6 +212,20 @@ void Logger::setOutputPrefix(std::string const& prefix) {
   }
 
   _outputPrefix = prefix;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setHostname(std::string const& hostname) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  if (hostname == "auto") {
+    _hostname = utilities::hostname();
+  } else {
+    _hostname = hostname;
+  }
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -429,7 +445,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // tid
     if (_showThreadIdentifier) {
       out.append(",\"tid\":");
-      StringUtils::itoa(uint64_t(Thread::currentThreadNumber), out);
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
     }
 
     // thread name
@@ -498,6 +514,12 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       dumper.appendString(logid, strlen(logid));
     }
 
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(",\"hostname\":");
+      dumper.appendString(_hostname.data(), _hostname.size());
+    }
+
     // the message itself
     {
       out.append(",\"message\":");
@@ -528,10 +550,16 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
 
     TRI_ASSERT(offset == 0);
   } else {
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(_hostname);
+      out.push_back(' ');
+    }
+
     // human readable format
     LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
-
+    
     // output prefix
     if (!_outputPrefix.empty()) {
       out.append(_outputPrefix);
