@@ -1,7 +1,7 @@
 @startDocuBlock delete_api_control_pregel_cancel
 @brief Cancel an ongoing Pregel execution
 
-@RESTHEADER{DELETE /_api/control_pregel/{id}, Cancel Pregel execution}
+@RESTHEADER{DELETE /_api/control_pregel/{id}, Cancel Pregel job execution}
 
 @RESTQUERYPARAMETERS
 
@@ -24,15 +24,10 @@ documents have no or stale results from a previous execution.
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-TODO
+HTTP 200 will returned in TODO
 
-@RESTRETURNCODE{XXX}
-TODO
-
-<!--
-BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES
-SERVER_ERROR, TRI_ERROR_INTERNAL, pregel feature not available
-NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND, Execution number is invalid
--->
+@RESTRETURNCODE{404}
+An HTTP 404 error is returned if no Pregel job with the specified execution number
+is found or the execution number is invalid.
 
 @endDocuBlock
