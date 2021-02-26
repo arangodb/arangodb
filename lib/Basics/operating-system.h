@@ -729,7 +729,7 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define TRI_SYSTEM_ERROR()                                                    \
   do {                                                                        \
     auto result = translateWindowsError(::GetLastError());                    \
-    errno = result.errorNumber();                                             \
+    errno = static_cast<int>(result.errorNumber());                           \
     auto const& mesg = result.errorMessage();                                 \
     memset(windowsErrorBuf, 0, sizeof(windowsErrorBuf));                      \
     if (mesg.empty()) {                                                       \

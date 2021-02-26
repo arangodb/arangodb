@@ -60,8 +60,8 @@ class LoggerTest : public ::testing::Test {
         path(TRI_GetTempPath()),
         logfile1(path + "logfile1"),
         logfile2(path + "logfile2") {
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
+    std::ignore = FileUtils::remove(logfile1);
+    std::ignore = FileUtils::remove(logfile2);
     // remove any previous loggers
     LogAppenderFile::closeAll();
   }
@@ -71,8 +71,8 @@ class LoggerTest : public ::testing::Test {
     LogAppenderFile::setAppenders(backup);
     LogAppenderFile::reopenAll();
 
-    FileUtils::remove(logfile1);
-    FileUtils::remove(logfile2);
+    std::ignore = FileUtils::remove(logfile1);
+    std::ignore = FileUtils::remove(logfile2);
   }
 };
 

@@ -109,12 +109,12 @@ class ClusterEngine final : public StorageEngine {
   void cleanupReplicationContexts() override {}
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                         int& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
+                                                         ErrorCode& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(ErrorCode& status) override;
+  ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
-  int removeReplicationApplierConfiguration() override {
+  ErrorCode removeReplicationApplierConfiguration() override {
     return TRI_ERROR_NOT_IMPLEMENTED;
   }
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
@@ -165,7 +165,7 @@ class ClusterEngine final : public StorageEngine {
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                int& status) override;
+                                                ErrorCode& status) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
 
   // current recovery state
