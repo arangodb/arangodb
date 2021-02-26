@@ -1,4 +1,4 @@
-v3.6.12 (XXXX-XX-XX)
+v3.6.13 (XXXX-XX-XX)
 --------------------
 
 * Allow to specify a fail-over LDAP server. Instead of "--ldap.OPTION" you need
@@ -7,6 +7,9 @@ v3.6.12 (XXXX-XX-XX)
   try the secondary one. It is possible to specify a file containing all users
   that the primary (or secondary) LDAP server is handling by specifying the
   option "--ldap.responsible-for". This file must contain the usernames line-by-line.
+
+v3.6.12 (XXXX-XX-XX)
+--------------------
 
 * Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
 
