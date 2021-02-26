@@ -2160,7 +2160,7 @@ class IResearchFeatureTestCoordinator
 
  protected:
   IResearchFeatureTestCoordinator()
-      : server(true, false) {
+      : server(false) {
 
     arangodb::tests::init();
 
@@ -2374,7 +2374,7 @@ class IResearchFeatureTestDBServer
 
  protected:
   IResearchFeatureTestDBServer()
-      : server(true, false) {
+      : server(false) {
 
 
     arangodb::tests::init();
@@ -2415,7 +2415,7 @@ class IResearchFeatureTestDBServer
     return dataPath;
   }
 
-  
+
   void createTestDatabase(TRI_vocbase_t*& vocbase, std::string const name = "testDatabase") {
     vocbase = server.createDatabase(name);
     ASSERT_NE(nullptr, vocbase);
