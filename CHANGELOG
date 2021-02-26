@@ -14,8 +14,6 @@ devel
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
-* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
-
 * Prevent arangosh from trying to connect after every executed command.
   This fixes the case when arangosh is started with default options, but no
   server is running on localhost:8529. In this particular case, arangosh will
