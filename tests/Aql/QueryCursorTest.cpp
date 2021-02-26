@@ -207,7 +207,6 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
         dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
   }
 
-  auto wp = std::weak_ptr(testee);
   testee.reset();
 
   ASSERT_TRUE(responseBodySlice.isObject());
