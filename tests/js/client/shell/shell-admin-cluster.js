@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertMatch, assertTrue */
+/* global fail, assertEqual, assertMatch, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -177,6 +177,32 @@ function adminClusterSuite() {
       assertTrue(res.json.hasOwnProperty("id"));
       assertEqual("string", typeof res.json.id);
       assertMatch(/^\d+/, res.json.id);
+      let id = res.json.id;
+
+      // Now wait until the job is finished and check that it has failed:
+      let count = 10;
+      while (--count >= 0) {
+        require("internal").wait(1.0, false);
+        res = request.get({ url: endpointToURL(ep) + "/_admin/cluster/queryAgencyJob?id=" + id, json: true });
+        if (res.status !== 200) {
+          continue;
+        }
+        assertTrue(res.json.hasOwnProperty("creator"));
+        assertTrue(res.json.hasOwnProperty("jobId"));
+        assertEqual(id, res.json.jobId);
+        assertTrue(res.json.hasOwnProperty("server"));
+        assertEqual("testmann123456", res.json.server);
+        assertTrue(res.json.hasOwnProperty("timeCreated"));
+        assertTrue(res.json.hasOwnProperty("timeFinished"));
+        assertTrue(res.json.hasOwnProperty("error"));
+        assertFalse(res.json.error);
+        assertTrue(res.json.hasOwnProperty("status"));
+        assertEqual("Failed", res.json.status);
+        assertTrue(res.json.hasOwnProperty("type"));
+        assertEqual("cleanOutServer", res.json.type);
+        return;   // all good, and job is terminated
+      }
+      assertEqual(200, res);   // will fail if loop ends
     },
    
   };
