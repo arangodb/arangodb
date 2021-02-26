@@ -975,10 +975,11 @@ target_link_libraries(arango_network llhttp)
 target_link_libraries(arango_network nghttp2)
 target_link_libraries(arango_network arango::validation)
 
+target_link_libraries(arango_pregel arango)
 target_link_libraries(arango_pregel arango_agency)
+target_link_libraries(arango_pregel arango_greenspun)
 target_link_libraries(arango_pregel boost_boost)
 target_link_libraries(arango_pregel boost_system)
-target_link_libraries(arango_pregel arango_greenspun)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
