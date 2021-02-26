@@ -8,7 +8,12 @@ v3.6.13 (XXXX-XX-XX)
   that the primary (or secondary) LDAP server is handling by specifying the
   option "--ldap.responsible-for". This file must contain the usernames line-by-line.
 
-v3.6.12 (XXXX-XX-XX)
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+
+* Cleanup old HotBackup transfer jobs in agency.
+
+
+v3.6.12 (2021-02-18)
 --------------------
 
 * Fixed issue BTS-268: fix a flaky Foxx self-heal procedure.
@@ -43,8 +48,6 @@ v3.6.12 (XXXX-XX-XX)
   checks for the query being killed during the filtering of documents, resulting
   in the maxRuntime option and manual kill of a query not working timely.
 
-* Fixed some wrong behaviour in single document updates. If the option
-
 * Fix potential undefined behavior when iterating over connected nodes in an
   execution plan and calling callbacks for each of the nodes: if the callbacks
   modified the list of connected nodes of the current that they were called
@@ -52,7 +55,6 @@ v3.6.12 (XXXX-XX-XX)
   invalidation. The issue occurred when using a debug STL via `_GLIBCXX_DEBUG`.
 
 * Fixed some wrong behavior in single document updates. If the option
-
   ignoreRevs=false was given and the precondition _rev was given in the body but
   the _key was given in the URL path, then the rev was wrongly taken as 0,
   rather than using the one from the document body.
@@ -71,7 +73,7 @@ v3.6.12 (XXXX-XX-XX)
   `allowUserKeys` attribute when in a cluster.
 
 
-v3.6.11 (2020-01-15)
+v3.6.11 (2021-01-15)
 --------------------
 
 * Fix a bug in the agency Supervision which could lead to removeFollower jobs
