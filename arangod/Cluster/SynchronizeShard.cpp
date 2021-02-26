@@ -1245,17 +1245,17 @@ void SynchronizeShard::setState(ActionState state) {
     auto timeout = duration<double>(600.0);
     auto stoppage = clock::now() + timeout;
     auto snooze = milliseconds(100);
-    while (!_feature.server().isStopping() && clock::now() < stoppage ) {
-      std::ignore = cluster::fetchCurrentVersion(0.1 * timeout)
-        .thenValue(
-          [&v] (auto&& res) { v = res.get(); })
-        .thenError<std::exception>(
-          [&shard, database] (std::exception const& e) {
-            LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
-              << "Failed to acquire current version from agency while increasing shard version"
-              << " for shard "  << database << "/" << shard << e.what();
-          })
-        .await(mellon::yes_i_know_that_this_call_will_block);
+    while (!_feature.server().isStopping() && clock::now() < stoppage) {
+      v = cluster::fetchCurrentVersion(0.1 * timeout)
+              .thenValue([](ResultT<uint64_t>&& res) { return res.get(); })
+              .catch_error<std::exception>([&shard, database](std::exception const& e) -> uint64_t {
+                LOG_TOPIC("3ae99", ERR, Logger::CLUSTER)
+                    << "Failed to acquire current version from agency while "
+                       "increasing shard version"
+                    << " for shard " << database << "/" << shard << e.what();
+                return 0;
+              })
+              .await_unwrap();
       if (v > 0) {
         break;
       }
