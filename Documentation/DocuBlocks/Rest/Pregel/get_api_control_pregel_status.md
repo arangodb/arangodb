@@ -20,16 +20,23 @@ HTTP 200 will be returned in case the job execution id was valid and the state i
 returned along with the response.
 
 @RESTREPLYBODY{state,string,required,string}
-State of the execution.
-
-The following values can be returned:
-* "running": Algorithm is executing normally.
-* "storing": The algorithm finished, but the results are still being written back into the collections. Occurs only if the store parameter is set to true.
-* "done": The execution is done. In version 3.7.1 and later, this means that storing is also done. In earlier versions, the results may not be written back into the collections yet. This event is announced in the server log (requires at least info log level for the pregel log topic).
-* "canceled": The execution was permanently canceled, either by the user or by an error.
-* "fatal error": The execution has failed and cannot recover.
-* "in error" (currently unused): The execution is in an error state. This can be caused by DB-Servers being not reachable or being non responsive. The execution might recover later, or switch to “canceled” if it was not able to recover successfully. 
-* "recovering" (currently unused): The execution is actively recovering, will switch back to “running” if the recovery was successful.
+State of the execution. The following values can be returned:
+- `"running"`: Algorithm is executing normally.
+- `"storing"`: The algorithm finished, but the results are still being written
+  back into the collections. Occurs only if the store parameter is set to true.
+- `"done"`: The execution is done. In version 3.7.1 and later, this means that
+  storing is also done. In earlier versions, the results may not be written back
+  into the collections yet. This event is announced in the server log (requires
+  at least info log level for the pregel log topic).
+- `"canceled"`: The execution was permanently canceled, either by the user or by
+  an error.
+- `"fatal error"`: The execution has failed and cannot recover.
+- `"in error"` (currently unused): The execution is in an error state. This can be
+  caused by DB-Servers being not reachable or being non responsive. The execution
+  might recover later, or switch to `"canceled"` if it was not able to recover
+  successfully. 
+- `"recovering"` (currently unused): The execution is actively recovering, will
+  switch back to `running` if the recovery was successful.
 
 @RESTREPLYBODY{gss,number,required,string}
 The number of global supersteps executed.
@@ -50,13 +57,15 @@ computation still ongoing.
 Time for storing the results if the job includes results storage.
 The storage time be reported as 0 if storing the results is still ongoing.
 
-@RESTREPLYBODY{reports.vertexCount,number,optional,}
-Total number of vertices processed. This value will only be populated once the
-algorithm has finished.
+@RESTREPLYBODY{reports,object,optional,get_api_control_pregel_reports}
+Statistics about the Pregel execution. The value will only be populated once
+the algorithm has finished.
 
-@RESTREPLYBODY{reports.edgeCount,number,optional,}
-Total number of edges processed. This value will only be populated once the
-algorithm has finished.
+@RESTSTRUCT{vertexCount,get_api_control_pregel_reports,integer,optional,int64}
+Total number of vertices processed.
+
+@RESTSTRUCT{edgeCount,get_api_control_pregel_reports,integer,optional,int64}
+Total number of edges processed.
 
 @RESTRETURNCODE{404}
 An HTTP 404 error is returned if no Pregel job with the specified execution number
