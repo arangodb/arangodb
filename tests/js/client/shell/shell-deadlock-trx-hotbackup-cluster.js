@@ -88,6 +88,7 @@ function trxWriteHotbackupDeadlock () {
                       } catch(e) {
                         console.error("Caught exception when creating a hotbackup!", e);
                         bad++;
+                        wait(0.5, false);
                       }
 
                       if (internal.db._collection("${cn}") === null) {
@@ -101,6 +102,13 @@ function trxWriteHotbackupDeadlock () {
       assertFalse(res.error, "Could not POST transaction.");
       assertEqual(202, res.code, "Bad response code.");
       let jobid = res.headers["x-arango-async-id"];
+
+      let timeout = 60;
+      if (global.ARANGODB_CLIENT_VERSION(true).asan  ||
+          global.ARANGODB_CLIENT_VERSION(true).tsan  ||
+          process.env.hasOwnProperty('GCOV_PREFIX')) {
+        timeout *= 10;
+      }
 
       // Now we try to write something:
       for (let i = 0; i < 1000; ++i) {
@@ -122,10 +130,10 @@ function trxWriteHotbackupDeadlock () {
       }
       let diff = time() - start;
       print("Done 750 exclusive transactions in", diff, "seconds!");
-      assertTrue(diff < 60, "750 transactions took too long, probably some deadlock with hotbackups");
+      assertTrue(diff < timeout, "750 transactions took too long, probably some deadlock with hotbackups");
       // by dropping the collection we signal to the other task that it can finish
       db._drop(cn);
-      while (time() - start < 80) {
+      while (time() - start < timeout + 20) {
         res = arango.PUT(`/_api/job/${jobid}`, {});
         if (res.code !== 204) {
           assertEqual(200, res.code, "Response code bad.");
