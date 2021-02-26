@@ -686,7 +686,6 @@ set(LIB_ARANGOSERVER_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
-  GeneralServer/Task.cpp
   GeneralServer/VstCommTask.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
