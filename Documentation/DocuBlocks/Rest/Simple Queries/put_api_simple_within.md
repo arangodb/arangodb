@@ -47,12 +47,12 @@ the collection. This index also defines which attribute holds the
 coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
-Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result.
 
 Note: the *within* simple query is **deprecated** as of ArangoDB 2.6.
 This API may be removed in future versions of ArangoDB. The preferred
 way for retrieving documents from a collection using the near operator is
-to issue an [AQL query](../../AQL/Functions/Geo.html) using the *WITHIN* function as follows:
+to issue an AQL query using the *WITHIN()* function as follows:
 
     FOR doc IN WITHIN(@@collection, @latitude, @longitude, @radius, @distanceAttributeName)
       RETURN doc

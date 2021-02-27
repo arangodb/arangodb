@@ -114,7 +114,7 @@ void ProgressTracker<T>::cleanup() {
   // remove continue.json file, e.g. when the restore completed successfully
   std::unique_lock guard(_writeFileMutex);
   
-  [[maybe_unused]] bool result = basics::FileUtils::remove(directory.pathToFile("continue.json"));
+  [[maybe_unused]] auto result = basics::FileUtils::remove(directory.pathToFile("continue.json"));
 }
 
 }

@@ -93,6 +93,7 @@ namespace {
 using namespace std::literals::string_literals;
 using namespace arangodb;
 using namespace arangodb::iresearch;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 static char const ANALYZER_PREFIX_DELIM = ':'; // name prefix delimiter (2 chars)
 static size_t const ANALYZER_PROPERTIES_SIZE_MAX = 1024 * 1024; // arbitrary value
@@ -1719,10 +1720,10 @@ Result IResearchAnalyzerFeature::emplace(
   } catch (basics::Exception const& e) {
     return {
       e.code(),
-      "caught exception while registering an arangosearch analyzer name '" + std::string(name) +
-      "' type '" + std::string(type) +
-      "' properties '" + properties.toString() +
-      "': " + std::to_string(e.code()) + " " + e.what() };
+            StringUtils::concatT("caught exception while registering an "
+                                 "arangosearch analyzer name '",
+                                 name, "' type '", type, "' properties '",
+                                 properties.toString(), "': ", e.code(), " ", e.what())};
   } catch (std::exception const& e) {
     return {
       TRI_ERROR_INTERNAL,
@@ -1949,9 +1950,10 @@ Result IResearchAnalyzerFeature::bulkEmplace(TRI_vocbase_t& vocbase,
     erase = false;
   } catch (basics::Exception const& e) {
     return {
-      e.code(),
-      "caught exception while registering an arangosearch analyzers"
-      ": " + std::to_string(e.code()) + " " + e.what() };
+        e.code(),
+        StringUtils::concatT(
+            "caught exception while registering an arangosearch analyzers: ", e.code(),
+            " ", e.what())};
   } catch (std::exception const& e) {
     return {
       TRI_ERROR_INTERNAL,
@@ -2216,11 +2218,11 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
 
     auto deleteResult = queryDelete.executeSync();
     if (deleteResult.fail()) {
-      return {
-        TRI_ERROR_INTERNAL,
+      return {TRI_ERROR_INTERNAL,
               arangodb::basics::StringUtils::concatT(
                   "failure to remove dangling analyzers from '", database,
-                  "' Aql error: (", deleteResult.errorNumber(), " ) ", deleteResult.errorMessage())};
+                  "' Aql error: (", deleteResult.errorNumber(), " ) ",
+                  deleteResult.errorMessage())};
     }
 
     static const auto queryUpdateString = arangodb::aql::QueryString(
@@ -2530,9 +2532,10 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     _lastLoad[databaseKey] = loadingRevision;
     _analyzers = std::move(analyzers); // update mappings
   } catch (basics::Exception const& e) {
-    return { e.code(),
-             "caught exception while loading configuration for arangosearch analyzers from database '" +
-              std::string(database) + "': " + std::to_string(e.code()) + " "+ e.what() };
+    return {e.code(),
+            StringUtils::concatT("caught exception while loading configuration "
+                                 "for arangosearch analyzers from database '",
+                                 database, "': ", e.code(), " ", e.what())};
   } catch (std::exception const& e) {
     return { TRI_ERROR_INTERNAL,
              "caught exception while loading configuration for arangosearch analyzers from database '" +
@@ -2708,13 +2711,12 @@ Result IResearchAnalyzerFeature::finalizeRemove(irs::string_ref const& name, irs
 
   try {
     return removeFromCollection(name, vocbase);
-  }
-  catch (basics::Exception const& e) {
-    return { e.code(),
-            "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
-            std::string(name) + "': " + std::to_string(e.code()) + " " + e.what() };
-  }
-  catch (std::exception const& e) {
+  } catch (basics::Exception const& e) {
+    return {e.code(), StringUtils::concatT(
+                          "caught exception while finalizing removing "
+                          "configuration for arangosearch analyzer name '",
+                          std::string(name), "': ", e.code(), " ", e.what())};
+  } catch (std::exception const& e) {
     return { TRI_ERROR_INTERNAL,
              "caught exception while finalizing removing configuration for arangosearch analyzer name '" +
              std::string(name) + "': " + e.what() };
@@ -2899,9 +2901,10 @@ Result IResearchAnalyzerFeature::remove(
       }
     }
   } catch (basics::Exception const& e) {
-    return { e.code(),
-            "caught exception while removing configuration for arangosearch analyzer name '" +
-            std::string(name) + "': " + std::to_string(e.code()) + " "+ e.what() };
+    return {e.code(), StringUtils::concatT(
+                          "caught exception while removing configuration for "
+                          "arangosearch analyzer name '",
+                          name, "': ", e.code(), " ", e.what())};
   } catch (std::exception const& e) {
     return { TRI_ERROR_INTERNAL,
              "caught exception while removing configuration for arangosearch analyzer name '" +
@@ -3048,9 +3051,10 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
 
     pool.setKey(getStringRef(key));
   } catch (basics::Exception const& e) {
-    return { e.code(),
-             "caught exception while persisting configuration for arangosearch analyzer name '" +
-             pool.name() + "': " + std::to_string(e.code()) + " "+ e.what() };
+    return {e.code(), StringUtils::concatT(
+                          "caught exception while persisting configuration for "
+                          "arangosearch analyzer name '",
+                          pool.name(), "': ", e.code(), " ", e.what())};
   } catch (std::exception const& e) {
     return { TRI_ERROR_INTERNAL,
              "caught exception while persisting configuration for arangosearch analyzer name '" +

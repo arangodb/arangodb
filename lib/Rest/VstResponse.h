@@ -52,7 +52,7 @@ class VstResponse : public GeneralResponse {
   velocypack::Buffer<uint8_t>& payload() { return _payload; }
 
   bool isCompressionAllowed() override { return false; }
-  int deflate(size_t size = 16384) override { return 0; };
+  ErrorCode deflate(size_t size = 16384) override { return TRI_ERROR_NO_ERROR; };
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;

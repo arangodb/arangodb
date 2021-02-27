@@ -66,7 +66,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   void getPropertiesVPack(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
