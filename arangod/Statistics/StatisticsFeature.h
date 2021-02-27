@@ -27,6 +27,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Mutex.h"
+#include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
@@ -34,7 +35,13 @@
 #include "Statistics/StatisticsWorker.h"
 #include "Statistics/figures.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
+
 namespace basics {
 
 extern Mutex TRI_RequestsStatisticsMutex;
@@ -97,10 +104,17 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
     return nullptr;
   }
 
+  Result getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                    double start, 
+                                    arangodb::velocypack::Builder& result) const;
+
+  bool allDatabases() const { return _statisticsAllDatabases; }
+
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsAllDatabases;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<Thread> _statisticsThread;
