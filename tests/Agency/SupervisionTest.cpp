@@ -269,7 +269,11 @@ R"=(
   "Target": {
     "Failed": {},
     "Finished": {},
-    "ToDo": {}
+    "ToDo": {},
+    "HotBackup": {
+      "TransferJobs": {
+      }
+    }
   }
 }
 )=";
@@ -295,6 +299,17 @@ static std::shared_ptr<VPackBuilder> runEnforceReplication(Node const& snap) {
     VPackObjectBuilder guard(envelope.get());
     arangodb::consensus::enforceReplicationFunctional(
       snap, jobId, envelope);
+  }
+  return envelope;
+}
+
+static std::shared_ptr<VPackBuilder> runCleanupHotbackupTransferJobs(
+    Node const& snap) {
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder guard(envelope.get());
+    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+      snap, envelope);
   }
   return envelope;
 }
@@ -422,3 +437,38 @@ TEST_F(SupervisionTestClass, no_remove_follower_loop_distributeshardslike) {
   VPackSlice content = envelope->slice();
   EXPECT_EQ(content.length(), 0);
 }
+
+TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
+  for (size_t i = 0; i < 200; ++i) {
+    _snapshot("/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i))
+      = createNode(R"=(
+{
+  "Timestamp": "2021-02-25T12:38:29Z",
+  "DBServers": {
+    "PRMR-b9b08faa-6286-4745-9c37-15e85b3a7d27": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    },
+    "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03": {
+      "Progress": {
+        "Total": 5,
+        "Time": "2021-02-25T12:38:29Z",
+        "Done": 5
+      },
+      "Status": "COMPLETED"
+    }
+  },
+  "BackupId": "2021-02-25T12.38.11Z_c5656558-54ac-42bd-8851-08969d1a53f0"
+}
+        )=");
+  }
+  std::shared_ptr<VPackBuilder> envelope = runCleanupHotbackupTransferJobs(
+      _snapshot);
+  VPackSlice content = envelope->slice();
+  EXPECT_EQ(content.length(), 100);
+}
+

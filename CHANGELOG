@@ -9,6 +9,10 @@ v3.7.9 (XXXX-XX-XX)
   Statistics for non-`_system` databases were not properly displayed since
   3.7.6 due to an internal change in the statistics processing.
 
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+
+* Cleanup old HotBackup transfer jobs in agency.
+
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup
   jobs.
 
