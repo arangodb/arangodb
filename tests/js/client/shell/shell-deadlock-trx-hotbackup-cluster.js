@@ -85,7 +85,7 @@ function trxWriteHotbackupDeadlock () {
                         internal.createHotbackup({});
                         console.log("Created a hotbackup!");
                         good++;
-                      } catch(e) {
+                      } catch (e) {
                         console.error("Caught exception when creating a hotbackup!", e);
                         bad++;
                         wait(0.5, false);
@@ -137,8 +137,9 @@ function trxWriteHotbackupDeadlock () {
         res = arango.PUT(`/_api/job/${jobid}`, {});
         if (res.code !== 204) {
           assertEqual(200, res.code, "Response code bad.");
-          assertEqual(0, res.result.bad, "Not all hotbackups went through!");
           print("Managed to perform", res.result.good, "hotbackups.");
+          assertTrue(res.result.bad < 3, "Too many failed hotbackups!");
+          assertTrue(res.result.good > 2, "Too few good hotbackups!");
           return;
         }
         wait(1.0, false);

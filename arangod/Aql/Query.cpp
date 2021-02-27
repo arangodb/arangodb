@@ -99,7 +99,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _resultCode(-1), // -1 = "not set" yet
+      _resultCode(std::nullopt),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
       _queryKilled(false),
@@ -1129,9 +1129,9 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-int Query::resultCode() const noexcept {
+ErrorCode Query::resultCode() const noexcept {
   // never return negative value from here
-  return std::max<int>(TRI_ERROR_NO_ERROR, _resultCode);
+  return _resultCode.value_or(TRI_ERROR_NO_ERROR);
 }
 
 /// @brief enter a new state
@@ -1149,12 +1149,8 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 }
 
 /// @brief cleanup plan and engine for current query
-ExecutionState Query::cleanupPlanAndEngine(int errorCode, bool sync) {
-  // set the final result code (either 0 = no error, or a specific error code).
-  // this can only be changed from "not set" to either 0 ("no error") or 
-  // > 0 (a specific error)
-  TRI_ASSERT(errorCode >= TRI_ERROR_NO_ERROR);
-  if (_resultCode < TRI_ERROR_NO_ERROR) {
+ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
+  if (!_resultCode.has_value()) {
     // result code not yet set.
     _resultCode = errorCode;
   }
@@ -1239,7 +1235,7 @@ ExecutionEngine* Query::rootEngine() const {
 
 namespace {
 
-futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
+futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   auto& serverQueryIds = query.serverQueryIds();
   TRI_ASSERT(!serverQueryIds.empty());
@@ -1304,7 +1300,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
             }
           }
         }
-        
+
         val = res.slice().get("code");
         if (val.isNumber()) {
           return Result{ErrorCode{val.getNumericValue<int>()}};
@@ -1329,7 +1325,7 @@ futures::Future<Result> finishDBServerParts(Query& query, int errorCode) {
 }
 } // namespace
 
-aql::ExecutionState Query::cleanupTrxAndEngines(int errorCode) {
+aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;

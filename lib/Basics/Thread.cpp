@@ -224,7 +224,7 @@ void Thread::shutdown() {
 
       // we still have to wait here until the thread has terminated, but this should
       // happen immediately after _state has been set to STOPPED!
-      int ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
+      auto ret = _state.load() == ThreadState::STOPPED ? TRI_JoinThread(&_thread) : TRI_ERROR_FAILED;
 #else
       auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
 #endif

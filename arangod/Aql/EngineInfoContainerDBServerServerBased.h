@@ -171,11 +171,11 @@ class EngineInfoContainerDBServerServerBased {
    * @param pool The ConnectionPool
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
-   * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+   * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
   std::vector<futures::Future<network::Response>> cleanupEngines(
-      int errorCode, std::string const& dbname, aql::ServerQueryIdList& queryIds) const;
+      ErrorCode errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const;
 
 
   // Insert the Locking information into the message to be send to DBServers
