@@ -24,6 +24,11 @@
 #define LIB_BASICS_ERRORCODE_H
 
 #include <iosfwd>
+#include <string>
+
+namespace arangodb::velocypack {
+class Value;
+}
 
 // TODO We probably want to put this into a namespace, but this is easy to
 //      refactor automatically later.
@@ -37,9 +42,11 @@ class ErrorCode {
   constexpr auto operator=(ErrorCode const&) noexcept -> ErrorCode& = default;
   constexpr auto operator=(ErrorCode&&) noexcept -> ErrorCode& = default;
 
-  // TODO Remove this later, or at least mark it explicit, and fix remaining
-  //      compile errors.
-  constexpr operator int() const noexcept { return _value; }
+  [[nodiscard]] constexpr explicit operator int() const noexcept { return _value; }
+
+  // This could also be constexpr, but we'd have to include <velocypack/Value.h>,
+  // and I'm unsure whether that's worth it, and rather rely on IPO here.
+  [[nodiscard]] explicit operator arangodb::velocypack::Value() const noexcept;
 
   [[nodiscard]] constexpr auto operator==(ErrorCode other) const noexcept -> bool {
     return _value == other._value;
@@ -49,11 +56,20 @@ class ErrorCode {
     return _value != other._value;
   }
 
-  [[nodiscard]] constexpr auto asInt() const noexcept -> int { return _value; }
+  friend auto to_string(::ErrorCode value) -> std::string;
 
  private:
   int _value;
 };
+
+namespace std {
+template <>
+struct hash<ErrorCode> {
+  auto operator()(ErrorCode const& errorCode) const noexcept -> std::size_t {
+    return std::hash<int>{}(static_cast<int>(errorCode));
+  }
+};
+}  // namespace std
 
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream&;
 

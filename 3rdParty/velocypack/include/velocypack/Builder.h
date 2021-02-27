@@ -418,6 +418,11 @@ class Builder {
     return addInternal<Slice>(sub);
   }
 
+  // Add a shared slice to an array
+  inline uint8_t* add(SharedSlice const& sub) {
+    return addInternal<Slice>(sub.slice());
+  }
+
   // Add a subvalue into an array from a ValuePair:
   inline uint8_t* add(ValuePair const& sub) {
     return addInternal<ValuePair>(sub);

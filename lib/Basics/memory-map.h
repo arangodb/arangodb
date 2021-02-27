@@ -69,13 +69,13 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 /// @brief 'unmaps' or removes memory associated with a memory mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
                  int fileDescriptor, void** mmHandle);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gives hints about upcoming memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
+ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice);
 
 #endif

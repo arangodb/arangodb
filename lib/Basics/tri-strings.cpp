@@ -282,28 +282,6 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate three strings using a memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_Concatenate3String(char const* a, char const* b, char const* c) {
-  size_t na = strlen(a);
-  size_t nb = strlen(b);
-  size_t nc = strlen(c);
-
-  char* result = static_cast<char*>(TRI_Allocate(na + nb + nc + 1));
-
-  if (result != nullptr) {
-    memcpy(result, a, na);
-    memcpy(result + na, b, nb);
-    memcpy(result + na + nb, c, nc);
-
-    result[na + nb + nc] = '\0';
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
