@@ -1,7 +1,7 @@
 devel
 -----
 
-* Add `--shard` option to arangodump, so that dumps can be restrict to one or
+* Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
