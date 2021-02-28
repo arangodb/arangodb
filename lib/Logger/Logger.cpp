@@ -559,7 +559,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // human readable format
     LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
-    
+
     // output prefix
     if (!_outputPrefix.empty()) {
       out.append(_outputPrefix);
