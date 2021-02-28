@@ -538,6 +538,14 @@ Result DumpFeature::DumpCollectionJob::run(arangodb::httpclient::SimpleHttpClien
           TRI_ASSERT(it.key.isString());
           std::string shardName = it.key.copyString();
 
+          if (!options.shards.empty()) {
+            // dump is restricted to specific shards
+            if (std::find(options.shards.begin(), options.shards.end(), shardName) == options.shards.end()) {
+              // do not dump this shard, as it is not in the include list
+              continue;
+            }
+          }
+
           // extract dbserver id
           if (!it.value.isArray() || it.value.length() == 0 || !it.value[0].isString()) {
             return {TRI_ERROR_BAD_PARAMETER, "unexpected value for 'shards' attribute"};
@@ -625,6 +633,12 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_options.collections));
+  
+  options->addOption(
+      "--shard",
+      "restrict to shard name (can be specified multiple times)",
+      new VectorParameter<StringParameter>(&_options.shards))
+      .setIntroducedIn(30800);
 
   options->addOption("--initial-batch-size",
                      "initial size for individual data batches (in bytes)",
@@ -636,8 +650,9 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption(
       "--threads",
-      "maximum number of collections to process in parallel. From v3.4.0",
-      new UInt32Parameter(&_options.threadCount));
+      "maximum number of collections/shards to process in parallel",
+      new UInt32Parameter(&_options.threadCount))
+      .setIntroducedIn(30400);
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_options.dumpData));

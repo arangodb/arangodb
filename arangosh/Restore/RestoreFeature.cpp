@@ -1164,7 +1164,9 @@ arangodb::Result processInputDirectory(
         if (result.fail()) {
           return result;
         }
+      }
 
+      if (progressTracker.getStatus(name.copyString()).state < arangodb::RestoreFeature::CREATED) {
         progressTracker.updateStatus(name.copyString(),
                                      arangodb::RestoreFeature::CollectionStatus{
                                          arangodb::RestoreFeature::CREATED});

@@ -192,13 +192,66 @@ function dumpIntegrationSuite () {
       db._drop(cn + "AutoIncrement");
     },
     
+    testDumpOnlyOneShard: function () {
+      if (!isCluster) {
+        return;
+      }
+
+      let path = fs.getTempFile();
+
+      let c = db._collection(cn);
+      let shardCounts = c.count(true);
+      let shards = Object.keys(shardCounts);
+
+      assertEqual(3, shards.length);
+      try {
+        let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0]];
+        let tree = runDump(path, args, 0); 
+   
+        const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+        let file = fs.join(path, prefix + '.data.json');
+        let data = fs.readFileSync(file).toString();
+        assertEqual(shardCounts[shards[0]] + 1, data.split('\n').length);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+    
+    testDumpOnlyTwoShards: function () {
+      if (!isCluster) {
+        return;
+      }
+
+      let path = fs.getTempFile();
+
+      let c = db._collection(cn);
+      let shardCounts = c.count(true);
+      let shards = Object.keys(shardCounts);
+
+      assertEqual(3, shards.length);
+      try {
+        let args = ['--collection', cn, '--dump-data', 'true', '--compress-output', 'false', '--shard', shards[0], '--shard', shards[1]];
+        let tree = runDump(path, args, 0); 
+   
+        const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+        let file = fs.join(path, prefix + '.data.json');
+        let data = fs.readFileSync(file).toString();
+        assertEqual(shardCounts[shards[0]] + shardCounts[shards[1]] + 1, data.split('\n').length);
+      } finally {
+        try {
+          fs.removeDirectory(path);
+        } catch (err) {}
+      }
+    },
+   
     testDumpAutoIncrementKeyGenerator: function () {
       if (isCluster) {
         // autoincrement key generator is not supported in cluster
         return;
       }
 
-      let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn + 'AutoIncrement', '--dump-data', 'false'];
@@ -222,7 +275,6 @@ function dumpIntegrationSuite () {
     },
     
     testDumpPaddedKeyGenerator: function () {
-      let keyfile = fs.getTempFile();
       let path = fs.getTempFile();
       try {
         let args = ['--collection', cn + 'Padded', '--dump-data', 'false'];
