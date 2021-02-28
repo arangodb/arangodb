@@ -636,7 +636,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   
   options->addOption(
       "--shard",
-      "restrict to shard name (can be specified multiple times)",
+      "restrict dump to shard (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_options.shards))
       .setIntroducedIn(30800);
 
