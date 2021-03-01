@@ -920,13 +920,8 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     return res;
   };
 
-<<<<<<< HEAD
-
-  std::unordered_map<int, size_t> countErrorCodes;
-=======
   Result res;
   std::unordered_map<ErrorCode, size_t> countErrorCodes;
->>>>>>> 26d7e986cdf132be54072d56e3b8141ec57cd3bf
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
   } else {
