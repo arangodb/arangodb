@@ -713,6 +713,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
       }
 
+      // Index the result array to avoid a performance problem in the current java
+      // driver; this is removed in 3.8. See #13476 for details.
+      options.buildUnindexedArrays = false;
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
