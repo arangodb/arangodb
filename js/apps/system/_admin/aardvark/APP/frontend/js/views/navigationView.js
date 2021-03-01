@@ -45,6 +45,7 @@
 
       this.isCluster = options.isCluster;
       this.foxxApiEnabled = options.foxxApiEnabled;
+      this.statisticsInAllDatabases = options.statisticsInAllDatabases;
 
       this.handleKeyboardHotkeys();
 
@@ -66,6 +67,7 @@
 
     render: function () {
       $(this.subEl).html(this.templateSub.render({
+        frontendConfig: this.frontendConfig,
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
@@ -76,6 +78,7 @@
 
       $(this.el).html(this.template.render({
         currentDB: this.currentDB,
+        statisticsInAllDatabases: this.statisticsInAllDatabases,
         isCluster: this.isCluster,
         foxxApiEnabled: this.foxxApiEnabled,
         readOnly: readOnly

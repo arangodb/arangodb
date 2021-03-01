@@ -26,15 +26,21 @@
 #include <array>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 #include "Statistics/figures.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class Thread;
 class StatisticsWorker;
 namespace stats {
-  class Descriptions;
+class Descriptions;
+}
+namespace velocypack {
+class Builder;
 }
 
 namespace statistics {
@@ -103,10 +109,17 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
     return nullptr;
   }
 
+  Result getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                    double start, 
+                                    arangodb::velocypack::Builder& result) const;
+
+  bool allDatabases() const { return _statisticsAllDatabases; }
+
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsAllDatabases;
 
   std::unique_ptr<stats::Descriptions> _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

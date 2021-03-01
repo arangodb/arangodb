@@ -23,7 +23,11 @@
 #include "StatisticsFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Query.h"
+#include "Aql/QueryString.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -39,6 +43,8 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -53,6 +59,12 @@ using namespace arangodb::options;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
+
+namespace {
+std::string const stats15Query = "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections LET clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent) RETURN {clientConnections15M: clientConnections15M || 0}";
+  
+std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, physicalMemory: s.server.physicalMemory, residentSizeCurrent: s.system.residentSize, clientConnectionsCurrent: s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: s.client.bytesReceivedPerSecond, http: { optionsPerSecond: s.http.requestsOptionsPerSecond, putsPerSecond: s.http.requestsPutPerSecond, headsPerSecond: s.http.requestsHeadPerSecond, postsPerSecond: s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: s.http.requestsOptionsPerSecond, patchesPerSecond: s.http.requestsPatchPerSecond } }";
+} // namespace
 
 namespace arangodb {
 namespace statistics {
@@ -146,6 +158,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
+      _statisticsAllDatabases(true),
       _descriptions(new stats::Descriptions(server)) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
@@ -168,6 +181,15 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
     .setIntroducedIn(30409)
     .setIntroducedIn(30501);
+
+  options->addOption("--server.statistics-all-databases",
+                     "provide cluster statistics in web interface in all databases",
+                     new BooleanParameter(&_statisticsAllDatabases),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator
+                     ))
+                     .setIntroducedIn(30709);
 }
 
 void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -258,4 +280,85 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   if (_statisticsWorker != nullptr) {
     _statisticsWorker->generateRawStatistics(result, now);
   }
+}
+
+Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                                     double start, 
+                                                     arangodb::velocypack::Builder& result) const {
+  if (!ServerState::instance()->isCoordinator()) {
+    return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
+  }
+
+  if (!isEnabled()) {
+    return {TRI_ERROR_DISABLED, "statistics are disabled"};
+  }
+
+  if (!vocbase.isSystem() && !_statisticsAllDatabases) {
+    return {TRI_ERROR_FORBIDDEN, "statistics only available for system database"};
+  }
+
+  // we need to access the system database here...
+  ExecContextSuperuserScope exscope;
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    
+  // build bind variables for query
+  auto bindVars = std::make_shared<VPackBuilder>();
+
+  auto buildBindVars = [&](std::string const& collection) {
+    bindVars->clear();
+    bindVars->openObject();
+    bindVars->add("@collection", VPackValue(collection));
+    bindVars->add("start", VPackValue(start));
+    bindVars->add("clusterIds", VPackValue(VPackValueType::Array));
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      bindVars->add(VPackValue(coordinator));
+    }
+    bindVars->close(); // clusterIds
+    bindVars->close();
+  };
+
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDbFeature.use();
+
+  result.openObject();
+  {
+    buildBindVars(StaticStrings::Statistics15Collection);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
+                               arangodb::aql::QueryString(stats15Query),
+                               bindVars,
+                               std::shared_ptr<arangodb::velocypack::Builder>());
+  
+    query.queryOptions().cache = false;
+  
+    aql::QueryResult queryResult = query.executeSync();
+
+    if (queryResult.result.fail()) {
+      return queryResult.result;
+    }
+
+    result.add("stats15", queryResult.data->slice());
+  }
+  
+  {
+    buildBindVars(StaticStrings::StatisticsCollection);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
+                               arangodb::aql::QueryString(statsSamplesQuery),
+                               bindVars,
+                               std::shared_ptr<arangodb::velocypack::Builder>());
+  
+    query.queryOptions().cache = false;
+  
+    aql::QueryResult queryResult = query.executeSync();
+
+    if (queryResult.result.fail()) {
+      return queryResult.result;
+    }
+
+    result.add("statsSamples", queryResult.data->slice());
+  }
+
+  result.close();
+
+  return {};
 }
