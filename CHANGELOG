@@ -1,6 +1,9 @@
 devel
 -----
 
+* Never respond fully qualified to read requests, if not certain that
+  we are shard leader
+
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs

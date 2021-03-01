@@ -89,13 +89,13 @@ namespace {
 
 enum class ReplicationType { NONE, LEADER, FOLLOWER };
 
-Result buildRefusalResult(LogicalCollection const& collection, char const* operation, 
+Result buildRefusalResult(LogicalCollection const& collection, char const* operation,
                           OperationOptions const& options, std::string const& leader) {
   std::stringstream msg;
   msg << TRI_errno_string(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION)
       << ": shard: " << collection.vocbase().name() << "/" << collection.name()
-      << ", operation: " << operation 
-      << ", from: " << options.isSynchronousReplicationFrom 
+      << ", operation: " << operation
+      << ", from: " << options.isSynchronousReplicationFrom
       << ", current leader: " << leader;
   return Result(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, msg.str());
 }
@@ -620,6 +620,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(std::string const& collectionName,
                                                OperationOptions const& options) {
+
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
@@ -627,6 +628,14 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   }
 
   VPackBuilder resultBuilder;
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
   resultBuilder.openArray();
 
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY);
@@ -742,9 +751,9 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
       result.add(opRes.slice());
     }
     return opRes.result;
-  } 
+  }
 
-  auto translateName = [this](std::string const& collectionName) { 
+  auto translateName = [this](std::string const& collectionName) {
     if (_state->isDBServer() && vocbase().isOneShard()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
@@ -828,7 +837,7 @@ Future<OperationResult> transaction::Methods::documentAsync(std::string const& c
       events::ReadDocument(vocbase().name(), cname, value, opRes.options, opRes.errorNumber());
       return std::move(opRes);
     });
-  } 
+  }
   return documentLocal(cname, value, options);
 }
 
@@ -860,6 +869,15 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   VPackBuilder resultBuilder;
+  Result res;
+
+  if (_state->isDBServer()) {
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return futures::makeFuture(
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+    }
+  }
 
   auto workForOneDocument = [&](VPackSlice value, bool isMultiple) -> Result {
     Result res;
@@ -894,7 +912,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
         }
         return true;
       });
-              
+
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
       }
@@ -902,7 +920,7 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     return res;
   };
 
-  Result res;
+
   std::unordered_map<int, size_t> countErrorCodes;
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
@@ -988,7 +1006,7 @@ static double chooseTimeoutForReplication(size_t count, size_t totalBytes) {
   // we run into an error anyway. This is when a follower will be dropped.
 
   // We leave this code in place for now.
-  
+
   // We usually assume that a server can process at least 2500 documents
   // per second (this is a low estimate), and use a low limit of 0.5s
   // and a high timeout of 120s
@@ -1051,7 +1069,7 @@ Future<OperationResult> transaction::Methods::insertLocal(std::string const& cna
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(
-            ::buildRefusalResult(*collection, "insert", options, theLeader), 
+            ::buildRefusalResult(*collection, "insert", options, theLeader),
             options);
       }
     }
@@ -1351,7 +1369,7 @@ Future<OperationResult> transaction::Methods::modifyLocal(std::string const& col
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(
-            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader), 
+            ::buildRefusalResult(*collection, (operation == TRI_VOC_DOCUMENT_OPERATION_REPLACE ? "replace" : "update"), options, theLeader),
             options);
       }
     }
@@ -1484,7 +1502,7 @@ Future<OperationResult> transaction::Methods::removeAsync(std::string const& cna
                                                           VPackSlice value,
                                                           OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-  
+
   if (!value.isObject() && !value.isArray() && !value.isString()) {
     // must provide a document object or an array of documents
     events::DeleteDocument(vocbase().name(), cname, value, options,
@@ -1573,7 +1591,7 @@ Future<OperationResult> transaction::Methods::removeLocal(std::string const& col
       }
       if (options.isSynchronousReplicationFrom != theLeader) {
         return OperationResult(
-            ::buildRefusalResult(*collection, "remove", options, theLeader), 
+            ::buildRefusalResult(*collection, "remove", options, theLeader),
             options);
       }
     }
@@ -1715,6 +1733,14 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
 
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   iterator->allDocuments(
@@ -1795,7 +1821,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
       if (options.isSynchronousReplicationFrom != theLeader) {
         return futures::makeFuture(
             OperationResult(
-                ::buildRefusalResult(*collection, "truncate", options, theLeader), 
+                ::buildRefusalResult(*collection, "truncate", options, theLeader),
                 options));
       }
     }
@@ -2387,7 +2413,7 @@ Future<Result> Methods::replicateOperations(
 
             LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
                 << "synchronous replication of " << opName << " operation: "
-                << "follower " << follower << " for shard " 
+                << "follower " << follower << " for shard "
                 << collection->vocbase().name() << "/" << collection->name()
                 << " refused the operation: " << r.errorMessage();
           }
@@ -2401,10 +2427,10 @@ Future<Result> Methods::replicateOperations(
       if (!replicationWorked) {
         LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
             << "synchronous replication of " << opName << " operation: "
-            << ": dropping follower " << follower << " for shard " 
+            << ": dropping follower " << follower << " for shard "
             << collection->vocbase().name() << "/" << collection->name()
             << ": " << resp.combinedResult().errorMessage();
-        
+
         Result res = collection->followers()->remove(follower);
         if (res.ok()) {
           // simon: follower cannot be re-added without lock on collection
@@ -2412,8 +2438,8 @@ Future<Result> Methods::replicateOperations(
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation: "
-              << "could not drop follower " << follower << " for shard " 
-              << collection->vocbase().name() << "/" << collection->name() 
+              << "could not drop follower " << follower << " for shard "
+              << collection->vocbase().name() << "/" << collection->name()
               << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
