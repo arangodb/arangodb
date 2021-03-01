@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed older reference to VelocyPackDumper.
+
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
