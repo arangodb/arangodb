@@ -38,8 +38,9 @@ struct ProgressTracker {
   ProgressTracker& operator=(ProgressTracker&&) noexcept = delete;
 
   T getStatus(std::string const& collectionName);
-  void updateStatus(std::string const& collectionName, T const& status);
-  void cleanup();
+  /// @brief returns true if the progress was synced to disc
+  bool updateStatus(std::string const& collectionName, T const& status);
+  std::string filename() const;
 
   ManagedDirectory& directory;
   std::shared_mutex _collectionStatesMutex;
@@ -49,14 +50,14 @@ struct ProgressTracker {
 };
 
 template <typename T>
-void ProgressTracker<T>::updateStatus(std::string const& collectionName,
+bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
                                       T const& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
     _collectionStates[collectionName] = status;
 
     if (_writeQueued) {
-      return;
+      return false;
     }
 
     _writeQueued = true;
@@ -81,6 +82,7 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
     arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
                                                          VPackSlice(buffer.data()), true);
   }
+  return true;
 }
 
 template <typename T>
@@ -110,11 +112,8 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
 }
 
 template <typename T>
-void ProgressTracker<T>::cleanup() {
-  // remove continue.json file, e.g. when the restore completed successfully
-  std::unique_lock guard(_writeFileMutex);
-  
-  [[maybe_unused]] auto result = basics::FileUtils::remove(directory.pathToFile("continue.json"));
+std::string ProgressTracker<T>::filename() const {
+  return directory.pathToFile("continue.json");
 }
 
 }
