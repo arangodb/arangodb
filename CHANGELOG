@@ -5,6 +5,21 @@ v3.7.9 (XXXX-XX-XX)
   iterating over AQL cursor results in certain cases. This works around this.
   This workaround will no longer be available in 3.8.
 
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly when
+  not being logged in to the `_system` database. For all other databases than
+  `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases` controls
+  whether cluster statistics are displayed in the web interface for all
+  databases (if the option is set to `true`) or just for the system database (if
+  the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases.
+
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Cleanup old HotBackup transfer jobs in agency.
