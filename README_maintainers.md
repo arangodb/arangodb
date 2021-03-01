@@ -1046,11 +1046,13 @@ or:
 
 revalidating one testcase using jq:
 
-    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
 
 getting the PIDs of the server in the testrun using jq:
 
-    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
     "1721674_agent": {
     "1721675_agent": {
     "1721676_agent": {
