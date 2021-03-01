@@ -1027,7 +1027,7 @@ Currently available Analyzers are:
     - `processStats.sum_servers.read_bytes` - 
     - `processStats.sum_servers.write_bytes` - 
     - `processStats.sum_servers.cancelled_write_bytes` - 
-    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` sumarized over all instances
+    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
     - `processStats.sum_servers.sockstat_TCP_inuse` - 
     - `processStats.sum_servers.sockstat_TCP_orphan` - 
     - `processStats.sum_servers.sockstat_TCP_tw` - 
