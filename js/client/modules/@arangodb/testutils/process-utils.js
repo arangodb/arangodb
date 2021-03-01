@@ -1403,10 +1403,8 @@ function getSockStat(arangod, options, preamble) {
 }
 function getSockStatFile(pid) {
   try {
-    let sockStat = fs.read("/proc/" + pid + "/net/sockstat");
-    return sockStat;
-  }
-  catch (e) {/* oops, process already gone? don't care. */ }
+    return fs.read("/proc/" + pid + "/net/sockstat");
+  } catch (e) {/* oops, process already gone? don't care. */ }
   return "";
 }
 
