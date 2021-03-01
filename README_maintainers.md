@@ -1027,7 +1027,12 @@ Currently available Analyzers are:
     - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
     - `processStats.sum_servers.sockstat_RAW_inuse` - 
     - `processStats.sum_servers.sockstat_FRAG_inuse` - 
-    - `processStats.sum_servers.sockstat_FRAG_memory` - 
+    - `processStats.sum_servers.sockstat_FRAG_memory` -
+    
+    Process stats are kept by process.
+    So if your DB-Server had the PID `1721882`, you can dial its values by specifying
+    `processStats.1721882_dbserver.sockstat_TCP_tw`
+    into the generated table.
 
 i.e.
 
@@ -1038,3 +1043,18 @@ or:
     ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
        --readFile out/UNITTEST_RESULT.json \
        --tableColmuns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
+
+revalidating one testcase using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
+
+getting the PIDs of the server in the testrun using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
+    "1721674_agent": {
+    "1721675_agent": {
+    "1721676_agent": {
+    "1721882_dbserver": {
+    "1721883_dbserver": {
+    "1721884_dbserver": {
+    "1721885_coordinator": {
