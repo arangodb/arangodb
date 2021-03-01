@@ -404,8 +404,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         log();
 
         _resultBuilderOptions = std::make_unique<VPackOptions>(VPackOptions::Defaults);
-        _resultBuilderOptions->buildUnindexedArrays = true;
-        _resultBuilderOptions->buildUnindexedObjects = true;
+        // Index the result array to avoid a performance problem in the current java
+        // driver; this is removed in 3.8. See #13476 for details.
+        _resultBuilderOptions->buildUnindexedArrays = false;
+        _resultBuilderOptions->buildUnindexedObjects = false;
 
         // NOTE: If the options have a shorter lifetime than the builder, it
         // gets invalid (at least set() and close() are broken).
@@ -414,7 +416,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // reserve some space in Builder to avoid frequent reallocs
         _resultBuilder->reserve(16 * 1024);
 
-        _resultBuilder->openArray();
+        // Index the result array to avoid a performance problem in the current java
+        // driver; this is removed in 3.8. See #13476 for details.
+        _resultBuilder->openArray(false);
         _executionPhase = ExecutionPhase::EXECUTE;
       }
       [[fallthrough]];
@@ -709,6 +713,9 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
       }
 
+      // Index the result array to avoid a performance problem in the current java
+      // driver; this is removed in 3.8. See #13476 for details.
+      options.buildUnindexedArrays = false;
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
