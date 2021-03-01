@@ -563,7 +563,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     tableColmuns = options.tableColmuns.split(',');
   }
   tableColmuns.forEach(colName => {
-    if (timeFormatColumns.find(val => {return val == colName; })) {
+    if (timeFormatColumns.find(val => {return val === colName; })) {
       tableFormaters.push(fancyTimeFormat);
     } else {
       tableFormaters.push(formatNone);
@@ -655,7 +655,7 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     endTestSuite: function(options, state, testSuite, testSuiteName) {
     },
     endTestRun: function(options, state, testRun, testRunName) {
-      testRunStatistics += resultTable.toString()
+      testRunStatistics += resultTable.toString();
     }
   });
   print(testRunStatistics);
@@ -894,7 +894,7 @@ function locateLongSetupTeardown(options, results) {
           print(RED + "no results for: " + currentTestrun + RESET);
         }
       } else {
-        testRunStatistics += resultTable.toString()
+        testRunStatistics += resultTable.toString();
         sortedByDuration = [];
       }
     }
