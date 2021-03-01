@@ -177,7 +177,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "enable smart joins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
