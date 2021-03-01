@@ -22,8 +22,20 @@
 
 #include "ErrorCode.h"
 
+#include <velocypack/Value.h>
+
 #include <ostream>
 
+using namespace arangodb;
+
+auto to_string(::ErrorCode value) -> std::string {
+  return std::to_string(value._value);
+}
+
+ErrorCode::operator arangodb::velocypack::Value() const noexcept {
+  return velocypack::Value(_value);
+}
+
 auto operator<<(std::ostream& out, ::ErrorCode const& res) -> std::ostream& {
-  return out << res.asInt();
+  return out << static_cast<int>(res);
 }

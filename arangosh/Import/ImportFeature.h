@@ -48,7 +48,7 @@ class ImportFeature final : public application_features::ApplicationFeature,
   void start() override;
 
  private:
-  int tryCreateDatabase(ClientFeature&, std::string const& name);
+  ErrorCode tryCreateDatabase(ClientFeature& client, std::string const& name);
 
   std::string _filename;
   bool _useBackslash;

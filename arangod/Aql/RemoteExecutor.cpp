@@ -163,7 +163,7 @@ std::pair<ExecutionState, size_t> ExecutionBlockImpl<RemoteExecutor>::skipSomeWi
 
   if (_requestInFlight) {
     // Already sent a shutdown request, but haven't got an answer yet.
-    return {ExecutionState::WAITING, TRI_ERROR_NO_ERROR};
+    return {ExecutionState::WAITING, 0};
   }
 
   if (_lastError.fail()) {
@@ -405,7 +405,8 @@ auto ExecutionBlockImpl<RemoteExecutor>::deserializeExecuteCallResultBody(VPackS
     -> ResultT<AqlExecuteResult> {
   // Errors should have been caught earlier
   TRI_ASSERT(TRI_ERROR_NO_ERROR ==
-             VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::Code, -1));
+             VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::Code,
+                                                          TRI_ERROR_INTERNAL));
 
   if (ADB_UNLIKELY(!slice.isObject())) {
     using namespace std::string_literals;
@@ -461,8 +462,7 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
     if (slice.isObject()) {
       VPackSlice errSlice = slice.get(StaticStrings::Error);
       if (errSlice.isBool() && errSlice.getBool()) {
-        res = ErrorCode{
-            VelocyPackHelper::getNumericValue<int>(slice, StaticStrings::ErrorNum, res)};
+        res = VelocyPackHelper::getNumericValue<ErrorCode>(slice, StaticStrings::ErrorNum, res);
         VPackStringRef ref =
             VelocyPackHelper::getStringRef(slice, StaticStrings::ErrorMessage,
                                            VPackStringRef(

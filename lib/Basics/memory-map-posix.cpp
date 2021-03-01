@@ -113,13 +113,13 @@ ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 // @brief unmap a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
-                 int fileDescriptor, void** mmHandle) {
+ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                       int fileDescriptor, void** mmHandle) {
   TRI_ASSERT(*mmHandle == nullptr);  // only useful for Windows
 
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res == 0) {
     LOG_TOPIC("a12c1", DEBUG, Logger::MMAP)
         << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
         << ", file-descriptor " << fileDescriptor;
@@ -143,14 +143,14 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 /// @brief gives hints about upcoming sequential memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
+ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
   LOG_TOPIC("399d4", TRACE, Logger::MMAP) << "madvise " << advice << " for range "
                                           << Logger::RANGE(memoryAddress, numOfBytes);
 
   int res = madvise(memoryAddress, numOfBytes, advice);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 

@@ -239,7 +239,7 @@ void LogAppenderFile::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    FileUtils::remove(backup);
+    std::ignore = FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -263,7 +263,7 @@ void LogAppenderFile::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      FileUtils::remove(backup);
+      std::ignore = FileUtils::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change

@@ -329,7 +329,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   addFeature<arangodb::EngineSelectorFeature>(false);
 
   if (start) {
-    startFeatures();
+    MockMetricsServer::startFeatures();
   }
 }
 
@@ -339,7 +339,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   addFeature<arangodb::NetworkFeature>(false);
 
   if (start) {
-    startFeatures();
+    MockV8Server::startFeatures();
   }
 }
 
@@ -356,7 +356,7 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
   SetupAqlPhase(*this);
 
   if (start) {
-    startFeatures();
+    MockAqlServer::startFeatures();
   }
 }
 
@@ -412,7 +412,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   addFeature<arangodb::QueryRegistryFeature>(false);
   addFeature<arangodb::NetworkFeature>(false);
   if (start) {
-    startFeatures();
+    MockRestServer::startFeatures();
   }
 }
 
@@ -693,8 +693,8 @@ MockDBServer::MockDBServer(bool start, bool useAgencyMock)
   addFeature<arangodb::FlushFeature>(false);        // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
   if (start) {
-    startFeatures();
-    createDatabase("_system");
+    MockDBServer::startFeatures();
+    MockDBServer::createDatabase("_system");
   }
   ServerState::instance()->setId("PRMR_0001");
 }
@@ -805,8 +805,8 @@ MockCoordinator::MockCoordinator(bool start, bool useAgencyMock)
     : MockClusterServer(useAgencyMock) {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
   if (start) {
-    startFeatures();
-    createDatabase("_system");
+    MockCoordinator::startFeatures();
+    MockCoordinator::createDatabase("_system");
   }
 }
 
@@ -854,4 +854,10 @@ void MockCoordinator::dropDatabase(std::string const& name) {
 
 arangodb::network::ConnectionPool* MockCoordinator::getPool() {
   return _pool.get();
+}
+
+MockRestAqlServer::MockRestAqlServer() {
+  SetupAqlPhase(*this);
+  addFeature<arangodb::NetworkFeature>(false);
+  MockRestAqlServer::startFeatures();
 }

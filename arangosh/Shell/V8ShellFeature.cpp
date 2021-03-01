@@ -439,7 +439,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   return v8connection;
 }
 
-int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
+ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
   auto isolate = _isolate;

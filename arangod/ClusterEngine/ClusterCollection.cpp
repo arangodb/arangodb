@@ -180,7 +180,7 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 }
 
 /// @brief closes an open collection
-int ClusterCollection::close() {
+ErrorCode ClusterCollection::close() {
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();
