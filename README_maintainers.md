@@ -1005,7 +1005,7 @@ Currently available Analyzers are:
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
-  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColmuns`:
+  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
     - `duration` - the time spent in the complete testfile
     - `status` - sucess/fail
     - `failed` - fail?
