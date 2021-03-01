@@ -456,6 +456,9 @@
         },
         Shards: {
           route: '#shards'
+        },
+        Maintenance: {
+          route: '#maintenance'
         }
       };
 

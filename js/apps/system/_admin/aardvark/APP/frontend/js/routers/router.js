@@ -48,6 +48,7 @@
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
+      'maintenance': 'maintenance',
       'node/:name': 'node',
       'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
@@ -435,6 +436,24 @@
       });
       this.shardsView.render();
 
+    },
+
+    maintenance: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.maintenance.bind(this));
+        return;
+      }
+      if (this.isCluster === false || frontendConfig.showMaintenanceStatus === false) {
+        this.routes[''] = 'dashboard';
+        this.navigate('#dashboard', {trigger: true});
+        return;
+      }
+      if (this.maintenanceView) {
+        this.maintenanceView.remove();
+      }
+      this.maintenanceView = new window.MaintenanceView({});
+      this.maintenanceView.render();
     },
 
     nodes: function (initialized) {
