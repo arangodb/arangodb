@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added a new maintenance mode to the Web UI. It shows the current maintenance
+  state and allows to enable/disable the maintenance state.
+
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
