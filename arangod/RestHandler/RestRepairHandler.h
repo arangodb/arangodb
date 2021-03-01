@@ -125,7 +125,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   // @brief Adds the field "errorDetails" with a detailed error message to the
   // open object in builder.
-  void addErrorDetails(VPackBuilder& builder, int errorNumber);
+  void addErrorDetails(VPackBuilder& builder, ErrorCode errorNumber);
 
   // @brief Answers the question "Is every shard of collectionId replicated to
   // a number of DBServers equal to its replicationFactor?".

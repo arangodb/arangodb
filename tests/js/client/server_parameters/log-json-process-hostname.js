@@ -31,7 +31,11 @@ const fs = require('fs');
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
-    'log.role': 'false',
+    'log.hostname': 'delorean',
+    'log.process': 'false',
+    'log.ids': 'false',
+    'log.role': 'true',
+    'log.thread': 'true',
     'log.output': 'file://' + fs.getTempFile(),
     'log.foreground-tty': 'false',
   };
@@ -83,14 +87,14 @@ return require('internal').options()["log.output"];
         assertTrue(filtered[i].match(/testmann: testi\d+/));
         let msg = JSON.parse(filtered[i]);
         assertTrue(msg.hasOwnProperty("time"), msg);
-        assertTrue(msg.hasOwnProperty("pid"), msg);
+        assertFalse(msg.hasOwnProperty("pid"), msg);
         assertTrue(msg.hasOwnProperty("level"), msg);
         assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertTrue(msg.hasOwnProperty("id"), msg);
-        assertFalse(msg.hasOwnProperty("hostname"), msg);
-        assertFalse(msg.hasOwnProperty("role"), msg);
-        assertFalse(msg.hasOwnProperty("tid"), msg);
-        assertMatch(/^[a-f0-9]{5}/, msg.id, msg);
+        assertFalse(msg.hasOwnProperty("id"), msg);
+        assertTrue(msg.hasOwnProperty("hostname"), msg);
+        assertEqual("delorean", msg.hostname, msg);
+        assertTrue(msg.hasOwnProperty("role"), msg);
+        assertTrue(msg.hasOwnProperty("tid"), msg);
         assertTrue(msg.hasOwnProperty("message"), msg);
         assertEqual("testmann: testi" + (i - 1), msg.message, msg);
       }

@@ -164,7 +164,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
-futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
+futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
   

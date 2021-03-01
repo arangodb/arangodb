@@ -82,7 +82,7 @@ class DatabaseFeature : public application_features::ApplicationFeature {
 
   // used by catch tests
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  inline int loadDatabases(velocypack::Slice const& databases) {
+  inline ErrorCode loadDatabases(velocypack::Slice const& databases) {
     return iterateDatabases(databases);
   }
 #endif

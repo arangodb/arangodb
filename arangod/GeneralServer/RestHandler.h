@@ -146,7 +146,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int errorNumber, std::string_view errorMessage);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber,
+                     std::string_view errorMessage);
 
   // generates an error
   void generateError(rest::ResponseCode code, ErrorCode errorNumber);

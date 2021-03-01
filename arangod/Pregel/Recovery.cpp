@@ -91,8 +91,8 @@ void RecoveryManager::monitorCollections(DatabaseID const& database,
   }
 }
 
-int RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
-                                       std::vector<ServerID>& goodServers) {
+ErrorCode RecoveryManager::filterGoodServers(std::vector<ServerID> const& servers,
+                                             std::vector<ServerID>& goodServers) {
   // TODO I could also use ClusterInfo::failedServers
   AgencyCommResult result = _agency.getValues("Supervision/Health");
   if (result.successful()) {
