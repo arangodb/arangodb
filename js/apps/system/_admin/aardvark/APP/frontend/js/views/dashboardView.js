@@ -178,12 +178,13 @@
           loglevel: 4,
           endpoint: endpoint
         });
+
         this.currentLogView = new window.LoggerView({
           collection: arangoLogs,
           endpoint: endpoint,
           contentDiv: contentDiv
         });
-        this.currentLogView.render();
+        this.currentLogView.render(true);
       }
 
       window.setTimeout(function () {

@@ -10,19 +10,12 @@
     logsel: '#logEntries',
     initDone: false,
 
+    fetchedEntries: [],
     pageSize: 20,
     currentPage: 0,
 
     logTopics: {},
     logLevels: [],
-
-    remove: function () {
-      this.$el.empty().off(); /* off to unbind the events */
-      this.stopListening();
-      this.unbind();
-      delete this.el;
-      return this;
-    },
 
     initialize: function (options) {
       var self = this;
@@ -108,11 +101,20 @@
       this.logTopicView.render();
     },
 
-    downloadEntries: function() {
+    downloadEntries: function () {
       let toDownload = [];
-      this.collection.toJSON().forEach(col => {
+
+      // sort entries
+      this.fetchedEntries.sort(function compare(a, b) {
+        let dateA = new Date(a.date);
+        let dateB = new Date(b.date);
+        return dateA - dateB;
+      });
+
+      this.fetchedEntries.forEach(col => {
         toDownload.push(JSON.stringify(col, null, 2));
       });
+
       let currentDate = new Date();
       let fileName = `LOGS-${currentDate.toISOString()}`;
       arangoHelper.downloadLocalBlob(toDownload, 'json', fileName);
@@ -315,28 +317,36 @@
 
       var self = this;
       var date;
-      var entries = [];
+      var entriesToAppend = [];
+
       this.collection.fetch({
         success: function (settings) {
           self.collection.each(function (model) {
             date = new Date(model.get('timestamp') * 1000);
-            entries.push({
+            let entry = {
               status: model.getLogStatus(),
               date: arangoHelper.formatDT(date),
               timestamp: model.get('timestamp'),
               msg: model.get('text'),
               topic: model.get('topic')
-            });
+            };
+            entriesToAppend.push(entry);
+
+            // keep history for export
+            self.fetchedEntries.push(entry);
           });
           // invert order
-          self.renderLogs(self.invertArray(entries), settings.lastInverseOffset);
+          self.renderLogs(self.invertArray(entriesToAppend), settings.lastInverseOffset);
         }
       });
     },
 
-    render: function () {
+    render: function (initialRender) {
       var self = this;
-      this.currentPage = 0;
+      if (initialRender) {
+        this.currentPage = 0;
+        this.fetchedEntries = [];
+      }
 
       if (this.initDone) {
         // render static content
@@ -346,7 +356,7 @@
         this.convertModelToJSON();
       } else {
         window.setTimeout(function () {
-          self.render();
+          self.render(false);
         }, 100);
       }
       return this;
@@ -357,7 +367,7 @@
         if (entry.msg.indexOf('{' + entry.topic + '}') > -1) {
           entry.msg = entry.msg.replace('{' + entry.topic + '}', '');
         }
-        entry.msg = arangoHelper.escapeHtml(entry.msg); 
+        entry.msg = arangoHelper.escapeHtml(entry.msg);
       });
 
       if (this.currentPage === 0) {
