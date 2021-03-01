@@ -1,6 +1,8 @@
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <% if (isCluster) { %>
-      <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
+      <% if (currentDB.get('isSystem') || statisticsInAllDatabases) { %>
+        <li class="cluster-menu"><a id="cluster" class="tab" href="#cluster"><i class="fa fa-circle-o"></i>Cluster</a></li>
+      <% } %>
       <li class="nodes-menu"><a id="nodes" class="tab" href="#nodes"><i class="fa fa-server"></i>Nodes</a></li>
     <% } else { %>
       <li class="dashboard-menu"><a id="dashboard" class="tab" href="#dashboard"><i class="fa fa-dashboard"></i>Dashboard</a></li>
