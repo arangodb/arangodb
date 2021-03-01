@@ -1010,9 +1010,9 @@ Currently available Analyzers are:
     - `status` - sucess/fail
     - `failed` - fail?
     - `total` - the time spent in the testcase
-    - `totalSetUp` - the time spent in setup sumarized
-    - `totalTearDown` - the time spent in teardown sumarized
-    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` sumarized over all instances
+    - `totalSetUp` - the time spent in setup summarized
+    - `totalTearDown` - the time spent in teardown summarized
+    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
     - `processStats.sum_servers.majorPageFaults` - 
     - `processStats.sum_servers.userTime` - 
     - `processStats.sum_servers.systemTime` - 
