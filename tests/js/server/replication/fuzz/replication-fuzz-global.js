@@ -41,7 +41,7 @@ var masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 var isCluster = arango.getRole() === 'COORDINATOR';
 var isSingle = arango.getRole() === 'SINGLE';
-const havePreconfiguredReplication = isSingle && replication.globalApplier.stateAll()["_system"].state.running === false;
+const havePreconfiguredReplication = isSingle && replication.globalApplier.stateAll()["_system"].state.running === true;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -102,10 +102,14 @@ function ReplicationSuite() {
       state.lastLogTick = replication.logger.state().state.lastUncommittedLogTick;
     } else {
       state.lastLogTick = 0;
-      db._collections().forEach(col => {
-        if (col.name()[0] !== '_') {
-          state.lastLogTick += col.count() + 1;
-        }
+      db._useDatabase('_system');
+      db._databases().forEach(function(d) {
+        db._useDatabase(d);
+        db._collections().forEach(col => {
+          if (col.name()[0] !== '_') {
+            state.lastLogTick += col.count() + 1;
+          }
+        });
       });
     }
 
@@ -118,18 +122,23 @@ function ReplicationSuite() {
       while ((lastLogTick !== state.lastLogTick) && (count < 500)) {
         lastLogTick = 0;
         count += 1;
-        db._collections().forEach(col => {
-          if (col.name()[0] !== '_') {
-            lastLogTick += col.count() + 1;
-          }
+        db._flushCache();
+        db._useDatabase('_system');
+        db._databases().forEach(function(d) {
+          db._useDatabase(d);
+          db._collections().forEach(col => {
+            if (col.name()[0] !== '_') {
+              lastLogTick += col.count() + 1;
+            }
+          });
         });
-
         if (lastLogTick !== state.lastLogTick) {
-          print('.');
+          print('. ' + lastLogTick + " !== " + state.lastLogTick);
           internal.wait(1);
           db._flushCache();
         }
       }
+      db._useDatabase('_system');
     } else {
 
       var printed = false;
@@ -469,48 +478,90 @@ function ReplicationSuite() {
             ops.push({ name: "renameCollection", func: renameCollection });
           }
 
-          for (let i = 0; i < 3000; ++i) { 
+          for (let i = 0; i < 3000; ++i) {
             pickDatabase();
             let op = ops[Math.floor(Math.random() * ops.length)];
+            print(op.name);
             op.func();
           }
-
+          if (isCluster) {
+            for (let i = 0; i < 300; i++) {
+              internal.sleep(1);
+              print(".");
+            }
+          }
           let total = "";
+          let databases = {};
+          let dbNames = [];
           db._useDatabase('_system');
 
           db._databases().forEach(function(d) {
             if (d === '_system') {
               return;
             }
+            dbNames.push(d);
             db._useDatabase(d);
 
+            let colnames = [];
+
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-              total += " " + c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-              c.indexes().forEach(function(index) {
+              colnames.push(c.name());
+            });
+
+            let sortNames = colnames.sort();
+
+            let oneDB = '';
+            sortNames.forEach(function(name) {
+              oneDB += " " + name + "-" + db[name].count() + "-" + collectionChecksum(name);
+              db[name].indexes().forEach(function(index) {
                 delete index.selectivityEstimate;
                 total += " " + index.type + "-" + JSON.stringify(index.fields);
               });
             });
+            databases[d] = oneDB;
           });
 
-          state.state = total;
+          state.state = '';
+          dbNames.sort().forEach(dbName => {
+            state.state += ' ' + dbName + databases[dbName] + ' - ';
+          });
         },
 
         function(state) {
           let total = "";
+          let databases = {};
+          let dbNames = [];
+          db._useDatabase('_system');
           db._databases().forEach(function(d) {
             if (d === '_system') {
               return;
             }
             db._useDatabase(d);
+            dbNames.push(d);
+            db._useDatabase(d);
+
+            let colnames = [];
 
             db._collections().filter(function(c) { return c.name()[0] !== '_'; }).forEach(function(c) {
-              total += " " + c.name() + "-" + c.count() + "-" + collectionChecksum(c.name());
-              c.indexes().forEach(function(index) {
+              colnames.push(c.name());
+            });
+
+            let sortNames = colnames.sort();
+
+            let oneDB = '';
+            sortNames.forEach(function(name) {
+              oneDB += " " + name + "-" + db[name].count() + "-" + collectionChecksum(name);
+              db[name].indexes().forEach(function(index) {
                 delete index.selectivityEstimate;
                 total += " " + index.type + "-" + JSON.stringify(index.fields);
               });
             });
+            databases[d] = oneDB;
+          });
+
+          total = '';
+          dbNames.sort().forEach(dbName => {
+            total += ' ' + dbName + databases[dbName] + ' - ';
           });
 
           const diff = (diffMe, diffBy) => diffMe.split(diffBy).join('');

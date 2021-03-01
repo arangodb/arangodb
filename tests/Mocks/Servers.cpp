@@ -322,7 +322,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
   addFeature<arangodb::EngineSelectorFeature>(false);
 
   if (start) {
-    startFeatures();
+    MockMetricsServer::startFeatures();
   }
 }
 
@@ -332,7 +332,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   addFeature<arangodb::NetworkFeature>(false);
 
   if (start) {
-    startFeatures();
+    MockV8Server::startFeatures();
   }
 }
 
@@ -349,7 +349,7 @@ MockAqlServer::MockAqlServer(bool start) : MockServer() {
   SetupAqlPhase(*this);
 
   if (start) {
-    startFeatures();
+    MockAqlServer::startFeatures();
   }
 }
 
@@ -405,7 +405,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   addFeature<arangodb::QueryRegistryFeature>(false);
   addFeature<arangodb::NetworkFeature>(false);
   if (start) {
-    startFeatures();
+    MockRestServer::startFeatures();
   }
 }
 
@@ -572,8 +572,8 @@ MockDBServer::MockDBServer(bool start) : MockClusterServer() {
   addFeature<arangodb::FlushFeature>(false);        // do not start the thread
   addFeature<arangodb::MaintenanceFeature>(false);  // do not start the thread
   if (start) {
-    startFeatures();
-    createDatabase("_system");
+    MockDBServer::startFeatures();
+    MockDBServer::createDatabase("_system");
   }
 }
 
@@ -620,8 +620,8 @@ void MockDBServer::dropDatabase(std::string const& name) {
 MockCoordinator::MockCoordinator(bool start) : MockClusterServer() {
   arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_COORDINATOR);
   if (start) {
-    startFeatures();
-    createDatabase("_system");
+    MockCoordinator::startFeatures();
+    MockCoordinator::createDatabase("_system");
   }
 }
 
@@ -641,4 +641,10 @@ void MockCoordinator::dropDatabase(std::string const& name) {
   auto& databaseFeature = _server.getFeature<arangodb::DatabaseFeature>();
   auto vocbase = databaseFeature.lookupDatabase(name);
   TRI_ASSERT(vocbase == nullptr);
+}
+
+MockRestAqlServer::MockRestAqlServer() {
+  SetupAqlPhase(*this);
+  addFeature<arangodb::NetworkFeature>(false);
+  MockRestAqlServer::startFeatures();
 }

@@ -81,7 +81,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
     try {
       GeneralRequest const* request = _request.get();
       auto const type = request->requestType();
-      int result = static_cast<int>(_response->responseCode());
+      auto const result = _response->responseCode();
 
       switch (type) {
         case rest::RequestType::DELETE_REQ:

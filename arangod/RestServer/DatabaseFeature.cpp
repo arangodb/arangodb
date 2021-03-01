@@ -657,7 +657,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info, TRI_vocbase_t*
     }
 
     // createDatabase must return a valid database or throw
-    int status = TRI_ERROR_NO_ERROR;
+    auto status = TRI_ERROR_NO_ERROR;
 
     vocbase = engine.createDatabase(std::move(info), status);
     TRI_ASSERT(status == TRI_ERROR_NO_ERROR);

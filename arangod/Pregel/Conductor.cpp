@@ -140,7 +140,7 @@ void Conductor::start() {
 
   LOG_TOPIC("3a255", DEBUG, Logger::PREGEL)
       << "Telling workers to load the data";
-  int res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
+  auto res = _initializeWorkers(Utils::startExecutionPath, VPackSlice());
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::CANCELED;
     LOG_TOPIC("30171", ERR, Logger::PREGEL)
@@ -173,7 +173,7 @@ bool Conductor::_startGlobalStep() {
     VPackArrayBuilder guard(&messagesFromWorkers);
     // we are explicitly expecting an response containing the aggregated
     // values as well as the count of active vertices
-    int res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
+    auto res = _sendToAllDBServers(Utils::prepareGSSPath, b, [&](VPackSlice const& payload) {
       _aggregators->aggregateValues(payload);
 
       messagesFromWorkers.add(payload.get(Utils::workerToMasterMessagesKey));
@@ -273,7 +273,7 @@ bool Conductor::_startGlobalStep() {
   _stepStartTimeSecs = TRI_microtime();
 
   // start vertex level operations, does not get a response
-  int res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
+  auto res = _sendToAllDBServers(Utils::startGSSPath, b);  // call me maybe
   if (res != TRI_ERROR_NO_ERROR) {
     _state = ExecutionState::IN_ERROR;
     LOG_TOPIC("f34bb", ERR, Logger::PREGEL)
@@ -414,7 +414,7 @@ void Conductor::finishedRecoveryStep(VPackSlice const& data) {
     proceed = proceed || _masterContext->postCompensation();
   }
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   if (proceed) {
     // reset values which are calculated during the superstep
     _aggregators->resetValues();
@@ -496,7 +496,8 @@ void Conductor::startRecovery() {
           return;  // seems like we are canceled
         }
         std::vector<ServerID> goodServers;
-        int res = PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
+        auto res =
+            PregelFeature::instance()->recoveryManager()->filterGoodServers(_dbServers, goodServers);
         if (res != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("3d08b", ERR, Logger::PREGEL)
               << "Recovery proceedings failed";
@@ -587,7 +588,7 @@ static void resolveInfo(TRI_vocbase_t* vocbase, CollectionID const& collectionID
 
 /// should cause workers to start a new execution or begin with recovery
 /// proceedings
-int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice additional) {
+ErrorCode Conductor::_initializeWorkers(std::string const& suffix, VPackSlice additional) {
   _callbackMutex.assertLockedByCurrentThread();
 
   std::string const path = Utils::baseUrl(Utils::workerPrefix) + suffix;
@@ -742,7 +743,7 @@ int Conductor::_initializeWorkers(std::string const& suffix, VPackSlice addition
   return nrGood == responses.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
 
-int Conductor::_finalizeWorkers() {
+ErrorCode Conductor::_finalizeWorkers() {
   _callbackMutex.assertLockedByCurrentThread();
   _finalizationStartTimeSecs = TRI_microtime();
 

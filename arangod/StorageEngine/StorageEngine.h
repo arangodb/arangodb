@@ -190,7 +190,7 @@ class StorageEngine : public application_features::ApplicationFeature {
   // entry for the database creation will be written *after* the call to
   // "createDatabase" returns no way to acquire id within this function?!
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                        int& status) = 0;
+                                                        ErrorCode& status) = 0;
 
   // @brief write create marker for database
   virtual Result writeCreateDatabaseMarker(TRI_voc_tick_t id, VPackSlice const& slice) { return {}; }
@@ -322,11 +322,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void cleanupReplicationContexts() = 0;
 
   virtual velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                                 int& status) = 0;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;
+                                                                 ErrorCode& status) = 0;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(ErrorCode&) = 0;
 
-  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) = 0;
-  virtual int removeReplicationApplierConfiguration() = 0;
+  virtual ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) = 0;
+  virtual ErrorCode removeReplicationApplierConfiguration() = 0;
 
   virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                         velocypack::Slice slice,

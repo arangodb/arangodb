@@ -1,6 +1,57 @@
 devel
 -----
 
+* Added `--shard` option to arangodump, so that dumps can be restricted to one or
+  multiple shards only.
+
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly
+  when not being logged in to the `_system` database. For all other databases
+  than `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases`
+  controls whether cluster statistics are displayed in the web interface for
+  all databases (if the option is set to `true`) or just for the system
+  database (if the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases. 
+
+* Add optional hostname logging to log messages.
+  Whether or not the hostname is added to each log message can be controlled via
+  the new startup option `--log.hostname`. Its default value is the empty string,
+  meaning no hostname will be added to log messages.
+  Setting the option to an arbitrary string value will make this string be logged
+  in front of each regular log message, and inside the `hostname` attribute in
+  case of JSON-based logging. Setting the option to a value of `auto` will use
+  the hostname as returned by `gethostbyname`.
+
+* Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
+  jobs.
+
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+
+* Prevent arangosh from trying to connect after every executed command.
+  This fixes the case when arangosh is started with default options, but no
+  server is running on localhost:8529. In this particular case, arangosh will
+  try to connect on startup and after every executed shell command. The
+  connect attempts all fail and time out after 300ms.
+  In this case we now don't try to reconnect after every command.
+
+* Added 'custom-query' testcase to arangobench to allow execution of custom 
+  queries.
+  This also adds the options `--custom-query` and `--custom-query-file` for
+  arangobench.
+
+* Reduce memory footprint of agency Store in Node class.
+
+* Cleanup old hotbackup transfer jobs in agency.
+
+* On Windows create a minidump in case of an unhandled SEH exception for
+  post-mortem debugging.
+  
 * Add JWT secret support for arangodump and arangorestore, i.e. they now also
   provide the command-line options `--server.ask-jwt-secret` and 
   `--server.jwt-secret-keyfile` with the same meanings as in arangosh.
@@ -54,6 +105,8 @@ devel
 
   Instead of offering `flexible` and `single`, now use the more intuitive
   `Sharded` and `OneShard` options, and update the help text for them.
+
+* Make all AQL cursors return compact result arrays.
 
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
@@ -529,8 +582,9 @@ devel
   from previously `0` (meaning: no limit) to a dynamically calculated value.
   The per-query memory limits defaults are now:
 
-    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
-    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
     Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
     Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
     Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2

@@ -72,8 +72,8 @@ arangodb::Result readLanguage(arangodb::application_features::ApplicationServer&
 }
 
 /// @brief writes the default language to file
-int writeLanguage(arangodb::application_features::ApplicationServer& server,
-                  std::string const& language) {
+ErrorCode writeLanguage(arangodb::application_features::ApplicationServer& server,
+                        std::string const& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 

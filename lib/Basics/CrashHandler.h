@@ -45,6 +45,10 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+  
+#ifdef _WIN32
+  static void setMiniDumpDirectory(std::string path);
+#endif
 };
 
 }  // namespace arangodb

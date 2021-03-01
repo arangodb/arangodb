@@ -511,7 +511,7 @@ void RestHandler::executeEngine(bool isContinue) {
   _state = HandlerState::FAILED;
 }
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
                                 std::string_view const errorMessage) {
   resetResponse(code);
 

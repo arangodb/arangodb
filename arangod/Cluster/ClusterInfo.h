@@ -405,8 +405,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*,
-                       int syncerShutdownCode);
+  explicit ClusterInfo(application_features::ApplicationServer& server, AgencyCallbackRegistry* agencyCallbackRegistry,
+                       ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library

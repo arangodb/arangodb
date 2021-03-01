@@ -63,7 +63,7 @@ class GeneralResponse {
   static ResponseCode responseCode(std::string const& str);
 
   // response code from integer error code
-  static ResponseCode responseCode(int);
+  static ResponseCode responseCode(ErrorCode code);
 
   /// @brief set content-type this sets the contnt type like you expect it
   void setContentType(ContentType type) { _contentType = type; }
@@ -164,7 +164,7 @@ class GeneralResponse {
     return _generateBody = generateBody;
   }
   
-  virtual int deflate(size_t size = 16384) = 0;
+  virtual ErrorCode deflate(size_t size = 16384) = 0;
 
  protected:
   std::unordered_map<std::string, std::string> _headers;  // headers/metadata map

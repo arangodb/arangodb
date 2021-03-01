@@ -116,12 +116,9 @@ class BenchmarkThread : public arangodb::Thread {
   }
 
   void aggregateValues(double& minTime, double& maxTime, double& avgTime, uint64_t& counter) {
-      if (minTime == -1.0 || minTime < _minTime) {
-        minTime = _minTime;
-      }
-      if (_maxTime > maxTime) {
-        maxTime = _maxTime;
-      }
+      minTime = std::min(_minTime, minTime);
+      maxTime = std::max(_maxTime, maxTime);
+
       if (counter == 0) {
         avgTime = _avgTime;
         counter = _counter;
@@ -284,7 +281,7 @@ class BenchmarkThread : public arangodb::Thread {
     size_t blen = strlen(boundary);
 
     basics::StringBuffer batchPayload(true);
-    int ret = batchPayload.reserve(numOperations * 1024);
+    auto ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("bd98d", FATAL, arangodb::Logger::FIXME)
           << "Failed to reserve " << numOperations * 1024 << " bytes for "

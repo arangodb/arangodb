@@ -110,7 +110,8 @@ class MockServer {
   void stopFeatures();
 
  protected:
-  arangodb::application_features::ApplicationServer::State _oldApplicationServerState;
+  arangodb::application_features::ApplicationServer::State _oldApplicationServerState =
+      arangodb::application_features::ApplicationServer::State::UNINITIALIZED;
   arangodb::application_features::ApplicationServer _server;
   StorageEngineMock _engine;
   std::unordered_map<arangodb::application_features::ApplicationFeature*, bool> _features;
@@ -151,8 +152,8 @@ class MockAqlServer : public MockServer,
                       public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                       public IResearchLogSuppressor {
  public:
-  MockAqlServer(bool startFeatures = true);
-  ~MockAqlServer();
+  explicit MockAqlServer(bool startFeatures = true);
+  ~MockAqlServer() override;
 
   std::shared_ptr<arangodb::transaction::Methods> createFakeTransaction() const;
   // runBeforePrepare gives an entry point to modify the list of collections one want to use within the Query.
@@ -170,7 +171,17 @@ class MockRestServer : public MockServer,
                        public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
                        public IResearchLogSuppressor {
  public:
-  MockRestServer(bool startFeatures = true);
+  explicit MockRestServer(bool startFeatures = true);
+};
+
+class MockRestAqlServer : public MockServer,
+                          public LogSuppressor<Logger::AUTHENTICATION, LogLevel::WARN>,
+                          public LogSuppressor<Logger::CLUSTER, LogLevel::ERR>,
+                          public LogSuppressor<Logger::FIXME, LogLevel::ERR>,
+                          public LogSuppressor<iresearch::TOPIC, LogLevel::FATAL>,
+                          public IResearchLogSuppressor {
+ public:
+  explicit MockRestAqlServer();
 };
 
 class MockClusterServer : public MockServer,
@@ -205,7 +216,7 @@ class MockClusterServer : public MockServer,
  private:
   arangodb::ServerState::RoleEnum _oldRole;
   std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
-  int _dummy;
+  int _dummy{};
 };
 
 class MockDBServer : public MockClusterServer {

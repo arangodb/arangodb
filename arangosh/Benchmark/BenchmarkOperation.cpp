@@ -18,29 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <atomic>
+#include "BenchmarkOperation.h"
 
-#include "Task.h"
+namespace arangodb::arangobench {
 
-#include <velocypack/Builder.h>
-#include <velocypack/velocypack-aliases.h>
-
-#include "Basics/debugging.h"
-#include "Basics/system-functions.h"
-
-using namespace arangodb::rest;
-
-namespace {
-std::atomic_uint_fast64_t NEXT_TASK_ID(static_cast<uint64_t>(TRI_microtime() * 100000.0));
+std::map<std::string, BenchmarkOperation::BenchmarkFactory>& BenchmarkOperation::allBenchmarks() {
+  // this is a static inline variable to avoid issues with initialization order.
+  static std::map<std::string, BenchmarkFactory> benchmarks;
+  return benchmarks;
 }
 
-Task::Task(Scheduler* scheduler, std::string const& name)
-    : _scheduler(scheduler),
-      _taskId(NEXT_TASK_ID.fetch_add(1, std::memory_order_seq_cst)),
-      _name(name) {
-  TRI_ASSERT(_scheduler != nullptr);
+std::unique_ptr<BenchmarkOperation> BenchmarkOperation::createBenchmark(std::string const& name, BenchFeature& arangobench) {
+  auto it = allBenchmarks().find(name);
+  if (it != allBenchmarks().end()) {
+    return it->second.operator()(arangobench);
+  }
+  return nullptr;
 }
+
+void BenchmarkOperation::registerBenchmark(std::string name, BenchmarkFactory factory) {
+  allBenchmarks().emplace(std::move(name), std::move(factory));
+}
+
+}  // namespace arangodb::arangobench

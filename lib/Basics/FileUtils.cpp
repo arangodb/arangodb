@@ -171,9 +171,9 @@ std::string buildFilename(std::string const& path, std::string const& name) {
 
 static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  auto res = TRI_errno();
 
-  std::string message("read failed for file '" + filename + "': " + strerror(res));
+  auto message = StringUtils::concatT("read failed for file '", filename,
+                                      "': ", TRI_last_error());
   LOG_TOPIC("a0898", TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SYS_ERROR, message);
@@ -235,11 +235,11 @@ Result slurpNoEx(std::string const& filename, StringBuffer& result) {
   int fd = TRI_OPEN(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
-    std::string message("read failed for file '" + filename + "': " + strerror(res));
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    auto message = StringUtils::concatT("read failed for file '", filename,
+                                        "': ", TRI_last_error());
     LOG_TOPIC("a1898", TRACE, arangodb::Logger::FIXME) << message;
-    return {TRI_ERROR_SYS_ERROR, message};
+    return {res, message};
   }
 
   TRI_DEFER(TRI_CLOSE(fd));
@@ -305,18 +305,14 @@ void spit(std::string const& filename, StringBuffer const& content, bool sync) {
   spit(filename, content.data(), content.length(), sync);
 }
 
-bool remove(std::string const& fileName, int* errorNumber) {
-  if (errorNumber != nullptr) {
-    *errorNumber = 0;
+ErrorCode remove(std::string const& fileName) {
+  auto const success = 0 == std::remove(fileName.c_str());
+
+  if (!success) {
+    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  int result = std::remove(fileName.c_str());
-
-  if (errorNumber != nullptr) {
-    *errorNumber = errno;
-  }
-
-  return (result != 0) ? false : true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 bool createDirectory(std::string const& name, ErrorCode* errorNumber) {
@@ -468,7 +464,7 @@ bool copyDirectoryRecursive(std::string const& source, std::string const& target
         // Handle subdirectories:
         if (isSubDirectory(src)) {
           long systemError;
-          int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+          auto rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
           if (rc != TRI_ERROR_NO_ERROR && rc != TRI_ERROR_FILE_EXISTS) {
             rc_bool = false;
             break;
@@ -528,12 +524,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   handle = _wfindfirst(reinterpret_cast<wchar_t const*>(f.getTerminatedBuffer()), &oneItem);
 
   if (handle == -1) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    std::string message("failed to enumerate files in directory '" + directory +
-                        "': " + strerror(res));
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
 
   do {
@@ -556,12 +552,12 @@ std::vector<std::string> listFiles(std::string const& directory) {
   DIR* d = opendir(directory.c_str());
 
   if (d == nullptr) {
-    TRI_set_errno(TRI_ERROR_SYS_ERROR);
-    auto res = TRI_errno();
+    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    std::string message("failed to enumerate files in directory '" + directory +
-                        "': " + strerror(res));
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, message);
+    auto message =
+        StringUtils::concatT("failed to enumerate files in directory '",
+                             directory, "': ", TRI_last_error());
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
   }
 
   dirent* de = readdir(d);
@@ -706,13 +702,12 @@ void makePathAbsolute(std::string& path) {
 }
 
 static void throwProgramError(std::string const& filename) {
-  TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  auto res = TRI_errno();
+  auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-  std::string message("open failed for file '" + filename + "': " + strerror(res));
-  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME) << message;
+  LOG_TOPIC("a557b", TRACE, arangodb::Logger::FIXME)
+      << StringUtils::concatT("open failed for file '", filename, "': ", TRI_last_error());
 
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+  THROW_ARANGO_EXCEPTION(res);
 }
 
 std::string slurpProgram(std::string const& program) {
