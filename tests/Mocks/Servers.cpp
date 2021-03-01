@@ -746,6 +746,10 @@ void MockDBServer::createShard(std::string const& dbName, std::string shardName,
     VPackObjectBuilder guard(props.get());
     props->add(StaticStrings::DataSourceType, VPackValue(clusterCollection.type()));
     props->add(StaticStrings::DataSourceName, VPackValue(shardName));
+    // We need to set a value for CE testing here (default of 0 will be invalid in CE)
+#ifndef USE_ENTERPRISE
+    props->add(StaticStrings::ReplicationFactor, VPackValue(1));
+#endif
   }
   maintenance::ActionDescription ad(
       std::map<std::string, std::string>{{maintenance::NAME, maintenance::CREATE_COLLECTION},
