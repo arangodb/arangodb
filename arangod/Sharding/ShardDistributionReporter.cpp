@@ -469,10 +469,11 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
               // if leader has documents and at least one follower has documents, report
               // the average percentage of follower docs / leader docs
+
               if (followerResponses > 0 && entry.total > 0) {
                 entry.followerPercent = std::min<double>(
                     100.0, 
-                    100.0 * static_cast<double>(followerTotal / followerResponses) / static_cast<double>(entry.total)
+                    100.0 * static_cast<double>(followerTotal) / static_cast<double>(followerResponses) / static_cast<double>(entry.total)
                 );
               }
             }
