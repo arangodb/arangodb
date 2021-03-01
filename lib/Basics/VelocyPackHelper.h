@@ -227,15 +227,7 @@ class VelocyPackHelper {
 
   /// @brief returns a numeric sub-element, or a default if it does not exist
   template <typename T, typename NumberType = T, typename NameType>
-  static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue) {
-    if (slice.isObject()) {
-      VPackSlice sub = slice.get(name);
-      if (sub.isNumber()) {
-        return static_cast<T>(sub.getNumber<NumberType>());
-      }
-    }
-    return defaultValue;
-  }
+  static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue);
 
   /// @brief returns a boolean sub-element, or a default if it does not exist
   template <typename NameType>
@@ -398,6 +390,32 @@ class VelocyPackHelper {
   static_assert(FromAttribute < ToAttribute,
                 "invalid value for _from attribute");
 };
+
+template <typename T, typename NumberType, typename NameType>
+T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
+                                    NameType const& name, T defaultValue) {
+  if (slice.isObject()) {
+    VPackSlice sub = slice.get(name);
+    if (sub.isNumber()) {
+      return static_cast<T>(sub.getNumber<NumberType>());
+    }
+  }
+  return defaultValue;
+}
+
+/// @brief specializations for ErrorCode, shortcut to avoid back-and-forth
+/// casts from and to int.
+template <>
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
+    VPackSlice const& slice, std::string_view const& name, ErrorCode defaultValue) {
+  return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+}
+template <>
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
+    VPackSlice const& slice, std::string const& name, ErrorCode defaultValue) {
+  return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+}
+
 }  // namespace basics
 }  // namespace arangodb
 

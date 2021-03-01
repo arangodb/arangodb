@@ -381,7 +381,7 @@ bool GeneralClientConnection::checkSocket() {
 
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     disconnect();
     return false;

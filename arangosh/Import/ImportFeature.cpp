@@ -367,7 +367,7 @@ void ImportFeature::start() {
 
     client.setDatabaseName("_system");
 
-    int res = tryCreateDatabase(client, dbName);
+    auto res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
@@ -549,7 +549,7 @@ void ImportFeature::start() {
   *_result = ret;
 }
 
-int ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
+ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));

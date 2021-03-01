@@ -409,7 +409,6 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
         assertEqual("padded", p.keyOptions.type);
-        assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
@@ -443,9 +442,6 @@
           // Backup and restore case:
           doc = c.save({});
           assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-
-          // reset the value to before the one expected to be restored:
-          process.env['paddedLastValue'] = process.env['lastPaddedLastValue'];
         }
       },
 

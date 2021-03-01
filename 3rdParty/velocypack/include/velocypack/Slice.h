@@ -596,6 +596,10 @@ class Slice {
   // returns a Slice(ValueType::None) if not found
   Slice get(StringRef const& attribute) const;
 
+  Slice get(std::string_view attribute) const {
+    return get(StringRef{attribute.data(), attribute.size()});
+  }
+
   Slice get(HashedStringRef const& attribute) const {
     return get(StringRef(attribute));
   }
