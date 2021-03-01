@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added ability to display Coordinator and DBServer logs from inside  the Web UI
+  in a clustered environment.
+
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 

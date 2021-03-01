@@ -70,7 +70,8 @@
       'click #logLevelSelection': 'renderLogLevel',
       'click #logTopicSelection': 'renderLogTopic',
       'click #logFilters': 'resetFilters',
-      'click #loadMoreEntries': 'loadMoreEntries'
+      'click #loadMoreEntries': 'loadMoreEntries',
+      'click #downloadDisplayedEntries': 'downloadEntries'
     },
 
     template: templateEngine.createTemplate('loggerView.ejs'),
@@ -105,6 +106,16 @@
         multiple: true
       });
       this.logTopicView.render();
+    },
+
+    downloadEntries: function() {
+      let toDownload = [];
+      this.collection.toJSON().forEach(col => {
+        toDownload.push(JSON.stringify(col, null, 2));
+      });
+      let currentDate = new Date();
+      let fileName = `LOGS-${currentDate.toISOString()}`;
+      arangoHelper.downloadLocalBlob(toDownload, 'json', fileName);
     },
 
     loadMoreEntries: function () {

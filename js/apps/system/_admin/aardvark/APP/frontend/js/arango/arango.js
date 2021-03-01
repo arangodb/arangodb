@@ -1062,7 +1062,7 @@
       } catch (ignore) {}
     },
 
-    downloadLocalBlob: function (obj, type) {
+    downloadLocalBlob: function (obj, type, filename) {
       var dlType;
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
@@ -1078,7 +1078,13 @@
         document.body.appendChild(a);
         a.style = 'display: none';
         a.href = blobUrl;
-        a.download = 'results-' + window.frontendConfig.db + '.' + type;
+
+        if (filename) {
+          a.download = filename + '-' + window.frontendConfig.db + '.' + type;
+        } else {
+          a.download = 'results-' + window.frontendConfig.db + '.' + type;
+        }
+
         a.click();
 
         window.setTimeout(function () {

@@ -155,7 +155,6 @@
       let self = this;
       let id = e.currentTarget.id.split('-')[0];
       let views = ['requests', 'system', 'logs'];
-      console.log("id: " + id);
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -172,8 +171,6 @@
 
       if (id === 'logs') {
         let contentDiv = '#nodeLogContentView';
-        console.log("activated logs");
-        console.log(this.serverInfo.target);
         let endpoint = this.serverInfo.target;
 
         let arangoLogs = new window.ArangoLogs({
