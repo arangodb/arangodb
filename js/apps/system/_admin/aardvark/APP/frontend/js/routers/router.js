@@ -444,9 +444,15 @@
         this.waitForInit(this.maintenance.bind(this));
         return;
       }
-      if (this.isCluster === false || frontendConfig.showMaintenanceStatus === false) {
-        this.routes[''] = 'dashboard';
-        this.navigate('#dashboard', {trigger: true});
+      if (frontendConfig.showMaintenanceStatus === false || this.currentDB.get('name') !== '_system') {
+        if (!this.isCluster) {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', {trigger: true});
+        } else {
+          this.routes[''] = 'cluster';
+          this.navigate('#cluster', {trigger: true});
+        }
+
         return;
       }
       if (this.maintenanceView) {

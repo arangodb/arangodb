@@ -462,6 +462,10 @@
         }
       };
 
+      if (window.frontendConfig.db !== '_system') {
+        disabled = true;
+      }
+
       menus[activeKey].active = true;
       if (disabled) {
         menus[activeKey].disabled = true;
