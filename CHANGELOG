@@ -45,6 +45,8 @@ devel
   as documented and a new, more precise error code (1947) and message if a vertex
   collection referenced in the _from or _to attribute is not part of the graph.
 
+* Removed older reference to VelocyPackDumper.
+
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
