@@ -4,6 +4,15 @@ devel
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
+* Add optional hostname logging to log messages.
+  Whether or not the hostname is added to each log message can be controlled via
+  the new startup option `--log.hostname`. Its default value is the empty string,
+  meaning no hostname will be added to log messages.
+  Setting the option to an arbitrary string value will make this string be logged
+  in front of each regular log message, and inside the `hostname` attribute in
+  case of JSON-based logging. Setting the option to a value of `auto` will use
+  the hostname as returned by `gethostbyname`.
+
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
