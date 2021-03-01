@@ -119,7 +119,6 @@ auto detail::generate_backtrace_string() noexcept -> std::vector<std::string> tr
 
 #ifdef FUTURES_COUNT_ALLOC
 #include <sys/types.h>
-#include <unistd.h>
 
 #include <iostream>
 #include <sstream>

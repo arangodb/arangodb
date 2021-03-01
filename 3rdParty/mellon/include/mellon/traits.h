@@ -47,12 +47,12 @@ template <typename T>
 inline constexpr auto is_use_default_handler_v = is_use_default_handler<T>::value;
 
 template<typename Tag, typename T, template<typename> typename Fut, typename = void>
-struct user_defined_additions {
+struct FUTURES_EMPTY_BASE user_defined_additions {
   struct type {};
 };
 
 template<typename Tag, typename T, template<typename> typename Fut>
-struct user_defined_additions<Tag, T, Fut, std::void_t<decltype(typename tag_trait<Tag>::template user_defined_additions<T, Fut>{})>> {
+struct FUTURES_EMPTY_BASE user_defined_additions<Tag, T, Fut, std::void_t<decltype(typename tag_trait<Tag>::template user_defined_additions<T, Fut>{})>> {
   using type = typename tag_trait<Tag>::template user_defined_additions<T, Fut>;
 };
 
@@ -60,12 +60,12 @@ template<typename Tag, typename T, template<typename> typename Fut>
 using user_defined_additions_t = typename user_defined_additions<Tag, T, Fut>::type;
 
 template<typename Tag, typename T, typename = void>
-struct user_defined_promise_additions {
+struct FUTURES_EMPTY_BASE user_defined_promise_additions {
   struct type {};
 };
 
 template<typename Tag, typename T>
-struct user_defined_promise_additions<Tag, T, std::void_t<decltype(typename tag_trait<Tag>::template user_defined_promise_additions<T>{})>> {
+struct FUTURES_EMPTY_BASE user_defined_promise_additions<Tag, T, std::void_t<decltype(typename tag_trait<Tag>::template user_defined_promise_additions<T>{})>> {
   using type = typename tag_trait<Tag>::template user_defined_promise_additions<T>;
 };
 
@@ -74,6 +74,9 @@ using user_defined_promise_additions_t = typename user_defined_promise_additions
 
 namespace detail {
 #ifdef FUTURES_COUNT_ALLOC
+#define FUTURES_INC_ALLOC_COUNTER_BY(counter, size) ::mellon::detail::counter.fetch_add(size, std::memory_order_relaxed)
+#define FUTURES_INC_ALLOC_COUNTER(counter) FUTURES_INC_ALLOC_COUNTER_BY(counter, 1)
+
 extern std::atomic<std::size_t> number_of_allocations;
 extern std::atomic<std::size_t> number_of_bytes_allocated;
 extern std::atomic<std::size_t> number_of_inline_value_placements;
@@ -94,6 +97,9 @@ extern std::array<std::atomic<std::size_t>, 10> histogram_value_sizes;
 extern std::array<std::atomic<std::size_t>, 10> histogram_final_lambda_sizes;
 
 extern std::string message_prefix;
+#else
+#define FUTURES_INC_ALLOC_COUNTER_BY(counter, size)
+#define FUTURES_INC_ALLOC_COUNTER(counter)
 #endif
 
 
@@ -231,12 +237,10 @@ struct tag_trait_helper {
   }
 
   template<typename T>
-  static T* allocate() {
+  static void* allocate() {
     if constexpr (has_allocator<Tag>::value) {
-#if FUTURES_COUNT_ALLOC
-      number_of_allocations.fetch_add(1, std::memory_order_relaxed);
-      number_of_bytes_allocated.fetch_add(sizeof(T), std::memory_order_relaxed);
-#endif
+      FUTURES_INC_ALLOC_COUNTER(number_of_allocations);
+      FUTURES_INC_ALLOC_COUNTER_BY(number_of_bytes_allocated, sizeof(T));
       using allocator = typename tag_trait<Tag>::allocator;
       return allocator::template allocate<T>();
     } else {
@@ -245,16 +249,23 @@ struct tag_trait_helper {
     }
   }
   template<typename T>
-  static T* allocate(std::nothrow_t) {
+  static void* allocate(std::nothrow_t) {
     if constexpr (has_allocator<Tag>::value) {
-#if FUTURES_COUNT_ALLOC
-      number_of_allocations.fetch_add(1, std::memory_order_relaxed);
-      number_of_bytes_allocated.fetch_add(sizeof(T), std::memory_order_relaxed);
-#endif
+      FUTURES_INC_ALLOC_COUNTER(number_of_allocations);
+      FUTURES_INC_ALLOC_COUNTER_BY(number_of_bytes_allocated, sizeof(T));
       using allocator = typename tag_trait<Tag>::allocator;
       return allocator::template allocate<T>(std::nothrow);
     } else {
       return tag_trait_helper<default_tag>::allocate<T>(std::nothrow);
+    }
+  }
+  
+  template<typename T>
+  static void release(T* p) {
+    if constexpr (has_allocator<Tag>::value) {
+      tag_trait<Tag>::allocator::release(p);
+    } else {
+      return tag_trait_helper<default_tag>::release(p);
     }
   }
 

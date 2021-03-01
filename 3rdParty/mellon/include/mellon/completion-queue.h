@@ -40,7 +40,7 @@ struct completion_context : std::enable_shared_from_this<completion_context<Fut>
         return v;
       }
 
-      if (pending_futures == 0) {
+      if (pending_futures.load(std::memory_order_relaxed)) {
         return std::nullopt;
       }
       consumer_waiting = true;
