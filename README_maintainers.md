@@ -994,6 +994,47 @@ Currently available Analyzers are:
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
+  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColmuns`:
+    - `duration` - the time spent in the complete testfile
+    - `status` - sucess/fail
+    - `failed` - fail?
+    - `total` - the time spent in the testcase
+    - `totalSetUp` - the time spent in setup sumarized
+    - `totalTearDown` - the time spent in teardown sumarized
+    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` sumarized over all instances
+    - `processStats.sum_servers.majorPageFaults` - 
+    - `processStats.sum_servers.userTime` - 
+    - `processStats.sum_servers.systemTime` - 
+    - `processStats.sum_servers.numberOfThreads` - 
+    - `processStats.sum_servers.residentSize` - 
+    - `processStats.sum_servers.residentSizePercent` - 
+    - `processStats.sum_servers.virtualSize` - 
+    - `processStats.sum_servers.rchar` - 
+    - `processStats.sum_servers.wchar` - 
+    - `processStats.sum_servers.syscr` - 
+    - `processStats.sum_servers.syscw` - 
+    - `processStats.sum_servers.read_bytes` - 
+    - `processStats.sum_servers.write_bytes` - 
+    - `processStats.sum_servers.cancelled_write_bytes` - 
+    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` sumarized over all instances
+    - `processStats.sum_servers.sockstat_TCP_inuse` - 
+    - `processStats.sum_servers.sockstat_TCP_orphan` - 
+    - `processStats.sum_servers.sockstat_TCP_tw` - 
+    - `processStats.sum_servers.sockstat_TCP_alloc` - 
+    - `processStats.sum_servers.sockstat_TCP_mem` - 
+    - `processStats.sum_servers.sockstat_UDP_inuse` - 
+    - `processStats.sum_servers.sockstat_UDP_mem` - 
+    - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
+    - `processStats.sum_servers.sockstat_RAW_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_memory` - 
 
+i.e.
 
     ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json
+
+or:
+
+    ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
+       --readFile out/UNITTEST_RESULT.json \
+       --tableColmuns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
