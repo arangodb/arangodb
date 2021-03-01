@@ -490,19 +490,20 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 void ShardDistributionReporter::getCollectionDistributionForDatabase(
     std::string const& dbName, std::string const& colName, VPackBuilder& result) {
   std::vector<std::shared_ptr<LogicalCollection>> cols{ _ci->getCollection(dbName, colName) };
-  getCollectionDistribution(dbName, cols, result);
+  getCollectionDistribution(dbName, cols, result, true);
 }
 
 /// @brief fetch distributions for all collections in db
 void ShardDistributionReporter::getDistributionForDatabase(std::string const& dbName,
                                                            VPackBuilder& result) {
   auto cols = _ci->getCollections(dbName);
-  getCollectionDistribution(dbName, cols, result);
+  getCollectionDistribution(dbName, cols, result, false);
 }
 
 /// @brief internal helper function to fetch distributions
 void ShardDistributionReporter::getCollectionDistribution(
-    std::string const& dbName, std::vector<std::shared_ptr<LogicalCollection>> const& cols, VPackBuilder& result) {
+    std::string const& dbName, std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
+    VPackBuilder& result, bool progress) {
 
   double endtime = TRI_microtime() + 2.0;  // We add two seconds
 
@@ -519,7 +520,6 @@ void ShardDistributionReporter::getCollectionDistribution(
     }
   }
 
-  bool const progress = true;
   helperDistributionForDatabase(dbName, result, todoSyncStateCheck, endtime, aliases, progress);
   result.close();
 }

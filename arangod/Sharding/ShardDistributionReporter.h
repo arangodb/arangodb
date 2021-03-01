@@ -65,7 +65,8 @@ class ShardDistributionReporter {
   void getCollectionDistribution(
       std::string const& dbName, 
       std::vector<std::shared_ptr<LogicalCollection>> const& cols, 
-      arangodb::velocypack::Builder& result);
+      arangodb::velocypack::Builder& result,
+      bool progress);
 
   bool testAllShardsInSync(std::string const& dbName, LogicalCollection const* col,
                            std::unordered_map<std::string, std::vector<std::string>> const* allShards);
