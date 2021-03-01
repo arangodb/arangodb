@@ -175,7 +175,7 @@ void ModificationExecutorHelpers::throwOperationResultException(
       // Find the first error and throw with message.
       for (auto doc : VPackArrayIterator(operationResult.slice())) {
         if (doc.isObject() && doc.hasKey(StaticStrings::ErrorNum) &&
-            doc.get(StaticStrings::ErrorNum).getInt() == errorCode) {
+            ErrorCode{doc.get(StaticStrings::ErrorNum).getNumber<int>()} == errorCode) {
           VPackSlice s = doc.get(StaticStrings::ErrorMessage);
           if (s.isString()) {
             THROW_ARANGO_EXCEPTION_MESSAGE(errorCode, s.copyString());

@@ -101,7 +101,7 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
     // some reallocs
     // (not accurate, but the actual size is unknown anyway)
     builder.reserve(std::max<size_t>(1, std::min<size_t>(n, 10000)) * 32);
-    builder.add("result", VPackValue(VPackValueType::Array));
+    builder.add("result", VPackValue(VPackValueType::Array, true));
     for (size_t i = 0; i < n; ++i) {
       if (!hasNext()) {
         break;
@@ -328,7 +328,7 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (!silent) {
     builder.reserve(16 * 1024);
   }
-  
+
   builder.add("result", VPackValue(VPackValueType::Array, true));
 
   aql::ExecutionEngine* engine = _query->rootEngine();
