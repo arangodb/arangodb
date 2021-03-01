@@ -4,6 +4,21 @@ devel
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly
+  when not being logged in to the `_system` database. For all other databases
+  than `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases`
+  controls whether cluster statistics are displayed in the web interface for
+  all databases (if the option is set to `true`) or just for the system
+  database (if the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases. 
+
 * Add optional hostname logging to log messages.
   Whether or not the hostname is added to each log message can be controlled via
   the new startup option `--log.hostname`. Its default value is the empty string,
@@ -13,10 +28,10 @@ devel
   case of JSON-based logging. Setting the option to a value of `auto` will use
   the hostname as returned by `gethostbyname`.
 
-* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
-
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
   jobs.
+
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Prevent arangosh from trying to connect after every executed command.
   This fixes the case when arangosh is started with default options, but no
