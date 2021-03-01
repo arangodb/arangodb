@@ -832,7 +832,7 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       // note that we have to store the uncompressed offset here, because we
       // potentially have consumed more data than we have sent.
       datafileReadOffset += length;
-      bool wasSynced = jobData.progressTracker.updateStatus(
+      [[maybe_unused]] bool wasSynced = jobData.progressTracker.updateStatus(
           cname, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING,
                                                             datafileReadOffset});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
