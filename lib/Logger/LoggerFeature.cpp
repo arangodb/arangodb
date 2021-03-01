@@ -199,10 +199,15 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
+  options->addOption("--log.hostname",
+                     "hostname to use in log message (empty for none, use 'auto' to automatically figure out hostname)",
+                     new StringParameter(&_hostname))
+                     .setIntroducedIn(30800);
+  
   options->addOption("--log.process", "show process identifier (pid) in log message",
                      new BooleanParameter(&_processId),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30701);
+                     .setIntroducedIn(30800);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -383,6 +388,7 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
+  Logger::setHostname(_hostname);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
   Logger::setUseJson(_useJson);
