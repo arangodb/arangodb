@@ -8,7 +8,6 @@
   window.LoggerView = Backbone.View.extend({
     el: '#content',
     logsel: '#logEntries',
-    id: '#logContent',
     initDone: false,
 
     pageSize: 20,
@@ -30,16 +29,25 @@
 
       if (options) {
         this.options = options;
+
+        if (options.endpoint) {
+          this.endpoint = options.endpoint;
+          this.el = options.contentDiv;
+        }
       }
 
       this.collection.setPageSize(this.pageSize);
 
       if (!this.initDone) {
+        let url = arangoHelper.databaseUrl('/_admin/log/level');
+        if (this.endpoint) {
+          url += `?serverId=${encodeURIComponent(this.endpoint)}`;
+        }
         // first fetch all log topics + topics
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/log/level'),
+          url: url,
           contentType: 'application/json',
           processData: false,
           success: function (data) {

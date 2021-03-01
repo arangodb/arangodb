@@ -40,7 +40,6 @@
     <% subBar(title) %>
   </div>
 <% } %>
-
 <% var tendency = function(title, name, arrows) { %>
 
 <div class="dashboard-tendency-container pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
@@ -75,7 +74,7 @@
     <% } %>
 
     <ul class="subMenuEntries subViewNavbar">
-      <li id="requests-statistics" class="subMenuEntry active"><a>Request Statistics</a></li>
+      <li id="requests-statistics" class="subMenuEntry active"><a>Statistics</a></li>
       <li id="system-statistics" class="subMenuEntry "><a>System Resources</a></li>
       <li id="logs-statistics" class="subMenuEntry "><a>Logs</a></li>
     </ul>
@@ -103,8 +102,8 @@
             <% largeChart("totalTimeChart", "Average Request Time (seconds)") %>
             <% smallChart("totalTimeDistribution", "Average Request Time (distribution)", false) %>
           </div>
+        <% } %>
       </div>
-      <% } %>
     </div>
 
     <div id="system" class="tendency-box-sizing" style="display: none" ;>
@@ -138,7 +137,7 @@
     </div>
 
     <div id="logs" class="tendency-box-sizing" style="display: none">
-      <b>Logs will appear here :-)</b>
+      <div id="nodeLogContentView"></div>
     </div>
 
   </div>
