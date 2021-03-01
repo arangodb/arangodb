@@ -548,7 +548,7 @@ function formatTimeMS(ts) {
 }
 
 function unitTestTabularPrintResults (options, results, otherResults) {
-  let tableColmuns = [];
+  let tableColumns = [];
   let tableColumnVectors = [];
   let tableColumnHeaders = ['suite name'];
   let tableFormaters = [formatNone];
@@ -559,10 +559,10 @@ function unitTestTabularPrintResults (options, results, otherResults) {
     'totalTearDown'
   ];
   
-  if (options.hasOwnProperty('tableColmuns')) {
-    tableColmuns = options.tableColmuns.split(',');
+  if (options.hasOwnProperty('tableColumns')) {
+    tableColumns = options.tableColumns.split(',');
   }
-  tableColmuns.forEach(colName => {
+  tableColumns.forEach(colName => {
     if (timeFormatColumns.find(val => {return val === colName; })) {
       tableFormaters.push(fancyTimeFormat);
     } else {

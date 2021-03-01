@@ -1042,7 +1042,7 @@ or:
 
     ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
        --readFile out/UNITTEST_RESULT.json \
-       --tableColmuns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
+       --tableColumns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
 
 revalidating one testcase using jq:
 
