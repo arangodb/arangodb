@@ -407,7 +407,7 @@ router.get('/coordshort', function (req, res) {
   let merged = { };
 
   try {
-    let start = internal.time() - 20 * STATISTICS_INTERVAL;
+    let start = internal.time() - 12 * STATISTICS_INTERVAL;
     let { stats15, statsSamples } = SYSTEM_STATISTICS(start || 0);
     if (statsSamples.length !== 0) {
       // we have no samples -> either statistics are disabled, or the server has just been started
