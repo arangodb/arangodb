@@ -1,7 +1,7 @@
 devel
 -----
 
-* Added ability to display Coordinator and DBServer logs from inside  the Web UI
+* Added ability to display Coordinator and DBServer logs from inside the Web UI
   in a clustered environment. Additionally, displayed log entries can now be
   downloaded as well.
 
