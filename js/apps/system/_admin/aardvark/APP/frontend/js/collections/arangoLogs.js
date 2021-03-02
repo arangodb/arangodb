@@ -59,7 +59,7 @@
       } else {
         type = 'level';
       }
-      rtnStr = '/_admin/log?' + type + '=' + this.loglevel + '&size=' + size + '&offset=' + inverseOffset;
+      rtnStr = `/_admin/log?${encodeURIComponent(type)}=${encodeURIComponent(this.loglevel)}&size=${encodeURIComponent(size)}&offset=${encodeURIComponent(inverseOffset)}`
       if (this.endpoint) {
         rtnStr += `&serverId=${encodeURIComponent(this.endpoint)}`;
       }
