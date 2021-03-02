@@ -49,11 +49,17 @@ using namespace arangodb::options;
 namespace {
 
 uint64_t defaultMemoryLimit(uint64_t available) {
+  if (available == 0) {
+    // we don't know how much memory is available, so we cannot do any sensible calculation
+    return 0;
+  }
+
   // this function will produce the following results for some
   // common available memory values:
   //
-  //    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
-  //    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+  //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  //    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
   //    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
   //    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
   //    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
@@ -70,19 +76,19 @@ uint64_t defaultMemoryLimit(uint64_t available) {
   //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
   //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
   
-  // 20% of RAM will be considered as a reserve
+    // 20% of RAM will be considered as a reserve
   uint64_t reserve = static_cast<uint64_t>(available * 0.2);
 
-  // minimum reserve memory is 256MiB
+  // minimum reserve memory is 256MB
   reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
 
-  if (available <= reserve) {
-    // almost no memory available, it will not make sense to set a memory limit here
-    return 0;
+  double f = double(1.0) - (double(reserve) / double(available));
+  double dyn = (double(available) * f * 0.75);
+  if (dyn < 0.0) {
+    dyn = 0.0;
   }
-  // 80% of non-reserve memory can be used per query.
-  // this is still a high value
-  return static_cast<uint64_t>((available - reserve) * 0.75);
+
+  return std::max(static_cast<uint64_t>(dyn), static_cast<uint64_t>(0.25 * available));
 }
 
 } // namespace
@@ -154,7 +160,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
+                     "memory limit per AQL query (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
@@ -235,7 +241,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
   
   options->addOption("--query.parallelize-traversals",
                      "enable traversal parallelization",
@@ -292,6 +298,14 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void QueryRegistryFeature::prepare() {
+  // note that options() can be a nullptr during unit testing
+  if (server().options() != nullptr &&
+      !server().options()->processingResult().touched("--query.memory-limit")) {
+    LOG_TOPIC("f6e0e", INFO, Logger::AQL)
+        << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
+        << "to modify this value, please adjust the startup option `--query.memory-limit`";
+  }
+  
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
     // for the cluster

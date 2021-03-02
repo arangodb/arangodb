@@ -86,7 +86,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    int errorNum = TRI_ERROR_INTERNAL;
+    auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
     std::string errorMsg = response->getHttpReturnMessage();
     std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
     arangodb::velocypack::Slice error = bodyBuilder->slice();
@@ -689,8 +689,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption("--compress-output",
                      "compress files containing collection contents using gzip format (not compatible with encryption)",
                      new BooleanParameter(&_options.useGzip))
-                     .setIntroducedIn(30406)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30406);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1056,12 +1055,12 @@ void DumpFeature::start() {
                                                   !_options.overwrite, true,
                                                   _options.useGzip);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_EXISTS:
+    switch (static_cast<int>(_directory->status().errorNumber())) {
+      case static_cast<int>(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
         break;
-      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+      case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
             << "output directory '" << _options.outputPath
             << "' already exists. use \"--overwrite true\" to "

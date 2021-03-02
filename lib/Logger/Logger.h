@@ -265,6 +265,7 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setHostname(std::string const&);
   static void setShowIds(bool);
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
@@ -353,6 +354,7 @@ class Logger {
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
+  static std::string _hostname;
 
   static std::unique_ptr<LogThread> _loggingThread;
 };

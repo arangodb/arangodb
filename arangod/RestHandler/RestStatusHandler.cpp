@@ -269,7 +269,7 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+  auto const res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));

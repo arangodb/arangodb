@@ -87,7 +87,8 @@ void arangodb::tests::aql::AssertQueryHasResult(TRI_vocbase_t& database,
 }
 
 void arangodb::tests::aql::AssertQueryFailsWith(TRI_vocbase_t& database,
-                                                std::string const& query, int errorNumber) {
+                                                std::string const& query,
+                                                ErrorCode errorNumber) {
   auto const bindParameters = VPackParser::fromJson("{ }");
   SCOPED_TRACE("Query: " + query);
   auto queryResult = arangodb::tests::executeQuery(database, query, bindParameters);

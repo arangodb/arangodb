@@ -72,7 +72,7 @@ ErrorCode errorCodeFromBody(arangodb::velocypack::Slice body,
 
 /// @brief Extract all error baby-style error codes and store them in a map
 void errorCodesFromHeaders(network::Headers headers,
-                           std::unordered_map<int, size_t>& errorCounter,
+                           std::unordered_map<ErrorCode, size_t>& errorCounter,
                            bool includeNotFound);
 
 /// @brief transform response into arango error code
