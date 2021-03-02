@@ -102,22 +102,16 @@
     },
 
     downloadEntries: function () {
-      let toDownload = [];
-
-      // sort entries
+      // sort entries (primary by date, then by lid)
       this.fetchedEntries.sort(function compare(a, b) {
         let dateA = new Date(a.date);
         let dateB = new Date(b.date);
-        return dateA - dateB;
-      });
-
-      this.fetchedEntries.forEach(col => {
-        toDownload.push(JSON.stringify(col, null, 2));
+        return dateB - dateA || b.lid - a.lid;
       });
 
       let currentDate = new Date();
       let fileName = `LOGS-${currentDate.toISOString()}`;
-      arangoHelper.downloadLocalBlob(toDownload, 'json', fileName);
+      arangoHelper.downloadLocalBlob(JSON.stringify(this.fetchedEntries, null, 2), 'json', fileName);
     },
 
     loadMoreEntries: function () {
@@ -333,7 +327,7 @@
             entriesToAppend.push(entry);
 
             // keep history for export
-            self.fetchedEntries.push(entry);
+            self.fetchedEntries.push(model.toJSON());
           });
           // invert order
           self.renderLogs(self.invertArray(entriesToAppend), settings.lastInverseOffset);
