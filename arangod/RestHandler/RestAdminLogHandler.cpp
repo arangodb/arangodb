@@ -52,9 +52,11 @@ network::Headers buildHeaders(std::unordered_map<std::string, std::string> const
 
   network::Headers headers;
   if (auth != nullptr && auth->isActive()) {
-    for (auto& header : originalHeaders) {
-      headers.try_emplace(header.first, header.second);
-    }
+    headers.try_emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().jwtToken());
+  }
+  for (auto& header : originalHeaders) {
+    headers.try_emplace(header.first, header.second);
   }
   return headers;
 }
