@@ -13,29 +13,20 @@ files = os.listdir("Documentation/Metrics")
 files.sort()
 
 # Read list of metrics from source:
-s = open("arangod/RestServer/Metrics.cpp")
-
-while True:
-    l = s.readline()
-    if l == "":
-        print("Did not find metricsNameList in arangod/RestServer/Metrics.cpp!")
-        sys.exit(2)
-    if l.find("metricsNameList") >= 0:
-        break
-
+s = open("arangod/RestServer/MetricsFeature.h")
+linematch = re.compile("inline +constexpr +char +([a-z_A-Z]*) *\[] *=")
 metricsList = []
 while True:
     l = s.readline()
-    if l.find("nullptr") >= 0:
+    if l == "":
         break
-    pos1 = l.find('"')
-    pos2 = l.find('"', pos1+1)
-    if pos1 < 0 or pos2 < 0:
-        print("Did not find quoted name in this line:\n" + l)
-        sys.exit(3)
-    metricsList.append(l[pos1+1:pos2])
-
+    m = linematch.search(l)
+    if m:
+        metricsList.append(m.group(1))
 s.close()
+if len(metricsList) == 0:
+    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    sys.exit(2)
 
 # Check that every listed metric has a .yaml documentation file:
 missing = False
