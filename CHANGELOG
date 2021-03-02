@@ -1,6 +1,11 @@
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+  to any read request. Fixes a wrongly responded 404 from chaos
+  tests.
+
 * Fix issue #13476: The Java driver v6.9.0 (and older) has bad performance when
   iterating over AQL cursor results in certain cases. This works around this.
   This workaround will no longer be available in 3.8.
