@@ -1118,7 +1118,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(arangodb::LogicalCollect
       return replutils::buildHttpError(response.get(), url, _config.connection);
     }
 
-    VPackBuilder builder;
     Result r = replutils::parseResponse(builder, response.get());
 
     if (r.fail()) {
