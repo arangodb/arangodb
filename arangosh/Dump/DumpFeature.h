@@ -65,6 +65,7 @@ class DumpFeature final : public application_features::ApplicationFeature {
   /// @brief Holds configuration data to pass between methods
   struct Options {
     std::vector<std::string> collections{};
+    std::vector<std::string> shards{};
     std::string outputPath{};
     std::string maskingsFile{};
     uint64_t initialChunkSize{1024 * 1024 * 8};

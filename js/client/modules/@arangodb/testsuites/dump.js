@@ -64,8 +64,8 @@ const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
 let timeoutFactor = 1;
-if (global.ARANGODB_CLIENT_VERSION(true).asan  ||
-    global.ARANGODB_CLIENT_VERSION(true).tsan  ||
+if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
     process.env.hasOwnProperty('GCOV_PREFIX')) {
   timeoutFactor = 8;
 }

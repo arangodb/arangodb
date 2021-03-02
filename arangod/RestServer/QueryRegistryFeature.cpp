@@ -334,7 +334,10 @@ void QueryRegistryFeature::prepare() {
   GlobalResourceMonitor::instance().memoryLimit(_queryGlobalMemoryLimit);
   // prepare gauge value
   _globalQueryMemoryLimit = _queryGlobalMemoryLimit;
-
+  
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  // we are now intentionally not printing this message during testing,
+  // because otherwise it would be printed a *lot* of times
   // note that options() can be a nullptr during unit testing
   if (server().options() != nullptr &&
       !server().options()->processingResult().touched("--query.memory-limit")) {
@@ -342,6 +345,7 @@ void QueryRegistryFeature::prepare() {
         << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
         << "to modify this value, please adjust the startup option `--query.memory-limit`";
   }
+#endif
   
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
