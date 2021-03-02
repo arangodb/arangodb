@@ -231,7 +231,7 @@ describe('General graph creation', function () {
 
   describe("with defaults", testSuite.bind(this, {}));
 
-  let opts = { minReplicationFactor: 2 }
+  let opts = { minReplicationFactor: 2 };
   if (defaultReplicationFactor === 1) {
     opts.replicationFactor = 2;
   }
@@ -240,7 +240,7 @@ describe('General graph creation', function () {
     testSuite.bind(this, opts)
   );
   
-  opts = { numberOfShards: 3 }
+  opts = { numberOfShards: 3 };
   if (defaultReplicationFactor === 2) {
     opts.replicationFactor = 1;
   }
