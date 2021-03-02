@@ -45,21 +45,6 @@
         } else {
           var buttons = [];
           // analyze figures in cluster
-          if (frontendConfig.isCluster && figures && figures.figures) {
-            if (figures.figures.alive &&
-              figures.figures.alive.size === 0 &&
-              figures.figures.alive.count === 0 &&
-              figures.figures.datafiles.count === 0 &&
-              figures.figures.datafiles.fileSize === 0 &&
-              figures.figures.journals.count === 0 &&
-              figures.figures.journals.fileSize === 0 &&
-              figures.figures.compactors.count === 0 &&
-              figures.figures.compactors.fileSize === 0 &&
-              figures.figures.dead.size === 0 &&
-              figures.figures.dead.count === 0) {
-              figures.walMessage = ' - not ready yet - ';
-            }
-          }
           var tableContent = {
             figures: figures,
             revision: revision,
