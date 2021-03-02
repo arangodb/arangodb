@@ -158,6 +158,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
 
       network::RequestOptions options;
       options.timeout = network::Timeout(30.0);
+      options.database = _request->databaseName();
 
       auto f =
           network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
