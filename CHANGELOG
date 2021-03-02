@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI's info view of a collection now displays additional properties and
+  statistics (e.g. RocksDB related figures, sharding information and more).
+
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
 
