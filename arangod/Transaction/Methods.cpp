@@ -1058,6 +1058,14 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
   resultBuilder.openArray();
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
@@ -1335,6 +1343,16 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   }
 
   VPackBuilder resultBuilder;
+  Result res;
+
+  if (_state->isDBServer()) {
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return futures::makeFuture(
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+    }
+  }
+
   ManagedDocumentResult result;
 
   auto workForOneDocument = [&](VPackSlice const value, bool isMultiple) -> Result {
@@ -1381,7 +1399,6 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     return TRI_ERROR_NO_ERROR;
   };
 
-  Result res;
   std::unordered_map<int, size_t> countErrorCodes;
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
@@ -2326,6 +2343,15 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   pinData(cid);  // will throw when it fails
 
   VPackBuilder resultBuilder;
+
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
   resultBuilder.openArray();
 
   Result lockResult = lockRecursive(cid, AccessMode::Type::READ);
@@ -3292,19 +3318,19 @@ Future<Result> Methods::replicateOperations(
         auto r = resp.combinedResult();
         bool followerRefused = (r.errorNumber() == TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
         didRefuse = didRefuse || followerRefused;
-  
+
         if (followerRefused) {
           vocbase().server().getFeature<ClusterFeature>().trackFollowerRefusal();
 
           LOG_TOPIC("3032c", WARN, Logger::REPLICATION)
               << "synchronous replication: follower "
               << (*followerList)[i] << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name() 
+              << " in database " << collection->vocbase().name()
               << " refused the operation: " << r.errorMessage();
         }
       }
-  
-      TRI_IF_FAILURE("replicateOperationsDropFollower") { 
+
+      TRI_IF_FAILURE("replicateOperationsDropFollower") {
         replicationWorked = false;
       }
 
@@ -3315,7 +3341,7 @@ Future<Result> Methods::replicateOperations(
             << deadFollower << " for shard " << collection->name()
             << ", status code: " << static_cast<int>(resp.statusCode())
             << ", message: " << network::fuerteToArangoErrorMessage(resp);
-        
+
         vocbase().server().getFeature<ClusterFeature>().trackFollowerDropped();
         Result res = collection->followers()->remove(deadFollower);
         if (res.ok()) {
@@ -3324,12 +3350,12 @@ Future<Result> Methods::replicateOperations(
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication: dropped follower "
               << deadFollower << " for shard " << collection->name()
-              << " in database " << collection->vocbase().name(); 
+              << " in database " << collection->vocbase().name();
         } else {
           LOG_TOPIC("db473", ERR, Logger::REPLICATION)
               << "synchronous replication: could not drop follower "
-              << deadFollower << " for shard " << collection->name() 
-              << " in database " << collection->vocbase().name() 
+              << deadFollower << " for shard " << collection->name()
+              << " in database " << collection->vocbase().name()
               << ": " << res.errorMessage();
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
         }
