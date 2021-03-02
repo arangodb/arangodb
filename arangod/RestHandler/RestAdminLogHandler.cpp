@@ -128,8 +128,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
   std::string serverId =
       StringUtils::tolower(_request->value("serverId", foundServerIdParameter));
 
-  if (ServerState::instance()->isCoordinator() &&
-      ServerState::instance()->isRunningInCluster() && foundServerIdParameter) {
+  if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != StringUtils::tolower(ServerState::instance()->getId())) {
       // not ourselves! - need to pass through the request
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
