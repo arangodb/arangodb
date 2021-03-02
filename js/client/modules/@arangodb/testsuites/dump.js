@@ -69,7 +69,7 @@ if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
     global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
     (platform.substr(0, 3) === 'win')) {
   timeoutFactor = 8;
-} else   if (process.env.hasOwnProperty('GCOV_PREFIX'))
+} else if (process.env.hasOwnProperty('GCOV_PREFIX')) {
     timeoutFactor = 16;
 }
 
