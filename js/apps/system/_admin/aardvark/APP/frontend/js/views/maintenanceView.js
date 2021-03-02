@@ -57,7 +57,7 @@
         });
 
         if (navi !== false) {
-          arangoHelper.buildNodesSubNav('Maintenance');
+          arangoHelper.buildClusterSubNav('Maintenance');
         }
       }
     },

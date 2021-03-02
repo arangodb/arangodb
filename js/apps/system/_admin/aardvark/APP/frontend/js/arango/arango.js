@@ -449,6 +449,29 @@
       this.buildSubNavBar(menus);
     },
 
+    buildClusterSubNav: function (activeKey, disabled) {
+      let enableMaintenanceMode = false;
+      if (frontendConfig.showMaintenanceStatus && frontendConfig.db === '_system') {
+        enableMaintenanceMode = true;
+      }
+
+      var menus = {
+        Dashboard: {
+          route: '#cluster'
+        },
+        Maintenance: {
+          route: '#maintenance',
+          disabled: enableMaintenanceMode
+        }
+      };
+
+      menus[activeKey].active = true;
+      if (disabled) {
+        menus[activeKey].disabled = true;
+      }
+      this.buildSubNavBar(menus, disabled);
+    },
+
     buildNodesSubNav: function (activeKey, disabled) {
       var menus = {
         Overview: {
@@ -456,15 +479,8 @@
         },
         Shards: {
           route: '#shards'
-        },
-        Maintenance: {
-          route: '#maintenance'
         }
       };
-
-      if (window.frontendConfig.db !== '_system') {
-        disabled = true;
-      }
 
       menus[activeKey].active = true;
       if (disabled) {
@@ -502,75 +518,6 @@
       }
       this.buildSubNavBar(menus);
     },
-
-    scaleability: undefined,
-
-    /*
-    //nav for cluster/nodes view
-    buildNodesSubNav: function(type) {
-
-      //if nothing is set, set default to coordinator
-      if (type === undefined) {
-        type = 'coordinator'
-      }
-
-      if (this.scaleability === undefined) {
-        var self = this
-
-        $.ajax({
-          type: "GET",
-          cache: false,
-          url: arangoHelper.databaseUrl("/_admin/cluster/numberOfServers"),
-          contentType: "application/json",
-          processData: false,
-          success: function(data) {
-            if (data.numberOfCoordinators !== null && data.numberOfDBServers !== null) {
-              self.scaleability = true
-              self.buildNodesSubNav(type)
-            }
-            else {
-              self.scaleability = false
-            }
-          }
-        })
-      }
-
-      var menus = {
-        Coordinators: {
-          route: '#cNodes'
-        },
-        DBServers: {
-          route: '#dNodes'
-        }
-      }
-
-      menus.Scale = {
-        route: '#sNodes',
-        disabled: true
-      }
-
-      if (type === 'coordinator') {
-        menus.Coordinators.active = true
-      }
-      else if (type === 'scale') {
-        if (this.scaleability === true) {
-          menus.Scale.active = true
-        }
-        else {
-          window.App.navigate('#nodes', {trigger: true})
-        }
-      }
-      else {
-        menus.DBServers.active = true
-      }
-
-      if (this.scaleability === true) {
-        menus.Scale.disabled = false
-      }
-
-      this.buildSubNavBar(menus)
-    },
-    */
 
     // nav for collection view
     buildCollectionSubNav: function (collectionName, activeKey) {
