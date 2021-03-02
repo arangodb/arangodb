@@ -2,8 +2,9 @@ devel
 -----
 
 * Added ability to display Coordinator and DBServer logs from inside the Web UI
-  in a clustered environment. Additionally, displayed log entries can now be
-  downloaded as well.
+  in a clustered environment when privileges are sufficient. 
+  Additionally, displayed log entries can now be downloaded from the web UI is single server
+  and in cluster mode.
 
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.
