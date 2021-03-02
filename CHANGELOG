@@ -3,7 +3,7 @@ devel
 
 * Added ability to display Coordinator and DBServer logs from inside the Web UI
   in a clustered environment when privileges are sufficient. 
-  Additionally, displayed log entries can now be downloaded from the web UI is 
+  Additionally, displayed log entries can now be downloaded from the web UI is
   single server and in cluster mode.
 
 * Fixed issue BTS-309: The Graph API (Gharial) did not respond with the correct
