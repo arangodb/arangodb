@@ -67,10 +67,12 @@ const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f
 let timeoutFactor = 1;
 if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
     global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
-    process.env.hasOwnProperty('GCOV_PREFIX') ||
     (platform.substr(0, 3) === 'win')) {
   timeoutFactor = 8;
+} else   if (process.env.hasOwnProperty('GCOV_PREFIX'))
+    timeoutFactor = 16;
 }
+
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
