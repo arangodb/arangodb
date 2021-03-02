@@ -17,10 +17,26 @@
     },
 
     render: function () {
+      var self = this;
       this.breadcrumb();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
-      this.renderInfoView();
+      if (frontendConfig.isCluster) {
+        let clusterData = {};
+        let callbackShardCount = function (error, data) {
+          if (error) {
+            arangoHelper.arangoError('Figures', 'Could not get figures.');
+            // in error case: try to render the other information
+            self.renderInfoView();
+          }
+          clusterData.shardCounts = data.count;
+          self.renderInfoView(clusterData);
+        };
+        this.model.getShardCounts(callbackShardCount);
+      } else {
+        this.renderInfoView();
+      }
+
       // check permissions and adjust views
       arangoHelper.checkCollectionPermissions(this.collectionName, this.changeViewToReadOnly);
     },
@@ -35,7 +51,7 @@
       );
     },
 
-    renderInfoView: function () {
+    renderInfoView: function (cluster) {
       if (this.model.get('locked')) {
         return 0;
       }
@@ -48,7 +64,8 @@
           var tableContent = {
             figures: figures,
             revision: revision,
-            model: this.model
+            model: this.model,
+            cluster: cluster || {}
           };
 
           window.modalView.show(

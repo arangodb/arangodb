@@ -1,6 +1,7 @@
 <%
 var figuresData = content.figures || {};
 var revision = content.revision;
+var clusterData = content.cluster || {};
 
 if (!figuresData.figures) {
   figuresData.figures = {};
@@ -8,6 +9,10 @@ if (!figuresData.figures) {
 %>
 
 <div>
+  <div
+    style="color: #717d90; font-weight: 600; font-size: 12.5pt; padding: 10px; border-bottom: 1px solid rgba(0, 0, 0, .3);">
+    Properties
+  </div>
   <table id="collectionInfoTable" class="arango-table">
     <tr id="collectionSyncBox">
       <th class="collectionInfoTh2">Wait for sync:</th>
@@ -63,43 +68,105 @@ if (!figuresData.figures) {
       </th>
     </tr>
 
-    <% if (figuresData.numberOfShards) { %>
+    <% if (figuresData.hasOwnProperty('cacheEnabled') && figuresData.cacheEnabled) { %>
       <tr>
-        <th class="collectionInfoTh2">Number of shards:</th>
+        <th class="collectionInfoTh2">Cache enabled:</th>
         <th class="collectionInfoTh">
-          <div class="modal-text"><%= figuresData.numberOfShards %></div>
+          <div class="modal-text"><%= figuresData.cacheEnabled %></div>
         </th>
         <th class="collectionInfoTh">
         </th>
       </tr>
     <% } %>
 
-    <% if (figuresData.shards) { %>
+    <% if (figuresData.hasOwnProperty('isSystem')) { %>
       <tr>
-        <th class="collectionInfoTh2">Shards:</th>
+        <th class="collectionInfoTh2">System collection:</th>
         <th class="collectionInfoTh">
-          <div class="modal-text">
-            <% var allShards = Object.keys(figuresData.shards);
-            allShards.forEach(function(shardName, index) {
-            %>
-              <%= (index > 0 ? '<br />' : '') %>
-              <%= shardName %>: [ <%= figuresData.shards[shardName].join('  -  ') %> ]
-
-            <% }); %>
-          </div>
+          <div class="modal-text"><%= figuresData.isSystem %></div>
         </th>
         <th class="collectionInfoTh">
         </th>
       </tr>
     <% } %>
+  </table>
 
+  <% if (figuresData.hasOwnProperty('figures')) { %>
+    <div
+      style="color: #717d90; font-weight: 600; font-size: 12.5pt; padding: 10px; border-bottom: 1px solid rgba(0, 0, 0, .3); border-top: 1px solid rgba(0, 0, 0, .3)">
+      Figures
+    </div>
+    <table id="collectionFiguresTable" class="arango-table">
+
+      <% if (figuresData.figures.hasOwnProperty('documentsSize')) { %>
+        <tr>
+          <th class="collectionInfoTh2">Estimated documents size:</th>
+          <th class="collectionInfoTh">
+            <div class="modal-text"><%= figuresData.figures.documentsSize %></div>
+          </th>
+          <th class="tooltipInfoTh">
+            <div>
+                <span class="modalTooltips arangoicon icon_arangodb_info"
+                      title="The approximate size of all documents in this collection. This is an estimate only and not accurate.">
+                </span>
+            </div>
+          </th>
+        </tr>
+      <% } %>
+
+      <% if (figuresData.figures.hasOwnProperty('indexes')) { %>
+
+        <% if (figuresData.figures.indexes.hasOwnProperty('count')) { %>
+          <% let amountOfIndexes = figuresData.figures.indexes.count; %>
+          <tr>
+            <th class="collectionInfoTh2">Amount of indexes:</th>
+            <th class="collectionInfoTh">
+              <div class="modal-text"><%= amountOfIndexes %></div>
+            </th>
+            <th class="tooltipInfoTh">
+            </th>
+          </tr>
+
+          <% if (amountOfIndexes > 0 && figuresData.figures.indexes.hasOwnProperty('size')) { %>
+            <tr>
+              <th class="collectionInfoTh2">Size of indexes:</th>
+              <th class="collectionInfoTh">
+                <div class="modal-text"><%= figuresData.figures.indexes.size %></div>
+              </th>
+              <th class="tooltipInfoTh">
+                <div>
+                  <span class="modalTooltips arangoicon icon_arangodb_info"
+                        title="The approximate size of all indexes in this collection. This is an estimate only and not accurate.">
+                  </span>
+                </div>
+              </th>
+            </tr>
+          <% } %>
+
+        <% } %>
+
+      <% } %>
+    </table>
+
+  <% } %>
+
+  <div
+    style="color: #717d90; font-weight: 600; font-size: 12.5pt; padding: 10px; border-bottom: 1px solid rgba(0, 0, 0, .3); border-top: 1px solid rgba(0, 0, 0, .3)">
+    Distribution
+  </div>
+  <table id="collectionDistributionTable" class="arango-table">
     <% if (figuresData.replicationFactor) { %>
       <tr>
         <th class="collectionInfoTh2">Replication factor:</th>
         <th class="collectionInfoTh">
           <div class="modal-text"><%= figuresData.replicationFactor %></div>
         </th>
-        <th class="collectionInfoTh">
+        <th class="tooltipInfoTh">
+          <div>
+                <span class="modalTooltips arangoicon icon_arangodb_info"
+                      title="Determines how many copies of each shard are kept on different DB-Servers.">
+                </span>
+          </div>
         </th>
       </tr>
     <% } %>
@@ -110,7 +177,12 @@ if (!figuresData.figures) {
         <th class="collectionInfoTh">
           <div class="modal-text"><%= figuresData.writeConcern %></div>
         </th>
-        <th class="collectionInfoTh">
+        <th class="tooltipInfoTh">
+          <div>
+                <span class="modalTooltips arangoicon icon_arangodb_info"
+                      title="Determines how many copies of each shard are required to be in sync on the different DB-Servers. If there are less then these many copies in the cluster a shard will refuse to write. Writes to shards with enough up-to-date copies will succeed at the same time however. The value of writeConcern can not be larger than replicationFactor">
+                </span>
+          </div>
         </th>
       </tr>
     <% } %>
@@ -121,7 +193,12 @@ if (!figuresData.figures) {
         <th class="collectionInfoTh">
           <div class="modal-text"><%= JSON.stringify(figuresData.shardKeys) %></div>
         </th>
-        <th class="collectionInfoTh">
+        <th class="tooltipInfoTh">
+          <div>
+                <span class="modalTooltips arangoicon icon_arangodb_info"
+                      title="Contains the names of document attributes that are used to determine the target shard for documents.">
+                </span>
+          </div>
         </th>
       </tr>
     <% } %>
@@ -148,5 +225,100 @@ if (!figuresData.figures) {
       </tr>
     <% } %>
 
+    <% if (figuresData.hasOwnProperty('isSmartChild') && figuresData.isSmartChild) { %>
+      <tr>
+        <th class="collectionInfoTh2">SmartChild:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.isSmartChild %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
+
+    <% if (figuresData.hasOwnProperty('isDisjoint') && figuresData.isDisjoint) { %>
+      <tr>
+        <th class="collectionInfoTh2">Disjoint collection:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.isDisjoint %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
+
+    <% if (figuresData.numberOfShards) { %>
+      <tr>
+        <th class="collectionInfoTh2">Number of shards:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text"><%= figuresData.numberOfShards %></div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
+
+    <% if (figuresData.shards) { %>
+      <tr>
+        <th class="collectionInfoTh2">Shards:</th>
+        <th class="collectionInfoTh">
+          <div class="modal-text">
+            <table class="pure-table pure-table-inner">
+              <thead>
+              <tr>
+                <th>Name:</th>
+                <th>Amount:</th>
+                <th>Leader</th>
+                <th>Follower</th>
+              </tr>
+
+              <%
+                let allShards = Object.keys(figuresData.shards);
+                let shardCounts = {};
+                if (clusterData.hasOwnProperty('shardCounts')) {
+                  shardCounts = clusterData.shardCounts;
+                }
+              allShards.forEach(function(shardName, index) {
+                let count;
+                if (shardCounts.hasOwnProperty(shardName)) {
+                  count = shardCounts[shardName];
+                } else {
+                  count = 'n/A';
+                }
+              %>
+
+              <tr>
+                <td>
+                  <span><%= shardName %></span>
+                </td>
+                <td>
+                  <span><%= count %>
+                </td>
+                <td>
+                  <span><%= figuresData.shards[shardName][0] %></span>
+                </td>
+                <td>
+                  <ul>
+                    <% figuresData.shards[shardName].splice(1, figuresData.shards[shardName].length).forEach(follower => { %>
+                      <li>
+                        <span><%=follower%></span>
+                      </li>
+                    <% }); %>
+
+                  </ul>
+                </td>
+              </tr>
+
+              <% }); %>
+
+              </thead>
+            </table>
+          </div>
+        </th>
+        <th class="collectionInfoTh">
+        </th>
+      </tr>
+    <% } %>
   </table>
+
 </div>
