@@ -40,6 +40,7 @@
 #include "Logger/LoggerFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -141,6 +142,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
         if (StringUtils::tolower(srv.first) == serverId) {
           serverId = srv.first;
           found = true;
+          break;
         }
       }
 
@@ -164,9 +166,14 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
           network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
                                _request->requestPath(),
                                VPackBuffer<uint8_t>{}, options, buildHeaders(_request->headers()));
-      f.get();
 
-      generateResult(rest::ResponseCode::OK, f.result()->slice());
+      network::Response const& r = f.get();
+      if (r.fail()) {
+        generateError(network::fuerteToArangoErrorCode(r));
+      } else {
+        generateResult(rest::ResponseCode::OK, f.result()->slice());
+      }
+
       return;
     }
   }
