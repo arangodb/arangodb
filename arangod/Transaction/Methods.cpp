@@ -1730,7 +1730,6 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
-  resultBuilder.openArray();
 
   if (_state->isDBServer()) {
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
@@ -1740,6 +1739,8 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
     }
   }
 
+  resultBuilder.openArray();
+  
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   iterator->allDocuments(
