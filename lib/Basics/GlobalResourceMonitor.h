@@ -49,12 +49,9 @@ class alignas(64) GlobalResourceMonitor final {
   /// @brief return the current global memory usage
   std::int64_t current() const noexcept;
   
-  /// @brief the current memory usage to zero
-  void clear() noexcept;
-  
   /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
   /// memory limit, does not perform the increase and returns false. if increasing
-  /// succeds, the global value is modified and true is returned
+  /// succeeds, the global value is modified and true is returned
   /// Note: value must be >= 0
   [[nodiscard]] bool increaseMemoryUsage(std::int64_t value) noexcept;
   

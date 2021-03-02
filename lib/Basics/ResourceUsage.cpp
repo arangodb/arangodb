@@ -63,8 +63,8 @@ std::uint64_t ResourceMonitor::memoryLimit() const noexcept {
 /// the only thing that can have happened is the update of the current local
 /// memory usage, which this function will roll back again.
 /// as this function only adds and subtracts values from the memory usage
-/// counters, it only does not lead to any lost updates due to data races
-/// with other threads.
+/// counters, it  does not lead to any lost updates due to data races with
+/// other threads.
 /// the peak memory usage value is updated with a CAS operation, so again
 /// there will no be lost updates.
 void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
@@ -94,20 +94,20 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     auto rollback = [this, value, diff]() {
       // When rolling back, we have to consider that our change to the local memory usage
       // might have affected other threads.
-      // Suppose we have a blocksize of 10 and a global memory limit of 20 (=2*10).
-      //   - Thread A increments local memory by 18 (=> exact global=18) and global memory by 1*10
+      // Suppose we have a chunk size of 10 and a global memory limit of 20 (=2 chunks).
+      //   - Thread A increments local memory by 18 (=> exact global=18) and global memory by 1 chunk
       //   - Thread B increments local memory by 13 (=> exact global=31) and attempts to update global
-      //     memory by 2*10, which would exceed the limit, but before we can rollback the update to
+      //     memory by 2 chunks, which would exceed the limit, but before we can rollback the update to
       //     the local memory, Thread A already decreases by 18 again (=> exact global=13), so Thread A
-      //     would decrease global memory by 2*10!
-      // Thread A first increases by 1*10, but later decreases by 2*10 - this can cause the global memory
-      // to underflow! The reason for this difference is due to the change to local memory by Thread B,
-      // so any such difference has to be considered during rollback.
+      //     would decrease global memory by 2 chunks!
+      // Thread A first increases by 1 chunk, but later decreases by 2 chunks - this can cause the
+      // global memory to underflow! The reason for this difference is due to the change to local memory
+      // by Thread B, so any such difference has to be considered during rollback.
       // 
       // When Thread B now performs its rollback - decreasing by 13 (=> exact global=0) - we would
-      // decrease global memory by 1*10, but our initial attempt to increase was 2*10 - this is exactly
-      // the difference of 1*10 that Thread A has decreased more, so we have to take this into account
-      // and increase global memory by 1*10 to balance this out.
+      // decrease global memory by 1 chunk, but our initial attempt to increase was 2 chunks - this is
+      // exactly the difference of 1 chunk that Thread A has decreased more, so we have to take this into
+      // account and increase global memory by 1 chunk to balance this out.
       std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
       std::uint64_t adjustedCurrent = adjustedPrevious - value;
   

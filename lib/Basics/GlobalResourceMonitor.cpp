@@ -48,25 +48,27 @@ std::int64_t GlobalResourceMonitor::memoryLimit() const noexcept {
 std::int64_t GlobalResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }
-
-/// @brief the current memory usage to zero
-void GlobalResourceMonitor::clear() noexcept {
-  _current = 0;
-}
   
 /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
 /// memory limit, does not perform the increase and returns false. if increasing
-/// succeds, the global value is modified and true is returned
+/// succeeds, the global value is modified and true is returned
 bool GlobalResourceMonitor::increaseMemoryUsage(std::int64_t value) noexcept {
   TRI_ASSERT(value >= 0);
-  auto previous = _current.fetch_add(value, std::memory_order_relaxed);
-  if (_limit > 0 && ADB_UNLIKELY(previous + value > _limit)) {
-    // the allocation would exceed the global maximum value, so we need to roll back.
-    // revert the change to the global counter
-    _current.fetch_sub(value, std::memory_order_relaxed);
-    return false;
+  if (_limit == 0) {
+    // since we have no limit, we can simply use fetch-add for the increment
+    _current.fetch_add(value, std::memory_order_relaxed);
+  } else {
+    // we only want to perform the update if we don't exceed the limit!
+    std::int64_t cur = _current.load(std::memory_order_relaxed);
+    std::int64_t next;
+    do {
+      next = cur + value;
+      if (ADB_UNLIKELY(next > _limit)) {
+        return false;
+      }
+    } while (!_current.compare_exchange_weak(cur, next, std::memory_order_relaxed));
   }
-
+  
   return true;
 }
   
