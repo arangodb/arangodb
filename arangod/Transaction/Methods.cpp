@@ -1062,7 +1062,7 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
     std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
     auto const& followerInfo = collection->followers();
     if (!followerInfo->getLeader().empty()) {
-      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION);
     }
   }
 
