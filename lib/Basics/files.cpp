@@ -638,7 +638,7 @@ ErrorCode TRI_RemoveDirectory(char const* filename) {
 /// @brief removes a directory recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RemoveDirectoryDeterministic(char const* filename) {
+ErrorCode TRI_RemoveDirectoryDeterministic(char const* filename) {
   std::vector<std::string> files = TRI_FullTreeDirectory(filename);
   // start removing files from long names to short names
   std::sort(files.begin(), files.end(),
@@ -968,7 +968,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
 /// @brief saves data to a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_WriteFile(char const* filename, char const* data, size_t length) {
+ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length) {
   int fd;
   bool result;
 
@@ -1499,7 +1499,7 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
 
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
-int TRI_DestroyLockFile(char const* filename) {
+ErrorCode TRI_DestroyLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1517,7 +1517,7 @@ int TRI_DestroyLockFile(char const* filename) {
 
 #else
 
-int TRI_DestroyLockFile(char const* filename) {
+ErrorCode TRI_DestroyLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
     if (OpenedFiles[i].first == filename) {
@@ -1534,10 +1534,13 @@ int TRI_DestroyLockFile(char const* filename) {
       lock.l_type = F_UNLCK;
       lock.l_whence = SEEK_SET;
       // release the lock
-      int res = fcntl(fd, F_SETLK, &lock);
+      auto res = TRI_ERROR_NO_ERROR;
+      if (0 != fcntl(fd, F_SETLK, &lock)) {
+        res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+      }
       TRI_CLOSE(fd);
 
-      if (res == 0) {
+      if (res == TRI_ERROR_NO_ERROR) {
         TRI_UnlinkFile(filename);
       }
 
@@ -2174,7 +2177,7 @@ static std::string getTempPath() {
   return result;
 }
 
-static int mkDTemp(char* s, size_t bufferSize) {
+static ErrorCode mkDTemp(char* s, size_t bufferSize) {
   std::string tmp(s, bufferSize);
   std::wstring ws = toWString(tmp);
 
@@ -2183,6 +2186,7 @@ static int mkDTemp(char* s, size_t bufferSize) {
   writeBuffer.resize(ws.size());
   memcpy(writeBuffer.data(), ws.data(), sizeof(wchar_t) * ws.size());
   auto rc = _wmktemp_s(writeBuffer.data(), writeBuffer.size());  // requires writeable buffer -- returns errno_t
+  auto rv = TRI_ERROR_NO_ERROR;
 
   if (rc == 0) {  // error of 0 is ok
     // if it worked out, we need to return the utf8 version:
@@ -2192,22 +2196,23 @@ static int mkDTemp(char* s, size_t bufferSize) {
     rc = TRI_MKDIR(s, 0700);
     if (rc != 0) {
       rc = errno;
+      rv = TRI_set_errno(TRI_ERROR_SYS_ERROR);
       if (rc == ENOENT) {
         // for some reason we should create the upper directory too?
         std::string error;
         long systemError;
-        rc = TRI_CreateRecursiveDirectory(s, systemError, error);
-        if (rc != 0) {
+        rv = TRI_CreateRecursiveDirectory(s, systemError, error);
+        if (rv != TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
             << "Unable to create temporary directory " << error;
-
         }
       }
     }
+  } else {
+    rv = TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
-  // should error be translated to arango error code?
-  return rc;
+  return rv;
 }
 
 #else
@@ -2226,11 +2231,11 @@ static std::string getTempPath() {
   return system;
 }
 
-static int mkDTemp(char* s, size_t /*bufferSize*/) {
+static ErrorCode mkDTemp(char* s, size_t /*bufferSize*/) {
   if (mkdtemp(s) != nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
-  return errno;
+  return TRI_set_errno(TRI_ERROR_SYS_ERROR);
 }
 
 #endif
@@ -2298,7 +2303,7 @@ std::string TRI_GetTempPath() {
       path = SystemTempPath.get();
       TRI_CopyString(path, system.c_str(), system.size());
 
-      int res;
+      auto res = TRI_ERROR_NO_ERROR;
       if (!UserTempPath.empty()) {
         // --temp.path was specified
         if (TRI_IsDirectory(system.c_str())) {
@@ -2306,7 +2311,9 @@ std::string TRI_GetTempPath() {
           break;
         }
 
-        res = TRI_MKDIR(UserTempPath.c_str(), 0700);
+        res = 0 == TRI_MKDIR(UserTempPath.c_str(), 0700)
+                  ? TRI_ERROR_NO_ERROR
+                  : TRI_set_errno(TRI_ERROR_SYS_ERROR);
       } else {
         // no --temp.path was specified
         // fill template and create directory
@@ -2365,8 +2372,8 @@ std::string TRI_GetTempPath() {
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
-                    long& systemError, std::string& errorMessage) {
+ErrorCode TRI_GetTempName(char const* directory, std::string& result, bool createFile,
+                          long& systemError, std::string& errorMessage) {
   std::string temp = TRI_GetTempPath();
 
   std::string dir;

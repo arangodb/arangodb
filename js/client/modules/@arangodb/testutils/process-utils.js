@@ -85,8 +85,12 @@ class ConfigBuilder {
   }
 
   setAuth(username, password) {
-    this.config['server.username'] = username;
-    this.config['server.password'] = password;
+    if (username !== undefined) {
+      this.config['server.username'] = username;
+    }
+    if (password !== undefined) {
+      this.config['server.password'] = password;
+    }
   }
   setEndpoint(endpoint) { this.config['server.endpoint'] = endpoint; }
   setDatabase(database) {
@@ -117,6 +121,10 @@ class ConfigBuilder {
     } else {
       this.config['create-database'] = 'false';
     }
+  }
+  setJwtFile(file) {
+    delete this.config['server.password'];
+    this.config['server.jwt-secret-keyfile'] = file;
   }
   setMaskings(dir) {
     if (this.type !== 'dump') {
@@ -189,7 +197,15 @@ class ConfigBuilder {
 
 const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
   const cfg = new ConfigBuilder(type);
-  cfg.setAuth(options.username, options.password);
+  if (!options.jwtSecret) {
+    cfg.setAuth(options.username, options.password);
+  }
+  if (options.hasOwnProperty('logForceDirect')) {
+    cfg.config['log.force-direct'] = true;
+  }
+  if (options.hasOwnProperty('serverRequestTimeout')) {
+    cfg.config['server.request-timeout'] = options.serverRequestTimeout;
+  }
   cfg.setDatabase(database);
   cfg.setEndpoint(instanceInfo.endpoint);
   cfg.setRootDir(instanceInfo.rootDir);
@@ -602,6 +618,15 @@ function getProcessStats(pid) {
       print(x.stack);
       throw x;
     }
+    /*
+     * rchar: 1409391
+     * wchar: 681539
+     * syscr: 3303
+     * syscw: 2969
+     * read_bytes: 0
+     * write_bytes: 0
+     * cancelled_write_bytes: 0
+     */
     let lineStart = 0;
     let maxBuffer = ioraw.length;
     for (let j = 0; j < maxBuffer; j++) {
@@ -612,6 +637,25 @@ function getProcessStats(pid) {
         processStats[x[0]] = parseInt(x[1]);
       }
     }
+    /* 
+     * sockets: used 1272
+     * TCP: inuse 27 orphan 0 tw 117 alloc 382 mem 25
+     * UDP: inuse 19 mem 17
+     * UDPLITE: inuse 0
+     * RAW: inuse 0
+     * FRAG: inuse 0 memory 0
+     */
+    ioraw = getSockStatFile(pid);
+    ioraw.split('\n').forEach(line => {
+      if (line.length > 0) {
+        let x = line.split(":");
+        let values = x[1].split(" ");
+        for (let k = 1; k < values.length; k+= 2) {
+          processStats['sockstat_' + x[0] + '_' + values[k]]
+            = parseInt(values[k + 1]);
+        }
+      }
+    });
   }
   return processStats;
 }
@@ -625,15 +669,28 @@ function initProcessStats(instanceInfo) {
 function getDeltaProcessStats(instanceInfo) {
   try {
     let deltaStats = {};
+    let deltaSum = {};
     instanceInfo.arangods.forEach((arangod) => {
       let newStats = getProcessStats(arangod.pid);
       let myDeltaStats = {};
       for (let key in arangod.stats) {
-        myDeltaStats[key] = newStats[key] - arangod.stats[key];
+        if (key.startsWith('sockstat_')) {
+          myDeltaStats[key] = newStats[key];
+        } else {
+          myDeltaStats[key] = newStats[key] - arangod.stats[key];
+        }
       }
       deltaStats[arangod.pid + '_' + arangod.role] = myDeltaStats;
       arangod.stats = newStats;
+      for (let key in myDeltaStats) {
+        if (deltaSum.hasOwnProperty(key)) {
+          deltaSum[key] += myDeltaStats[key];
+        } else {
+          deltaSum[key] = myDeltaStats[key];
+        }
+      }
     });
+    deltaStats['sum_servers'] = deltaSum;
     return deltaStats;
   }
   catch (x) {
@@ -1340,12 +1397,14 @@ function executeArangod (cmd, args, options) {
 function getSockStat(arangod, options, preamble) {
   if (options.getSockStat && (platform === 'linux')) {
     let sockStat = preamble + arangod.pid + "\n";
-    try {
-      sockStat += fs.read("/proc/" + arangod.pid + "/net/sockstat");
-      return sockStat;
-    }
-    catch (e) {/* oops, process already gone? don't care. */ }
+    sockStat += getSockStatFile(arangod.pid);
+    return sockStat;
   }
+}
+function getSockStatFile(pid) {
+  try {
+    return fs.read("/proc/" + pid + "/net/sockstat");
+  } catch (e) {/* oops, process already gone? don't care. */ }
   return "";
 }
 

@@ -33,6 +33,8 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <fuerte/jwt.h>
+
 namespace {
 
 arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* result) {
@@ -54,13 +56,12 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    auto serverCode =
-        ErrorCode{VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0)};
+    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
     std::string const& serverMessage =
         VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
     if (serverCode > 0) {
-      code = serverCode;
+      code = ErrorCode{serverCode};
       message.append(": ArangoError " + itoa(serverCode) + ": " + serverMessage);
     }
   } catch (...) {
@@ -95,6 +96,9 @@ Result ClientManager::getConnectedClient(std::unique_ptr<httpclient::SimpleHttpC
   std::string dbName = client.databaseName();
   httpClient->params().setLocationRewriter(static_cast<void*>(&client), &rewriteLocation);
   httpClient->params().setUserNamePassword("/", client.username(), client.password());
+  if (!client.jwtSecret().empty()) {
+    httpClient->params().setJwt(fuerte::jwt::generateInternalToken(client.jwtSecret(), client.endpoint()));
+  }
 
   // now connect by retrieving version
   ErrorCode errorCode = TRI_ERROR_NO_ERROR;

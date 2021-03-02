@@ -25,7 +25,7 @@
 #define ARANGOSH_UTILS_PROGRESS_TRACKER_H 1
 
 #include "ManagedDirectory.h"
-#include "Basics/ScopeGuard.h"
+#include "Basics/FileUtils.h"
 
 namespace arangodb {
 template <typename T>
@@ -38,7 +38,9 @@ struct ProgressTracker {
   ProgressTracker& operator=(ProgressTracker&&) noexcept = delete;
 
   T getStatus(std::string const& collectionName);
-  void updateStatus(std::string const& collectionName, T const& status);
+  /// @brief returns true if the progress was synced to disc
+  bool updateStatus(std::string const& collectionName, T const& status);
+  std::string filename() const;
 
   ManagedDirectory& directory;
   std::shared_mutex _collectionStatesMutex;
@@ -48,14 +50,14 @@ struct ProgressTracker {
 };
 
 template <typename T>
-void ProgressTracker<T>::updateStatus(std::string const& collectionName,
-                                                      T const& status) {
+bool ProgressTracker<T>::updateStatus(std::string const& collectionName,
+                                      T const& status) {
   {
     std::unique_lock guard(_collectionStatesMutex);
     _collectionStates[collectionName] = status;
 
     if (_writeQueued) {
-      return;
+      return false;
     }
 
     _writeQueued = true;
@@ -80,6 +82,7 @@ void ProgressTracker<T>::updateStatus(std::string const& collectionName,
     arangodb::basics::VelocyPackHelper::velocyPackToFile(directory.pathToFile("continue.json"),
                                                          VPackSlice(buffer.data()), true);
   }
+  return true;
 }
 
 template <typename T>
@@ -92,7 +95,7 @@ template <typename T>
 ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExisting)
     : directory(directory) {
   if (ignoreExisting) {
-    return ;
+    return;
   }
 
   VPackBuilder progressBuilder = directory.vpackFromJsonFile("continue.json");
@@ -106,6 +109,11 @@ ProgressTracker<T>::ProgressTracker(ManagedDirectory& directory, bool ignoreExis
   for (auto&& [key, value] : VPackObjectIterator(progress)) {
     _collectionStates[key.copyString()] = T(value);
   }
+}
+
+template <typename T>
+std::string ProgressTracker<T>::filename() const {
+  return directory.pathToFile("continue.json");
 }
 
 }

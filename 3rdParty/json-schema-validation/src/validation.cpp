@@ -81,25 +81,27 @@ template<template<typename...> class Traits>
 }
 
 // use basics strings
-std::string const key_string = "_key";
-std::string const rev_string = "_rev";
-std::string const id_string = "_id";
-std::string const from_string = "_from";
-std::string const to_string = "_to";
+namespace strings {
+std::string const key = "_key";
+std::string const rev = "_rev";
+std::string const id = "_id";
+std::string const from = "_from";
+std::string const to = "_to";
+}
 
 } // namespace
 
 namespace arangodb::validation {
 SpecialProperties view_to_special(std::string_view view) {
-    if (view == key_string) {
+    if (view == strings::key) {
         return SpecialProperties::Key;
-    } else if (view == id_string) {
+    } else if (view == strings::id) {
         return SpecialProperties::Id;
-    } else if (view == rev_string) {
+    } else if (view == strings::rev) {
         return SpecialProperties::Rev;
-    } else if (view == from_string) {
+    } else if (view == strings::from) {
         return SpecialProperties::From;
-    } else if (view == to_string) {
+    } else if (view == strings::to) {
         return SpecialProperties::To;
     } else {
         return SpecialProperties::None;
@@ -208,24 +210,24 @@ tao::json::basic_schema<tao::json::traits>* new_schema(VPackSlice const& schema)
     using namespace std::literals::string_literals;
     switch (id) {
         case VelocyPackHelper::KeyAttribute: {
-            return key_string;
+            return strings::key;
         }
         case VelocyPackHelper::RevAttribute: {
-            return rev_string;
+            return strings::rev;
         }
         case VelocyPackHelper::IdAttribute: {
-            return id_string;
+            return strings::id;
         }
         case VelocyPackHelper::FromAttribute: {
-            return from_string;
+            return strings::from;
         }
         case VelocyPackHelper::ToAttribute: {
-            return to_string;
+            return strings::to;
         }
     }
     assert(false);
     throw std::runtime_error("can not translate id");
-    return key_string; // make sure we return something
+    return strings::key; // make sure we return something
 }
 
 } // namespace arangodb::validation

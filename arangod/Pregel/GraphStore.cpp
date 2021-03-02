@@ -518,7 +518,7 @@ void GraphStore<V, E>::loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex
       VPackStringRef toValue(transaction::helpers::extractToFromDocument(slice));
       allocateSpace(toValue.size());
       Edge<E>* edge = edgeBuff->appendElement();
-      int res = buildEdge(edge, toValue);
+      auto res = buildEdge(edge, toValue);
       if (res == TRI_ERROR_NO_ERROR) {
         _graphFormat->copyEdgeData(*trx.transactionContext()->getVPackOptions(),
                                    slice, edge->data());

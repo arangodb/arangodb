@@ -86,7 +86,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
             "got invalid response from server: " + client.getErrorMessage()};
   }
   if (response->wasHttpError()) {
-    int errorNum = TRI_ERROR_INTERNAL;
+    auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
     std::string errorMsg = response->getHttpReturnMessage();
     std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
     arangodb::velocypack::Slice error = bodyBuilder->slice();
@@ -538,6 +538,14 @@ Result DumpFeature::DumpCollectionJob::run(arangodb::httpclient::SimpleHttpClien
           TRI_ASSERT(it.key.isString());
           std::string shardName = it.key.copyString();
 
+          if (!options.shards.empty()) {
+            // dump is restricted to specific shards
+            if (std::find(options.shards.begin(), options.shards.end(), shardName) == options.shards.end()) {
+              // do not dump this shard, as it is not in the include list
+              continue;
+            }
+          }
+
           // extract dbserver id
           if (!it.value.isArray() || it.value.length() == 0 || !it.value[0].isString()) {
             return {TRI_ERROR_BAD_PARAMETER, "unexpected value for 'shards' attribute"};
@@ -625,6 +633,12 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
       "--collection",
       "restrict to collection name (can be specified multiple times)",
       new VectorParameter<StringParameter>(&_options.collections));
+  
+  options->addOption(
+      "--shard",
+      "restrict dump to shard (can be specified multiple times)",
+      new VectorParameter<StringParameter>(&_options.shards))
+      .setIntroducedIn(30800);
 
   options->addOption("--initial-batch-size",
                      "initial size for individual data batches (in bytes)",
@@ -636,8 +650,9 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
 
   options->addOption(
       "--threads",
-      "maximum number of collections to process in parallel. From v3.4.0",
-      new UInt32Parameter(&_options.threadCount));
+      "maximum number of collections/shards to process in parallel",
+      new UInt32Parameter(&_options.threadCount))
+      .setIntroducedIn(30400);
 
   options->addOption("--dump-data", "dump collection data",
                      new BooleanParameter(&_options.dumpData));
@@ -689,8 +704,7 @@ void DumpFeature::collectOptions(std::shared_ptr<options::ProgramOptions> option
   options->addOption("--compress-output",
                      "compress files containing collection contents using gzip format (not compatible with encryption)",
                      new BooleanParameter(&_options.useGzip))
-                     .setIntroducedIn(30406)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30406);
 }
 
 void DumpFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
@@ -1056,12 +1070,12 @@ void DumpFeature::start() {
                                                   !_options.overwrite, true,
                                                   _options.useGzip);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_EXISTS:
+    switch (static_cast<int>(_directory->status().errorNumber())) {
+      case static_cast<int>(TRI_ERROR_FILE_EXISTS):
         LOG_TOPIC("efed0", FATAL, Logger::DUMP) << "cannot write to output directory '"
                                        << _options.outputPath << "'";
         break;
-      case TRI_ERROR_CANNOT_OVERWRITE_FILE:
+      case static_cast<int>(TRI_ERROR_CANNOT_OVERWRITE_FILE):
         LOG_TOPIC("bd7fe", FATAL, Logger::DUMP)
             << "output directory '" << _options.outputPath
             << "' already exists. use \"--overwrite true\" to "

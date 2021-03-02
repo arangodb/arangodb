@@ -18,52 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Manuel Pöter
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_SCHEDULER_TASK_H
-#define ARANGOD_SCHEDULER_TASK_H 1
+#ifndef ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
+#define ARANGODB_BENCHMARK_TESTCASES_HELPERS_H
 
-#include <memory>
-#include <string>
-
-#include "Basics/Common.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
+  class BenchFeature;
 }
 
-class TaskData;
+namespace arangodb::arangobench {
 
-namespace rest {
-class Scheduler;
+bool DeleteCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&);
 
-class Task : public std::enable_shared_from_this<Task> {
-  Task(Task const&) = delete;
-  Task& operator=(Task const&) = delete;
+bool CreateCollection(arangodb::httpclient::SimpleHttpClient*, std::string const&, int const, BenchFeature const& arangobench);
 
- public:
-  Task(Scheduler*, std::string const& name);
-  virtual ~Task() = default;
+bool CreateDocument(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                    std::string const&);
 
- public:
-  uint64_t taskId() const { return _taskId; }
-  std::string const& name() const { return _name; }
-
-  // get a VelocyPack representation of the task for reporting
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack() const;
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
-
- protected:
-  Scheduler* const _scheduler;
-  uint64_t const _taskId;
-
- private:
-  std::string const _name;
-};
-}  // namespace rest
-}  // namespace arangodb
-
+bool CreateIndex(arangodb::httpclient::SimpleHttpClient*, std::string const&,
+                 std::string const&, std::string const&);
+}  // namespace arangodb::arangobench
 #endif

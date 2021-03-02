@@ -374,8 +374,8 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     }                                             \
   } while (false);
 
-static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
-  int err;
+static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+  auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
 
@@ -418,7 +418,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
+static ErrorCode wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
 
   while (*p != 0) {
@@ -459,9 +459,10 @@ static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
   return TRI_ERROR_NO_ERROR;
 }
+
 static std::wstring makeWindowsArgs(ExternalProcess* external) {
   size_t i;
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   std::wstring res;
 
   if ((external->_executable.find('/') == std::string::npos) &&

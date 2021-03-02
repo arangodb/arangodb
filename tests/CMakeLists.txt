@@ -85,8 +85,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
-  Aql/BitFunctionsTest.cpp
-  Aql/BlockCollector.cpp
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlSharedExecutionBlockImplTest.cpp
@@ -97,7 +95,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
   Aql/AqlShadowRowTest.cpp
+  Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AttributeNamePathTest.cpp
+  Aql/BitFunctionsTest.cpp
+  Aql/BlockCollector.cpp
   Aql/CalculationExecutorTest.cpp
   Aql/CountCollectExecutorTest.cpp
   Aql/DateFunctionsTest.cpp
@@ -129,6 +130,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/NoResultsExecutorTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryHelper.cpp
+  Aql/QueryCursorTest.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp

@@ -168,7 +168,7 @@ arangodb::Result checkHttpResponse(arangodb::httpclient::SimpleHttpClient& clien
                 originalRequest + "'")};
   }
   if (response->wasHttpError()) {
-    int errorNum = TRI_ERROR_INTERNAL;
+    auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
     std::string errorMsg = response->getHttpReturnMessage();
     std::shared_ptr<arangodb::velocypack::Builder> bodyBuilder(response->getBodyVelocyPack());
     arangodb::velocypack::Slice error = bodyBuilder->slice();
@@ -832,13 +832,13 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       // note that we have to store the uncompressed offset here, because we
       // potentially have consumed more data than we have sent.
       datafileReadOffset += length;
-      jobData.progressTracker.updateStatus(
+      [[maybe_unused]] bool wasSynced = jobData.progressTracker.updateStatus(
           cname, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING,
                                                             datafileReadOffset});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-      if (jobData.options.failOnUpdateContinueFile && length != 0) {
+      if (wasSynced && jobData.options.failOnUpdateContinueFile && length != 0) {
         LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << datafileReadOffset << "!";
-        std::exit(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
+        FATAL_ERROR_EXIT_CODE(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
       }
 #endif
       buffer.erase_front(length);
@@ -1164,7 +1164,9 @@ arangodb::Result processInputDirectory(
         if (result.fail()) {
           return result;
         }
+      }
 
+      if (progressTracker.getStatus(name.copyString()).state < arangodb::RestoreFeature::CREATED) {
         progressTracker.updateStatus(name.copyString(),
                                      arangodb::RestoreFeature::CollectionStatus{
                                          arangodb::RestoreFeature::CREATED});
@@ -1626,8 +1628,8 @@ void RestoreFeature::start() {
   _directory = std::make_unique<ManagedDirectory>(server(), _options.inputPath,
                                                   false, false, true);
   if (_directory->status().fail()) {
-    switch (_directory->status().errorNumber()) {
-      case TRI_ERROR_FILE_NOT_FOUND:
+    switch (static_cast<int>(_directory->status().errorNumber())) {
+      case static_cast<int>(TRI_ERROR_FILE_NOT_FOUND):
         LOG_TOPIC("3246c", FATAL, arangodb::Logger::RESTORE)
             << "input directory '" << _options.inputPath << "' does not exist";
         break;
@@ -1763,6 +1765,8 @@ void RestoreFeature::start() {
       << basics::StringUtils::join(dbs, "', '") << "' from dump directory '" << _options.inputPath << "'...";
   }
 
+  std::vector<std::string> filesToClean;
+    
   for (auto& db : databases) {
     result.reset();
 
@@ -1835,6 +1839,8 @@ void RestoreFeature::start() {
     LOG_TOPIC_IF("52b23", INFO, arangodb::Logger::RESTORE, _options.continueRestore) << "try to continue previous restore";
     _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, !_options.continueRestore);
 
+    filesToClean.push_back(_progressTracker->filename());
+
     // run the actual restore
     try {
       result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
@@ -1860,6 +1866,10 @@ void RestoreFeature::start() {
   if (result.fail()) {
     LOG_TOPIC("cb69f", ERR, arangodb::Logger::RESTORE) << result.errorMessage();
     _exitCode = EXIT_FAILURE;
+  } else {
+    for (auto const& fn : filesToClean) {
+      [[maybe_unused]] auto result = basics::FileUtils::remove(fn);
+    }
   }
 
   if (_options.progress) {

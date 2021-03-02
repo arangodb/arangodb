@@ -317,9 +317,8 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "a warning (in milliseconds, use 0 for no warnings)",
                      new UInt64Parameter(&_syncDelayThreshold),
                      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoComponents, arangodb::options::Flags::OnDBServer, arangodb::options::Flags::OnSingle, arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800)
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30608);
+                     .setIntroducedIn(30608)
+                     .setIntroducedIn(30705);
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",
@@ -459,7 +458,7 @@ void RocksDBEngine::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    int res = TRI_CreateRecursiveDirectory(_path.c_str(), errorNo, systemErrorStr);
+    auto res = TRI_CreateRecursiveDirectory(_path.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("b2958", TRACE, arangodb::Logger::ENGINES)
@@ -1150,7 +1149,7 @@ void RocksDBEngine::cleanupReplicationContexts() {
 }
 
 VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                               int& status) {
+                                                               ErrorCode& status) {
   RocksDBKey key;
 
   key.constructReplicationApplierConfig(vocbase.id());
@@ -1158,14 +1157,14 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vo
   return getReplicationApplierConfiguration(key, status);
 }
 
-VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(int& status) {
+VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(ErrorCode& status) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return getReplicationApplierConfiguration(key, status);
 }
 
 VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(RocksDBKey const& key,
-                                                               int& status) {
+                                                               ErrorCode& status) {
   rocksdb::PinnableSlice value;
 
   auto opts = rocksdb::ReadOptions();
@@ -1182,7 +1181,7 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(RocksDBKey const&
   return builder;
 }
 
-int RocksDBEngine::removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) {
+ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) {
   RocksDBKey key;
 
   key.constructReplicationApplierConfig(vocbase.id());
@@ -1190,13 +1189,13 @@ int RocksDBEngine::removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase)
   return removeReplicationApplierConfiguration(key);
 }
 
-int RocksDBEngine::removeReplicationApplierConfiguration() {
+ErrorCode RocksDBEngine::removeReplicationApplierConfiguration() {
   RocksDBKey key;
   key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
   return removeReplicationApplierConfiguration(key);
 }
 
-int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) {
+ErrorCode RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) {
   auto status = rocksutils::convertStatus(
       _db->Delete(rocksdb::WriteOptions(),
                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions),
@@ -1250,8 +1249,8 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openDatabase(arangodb::CreateDatab
 }
 
 // TODO -- should take info
-std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(
-    arangodb::CreateDatabaseInfo&& info, int& status) {
+std::unique_ptr<TRI_vocbase_t> RocksDBEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
+                                                             ErrorCode& status) {
   status = TRI_ERROR_NO_ERROR;
   return std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_NORMAL, std::move(info));
 }
