@@ -4,6 +4,9 @@ devel
 * Never respond fully qualified to read requests, if not certain that
   we are shard leader
 
+* Added `--shard` option to arangodump, so that dumps can be restricted to one or
+  multiple shards only.
+
 * Enable statistics in web UI in non-`_system` databases in cluster mode.
   In cluster mode, the web UI dashboard did not display statistics properly
   when not being logged in to the `_system` database. For all other databases
