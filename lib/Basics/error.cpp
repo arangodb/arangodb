@@ -35,7 +35,7 @@
 /// @brief error number and system error
 struct ErrorContainer {
   ErrorCode _number = TRI_ERROR_NO_ERROR;
-  int _sys = TRI_ERROR_NO_ERROR;
+  int _sys = 0;
 };
 
 /// @brief holds the last error that occurred in the current thread
@@ -72,7 +72,7 @@ ErrorCode TRI_set_errno(ErrorCode error) {
 /// @brief return an error message for an error code
 std::string_view TRI_errno_string(ErrorCode code) noexcept {
   using arangodb::error::ErrorMessages;
-  auto it = ErrorMessages.find(int(code));
+  auto it = ErrorMessages.find(code);
 
   if (it == ErrorMessages.end()) {
     // return a hard-coded string as not all callers check for nullptr

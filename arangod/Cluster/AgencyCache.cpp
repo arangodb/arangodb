@@ -35,11 +35,9 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
-AgencyCache::AgencyCache(
-  application_features::ApplicationServer& server,
-  AgencyCallbackRegistry& callbackRegistry,
-  int shutdownCode)
-  : Thread(server, "AgencyCache"), 
+AgencyCache::AgencyCache(application_features::ApplicationServer& server,
+                         AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode)
+    : Thread(server, "AgencyCache"),
     _commitIndex(0), 
     _readDB(server, nullptr, "readDB"),
     _shutdownCode(shutdownCode),

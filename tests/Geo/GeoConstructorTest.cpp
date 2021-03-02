@@ -88,7 +88,7 @@ class GeoPointTest : public GeoConstructorTest {
 
     funNode.setData(static_cast<void const*>(&fun));
 
-    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+    fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
       ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     });
   }
@@ -608,7 +608,7 @@ TEST_F(GeoMultipointTest, checking_points_representing_points_in_cologne) {
   }
 }
 TEST_F(GeoMultipointTest, checking_array_with_1_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -629,7 +629,7 @@ TEST_F(GeoMultipointTest, checking_array_with_1_position) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -650,7 +650,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -671,7 +671,7 @@ TEST_F(GeoMultipointTest, checking_array_with_positions_and_invalid_bool_2) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -692,7 +692,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions_nested) {
 }
 
 TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -713,7 +713,7 @@ TEST_F(GeoMultipointTest, checking_array_with_0_positions) {
 }
 
 TEST_F(GeoMultipointTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -734,7 +734,7 @@ TEST_F(GeoMultipointTest, checking_bool) {
 }
 
 TEST_F(GeoMultipointTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -759,7 +759,7 @@ TEST_F(GeoMultipointTest, checking_number) {
 }
 
 TEST_F(GeoMultipointTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -928,7 +928,7 @@ TEST_F(GeoPolygonTest, checking_polygons_with_2x3_negative_positions) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -949,7 +949,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_positive_position) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -970,7 +970,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_1_negative_position) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -991,7 +991,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_positive_tuples) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1012,7 +1012,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_2_negative_tuples) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1033,7 +1033,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_empty_input) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1054,7 +1054,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_boolean) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1075,7 +1075,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_booleans) {
 }
 
 TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1096,7 +1096,7 @@ TEST_F(GeoPolygonTest, checking_polygon_with_nested_booleans) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1117,7 +1117,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_boolean) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_single_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1138,7 +1138,7 @@ TEST_F(GeoPolygonTest, checking_object_with_single_number) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_string) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1159,7 +1159,7 @@ TEST_F(GeoPolygonTest, checking_object_with_string) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_null) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1180,7 +1180,7 @@ TEST_F(GeoPolygonTest, checking_object_with_null) {
 }
 
 TEST_F(GeoPolygonTest, checking_object_with_some_data) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1269,7 +1269,7 @@ TEST_F(GeoLinestringTest, checking_linestring_representing_cologne) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_1_position) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1290,7 +1290,7 @@ TEST_F(GeoLinestringTest, checking_array_with_1_position) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1311,7 +1311,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool) {
 }
 
 TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1332,7 +1332,7 @@ TEST_F(GeoLinestringTest, checking_array_with_positions_and_invalid_bool_2) {
 }
 
 TEST_F(GeoLinestringTest, checking_empty_nested_array) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1353,7 +1353,7 @@ TEST_F(GeoLinestringTest, checking_empty_nested_array) {
 }
 
 TEST_F(GeoLinestringTest, checking_empty_array) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1374,7 +1374,7 @@ TEST_F(GeoLinestringTest, checking_empty_array) {
 }
 
 TEST_F(GeoLinestringTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1395,7 +1395,7 @@ TEST_F(GeoLinestringTest, checking_bool) {
 }
 
 TEST_F(GeoLinestringTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1416,7 +1416,7 @@ TEST_F(GeoLinestringTest, checking_number) {
 }
 
 TEST_F(GeoLinestringTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1518,7 +1518,7 @@ TEST_F(GeoMultilinestringTest, checking_multilinestrings_with_2x2_positions_2) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_object) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1539,7 +1539,7 @@ TEST_F(GeoMultilinestringTest, checking_object) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1560,7 +1560,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions_nested) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   });
 
@@ -1581,7 +1581,7 @@ TEST_F(GeoMultilinestringTest, checking_polygon_with_0_positions) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_bool) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 
@@ -1602,7 +1602,7 @@ TEST_F(GeoMultilinestringTest, checking_bool) {
 }
 
 TEST_F(GeoMultilinestringTest, checking_number) {
-  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](int code, char const* msg) -> void {
+  fakeit::When(Method(expressionContextMock, registerWarning)).Do([&](ErrorCode code, char const* msg) -> void {
     ASSERT_EQ(code, TRI_ERROR_QUERY_ARRAY_EXPECTED);
   });
 

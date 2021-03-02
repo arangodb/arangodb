@@ -82,9 +82,9 @@ struct QueryResult {
   // Result-like interface
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
-  int errorNumber() const { return result.errorNumber(); }
-  bool is(int errorNumber) const { return result.errorNumber() == errorNumber; }
-  bool isNot(int errorNumber) const { return !is(errorNumber); }
+  ErrorCode errorNumber() const { return result.errorNumber(); }
+  bool is(ErrorCode errorNumber) const { return result.errorNumber() == errorNumber; }
+  bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
  public:

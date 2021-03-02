@@ -793,7 +793,7 @@ void HeartbeatThread::runSingleServer() {
         if (result.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
           // intentionally falls through to case 2
-        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        } else if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
           LOG_TOPIC("7cf85", INFO, Logger::HEARTBEAT)

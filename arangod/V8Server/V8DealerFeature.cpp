@@ -449,7 +449,7 @@ void V8DealerFeature::start() {
         std::string systemErrorStr;
         long errorNo;
 
-        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)

@@ -194,7 +194,7 @@ void assertOrderExecutionFail(arangodb::application_features::ApplicationServer&
 }
 
 void assertOrderParseFail(arangodb::application_features::ApplicationServer& server,
-                          std::string const& queryString, int parseCode) {
+                          std::string const& queryString, ErrorCode parseCode) {
   TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server));
 
   arangodb::aql::Query query(arangodb::transaction::StandaloneContext::Create(vocbase), arangodb::aql::QueryString(queryString),

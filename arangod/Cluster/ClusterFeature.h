@@ -131,7 +131,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void waitForSyncersToStop();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setSyncerShutdownCode(int code) { _syncerShutdownCode = code; }
+  void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
 
   Histogram<log_scale_t<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
@@ -155,7 +155,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  int _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
+  ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;

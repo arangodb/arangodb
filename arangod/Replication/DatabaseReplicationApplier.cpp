@@ -117,7 +117,7 @@ void DatabaseReplicationApplier::forget() {
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t& vocbase) {
   // TODO: move to ReplicationApplier
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {

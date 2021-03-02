@@ -56,13 +56,12 @@ arangodb::Result getHttpErrorMessage(arangodb::httpclient::SimpleHttpResult* res
     std::shared_ptr<VPackBuilder> parsedBody = result->getBodyVelocyPack();
     VPackSlice const body = parsedBody->slice();
 
-    auto serverCode =
-        ErrorCode{VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0)};
+    auto serverCode = VelocyPackHelper::getNumericValue<int>(body, "errorNum", 0);
     std::string const& serverMessage =
         VelocyPackHelper::getStringValue(body, "errorMessage", "");
 
     if (serverCode > 0) {
-      code = serverCode;
+      code = ErrorCode{serverCode};
       message.append(": ArangoError " + itoa(serverCode) + ": " + serverMessage);
     }
   } catch (...) {

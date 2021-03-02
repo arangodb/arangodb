@@ -1,9 +1,37 @@
 devel
 -----
 
-* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+* Added `--shard` option to arangodump, so that dumps can be restricted to one or
+  multiple shards only.
 
-* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly
+  when not being logged in to the `_system` database. For all other databases
+  than `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases`
+  controls whether cluster statistics are displayed in the web interface for
+  all databases (if the option is set to `true`) or just for the system
+  database (if the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases. 
+
+* Add optional hostname logging to log messages.
+  Whether or not the hostname is added to each log message can be controlled via
+  the new startup option `--log.hostname`. Its default value is the empty string,
+  meaning no hostname will be added to log messages.
+  Setting the option to an arbitrary string value will make this string be logged
+  in front of each regular log message, and inside the `hostname` attribute in
+  case of JSON-based logging. Setting the option to a value of `auto` will use
+  the hostname as returned by `gethostbyname`.
+
+* Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
+  jobs.
+
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Prevent arangosh from trying to connect after every executed command.
   This fixes the case when arangosh is started with default options, but no
@@ -16,6 +44,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Reduce memory footprint of agency Store in Node class.
+
+* Cleanup old hotbackup transfer jobs in agency.
 
 * On Windows create a minidump in case of an unhandled SEH exception for
   post-mortem debugging.
@@ -68,6 +100,10 @@ devel
   statement could lead to a wrong count output when used in combination with
   an index which has been created with an array index attribute.
 
+* Fixed issue #13117: Aardvark: Weird cursor offsets in query editor.
+
+  Disabled font ligatures for Ace editor in Web UI to avoid rare display issue.
+
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
 
@@ -75,6 +111,8 @@ devel
 
   Instead of offering `flexible` and `single`, now use the more intuitive
   `Sharded` and `OneShard` options, and update the help text for them.
+
+* Make all AQL cursors return compact result arrays.
 
 * Fix profiling of AQL queries with the `silent` and `stream` options sets in
   combination. Using the `silent` option makes a query execute, but discard all
@@ -179,14 +217,14 @@ devel
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
-    in a more intuitve format, putting each log entry with all its properties
+    in a more intuitive format, putting each log entry with all its properties
     into an object. The API response is an array with all log message objects
     that match the search criteria.
     This is an extension to the already existing API endpoint GET `/_admin/log`,
     which returned log messages fragmented into 5 separate arrays.
 
     The already existing API endpoint GET `/_admin/log` for retrieving log 
-    messages is now deprecated, altough it will stay available for some time.
+    messages is now deprecated, although it will stay available for some time.
 
   * Truncation of log messages now takes JSON format into account, so that
     the truncation of oversized JSON log messages still keeps a valid JSON
@@ -205,7 +243,7 @@ devel
     shorten long log messages in case there is not a lot of space for logfiles, 
     and to keep rogue log messages from overusing resources. 
     The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    mean downwards-compatibility with previous arangod versions, which did not
     restrict the maximum size of log messages.
   
   - `--audit.max-entry-length`: controls the maximum line length for individual
@@ -213,7 +251,7 @@ devel
     log messages longer than the specified value will be truncated and the 
     suffix '...' will be added to them. 
     The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    mean downwards-compatibility with previous arangod versions, which did not
     restrict the maximum size of log messages.
 
   - `--log.in-memory-level`: controls which log messages are preserved in 
@@ -550,8 +588,9 @@ devel
   from previously `0` (meaning: no limit) to a dynamically calculated value.
   The per-query memory limits defaults are now:
 
-    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
-    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
     Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
     Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
     Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
