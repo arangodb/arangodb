@@ -319,19 +319,51 @@ function random_walk(
     );
 }
 
+function compare_pregel(aqlResult) {
+    const res = aqlResult.toArray();
+    if (res.length > 0) {
+        internal.print("Test failed.");
+        internal.print("Discrepancies in results: " + JSON.stringify(res));
+        return false;
+    }
+
+    internal.print("Test succeeded.");
+    return true;
+}
+
 function exec_test_random_walk_impl(graphSpec) {
     // Find the ID of a vertex to start at.
 
     internal.print(" -- computing random walk");
 
     testhelpers.wait_for_pregel(
-        "Air SSSP",
+        "Air Random Walk",
         random_walk(
             graphSpec.name,
             "random-walk"
         ));
 
-    return true;
+    internal.print(" -- checking if paths are valid");
+
+    return compare_pregel(db._query(`
+        for v in @@V
+            let paths = v["random-walk"].terminated_paths
+            for p in paths
+                filter length(p) != 1
+                let bad_edges = (
+                    for i in 0..(LENGTH(p) - 1)/2 - 1
+                        let from = p[2 * i]
+                        let to = p[2 * i + 2]
+                        let edge_id = p[2 * i + 1]
+                        let edge = DOCUMENT(@E, edge_id)
+                        filter edge._to != to OR edge._from != from
+                        return edge_id
+                )
+            filter length(bad_edges) != 0
+            return {v, p}`, {
+        "@V": graphSpec.vname,
+        "E": graphSpec.ename
+    }));
 }
 
 function exec_test_random_walk() {
