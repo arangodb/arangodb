@@ -376,7 +376,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_VALIDATION_FAILED):
     case static_cast<int>(TRI_ERROR_VALIDATION_BAD_PARAMETER):
-    case static_cast<int>(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST):
+    case static_cast<int>(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF):
       return ResponseCode::BAD;
 
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):

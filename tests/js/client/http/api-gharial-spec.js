@@ -365,7 +365,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -443,7 +443,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -461,7 +461,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -604,7 +604,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -625,7 +625,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -854,7 +854,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -875,7 +875,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(400);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -1219,7 +1219,7 @@ describe('_api/gharial', () => {
 
           let reqx = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName, edgeLinkDef);
           expect(reqx.code).to.equal(400);
-          expect(reqx.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST.code);
+          expect(reqx.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF.code);
           expect(reqx.error).to.equal(true);
         });
       });
