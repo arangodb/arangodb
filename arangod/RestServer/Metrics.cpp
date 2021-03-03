@@ -24,9 +24,7 @@
 #include "Metrics.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/exitcodes.h"
 #include <type_traits>
 
 using namespace arangodb;
