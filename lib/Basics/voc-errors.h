@@ -1466,6 +1466,11 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      
 /// collection, it cannot be used here.
 constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
+/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST
+/// "referenced vertex collection does not exist"
+/// the _from or _to collection specified for the edge does not exist.
+constexpr int TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST       = 1947;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.
