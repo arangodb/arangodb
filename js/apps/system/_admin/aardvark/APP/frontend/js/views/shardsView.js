@@ -103,7 +103,7 @@
             shardProgress = 'waiting for slot...';
           }
 
-          shardProgress = '<span>' + shardProgress + '</span>';
+          shardProgress = '<span>' + arangoHelper.escapeHtml(shardProgress) + '</span>';
         } else {
           shardProgress = '<i class="fa fa-check-circle">';
           inSync++;
