@@ -102,7 +102,7 @@ if (!figuresData.figures) {
         <tr>
           <th class="collectionInfoTh2">Estimated documents size:</th>
           <th class="collectionInfoTh">
-            <div class="modal-text"><%= figuresData.figures.documentsSize %></div>
+            <div class="modal-text"><%= prettyBytes(figuresData.figures.documentsSize) %></div>
           </th>
           <th class="tooltipInfoTh">
             <div>
@@ -131,7 +131,7 @@ if (!figuresData.figures) {
             <tr>
               <th class="collectionInfoTh2">Estimated size of indexes:</th>
               <th class="collectionInfoTh">
-                <div class="modal-text"><%= figuresData.figures.indexes.size %></div>
+                <div class="modal-text"><%= prettyBytes(figuresData.figures.indexes.size) %></div>
               </th>
               <th class="tooltipInfoTh">
                 <div>
