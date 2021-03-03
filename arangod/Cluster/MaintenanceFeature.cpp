@@ -56,8 +56,24 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 using namespace arangodb::maintenance;
 
-extern constexpr char arangodb_maintenance_action_done_counter[] =
-  "arangodb_maintenance_action_done_counter";
+DECLARE_METRIC(arangodb_maintenance_phase1_accum_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_phase2_accum_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_agency_sync_accum_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_action_duplicate_counter);
+DECLARE_METRIC(arangodb_maintenance_action_registered_counter);
+DECLARE_METRIC(arangodb_maintenance_action_accum_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_action_accum_queue_time_msec);
+DECLARE_METRIC(arangodb_maintenance_action_failure_counter);
+DECLARE_METRIC(arangodb_maintenance_phase1_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_phase2_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_agency_sync_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_action_runtime_msec);
+DECLARE_METRIC(arangodb_maintenance_action_queue_time_msec);
+DECLARE_METRIC(arangodb_maintenance_action_done_counter);
+DECLARE_METRIC(arangodb_shards_out_of_sync);
+DECLARE_METRIC(arangodb_shards_total_count);
+DECLARE_METRIC(arangodb_shards_leader_count);
+DECLARE_METRIC(arangodb_shards_not_replicated);
 
 namespace {
 

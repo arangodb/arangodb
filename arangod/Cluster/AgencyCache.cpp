@@ -35,6 +35,8 @@
 using namespace arangodb;
 using namespace arangodb::consensus;
 
+DECLARE_METRIC(arangodb_agency_cache_callback_count);
+
 AgencyCache::AgencyCache(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode)
     : Thread(server, "AgencyCache"),

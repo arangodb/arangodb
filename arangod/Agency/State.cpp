@@ -57,6 +57,9 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 using namespace arangodb::basics;
 
+DECLARE_METRIC(arangodb_agency_log_size_bytes);
+DECLARE_METRIC(arangodb_agency_client_lookup_table_size);
+
 /// Constructor:
 State::State(application_features::ApplicationServer& server)
   : _server(server),

@@ -28,30 +28,19 @@
 
 using namespace arangodb;
 
-extern constexpr char arangodb_transactions_started[] =
-  "arangodb_transactions_started";
-extern constexpr char arangodb_transactions_aborted[] =
-  "arangodb_transactions_aborted";
-extern constexpr char arangodb_transactions_committed[] =
-  "arangodb_transactions_committed";
-extern constexpr char arangodb_intermediate_commits[] =
-  "arangodb_intermediate_commits";
-extern constexpr char arangodb_collection_lock_timeouts_exclusive[] =
-  "arangodb_collection_lock_timeouts_exclusive";
-extern constexpr char arangodb_collection_lock_timeouts_write[] =
-  "arangodb_collection_lock_timeouts_write";
-extern constexpr char arangodb_collection_lock_acquisition_micros[] =
-  "arangodb_collection_lock_acquisition_micros";
-extern constexpr char arangodb_collection_lock_sequential_mode[] =
-  "arangodb_collection_lock_sequential_mode";
-extern constexpr char arangodb_document_writes[] =
-  "arangodb_document_writes";
-extern constexpr char arangodb_document_writes_replication[] =
-  "arangodb_document_writes_replication";
-extern constexpr char arangodb_collection_truncates[] =
-  "arangodb_collection_truncates";
-extern constexpr char arangodb_collection_truncates_replication[] =
-  "arangodb_collection_truncates_replication";
+DECLARE_METRIC(arangodb_collection_lock_acquisition_micros)
+DECLARE_METRIC(arangodb_collection_lock_acquisition_time)
+DECLARE_METRIC(arangodb_collection_lock_sequential_mode)
+DECLARE_METRIC(arangodb_collection_lock_timeouts_exclusive)
+DECLARE_METRIC(arangodb_collection_lock_timeouts_write)
+DECLARE_METRIC(arangodb_collection_truncates)
+DECLARE_METRIC(arangodb_collection_truncates_replication)
+DECLARE_METRIC(arangodb_document_writes)
+DECLARE_METRIC(arangodb_document_writes_replication)
+DECLARE_METRIC(arangodb_transactions_aborted)
+DECLARE_METRIC(arangodb_transactions_committed)
+DECLARE_METRIC(arangodb_transactions_started)
+DECLARE_METRIC(arangodb_intermediate_commits)
 
 TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
     : _metrics(metrics),
@@ -79,6 +68,14 @@ TransactionStatistics::TransactionStatistics(MetricsFeature& metrics)
         _metrics.counter<arangodb_collection_lock_sequential_mode>(
           0, "Number of transactions using sequential locking of collections to avoid deadlocking")),
       _exportReadWriteMetrics(/*may be updated later*/ false) {}
+
+
+DECLARE_METRIC(arangodb_document_read_time)
+DECLARE_METRIC(arangodb_document_insert_time)
+DECLARE_METRIC(arangodb_document_replace_time)
+DECLARE_METRIC(arangodb_document_remove_time)
+DECLARE_METRIC(arangodb_document_update_time)
+DECLARE_METRIC(arangodb_collection_truncate_time)
 
 void TransactionStatistics::setupDocumentMetrics() {
   // the following metrics are conditional, so we don't initialize them in the constructor

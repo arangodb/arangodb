@@ -75,8 +75,7 @@ void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-extern constexpr char arangodb_replication_cluster_inventory_requests[] =
-  "arangodb_replication_cluster_inventory_requests";
+DECLARE_METRIC(arangodb_replication_cluster_inventory_requests);
 
 namespace arangodb {
 

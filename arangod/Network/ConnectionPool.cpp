@@ -32,6 +32,12 @@
 
 #include <fuerte/connection.h>
 
+DECLARE_METRIC(arangodb_connection_connections_current);
+DECLARE_METRIC(arangodb_connection_leases_successful);
+DECLARE_METRIC(arangodb_connection_pool_leases_failed);
+DECLARE_METRIC(arangodb_connection_pool_connections_created);
+DECLARE_METRIC(arangodb_connection_pool_lease_time_hist);
+
 namespace arangodb {
 namespace network {
 

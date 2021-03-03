@@ -109,6 +109,13 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
+DECLARE_METRIC(arangodb_v8_context_created);
+DECLARE_METRIC(arangodb_v8_context_creation_time_msec);
+DECLARE_METRIC(arangodb_v8_context_destroyed);
+DECLARE_METRIC(arangodb_v8_context_enter_failures);
+DECLARE_METRIC(arangodb_v8_context_entered);
+DECLARE_METRIC(arangodb_v8_context_exited);
+
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),

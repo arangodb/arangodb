@@ -50,6 +50,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
 
+DECLARE_METRIC(arangodb_agency_append_hist);
+DECLARE_METRIC(arangodb_agency_commit_hist);
+DECLARE_METRIC(arangodb_agency_compaction_hist);
+DECLARE_METRIC(arangodb_agency_local_commit_index);
+DECLARE_METRIC(arangodb_agency_read_no_leader);
+DECLARE_METRIC(arangodb_agency_read_ok);
+DECLARE_METRIC(arangodb_agency_write_hist);
+DECLARE_METRIC(arangodb_agency_write_no_leader);
+DECLARE_METRIC(arangodb_agency_write_ok);
+
 namespace arangodb {
 namespace consensus {
 

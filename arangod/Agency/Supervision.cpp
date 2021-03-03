@@ -49,6 +49,12 @@ using namespace arangodb::application_features;
 using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
 
+DECLARE_METRIC(arangodb_agency_supervision_accum_runtime_msec);
+DECLARE_METRIC(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec);
+DECLARE_METRIC(arangodb_agency_supervision_failed_server_count);
+DECLARE_METRIC(arangodb_agency_supervision_runtime_msec);
+DECLARE_METRIC(arangodb_agency_supervision_runtime_wait_for_replication_msec);
+
 struct HealthRecord {
   std::string shortName;
   std::string syncTime;

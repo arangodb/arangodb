@@ -48,6 +48,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+DECLARE_METRIC(arangodb_agencycomm_request_time_msec);
+
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),
     _agency_comm_request_time_ms(
@@ -517,6 +519,10 @@ void ClusterFeature::prepare() {
   }
 
 }
+
+DECLARE_METRIC(arangodb_dropped_followers_count);
+DECLARE_METRIC(arangodb_refused_followers_count);
+DECLARE_METRIC(arangodb_sync_wrong_checksum);
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.

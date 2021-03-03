@@ -26,6 +26,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/MetricsFeature.h"
 
+DECLARE_METRIC(arangodb_rocksdb_write_stalls);
+DECLARE_METRIC(arangodb_rocksdb_write_stops);
+
 namespace arangodb {
 
 /// @brief Setup the object, clearing variables, but do no real work

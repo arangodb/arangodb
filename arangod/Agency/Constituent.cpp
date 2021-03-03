@@ -51,6 +51,7 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
+DECLARE_METRIC(arangodb_agency_term);
 //  (std::numeric_limits<std::string>::max)();
 
 /// Raft role names for display purposes

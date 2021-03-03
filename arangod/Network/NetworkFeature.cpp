@@ -78,6 +78,12 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server)
   this->_numIOThreads = 2; // override default
 }
 
+DECLARE_METRIC(arangodb_network_forwarded_requests);
+DECLARE_METRIC(arangodb_network_request_timeouts);
+DECLARE_METRIC(arangodb_network_request_duration_as_percentage_of_timeout);
+DECLARE_METRIC(arangodb_network_requests_in_flight);
+
+
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),

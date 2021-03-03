@@ -326,6 +326,11 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
+DECLARE_METRIC(arangodb_load_current_accum_runtime_msec);
+DECLARE_METRIC(arangodb_load_current_runtime);
+DECLARE_METRIC(arangodb_load_plan_accum_runtime_msec);
+DECLARE_METRIC(arangodb_load_plan_runtime);
+
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)

@@ -45,6 +45,9 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+DECLARE_METRIC(arangodb_agency_callback_registered);
+DECLARE_METRIC(arangodb_agency_callback_count);
+
 AgencyCallbackRegistry::AgencyCallbackRegistry(application_features::ApplicationServer& server,
                                                std::string const& callbackBasePath)
   : _agency(server), 

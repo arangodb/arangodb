@@ -144,12 +144,23 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 }  // namespace arangodb
 
-extern constexpr char arangodb_scheduler_threads_started[] =
-  "arangodb_scheduler_threads_started";
-extern constexpr char arangodb_scheduler_threads_stopped[] =
-  "arangodb_scheduler_threads_stopped";
-extern constexpr char arangodb_scheduler_queue_full_failures[] =
-  "arangodb_scheduler_queue_full_failures";
+DECLARE_METRIC(arangodb_scheduler_awake_threads);
+DECLARE_METRIC(arangodb_scheduler_jobs_dequeued);
+DECLARE_METRIC(arangodb_scheduler_jobs_done);
+DECLARE_METRIC(arangodb_scheduler_jobs_submitted);
+DECLARE_METRIC(arangodb_scheduler_high_prio_queue_length);
+DECLARE_METRIC(arangodb_scheduler_low_prio_queue_last_dequeue_time);
+DECLARE_METRIC(arangodb_scheduler_low_prio_queue_length);
+DECLARE_METRIC(arangodb_scheduler_maintenance_prio_queue_length);
+DECLARE_METRIC(arangodb_scheduler_medium_prio_queue_length);
+DECLARE_METRIC(arangodb_scheduler_num_working_threads);
+DECLARE_METRIC(arangodb_scheduler_num_worker_threads);
+DECLARE_METRIC(arangodb_scheduler_ongoing_low_prio);
+DECLARE_METRIC(arangodb_scheduler_queue_full_failures);
+DECLARE_METRIC(arangodb_scheduler_queue_length);
+DECLARE_METRIC(arangodb_scheduler_threads_started);
+DECLARE_METRIC(arangodb_scheduler_threads_stopped);
+
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
                                          uint64_t minThreads, uint64_t maxThreads,
                                          uint64_t maxQueueSize, uint64_t fifo1Size,
