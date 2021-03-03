@@ -102,7 +102,7 @@ DECLARE_METRIC(arangodb_aql_query_time);
 DECLARE_METRIC(arangodb_aql_slow_query);
 DECLARE_METRIC(arangodb_aql_slow_query_time);
 DECLARE_METRIC(arangodb_aql_total_query_time_msec);
-DECLARE_METRIC(arangodb_aql_current_query[]);
+DECLARE_METRIC(arangodb_aql_current_query);
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
