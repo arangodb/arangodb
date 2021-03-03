@@ -86,10 +86,14 @@ for i in range(0, len(metricsList)):
             
     if bad:
         missing = True
-        
+    
+outfile = "Documentation/Metrics/allMetrics.yaml"
+if len(sys.argv) > 1:
+  outfile = sys.argv[1]
+
 # Dump what we have:
 output = dump(yamls, Dumper=Dumper)
-s = open("Documentation/Metrics/allMetrics.yaml", "w")
+s = open(outfile, "w")
 s.write(output)
 s.close()
 
