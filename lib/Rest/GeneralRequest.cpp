@@ -224,6 +224,14 @@ std::string const& GeneralRequest::value(std::string const& key) const {
   return value(key, unused);
 }
 
+std::map<std::string, std::string> const GeneralRequest::parameters() const {
+  std::map<std::string, std::string> parameters {};
+  for (auto const& paramPair : values()) {
+    parameters.try_emplace(paramPair.first, paramPair.second);
+  }
+  return parameters;
+}
+
 // needs to be here because of a gcc bug with templates and namespaces
 // https://stackoverflow.com/a/25594741/1473569
 namespace arangodb {
