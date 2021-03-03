@@ -1,5 +1,95 @@
 - category: Agency
   complexity: medium
+  description: 'Agency write operations which went ok.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency write operations which went ok.
+
+    '
+  name: arangodb_agency_write_ok
+  type: counter
+  unit: number
+- category: Agency
+  complexity: medium
+  description: 'Agency write operations with no leader.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency write operations with no leader.
+
+    '
+  name: arangodb_agency_write_no_leader
+  type: counter
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Number of agency read operations which went ok.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency read ok.
+
+    '
+  name: arangodb_agency_read_ok
+  type: counter
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Agency read with no leader.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency read no leader.
+
+    '
+  name: arangodb_agency_read_no_leader
+  threshold: 'This should normally not happen. If it happens regularly, the agency
+
+    is reelecting its leader often.
+
+    '
+  troubleshoot: 'The latency of the network between the agents might be too high or
+
+    the agents may be overloaded. It might help to move agent instances
+
+    to separate machines.
+
+    '
+  type: counter
+  unit: number
+- category: Agency
+  complexity: medium
+  description: 'Agency write time histogram.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency write time histogram.
+
+    '
+  name: arangodb_agency_write_hist
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency RAFT commit time histogram.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency RAFT commit histogram.
+
+    '
+  name: arangodb_agency_commit_hist
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
   description: 'This measures the time an agency follower needs for individual
 
     append operations resulting from `AppendEntriesRPC` requests.
@@ -19,120 +109,6 @@
     or might be overloaded. Try to provision more IOPS or more CPU capacity,
 
     potentially moving agents to separate machines.
-
-    '
-  type: histogram
-  unit: ms
-- category: Agency
-  complexity: advanced
-  description: 'This reflects the current number of callbacks the local `AgencyCache`
-
-    has registered.
-
-    '
-  exposedBy:
-  - agent
-  - dbserver
-  - coordinator
-  help: 'Current number of entries in agency cache callbacks table.
-
-    '
-  name: arangodb_agency_cache_callback_count
-  threshold: 'This number will usually be very low, something like 2 or 3.
-
-    '
-  troubleshoot: 'If this number is considerably higher, this should be investigated.
-
-    Please contact support.
-
-    '
-  type: gauge
-  unit: number
-- category: Agency
-  complexity: advanced
-  description: 'This metric reflects the current number of agency callbacks being
-
-    registered.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current number of agency callbacks registered.
-
-    '
-  name: arangodb_agency_callback_count
-  threshold: 'This number will usually be very low, something like 2 or 3.
-
-    '
-  troubleshoot: 'If this number is considerably higher, this should be investigated.
-
-    Please contact support.
-
-    '
-  type: gauge
-  unit: number
-- category: Agency
-  complexity: advanced
-  description: 'This metric reflects the total number of agency callbacks ever registered
-
-    over time.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of agency callbacks ever registered.
-
-    '
-  name: arangodb_agency_callback_registered
-  type: counter
-  unit: number
-- category: Agency
-  complexity: advanced
-  description: 'Current number of entries in agency client id lookup table.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Current number of entries in agency client id lookup table.
-
-    '
-  name: arangodb_agency_client_lookup_table_size
-  type: gauge
-  unit: number
-- category: Agency
-  complexity: medium
-  description: 'Agency RAFT commit time histogram.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency RAFT commit histogram.
-
-    '
-  name: arangodb_agency_commit_hist
-  type: histogram
-  unit: ms
-- category: Network
-  complexity: medium
-  description: 'This histogram shows how long requests to the agency took.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Request time for Agency requests.
-
-    '
-  name: arangodb_agencycomm_request_time_msec
-  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
-    \n"
-  troubleshoot: 'If the network or the agents are overloaded, it can help to move
-
-    agent instances to separate machines.
 
     '
   type: histogram
@@ -162,57 +138,6 @@
     '
   name: arangodb_agency_local_commit_index
   type: gauge
-  unit: number
-- category: Agency
-  complexity: simple
-  description: 'Agency replicated log size in bytes.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency replicated log size.
-
-    '
-  name: arangodb_agency_log_size_bytes
-  type: gauge
-  unit: bytes
-- category: Agency
-  complexity: simple
-  description: 'Agency read with no leader.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency read no leader.
-
-    '
-  name: arangodb_agency_read_no_leader
-  threshold: 'This should normally not happen. If it happens regularly, the agency
-
-    is reelecting its leader often.
-
-    '
-  troubleshoot: 'The latency of the network between the agents might be too high or
-
-    the agents may be overloaded. It might help to move agent instances
-
-    to separate machines.
-
-    '
-  type: counter
-  unit: number
-- category: Agency
-  complexity: simple
-  description: 'Number of agency read operations which went ok.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency read ok.
-
-    '
-  name: arangodb_agency_read_ok
-  type: counter
   unit: number
 - category: Agency
   complexity: simple
@@ -264,6 +189,78 @@
     '
   type: counter
   unit: number
+- category: Network
+  complexity: medium
+  description: 'This histogram shows how long requests to the agency took.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Request time for Agency requests.
+
+    '
+  name: arangodb_agencycomm_request_time_msec
+  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
+    \n"
+  troubleshoot: 'If the network or the agents are overloaded, it can help to move
+
+    agent instances to separate machines.
+
+    '
+  type: histogram
+  unit: ms
+- category: Agency
+  complexity: medium
+  description: 'Agency''s term.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency''s term.
+
+    '
+  name: arangodb_agency_term
+  threshold: 'This number should usually not grow. If it does, the agency is doing
+
+    repeated reelections, which suggests overload or bad network latency
+
+    between agents.
+
+    '
+  troubleshoot: 'It might help to reduce network latency between agents or move agent
+
+    instances to separate machines.
+
+    '
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: simple
+  description: 'Agency replicated log size in bytes.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Agency replicated log size.
+
+    '
+  name: arangodb_agency_log_size_bytes
+  type: gauge
+  unit: bytes
+- category: Agency
+  complexity: advanced
+  description: 'Current number of entries in agency client id lookup table.
+
+    '
+  exposedBy:
+  - agent
+  help: 'Current number of entries in agency client id lookup table.
+
+    '
+  name: arangodb_agency_client_lookup_table_size
+  type: gauge
+  unit: number
 - category: Agency
   complexity: simple
   description: 'Agency Supervision runtime histogram.
@@ -295,962 +292,47 @@
   name: arangodb_agency_supervision_runtime_wait_for_replication_msec
   type: histogram
   unit: ms
-- category: Agency
-  complexity: medium
-  description: 'Agency''s term.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency''s term.
-
-    '
-  name: arangodb_agency_term
-  threshold: 'This number should usually not grow. If it does, the agency is doing
-
-    repeated reelections, which suggests overload or bad network latency
-
-    between agents.
-
-    '
-  troubleshoot: 'It might help to reduce network latency between agents or move agent
-
-    instances to separate machines.
-
-    '
-  type: gauge
-  unit: number
-- category: Agency
-  complexity: medium
-  description: 'Agency write time histogram.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency write time histogram.
-
-    '
-  name: arangodb_agency_write_hist
-  type: histogram
-  unit: ms
-- category: Agency
-  complexity: medium
-  description: 'Agency write operations with no leader.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency write operations with no leader.
-
-    '
-  name: arangodb_agency_write_no_leader
-  type: counter
-  unit: number
-- category: Agency
-  complexity: medium
-  description: 'Agency write operations which went ok.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Agency write operations which went ok.
-
-    '
-  name: arangodb_agency_write_ok
-  type: counter
-  unit: number
-- category: AQL
+- category: RocksDB
   complexity: simple
-  description: 'Total number of AQL queries finished.
+  description: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
   - agent
-  help: 'Total number of AQL queries finished.
+  help: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
     '
-  name: arangodb_aql_all_query
+  name: arangodb_rocksdb_write_stalls
   type: counter
   unit: number
-- category: AQL
+- category: RocksDB
   complexity: simple
-  description: 'Current number of AQL queries executing.
+  description: 'Number of times RocksDB has entered a stopped write state.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
   - agent
-  help: 'Current number of AQL queries executing.
+  help: 'Number of times RocksDB has entered a stopped write state.
 
     '
-  name: arangodb_aql_current_query
-  type: gauge
-  unit: number
-- category: AQL
-  complexity: simple
-  description: 'Execution time histogram for all AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Execution time histogram for all AQL queries.
-
-    '
-  name: arangodb_aql_query_time
-  type: histogram
-  unit: s
-- category: AQL
-  complexity: simple
-  description: 'Number of slow AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query
-  type: counter
-  unit: number
-- category: AQL
-  complexity: simple
-  description: 'Execution time histogram for slow AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Execution time histogram for slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query_time
-  type: histogram
-  unit: s
-- category: AQL
-  complexity: simple
-  description: 'Total execution time of all AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total execution time of all AQL queries.
-
-    '
-  name: arangodb_aql_total_query_time_msec
-  type: histogram
-  unit: ms
-- category: AQL
-  complexity: medium
-  description: 'Total amount of collection lock acquisition time.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total amount of collection lock acquisition time.
-
-    '
-  name: arangodb_collection_lock_acquisition_micros
-  type: counter
-  unit: microseconds
-- category: AQL
-  complexity: medium
-  description: 'Collection lock acquisition time histogram.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Collection lock acquisition time histogram.
-
-    '
-  name: arangodb_collection_lock_acquisition_time
-  type: histogram
-  unit: s
-- category: AQL
-  complexity: advanced
-  description: 'Number of transactions using sequential locking of collections to
-    avoid deadlocking.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
-
-    '
-  name: arangodb_collection_lock_sequential_mode
-  type: counter
-  unit: number
-- category: AQL
-  complexity: medium
-  description: 'Number of timeouts when trying to acquire collection exclusive locks.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of timeouts when trying to acquire collection exclusive locks.
-
-    '
-  name: arangodb_collection_lock_timeouts_exclusive
-  type: counter
-  unit: number
-- category: AQL
-  complexity: medium
-  description: 'Number of timeouts when trying to acquire collection write locks.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of timeouts when trying to acquire collection write locks.
-
-    '
-  name: arangodb_collection_lock_timeouts_write
-  type: counter
-  unit: number
-- category: Statistics
-  complexity: simple
-  description: 'Total number of collection truncate operations (excl. synchronous
-
-    replication). Note that this metric is only present when the command
-
-    line option `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  - coordinator
-  help: 'Total number of collection truncate operations (excl. synchronous replication).
-
-    '
-  name: arangodb_collection_truncates
-  type: counter
-  unit: number
-- category: Statistics
-  complexity: medium
-  description: 'Total number of collection truncate operations by synchronous
-
-    replication. Note that this metric is only present when the command
-
-    line option `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of collection truncate operations by synchronous replication.
-
-    '
-  name: arangodb_collection_truncates_replication
-  type: counter
-  unit: number
-- category: Statistics
-  complexity: simple
-  description: 'Total time spent in collection truncate operations.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total time spent in collection truncate operations.
-
-    '
-  name: arangodb_collection_truncate_time
-  type: histogram
-  unit: s
-- category: Connectivity
-  complexity: medium
-  description: 'Current number of connections in pool for AgencyComm.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Current number of connections in pool for AgencyComm.
-
-    '
-  name: arangodb_connection_connections_current_AgencyComm
-  type: gauge
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Current number of connections in pool for ClusterComm.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current number of connections in pool for ClusterComm.
-
-    '
-  name: arangodb_connection_connections_current_ClusterComm
-  type: gauge
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of successful connection leases for AgencyComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of successful connection leases for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_leases_successful_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of successful connection leases for ClusterComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of successful connection leases for ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_leases_successful_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of connections created for AgencyComm connection pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of connections created for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_pool_connections_created_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of connections created for ClusterComm connection pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of connections created for ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_pool_connections_created_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of failed connection leases for AgencyComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of failed connection leases for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_pool_leases_failed_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of failed connection leases for the ClusterComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of failed connection leases for the ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_pool_leases_failed_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: simple
-  description: 'Time to lease a connection from connection pool AgencyComm.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Time to lease a connection from connection pool AgencyComm.
-
-    '
-  name: arangodb_connection_pool_lease_time_hist_AgencyComm
-  type: histogram
-  unit: ms
-- category: Connectivity
-  complexity: simple
-  description: 'Time to lease a connection from connection pool ClusterComm.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Time to lease a connection from connection pool ClusterComm.
-
-    '
-  name: arangodb_connection_pool_lease_time_hist_ClusterComm
-  type: histogram
-  unit: ms
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document insert operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document insert operations.
-
-    '
-  name: arangodb_document_insert_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document read operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document read operations.
-
-    '
-  name: arangodb_document_read_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document remove operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document remove operations.
-
-    '
-  name: arangodb_document_remove_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document replace operations. This
-    metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document replace operations.
-
-    '
-  name: arangodb_document_replace_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document update operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document update operations.
-
-    '
-  name: arangodb_document_update_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: medium
-  description: 'Total number of document write operations (excl. synchronous replication).
-
-    This metric is only present if the option
-
-    `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total number of document write operations (excl. synchronous replication).
-
-    '
-  name: arangodb_document_writes
-  type: counter
-  unit: number
-- category: Statistics
-  complexity: medium
-  description: 'Total number of document write operations by synchronous replication.
-
-    This metric is only present if the option
-
-    `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total number of document write operations by synchronous replication.
-
-    '
-  name: arangodb_document_writes_replication
-  type: counter
-  unit: number
-- category: Health
-  complexity: simple
-  description: 'Number of drop-follower events.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of drop-follower events.
-
-    '
-  name: arangodb_dropped_followers_count
-  threshold: 'Usually, drop-follower events should only happen if servers are
-
-    restarted.
-
-    '
-  type: counter
-  unit: number
-- category: Health
-  complexity: simple
-  description: 'Total number of failed heartbeat transmissions.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of failed heartbeat transmissions.
-
-    '
-  name: arangodb_heartbeat_failures
-  threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
-
-    lead to failover actions which are ultimately bad for the service.
-
-    '
-  troubleshoot: 'This can be a sign of overload or of bad network connectivity. Potentially
-
-    move the agent instances to separate machines.
-
-    '
-  type: counter
-  unit: number
-- category: Health
-  complexity: medium
-  description: 'Time required to send a heartbeat.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Time required to send a heartbeat.
-
-    '
-  name: arangodb_heartbeat_send_time_msec
-  type: histogram
-  unit: ms
-- category: Statistics
-  complexity: medium
-  description: 'Number of intermediate commits performed in transactions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of intermediate commits performed in transactions.
-
-    '
-  name: arangodb_intermediate_commits
-  type: counter
-  unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of `Current` loading.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Current` loading.
-
-    '
-  name: arangodb_load_current_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram of `Current` loading runtimes.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: '`Current` loading runtimes.
-
-    '
-  name: arangodb_load_current_runtime
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of `Plan` loading
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Plan` loading
-
-    '
-  name: arangodb_load_plan_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram of `Plan` loading runtimes.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: '`Plan` loading runtimes.
-
-    '
-  name: arangodb_load_plan_runtime
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action queue time for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_accum_queue_time_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_done_counter_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been discarded because of a duplicate.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Counter of actions that have been discarded because of a duplicate.
-
-    '
-  name: arangodb_maintenance_action_duplicate_counter
-  type: counter
-  unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Failure counter for the maintenance actions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Failure counter for the maintenance actions.
-
-    '
-  name: arangodb_maintenance_action_failure_counter
-  type: counter
-  unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Time spent in the queue before execution for maintenance actions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Time spent in the queue before execution for maintenance actions.
-
-    '
-  name: arangodb_maintenance_action_queue_time_msec
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been registered in the action registry.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Counter of actions that have been registered in the action registry.
-
-    '
-  name: arangodb_maintenance_action_registered_counter
-  type: counter
-  unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram of time spent execution maintenance actions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Time spent executing a maintenance action.
-
-    '
-  name: arangodb_maintenance_action_runtime_msec
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of agency sync phase. This includes phase one
-    and
-
-    phase two.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of agency sync phase.
-
-    '
-  name: arangodb_maintenance_agency_sync_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram for total time spend on agency sync.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spend on agency sync.
-
-    '
-  name: arangodb_maintenance_agency_sync_runtime_msec
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  name: arangodb_maintenance_phase1_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 1 runtime histogram.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Maintenance Phase 1 runtime histogram.
-
-    '
-  name: arangodb_maintenance_phase1_runtime_msec
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  name: arangodb_maintenance_phase2_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 2 runtime histogram.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Maintenance Phase 2 runtime histogram.
-
-    '
-  name: arangodb_maintenance_phase2_runtime_msec
-  type: histogram
-  unit: ms
-- category: Network
-  complexity: simple
-  description: 'Number of requests forwarded to another coordinator.
-
-    '
-  exposedBy:
-  - coordinator
-  help: 'Number of requests forwarded to another coordinator.
-
-    '
-  name: arangodb_network_forwarded_requests
-  type: counter
-  unit: number
-- category: Network
-  complexity: advanced
-  description: 'Internal request round-trip time as a percentage of timeout.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Internal request round-trip time as a percentage of timeout.
-
-    '
-  name: arangodb_network_request_duration_as_percentage_of_timeout
-  type: gauge
-  unit: percentage
-- category: Network
-  complexity: medium
-  description: 'Number of outgoing internal requests in flight.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of outgoing internal requests in flight.
-
-    '
-  name: arangodb_network_requests_in_flight
-  type: gauge
-  unit: number
-- category: Network
-  complexity: medium
-  description: 'Number of internal requests that have timed out.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of internal requests that have timed out.
-
-    '
-  name: arangodb_network_request_timeouts
-  type: counter
-  unit: number
-- category: Replication
-  complexity: advanced
-  description: 'Number of refusal answers from a follower during synchronous replication.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of refusal answers from a follower during synchronous replication.
-
-    '
-  name: arangodb_refused_followers_count
+  name: arangodb_rocksdb_write_stops
   type: counter
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of cluster replication inventory requests received.
-
-    '
-  exposedBy:
-  - coordinator
-  help: 'Number of cluster replication inventory requests received.
-
-    '
-  name: arangodb_replication_cluster_inventory_requests
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Accumulated time needed to apply replication dump data.
+  description: 'Number of replication dump requests.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication dump data.
+  help: 'Number of replication dump requests.
 
     '
-  name: arangodb_replication_dump_apply_time
+  name: arangodb_replication_dump_requests
   type: counter
-  unit: ms
+  unit: number
 - category: Replication
   complexity: medium
   description: 'Number of bytes received in replication dump requests.
@@ -1279,19 +361,6 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication dump requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication dump requests.
-
-    '
-  name: arangodb_replication_dump_requests
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
   description: 'Accumulated wait time for replication requests.
 
     '
@@ -1305,17 +374,95 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Number of failed connection attempts and response errors during replication.
+  description: 'Accumulated time needed to apply replication dump data.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of failed connection attempts and response errors during replication.
+  help: 'Accumulated time needed to apply replication dump data.
 
     '
-  name: arangodb_replication_failed_connects
+  name: arangodb_replication_dump_apply_time
+  type: counter
+  unit: ms
+- category: Replication
+  complexity: medium
+  description: 'Number of replication initial sync keys requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of replication initial sync keys requests.
+
+    '
+  name: arangodb_replication_initial_sync_keys_requests
   type: counter
   unit: number
+- category: Replication
+  complexity: medium
+  description: 'Number of replication initial sync docs requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of replication initial sync docs requests.
+
+    '
+  name: arangodb_replication_initial_sync_docs_requests
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
+  description: 'Number of documents requested by replication initial sync.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of documents requested by replication initial sync.
+
+    '
+  name: arangodb_replication_initial_sync_docs_requested
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
+  description: 'Number of documents inserted by replication initial sync.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of documents inserted by replication initial sync.
+
+    '
+  name: arangodb_replication_initial_sync_docs_inserted
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
+  description: 'Number of documents removed by replication initial sync.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of documents removed by replication initial sync.
+
+    '
+  name: arangodb_replication_initial_sync_docs_removed
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
+  description: 'Accumulated time needed to apply replication initial sync removals:
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated time needed to apply replication initial sync removals:
+
+    '
+  name: arangodb_replication_initial_remove_apply_time
+  type: counter
+  unit: ms
 - category: Replication
   complexity: medium
   description: 'Accumulated wait time for replication key chunks determination requests.
@@ -1327,6 +474,19 @@
 
     '
   name: arangodb_replication_initial_chunks_requests_time
+  type: counter
+  unit: ms
+- category: Replication
+  complexity: medium
+  description: 'Accumulated wait time for replication keys requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated wait time for replication keys requests.
+
+    '
+  name: arangodb_replication_initial_keys_requests_time
   type: counter
   unit: ms
 - category: Replication
@@ -1357,15 +517,15 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated wait time for replication keys requests.
+  description: 'Accumulated time needed to apply replication initial sync removals.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated wait time for replication keys requests.
+  help: 'Accumulated time needed to apply replication initial sync removals.
 
     '
-  name: arangodb_replication_initial_keys_requests_time
+  name: arangodb_replication_initial_remove_apply_time
   type: counter
   unit: ms
 - category: Replication
@@ -1383,159 +543,15 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed to apply replication initial sync removals.
+  description: 'Number of replication tailing requests.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated time needed to apply replication initial sync removals.
+  help: 'Number of replication tailing requests.
 
     '
-  name: arangodb_replication_initial_remove_apply_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Accumulated time needed to apply replication initial sync removals:
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated time needed to apply replication initial sync removals:
-
-    '
-  name: arangodb_replication_initial_remove_apply_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Number of documents inserted by replication initial sync.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of documents inserted by replication initial sync.
-
-    '
-  name: arangodb_replication_initial_sync_docs_inserted
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Number of documents removed by replication initial sync.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of documents removed by replication initial sync.
-
-    '
-  name: arangodb_replication_initial_sync_docs_removed
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Number of documents requested by replication initial sync.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of documents requested by replication initial sync.
-
-    '
-  name: arangodb_replication_initial_sync_docs_requested
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Number of replication initial sync docs requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication initial sync docs requests.
-
-    '
-  name: arangodb_replication_initial_sync_docs_requests
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Number of replication initial sync keys requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication initial sync keys requests.
-
-    '
-  name: arangodb_replication_initial_sync_keys_requests
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Total number of synchronous replication requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total number of synchronous replication requests.
-
-    '
-  name: arangodb_replication_synchronous_requests_total_number.
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
-  description: 'Total time needed for all synchronous replication requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time needed for all synchronous replication requests.
-
-    '
-  name: arangodb_replication_synchronous_requests_total_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Accumulated time needed to apply replication tailing data.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated time needed to apply replication tailing data.
-
-    '
-  name: arangodb_replication_tailing_apply_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Accumulated number of bytes received for replication tailing requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of bytes received for replication tailing requests.
-
-    '
-  name: arangodb_replication_tailing_bytes_received
-  type: counter
-  unit: bytes
-- category: Replication
-  complexity: medium
-  description: 'Accumulated number of replication tailing document inserts/replaces
-    processed.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of replication tailing document inserts/replaces processed.
-
-    '
-  name: arangodb_replication_tailing_documents
+  name: arangodb_replication_tailing_requests
   type: counter
   unit: number
 - category: Replication
@@ -1566,6 +582,20 @@
   unit: number
 - category: Replication
   complexity: medium
+  description: 'Accumulated number of replication tailing document inserts/replaces
+    processed.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated number of replication tailing document inserts/replaces processed.
+
+    '
+  name: arangodb_replication_tailing_documents
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
   description: 'Number of replication tailing document removals processed.
 
     '
@@ -1579,15 +609,28 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication tailing requests.
+  description: 'Accumulated number of bytes received for replication tailing requests.
 
     '
   exposedBy:
   - dbserver
-  help: 'Number of replication tailing requests.
+  help: 'Accumulated number of bytes received for replication tailing requests.
 
     '
-  name: arangodb_replication_tailing_requests
+  name: arangodb_replication_tailing_bytes_received
+  type: counter
+  unit: bytes
+- category: Replication
+  complexity: medium
+  description: 'Number of failed connection attempts and response errors during replication.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of failed connection attempts and response errors during replication.
+
+    '
+  name: arangodb_replication_failed_connects
   type: counter
   unit: number
 - category: Replication
@@ -1603,77 +646,571 @@
   name: arangodb_replication_tailing_request_time
   type: counter
   unit: ms
-- category: RocksDB
-  complexity: simple
-  description: 'Number of times RocksDB has entered a stalled (slowed) write state.
-
-    '
-  exposedBy:
-  - dbserver
-  - agent
-  help: 'Number of times RocksDB has entered a stalled (slowed) write state.
-
-    '
-  name: arangodb_rocksdb_write_stalls
-  type: counter
-  unit: number
-- category: RocksDB
-  complexity: simple
-  description: 'Number of times RocksDB has entered a stopped write state.
-
-    '
-  exposedBy:
-  - dbserver
-  - agent
-  help: 'Number of times RocksDB has entered a stopped write state.
-
-    '
-  name: arangodb_rocksdb_write_stops
-  type: counter
-  unit: number
-- category: Scheduler
-  complexity: simple
-  description: 'Number of awake worker threads.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of awake worker threads.
-
-    '
-  name: arangodb_scheduler_awake_threads
-  type: gauge
-  unit: number
-- category: Scheduler
+- category: Replication
   complexity: medium
-  description: 'Current queue length of the high priority queue in the scheduler.
+  description: 'Accumulated time needed to apply replication tailing data.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
-  - agent
-  help: 'Current queue length of the high priority queue in the scheduler.
+  help: 'Accumulated time needed to apply replication tailing data.
 
     '
-  name: arangodb_scheduler_high_prio_queue_length
-  type: gauge
+  name: arangodb_replication_tailing_apply_time
+  type: counter
+  unit: ms
+- category: Replication
+  complexity: medium
+  description: 'Total time needed for all synchronous replication requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time needed for all synchronous replication requests.
+
+    '
+  name: arangodb_replication_synchronous_requests_total_time
+  type: counter
+  unit: ms
+- category: Health
+  complexity: simple
+  description: 'Number of drop-follower events.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of drop-follower events.
+
+    '
+  name: arangodb_dropped_followers_count
+  threshold: 'Usually, drop-follower events should only happen if servers are
+
+    restarted.
+
+    '
+  type: counter
   unit: number
-- category: Scheduler
+- category: Replication
   complexity: advanced
-  description: 'Total number of jobs dequeued.
+  description: 'Number of refusal answers from a follower during synchronous replication.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of refusal answers from a follower during synchronous replication.
+
+    '
+  name: arangodb_refused_followers_count
+  type: counter
+  unit: number
+- category: Replication
+  complexity: medium
+  description: 'Number of times a mismatching shard checksum was detected when syncing
+    shards.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of jobs dequeued.
+  help: 'Number of times a mismatching shard checksum was detected when syncing shards.
 
     '
-  name: arangodb_scheduler_jobs_dequeued
+  name: arangodb_sync_wrong_checksum
+  type: counter
+  unit: number
+- category: Maintenance
+  complexity: medium
+  description: 'Accumulated runtime of `Plan` loading
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Accumulated runtime of `Plan` loading
+
+    '
+  name: arangodb_load_plan_accum_runtime_msec
+  type: counter
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Accumulated runtime of `Current` loading.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Accumulated runtime of `Current` loading.
+
+    '
+  name: arangodb_load_current_accum_runtime_msec
+  type: counter
+  unit: ms
+- category: Health
+  complexity: simple
+  description: 'Total number of failed heartbeat transmissions.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Total number of failed heartbeat transmissions.
+
+    '
+  name: arangodb_heartbeat_failures
+  threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
+
+    lead to failover actions which are ultimately bad for the service.
+
+    '
+  troubleshoot: 'This can be a sign of overload or of bad network connectivity. Potentially
+
+    move the agent instances to separate machines.
+
+    '
+  type: counter
+  unit: number
+- category: Agency
+  complexity: advanced
+  description: 'This metric reflects the total number of agency callbacks ever registered
+
+    over time.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of agency callbacks ever registered.
+
+    '
+  name: arangodb_agency_callback_registered
+  type: counter
+  unit: number
+- category: Transactions
+  complexity: simple
+  description: 'Total number of expired transactions.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of expired transactions.
+
+    '
+  name: arangodb_transactions_expired
+  type: counter
+  unit: number
+- category: AQL
+  complexity: medium
+  description: 'Collection lock acquisition time histogram.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Collection lock acquisition time histogram.
+
+    '
+  name: arangodb_collection_lock_acquisition_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Accumulated total time spent in document read operations. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spent in document read operations.
+
+    '
+  name: arangodb_document_read_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Accumulated total time spent in document insert operations. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spent in document insert operations.
+
+    '
+  name: arangodb_document_insert_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Accumulated total time spent in document replace operations. This
+    metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spent in document replace operations.
+
+    '
+  name: arangodb_document_replace_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Accumulated total time spent in document remove operations. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spent in document remove operations.
+
+    '
+  name: arangodb_document_remove_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Accumulated total time spent in document update operations. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spent in document update operations.
+
+    '
+  name: arangodb_document_update_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Total time spent in collection truncate operations.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Total time spent in collection truncate operations.
+
+    '
+  name: arangodb_collection_truncate_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: simple
+  description: 'Execution time histogram for all AQL queries.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Execution time histogram for all AQL queries.
+
+    '
+  name: arangodb_aql_query_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: simple
+  description: 'Execution time histogram for slow AQL queries.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Execution time histogram for slow AQL queries.
+
+    '
+  name: arangodb_aql_slow_query_time
+  type: histogram
+  unit: s
+- category: AQL
+  complexity: simple
+  description: 'Total number of AQL queries finished.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of AQL queries finished.
+
+    '
+  name: arangodb_aql_all_query
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Number of slow AQL queries.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of slow AQL queries.
+
+    '
+  name: arangodb_aql_slow_query
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Total execution time of all AQL queries.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total execution time of all AQL queries.
+
+    '
+  name: arangodb_aql_total_query_time_msec
+  type: histogram
+  unit: ms
+- category: Network
+  complexity: simple
+  description: 'Number of requests forwarded to another coordinator.
+
+    '
+  exposedBy:
+  - coordinator
+  help: 'Number of requests forwarded to another coordinator.
+
+    '
+  name: arangodb_network_forwarded_requests
+  type: counter
+  unit: number
+- category: Network
+  complexity: medium
+  description: 'Number of internal requests that have timed out.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of internal requests that have timed out.
+
+    '
+  name: arangodb_network_request_timeouts
+  type: counter
+  unit: number
+- category: Network
+  complexity: advanced
+  description: 'Internal request round-trip time as a percentage of timeout.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Internal request round-trip time as a percentage of timeout.
+
+    '
+  name: arangodb_network_request_duration_as_percentage_of_timeout
+  type: gauge
+  unit: percentage
+- category: Maintenance
+  complexity: medium
+  description: 'Accumulated runtime of agency sync phase. This includes phase one
+    and
+
+    phase two.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated runtime of agency sync phase.
+
+    '
+  name: arangodb_maintenance_agency_sync_accum_runtime_msec
+  type: counter
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Counter of actions that have been discarded because of a duplicate.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Counter of actions that have been discarded because of a duplicate.
+
+    '
+  name: arangodb_maintenance_action_duplicate_counter
+  type: counter
+  unit: number
+- category: Maintenance
+  complexity: medium
+  description: 'Counter of actions that have been registered in the action registry.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Counter of actions that have been registered in the action registry.
+
+    '
+  name: arangodb_maintenance_action_registered_counter
+  type: counter
+  unit: number
+- category: Maintenance
+  complexity: advanced
+  description: 'Accumulated action runtime for Maintenance.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated action queue time for Maintenance.
+
+    '
+  name: arangodb_maintenance_action_accum_runtime_msec
+  type: counter
+  unit: ms
+- category: Maintenance
+  complexity: advanced
+  description: 'Accumulated action queue time for Maintenance.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated action queue time for Maintenance.
+
+    '
+  name: arangodb_maintenance_action_accum_queue_time_msec
+  type: counter
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Failure counter for the maintenance actions.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Failure counter for the maintenance actions.
+
+    '
+  name: arangodb_maintenance_action_failure_counter
+  type: counter
+  unit: number
+- category: Maintenance
+  complexity: medium
+  description: 'Histogram for total time spend on agency sync.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total time spend on agency sync.
+
+    '
+  name: arangodb_maintenance_agency_sync_runtime_msec
+  type: histogram
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Histogram of time spent execution maintenance actions.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Time spent executing a maintenance action.
+
+    '
+  name: arangodb_maintenance_action_runtime_msec
+  type: histogram
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Time spent in the queue before execution for maintenance actions.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Time spent in the queue before execution for maintenance actions.
+
+    '
+  name: arangodb_maintenance_action_queue_time_msec
+  type: histogram
+  unit: ms
+- category: Health
+  complexity: medium
+  description: 'Time required to send a heartbeat.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Time required to send a heartbeat.
+
+    '
+  name: arangodb_heartbeat_send_time_msec
+  type: histogram
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Histogram of `Current` loading runtimes.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: '`Current` loading runtimes.
+
+    '
+  name: arangodb_load_current_runtime
+  type: histogram
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Histogram of `Plan` loading runtimes.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: '`Plan` loading runtimes.
+
+    '
+  name: arangodb_load_plan_runtime
+  type: histogram
+  unit: ms
+- category: Scheduler
+  complexity: simple
+  description: 'Server''s internal queue length.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Server''s internal queue length.
+
+    '
+  name: arangodb_scheduler_queue_length
   type: gauge
   unit: number
 - category: Scheduler
@@ -1707,78 +1244,33 @@
   type: gauge
   unit: number
 - category: Scheduler
-  complexity: simple
-  description: 'Last recorded dequeue time for a low priority queue item.
+  complexity: advanced
+  description: 'Total number of jobs dequeued.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Last recorded dequeue time for a low priority queue item.
+  help: 'Total number of jobs dequeued.
 
     '
-  name: arangodb_scheduler_low_prio_queue_last_dequeue_time
-  type: gauge
-  unit: ms
-- category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the low priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the low priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_low_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the maintenance priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the maintenance priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_maintenance_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the medium priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the medium priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_medium_prio_queue_length
+  name: arangodb_scheduler_jobs_dequeued
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Current number of worker threads.
+  description: 'Number of awake worker threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Current number of worker threads.
+  help: 'Number of awake worker threads.
 
     '
-  name: arangodb_scheduler_num_worker_threads
+  name: arangodb_scheduler_awake_threads
   type: gauge
   unit: number
 - category: Scheduler
@@ -1798,6 +1290,21 @@
   unit: number
 - category: Scheduler
   complexity: simple
+  description: 'Current number of worker threads.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Current number of worker threads.
+
+    '
+  name: arangodb_scheduler_num_worker_threads
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: simple
   description: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
     '
@@ -1813,92 +1320,132 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Number of tasks dropped and not added to internal queue.
+  description: 'Last recorded dequeue time for a low priority queue item.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Number of tasks dropped and not added to internal queue.
+  help: 'Last recorded dequeue time for a low priority queue item.
 
     '
-  name: arangodb_scheduler_queue_full_failures
-  type: counter
-  unit: number
+  name: arangodb_scheduler_low_prio_queue_last_dequeue_time
+  type: gauge
+  unit: ms
 - category: Scheduler
-  complexity: simple
-  description: 'Server''s internal queue length.
+  complexity: medium
+  description: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Server''s internal queue length.
+  help: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
-  name: arangodb_scheduler_queue_length
+  name: arangodb_scheduler_maintenance_prio_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Total accumulated number of scheduler threads started.
+  description: 'Current queue length of the high priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total accumulated number of scheduler threads started.
+  help: 'Current queue length of the high priority queue in the scheduler.
 
     '
-  name: arangodb_scheduler_threads_started
-  type: counter
+  name: arangodb_scheduler_high_prio_queue_length
+  type: gauge
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Accumulated total number of scheduler threads stopped.
+  description: 'Current queue length of the medium priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Accumulated total number of scheduler threads stopped.
+  help: 'Current queue length of the medium priority queue in the scheduler.
 
     '
-  name: arangodb_scheduler_threads_stopped
-  type: counter
-  unit: number
-- category: Replication
-  complexity: simple
-  description: 'Number of leader shards on this machine.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of leader shards on this machine.
-
-    '
-  name: arangodb_shards_leader_count
+  name: arangodb_scheduler_medium_prio_queue_length
   type: gauge
   unit: number
-- category: Replication
-  complexity: simple
-  description: 'Number of shards not replicated at all.
+- category: Scheduler
+  complexity: medium
+  description: 'Current queue length of the low priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Number of shards not replicated at all.
+  help: 'Current queue length of the low priority queue in the scheduler.
 
     '
-  name: arangodb_shards_not_replicated
+  name: arangodb_scheduler_low_prio_queue_length
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Current number of AQL queries executing.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Current number of AQL queries executing.
+
+    '
+  name: arangodb_aql_current_query
+  type: gauge
+  unit: number
+- category: Network
+  complexity: medium
+  description: 'Number of outgoing internal requests in flight.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of outgoing internal requests in flight.
+
+    '
+  name: arangodb_network_requests_in_flight
+  type: gauge
+  unit: number
+- category: Agency
+  complexity: advanced
+  description: 'This metric reflects the current number of agency callbacks being
+
+    registered.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Current number of agency callbacks registered.
+
+    '
+  name: arangodb_agency_callback_count
+  threshold: 'This number will usually be very low, something like 2 or 3.
+
+    '
+  troubleshoot: 'If this number is considerably higher, this should be investigated.
+
+    Please contact support.
+
+    '
   type: gauge
   unit: number
 - category: Replication
@@ -1932,165 +1479,57 @@
   type: gauge
   unit: number
 - category: Replication
-  complexity: medium
-  description: 'Number of times a mismatching shard checksum was detected when syncing
-    shards.
+  complexity: simple
+  description: 'Number of leader shards on this machine.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Number of times a mismatching shard checksum was detected when syncing shards.
+  help: 'Number of leader shards on this machine.
 
     '
-  name: arangodb_sync_wrong_checksum
-  type: counter
+  name: arangodb_shards_leader_count
+  type: gauge
   unit: number
-- category: Transactions
+- category: Replication
   complexity: simple
-  description: 'Number of transactions aborted.
+  description: 'Number of shards not replicated at all.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Number of transactions aborted.
+  help: 'Number of shards not replicated at all.
 
     '
-  name: arangodb_transactions_aborted
-  type: counter
+  name: arangodb_shards_not_replicated
+  type: gauge
   unit: number
-- category: Transactions
-  complexity: simple
-  description: 'Number of transactions committed.
+- category: Agency
+  complexity: advanced
+  description: 'This reflects the current number of callbacks the local `AgencyCache`
+
+    has registered.
 
     '
   exposedBy:
-  - coordinator
-  - dbserver
   - agent
-  help: 'Number of transactions committed.
-
-    '
-  name: arangodb_transactions_committed
-  type: counter
-  unit: number
-- category: Transactions
-  complexity: simple
-  description: 'Total number of expired transactions.
-
-    '
-  exposedBy:
-  - coordinator
   - dbserver
-  - agent
-  help: 'Total number of expired transactions.
-
-    '
-  name: arangodb_transactions_expired
-  type: counter
-  unit: number
-- category: Transactions
-  complexity: simple
-  description: 'Number of transactions started.
-
-    '
-  exposedBy:
   - coordinator
-  - dbserver
-  - agent
-  help: 'Number of transactions started.
+  help: 'Current number of entries in agency cache callbacks table.
 
     '
-  name: arangodb_transactions_started
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 contexts ever created.
+  name: arangodb_agency_cache_callback_count
+  threshold: 'This number will usually be very low, something like 2 or 3.
 
     '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Total number of V8 contexts ever created.
+  troubleshoot: 'If this number is considerably higher, this should be investigated.
+
+    Please contact support.
 
     '
-  name: arangodb_v8_context_created
-  type: counter
-  unit: number
-- category: V8
-  complexity: medium
-  description: 'Accumulated total time for creating V8 contexts.
-
-    '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Accumulated total time for creating V8 contexts.
-
-    '
-  name: arangodb_v8_context_creation_time_msec
-  type: counter
-  unit: ms
-- category: V8
-  complexity: medium
-  description: 'Total number of V8 contexts ever destroyed.
-
-    '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Total number of V8 contexts ever destroyed.
-
-    '
-  name: arangodb_v8_context_destroyed
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context enter events.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context enter events.
-
-    '
-  name: arangodb_v8_context_entered
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context enter failures.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context enter failures.
-
-    '
-  name: arangodb_v8_context_enter_failures
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context exit events.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context exit events.
-
-    '
-  name: arangodb_v8_context_exited
-  type: counter
+  type: gauge
   unit: number
