@@ -32,8 +32,8 @@
 
 #include <fuerte/connection.h>
 
-DECLARE_METRIC(arangodb_connection_connections_current);
-DECLARE_METRIC(arangodb_connection_leases_successful);
+DECLARE_METRIC(arangodb_connection_pool_connections_current);
+DECLARE_METRIC(arangodb_connection_pool_leases_successful);
 DECLARE_METRIC(arangodb_connection_pool_leases_failed);
 DECLARE_METRIC(arangodb_connection_pool_connections_created);
 DECLARE_METRIC(arangodb_connection_pool_lease_time_hist);
@@ -47,10 +47,10 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config), 
       _loop(config.numIOThreads, config.name),
       _totalConnectionsInPool(
-        _config.metricsFeature.gauge<arangodb_connection_connections_current>(
+        _config.metricsFeature.gauge<arangodb_connection_pool_connections_current>(
           {std::string("pool=") + _config.name}, uint64_t(0), "Current number of connections in pool")),
       _successSelect(
-        _config.metricsFeature.counter<arangodb_connection_leases_successful>(
+        _config.metricsFeature.counter<arangodb_connection_pool_leases_successful>(
           {std::string("pool=") + config.name}, 0, "Total number of successful connection leases")),
       _noSuccessSelect(
         _config.metricsFeature.counter<arangodb_connection_pool_leases_failed>(
