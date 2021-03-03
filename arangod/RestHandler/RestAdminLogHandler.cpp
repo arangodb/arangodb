@@ -128,18 +128,17 @@ void RestAdminLogHandler::clearLogs() {
 
 void RestAdminLogHandler::reportLogs(bool newFormat) {
   bool foundServerIdParameter;
-  std::string serverId =
-      StringUtils::tolower(_request->value("serverId", foundServerIdParameter));
+  std::string serverId = _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
-    if (serverId != StringUtils::tolower(ServerState::instance()->getId())) {
+    if (serverId != ServerState::instance()->getId()) {
       // not ourselves! - need to pass through the request
       auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
       bool found = false;
       for (auto const& srv : ci.getServers()) {
         // validate if server id exists
-        if (StringUtils::tolower(srv.first) == serverId) {
+        if (srv.first == serverId) {
           serverId = srv.first;
           found = true;
           break;
