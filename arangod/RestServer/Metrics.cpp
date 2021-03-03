@@ -52,31 +52,7 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
 }
 
 Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
-  : _name(name), _help(help), _labels(labels) {
-/*  // We look up the name at runtime in the list of metrics
-  // arangodb::metricsNameList. This ensures that each metric is listed
-  // in that list. External scripts then parse the source code of the
-  // list and ensure that all metrics have documentation snippets in
-  // `Documentation/Metrics` and that these are well-formed.
-  char const** p = metricsNameList;
-  bool found = false;
-  while (*p != nullptr) {
-    if (name.compare(*p) == 0) {
-      found = true;
-      break;
-    }
-    ++p;
-  }
-  if (!found) {
-    LOG_TOPIC("77777", FATAL, Logger::STATISTICS)
-      << "Tried to register a metric whose name is not listed in "
-         "`arangodb::metricsNameList`, please add the name " << name
-      << " to the list in source file `arangod/RestServer/Metrics.cpp` "
-         "and create a corresponding documentation snippet in "
-         "`Documentation/Metrics`.";
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED);
-    }*/
-}
+  : _name(name), _help(help), _labels(labels) {}
 
 Metric::~Metric() = default;
 
