@@ -224,7 +224,7 @@ std::string const& GeneralRequest::value(std::string const& key) const {
   return value(key, unused);
 }
 
-std::map<std::string, std::string> const GeneralRequest::parameters() const {
+std::map<std::string, std::string> GeneralRequest::parameters() const {
   std::map<std::string, std::string> parameters {};
   for (auto const& paramPair : values()) {
     parameters.try_emplace(paramPair.first, paramPair.second);
