@@ -17,10 +17,26 @@
     },
 
     render: function () {
+      var self = this;
       this.breadcrumb();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
-      this.renderInfoView();
+      if (frontendConfig.isCluster) {
+        let clusterData = {};
+        let callbackShardCount = function (error, data) {
+          if (error) {
+            arangoHelper.arangoError('Figures', 'Could not get figures.');
+            // in error case: try to render the other information
+            self.renderInfoView();
+          }
+          clusterData.shardCounts = data.count;
+          self.renderInfoView(clusterData);
+        };
+        this.model.getShardCounts(callbackShardCount);
+      } else {
+        this.renderInfoView();
+      }
+
       // check permissions and adjust views
       arangoHelper.checkCollectionPermissions(this.collectionName, this.changeViewToReadOnly);
     },
@@ -35,7 +51,7 @@
       );
     },
 
-    renderInfoView: function () {
+    renderInfoView: function (cluster) {
       if (this.model.get('locked')) {
         return 0;
       }
@@ -45,25 +61,11 @@
         } else {
           var buttons = [];
           // analyze figures in cluster
-          if (frontendConfig.isCluster && figures && figures.figures) {
-            if (figures.figures.alive &&
-              figures.figures.alive.size === 0 &&
-              figures.figures.alive.count === 0 &&
-              figures.figures.datafiles.count === 0 &&
-              figures.figures.datafiles.fileSize === 0 &&
-              figures.figures.journals.count === 0 &&
-              figures.figures.journals.fileSize === 0 &&
-              figures.figures.compactors.count === 0 &&
-              figures.figures.compactors.fileSize === 0 &&
-              figures.figures.dead.size === 0 &&
-              figures.figures.dead.count === 0) {
-              figures.walMessage = ' - not ready yet - ';
-            }
-          }
           var tableContent = {
             figures: figures,
             revision: revision,
-            model: this.model
+            model: this.model,
+            cluster: cluster || {}
           };
 
           window.modalView.show(
