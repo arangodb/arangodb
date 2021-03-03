@@ -171,7 +171,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
       if (r.fail()) {
         generateError(r.combinedResult());
       } else {
-        generateResult(rest::ResponseCode::OK, f.result()->slice());
+        generateResult(rest::ResponseCode::OK, r.slice());
       }
 
       return;
