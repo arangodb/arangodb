@@ -267,6 +267,10 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       return Index::supportsFilterCondition(allIndexes, node, reference, itemsInIndex);
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }
@@ -304,6 +308,10 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
       }
       break;
     }
+
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      // Sorting not supported
+      return Index::SortCosts{};
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -349,7 +357,11 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       return SortedIndexAttributeMatcher::specializeCondition(this, node, reference);
     }
-      
+
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+
     case TRI_IDX_TYPE_UNKNOWN:
       break;
   }

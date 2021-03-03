@@ -35,6 +35,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
+#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -347,6 +348,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
       server);
   static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
+  static const SecondaryIndexFactory<arangodb::RocksDBZkdIndex, arangodb::Index::TRI_IDX_TYPE_ZKD_INDEX> zkdIndexFactory(
+      server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);
@@ -359,6 +362,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
+  emplace("zkd", zkdIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>
