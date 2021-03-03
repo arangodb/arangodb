@@ -805,9 +805,6 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  try {
-    ;
-  } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =
