@@ -169,7 +169,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
 
       network::Response const& r = f.get();
       if (r.fail()) {
-        generateError(network::fuerteToArangoErrorCode(r));
+        generateError(r.combinedResult());
       } else {
         generateResult(rest::ResponseCode::OK, f.result()->slice());
       }
