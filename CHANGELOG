@@ -304,7 +304,7 @@ devel
 
 * Don't allocate ahead-of-time memory for striped PRNG array in arangod,
   but instead use thread-local PRNG instances. Not only does this save a
-  few megabytes or memory, but it also avoids potential (but unlikely)
+  few megabytes of memory, but it also avoids potential (but unlikely)
   sharing of the same PRNG instance by multiple threads.
 
 * Remove undocumented CMake variable `USE_BACKTRACE`, and remove define
@@ -826,7 +826,7 @@ devel
 * Fixed agency redirect in poll api.
 
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
-  section of a foxx app.
+  section of a Foxx app.
 
 * The scheduler will now run a minimum of 4 threads at all times, and the
   default and minimal value for `--server.maximal-threads` has been lowered from
@@ -1283,7 +1283,7 @@ devel
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
 
-* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+* Added a --continue option to arangorestore. arangorestore now keeps track of the progress
   and can continue the restore operation when some error occured.
 
 * Added the following metrics for synchronous replication in the cluster:
