@@ -84,7 +84,7 @@
           if (value.progress.hasOwnProperty('followersSyncing') && 
               value.progress.followersSyncing > 0) {
             // number of followers currently running the synchronization for the shard
-            followersSyncing = '<span>' + value.progress.followersSyncing + ' follower';
+            followersSyncing = '<span>' + arangoHelper.escapeHtml(value.progress.followersSyncing) + ' follower';
             if (value.progress.followersSyncing > 1) {
               // pluralize
               followersSyncing += 's';
