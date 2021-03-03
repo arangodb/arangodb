@@ -1499,6 +1499,11 @@ constexpr int TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                             
 /// replicationFactor mismatch was found.
 constexpr int TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                             = 1946;
 
+/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST
+/// "referenced vertex collection does not exist"
+/// the _from or _to collection specified for the edge does not exist.
+constexpr int TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST       = 1947;
+
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
 /// Will be raised when an invalid/unknown session id is passed to the server.

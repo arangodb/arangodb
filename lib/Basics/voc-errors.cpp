@@ -284,6 +284,7 @@ void TRI_InitializeErrorMessages() {
   REG_ERROR(ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT, "edge definition collection is a document collection");
   REG_ERROR(ERROR_GRAPH_COLLECTION_IS_INITIAL, "initial collection is not allowed to be removed manually");
   REG_ERROR(ERROR_GRAPH_NO_INITIAL_COLLECTION, "no valid initial collection found");
+  REG_ERROR(ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST, "referenced vertex collection does not exist");
   REG_ERROR(ERROR_SESSION_UNKNOWN, "unknown session");
   REG_ERROR(ERROR_SESSION_EXPIRED, "session expired");
   REG_ERROR(ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR, "unknown client error");
