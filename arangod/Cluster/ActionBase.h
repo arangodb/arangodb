@@ -30,7 +30,10 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
+#include <atomic>
 #include <chrono>
+#include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -71,7 +74,7 @@ class ActionBase {
   virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const { return READY == _state; }
+  bool runnable() const { return READY == _state; }
 
   /// @brief did initialization have issues?
   bool ok() const { return FAILED != _state; }
