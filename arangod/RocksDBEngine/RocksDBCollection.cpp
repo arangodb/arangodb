@@ -263,7 +263,7 @@ void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
 }
 
 /// @brief closes an open collection
-int RocksDBCollection::close() {
+ErrorCode RocksDBCollection::close() {
   READ_LOCKER(guard, _indexesLock);
   for (auto it : _indexes) {
     it->unload();

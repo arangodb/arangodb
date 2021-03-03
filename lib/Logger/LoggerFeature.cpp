@@ -124,7 +124,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
                   new UInt32Parameter(&_maxEntryLength))
-      .setIntroducedIn(30800).setIntroducedIn(30708);
+      .setIntroducedIn(30709);
 
   options
       ->addOption("--log.use-local-time", "use local timezone instead of UTC",
@@ -154,8 +154,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--log.file-mode",
                   "mode to use for new log file, umask will be applied as well",
                   new StringParameter(&_fileMode))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
@@ -170,7 +169,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.use-json-format", "use json output format",
                   new BooleanParameter(&_useJson))
-      .setIntroducedIn(30701);
+      .setIntroducedIn(30800);
 
 #ifdef ARANGODB_HAVE_SETGID
   options
@@ -178,8 +177,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--log.file-group",
           "group to use for new log file, user must be a member of this group",
           new StringParameter(&_fileGroup))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 #endif
 
   options->addOption("--log.prefix", "prefix log message with this string",
@@ -201,10 +199,15 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
+  options->addOption("--log.hostname",
+                     "hostname to use in log message (empty for none, use 'auto' to automatically figure out hostname)",
+                     new StringParameter(&_hostname))
+                     .setIntroducedIn(30800);
+  
   options->addOption("--log.process", "show process identifier (pid) in log message",
                      new BooleanParameter(&_processId),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30701);
+                     .setIntroducedIn(30800);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -385,6 +388,7 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
+  Logger::setHostname(_hostname);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
   Logger::setUseJson(_useJson);

@@ -307,7 +307,6 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
-      assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -328,11 +327,6 @@ function dumpTestSuite () {
       }
       doc = c.save({});
       assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-
-      // remember this value, since its restored to later on:
-      process.env['lastPaddedLastValue'] = process.env['paddedLastValue'];
-      // set our modified value:
-      process.env['paddedLastValue'] = c.properties().keyOptions.lastValue;
     },
 
 ////////////////////////////////////////////////////////////////////////////////

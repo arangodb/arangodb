@@ -30,6 +30,12 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
+let timeout = 60;
+if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
+    process.env.hasOwnProperty('GCOV_PREFIX')) {
+  timeout *= 10;
+}
 function KillSuite () {
   'use strict';
   // generate a random collection name
@@ -122,7 +128,7 @@ function KillSuite () {
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
       let tries = 0;
       let done = 0;
-      while (++tries < 60) {
+      while (++tries < timeout) {
         clients.forEach(function(client) {
           if (!client.done) { 
             let status = internal.statusExternal(client.pid);
@@ -314,7 +320,7 @@ while (id !== null) {
   
       // finally kill off all remaining pending jobs
       let tries = 0;
-      while (tries++ < 60) {
+      while (tries++ < timeout) {
         let result = arango.GET("/_api/job/pending");
         if (result.length === 0) {
           break;

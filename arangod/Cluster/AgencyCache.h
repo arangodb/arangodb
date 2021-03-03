@@ -54,10 +54,8 @@ class AgencyCache final : public arangodb::Thread {
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(
-    application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry,
-    int shutdownCode);
+  explicit AgencyCache(application_features::ApplicationServer& server,
+                       AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode);
 
   ~AgencyCache();
 
