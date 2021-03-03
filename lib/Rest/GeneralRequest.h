@@ -187,7 +187,7 @@ class GeneralRequest {
   }
 
   // returns the query parameters as fuerte needs them (as a map)
-  std::map<std::string, std::string> const parameters() const;
+  std::map<std::string, std::string> parameters() const;
 
   std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
     return _arrayValues;
