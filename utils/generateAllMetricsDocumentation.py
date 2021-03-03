@@ -87,15 +87,31 @@ for i in range(0, len(metricsList)):
     if bad:
         missing = True
     
-outfile = "Documentation/Metrics/allMetrics.yaml"
-if len(sys.argv) > 1:
-  outfile = sys.argv[1]
+onlyCheck = False
+if len(sys.argv) > 1 and sys.argv[1] == "-c":
+  onlyCheck = True
 
-# Dump what we have:
+outfile = "Documentation/Metrics/allMetrics.yaml"
 output = dump(yamls, Dumper=Dumper)
-s = open(outfile, "w")
-s.write(output)
-s.close()
+if onlyCheck:
+  input = open(outfile, "r")
+  found = input.read()
+  input.close()
+  if output != found:
+    print("""
+Generated file Documentation/Metrics/allMetrics.yaml does not match
+the metrics documentation snippets. Please run
+
+  utils/generateAllMetricsDocumentation.py
+
+and commit Documentation/Metrics/allMetrics.yaml with your PR!
+""")
+    sys.exit(18)
+else:
+  # Dump what we have:
+  s = open(outfile, "w")
+  s.write(output)
+  s.close()
 
 if missing:
     sys.exit(17)
