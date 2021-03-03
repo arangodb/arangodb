@@ -18,24 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Kaveh Vahedipour
 /// @author Copyright 2017-2018, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "gtest/gtest.h"
-
-#include "RestServer/MetricsFeature.h"
-#include "Mocks/Servers.h"
-#include "MetricsFeatureTest.h"
-
-using namespace arangodb;
-
-TEST(MetricsServerTest, test_setup) {
-  tests::mocks::MockMetricsServer server;
-  MetricsFeature& feature = server.getFeature<MetricsFeature>();
-
-  auto& counter = feature.counter<COUNTER>(0, "one counter");
-  ASSERT_EQ(counter.load(), 0);
-  counter.count();
-  ASSERT_EQ(counter.load(), 1);
-}
+#ifndef METRICS_FEATURE_TEST_H
+#define METRICS_FEATURE_TEST_H
+inline extern constexpr char COUNTER[] = "counter";
+inline extern constexpr char HISTOGRAM[] = "histogram";
+inline extern constexpr char GAUGE[] = "gauge";
+#endif

@@ -97,6 +97,13 @@ namespace arangodb {
 
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
+DECLARE_METRIC(arangodb_aql_all_query);
+DECLARE_METRIC(arangodb_aql_query_time);
+DECLARE_METRIC(arangodb_aql_slow_query);
+DECLARE_METRIC(arangodb_aql_slow_query_time);
+DECLARE_METRIC(arangodb_aql_total_query_time_msec);
+DECLARE_METRIC(arangodb_aql_current_query);
+
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackingEnabled(true),
@@ -122,25 +129,23 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
       _queryTimes(
-        server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_aql_query_time", log_scale_t(2., 0.0, 50.0, 20),
-          "Execution time histogram for all AQL queries [s]")),
+        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_aql_query_time>(
+          log_scale_t(2., 0.0, 50.0, 20), "Execution time histogram for all AQL queries [s]")),
       _slowQueryTimes(
-        server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_aql_slow_query_time", log_scale_t(2., 1.0, 2000.0, 10),
-          "Execution time histogram for slow AQL queries [s]")),
+        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_aql_slow_query_time>(
+          log_scale_t(2., 1.0, 2000.0, 10), "Execution time histogram for slow AQL queries [s]")),
       _totalQueryExecutionTime(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_aql_total_query_time_msec>(
+          0, "Total execution time of all AQL queries [ms]")),
       _queriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_all_query", 0, "Total number of AQL queries finished")),
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_aql_all_query>(
+          0, "Total number of AQL queries finished")),
       _slowQueriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries finished")),
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_aql_slow_query>(
+          0, "Total number of slow AQL queries finished")),
       _runningQueries(
-        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")) {
+        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_aql_current_query>(
+          uint64_t(0), "Current number of AQL queries executing")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 

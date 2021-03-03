@@ -8,46 +8,51 @@ except ImportError:
 
 import os, re, sys
 
+# Check that we are in the right place:
+lshere = os.listdir(".")
+if not("arangod" in lshere and "arangosh" in lshere and \
+        "Documentation" in lshere and "CMakeLists.txt" in lshere):
+  print("Please execute me in the main source dir!")
+  sys.exit(1)
+
 # List files in Documentation/Metrics:
-files = os.listdir("Documentation/Metrics")
-files.sort()
+yamlfiles = os.listdir("Documentation/Metrics")
+yamlfiles.sort()
 
 # Read list of metrics from source:
-s = open("arangod/RestServer/Metrics.cpp")
-
-while True:
-    l = s.readline()
-    if l == "":
-        print("Did not find metricsNameList in arangod/RestServer/Metrics.cpp!")
-        sys.exit(2)
-    if l.find("metricsNameList") >= 0:
-        break
-
 metricsList = []
-while True:
-    l = s.readline()
-    if l.find("nullptr") >= 0:
-        break
-    pos1 = l.find('"')
-    pos2 = l.find('"', pos1+1)
-    if pos1 < 0 or pos2 < 0:
-        print("Did not find quoted name in this line:\n" + l)
-        sys.exit(3)
-    metricsList.append(l[pos1+1:pos2])
+linematch = re.compile("DECLARE_METRIC\(([a-z_A-Z]*)\)")
+for root, dirs, files in os.walk("."):
+    if root[:10] == "./arangod/" or root[:6] == "./lib/":
+      for f in files:
+        if f[-4:] == ".cpp":
+          ff = os.path.join(root, f)
+          s = open(ff)
+          while True:
+              l = s.readline()
+              if l == "":
+                  break
+              m = linematch.search(l)
+              if m:
+                  metricsList.append(m.group(1))
+          s.close()
+if len(metricsList) == 0:
+    print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
+    sys.exit(2)
 
-s.close()
+metricsList.sort()
 
 # Check that every listed metric has a .yaml documentation file:
 missing = False
 yamls = []
 for i in range(0, len(metricsList)):
     bad = False
-    if not metricsList[i] + ".yaml" in files:
+    if not metricsList[i] + ".yaml" in yamlfiles:
         print("Missing metric documentation for metric '" + metricsList[i] + "'")
         bad = True
     else:
         # Check yaml:
-        filename = "Documentation/Metrics/" + metricsList[i] + ".yaml"
+        filename = os.path.join("Documentation/Metrics", metricsList[i]) + ".yaml"
         try:
             s = open(filename)
         except FileNotFoundError:

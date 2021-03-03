@@ -72,6 +72,8 @@ void queueGarbageCollection(std::mutex& mutex, arangodb::Scheduler::WorkHandle& 
 namespace arangodb {
 namespace transaction {
 
+DECLARE_METRIC(arangodb_transactions_expired);
+
 std::unique_ptr<transaction::Manager> ManagerFeature::MANAGER;
 
 ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
@@ -80,8 +82,8 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
       _gcfunc(),
       _streamingLockTimeout(8.0),
       _numExpiredTransactions(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_transactions_expired", 0, "Total number of expired transactions")) {
+        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_transactions_expired>(
+          0, "Total number of expired transactions")) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
   startsAfter<EngineSelectorFeature>();

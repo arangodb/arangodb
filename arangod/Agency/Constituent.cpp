@@ -51,6 +51,7 @@ using namespace arangodb::rest;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
+DECLARE_METRIC(arangodb_agency_term);
 //  (std::numeric_limits<std::string>::max)();
 
 /// Raft role names for display purposes
@@ -74,8 +75,8 @@ Constituent::Constituent(application_features::ApplicationServer& server)
     : Thread(server, "Constituent"),
       _vocbase(nullptr),
       _term(0),
-      _gterm(_server.getFeature<arangodb::MetricsFeature>().gauge(
-               "arangodb_agency_term", _term, "Agency's term")),
+      _gterm(
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_agency_term>(_term, "Agency's term")),
       _leaderID(NO_LEADER),
       _lastHeartbeatSeen(0.0),
       _role(FOLLOWER),

@@ -50,6 +50,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
 
+DECLARE_METRIC(arangodb_agency_append_hist);
+DECLARE_METRIC(arangodb_agency_commit_hist);
+DECLARE_METRIC(arangodb_agency_compaction_hist);
+DECLARE_METRIC(arangodb_agency_local_commit_index);
+DECLARE_METRIC(arangodb_agency_read_no_leader);
+DECLARE_METRIC(arangodb_agency_read_ok);
+DECLARE_METRIC(arangodb_agency_write_hist);
+DECLARE_METRIC(arangodb_agency_write_no_leader);
+DECLARE_METRIC(arangodb_agency_write_ok);
+
 namespace arangodb {
 namespace consensus {
 
@@ -76,36 +86,32 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_ok", 0, "Agency write ok")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_ok>(
+          0, "Agency write ok")),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_write_no_leader", 0, "Agency write no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_no_leader>(
+          0, "Agency write no leader")),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_ok", 0, "Agency read ok")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_read_ok>(
+          0, "Agency read ok")),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_agency_read_no_leader", 0, "Agency read no leader")),
+        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_read_no_leader>(
+          0, "Agency read no leader")),
       _write_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_write_hist", log_scale_t(2.f, 0.f, 200.f, 10),
-          "Agency write histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_write_hist>(
+          log_scale_t(2.f, 0.f, 200.f, 10), "Agency write histogram [ms]")),
       _commit_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_commit_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency RAFT commit histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_commit_hist>(
+          log_scale_t(std::exp(1.f), 0.f, 200.f, 10), "Agency RAFT commit histogram [ms]")),
       _append_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_append_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency RAFT follower append histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_append_hist>(
+          log_scale_t(std::exp(1.f), 0.f, 200.f, 10), "Agency RAFT follower append histogram [ms]")),
       _compaction_hist_msec(
-        _server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_agency_compaction_hist", log_scale_t(std::exp(1.f), 0.f, 200.f, 10),
-          "Agency compaction histogram [ms]")),
+        _server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_compaction_hist>(
+          log_scale_t(std::exp(1.f), 0.f, 200.f, 10), "Agency compaction histogram [ms]")),
       _local_index(
-        _server.getFeature<arangodb::MetricsFeature>().gauge(
-          "arangodb_agency_local_commit_index", uint64_t(0), "This agent's commit index")) {
+        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_agency_local_commit_index>(
+          uint64_t(0), "This agent's commit index")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {

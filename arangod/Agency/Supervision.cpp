@@ -49,6 +49,12 @@ using namespace arangodb::application_features;
 using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
 
+DECLARE_METRIC(arangodb_agency_supervision_accum_runtime_msec);
+DECLARE_METRIC(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec);
+DECLARE_METRIC(arangodb_agency_supervision_failed_server_count);
+DECLARE_METRIC(arangodb_agency_supervision_runtime_msec);
+DECLARE_METRIC(arangodb_agency_supervision_runtime_wait_for_replication_msec);
+
 struct HealthRecord {
   std::string shortName;
   std::string syncTime;
@@ -180,26 +186,24 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _selfShutdown(false),
       _upgraded(false),
       _nextServerCleanup(),
-      _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50, 8000, 10),
-          "Agency Supervision runtime histogram [ms]")),
+      _supervision_runtime_msec(
+        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_supervision_runtime_msec>(
+          log_scale_t<uint64_t>(2, 50, 8000, 10), "Agency Supervision runtime histogram [ms]")),
       _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().histogram(
-              StaticStrings::SupervisionRuntimeWaitForSyncMs,
-              log_scale_t<uint64_t>(2, 10, 2000, 10),
-              "Agency Supervision wait for replication time [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_supervision_runtime_wait_for_replication_msec>(
+          log_scale_t<uint64_t>(2, 10, 2000, 10), "Agency Supervision wait for replication time [ms]")),
       _supervision_accum_runtime_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeMs, 0,
-              "Accumulated Supervision Runtime [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().counter<
+        arangodb_agency_supervision_accum_runtime_msec>(
+          0, "Accumulated Supervision Runtime [ms]")),
       _supervision_accum_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
-              "Accumulated Supervision  wait for replication time  [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().counter<
+        arangodb_agency_supervision_accum_runtime_wait_for_replication_msec>(
+          0, "Accumulated Supervision  wait for replication time  [ms]")),
       _supervision_failed_server_counter(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionFailedServerCount, 0,
-              "Counter for FailedServer jobs")) {}
+        server.getFeature<arangodb::MetricsFeature>().counter<
+        arangodb_agency_supervision_failed_server_count>(
+          0, "Counter for FailedServer jobs")) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {

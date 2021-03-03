@@ -116,27 +116,6 @@
   name: arangodb_agency_commit_hist
   type: histogram
   unit: ms
-- category: Network
-  complexity: medium
-  description: 'This histogram shows how long requests to the agency took.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Request time for Agency requests.
-
-    '
-  name: arangodb_agencycomm_request_time_msec
-  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
-    \n"
-  troubleshoot: 'If the network or the agents are overloaded, it can help to move
-
-    agent instances to separate machines.
-
-    '
-  type: histogram
-  unit: ms
 - category: Agency
   complexity: medium
   description: 'Agency compaction time histogram.
@@ -359,6 +338,27 @@
   name: arangodb_agency_write_ok
   type: counter
   unit: number
+- category: Network
+  complexity: medium
+  description: 'This histogram shows how long requests to the agency took.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Request time for Agency requests.
+
+    '
+  name: arangodb_agencycomm_request_time_msec
+  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
+    \n"
+  troubleshoot: 'If the network or the agents are overloaded, it can help to move
+
+    agent instances to separate machines.
+
+    '
+  type: histogram
+  unit: ms
 - category: AQL
   complexity: simple
   description: 'Total number of AQL queries finished.
@@ -527,6 +527,20 @@
   unit: number
 - category: Statistics
   complexity: simple
+  description: 'Total time spent in collection truncate operations.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Total time spent in collection truncate operations.
+
+    '
+  name: arangodb_collection_truncate_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
   description: 'Total number of collection truncate operations (excl. synchronous
 
     replication). Note that this metric is only present when the command
@@ -561,169 +575,102 @@
   name: arangodb_collection_truncates_replication
   type: counter
   unit: number
-- category: Statistics
-  complexity: simple
-  description: 'Total time spent in collection truncate operations.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total time spent in collection truncate operations.
-
-    '
-  name: arangodb_collection_truncate_time
-  type: histogram
-  unit: s
 - category: Connectivity
   complexity: medium
-  description: 'Current number of connections in pool for AgencyComm.
+  description: 'Total number of connections created for connection pool. There are
+
+    two pools, one for the agency communication with label `AgencyComm`
+
+    and one for the other cluster internal communication with label
+
+    `ClusterComm`.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Current number of connections in pool for AgencyComm.
+  help: 'Total number of connections created for connection pool.
 
     '
-  name: arangodb_connection_connections_current_AgencyComm
+  name: arangodb_connection_pool_connections_created
+  type: counter
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Current number of connections in pool. There are two pools, one for
+    the
+
+    agency communication with label `AgencyComm` and one for the other
+
+    cluster internal communication with label `ClusterComm`.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Current number of connections in pool.
+
+    '
+  name: arangodb_connection_connections_current
   type: gauge
   unit: number
 - category: Connectivity
-  complexity: medium
-  description: 'Current number of connections in pool for ClusterComm.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current number of connections in pool for ClusterComm.
-
-    '
-  name: arangodb_connection_connections_current_ClusterComm
-  type: gauge
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of successful connection leases for AgencyComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of successful connection leases for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_leases_successful_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of successful connection leases for ClusterComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of successful connection leases for ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_leases_successful_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of connections created for AgencyComm connection pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of connections created for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_pool_connections_created_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of connections created for ClusterComm connection pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of connections created for ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_pool_connections_created_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of failed connection leases for AgencyComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Total number of failed connection leases for AgencyComm connection pool.
-
-    '
-  name: arangodb_connection_pool_leases_failed_AgencyComm
-  type: counter
-  unit: number
-- category: Connectivity
-  complexity: medium
-  description: 'Total number of failed connection leases for the ClusterComm connection
-    pool.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of failed connection leases for the ClusterComm connection pool.
-
-    '
-  name: arangodb_connection_pool_leases_failed_ClusterComm
-  type: counter
-  unit: number
-- category: Connectivity
   complexity: simple
-  description: 'Time to lease a connection from connection pool AgencyComm.
+  description: 'Time to lease a connection from the connection. There are two pools,
+
+    one for the agency communication with label `AgencyComm` and one for
+
+    the other cluster internal communication with label `ClusterComm`.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Time to lease a connection from connection pool AgencyComm.
+  help: 'Time to lease a connection from the connection pool.
 
     '
-  name: arangodb_connection_pool_lease_time_hist_AgencyComm
+  name: arangodb_connection_pool_lease_time_hist
   type: histogram
   unit: ms
 - category: Connectivity
-  complexity: simple
-  description: 'Time to lease a connection from connection pool ClusterComm.
+  complexity: medium
+  description: 'Total number of failed connection leases. There are two pools, one
+    for
+
+    the agency communication with label `AgencyComm` and one for the other
+
+    cluster internal communication with label `ClusterComm`.
 
     '
   exposedBy:
   - coordinator
   - dbserver
-  - agent
-  help: 'Time to lease a connection from connection pool ClusterComm.
+  help: 'Total number of failed connection leases.
 
     '
-  name: arangodb_connection_pool_lease_time_hist_ClusterComm
-  type: histogram
-  unit: ms
+  name: arangodb_connection_pool_leases_failed
+  type: counter
+  unit: number
+- category: Connectivity
+  complexity: medium
+  description: 'Total number of successful connection leases from connection pool.
+
+    There are two pools, one for the agency communication with label
+
+    `AgencyComm` and one for the other cluster internal communication with
+
+    label `ClusterComm`.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  help: 'Total number of successful connection leases from connection pool.
+
+    '
+  name: arangodb_connection_leases_successful
+  type: counter
+  unit: number
 - category: Statistics
   complexity: simple
   description: 'Accumulated total time spent in document insert operations. This metric
@@ -1102,58 +1049,6 @@
   name: arangodb_maintenance_agency_sync_runtime_msec
   type: histogram
   unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  name: arangodb_maintenance_phase1_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 1 runtime histogram.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Maintenance Phase 1 runtime histogram.
-
-    '
-  name: arangodb_maintenance_phase1_runtime_msec
-  type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  name: arangodb_maintenance_phase2_accum_runtime_msec
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 2 runtime histogram.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Maintenance Phase 2 runtime histogram.
-
-    '
-  name: arangodb_maintenance_phase2_runtime_msec
-  type: histogram
-  unit: ms
 - category: Network
   complexity: simple
   description: 'Number of requests forwarded to another coordinator.
@@ -1184,21 +1079,6 @@
   unit: percentage
 - category: Network
   complexity: medium
-  description: 'Number of outgoing internal requests in flight.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of outgoing internal requests in flight.
-
-    '
-  name: arangodb_network_requests_in_flight
-  type: gauge
-  unit: number
-- category: Network
-  complexity: medium
   description: 'Number of internal requests that have timed out.
 
     '
@@ -1211,6 +1091,21 @@
     '
   name: arangodb_network_request_timeouts
   type: counter
+  unit: number
+- category: Network
+  complexity: medium
+  description: 'Number of outgoing internal requests in flight.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of outgoing internal requests in flight.
+
+    '
+  name: arangodb_network_requests_in_flight
+  type: gauge
   unit: number
 - category: Replication
   complexity: advanced
@@ -1279,19 +1174,6 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication dump requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication dump requests.
-
-    '
-  name: arangodb_replication_dump_requests
-  type: counter
-  unit: number
-- category: Replication
-  complexity: medium
   description: 'Accumulated wait time for replication requests.
 
     '
@@ -1303,6 +1185,19 @@
   name: arangodb_replication_dump_request_time
   type: counter
   unit: ms
+- category: Replication
+  complexity: medium
+  description: 'Number of replication dump requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of replication dump requests.
+
+    '
+  name: arangodb_replication_dump_requests
+  type: counter
+  unit: number
 - category: Replication
   complexity: medium
   description: 'Number of failed connection attempts and response errors during replication.
@@ -1578,19 +1473,6 @@
   type: counter
   unit: number
 - category: Replication
-  complexity: medium
-  description: 'Number of replication tailing requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication tailing requests.
-
-    '
-  name: arangodb_replication_tailing_requests
-  type: counter
-  unit: number
-- category: Replication
   complexity: advanced
   description: 'Aggregated wait time for replication tailing requests.
 
@@ -1603,6 +1485,19 @@
   name: arangodb_replication_tailing_request_time
   type: counter
   unit: ms
+- category: Replication
+  complexity: medium
+  description: 'Number of replication tailing requests.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Number of replication tailing requests.
+
+    '
+  name: arangodb_replication_tailing_requests
+  type: counter
+  unit: number
 - category: RocksDB
   complexity: simple
   description: 'Number of times RocksDB has entered a stalled (slowed) write state.
@@ -2005,92 +1900,5 @@
 
     '
   name: arangodb_transactions_started
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 contexts ever created.
-
-    '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Total number of V8 contexts ever created.
-
-    '
-  name: arangodb_v8_context_created
-  type: counter
-  unit: number
-- category: V8
-  complexity: medium
-  description: 'Accumulated total time for creating V8 contexts.
-
-    '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Accumulated total time for creating V8 contexts.
-
-    '
-  name: arangodb_v8_context_creation_time_msec
-  type: counter
-  unit: ms
-- category: V8
-  complexity: medium
-  description: 'Total number of V8 contexts ever destroyed.
-
-    '
-  exposedBy:
-  - coordinator
-  - single
-  help: 'Total number of V8 contexts ever destroyed.
-
-    '
-  name: arangodb_v8_context_destroyed
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context enter events.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context enter events.
-
-    '
-  name: arangodb_v8_context_entered
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context enter failures.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context enter failures.
-
-    '
-  name: arangodb_v8_context_enter_failures
-  type: counter
-  unit: number
-- category: V8
-  complexity: simple
-  description: 'Total number of V8 context exit events.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of V8 context exit events.
-
-    '
-  name: arangodb_v8_context_exited
   type: counter
   unit: number
