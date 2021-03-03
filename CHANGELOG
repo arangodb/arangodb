@@ -1,6 +1,9 @@
 devel
 -----
 
+* The Web UI's info view of a collection now displays additional properties and
+  statistics (e.g. RocksDB related figures, sharding information and more).
+
 * Improve progress reporting for shard synchronization in the web UI.
   The UI will now show how many shards are actively syncing data, and will 
   provide a better progress indicator, especially if there is more than one
