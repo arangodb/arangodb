@@ -79,20 +79,23 @@ compiler is for C/C++. You can invoke it like this:
 ### Adding metrics
 
 As of 3.8 we have enforced documentation for metrics. This works as
-follows. Every metric which is generated has a name. This name must be
-listed in the file `arangod/RestServer/Metrics.cpp` in the static array
-`metricsNameList`. If this is not done and you build with maintainer
-mode, then the server will not start. Note that since not all metrics
-are active in all modes (single, agent, dbserver, coordinator), absence
-of a name in the list is only detected when you run an instance in a
-mode which uses the metric. If you add a name to the list, please use
-the formatting used so far with one name per line in double quotes.
+follows. Every metric which is generated has a name. The metric must be
+declared by using the macro
+
+```
+  DECLARE_METRIC(name);
+```
+
+in some `.cpp` file (please put only one on a line). Then, when the
+metric is actually requested in the source code, it gets a template
+parameter with that name, which makes the compiler ensure that the
+declaration is actually there.
 
 Then there is a helper script `utils/generateAllMetricsDocumentation.py`
 which needs `python3` with the `yaml` module. It will check and do the
 following things:
 
- - every name in the list `metricsNameList` in the source has a
+ - every declared metric in some `.cpp` file in the source has a
    corresponding documentation snippet in `Documentation/Metrics`
    under the name of the metric with `.yaml` appended
  - each such file is a YAML file of a certain format (see template
@@ -104,9 +107,9 @@ following things:
    the format is again a structured YAML file which can easily be
    processed by the documentation tools.
 
-Please, if you have added or modified a metric, make sure to add the
-name of the metric to `metricsNameList` and add a documentation YAML
-snippet in the correct format. Afterwards, run
+Please, if you have added or modified a metric, make sure to declare
+the metric as shown above and add a documentation YAML snippet in the
+correct format. Afterwards, run
 
     utils/generateAllMetricsDocumentation.py
 
