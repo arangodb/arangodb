@@ -101,6 +101,10 @@ RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId, VPackSlice const
   return RocksDBKeyBounds(RocksDBEntryType::VPackIndexValue, indexId, left, right);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::ZkdIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::ZkdIndexValue, indexId, false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId, VPackSlice const& left,
                                                     VPackSlice const& right) {

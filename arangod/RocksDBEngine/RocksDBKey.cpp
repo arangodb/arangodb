@@ -462,6 +462,17 @@ VPackSlice RocksDBKey::indexedVPack(char const* data, size_t size) {
   return VPackSlice(reinterpret_cast<uint8_t const*>(data) + sizeof(uint64_t));
 }
 
+zkd::byte_string_view RocksDBKey::zkdIndexValue(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size > 2 * sizeof(uint64_t));
+  return zkd::byte_string_view(reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+                               size - 2 * sizeof(uint64_t));
+}
+
+zkd::byte_string_view RocksDBKey::zkdIndexValue(const rocksdb::Slice& slice) {
+  return zkdIndexValue(slice.data(), slice.size());
+}
+
 namespace arangodb {
 
 std::ostream& operator<<(std::ostream& stream, RocksDBKey const& key) {

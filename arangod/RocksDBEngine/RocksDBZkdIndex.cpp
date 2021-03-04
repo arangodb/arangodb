@@ -39,27 +39,21 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
                           transaction::Methods* trx, zkd::byte_string min,
                           zkd::byte_string max, std::size_t dim)
       : IndexIterator(collection, trx),
-        _bounds(RocksDBKeyBounds::GeoIndex(index->objectId())),
+        _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
         _dim(dim) {
     _cur = _min;
-
-    _begin = _bounds.start();
-    _end = _bounds.end();
+    _upperBound = _bound.end();
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
-
-    options.iterate_lower_bound = &_begin;
-    options.iterate_upper_bound = &_end;
-    _iter = mthds->NewIterator({}, index->columnFamily());
+    options.iterate_upper_bound = &_upperBound;
+    TRI_ASSERT(options.prefix_same_as_start);
+    _iter = mthds->NewIterator(options, index->columnFamily());
     TRI_ASSERT(_iter != nullptr);
   }
 
-  RocksDBKeyBounds _bounds;
-  rocksdb::Slice _begin;
-  rocksdb::Slice _end;
 
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
 
@@ -114,17 +108,25 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
    */
 
+
+  RocksDBKeyBounds _bound;
+  rocksdb::Slice _upperBound;
   zkd::byte_string _cur;
   const zkd::byte_string _min;
   const zkd::byte_string _max;
   const std::size_t _dim;
 
+
   std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
+}  // namespace arangodb
+
+namespace {
+
 auto readDocumentKey(VPackSlice doc,
                      std::vector<std::vector<basics::AttributeName>> const& fields)
-    -> zkd::byte_string {
+-> zkd::byte_string {
   std::vector<zkd::byte_string> v;
   v.reserve(fields.size());
 
@@ -141,7 +143,7 @@ auto readDocumentKey(VPackSlice doc,
   return zkd::interleave(v);
 }
 
-}  // namespace arangodb
+}
 
 arangodb::Result arangodb::RocksDBZkdIndex::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
@@ -207,7 +209,7 @@ void arangodb::RocksDBZkdIndex::toVelocyPack(
     std::underlying_type<arangodb::Index::Serialize>::type type) const {
   VPackObjectBuilder ob(&builder);
   RocksDBIndex::toVelocyPack(builder, type);
-  builder.add("zkd", VPackValue(true));
+  builder.add("dimension", VPackValue(_fields.size()));
 }
 
 arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(

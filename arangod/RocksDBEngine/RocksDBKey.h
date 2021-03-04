@@ -164,6 +164,9 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructRevisionTreeValue(uint64_t objectId);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for zkd index
+  //////////////////////////////////////////////////////////////////////////////
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value, LocalDocumentId documentId);
 
  public:
@@ -269,6 +272,13 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t geoValue(rocksdb::Slice const& slice);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the zkd index value
+  ///
+  /// May be called only on zkd index values
+  //////////////////////////////////////////////////////////////////////////////
+  static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
+
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
@@ -328,6 +338,7 @@ class RocksDBKey {
   static arangodb::velocypack::StringRef primaryKey(char const* data, size_t size);
   static arangodb::velocypack::StringRef vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
+  static zkd::byte_string_view zkdIndexValue(char const* data, size_t size);
 
  private:
   static const char _stringSeparator;
