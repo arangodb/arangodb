@@ -32,7 +32,7 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
-#define DECLARE_METRIC(x) constexpr char x[] = "x"
+#define DECLARE_METRIC(x) constexpr char x[] = #x
 
 namespace arangodb {
 struct metrics_key;
