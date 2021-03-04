@@ -776,7 +776,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   if (it == _graph.vertexCollections().end()) {
     // not found _from vertex
     return std::make_pair(
-        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF,
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
                                "referenced _from collection '" + fromCollectionName + "' is not part of the graph"),
                         options),
         true);
@@ -785,7 +785,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   if (it == _graph.vertexCollections().end()) {
     // not found _to vertex
     return std::make_pair(
-        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF,
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
                                "referenced _to collection '" + toCollectionName + "' is not part of the graph"),
                         options),
         true);
