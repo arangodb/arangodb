@@ -741,6 +741,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
     std::string& toCollectionName, std::string& toCollectionKey, bool isUpdate) {
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
+  OperationOptions options;
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
     if (isUpdate) {
