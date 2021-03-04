@@ -1466,10 +1466,11 @@ constexpr int TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST                      
 /// collection, it cannot be used here.
 constexpr int TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT                       = 1944;
 
-/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST
-/// "referenced vertex collection does not exist"
-/// the _from or _to collection specified for the edge does not exist.
-constexpr int TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST       = 1947;
+/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED
+/// "referenced vertex collection is not part of the graph"
+/// the _from or _to collection specified for the edge refers to a vertex
+/// collection which is not used in any edge definition of the graph.
+constexpr int TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = 1947;
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
