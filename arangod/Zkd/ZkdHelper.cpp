@@ -429,6 +429,10 @@ struct floating_point {
   uint64_t base;
 };
 
+std::ostream& operator<<(std::ostream& os, struct floating_point const& fp) {
+  std::cout << (fp.positive ? "p" : "n") << fp.exp << "E" << fp.base;
+  return os;
+}
 
 auto destruct_double(double x) -> floating_point {
   bool positive = true;
@@ -456,18 +460,21 @@ auto construct_double(floating_point const& fp) -> double {
 
 template<>
 auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
-
   auto [p, exp, base] = destruct_double(x);
 
   BitWriter bw;
   bw.append(p ? Bit::ONE : Bit::ZERO);
+
+  if (!p) {
+    exp ^= (1ul << 11) - 1;
+    base ^= (1ul << 52) - 1;
+  }
 
   bw.write_big_endian_bits(exp, 11);
   bw.write_big_endian_bits(base, 52);
 
   return std::move(bw).str();
 }
-
 
 
 template<typename T>
@@ -496,6 +503,11 @@ auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
 
   auto exp = r.read_big_endian_bits(11);
   auto base = r.read_big_endian_bits(52);
+  if (!isPositive) {
+    exp ^= (1ul << 11) - 1;
+    base ^= (1ul << 52) - 1;
+  }
+
   return construct_double({isPositive, exp, base});
 }
 
