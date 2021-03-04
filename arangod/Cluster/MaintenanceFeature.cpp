@@ -1014,13 +1014,25 @@ size_t MaintenanceFeature::lastNumberOfDatabases() const {
   return _lastNumberOfDatabases;
 }
 
-std::shared_ptr<maintenance::ActionDescription> MaintenanceFeature::isShardLocked(
-  ShardID const& shardId) const {
-  auto it = _shardActionMap.find(shardId);
-  if (it == _shardActionMap.end()) {
-    return nullptr;
+bool MaintenanceFeature::hasAction(ActionState state,  ShardID const& shardId, std::string const& type) const {
+  READ_LOCKER(rLock, _actionRegistryLock);
+
+  // this is not ideal, as it needs to do a linear scan of all maintenance jobs in the
+  // registry. however, this is our best bet, as we don't have active a struct with
+  // currently running jobs which allows quick access by shard id. the only thing we
+  // have is the ShardActionMap, but it also contains _planned_ actions, which are
+  // currently not executing. we want all actions with a specific status, so we need
+  // to do the linear scan here.
+  for (auto const& action : _actionRegistry) {
+    if (action->getState() != state) {
+      continue;
+    }
+    ActionDescription const& desc = action->describe();
+    if (desc.name() == type && desc.has(SHARD, shardId)) {
+      return true;
+    }
   }
-  return it->second;
+  return false;
 }
 
 bool MaintenanceFeature::isDirty(std::string const& dbName) const {

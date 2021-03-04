@@ -3,10 +3,23 @@ devel
 
 * Added metrics documentation snippets and infrastructure for that.
 
+* Added ability to display Coordinator and DBServer logs from inside the Web UI
+  in a clustered environment when privileges are sufficient. 
+  Additionally, displayed log entries can now be downloaded from the web UI in
+  single server and in cluster mode.
+
+* The Web UI's info view of a collection now displays additional properties and
+  statistics (e.g. RocksDB related figures, sharding information and more).
+
+* Improve progress reporting for shard synchronization in the web UI.
+  The UI will now show how many shards are actively syncing data, and will 
+  provide a better progress indicator, especially if there is more than one
+  follower for a shard.
+
 * Fixed issue BTS-309: The Graph API (Gharial) did not respond with the correct
   HTTP status code when validating edges. It now responds with 400 (Bad Request)
-  as documented and a new, more precise error code (1947) and message if a vertex
-  collection referenced in the _from or _to attribute cannot be found.
+  as documented and a new, more precise error code (1947) and message if a
+  vertex collection referenced in the _from or _to attribute cannot be found.
 
 * Added `--shard` option to arangodump, so that dumps can be restricted to one or
   multiple shards only.

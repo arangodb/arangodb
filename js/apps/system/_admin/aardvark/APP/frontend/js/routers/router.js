@@ -551,7 +551,7 @@
       this.loggerView = new window.LoggerView({
         collection: co
       });
-      this.loggerView.render();
+      this.loggerView.render(true);
     },
 
     applicationDetail: function (mount, initialized) {
