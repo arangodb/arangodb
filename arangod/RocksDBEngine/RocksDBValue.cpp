@@ -54,6 +54,11 @@ RocksDBValue RocksDBValue::VPackIndexValue() {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
+
+RocksDBValue RocksDBValue::ZkdIndexValue() {
+  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+}
+
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId const& docId) {
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, RevisionId::none());
 }

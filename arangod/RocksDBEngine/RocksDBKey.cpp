@@ -75,6 +75,18 @@ bool RocksDBKey::containsLocalDocumentId(LocalDocumentId const& documentId) cons
   return false;
 }
 
+void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const& value, LocalDocumentId documentId) {
+  _type = RocksDBEntryType::ZkdIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = value.as_string_view();
+  _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(databaseId != 0);
   _type = RocksDBEntryType::Database;

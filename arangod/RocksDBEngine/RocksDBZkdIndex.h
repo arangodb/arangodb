@@ -36,11 +36,11 @@ class RocksDBZkdIndex final : public RocksDBIndex {
       arangodb::velocypack::Slice const& info);
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type type) const override;
-  const char* typeName() const override;
-  IndexType type() const override;
-  bool canBeDropped() const override;
-  bool isSorted() const override;
-  bool hasSelectivityEstimate() const override;
+  const char* typeName() const override { return "zkd"; };
+  IndexType type() const override { return TRI_IDX_TYPE_ZKD_INDEX; };
+  bool canBeDropped() const override { return true; }
+  bool isSorted() const override { return false; }
+  bool hasSelectivityEstimate() const override { return false; /* TODO */ }
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 const LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
                 const OperationOptions& options) override;

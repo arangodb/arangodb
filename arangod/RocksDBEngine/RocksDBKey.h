@@ -31,6 +31,7 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
+#include "Zkd/ZkdHelper.h"
 
 #include <rocksdb/slice.h>
 
@@ -162,6 +163,8 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for revision tree for a collection
   //////////////////////////////////////////////////////////////////////////////
   void constructRevisionTreeValue(uint64_t objectId);
+
+  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value, LocalDocumentId documentId);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

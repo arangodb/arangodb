@@ -101,6 +101,10 @@ static rocksdb::Slice KeyGeneratorValue(
 static RocksDBEntryType revisionTreeValue = RocksDBEntryType::RevisionTreeValue;
 static rocksdb::Slice RevisionTreeValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&revisionTreeValue), 1);
+
+static RocksDBEntryType zkdIndexValue = RocksDBEntryType::ZkdIndexValue;
+static rocksdb::Slice ZdkIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&zkdIndexValue), 1);
 }  // namespace
 
 char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
@@ -141,6 +145,8 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "KeyGeneratorValue";
     case arangodb::RocksDBEntryType::RevisionTreeValue:
       return "RevisionTreeValue";
+    case arangodb::RocksDBEntryType::ZkdIndexValue:
+      return "ZkdIndexValue";
   }
   return "Invalid";
 }
@@ -239,6 +245,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return KeyGeneratorValue;
     case RocksDBEntryType::RevisionTreeValue:
       return RevisionTreeValue;
+    case RocksDBEntryType::ZkdIndexValue:
+      return ZdkIndexValue;
   }
 
   return Placeholder;  // avoids warning - errorslice instead ?!

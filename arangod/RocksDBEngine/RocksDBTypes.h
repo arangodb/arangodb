@@ -53,7 +53,8 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
-  RevisionTreeValue = '@'
+  RevisionTreeValue = '@',
+  ZkdIndexValue = 'Z'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
