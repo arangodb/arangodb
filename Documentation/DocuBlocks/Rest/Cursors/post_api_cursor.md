@@ -80,7 +80,7 @@ Specify *true* and the query will be executed in a **streaming** fashion.
 The query result is not stored on the server, but calculated on the fly.
 When set to *false* the query will be executed in its entirety before results
 become available. If the result set is small enough then results are returned
-right away, but otherwise they are stored on the arangod instance and will
+right away, but otherwise they are stored in memory on the arangod instance and will
 be accessible via the cursor API (with respect to the `ttl`).
 It is advisable to only use this option for queries without exclusive locks.
 Please note that the query options `cache`, `count` and `fullCount` will not
