@@ -773,17 +773,19 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   if (it == _graph.vertexCollections().end()) {
     // not found _from vertex
     return std::make_pair(
-        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST,
-                               "referenced _from collection: " + fromCollectionName + " does not exist.")),
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _from collection '" + fromCollectionName + "' is not part of the graph"),
+                        options),
         true);
   }
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
     // not found _to vertex
-    return std::make_pair(OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_DOES_NOT_EXIST,
-                                                 "referenced _to collection: " + toCollectionName +
-                                                     " does not exist.")),
-                          true);
+    return std::make_pair(
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _to collection '" + toCollectionName + "' is not part of the graph"),
+                        options),
+        true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), true);
