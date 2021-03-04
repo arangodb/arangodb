@@ -380,9 +380,11 @@ function TtlSuite () {
       let c = db._create(cn, { numberOfShards: 2 });
       c.ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -408,9 +410,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -437,9 +441,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -465,13 +471,17 @@ function TtlSuite () {
       let dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
+      docs = [];
       dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -497,9 +507,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
       c.insert({ dateCreated: dt }); // intentionally not divided by 1000
 
       const oldStats = internal.ttlStatistics();
@@ -527,9 +539,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
       // insert a date in the futue
       const dt2 = new Date((new Date()).getTime() + 1000 * 60).toISOString();
       c.insert({ dateCreated: dt2 });
@@ -559,9 +573,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -587,9 +603,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -615,9 +633,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() + 1000 * 86400).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -643,9 +663,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() + 1000 * 86400).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       const oldStats = internal.ttlStatistics();
       
@@ -671,17 +693,20 @@ function TtlSuite () {
       let dt = new Date((new Date()).getTime() + 1000 * 86400).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
       
       // dt is a minute in the past
       dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
-      
+      docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       assertEqual(2000, db._collection(cn).count());
 
@@ -718,17 +743,20 @@ function TtlSuite () {
       let dt = new Date((new Date()).getTime() + 1000 * 86400).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
-      
+      c.insert(docs);
+
       // dt is a minute in the past
       dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
-      
+      docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       assertEqual(2000, db._collection(cn).count());
 
@@ -765,9 +793,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       let oldStats = internal.ttlStatistics();
       let oldCount = 10000;  
@@ -807,9 +837,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       let oldStats = internal.ttlStatistics();
       let oldCount = 10000;  
@@ -849,9 +881,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).getTime();
       assertTrue(new Date(dt).toISOString() >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt / 1000, value: i });
+        docs.push({ dateCreated: dt / 1000, value: i });
       }
+      c.insert(docs);
 
       let oldStats = internal.ttlStatistics();
       let oldCount = 10000;  
@@ -891,9 +925,11 @@ function TtlSuite () {
       const dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
       assertTrue(dt >= "2019-01-");
 
+      let docs = [];
       for (let i = 0; i < 10000; ++i) {
-        c.insert({ dateCreated: dt, value: i });
+        docs.push({ dateCreated: dt, value: i });
       }
+      c.insert(docs);
 
       let oldStats = internal.ttlStatistics();
       let oldCount = 10000;  
