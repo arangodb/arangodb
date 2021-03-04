@@ -1,3 +1,14 @@
+v3.7.10 (XXXX-XX-XX)
+--------------------
+
+* Fixed a bug in the web interface that displayed the error "Not authorized to 
+  execute this request" when trying to create an index in the web interface in a
+  database other than `_system` with a user that does not have any access
+  permissions for the `_system` database.
+  The error message previously displayed error actually came from an internal
+  request made by the web interface, but it did not affect the actual index
+  creation.
+
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
