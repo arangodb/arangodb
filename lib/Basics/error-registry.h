@@ -581,7 +581,7 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 367> ErrorMessage
       "initial collection is not allowed to be removed manually"},
     {TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION,  // 1946
       "no valid initial collection found"},
-    {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF,  // 1947
+    {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,  // 1947
       "referenced vertex collection is not part of the graph"},
     {TRI_ERROR_SESSION_UNKNOWN,  // 1950
       "unknown session"},

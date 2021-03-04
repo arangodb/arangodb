@@ -1534,11 +1534,11 @@ constexpr auto TRI_ERROR_GRAPH_COLLECTION_IS_INITIAL                            
 /// replicationFactor mismatch was found.
 constexpr auto TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION                             = ErrorCode{1946};
 
-/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF
+/// 1947: ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED
 /// "referenced vertex collection is not part of the graph"
 /// the _from or _to collection specified for the edge refers to a vertex
-/// collection which is not used in any edge definition.
-constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_IN_EDGE_DEF      = ErrorCode{1947};
+/// collection which is not used in any edge definition of the graph.
+constexpr auto TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED             = ErrorCode{1947};
 
 /// 1950: ERROR_SESSION_UNKNOWN
 /// "unknown session"
