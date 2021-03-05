@@ -154,10 +154,9 @@
     toggleViews: function (e) {
       let self = this;
       let id = e.currentTarget.id.split('-')[0];
-      let views = ['requests', 'system'];
+      let views = ['requests', 'system', 'metrics'];
       if (frontendConfig.isCluster) {
         views.push('logs');
-        views.push('metrics');
       }
 
       _.each(views, function (view) {
@@ -190,18 +189,28 @@
           contentDiv: contentDiv
         });
         this.currentLogView.render(true);
-      } else if (id === 'metrics' && frontendConfig.isCluster) {
+      } else if (id === 'metrics') {
         let contentDiv = '#nodeMetricsContentView';
         let endpoint = this.serverInfo.target;
 
-        let metrics = new window.ArangoMetrics({
-          endpoint: endpoint
-        });
-        this.currentMetricsView = new window.MetricsView({
-          collection: metrics,
-          endpoint: endpoint,
-          contentDiv: contentDiv
-        });
+        let metrics;
+        if (frontendConfig.isCluster) {
+          metrics = new window.ArangoMetrics({
+            endpoint: endpoint
+          });
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            endpoint: endpoint,
+            contentDiv: contentDiv
+          });
+        } else {
+          metrics = new window.ArangoMetrics({});
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            contentDiv: contentDiv
+          });
+        }
+
         this.currentMetricsView.render();
       }
 
