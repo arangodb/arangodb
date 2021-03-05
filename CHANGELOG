@@ -1,5 +1,7 @@
-devel
+Added
 -----
+
+* Resonably harden MoveShard against VelopcyPack more.
 
 * Fixed a bug in the web interface that displayed the error "Not authorized to 
   execute this request" when trying to create an index in the web interface in a
@@ -93,6 +95,8 @@ devel
 
 * Database initial sync considers document count on leader for
   estimating timeouts when over 1 million docs on leader.
+
+* Added metrics documentation snippets and infrastructure for that.
 
 * EE only bugfix: On DisjointSmartGraphs that are used in anonymous way,
   there was a chance that the query could fail, if non-disjoint collections
