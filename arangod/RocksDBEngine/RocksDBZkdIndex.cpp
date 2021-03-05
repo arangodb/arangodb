@@ -25,6 +25,7 @@
 #include "Zkd/ZkdHelper.h"
 
 #include <Aql/Variable.h>
+#include <Containers/Enumerate.h>
 #include "RocksDBColumnFamilyManager.h"
 #include "RocksDBMethods.h"
 #include "RocksDBZkdIndex.h"
@@ -42,7 +43,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
         _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
-        _dim(dim), _index(index) {
+        _dim(dim),
+        _index(index) {
     _cur = _min;
     _upperBound = _bound.end();
 
@@ -54,7 +56,6 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     TRI_ASSERT(_iter != nullptr);
     _iter->SeekToFirst();
   }
-
 
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
 
@@ -68,8 +69,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
       TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iter->key()));
 
-      bool more = callback(
-          RocksDBKey::documentId(_iter->key()));
+      bool more = callback(RocksDBKey::documentId(_iter->key()));
       _iter->Next();
       if (!more) {
         break;
@@ -124,14 +124,12 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
    */
 
-
   RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
   zkd::byte_string _cur;
   const zkd::byte_string _min;
   const zkd::byte_string _max;
   const std::size_t _dim;
-
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBZkdIndex* _index;
@@ -143,7 +141,7 @@ namespace {
 
 auto readDocumentKey(VPackSlice doc,
                      std::vector<std::vector<basics::AttributeName>> const& fields)
--> zkd::byte_string {
+    -> zkd::byte_string {
   std::vector<zkd::byte_string> v;
   v.reserve(fields.size());
 
@@ -160,7 +158,98 @@ auto readDocumentKey(VPackSlice doc,
   return zkd::interleave(v);
 }
 
+using ExpressionBounds = std::pair<aql::AstNode const*, aql::AstNode const*>;
+
+void extractBoundsFromCondition(
+    RocksDBZkdIndex const* index,
+    const arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference,
+    std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
+    std::unordered_set<aql::AstNode const*>& unusedExpressions) {
+  TRI_ASSERT(condition->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  auto const ensureBounds = [&](size_t idx) -> ExpressionBounds& {
+    if (auto it = extractedBounds.find(idx); it != std::end(extractedBounds)) {
+      return it->second;
+    }
+    return extractedBounds[idx] = std::make_pair(nullptr, nullptr);
+  };
+
+  auto const useAsLowerBound = [&](size_t idx, aql::AstNode* node) {
+    ensureBounds(idx).first = node;
+  };
+  auto const useAsUpperBound = [&](size_t idx, aql::AstNode* node) {
+    ensureBounds(idx).second = node;
+  };
+
+  auto const checkIsBoundForAttribute = [&](aql::AstNode* op, aql::AstNode* access,
+                                            aql::AstNode* other) -> bool {
+
+    std::unordered_set<std::string> nonNullAttributes;  // TODO only used in sparse case
+    if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, false)) {
+      return false;
+    }
+
+    std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
+    if (!access->isAttributeAccessForVariable(attributeData) ||
+        attributeData.first != reference) {
+      // this access is not referencing this collection
+      return false;
+    }
+
+    auto& path = attributeData.second;
+    // TODO -- make this more generic
+    TRI_ASSERT(path.size() == 1 && !path[0].shouldExpand);
+
+    auto& name = path[0].name;
+    for (auto&& [idx, field] : enumerate(index->fields())) {
+      TRI_ASSERT(field.size() == 1);
+
+      if (name != field[0].name) {
+        continue;
+      }
+
+      if (name == field[0].name) {
+        switch (op->type) {
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+            useAsLowerBound(idx, other);
+            useAsUpperBound(idx, other);
+            return true;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+            useAsLowerBound(idx, other);
+            return true;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+            useAsUpperBound(idx, other);
+            return true;
+          default:
+            break;
+        }
+      }
+    }
+
+    return false;
+  };
+
+
+  for (size_t i = 0; i < condition->numMembers(); ++i) {
+    bool ok = false;
+    auto op = condition->getMemberUnchecked(i);
+    switch (op->type) {
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+        ok |= checkIsBoundForAttribute(op, op->getMember(0), op->getMember(1));
+        ok |= checkIsBoundForAttribute(op, op->getMember(1), op->getMember(0));
+        break;
+      default:
+        break;
+    }
+    if (!ok) {
+      unusedExpressions.emplace(op);
+    }
+  }
 }
+
+}  // namespace
 
 arangodb::Result arangodb::RocksDBZkdIndex::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
@@ -238,96 +327,22 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
 
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::unordered_set<size_t> bounded_below;
-  std::unordered_set<size_t> bounded_above;
+  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
 
-  auto const checkIsBoundForAttribute = [&](aql::AstNode* op, aql::AstNode* access,
-                                            aql::AstNode* other) -> bool {
-    LOG_DEVEL << "checkIsBoundForAttribute op " << op->toString();
-    std::unordered_set<std::string> nonNullAttributes;  // TODO only used in sparse case
-    if (!canUseConditionPart(access, other, op, reference, nonNullAttributes, false)) {
-      LOG_DEVEL << "!canUseConditionPart";
-      return false;
-    }
-
-    std::pair<arangodb::aql::Variable const*, std::vector<arangodb::basics::AttributeName>> attributeData;
-    if (!access->isAttributeAccessForVariable(attributeData) ||
-        attributeData.first != reference) {
-      LOG_DEVEL << "!isAttributeAccessForVariable";
-      // this access is not referencing this collection
-      return false;
-    }
-
-    auto& path = attributeData.second;
-    // TODO -- make this more generic
-    if (path.size() != 1 || path[0].shouldExpand) {
-      LOG_DEVEL << "bad path config";
-      return false;
-    }
-
-    auto& name = path[0].name;
-    for (size_t i = 0; i < _fields.size(); i++) {
-      auto const& field = _fields[i];
-      LOG_DEVEL << "name = " << name << " field = " << field[0].name;
-      TRI_ASSERT(field.size() == 1);
-
-      if (name == field[0].name) {
-        switch (op->type) {
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-            // TODO
-            TRI_ASSERT(false);
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            if (bounded_below.find(i) != bounded_below.end()) {
-              return false;
-            }
-            bounded_below.emplace(i);
-            LOG_DEVEL << "new bound below!";
-            return true;
-
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-            if (bounded_above.find(i) != bounded_above.end()) {
-              return false;
-            }
-            bounded_above.emplace(i);
-            LOG_DEVEL << "new bound above!";
-            return true;
-          default:
-            TRI_ASSERT(false);
-        }
-      }
-    }
-
-    return false;
-  };
-
-  for (size_t i = 0; i < node->numMembers(); ++i) {
-    bool ok = false;
-    auto op = node->getMemberUnchecked(i);
-    switch (op->type) {
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        ok |= checkIsBoundForAttribute(op, op->getMember(0), op->getMember(1));
-        ok |= checkIsBoundForAttribute(op, op->getMember(1), op->getMember(0));
-        if (ok) {
-          break;
-        }
-        [[fallthrough]];
-      default:
-        LOG_DEVEL << "Not a valid bound for an attribute";
-        return FilterCosts();  // not supported
-    }
+  if (!unusedExpressions.empty()) {
+    return FilterCosts();
   }
 
-  // TODO -- trigger unbounded query
-  if (bounded_above.size() != bounded_below.size()) {
-    LOG_DEVEL << "Not all variables have bounds on both sides";
-    return FilterCosts();  // not supported
-  }
-
-  if (bounded_above.size() != _fields.size()) {
-    LOG_DEVEL << "Not all fields have bounds";
-    return FilterCosts();  // not supported
+  bool allBound =
+      std::all_of(extractedBounds.begin(), extractedBounds.end(), [&](auto&& kv) {
+        auto&& [idx, bounds] = kv;
+        return bounds.first != nullptr && bounds.second != nullptr;
+      });
+  if (!allBound || extractedBounds.size() != _fields.size()) {
+    LOG_DEVEL << "Not all variables are bound";
+    return FilterCosts();
   }
 
   LOG_DEVEL << "We can use this index!";
@@ -348,10 +363,31 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
   LOG_DEVEL << "RocksDBZkdIndex::iteratorForCondition node = " << node->toString()
             << " ref = " << reference->id;
 
+  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
+
+  TRI_ASSERT(unusedExpressions.empty());
+
+  bool allBound =
+      std::all_of(extractedBounds.begin(), extractedBounds.end(), [&](auto&& kv) {
+        auto&& [idx, bounds] = kv;
+        return bounds.first != nullptr && bounds.second != nullptr;
+      });
+  TRI_ASSERT(allBound && extractedBounds.size() == _fields.size());
+
   const size_t dim = _fields.size();
   std::vector<zkd::byte_string> min;
+  min.resize(dim);
   std::vector<zkd::byte_string> max;
-  // TODO -- compute bounds
+  max.resize(dim);
+
+  for (auto&& [idx, bounds] : extractedBounds) {
+    min[idx] = zkd::to_byte_string_fixed_length(bounds.first->getDoubleValue());
+    max[idx] = zkd::to_byte_string_fixed_length(bounds.second->getDoubleValue());
+  }
 
   TRI_ASSERT(min.size() == dim);
   TRI_ASSERT(max.size() == dim);

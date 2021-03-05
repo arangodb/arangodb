@@ -382,6 +382,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
 RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first, bool second)
     : _type(type) {
   switch (_type) {
+    case RocksDBEntryType::ZkdIndexValue:
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue: {
       uint8_t const maxSlice[] = {0x02, 0x03, 0x1f};
