@@ -1223,6 +1223,13 @@
         this.waitForInit(this.metrics.bind(this));
         return;
       }
+
+      if (this.isCluster) {
+        this.routes[''] = 'cluster';
+        this.navigate('#cluster', {trigger: true});
+        return;
+      }
+
       if (this.metricsView) {
         this.metricsView.remove();
       }
