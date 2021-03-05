@@ -47,7 +47,9 @@ algorithm, see [Pregel - Available Algorithms](https://www.arangodb.com/docs/sta
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}
-HTTP 200 is returned in case the Pregel was successfully created.
+HTTP 200 is returned in case the Pregel was successfully created and the reply
+body is a string with the `id` to query for the status or to cancel the
+execution.
 
 @RESTRETURNCODE{400}
 An HTTP 400 error is returned if the set of collections for the Pregel job includes
