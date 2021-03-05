@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -140,13 +140,13 @@ class ProgramOptions {
   }
 
   // adds a (regular) section to the program options
-  auto addSection(std::string const& name, std::string const& description) {
-    return addSection(Section(name, description, "", false, false));
+  auto addSection(std::string const& name, std::string const& description, std::string const& link = "") {
+    return addSection(Section(name, description, link, "", false, false));
   }
 
   // adds an enterprise-only section to the program options
-  auto addEnterpriseSection(std::string const& name, std::string const& description) {
-    return addSection(EnterpriseSection(name, description, "", false, false));
+  auto addEnterpriseSection(std::string const& name, std::string const& description, std::string const& link = "") {
+    return addSection(EnterpriseSection(name, description, link, "", false, false));
   }
 
   // adds an option to the program options
@@ -164,6 +164,9 @@ class ProgramOptions {
                      makeFlags(Flags::Hidden, Flags::Obsolete)));
     return getOption(name);
   }
+ 
+  // adds a sub-headline for one option or a group of options
+  void addHeadline(std::string const& prefix, std::string const& description);
 
   // prints usage information
   void printUsage() const;

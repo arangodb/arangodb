@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/PathComponent.h"
+#include "AgencyComm.h"
 #include "Basics/Mutex.h"
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
@@ -292,7 +293,7 @@ class AgencyOperation {
 class AgencyCommResult {
  public:
   AgencyCommResult() = default;
-  AgencyCommResult(int code, std::string message);
+  AgencyCommResult(rest::ResponseCode code, std::string message);
 
   ~AgencyCommResult() = default;
 
@@ -303,15 +304,18 @@ class AgencyCommResult {
   AgencyCommResult& operator=(AgencyCommResult&& other) noexcept;
 
  public:
-  void set(int code, std::string message);
+  void set(rest::ResponseCode code, std::string message);
 
-  [[nodiscard]] bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
+  [[nodiscard]] bool successful() const {
+    auto const statusCode = static_cast<int>(_statusCode);
+    return statusCode >= 200 && statusCode <= 299;
+  }
 
   [[nodiscard]] bool connected() const;
 
-  [[nodiscard]] int httpCode() const;
+  [[nodiscard]] rest::ResponseCode httpCode() const;
 
-  [[nodiscard]] int errorCode() const;
+  [[nodiscard]] ErrorCode errorCode() const;
 
   [[nodiscard]] std::string errorMessage() const;
 
@@ -337,14 +341,14 @@ class AgencyCommResult {
 
   [[nodiscard]] VPackBuilder toVelocyPack() const;
 
-  [[nodiscard]] std::pair<std::optional<int>, std::optional<std::string_view>> parseBodyError() const;
+  [[nodiscard]] std::pair<std::optional<ErrorCode>, std::optional<std::string_view>> parseBodyError() const;
 
  public:
   std::string _location = "";
   std::string _message = "";
 
   std::unordered_map<std::string, AgencyCommResultEntry> _values = {};
-  int _statusCode = 0;
+  rest::ResponseCode _statusCode{};
   bool _connected = false;
   bool _sent = false;
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,9 +43,8 @@ void AcceptorUnixDomain::open() {
     LOG_TOPIC("e0ae1", WARN, arangodb::Logger::FIXME)
         << "socket file '" << path << "' already exists.";
 
-    int error = 0;
     // delete previously existing socket file
-    if (basics::FileUtils::remove(path, &error)) {
+    if (basics::FileUtils::remove(path) == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("2b5b6", WARN, arangodb::Logger::FIXME)
           << "deleted previously existing socket file '" << path << "'";
     } else {
@@ -107,9 +106,8 @@ void AcceptorUnixDomain::close() {
                     // handleError method would restart async_accept
                     // right away
     _acceptor.close();
-    int error = 0;
     std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
-    if (!basics::FileUtils::remove(path, &error)) {
+    if (basics::FileUtils::remove(path) != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
           << "unable to remove socket file '" << path << "'";
     }

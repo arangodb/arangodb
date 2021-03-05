@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -40,9 +41,57 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/MetricsFeature.h"
 
+using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
+
+namespace {
+
+uint64_t defaultMemoryLimit(uint64_t available) {
+  if (available == 0) {
+    // we don't know how much memory is available, so we cannot do any sensible calculation
+    return 0;
+  }
+
+  // this function will produce the following results for some
+  // common available memory values:
+  //
+  //    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  //    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  //    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+  //    Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
+  //    Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
+  //    Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
+  //    Available memory:   2147483648   (2048MiB)  Limit:   1288490189   (1228MiB), %mem: 60.0
+  //    Available memory:   4294967296   (4096MiB)  Limit:   2576980377   (2457MiB), %mem: 60.0
+  //    Available memory:   8589934592   (8192MiB)  Limit:   5153960755   (4915MiB), %mem: 60.0
+  //    Available memory:  17179869184  (16384MiB)  Limit:  10307921511   (9830MiB), %mem: 60.0
+  //    Available memory:  25769803776  (24576MiB)  Limit:  15461882265  (14745MiB), %mem: 60.0
+  //    Available memory:  34359738368  (32768MiB)  Limit:  20615843021  (19660MiB), %mem: 60.0
+  //    Available memory:  42949672960  (40960MiB)  Limit:  25769803776  (24576MiB), %mem: 60.0
+  //    Available memory:  68719476736  (65536MiB)  Limit:  41231686041  (39321MiB), %mem: 60.0
+  //    Available memory: 103079215104  (98304MiB)  Limit:  61847529063  (58982MiB), %mem: 60.0
+  //    Available memory: 137438953472 (131072MiB)  Limit:  82463372083  (78643MiB), %mem: 60.0
+  //    Available memory: 274877906944 (262144MiB)  Limit: 164926744167 (157286MiB), %mem: 60.0
+  //    Available memory: 549755813888 (524288MiB)  Limit: 329853488333 (314572MiB), %mem: 60.0
+  
+    // 20% of RAM will be considered as a reserve
+  uint64_t reserve = static_cast<uint64_t>(available * 0.2);
+
+  // minimum reserve memory is 256MB
+  reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
+
+  double f = double(1.0) - (double(reserve) / double(available));
+  double dyn = (double(available) * f * 0.75);
+  if (dyn < 0.0) {
+    dyn = 0.0;
+  }
+
+  return std::max(static_cast<uint64_t>(dyn), static_cast<uint64_t>(0.25 * available));
+}
+
+} // namespace
 
 namespace arangodb {
 
@@ -61,7 +110,7 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
-      _queryMemoryLimit(aql::QueryOptions::defaultMemoryLimit),
+      _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue())),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
       _queryCacheMaxResultsCount(0),
@@ -85,10 +134,13 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
           "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
       _queriesCounter(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_all_query", 0, "Total number of AQL queries")),
+          "arangodb_aql_all_query", 0, "Total number of AQL queries finished")),
       _slowQueriesCounter(
         server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries")) {
+          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries finished")),
+      _runningQueries(
+        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
+          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -108,8 +160,9 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
   options->addOption("--query.memory-limit",
-                     "memory threshold for AQL queries (in bytes, 0 = no limit)",
-                     new UInt64Parameter(&_queryMemoryLimit));
+                     "memory limit per AQL query (in bytes, 0 = no limit)",
+                     new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
   
   options->addOption("--query.max-runtime",
                      "runtime threshold for AQL queries (in seconds, 0 = no limit)",
@@ -188,7 +241,7 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
                      "enable SmartJoins query optimization",
                      new BooleanParameter(&_smartJoins),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden, arangodb::options::Flags::Enterprise))
-                     .setIntroducedIn(30405).setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
   
   options->addOption("--query.parallelize-traversals",
                      "enable traversal parallelization",
@@ -245,6 +298,19 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
 }
 
 void QueryRegistryFeature::prepare() {
+#ifndef ARANGODB_USE_GOOGLE_TESTS  
+  // we are now intentionally not printing this message during testing,
+  // because otherwise it would be printed a *lot* of times
+
+  // note that options() can be a nullptr during unit testing
+  if (server().options() != nullptr &&
+      !server().options()->processingResult().touched("--query.memory-limit")) {
+    LOG_TOPIC("f6e0e", INFO, Logger::AQL)
+        << "memory limit per AQL query automatically set to " << _queryMemoryLimit << " bytes. "
+        << "to modify this value, please adjust the startup option `--query.memory-limit`";
+  }
+#endif
+  
   if (ServerState::instance()->isCoordinator()) {
     // turn the query cache off on the coordinator, as it is not implemented
     // for the cluster
@@ -259,7 +325,7 @@ void QueryRegistryFeature::prepare() {
                                                  _queryCacheIncludeSystem,
                                                  _trackBindVars};
   arangodb::aql::QueryCache::instance()->properties(properties);
-  // create the query registery
+  // create the query registry
   _queryRegistry.reset(new aql::QueryRegistry(_queryRegistryTTL));
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
@@ -278,14 +344,19 @@ void QueryRegistryFeature::stop() {
 }
 
 void QueryRegistryFeature::unprepare() {
-  // clear the query registery
+  // clear the query registry
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
-void QueryRegistryFeature::trackQuery(double time) { 
+void QueryRegistryFeature::trackQueryStart() noexcept {
+  _runningQueries += 1;
+}
+
+void QueryRegistryFeature::trackQueryEnd(double time) { 
   ++_queriesCounter; 
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
+  _runningQueries -= 1;
 }
 
 void QueryRegistryFeature::trackSlowQuery(double time) { 

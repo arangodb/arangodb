@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,20 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H
-#define ARANGOD_CLUSTER_FILE_DESCRIPTORS_FEATURE_H 1
+#ifndef ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H
+#define ARANGOD_REST_SERVER_FILE_DESCRIPTORS_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
 
+#ifdef TRI_HAVE_GETRLIMIT
 namespace arangodb {
 
 class FileDescriptorsFeature : public application_features::ApplicationFeature {
  public:
-  static uint64_t const RECOMMENDED;
-
   explicit FileDescriptorsFeature(application_features::ApplicationServer& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
 
@@ -45,5 +46,6 @@ class FileDescriptorsFeature : public application_features::ApplicationFeature {
 };
 
 }  // namespace arangodb
+#endif
 
 #endif

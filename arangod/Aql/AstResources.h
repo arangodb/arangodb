@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,15 +33,15 @@
 #include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
+struct ResourceMonitor;
+
 namespace velocypack {
 class Slice;
 }
 
 namespace aql {
-
 class Ast;
 struct AstNode;
-struct ResourceMonitor;
 
 class AstResources {
  public:
@@ -49,7 +49,7 @@ class AstResources {
   AstResources(AstResources const&) = delete;
   AstResources& operator=(AstResources const&) = delete;
 
-  explicit AstResources(ResourceMonitor*);
+  explicit AstResources(arangodb::ResourceMonitor&);
   ~AstResources();
 
   /// @brief create and register an AstNode
@@ -73,11 +73,17 @@ class AstResources {
   char* registerEscapedString(char const* p, size_t length, size_t& outLength);
 
  private:
+  template <typename T>
+  size_t newCapacity(T const& container, size_t initialCapacity) const noexcept;
+
   /// @brief registers a long string and takes over the ownership for it
   char* registerLongString(char* copy, size_t length);
+  
+  /// @brief return the memory usage for a block of strings
+  constexpr size_t memoryUsageForStringBlock() const noexcept;
 
  private:
-  ResourceMonitor* _resourceMonitor;
+  arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief all nodes created in the AST - will be used for freeing them later
   FixedSizeAllocator<AstNode> _nodes;
@@ -86,9 +92,7 @@ class AstResources {
   std::vector<char*> _strings;
 
   /// @brief cumulated length of strings in _strings
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   size_t _stringsLength;
-#endif
 
   /// @brief short string storage. uses less memory allocations for short
   /// strings

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -94,6 +94,7 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
+    bool useEnvelope{true};
     bool continueRestore{false};
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     bool failOnUpdateContinueFile{false};
@@ -138,11 +139,11 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-
     VPackSlice collection;
+    bool useEnvelope;
 
-    JobData(ManagedDirectory&, RestoreFeature&, RestoreProgressTracker& progressTracker,
-            Options const&, Stats&, VPackSlice const&);
+    JobData(ManagedDirectory& directory, RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+            Options const& options, Stats& stats, VPackSlice collection, bool useEnvelope);
   };
 
  private:

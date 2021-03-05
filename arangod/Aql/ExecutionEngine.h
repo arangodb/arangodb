@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,6 +155,8 @@ class ExecutionEngine {
   /// makes it return value directly and not copy it to output register.
   /// Also sets root execution block as engine root
   void setupEngineRoot(ExecutionBlock& planRoot);
+  
+  static void initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr);
   
   const EngineId _engineId;
   

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,8 +39,12 @@
 #include "Basics/application-exit.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Containers/SmallVector.h"
@@ -63,6 +67,7 @@
 #include "RestServer/UpgradeFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
@@ -294,6 +299,89 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit, uint32_t d
                            threads ? threads : uint32_t(arangodb::NumberOfCores::getValue()) / div));
 }
 
+bool upgradeArangoSearchLinkCollectionName(TRI_vocbase_t& vocbase,
+                                           arangodb::velocypack::Slice const& /*upgradeParams*/) {
+  using arangodb::application_features::ApplicationServer;
+  if (!arangodb::ServerState::instance()->isDBServer()) {
+    return true;  // not applicable for other ServerState roles
+  }
+  auto& selector = vocbase.server().getFeature<arangodb::EngineSelectorFeature>();
+  auto& clusterInfo =
+      vocbase.server().getFeature<arangodb::ClusterFeature>().clusterInfo();
+  // persist collection names in links
+  for (auto& collection : vocbase.collections(false)) {
+    auto indexes = collection->getIndexes();
+    std::string clusterCollectionName;
+    if (!collection->shardIds()->empty()) {
+      unsigned tryCount{60};
+      do {
+        LOG_TOPIC("423b3", TRACE, arangodb::iresearch::TOPIC)
+            << " Checking collection '" << collection->name() << "' in database '" << vocbase.name() << "'";
+        // we use getCollectionNameForShard as getCollectionNT here is still not available
+        // but shard-collection mapping is loaded eventually
+        clusterCollectionName = clusterInfo.getCollectionNameForShard(collection->name());
+        if (!clusterCollectionName.empty()) {
+         break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+      } while (--tryCount);
+    } else {
+      clusterCollectionName = collection->name();
+    }
+    if (!clusterCollectionName.empty()) {
+      LOG_TOPIC("773b4", TRACE, arangodb::iresearch::TOPIC)
+          << " Processing collection " << clusterCollectionName;
+#ifdef USE_ENTERPRISE
+      arangodb::ClusterMethods::realNameFromSmartName(clusterCollectionName);
+#endif
+      for (auto& index : indexes) {
+        if (index->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
+          auto indexPtr =
+              dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
+          if (indexPtr) {
+            LOG_TOPIC("d6edb", TRACE, arangodb::iresearch::TOPIC)
+                << "Checking collection name '" << clusterCollectionName << "' for link "
+                << indexPtr->id().id();
+            if (indexPtr->setCollectionName(clusterCollectionName)) {
+              LOG_TOPIC("b269d", INFO, arangodb::iresearch::TOPIC)
+                  << "Setting collection name '" << clusterCollectionName << "' for link "
+                  << indexPtr->id().id();
+              if (selector.engineName() == arangodb::RocksDBEngine::EngineName) {
+                auto& engine = selector.engine<arangodb::RocksDBEngine>();
+                auto builder =
+                  collection->toVelocyPackIgnore({"path", "statusString"},
+                                                 arangodb::LogicalDataSource::Serialization::PersistenceWithInProgress);
+                auto res =
+                    engine.writeCreateCollectionMarker(vocbase.id(), collection->id(),
+                                                       builder.slice(),
+                                                       arangodb::RocksDBLogValue::Empty());
+                if (res.fail()) {
+                  LOG_TOPIC("50ace", WARN, arangodb::iresearch::TOPIC)
+                    << "Unable to store updated link information on upgrade for collection '"
+                    << clusterCollectionName << "' for link " << indexPtr->id().id()
+                    << ": " << res.errorMessage();;
+                }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+              } else if (selector.engineName() != "Mock") { // for unit tests just ignore write to storage
+#else
+              } else {
+#endif
+                TRI_ASSERT(false);
+                LOG_TOPIC("d6edc", WARN, arangodb::iresearch::TOPIC)
+                  << "Unsupported engine '" << selector.engineName() << "' for link upgrade task";
+              }
+            }
+          }
+        }
+      }
+    } else {
+      LOG_TOPIC("d61d3", WARN, arangodb::iresearch::TOPIC)
+        << "Failed to find collection name for shard '" << collection->name() << "'!";
+    }
+  }
+  return true;
+}
+
 bool upgradeSingleServerArangoSearchView0_1(
     TRI_vocbase_t& vocbase,
     arangodb::velocypack::Slice const& /*upgradeParams*/) {
@@ -310,10 +398,9 @@ bool upgradeSingleServerArangoSearchView0_1(
     }
 
     arangodb::velocypack::Builder builder;
-    arangodb::Result res;
 
     builder.openObject();
-    res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
+    arangodb::Result res = view->properties(builder, arangodb::LogicalDataSource::Serialization::Persistence); // get JSON with meta + 'version'
     builder.close();
 
     if (!res.ok()) {
@@ -474,9 +561,10 @@ void registerSingleFactory(
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
-          std::string("failure registering IResearch link factory with index "
-                      "factory from feature '") +
-              engine.name() + "': " + res.errorMessage());
+          arangodb::basics::StringUtils::concatT(
+              "failure registering IResearch link factory with index "
+              "factory from feature '",
+              engine.name(), "': ", res.errorMessage()));
     }
   }
 }
@@ -553,8 +641,25 @@ void registerUpgradeTasks(arangodb::application_features::ApplicationServer& ser
     task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL  // db-server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_NONE           // local server
                         | arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;
-    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE;
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_UPGRADE |
+                         arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE; //seal the task after execution
     task.action = &upgradeSingleServerArangoSearchView0_1;
+    upgrade.addTask(std::move(task));
+  }
+
+  // store collection name in IResearchLinkMeta for cluster
+  {
+    arangodb::methods::Upgrade::Task task;
+
+    task.name = "upgradeArangoSearchLinkCollectionName";
+    task.description = "store collection name in ArangoSearch Link`s metadata";
+    task.systemFlag = arangodb::methods::Upgrade::Flags::DATABASE_ALL;
+    // will be run only by cluster bootstrap and database init (latter case it will just do nothing but flags don`t allow to distinguih cases)
+    task.clusterFlags = arangodb::methods::Upgrade::Flags::CLUSTER_DB_SERVER_LOCAL |
+                        arangodb::methods::Upgrade::Flags::CLUSTER_LOCAL;  // db-server
+    task.databaseFlags = arangodb::methods::Upgrade::Flags::DATABASE_EXISTING |
+                         arangodb::methods::Upgrade::Flags::DATABASE_ONLY_ONCE; //seal the task after execution
+    task.action = &upgradeArangoSearchLinkCollectionName;
     upgrade.addTask(std::move(task));
   }
 }
@@ -582,7 +687,8 @@ void registerViewFactory(arangodb::application_features::ApplicationServer& serv
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         res.errorNumber(),
-        std::string("failure registering arangosearch view factory: ") + res.errorMessage());
+        arangodb::basics::StringUtils::concatT(
+            "failure registering arangosearch view factory: ", res.errorMessage()));
   }
 }
 
@@ -635,7 +741,7 @@ void IResearchLogTopic::log_appender(void* /*context*/, const char* function, co
                                      irs::logger::level_t level, const char* message,
                                      size_t message_len) {
   auto const arangoLevel = static_cast<arangodb::LogLevel>(level + 1);
-  std::string msg(message, message_len); 
+  std::string msg(message, message_len);
   arangodb::Logger::log("9afd3", function, file, line, arangoLevel, LIBIRESEARCH.id(), msg);
 }
 
@@ -725,32 +831,32 @@ void IResearchFeature::collectOptions(std::shared_ptr<arangodb::options::Program
                      "the exact number of threads to use for asynchronous "
                      "tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_threads))
-                     .setDeprecatedIn(30800);
+                     .setDeprecatedIn(30705);
   options->addOption(THREADS_LIMIT_PARAM,
                      "upper limit to the autodetected number of threads to use "
                      "for asynchronous tasks (0 == use default)",
                      new options::UInt32Parameter(&_threadsLimit))
-                     .setDeprecatedIn(30800);
+                     .setDeprecatedIn(30705);
   options->addOption(CONSOLIDATION_THREADS_PARAM,
                      "upper limit to the allowed number of consolidation threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreads))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(CONSOLIDATION_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for consolidation tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_consolidationThreadsIdle))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_PARAM,
                      "upper limit to the allowed number of commit threads "
                      "(0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreads))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
   options->addOption(COMMIT_THREADS_IDLE_PARAM,
                      "upper limit to the allowed number of idle threads to use "
                      "for commit tasks (0 == autodetect)",
                      new options::UInt32Parameter(&_commitThreadsIdle))
-                     .setIntroducedIn(30760);
+                     .setIntroducedIn(30705);
 }
 
 void IResearchFeature::validateOptions(std::shared_ptr<arangodb::options::ProgramOptions> options) {
@@ -877,8 +983,6 @@ void IResearchFeature::start() {
     auto lock = irs::make_unique_lock(_startState->mtx);
     if (!_startState->cv.wait_for(lock, 60s,
                                   [this](){ return _startState->counter == 2; })) {
-
-
       THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_SYS_ERROR,
         "failed to start ArangoSearch maintenance threads");
@@ -906,7 +1010,6 @@ bool IResearchFeature::queue(
     std::chrono::steady_clock::duration delay,
     std::function<void()>&& fn) {
   try {
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
     TRI_IF_FAILURE("IResearchFeature::queue") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -80,6 +80,11 @@ struct Function {
     /// @brief exclude the function from being evaluated during AST
     /// optimizations evaluation of function will only happen at query runtime
     NoEval = 32,
+
+    /// @brief internal function, supposed to be inserted only by internal
+    /// optimizations and transformations. not supposed to be used by end users
+    /// and thus not documented in the official list of available AQL functions.
+    Internal = 64,
   };
 
   /// @brief helper for building flags

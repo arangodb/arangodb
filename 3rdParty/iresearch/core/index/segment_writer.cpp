@@ -156,10 +156,12 @@ bool segment_writer::index(
   auto& slot = fields_.emplace(name);
   auto& slot_features = slot.meta().features;
 
+  const bool slot_empty = slot.empty();
+
   // invert only if new field features are a subset of slot features
-  if ((slot.empty() || features.is_subset_of(slot_features)) &&
-      slot.invert(tokens, slot.empty() ? features : slot_features, doc)) {
-    if (features.check<norm>()) {
+  if ((slot_empty || features.is_subset_of(slot_features)) &&
+      slot.invert(tokens, slot_empty ? features : slot_features, doc)) {
+    if (slot.size() && features.check<norm>()) {
       norm_fields_.insert(&slot);
     }
 

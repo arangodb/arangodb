@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ static bool testInternalIdValid(size_t id, std::vector<RegisterId> const& regs) 
     return true;
   }
   TRI_ASSERT(id < regs.size());
-  return regs[id] == RegisterPlan::MaxRegisterId;
+  return regs[id].value() == RegisterId::maxRegisterId;
 }
 
 InAndOutRowExpressionContext::InAndOutRowExpressionContext(

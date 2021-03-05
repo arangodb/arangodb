@@ -978,9 +978,8 @@ void field_writer::prepare(const irs::flush_state& state) {
       assert(index_out_cipher_ && index_out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        index_out_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        index_out_cipher_->block_size());
 
       index_out_ = index_output::make<encrypted_output>(
         std::move(index_out_),
@@ -1766,7 +1765,7 @@ class term_iterator_base
     it.load_data(*field_, *this, state_, *postings_);
   }
 
-  virtual seek_term_iterator::seek_cookie::ptr cookie() const final {
+  virtual seek_term_iterator::seek_cookie::ptr cookie() const override final {
     return ::cookie::make(state_, freq_.value);
   }
 
@@ -2734,7 +2733,7 @@ void field_reader::prepare(
       assert(index_in_cipher && index_in_cipher->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
         index_in_cipher->block_size());
 
       index_in = memory::make_unique<encrypted_input>(

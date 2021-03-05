@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -194,8 +194,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
-std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase, QueryId id,
-                                                          int errorCode) {
+std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& vocbase,
+                                                          QueryId id, ErrorCode errorCode) {
   std::unique_ptr<QueryInfo> queryInfo;
 
   {
@@ -266,10 +266,10 @@ std::unique_ptr<ClusterQuery> QueryRegistry::destroyQuery(std::string const& voc
 }
 
 /// used for a legacy shutdown
-bool QueryRegistry::destroyEngine(EngineId engineId, int errorCode) {
+bool QueryRegistry::destroyEngine(EngineId engineId, ErrorCode errorCode) {
   std::string vocbase;
   QueryId qId = 0;
-  
+
   {
     WRITE_LOCKER(writeLocker, _lock);
 
@@ -443,7 +443,7 @@ void QueryRegistry::registerSnippets(SnippetList const& snippets) {
 void QueryRegistry::unregisterSnippets(SnippetList const& snippets) noexcept {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  while(true) {
+  while (true) {
     WRITE_LOCKER(guard, _lock);
     size_t remain = snippets.size();
     for (auto& engine : snippets) {

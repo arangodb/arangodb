@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,8 +30,10 @@
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Near.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
@@ -54,7 +56,9 @@ class RDBNearIterator final : public IndexIterator {
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, _index->columnFamily());
-    TRI_ASSERT(_index->columnFamily()->GetID() == RocksDBColumnFamily::geo()->GetID());
+    TRI_ASSERT(_index->columnFamily()->GetID() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex)
+                   ->GetID());
     estimateDensity();
   }
 
@@ -89,7 +93,7 @@ class RDBNearIterator final : public IndexIterator {
     return nextToken(
         [this, &cb](geo_index::Document const& gdoc) -> bool {
           bool result = true;  // this is updated by the callback
-          if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+          if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
                 geo::FilterType const ft = _near.filterType();
                 if (ft != geo::FilterType::NONE) {  // expensive test
                   geo::ShapeContainer const& filter = _near.filterShape();
@@ -123,7 +127,7 @@ class RDBNearIterator final : public IndexIterator {
             geo::ShapeContainer const& filter = _near.filterShape();
             TRI_ASSERT(!filter.empty());
             bool result = true;  // this is updated by the callback
-            if (!_collection->readDocumentWithCallback(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
+            if (!_collection->getPhysical()->read(_trx, gdoc.token, [&](LocalDocumentId const&, VPackSlice doc) {
                   geo::ShapeContainer test;
                   Result res = _index->shape(doc, test);
                   TRI_ASSERT(res.ok());  // this should never fail here
@@ -239,7 +243,9 @@ class RDBNearIterator final : public IndexIterator {
 RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                                  arangodb::velocypack::Slice const& info,
                                  std::string const& typeName)
-    : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
+    : RocksDBIndex(iid, collection, info,
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                   false),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());
@@ -371,8 +377,8 @@ std::unique_ptr<IndexIterator> RocksDBGeoIndex::iteratorForCondition(
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const doc,
-                               arangodb::OperationOptions& options) {
+                               velocypack::Slice doc,
+                               arangodb::OperationOptions const& /*options*/) {
   // covering and centroid of coordinate / polygon / ...
   size_t reserve = _variant == Variant::GEOJSON ? 8 : 1;
   std::vector<S2CellId> cells;
@@ -401,8 +407,11 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(objectId(), cell.id(), documentId);
     TRI_ASSERT(key->containsLocalDocumentId(documentId));
- 
-    rocksdb::Status s = mthd->PutUntracked(RocksDBColumnFamily::geo(), key.ref(), val.string());
+
+    rocksdb::Status s =
+        mthd->PutUntracked(RocksDBColumnFamilyManager::get(
+                               RocksDBColumnFamilyManager::Family::GeoIndex),
+                           key.ref(), val.string());
 
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
@@ -417,7 +426,7 @@ Result RocksDBGeoIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                LocalDocumentId const& documentId,
-                               velocypack::Slice const doc) {
+                               velocypack::Slice doc) {
   Result res;
 
   // covering and centroid of coordinate / polygon / ...
@@ -442,7 +451,9 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     key->constructGeoIndexValue(objectId(), cell.id(), documentId);
-    rocksdb::Status s = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    rocksdb::Status s =
+        mthd->Delete(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                     key.ref());
     if (!s.ok()) {
       res.reset(rocksutils::convertStatus(s, rocksutils::index));
       addErrorMsg(res);

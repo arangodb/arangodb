@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -747,8 +747,8 @@ Result Collections::updateProperties(LogicalCollection& collection,
 /// @brief helper function to rename collections in _graphs as well
 ////////////////////////////////////////////////////////////////////////////////
 
-static int RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
-                                  std::string const& newName) {
+static ErrorCode RenameGraphCollections(TRI_vocbase_t& vocbase, std::string const& oldName,
+                                        std::string const& newName) {
   ExecContextSuperuserScope exscope;
 
   graph::GraphManager gmngr{vocbase};
@@ -971,7 +971,7 @@ futures::Future<OperationResult> Collections::revisionId(Context& ctxt,
     binds->add("@coll", VPackValue(cname));
     binds->close();
     arangodb::aql::Query query(transaction::StandaloneContext::Create(vocbase),
-                               aql::QueryString(q), binds, std::make_shared<VPackBuilder>());
+                               aql::QueryString(q), binds);
     aql::QueryResult queryResult = query.executeSync();
 
     Result res = queryResult.result;
@@ -1007,7 +1007,16 @@ arangodb::Result Collections::checksum(LogicalCollection& collection,
                                        bool withRevisions, bool withData,
                                        uint64_t& checksum, RevisionId& revId) {
   if (ServerState::instance()->isCoordinator()) {
-    return Result(TRI_ERROR_NOT_IMPLEMENTED);
+    auto cid = std::to_string(collection.id().id());
+    auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
+    OperationOptions options(ExecContext::current());
+    auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
+                                     options, withRevisions, withData).get();
+    if (res.ok()) {
+      revId = RevisionId::fromSlice(res.slice().get("revision"));
+      checksum = res.slice().get("checksum").getUInt();
+    }
+    return res.result;
   }
 
   auto ctx = transaction::V8Context::CreateWhenRequired(collection.vocbase(), true);

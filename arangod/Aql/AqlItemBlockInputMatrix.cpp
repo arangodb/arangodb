@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ AqlItemBlockInputMatrix::AqlItemBlockInputMatrix(ExecutorState state, AqlItemMat
   TRI_ASSERT(_aqlItemMatrix != nullptr);
   if (_aqlItemMatrix->size() == 0 && _aqlItemMatrix->stoppedOnShadowRow()) {
     // Fast forward to initialize the _shadowRow
-    skipAllRemainingDataRows();
+    advanceBlockIndexAndShadowRow();
   }
 }
 
@@ -143,18 +143,10 @@ bool AqlItemBlockInputMatrix::hasShadowRow() const noexcept {
   return _shadowRow.isInitialized();
 }
 
-size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
-  if (_aqlItemMatrix == nullptr) {
-    // Have not been initialized.
-    // We need to be called before.
-    TRI_ASSERT(!hasShadowRow());
-    TRI_ASSERT(!hasDataRow());
-    return 0;
-  }
+void AqlItemBlockInputMatrix::advanceBlockIndexAndShadowRow() noexcept {
   if (!hasShadowRow()) {
     if (_aqlItemMatrix->stoppedOnShadowRow()) {
       _shadowRow = _aqlItemMatrix->popShadowRow();
-      TRI_ASSERT(_shadowRow.isRelevant());
     } else {
       // This can happen if we are either DONE.
       // or if the executor above produced
@@ -164,9 +156,51 @@ size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
     }
     resetBlockIndex();
   }
+}
+
+size_t AqlItemBlockInputMatrix::skipAllRemainingDataRows() {
+  if (_aqlItemMatrix == nullptr) {
+    // Have not been initialized.
+    // We need to be called before.
+    TRI_ASSERT(!hasShadowRow());
+    TRI_ASSERT(!hasDataRow());
+    return 0;
+  }
+  advanceBlockIndexAndShadowRow();
+  // If we advance here, we either need more input (no shadowRow)
+  // Or we have a relevant shadowRow and only skipped the dataset
+  TRI_ASSERT(!hasShadowRow() || _shadowRow.isRelevant());
+
   // Else we did already skip once.
   // nothing to do
   return 0;
+}
+
+size_t AqlItemBlockInputMatrix::skipAllShadowRowsOfDepth(size_t depth) {
+  if (_aqlItemMatrix == nullptr) {
+    // Have not been initialized.
+    // Needs to be initialized before.
+    TRI_ASSERT(!hasShadowRow());
+    TRI_ASSERT(!hasDataRow());
+    return 0;
+  }
+  size_t skipped = 0;
+  std::tie(skipped, _shadowRow) = _aqlItemMatrix->skipAllShadowRowsOfDepth(depth);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // Long assert block
+  if (_shadowRow.isInitialized()) {
+    // This Row is the first that we are not allowed to skip
+    // We have now set this range to produce this row next
+    TRI_ASSERT(!_shadowRow.isRelevant());
+    TRI_ASSERT(_shadowRow.getDepth() > depth);
+  } else {
+    // We have not found a shadowRow that is not to skip.
+    // Simply erased the Matrix
+    TRI_ASSERT(_aqlItemMatrix->numberOfBlocks() == 0);
+  }
+#endif
+  resetBlockIndex();
+  return skipped;
 }
 
 ExecutorState AqlItemBlockInputMatrix::incrBlockIndex() {

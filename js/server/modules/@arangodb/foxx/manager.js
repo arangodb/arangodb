@@ -74,111 +74,8 @@ function getMyCoordinatorId () {
   return global.ArangoServerState.id();
 }
 
-function getPeerCoordinatorIds () {
-  const myId = getMyCoordinatorId();
-  return getAllCoordinatorIds().filter((id) => id !== myId);
-}
-
 function isFoxxmaster () {
   return global.ArangoServerState.isFoxxmaster();
-}
-
-// /////////////////////////////////////////////////////////////////////////////
-// / @brief wait for a distributed response
-// /////////////////////////////////////////////////////////////////////////////
-
-var waitForDistributedResponse = function (data, numberOfRequests, ignoreHttpErrors) {
-  const raiseError = function (code, msg) {
-    var err = new ArangoError();
-    err.errorNum = code;
-    err.errorMessage = msg;
-
-    throw err;
-  };
-
-  var received = [];
-  try {
-    while (received.length < numberOfRequests) {
-      var result = global.ArangoClusterComm.wait(data);
-      var status = result.status;
-
-      if (status === 'ERROR') {
-        raiseError(arangodb.errors.ERROR_INTERNAL.code,
-          'received an error from a DB server: ' + JSON.stringify(result));
-      } else if (status === 'TIMEOUT') {
-        raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code,
-          arangodb.errors.ERROR_CLUSTER_TIMEOUT.message);
-      } else if (status === 'DROPPED') {
-        raiseError(arangodb.errors.ERROR_INTERNAL.code,
-          'the operation was dropped');
-      } else if (status === 'RECEIVED') {
-        received.push(result);
-
-        if (result.headers && result.headers.hasOwnProperty('x-arango-response-code')) {
-          var code = parseInt(result.headers['x-arango-response-code'].substr(0, 3), 10);
-          result.statusCode = code;
-
-          if (code >= 400 && !ignoreHttpErrors) {
-            var body;
-
-            try {
-              body = JSON.parse(result.body);
-            } catch (err) {
-              raiseError(arangodb.errors.ERROR_INTERNAL.code,
-                'error parsing JSON received from a DB server: ' + err.message);
-            }
-
-            raiseError(body.errorNum,
-              body.errorMessage);
-          }
-        }
-      } else {
-        // something else... wait without GC
-        require('internal').wait(0.1, false);
-      }
-    }
-  } finally {
-    global.ArangoClusterComm.drop(data);
-  }
-  return received;
-};
-
-function parallelClusterRequests (requests) {
-  let pending = 0;
-  const order = [];
-  let options = {coordTransactionID: global.ArangoClusterComm.getId()};
-  for (const [coordId, method, url, body, headers] of requests) {
-    order.push(options.coordTransactionID);
-    let actualBody;
-    if (body) {
-      if (typeof body === 'string') {
-        actualBody = body;
-      } else if (body instanceof Buffer) {
-        if (body.length) {
-          actualBody = body;
-        }
-      } else {
-        actualBody = JSON.stringify(body);
-      }
-    }
-    global.ArangoClusterComm.asyncRequest(
-      method,
-      `server:${coordId}`,
-      db._name(),
-      url,
-      actualBody || undefined,
-      headers || {},
-      options
-    );
-    pending++;
-  }
-  if (!pending) {
-    return [];
-  }
-  const results = waitForDistributedResponse(options, pending, true);
-  return results.sort(
-    (a, b) => order.indexOf(a.coordTransactionID) - order.indexOf(b.coordTransactionID)
-  );
 }
 
 // Startup and self-heal
@@ -468,15 +365,7 @@ function reloadRouting () {
 }
 
 function propagateSelfHeal () {
-  try {
-    parallelClusterRequests(function * () {
-      for (const coordId of getPeerCoordinatorIds()) {
-        yield [coordId, 'POST', '/_api/foxx/_local/heal'];
-      }
-    }());
-  } catch (e) {
-    console.errorStack(e, 'Failure during propagate self heal');
-  }
+  global.SYS_PROPAGATE_SELF_HEAL();
 }
 
 // INTERNAL_SERVICE_MAP manipulation
@@ -948,20 +837,20 @@ function install (serviceInfo, mount, options = {}) {
       `
     });
   }
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(options.development),
       configuration: options.configuration,
       dependencies: options.dependencies
     }
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
-    force: options.force === true
+    setup: options.setup === undefined || Boolean(options.setup),
+    force: Boolean(options.force)
   });
   selfHeal();
   propagateSelfHeal();
@@ -995,23 +884,23 @@ function replace (serviceInfo, mount, options = {}) {
   } else {
     utils.validateMount(mount);
   }
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(options.development),
       configuration: options.configuration,
       dependencies: options.dependencies
     }
   });
   _uninstall(mount, {
-    teardown: options.teardown !== false,
+    teardown: options.teardown === undefined || Boolean(options.teardown),
     force: true
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
+    setup: options.setup === undefined || Boolean(options.setup),
     force: true
   });
   selfHeal();
@@ -1040,23 +929,27 @@ function upgrade (serviceInfo, mount, options = {}) {
     utils.validateMount(mount);
   }
 
-  const tempPaths = _prepareService(serviceInfo, options.legacy);
+  const tempPaths = _prepareService(serviceInfo, Boolean(options.legacy));
   const tempService = FoxxService.create({
     mount,
     basePath: tempPaths.tempServicePath,
     noisy: true,
     options: {
-      development: options.development,
+      development: Boolean(
+        options.development === undefined
+        ? old.development
+        : options.development
+      ),
       configuration: Object.assign({}, old.configuration, options.configuration),
       dependencies: Object.assign({}, old.dependencies, options.dependencies)
     }
   });
   _uninstall(mount, {
-    teardown: options.teardown === true,
+    teardown: Boolean(options.teardown),
     force: true
   });
   _install(tempService, tempPaths.tempBundlePath, {
-    setup: options.setup !== false,
+    setup: options.setup === undefined || Boolean(options.setup),
     force: true
   });
   selfHeal();

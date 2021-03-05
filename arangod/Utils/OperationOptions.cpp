@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,23 +29,23 @@
 using namespace arangodb;
 
 OperationOptions::OperationOptions()
-: indexOperationMode(IndexOperationMode::normal),
-  overwriteMode(OverwriteMode::Unknown),
-  waitForSync(false),
-  validate(true),
-  keepNull(true),
-  mergeObjects(true),
-  silent(false),
-  ignoreRevs(true),
-  returnOld(false),
-  returnNew(false),
-  isRestore(false),
-  ignoreUniqueConstraints(false),
-  truncateCompact(true),
-  _context(nullptr) {}
+    : indexOperationMode(IndexOperationMode::normal),
+      overwriteMode(OverwriteMode::Unknown),
+      waitForSync(false),
+      validate(true),
+      keepNull(true),
+      mergeObjects(true),
+      silent(false),
+      ignoreRevs(true),
+      returnOld(false),
+      returnNew(false),
+      isRestore(false),
+      checkUniqueConstraintsInPreflight(false),
+      truncateCompact(true),
+      _context(nullptr) {}
 
 OperationOptions::OperationOptions(ExecContext const& context)
-: OperationOptions() {
+    : OperationOptions() {
   _context = &context;
 }
 

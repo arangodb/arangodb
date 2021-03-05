@@ -29,8 +29,8 @@
 #include <variant>
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/overload.h"
 
 #include "AqlHelper.h"
@@ -82,13 +82,13 @@ struct NoneEntry {};
 
 using EntryBuilder = std::variant<NoneEntry, int, const char*>;
 
-template <::arangodb::aql::RegisterId columns>
+template <::arangodb::aql::RegisterId::value_t columns>
 using RowBuilder = std::array<EntryBuilder, columns>;
 
-template <::arangodb::aql::RegisterId columns>
+template <::arangodb::aql::RegisterId::value_t columns>
 using MatrixBuilder = std::vector<RowBuilder<columns>>;
 
-template <::arangodb::aql::RegisterId columns>
+template <::arangodb::aql::RegisterId::value_t columns>
 ::arangodb::aql::SharedAqlItemBlockPtr buildBlock(
     ::arangodb::aql::AqlItemBlockManager& manager, MatrixBuilder<columns>&& matrix,
     std::vector<std::pair<size_t, uint64_t>> const& shadowRows = {});
@@ -103,7 +103,7 @@ namespace aql {
 
 using namespace ::arangodb::aql;
 
-template <RegisterId columns>
+template <RegisterId::value_t columns>
 SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
                                  MatrixBuilder<columns>&& matrix,
                                  std::vector<std::pair<size_t, uint64_t>> const& shadowRows) {
@@ -114,7 +114,7 @@ SharedAqlItemBlockPtr buildBlock(AqlItemBlockManager& manager,
 
   if constexpr (columns > 0) {
     for (size_t row = 0; row < matrix.size(); row++) {
-      for (RegisterId col = 0; col < columns; col++) {
+      for (RegisterId::value_t col = 0; col < columns; col++) {
         auto const& entry = matrix[row][col];
         auto value =
             std::visit(overload{

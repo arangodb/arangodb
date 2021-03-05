@@ -36,6 +36,7 @@ ERROR_ARANGO_ICU_ERROR,33,"icu error: %s","will be raised if icu operations fail
 ERROR_CANNOT_READ_FILE,34,"cannot read file","Will be raised when a file cannot be read."
 ERROR_INCOMPATIBLE_VERSION,35,"incompatible server version","Will be raised when a server is running an incompatible version of ArangoDB."
 ERROR_DISABLED,36,"disabled","Will be raised when a requested resource is not enabled."
+ERROR_MALFORMED_JSON,37,"malformed json","Will be raised when a JSON string could not be parsed."
 
 ################################################################################
 ## HTTP error status codes
@@ -47,8 +48,12 @@ ERROR_HTTP_FORBIDDEN,403,"forbidden","Will be raised when the operation is forbi
 ERROR_HTTP_NOT_FOUND,404,"not found","Will be raised when an URI is unknown."
 ERROR_HTTP_METHOD_NOT_ALLOWED,405,"method not supported","Will be raised when an unsupported HTTP method is used for an operation."
 ERROR_HTTP_NOT_ACCEPTABLE,406,"request not acceptable","Will be raised when an unsupported HTTP content type is used for an operation, or if a request is not acceptable for a leader or follower."
+ERROR_HTTP_REQUEST_TIMEOUT,408,"request timeout","Will be raised when a timeout occured."
+ERROR_HTTP_CONFLICT,409,"conflict","Will be raised when a conflict occurs in an HTTP operation."
+ERROR_HTTP_GONE,410,"content permanently deleted","Will be raised when the requested content has been permanently deleted."
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
+ERROR_HTTP_NOT_IMPLEMENTED,501,"not implemented","Will be raised when an API is called this is not implemented in general, or not implemented for the current setup."
 ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
 ERROR_HTTP_GATEWAY_TIMEOUT,504,"gateway timeout","Will be raised when a service contacted by ArangoDB does not respond in a timely manner."
 
@@ -381,6 +386,7 @@ ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orpha
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 ERROR_GRAPH_COLLECTION_IS_INITIAL,1945,"initial collection is not allowed to be removed manually","the collection is used as the initial collection of this graph and is not allowed to be removed manually."
 ERROR_GRAPH_NO_INITIAL_COLLECTION,1946,"no valid initial collection found","during the graph creation process no collection could be selected as the needed initial collection. Happens if a distributeShardsLike or replicationFactor mismatch was found."
+ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,1947,"referenced vertex collection is not part of the graph","the _from or _to collection specified for the edge refers to a vertex collection which is not used in any edge definition of the graph."
 
 ################################################################################
 ## Session errors
@@ -475,6 +481,8 @@ ERROR_CLUSTER_REPAIRS_OPERATION_FAILED,5010,"agency transaction failed during cl
 ## Agency errors
 ################################################################################
 
+ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,20001,"malformed gossip message","Malformed gossip message."
+ERROR_AGENCY_MALFORMED_INQUIRE_REQUEST,20002,"malformed inquire request","Malformed inquire request."
 ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the Agency must be an object."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the Agency must contain a uint parameter 'term'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the Agency must contain a string parameter 'id'."
@@ -484,6 +492,7 @@ ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING,20016,"Inform message must contain obj
 ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING,20017,"Inform message must contain object 'max ping'","The inform message in the Agency must contain an object 'max ping'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT,20018,"Inform message must contain object 'timeoutMult'","The inform message in the Agency must contain an object 'timeoutMult'."
 ERROR_AGENCY_CANNOT_REBUILD_DBS,20021,"Cannot rebuild readDB and spearHead","Will be raised if the readDB or the spearHead cannot be rebuilt from the replicated log."
+ERROR_AGENCY_MALFORMED_TRANSACTION,20030,"malformed agency transaction","Malformed agency transaction."
 
 ################################################################################
 ## Supervision errors
@@ -526,3 +535,8 @@ ERROR_HOT_BACKUP_DBSERVERS_AWOL,7012,"hot backup not all db servers reachable","
 ## Plan Analyzers errors
 ################################################################################
 ERROR_CLUSTER_COULD_NOT_MODIFY_ANALYZERS_IN_PLAN,7021,"analyzers in plan could not be modified","Plan could not be modified while creating or deleting Analyzers revision"
+
+################################################################################
+## AIR errors
+################################################################################
+ERROR_AIR_EXECUTION_ERROR,8001,"error during AIR execution","During the execution of an AIR program an error occurred"

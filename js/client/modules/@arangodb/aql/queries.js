@@ -27,56 +27,51 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var arangosh = require('@arangodb/arangosh');
+let internal = require('internal');
+let arangosh = require('@arangodb/arangosh');
 
-// //////////////////////////////////////////////////////////////////////////////
+let allDatabases = function(params) {
+  let result = false;
+  if (typeof params === 'boolean') {
+    result = Boolean(params);
+  } else if (typeof params === 'object') {
+    result = Boolean(params.all);
+  }
+  return String(result);
+};
+
 // / @brief clears the slow query log
-// //////////////////////////////////////////////////////////////////////////////
-
-exports.clearSlow = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.DELETE('/_api/query/slow');
+exports.clearSlow = function (params) {
+  let db = internal.db;
+  let requestResult = db._connection.DELETE('/_api/query/slow?all=' + allDatabases(params));
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the slow queries
-// //////////////////////////////////////////////////////////////////////////////
-
-exports.slow = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.GET('/_api/query/slow', '');
+exports.slow = function (params) {
+  let db = internal.db;
+  let requestResult = db._connection.GET('/_api/query/slow?all=' + allDatabases(params), '');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the current queries
-// //////////////////////////////////////////////////////////////////////////////
-
-exports.current = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.GET('/_api/query/current', '');
+exports.current = function (params) {
+  let db = internal.db;
+  let requestResult = db._connection.GET('/_api/query/current?all=' + allDatabases(params), '');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief configures the query tracking properties
-// //////////////////////////////////////////////////////////////////////////////
-
 exports.properties = function (config) {
-  var db = internal.db;
+  let db = internal.db;
 
-  var requestResult;
+  let requestResult;
   if (config === undefined) {
     requestResult = db._connection.GET('/_api/query/properties');
   } else {
@@ -88,19 +83,15 @@ exports.properties = function (config) {
   return requestResult;
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief kills a query
-// //////////////////////////////////////////////////////////////////////////////
-
-exports.kill = function (id) {
-  if (typeof id === 'object' &&
-    id.hasOwnProperty('id')) {
+exports.kill = function (params) {
+  let id = params;
+  if (typeof params === 'object' && params.hasOwnProperty('id')) {
     id = id.id;
   }
 
-  var db = internal.db;
-
-  var requestResult = db._connection.DELETE('/_api/query/' + encodeURIComponent(id));
+  let db = internal.db;
+  let requestResult = db._connection.DELETE('/_api/query/' + encodeURIComponent(id) + '?all=' + allDatabases(params));
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;

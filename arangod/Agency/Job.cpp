@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -548,6 +548,53 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower(  // Which is in "GOO
   }
 
   return std::string();
+}
+
+/// @brief The shard must be one of a collection without
+/// `distributeShardsLike`. This returns all servers which 
+/// are in sync for this shard and for all of its clones.
+std::vector<std::string> Job::findAllInSyncReplicas(
+    Node const& snap,
+    std::string const& db,
+    std::vector<Job::shard_t> const& shardsLikeMe) {
+
+  std::vector<std::string> result;
+
+  bool first = true;
+  for (const auto& clone : shardsLikeMe) {
+    auto sharedPath = db + "/" + clone.collection + "/";
+    auto currentPath =
+        curColPrefix + sharedPath + clone.shard + "/servers";
+    bool isArray = false;
+    VPackSlice serverList;
+    // If we do have failover candidates, we should use them
+    std::tie(serverList, isArray) = snap.hasAsArray(currentPath);
+    if (isArray) {
+      std::unordered_set<std::string> setHere;
+      for (const auto& server : VPackArrayIterator(serverList)) {
+        auto id = server.copyString();
+        if (first) {
+          result.push_back(id);
+        } else {
+          setHere.insert(id);
+        }
+      }
+      if (!first) {
+        // result = result intersect setHere:
+        for (auto it = result.begin(); it != result.end(); ) {
+          if (setHere.find(*it) == setHere.end()) {
+            it = result.erase(it);
+          } else {
+            ++it;
+          }
+        }
+      }
+    }
+    first = false;
+  }
+
+  return result;
+
 }
 
 /// @brief The shard must be one of a collection without

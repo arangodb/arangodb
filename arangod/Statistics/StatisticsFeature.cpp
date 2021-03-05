@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,14 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CpuUsageFeature.h"
+#include "Aql/Query.h"
+#include "Aql/QueryString.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "FeaturePhases/AqlFeaturePhase.h"
 #include "Logger/LogMacros.h"
@@ -43,6 +48,8 @@
 #include "Statistics/RequestStatistics.h"
 #include "Statistics/ServerStatistics.h"
 #include "Statistics/StatisticsWorker.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/vocbase.h"
 
@@ -61,6 +68,12 @@ using namespace arangodb::statistics;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global variables
 // -----------------------------------------------------------------------------
+
+namespace {
+std::string const stats15Query = "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections LET clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent) RETURN {clientConnections15M: clientConnections15M || 0}";
+  
+std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, physicalMemory: s.server.physicalMemory, residentSizeCurrent: s.system.residentSize, clientConnectionsCurrent: s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: s.client.bytesReceivedPerSecond, http: { optionsPerSecond: s.http.requestsOptionsPerSecond, putsPerSecond: s.http.requestsPutPerSecond, headsPerSecond: s.http.requestsHeadPerSecond, postsPerSecond: s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: s.http.requestsOptionsPerSecond, patchesPerSecond: s.http.requestsPatchPerSecond } }";
+} // namespace
 
 namespace arangodb {
 namespace statistics {
@@ -199,6 +212,9 @@ std::map<std::string, std::vector<std::string>> statStrings{
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
     "Physical memory in bytes"}},
+  {"cores",
+   {"arangodb_server_statistics_cpu_cores", "gauge",
+    "Number of CPU cores visible to the arangod process"}},
   {"userPercent",
    {"arangodb_server_statistics_user_percent", "gauge",
     "Percentage of time that the system CPUs have spent in user mode"}},
@@ -234,7 +250,8 @@ std::map<std::string, std::vector<std::string>> statStrings{
 std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
 std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
-std::initializer_list<double> const RequestTimeDistributionCuts{0.01, 0.05, 0.1, 0.2, 0.5, 1.0};
+std::initializer_list<double> const RequestTimeDistributionCuts{
+    0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
 Counter AsyncRequests;
 Counter HttpConnections;
@@ -318,6 +335,7 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _statistics(true),
       _statisticsHistory(true),
       _statisticsHistoryTouched(false),
+      _statisticsAllDatabases(true),
       _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
@@ -332,14 +350,22 @@ void StatisticsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) 
 
   options->addOption("--server.statistics",
                      "turn statistics gathering on or off",
-                     new BooleanParameter(&_statistics),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
+                     new BooleanParameter(&_statistics));
+
   options->addOption("--server.statistics-history",
                      "turn storing statistics in database on or off",
-                     new BooleanParameter(&_statisticsHistory),
-                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-    .setIntroducedIn(30409)
-    .setIntroducedIn(30501);
+                     new BooleanParameter(&_statisticsHistory))
+                     .setIntroducedIn(30409)
+                     .setIntroducedIn(30501);
+
+  options->addOption("--server.statistics-all-databases",
+                     "provide cluster statistics in web interface in all databases",
+                     new BooleanParameter(&_statisticsAllDatabases),
+                     arangodb::options::makeFlags(
+                       arangodb::options::Flags::DefaultNoComponents,
+                       arangodb::options::Flags::OnCoordinator
+                     ))
+                     .setIntroducedIn(30800);
 }
 
 void StatisticsFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -511,6 +537,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
   appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
@@ -531,10 +558,18 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
-    appendHistogram(result, requestStats.totalTime, "totalTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.requestTime, "requestTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.queueTime, "queueTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
-    appendHistogram(result, requestStats.ioTime, "ioTime", {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "+Inf"});
+  appendHistogram(result, requestStats.totalTime, "totalTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.requestTime, "requestTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.queueTime, "queueTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
+  appendHistogram(result, requestStats.ioTime, "ioTime",
+                  {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
+                   "30.0", "+Inf"});
     appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
     appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
 
@@ -568,4 +603,85 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
   appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
   appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
   result += "\n";
+}
+
+Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                                     double start, 
+                                                     arangodb::velocypack::Builder& result) const {
+  if (!ServerState::instance()->isCoordinator()) {
+    return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
+  }
+
+  if (!isEnabled()) {
+    return {TRI_ERROR_DISABLED, "statistics are disabled"};
+  }
+
+  if (!vocbase.isSystem() && !_statisticsAllDatabases) {
+    return {TRI_ERROR_FORBIDDEN, "statistics only available for system database"};
+  }
+
+  // we need to access the system database here...
+  ExecContextSuperuserScope exscope;
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    
+  // build bind variables for query
+  auto bindVars = std::make_shared<VPackBuilder>();
+
+  auto buildBindVars = [&](std::string const& collection) {
+    bindVars->clear();
+    bindVars->openObject();
+    bindVars->add("@collection", VPackValue(collection));
+    bindVars->add("start", VPackValue(start));
+    bindVars->add("clusterIds", VPackValue(VPackValueType::Array));
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      bindVars->add(VPackValue(coordinator));
+    }
+    bindVars->close(); // clusterIds
+    bindVars->close();
+  };
+
+  auto& sysDbFeature = server().getFeature<arangodb::SystemDatabaseFeature>();
+  auto sysVocbase = sysDbFeature.use();
+
+  result.openObject();
+  {
+    buildBindVars(StaticStrings::Statistics15Collection);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
+                               arangodb::aql::QueryString(stats15Query),
+                               bindVars);
+  
+    query.queryOptions().cache = false;
+    query.queryOptions().skipAudit = true;
+  
+    aql::QueryResult queryResult = query.executeSync();
+
+    if (queryResult.result.fail()) {
+      return queryResult.result;
+    }
+
+    result.add("stats15", queryResult.data->slice());
+  }
+  
+  {
+    buildBindVars(StaticStrings::StatisticsCollection);
+    arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
+                               arangodb::aql::QueryString(statsSamplesQuery),
+                               bindVars);
+  
+    query.queryOptions().cache = false;
+    query.queryOptions().skipAudit = true;
+  
+    aql::QueryResult queryResult = query.executeSync();
+
+    if (queryResult.result.fail()) {
+      return queryResult.result;
+    }
+
+    result.add("statsSamples", queryResult.data->slice());
+  }
+
+  result.close();
+
+  return {};
 }

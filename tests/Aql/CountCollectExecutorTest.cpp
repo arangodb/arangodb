@@ -48,8 +48,8 @@ using CountCollectParamType = std::tuple<CountCollectSplitType>;
 class CountCollectExecutorTest
     : public AqlExecutorTestCaseWithParam<CountCollectParamType, false> {
  protected:
-  auto MakeCountCollectRegisterInfos(RegisterId outReg) -> RegisterInfos {
-    return RegisterInfos({}, RegIdSet{outReg}, outReg, outReg + 1,
+  auto MakeCountCollectRegisterInfos(RegisterCount outReg) -> RegisterInfos {
+    return RegisterInfos({}, RegIdSet{static_cast<RegisterId::value_t>(outReg)}, outReg, outReg + 1,
                          RegIdFlatSet{}, RegIdFlatSetStack{{}, {}});
   }
 
@@ -88,9 +88,9 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndRegisterInfos(RegisterId inputRegister) -> RegisterInfos {
-    auto const outputRegister = RegisterId{inputRegister + 1};
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
     auto inputRegisterSet = RegIdSet{};
-    for (RegisterId r = 0; r <= inputRegister; ++r) {
+    for (RegisterId::value_t r = 0; r <= inputRegister.value(); ++r) {
       inputRegisterSet.emplace(r);
     }
     auto outputRegisterSet = RegIdSet{outputRegister};
@@ -104,16 +104,16 @@ class CountCollectExecutorTest
   }
 
   auto MakeSubqueryEndExecutorInfos(RegisterId inputRegister) -> SubqueryEndExecutor::Infos {
-    auto const outputRegister = RegisterId{inputRegister + 1};
+    auto const outputRegister = RegisterId{static_cast<RegisterId::value_t>(inputRegister.value() + 1)};
 
-    return SubqueryEndExecutor::Infos(nullptr, inputRegister, outputRegister);
+    return SubqueryEndExecutor::Infos(nullptr, monitor, inputRegister, outputRegister);
   }
 
   auto MakeRemoveAllLinesRegisterInfos() -> RegisterInfos {
     auto numRegs = RegisterCount{1};
 
     RegIdSetStack toKeep{{}, {}};
-    for (RegisterId r = 0; r < numRegs; ++r) {
+    for (RegisterId::value_t r = 0; r < numRegs; ++r) {
       toKeep.back().emplace(r);
     }
 

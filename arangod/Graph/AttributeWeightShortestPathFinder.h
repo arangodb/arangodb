@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -256,13 +256,6 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<bool> _bingo;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief result code. this is used to transport errors from sub-threads to
-  /// the caller thread
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::atomic<int> _resultCode;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _resultMutex, this is used to protect access to the result data

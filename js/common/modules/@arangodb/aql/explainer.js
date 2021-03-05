@@ -1,5 +1,5 @@
 /* jshint strict: false, maxlen: 300 */
-/* global arango, ArangoClusterComm */
+/* global arango */
 
 var db = require('@arangodb').db,
   internal = require('internal'),
@@ -17,7 +17,7 @@ let uniqueValue = 0;
 
 const isCoordinator = function () {
   let isCoordinator = false;
-  if (typeof ArangoClusterComm === 'object') {
+  if (internal.isArangod()) {
     isCoordinator = require('@arangodb/cluster').isCoordinator();
   } else {
     try {
@@ -1191,6 +1191,10 @@ function processQuery(query, explain, planIndex) {
         } else if (node.hasOwnProperty('noMaterialization') && node.noMaterialization) {
           viewAnnotation += ' without materialization';
         }
+        if (node.hasOwnProperty('options')) {
+          if (node.options.hasOwnProperty('countApproximate'))
+          viewAnnotation += '. Count mode is ' + node.options.countApproximate;
+        }
         viewAnnotation += ' */';
         let viewVariables = '';
         if (node.hasOwnProperty('viewValuesVars') && node.viewValuesVars.length > 0) {
@@ -1663,7 +1667,7 @@ function processQuery(query, explain, planIndex) {
           }
           collect += keyword('AGGREGATE') + ' ' +
             node.aggregates.map(function (node) {
-              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + variableName(node.inVariable) + ')';
+              return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + (node.inVariable ? variableName(node.inVariable) : '') + ')';
             }).join(', ');
         }
         collect +=
@@ -1863,7 +1867,7 @@ function processQuery(query, explain, planIndex) {
       case 'RemoteNode':
         return keyword('REMOTE');
       case 'DistributeNode':
-        return keyword('DISTRIBUTE') + '  ' + annotation('/* create keys: ' + node.createKeys + ', variable: ') + variableName(node.variable) + ' ' + annotation('*/');
+        return keyword('DISTRIBUTE') + ' ' + variableName(node.variable);
       case 'ScatterNode':
         return keyword('SCATTER');
       case 'GatherNode':
@@ -2574,7 +2578,7 @@ function explainQuerysRegisters(plan) {
     } = data;
     const nrRegs = nrRegsArray[depth];
     const regIdByVarId = Object.fromEntries(
-      varInfoList.map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
+      varInfoList.filter(varInfo => varInfo.RegisterId < 1000).map(varInfo => [varInfo.VariableId, varInfo.RegisterId]));
 
     const meta = {id, type, depth};
     const result = [];

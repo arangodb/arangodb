@@ -47,11 +47,11 @@ using RegisterSet = std::unordered_set<RegisterId>;
 class SubqueryEndExecutorTest : public ::testing::Test {
  public:
   SubqueryEndExecutorTest()
-      : _infos(nullptr, RegisterId{0}, RegisterId{0}) {}
+      : _infos(nullptr, monitor, RegisterId{0}, RegisterId{0}) {}
 
  protected:
   ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   SubqueryEndExecutorInfos _infos;
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher{
       itemBlockManager, VPackParser::fromJson("[]")->steal(), false};
@@ -78,7 +78,7 @@ class SubqueryEndExecutorTest : public ::testing::Test {
             << "expected row " << rowIdx << " to be a shadow row";
 
         InputAqlItemRow input{block, rowIdx};
-        for (unsigned int colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
+        for (RegisterId::value_t colIdx = 0; colIdx < block->numRegisters(); colIdx++) {
           auto expected = VPackParser::fromJson(expectedStrings.at(rowIdx).at(colIdx));
           auto value = input.getValue(RegisterId{colIdx}).slice();
           EXPECT_TRUE(VelocyPackHelper::equal(value, expected->slice(), false))

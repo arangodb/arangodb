@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,8 +27,8 @@
 
 #include "Basics/debugging.h"
 #include "Basics/error.h"
-#include "Basics/voc-errors.h"
 #include "Basics/tri-strings.h"
+#include "Basics/voc-errors.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -71,9 +71,9 @@ static std::string flagify(int flags) {
 // @brief memory map a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
-               int memoryProtection, int flags, int fileDescriptor,
-               void** mmHandle, int64_t offset, void** result) {
+ErrorCode TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
+                     int memoryProtection, int flags, int fileDescriptor,
+                     void** mmHandle, int64_t offset, void** result) {
   TRI_ASSERT(memoryAddress == nullptr);
   off_t offsetRetyped = (off_t)offset;
   TRI_ASSERT(offsetRetyped == 0);
@@ -113,16 +113,16 @@ int TRI_MMFile(void* memoryAddress, size_t numOfBytesToInitialize,
 // @brief unmap a memory-mapped file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
-                 int fileDescriptor, void** mmHandle) {
+ErrorCode TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
+                       int fileDescriptor, void** mmHandle) {
   TRI_ASSERT(*mmHandle == nullptr);  // only useful for Windows
 
   int res = munmap(memoryAddress, numOfBytesToUnMap);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC("a12c1", DEBUG, Logger::MMAP) << "memory-unmapped range "
-                                   << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
-                                   << ", file-descriptor " << fileDescriptor;
+  if (res == 0) {
+    LOG_TOPIC("a12c1", DEBUG, Logger::MMAP)
+        << "memory-unmapped range " << Logger::RANGE(memoryAddress, numOfBytesToUnMap)
+        << ", file-descriptor " << fileDescriptor;
 
     return TRI_ERROR_NO_ERROR;
   }
@@ -143,21 +143,21 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
 /// @brief gives hints about upcoming sequential memory usage
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
+ErrorCode TRI_MMFileAdvise(void* memoryAddress, size_t numOfBytes, int advice) {
 #ifdef __linux__
   LOG_TOPIC("399d4", TRACE, Logger::MMAP) << "madvise " << advice << " for range "
-                                 << Logger::RANGE(memoryAddress, numOfBytes);
+                                          << Logger::RANGE(memoryAddress, numOfBytes);
 
   int res = madvise(memoryAddress, numOfBytes, advice);
 
-  if (res == TRI_ERROR_NO_ERROR) {
+  if (res == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
   res = errno;
   LOG_TOPIC("7fffb", ERR, Logger::MMAP) << "madvise " << advice << " for range "
-                               << Logger::RANGE(memoryAddress, numOfBytes)
-                               << " failed with: " << strerror(res);
+                                        << Logger::RANGE(memoryAddress, numOfBytes)
+                                        << " failed with: " << strerror(res);
   return TRI_ERROR_INTERNAL;
 #else
   return TRI_ERROR_NO_ERROR;

@@ -34,7 +34,9 @@ const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const cu = require('@arangodb/testutils/crash-utils');
+const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
+const _ = require('lodash');
 
 /* Constants: */
 const BLUE = internal.COLORS.COLOR_BLUE;
@@ -533,6 +535,132 @@ ${failedMessages}${color} * Overall state: ${statusMessage}${RESET}${crashText}$
 
 }
 
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief pretty prints the result with tabular facts added
+// //////////////////////////////////////////////////////////////////////////////
+
+function formatNone(str) {
+  return str;
+}
+function formatTimeMS(ts) {
+  return fancyTimeFormat(ts / 1000);
+}
+
+function unitTestTabularPrintResults (options, results, otherResults) {
+  let tableColumns = [];
+  let tableColumnVectors = [];
+  let tableColumnHeaders = ['suite name'];
+  let tableFormaters = [formatNone];
+  let timeFormatColumns = [
+    'duration',
+    'total',
+    'totalSetUp',
+    'totalTearDown'
+  ];
+  
+  if (options.hasOwnProperty('tableColumns')) {
+    tableColumns = options.tableColumns.split(',');
+  }
+  tableColumns.forEach(colName => {
+    if (timeFormatColumns.find(val => {return val === colName; })) {
+      tableFormaters.push(fancyTimeFormat);
+    } else {
+      tableFormaters.push(formatNone);
+    }
+    let vec = colName.split(".");
+    tableColumnVectors.push(vec);
+    tableColumnHeaders.push(vec[vec.length - 1].replace(/_/g, ' '));
+  });
+  
+  let testRunStatistics = "";
+  let testRunStatisticsHeader = ['Setup', 'Run', 'tests', 'setupAll', 'suite name'];
+  let sortedByDuration = [];
+  let failedStates = {};
+  let currentTestrun = "";
+  // these suites don't produce setup duration:
+  let durationBlacklist = [
+    'ssl_server',
+    'http_server',
+    'importing',
+    'gtest',
+    'dump',
+    'authentification',
+    'arangobench',
+    'arangosh',
+    'export',
+    'hot_backup',
+    'dump_multiple',
+    'config'
+  ];
+
+  let resultTable;
+
+  iterateTestResults(options, results, failedStates, {
+    testRun: function(options, state, testRun, testRunName) {
+      resultTable = new AsciiTable(testRunName);
+      resultTable.setHeading(tableColumnHeaders);
+    },
+    testSuite: function(options, state, testSuite, testSuiteName) {
+      let setupAllDuration = 0;
+      if (testSuite.hasOwnProperty('setUpAllDuration')) {
+        Object.keys(testSuite.setUpAllDuration).forEach(testName => {
+          setupAllDuration += testSuite.setUpAllDuration[testName];
+        });
+      }
+      let hasSetupAll = setupAllDuration !== 0;
+      
+      if (testSuite.hasOwnProperty('totalSetUp') &&
+          testSuite.hasOwnProperty('totalTearDown')) {
+        sortedByDuration.push({
+          testName: testSuiteName,
+          setupTearDown: testSuite.totalSetUp + testSuite.totalTearDown,
+          duration: testSuite.duration,
+          hasSetupAll: hasSetupAll,
+          count: Object.keys(testSuite).filter(testCase => ! skipInternalMember(testSuite, testCase)).length,
+        });
+      } else {
+        if (!durationBlacklist.find(item => { return item === currentTestrun; }) &&
+            testSuiteName.search("-spec") === -1 &&
+            !testSuite.hasOwnProperty('skipped') &&
+            !testSuite.skipped) {
+          let details = "";
+          if (options.extremeVerbosity === true) {
+            details = "\n" + JSON.stringify(testSuite);
+          }
+          print(RED + "This test doesn't have setup a duration: " + currentTestrun + "." + testSuiteName + details + RESET);
+        }
+      }
+      let resultLine = [testSuiteName];
+      let count = 1;
+      tableColumnVectors.forEach(valueVec => {
+        let layer = testSuite;
+        valueVec.forEach(attribute => {
+          if (layer.hasOwnProperty(attribute)) {
+            layer = layer[attribute];
+          }
+        });
+        if (Array.isArray(layer)) {
+          resultLine.push('n/a');
+        } else {
+          resultLine.push(tableFormaters[count](layer));
+        }
+        count += 1;
+      });
+      resultTable.addRow(resultLine);
+
+    },
+    testCase: function(options, state, testCase, testCaseName) {
+    },
+    endTestSuite: function(options, state, testSuite, testSuiteName) {
+    },
+    endTestRun: function(options, state, testRun, testRunName) {
+      testRunStatistics += resultTable.toString();
+    }
+  });
+  print(testRunStatistics);
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a chartlist of the longest running tests
 // //////////////////////////////////////////////////////////////////////////////
@@ -590,9 +718,31 @@ function locateLongRunning(options, results, otherResults) {
       });
       let results = {};
       for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - 31); i --) {
-        let key = " - " + fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - " +
-          sortedByDuration[i].count + " - " +
+        let key = " - " +
+            fancyTimeFormat(sortedByDuration[i].duration / 1000) + " - ^ " +
+            fancyTimeFormat(sortedByDuration[i].test.totalSetUp / 1000) + " v " +
+            fancyTimeFormat(sortedByDuration[i].test.totalTearDown / 1000) + " - " +
+            sortedByDuration[i].count + " - [" +
+            fancyTimeFormat((
+              sortedByDuration[i].duration +
+                sortedByDuration[i].test.totalSetUp +
+                sortedByDuration[i].test.totalTearDown) / 1000) + "] - " +
             sortedByDuration[i].testName.replace('/\\/g', '/');
+        let setupStatistics = [];
+        if (_.size(sortedByDuration[i].test.setUpAllDuration) > 1) {
+          let sortStart = [];
+          let d = sortedByDuration[i].test.setUpAllDuration;
+          Object.keys(d).forEach(a => {
+            sortStart.push([d[a], a]);
+          });
+          sortStart.sort(function(a, b) {
+            return b[0] - a[0];
+          });
+          sortStart.forEach(a => {
+            setupStatistics.push(fancyTimeFormat(a[0] / 1000) + " - " + a[1]);
+          });
+        }
+
         let testCases = [];
         let thisTestSuite = sortedByDuration[i];
         for (let testName in thisTestSuite.test) {
@@ -604,11 +754,17 @@ function locateLongRunning(options, results, otherResults) {
           if (test.hasOwnProperty('duration')) {
             duration += test.duration;
           }
+          if (test.hasOwnProperty('totalSetUp')) {
+            duration += test.totalSetUp;
+          }
           if (test.hasOwnProperty('setUpDuration')) {
             duration += test.setUpDuration;
           }
           if (test.hasOwnProperty('tearDownDuration')) {
             duration += test.tearDownDuration;
+          }
+          if (test.hasOwnProperty('totalTearDown')) {
+            duration += test.totalTearDown;
           }
           testCases.push({
             testName: testName,
@@ -626,7 +782,6 @@ function locateLongRunning(options, results, otherResults) {
             otherTestTime = otherResults[pathForJson['testSuite']][pathForJson['testRunName']][testCases[j].testName]['duration'];
             otherTestTime = " - " + fancyTimeFormat(otherTestTime / 1000);
           }
-
           statistics.push(
             fancyTimeFormat(testCases[j].duration / 1000) +
               otherTestTime +
@@ -637,7 +792,9 @@ function locateLongRunning(options, results, otherResults) {
           'processStatistics': pu.summarizeStats(thisTestSuite.test['processStats']),
           'stats': statistics
         };
-
+        if (setupStatistics.length > 0) {
+          results[key]['setupStatistics'] = setupStatistics;
+        }
       }
       testRunStatistics +=  yaml.safeDump(results);
       sortedByDuration = [];
@@ -652,7 +809,8 @@ function locateLongRunning(options, results, otherResults) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function locateLongSetupTeardown(options, results) {
-  let testRunStatistics = "  Setup  | Run  |  tests | setupAll | suite name\n";
+  let testRunStatistics = "";
+  let testRunStatisticsHeader = ['Setup', 'Run', 'tests', 'setupAll', 'suite name'];
   let sortedByDuration = [];
   let failedStates = {};
   let currentTestrun = "";
@@ -719,15 +877,16 @@ function locateLongSetupTeardown(options, results) {
       sortedByDuration.sort(function(a, b) {
         return a.setupTearDown - b.setupTearDown;
       });
-      let results = [];
+      let resultTable = new AsciiTable(currentTestrun);
+      resultTable.setHeading(testRunStatisticsHeader);
       for (let i = sortedByDuration.length - 1; (i >= 0) && (i > sortedByDuration.length - testsToShow); i --) {
-        let key = " " +
-            fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000) + " | " +
-            fancyTimeFormat(sortedByDuration[i].duration / 1000) + " |     " +
-            sortedByDuration[i].count + "  | " +
-            sortedByDuration[i].hasSetupAll + "  | " +
-            sortedByDuration[i].testName.replace('/\\/g', '/');
-        results.push(key);
+        resultTable.addRow([
+          fancyTimeFormat(sortedByDuration[i].setupTearDown / 1000),
+          fancyTimeFormat(sortedByDuration[i].duration / 1000),
+          sortedByDuration[i].count,
+          sortedByDuration[i].hasSetupAll,
+          sortedByDuration[i].testName.replace('/\\/g', '/')
+        ]);
       }
 
       if (results.length === 0) {
@@ -735,8 +894,7 @@ function locateLongSetupTeardown(options, results) {
           print(RED + "no results for: " + currentTestrun + RESET);
         }
       } else {
-        testRunStatistics += currentTestrun + "\n";
-        testRunStatistics +=  yaml.safeDump(results);
+        testRunStatistics += resultTable.toString();
         sortedByDuration = [];
       }
     }
@@ -843,6 +1001,27 @@ function yamlDumpResults(options, results) {
   }
 }
 
+function getFailedTestCases(options) {
+  try {
+    let resultFile = fs.join(options.testOutputDirectory, 'UNITTEST_RESULT.json');
+    let lastRun = JSON.parse(fs.readFileSync(resultFile));
+    let filter;
+    filter = (obj) => {
+      return _.pickBy(_.mapValues(obj, v => {
+          if (typeof v === 'object' && v.status === false) {
+            return filter(v);
+          }
+          return undefined;
+        }),
+        v => v !== undefined);
+    };
+    return filter(lastRun);
+  } catch (err) {
+    print("Failed to read previous test results");
+    throw err;
+  }
+}
+
 exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
@@ -850,9 +1029,11 @@ exports.addFailRunsMessage = addFailRunsMessage;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
+exports.getFailedTestCases = getFailedTestCases;
 
 exports.analyze = {
   unitTestPrettyPrintResults: unitTestPrettyPrintResults,
+  unitTestTabularPrintResults: unitTestTabularPrintResults,
   saveToJunitXML: saveToJunitXML,
   locateLongRunning: locateLongRunning,
   locateShortServerLife: locateShortServerLife,

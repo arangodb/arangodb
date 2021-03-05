@@ -90,49 +90,6 @@
       return figure;
     },
 
-    showDetail: function (e) {
-      var self = this;
-      var figure = this.getDetailFigure(e);
-      var options;
-
-      options = this.dygraphConfig.getDetailChartConfig(figure);
-
-      this.getHistoryStatistics(figure);
-      this.detailGraphFigure = figure;
-
-      window.modalView.hideFooter = true;
-      window.modalView.hide();
-      window.modalView.show(
-        'modalGraph.ejs',
-        options.header,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        this.events
-      );
-
-      window.modalView.hideFooter = false;
-
-      $('#modal-dialog').on('hidden', function () {
-        self.hidden();
-      });
-
-      $('#modal-dialog').toggleClass('modal-chart-detail', true);
-
-      options.height = $(window).height() * 0.7;
-      options.width = $('.modal-inner-detail').width();
-
-      // Reselect the labelsDiv. It was not known when requesting options
-      options.labelsDiv = $(options.labelsDiv)[0];
-
-      this.detailGraph = new Dygraph(
-        document.getElementById('lineChartDetail'),
-        this.history[this.server][figure],
-        options
-      );
-    },
-
     hidden: function () {
       this.detailGraph.destroy();
       delete this.detailGraph;
@@ -172,7 +129,6 @@
       this.options = options;
       this.dygraphConfig = options.dygraphConfig;
       this.d3NotInitialized = true;
-      this.events['click .dashboard-sub-bar-menu-sign'] = this.showDetail.bind(this);
       this.events['mousedown .dygraph-rangesel-zoomhandle'] = this.stopUpdating.bind(this);
       this.events['mouseup .dygraph-rangesel-zoomhandle'] = this.startUpdating.bind(this);
 
@@ -196,8 +152,9 @@
     },
 
     toggleViews: function (e) {
-      var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['requests', 'system'];
+      let self = this;
+      let id = e.currentTarget.id.split('-')[0];
+      let views = ['requests', 'system', 'logs'];
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -211,6 +168,24 @@
 
       $('.subMenuEntries').children().removeClass('active');
       $('#' + id + '-statistics').addClass('active');
+
+      if (id === 'logs') {
+        let contentDiv = '#nodeLogContentView';
+        let endpoint = this.serverInfo.target;
+
+        let arangoLogs = new window.ArangoLogs({
+          upto: true,
+          loglevel: 4,
+          endpoint: endpoint
+        });
+
+        this.currentLogView = new window.LoggerView({
+          collection: arangoLogs,
+          endpoint: endpoint,
+          contentDiv: contentDiv
+        });
+        this.currentLogView.render(true);
+      }
 
       window.setTimeout(function () {
         self.resize();
@@ -596,21 +571,12 @@
         }
 
         this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
-        /*
-        if (this.serverInfo.endpoint) {
-          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
-        } else {
-          this.renderStatisticBox('Protocol', 'Error');
-        }
-
-        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
-        */
 
         // get node version + license
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeVersion?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeVersion?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -627,7 +593,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeEngine?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeEngine?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -642,7 +608,7 @@
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/clusterNodeStats?ServerID=' + this.serverInfo.target),
+          url: arangoHelper.databaseUrl('/_admin/cluster/nodeStatistics?ServerID=' + this.serverInfo.target),
           contentType: 'application/json',
           processData: false,
           success: function (data) {
@@ -726,38 +692,6 @@
         },
         error: function (e) {
           arangoHelper.arangoError('Statistics', 'stat fetch req error:' + JSON.stringify(e));
-        }
-      });
-    },
-
-    getHistoryStatistics: function (figure) {
-      var self = this;
-      var url = 'statistics/long';
-
-      var urlParams = '?filter=' + this.dygraphConfig.mapStatToFigure[figure].join();
-
-      if (self.server !== '-local-') {
-        url = self.server.endpoint + arangoHelper.databaseUrl('/_admin/aardvark/statistics/cluster');
-        urlParams += '&type=long&DBserver=' + encodeURIComponent(self.server.target);
-
-        if (!self.history.hasOwnProperty(self.server)) {
-          self.history[self.server] = {};
-        }
-      }
-
-      var origin = window.location.href.split('/');
-      var preUrl = origin[0] + '//' + origin[2] + '/' + origin[3] + '/_system/' + origin[5] + '/' + origin[6] + '/';
-
-      $.ajax({
-        url: preUrl + url + urlParams,
-        async: true,
-        success: function (d) {
-          var i;
-          self.history[self.server][figure] = [];
-
-          for (i = 0; i < d.times.length; ++i) {
-            self.mergeDygraphHistory(d, i);
-          }
         }
       });
     },
@@ -1196,7 +1130,6 @@
           $('#subNavigationBar .breadcrumb').html('');
         } else {
           // in cluster mode and db node got found, remove menu entries, as we do not have them here
-          $('#requests-statistics').remove();
           $('#system-statistics').remove();
         }
         this.getNodeInfo();

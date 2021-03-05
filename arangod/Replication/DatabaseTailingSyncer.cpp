@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,6 +73,19 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(TRI_vocbase_t& vocbase,
   }
 }
 
+std::shared_ptr<DatabaseTailingSyncer> DatabaseTailingSyncer::create(TRI_vocbase_t& vocbase,
+                                                                     ReplicationApplierConfiguration const& configuration,
+                                                                     TRI_voc_tick_t initialTick,
+                                                                     bool useTick) {
+  // enable make_shared on a class with a private constructor
+  struct Enabler final : public DatabaseTailingSyncer {
+    Enabler(TRI_vocbase_t& vocbase, ReplicationApplierConfiguration const& configuration, TRI_voc_tick_t initialTick, bool useTick)
+      : DatabaseTailingSyncer(vocbase, configuration, initialTick, useTick) {}
+  };
+
+  return std::make_shared<Enabler>(vocbase, configuration, initialTick, useTick);
+}
+
 /// @brief save the current applier state
 Result DatabaseTailingSyncer::saveApplierState() {
   auto rv = _applier->persistStateResult(false);
@@ -84,18 +97,54 @@ Result DatabaseTailingSyncer::saveApplierState() {
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& collectionName,
+Result DatabaseTailingSyncer::syncCollectionCatchupInternal(arangodb::replutils::LeaderInfo const& leaderInfo,
+                                                            std::string const& collectionName,
                                                             double timeout, bool hard,
                                                             TRI_voc_tick_t& until,
                                                             bool& didTimeout, char const* context) {
   didTimeout = false;
 
   setAborted(false);
+
   // fetch leader state just once
-  Result r = _state.leader.getState(_state.connection, _state.isChildSyncer, context);
-  if (r.fail()) {
-    return r;
+  TRI_ASSERT(!_state.isChildSyncer);
+  TRI_ASSERT(!_state.leader.endpoint.empty());
+  TRI_ASSERT(!_state.leader.serverId.isSet());
+  TRI_ASSERT(_state.leader.engine.empty());
+  TRI_ASSERT(_state.leader.version() == 0);
+  
+  TRI_ASSERT(!leaderInfo.endpoint.empty());
+  TRI_ASSERT(leaderInfo.endpoint == _state.leader.endpoint);
+  TRI_ASSERT(leaderInfo.serverId.isSet());
+  TRI_ASSERT(!leaderInfo.engine.empty());
+  TRI_ASSERT(leaderInfo.version() > 0);
+
+  _state.leader.serverId = leaderInfo.serverId;;
+  _state.leader.engine = leaderInfo.engine;
+  _state.leader.majorVersion = leaderInfo.majorVersion;
+  _state.leader.minorVersion = leaderInfo.minorVersion;
+  // note: neither LeaderInfo::lastLogTick is not used during tailing syncing
+
+  Result r;
+
+  if (_state.leader.engine.empty()) {
+    // fetch leader state only if we need to. this should not be needed, normally
+    TRI_ASSERT(false);
+
+    r = _state.leader.getState(_state.connection, /*_state.isChildSyncer*/ false, context);
+    if (r.fail()) {
+      return r;
+    }
+  } else {
+    LOG_TOPIC("6c922", DEBUG, arangodb::Logger::REPLICATION)
+      << "connected to leader at " << _state.leader.endpoint 
+      << ", version " << _state.leader.majorVersion << "." << _state.leader.minorVersion 
+      << ", context: " << context;
   }
+  
+  TRI_ASSERT(_state.leader.serverId.isSet());
+  TRI_ASSERT(!_state.leader.engine.empty());
+  TRI_ASSERT(_state.leader.version() > 0);
 
   // print extra info for debugging
   _state.applier._verbose = true;
@@ -112,6 +161,8 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
     LOG_TOPIC("70711", DEBUG, Logger::REPLICATION) << "starting syncCollectionCatchup: " << collectionName
                                           << ", fromTick " << fromTick;
   }
+
+  VPackBuilder builder; // will be recycled for every batch
 
   auto clock = std::chrono::steady_clock();
   auto startTime = clock.now();
@@ -204,9 +255,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(std::string const& c
               "number of historic logfiles on the leader.");
     }
 
+    builder.clear();
+
     ApplyStats applyStats;
     uint64_t ignoreCount = 0;
-    r = applyLog(response.get(), fromTick, applyStats, ignoreCount);
+    r = applyLog(response.get(), fromTick, applyStats, builder, ignoreCount);
     if (r.fail()) {
       until = fromTick;
       return r;
@@ -283,8 +336,8 @@ bool DatabaseTailingSyncer::skipMarker(VPackSlice const& slice) {
     try {
       VPackBuilder inventoryResponse;
 
-      auto init = std::make_shared<DatabaseInitialSyncer>(*_vocbase, _state.applier);
-      Result res = init->getInventory(inventoryResponse);
+      auto syncer = DatabaseInitialSyncer::create(*_vocbase, _state.applier);
+      Result res = syncer->getInventory(inventoryResponse);
       _queriedTranslations = true;
       if (res.fail()) {
         LOG_TOPIC("89080", ERR, Logger::REPLICATION)

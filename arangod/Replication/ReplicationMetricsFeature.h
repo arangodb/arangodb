@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -126,7 +126,10 @@ class ReplicationMetricsFeature final : public application_features::Application
 
     bool autoPublish;
   };
-  
+
+  Counter& synchronousTimeTotal();
+  Counter& synchronousOpsTotal();
+
  private:
   // dump statistics
   
@@ -186,6 +189,13 @@ class ReplicationMetricsFeature final : public application_features::Application
   Counter& _waitedForTailing;
   // total time spent waiting for applying tailing markers
   Counter& _waitedForTailingApply;
+
+  // synchronous statistics
+
+  // total time spent doing synchronous replication operations
+  Counter& _syncTimeTotal;
+  // total number of synchronous replication operations
+  Counter& _syncOpsTotal;
 };
 
 } // namespace arangodb

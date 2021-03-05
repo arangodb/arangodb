@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,16 +36,16 @@ namespace methods {
 
 struct Queries {
   /// @brief return the list of slow queries
-  static void listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool fanout = false);
+  static Result listSlow(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases, bool fanout);
   
   /// @brief return the list of currently running queries
-  static void listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool fanout = false);
+  static Result listCurrent(TRI_vocbase_t& vocbase, velocypack::Builder& out, bool allDatabases,  bool fanout);
   
   /// @brief clears the list of slow queries
-  static void clearSlow(TRI_vocbase_t& vocbase, bool fanout = false);
+  static Result clearSlow(TRI_vocbase_t& vocbase, bool allDatabases, bool fanout);
   
   /// @brief kills the given query
-  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id); 
+  static Result kill(TRI_vocbase_t& vocbase, TRI_voc_tick_t id, bool allDatabases); 
 
 };
 

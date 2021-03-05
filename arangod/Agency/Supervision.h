@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,20 @@ struct check_t {
   std::string name;
   check_t(std::string const& n, bool g) : good(g), name(n) {}
 };
+
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::enforceReplication and the
+// unit tests:
+void enforceReplicationFunctional(Node const& snapshot, 
+                                  uint64_t& jobId,
+                                  std::shared_ptr<VPackBuilder> envelope);
+
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot, 
+    std::shared_ptr<VPackBuilder> envelope);
 
 class Supervision : public arangodb::Thread {
  public:
@@ -176,6 +190,7 @@ class Supervision : public arangodb::Thread {
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 
+ private:
   /// @brief Move shard from one db server to other db server
   bool moveShard(std::string const& from, std::string const& to);
 
@@ -191,8 +206,11 @@ class Supervision : public arangodb::Thread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief
+  /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
+
+  /// @brief Cleanup old hotbackup transfer jobs
+  void cleanupHotbackupTransferJobs();
 
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are
@@ -211,7 +229,11 @@ class Supervision : public arangodb::Thread {
 
   void shrinkCluster();
 
- public:
+ public:  // only for unit tests:
+  void setSnapshotForUnitTest(Node* snapshot) {
+    _snapshot = snapshot;
+  }
+
   static void cleanupLostCollections(Node const& snapshot, AgentInterface* agent,
                                      uint64_t& jobId);
 

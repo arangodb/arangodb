@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationClients.h"
+#include "Replication/ReplicationFeature.h"
 #include "Replication/Syncer.h"
 #include "Replication/utilities.h"
 #include "Rest/HttpResponse.h"
@@ -42,6 +43,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
@@ -61,7 +63,12 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     GeneralResponse* response)
     : RestReplicationHandler(server, request, response),
       _manager(
-          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()) {
+          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>().replicationManager()),
+      _quickKeysNumDocsLimit(server.getFeature<ReplicationFeature>().quickKeysLimit())  {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  adjustQuickKeysNumDocsLimit();
+#endif
+
 }
 
 void RocksDBRestReplicationHandler::handleCommandBatch() {
@@ -103,11 +110,40 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
             << " collection count patching: " << res.errorMessage();
       }
     }
+    
+    std::string const snapTick = std::to_string(ctx->snapshotTick());
+    bool withState = _request->parsedValue("state", false);
 
     VPackBuilder b;
-    b.add(VPackValue(VPackValueType::Object));
+    b.openObject();
     b.add("id", VPackValue(std::to_string(ctx->id())));  // id always string
-    b.add("lastTick", VPackValue(std::to_string(ctx->snapshotTick())));
+    b.add("lastTick", VPackValue(snapTick));
+    if (withState) {
+      // we have been asked to also return the "state" attribute. 
+      // this is used from 3.8 onwards during shard synchronization, in order
+      // to combine the two requests for starting a batch and fetching the
+      // leader state into a single one.
+      
+      // get original logger state data
+      VPackBuilder tmp;
+      engine.createLoggerState(nullptr, tmp);
+      TRI_ASSERT(tmp.slice().isObject());
+      
+      // and now merge it into our response, while rewriting the "lastLogTick"
+      // and "lastUncommittedLogTick"
+      b.add("state", VPackValue(VPackValueType::Object));
+      for (auto it : VPackObjectIterator(tmp.slice())) {
+        if (it.key.stringRef() == "lastLogTick" ||
+            it.key.stringRef() == "lastUncommittedLogTick") {
+          // put into the tick from our own snapshot
+          b.add(it.key.stringRef(), VPackValue(snapTick));
+        } else {
+          // write our other attributes as they are
+          b.add(it.key.stringRef(), it.value);
+        }
+      }
+      b.close(); // state
+    }
     b.close();
 
     _vocbase.replicationClients().track(syncerId, clientId, clientInfo,
@@ -157,7 +193,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     if (found) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {
-      int res = TRI_ERROR_CURSOR_NOT_FOUND;
+      auto res = TRI_ERROR_CURSOR_NOT_FOUND;
       generateError(GeneralResponse::responseCode(res), res);
     }
     return;
@@ -261,7 +297,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                   result.errorNumber(), result.errorMessage());
     return;
   }
-  
+
   TRI_ASSERT(latest >= result.maxTick());
 
   bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
@@ -370,6 +406,13 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
+  
+  // "collection" is optional, and may in the DB server case contain the name of
+  // a single shard for shard synchronization
+  std::string collection;
+  if (!isGlobal) {
+    collection = _request->value("collection");
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -381,8 +424,15 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, true, builder);
   } else {
     ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
-    res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
-    TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    if (collection.empty()) {
+      // all collections in database
+      res = ctx->getInventory(_vocbase, includeSystem, includeFoxxQs, false, builder);
+      TRI_ASSERT(builder.hasKey("collections") && builder.hasKey("views"));
+    } else {
+      // single collection/shard in database
+      res = ctx->getInventory(_vocbase, collection, builder);
+      TRI_ASSERT(builder.hasKey("collections"));
+    }
   }
 
   if (res.fail()) {
@@ -391,7 +441,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  const std::string snapTick = std::to_string(ctx->snapshotTick());
+  std::string const snapTick = std::to_string(ctx->snapshotTick());
   // <state>
   builder.add("state", VPackValue(VPackValueType::Object));
   builder.add("running", VPackValue(true));
@@ -407,6 +457,9 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 }
 
 /// @brief produce list of keys for a specific collection
+/// If the call is made with option quick=true, and more than
+/// 1 million documents are counted for keys, we'll return only
+/// the document count, else, we proceed to deliver the keys.
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
@@ -414,7 +467,16 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "invalid collection parameter");
     return;
   }
+
+  std::string const& quick = _request->value("quick");
+  if (!quick.empty() && !(quick == "true" || quick == "false")) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::string("invalid quick parameter: must be boolean, got ") + quick);
+    return;
+  }
+
   // to is ignored because the snapshot time is the latest point in time
+  ExecContextSuperuserScope escope(ExecContext::current().isAdminUser());
 
   RocksDBReplicationContext* ctx = nullptr;
   // get batchId from url parameters
@@ -434,12 +496,20 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
 
   // bind collection to context - will initialize iterator
   Result res;
-  DataSourceId cid;
   uint64_t numDocs;
+  DataSourceId cid;
   std::tie(res, cid, numDocs) = ctx->bindCollectionIncremental(_vocbase, collection);
-
   if (res.fail()) {
     generateError(res);
+    return;
+  }
+
+  if (numDocs > _quickKeysNumDocsLimit && quick == "true") {
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+    result.add("count", VPackValue(numDocs));
+    result.close();
+    generateResult(rest::ResponseCode::OK, result.slice());
     return;
   }
 
@@ -685,7 +755,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return;
   }
-  
+
   bool const useEnvelope = _request->parsedValue("useEnvelope", true);
 
   uint64_t chunkSize = determineChunkSize();
@@ -695,7 +765,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   if (_request->contentTypeResponse() == ContentType::VPACK) {
     VPackBuffer<uint8_t> buffer;
     buffer.reserve(reserve);  // avoid reallocs
-    
+
     auto trxCtx = transaction::StandaloneContext::Create(_vocbase);
 
     res = ctx->dumpVPack(_vocbase, cname, buffer, chunkSize, useEnvelope);
@@ -727,12 +797,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     if (res.fail()) {
       if (res.is(TRI_ERROR_BAD_PARAMETER)) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "replication dump - " + res.errorMessage());
+                      StringUtils::concatT("replication dump - ", res.errorMessage()));
         return;
       }
 
       generateError(rest::ResponseCode::SERVER_ERROR, res.errorNumber(),
-                    "replication dump - " + res.errorMessage());
+                    StringUtils::concatT("replication dump - ", res.errorMessage()));
       return;
     }
 
@@ -749,7 +819,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
                            (res.hasMore ? "true" : "false"));
     _response->setHeaderNC(StaticStrings::ReplicationHeaderLastIncluded,
                            StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
-    
+
     if (_request->transportType() == Endpoint::TransportType::HTTP) {
       auto response = dynamic_cast<HttpResponse*>(_response.get());
       if (response == nullptr) {
@@ -768,3 +838,12 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     }
   }
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch quickKeysNumDocsLimit for testing
+void RocksDBRestReplicationHandler::adjustQuickKeysNumDocsLimit() {
+  TRI_IF_FAILURE("RocksDBRestReplicationHandler::quickKeysNumDocsLimit100") {
+    _quickKeysNumDocsLimit = 100;
+  }
+}
+#endif

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 
 using namespace arangodb;
@@ -98,7 +98,7 @@ std::tuple<ExecutorState, NoStats, AqlCall> arangodb::aql::MaterializeExecutor<T
     TRI_ASSERT(collection != nullptr);
     _readDocumentContext._inputRow = &input;
     _readDocumentContext._outputRow = &output;
-    written = collection->readDocumentWithCallback(
+    written = collection->getPhysical()->read(
         &_trx, LocalDocumentId(input.getValue(docRegId).slice().getUInt()), callback);
     if (written) {
       output.advanceRow();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,8 @@
 namespace arangodb {
 namespace network {
 class ConnectionPool;
+struct RequestOptions;
+struct Response;
 }
 
 namespace velocypack {
@@ -69,7 +71,7 @@ class EngineInfoContainerDBServerServerBased {
     void serializeIntoBuilder(arangodb::velocypack::Builder& infoBuilder) const;
 
     bool hasShard() const { return _hasShard; }
-    
+
     /// inaccessible edge and verte collection names
 #ifdef USE_ENTERPRISE
     std::set<CollectionID> inaccessibleCollNames() const {
@@ -121,6 +123,7 @@ class EngineInfoContainerDBServerServerBased {
   // the given queryid of the coordinator as data provider.
   void closeSnippet(QueryId inputSnippet);
 
+
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
   //   same DB)
@@ -134,9 +137,28 @@ class EngineInfoContainerDBServerServerBased {
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-                      MapRemoteToSnippet& snippetIds,
-                      aql::ServerQueryIdList& serverQueryIds,
+                      MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
                       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+
+
+  // Insert a GraphNode that needs to generate TraverserEngines on
+  // the DBServers. The GraphNode itself will retain on the coordinator.
+  void addGraphNode(GraphNode* node, bool pushToSingleServer);
+
+ private:
+
+  std::vector<bool> buildEngineInfo(VPackBuilder& infoBuilder, ServerID const& server,
+                                    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+                                    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+
+  arangodb::futures::Future<Result> buildSetupRequest(
+      transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
+      std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
+      aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
+      network::ConnectionPool* pool, network::RequestOptions const& options) const;
+
+  [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
+
 
   /**
    * @brief Will send a shutdown to all engines registered in the list of
@@ -149,17 +171,13 @@ class EngineInfoContainerDBServerServerBased {
    * @param pool The ConnectionPool
    * @param errorCode error Code to be send to DBServers for logging.
    * @param dbname Name of the database this query is executed in.
-   * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
+   * @param serverQueryIds A map of QueryIds of the format: (remoteNodeId:shardId)
    * -> queryid.
    */
-  void cleanupEngines(int errorCode, std::string const& dbname,
-                      MapRemoteToSnippet& queryIds) const;
+  std::vector<futures::Future<network::Response>> cleanupEngines(
+      ErrorCode errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const;
 
-  // Insert a GraphNode that needs to generate TraverserEngines on
-  // the DBServers. The GraphNode itself will retain on the coordinator.
-  void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
- private:
   // Insert the Locking information into the message to be send to DBServers
   void addLockingPart(arangodb::velocypack::Builder& builder, ServerID const& server) const;
 
@@ -187,6 +205,7 @@ class EngineInfoContainerDBServerServerBased {
                        QueryId& globalQueryId) const;
 
   void injectVertexCollections(GraphNode* node);
+
  private:
   std::stack<std::shared_ptr<QuerySnippet>, std::vector<std::shared_ptr<QuerySnippet>>> _snippetStack;
 

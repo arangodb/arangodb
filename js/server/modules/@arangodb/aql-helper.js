@@ -247,21 +247,12 @@ function getCompactPlan (explainResult) {
   return out;
 }
 
-function findExecutionNodes (plan, nodetype) {
-  var matches = [];
-  var what = plan;
+function findExecutionNodes (plan, nodeType) {
+  let what = plan;
   if (plan.hasOwnProperty('plan')) {
     what = plan.plan;
   }
-  what.nodes.forEach(function(node) {
-    if (nodetype === undefined || node.type === nodetype) {
-      matches.push(node);
-    } else if (node.type === 'SubqueryNode') {
-      var subPlan = {'plan': node.subquery};
-      matches = matches.concat(findExecutionNodes(subPlan, nodetype));
-    }
-  });
-  return matches;
+  return what.nodes.filter((node) => nodeType === undefined || node.type === nodeType);
 }
 
 function findReferencedNodes (plan, testNode) {

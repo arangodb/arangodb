@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,10 +66,21 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RestHandler(application_features::ApplicationServer&, GeneralRequest*, GeneralResponse*);
   virtual ~RestHandler();
 
- public:
   void assignHandlerId();
   uint64_t handlerId() const { return _handlerId; }
   uint64_t messageId() const;
+
+  /// @brief called when the handler is queued for execution in the scheduler
+  void trackQueueStart() noexcept;
+
+  /// @brief called when the handler is dequeued in the scheduler
+  void trackQueueEnd() noexcept;
+  
+  /// @brief called when the handler execution is started
+  void trackTaskStart() noexcept;
+
+  /// @brief called when the handler execution is finalized
+  void trackTaskEnd() noexcept;
 
   GeneralRequest const* request() const { return _request.get(); }
   GeneralResponse* response() const { return _response.get(); }
@@ -106,16 +117,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // what lane to use for this request
   virtual RequestLane lane() const = 0;
 
-  RequestLane getRequestLane() {
-    bool found;
-    _request->header(StaticStrings::XArangoFrontend, found);
-
-    if (found) {
-      return RequestLane::CLIENT_UI;
-    }
-
-    return lane();
-  }
+  RequestLane determineRequestLane(); 
 
   virtual void prepareExecute(bool isContinue) {}
   virtual RestStatus execute() = 0;
@@ -144,10 +146,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   void resetResponse(rest::ResponseCode);
 
-  void generateError(rest::ResponseCode, int errorNumber, std::string_view errorMessage);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber,
+                     std::string_view errorMessage);
 
   // generates an error
-  void generateError(rest::ResponseCode, int errorCode);
+  void generateError(rest::ResponseCode code, ErrorCode errorNumber);
 
   // generates an error
   void generateError(arangodb::Result const&);
@@ -213,6 +216,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   std::atomic<std::thread::id> _executionMutexOwner;
 
   HandlerState _state;
+  RequestLane _lane;
 
  protected:
   std::atomic<bool> _canceled;

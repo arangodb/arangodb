@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "RestTasksHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -141,6 +142,20 @@ void RestTasksHandler::registerTask(bool byId) {
     return;
   }
 
+  bool allowTasks;
+  if (!server().isEnabled<V8DealerFeature>()) {
+    allowTasks = false;
+  } else {
+    V8DealerFeature& v8Dealer = server().getFeature<V8DealerFeature>();
+    allowTasks = v8Dealer.allowJavaScriptTasks();
+  }
+
+  if (!allowTasks) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "JavaScript tasks are disabled");
+    return;
+  }
+
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // job id
@@ -227,7 +242,7 @@ void RestTasksHandler::registerTask(bool byId) {
       command = cmdSlice.copyString();
     }
 
-    if (!Task::tryCompile(isolate, command)) {
+    if (!Task::tryCompile(server(), isolate, command)) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cannot compile command");
       return;
@@ -248,7 +263,7 @@ void RestTasksHandler::registerTask(bool byId) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  auto res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, &_vocbase, command, isSystem, res);
 
@@ -300,7 +315,7 @@ void RestTasksHandler::deleteTask() {
     return;
   }
 
-  int res = Task::unregisterTask(suffixes[0], true);
+  auto res = Task::unregisterTask(suffixes[0], true);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(res);
     return;

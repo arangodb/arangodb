@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,10 +28,13 @@
 #include <initializer_list>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/Result.h"
 #include "Basics/system-functions.h"
 #include "Rest/CommonDefines.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/figures.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
 class Thread;
@@ -107,10 +110,17 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   static void appendMetric(
     std::string& result, std::string const& val, std::string const& label);
 
+  Result getClusterSystemStatistics(TRI_vocbase_t& vocbase,
+                                    double start, 
+                                    arangodb::velocypack::Builder& result) const;
+
+  bool allDatabases() const { return _statisticsAllDatabases; }
+
  private:
   bool _statistics;
   bool _statisticsHistory;
   bool _statisticsHistoryTouched;
+  bool _statisticsAllDatabases;
 
   stats::Descriptions _descriptions;
   std::unique_ptr<Thread> _statisticsThread;

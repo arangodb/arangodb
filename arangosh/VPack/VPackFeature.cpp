@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -178,7 +178,7 @@ void VPackFeature::start() {
       LOG_TOPIC("d654d", ERR, Logger::FIXME)
           << "invalid JSON input while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = TRI_ERROR_INTERNAL;
+      *_result = EXIT_FAILURE;
       return;
     }
   } else {
@@ -189,7 +189,7 @@ void VPackFeature::start() {
       LOG_TOPIC("4c05d", ERR, Logger::FIXME)
           << "invalid VPack input while processing infile '" << _inputFile
           << "': " << ex.what();
-      *_result = TRI_ERROR_INTERNAL;
+      *_result = EXIT_FAILURE;
       return;
     }
 
@@ -206,13 +206,13 @@ void VPackFeature::start() {
     LOG_TOPIC("ed2fb", ERR, Logger::FIXME)
         << "caught exception while processing infile '" << _inputFile
         << "': " << ex.what();
-    *_result = TRI_ERROR_INTERNAL;
+    *_result = EXIT_FAILURE;
     return;
   } catch (...) {
     LOG_TOPIC("29ad4", ERR, Logger::FIXME)
         << "caught unknown exception occurred while processing infile '"
         << _inputFile << "'";
-    *_result = TRI_ERROR_INTERNAL;
+    *_result = EXIT_FAILURE;
     return;
   }
 
@@ -220,7 +220,7 @@ void VPackFeature::start() {
 
   if (!ofs.is_open()) {
     LOG_TOPIC("bb8a7", ERR, Logger::FIXME) << "cannot write outfile '" << _outputFile << "'";
-    *_result = TRI_ERROR_INTERNAL;
+    *_result = EXIT_FAILURE;
     return;
   }
 
@@ -243,5 +243,5 @@ void VPackFeature::start() {
     LOG_TOPIC("7c311", INFO, Logger::FIXME) << "outfile size: " << buffer.size();
   }
 
-  *_result = TRI_ERROR_NO_ERROR;
+  *_result = EXIT_SUCCESS;
 }

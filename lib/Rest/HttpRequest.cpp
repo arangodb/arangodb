@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -403,7 +403,7 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
   for (size_t i = 0; i < length; ++i) {
     tmp.push_back(path[i]);
     if (path[i] == '/') {
-      while (i + 1 < length && path[i+1] == '/') {
+      while (i + 1 < length && path[i + 1] == '/') {
         ++i;
       }
     }
@@ -439,6 +439,10 @@ void HttpRequest::parseUrl(const char* path, size_t length) {
     }
   } else {
     _fullUrl.assign(start, end - start);
+  }
+
+  if (_fullUrl.empty()) {
+    _fullUrl.push_back('/');
   }
   TRI_ASSERT(!_fullUrl.empty());
 

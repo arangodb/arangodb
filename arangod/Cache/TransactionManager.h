@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -70,6 +70,16 @@ class TransactionManager {
   std::uint64_t term();
 
  private:
+  /// In a previous version of the code, we maintained four separate uint64
+  /// values for each of these three counters and the term. All were updated
+  /// under a spin lock. In some workloads, we were spending up to 90% of our
+  /// time waiting on this spin lock. On x86, we can do a compare_and_exchange
+  /// on a 16-byte value without resorting to a lock, so by squeezing the
+  /// counters into 21 bits each and making the whole struct atomic, we can
+  /// make this logic lock-free and save ourselves a lot of cycles. The counters
+  /// shouldn't need any more than 21 bits: if we have more than 2 million open
+  /// transactions simultaneously, we are going to have a much bigger issue of
+  /// memory usage and server load elsewhere!
   struct Counters {
     uint64_t openReads : 21;
     uint64_t openWrites : 21;

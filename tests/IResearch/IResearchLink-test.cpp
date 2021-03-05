@@ -1373,6 +1373,16 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     cv.notify_one();
   };
 
+  {
+    // assume 10s is more than enough to finish initialization tasks
+    auto const end = std::chrono::steady_clock::now() + 10s;
+    while (std::get<0>(feature.stats(ThreadGroup::_0)) ||
+           std::get<0>(feature.stats(ThreadGroup::_1))) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
+
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
             feature.stats(ThreadGroup::_0));
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
@@ -1465,6 +1475,16 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
       ASSERT_LE(step, expectedStep);
     }
   };
+
+  {
+    // assume 10s is more than enough to finish initialization tasks
+    auto const end = std::chrono::steady_clock::now() + 10s;
+    while (std::get<0>(feature.stats(ThreadGroup::_0)) ||
+           std::get<0>(feature.stats(ThreadGroup::_1))) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
 
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
             feature.stats(ThreadGroup::_0));
@@ -1682,6 +1702,16 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
       ASSERT_LE(step, expectedStep);
     }
   };
+
+  {
+    // assume 10s is more than enough to finish initialization tasks
+    auto const end = std::chrono::steady_clock::now() + 10s;
+    while (std::get<0>(feature.stats(ThreadGroup::_0)) ||
+           std::get<0>(feature.stats(ThreadGroup::_1))) {
+      std::this_thread::sleep_for(10ms);
+      ASSERT_LE(std::chrono::steady_clock::now(), end);
+    }
+  }
 
   ASSERT_EQ(std::make_tuple(size_t(0), size_t(0), size_t(1)),
             feature.stats(ThreadGroup::_0));

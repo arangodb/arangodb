@@ -31,6 +31,17 @@
 let internal = require('internal'); // OK: processCsvFile
 const request = require('@arangodb/request');
 
+exports.getServerById = function (id) {
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter((d) => (d.id === id))[0];
+};
+
+exports.getServersByType = function (type) {
+  const isType = (d) => (d.role.toLowerCase() === type);
+  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
+  return instanceInfo.arangods.filter(isType);
+};
+
 exports.getEndpointById = function (id) {
   const toEndpoint = (d) => (d.endpoint);
   const endpointToURL = (endpoint) => {
@@ -149,7 +160,7 @@ exports.Helper = {
   },
 };
 
-exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
+exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace, blacklist = []) {
   for (let testcase in deriveFrom) {
     let targetTestCase = testcase + namespace;
     if (testcase === "setUp" ||
@@ -158,6 +169,10 @@ exports.deriveTestSuite = function (deriveFrom, deriveTo, namespace) {
         testcase === "tearDownAll") {
       targetTestCase = testcase;
     }
+    if ((blacklist.length > 0) && blacklist.find(oneTestcase => testcase === oneTestcase)){
+      continue;
+    }
+
     if (deriveTo.hasOwnProperty(targetTestCase)) {
       throw("Duplicate testname - deriveTo already has the property " + targetTestCase);
     }

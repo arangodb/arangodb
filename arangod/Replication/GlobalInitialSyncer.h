@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,16 +26,22 @@
 
 #include "Replication/InitialSyncer.h"
 
+#include <memory>
+
 namespace arangodb {
 
 /// Meta Syncer driving multiple initial syncer
-class GlobalInitialSyncer final : public InitialSyncer {
- public:
+class GlobalInitialSyncer : public InitialSyncer {
+ private:
+  // constructor is private, as GlobalInitialSyncer uses shared_from_this() and
+  // we must ensure that it is only created via make_shared.
   explicit GlobalInitialSyncer(ReplicationApplierConfiguration const&);
+ 
+ public:
+  static std::shared_ptr<GlobalInitialSyncer> create(ReplicationApplierConfiguration const&);
 
   ~GlobalInitialSyncer();
 
- public:
   /// @brief run method, performs a full synchronization
   /// public method, catches exceptions
   arangodb::Result run(bool incremental, char const* context = nullptr) override;

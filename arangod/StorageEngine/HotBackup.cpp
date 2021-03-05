@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -84,9 +84,8 @@ arangodb::Result HotBackup::executeRocksDB(
 
   // if !valid() then !success() already set
   if (!operation->success()) {
-    return arangodb::Result(
-      operation->restResponseError(), operation->errorMessage());
-  } // if
+    return arangodb::Result(operation->restResponseError(), operation->errorMessage());
+  }
 #endif
 
   return arangodb::Result();

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,7 +85,6 @@ ShortestPathOptions::ShortestPathOptions(aql::QueryContext& query,
       VelocyPackHelper::getStringValue(info, "weightAttribute", "");
   defaultWeight =
       VelocyPackHelper::getNumericValue<double>(info, "defaultWeight", 1);
-
   VPackSlice read = info.get("reverseLookupInfos");
   if (!read.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -127,6 +126,7 @@ void ShortestPathOptions::toVelocyPack(VPackBuilder& builder) const {
   builder.add("weightAttribute", VPackValue(weightAttribute));
   builder.add("defaultWeight", VPackValue(defaultWeight));
   builder.add("type", VPackValue("shortestPath"));
+  builder.add(StaticStrings::GraphRefactorFlag, VPackValue(refactor()));
 }
 
 void ShortestPathOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
@@ -178,9 +178,8 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
                                                            : _baseLookupInfos);
 }
 
-template<typename ListType>
-void ShortestPathOptions::fetchVerticesCoordinator(
-    ListType const& vertexIds) {
+template <typename ListType>
+void ShortestPathOptions::fetchVerticesCoordinator(ListType const& vertexIds) {
   if (!arangodb::ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -205,12 +204,6 @@ void ShortestPathOptions::fetchVerticesCoordinator(
   }
 }
 
-void ShortestPathOptions::isQueryKilledCallback() const {
-  if (query().killed()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
-  }
-}
-
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
   // We certainly have no clue how the depth actually is.
   // So we return a "random" number here.
@@ -232,5 +225,7 @@ ShortestPathOptions::ShortestPathOptions(ShortestPathOptions const& other,
       multiThreaded{other.multiThreaded},
       _reverseLookupInfos{other._reverseLookupInfos} {}
 
-template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(std::deque<arangodb::velocypack::StringRef> const& vertexIds);
-template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::deque<arangodb::velocypack::StringRef>>(
+    std::deque<arangodb::velocypack::StringRef> const& vertexIds);
+template void ShortestPathOptions::fetchVerticesCoordinator<std::vector<arangodb::velocypack::HashedStringRef>>(
+    std::vector<arangodb::velocypack::HashedStringRef> const& vertexIds);

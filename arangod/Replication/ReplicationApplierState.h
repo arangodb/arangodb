@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,7 +86,12 @@ struct ReplicationApplierState {
 
   bool isShuttingDown() const { return (_phase == ActivityPhase::SHUTDOWN); }
 
-  void setError(int code, std::string const& msg) { _lastError.set(code, msg); }
+  void setError(ErrorCode code, std::string msg) {
+    _lastError.set(code, std::move(msg));
+  }
+  void setError(ErrorCode code, std::string_view msg) {
+    _lastError.set(code, std::string(msg));
+  }
 
   void setStartTime();
 
@@ -101,9 +106,9 @@ struct ReplicationApplierState {
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
 
-    void set(int errorCode, std::string const& msg) {
+    void set(ErrorCode errorCode, std::string msg) {
       code = errorCode;
-      message = msg;
+      message = std::move(msg);
       time[0] = '\0';
       TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
@@ -112,7 +117,7 @@ struct ReplicationApplierState {
       result.add(VPackValue(VPackValueType::Object));
       result.add(StaticStrings::ErrorNum, VPackValue(code));
 
-      if (code > 0) {
+      if (code != TRI_ERROR_NO_ERROR) {
         result.add("time", VPackValue(time));
         if (!message.empty()) {
           result.add(StaticStrings::ErrorMessage, VPackValue(message));
@@ -121,7 +126,7 @@ struct ReplicationApplierState {
       result.close();
     }
 
-    int code;
+    ErrorCode code;
     std::string message;
     char time[24];
   } _lastError;

@@ -3,6 +3,13 @@
 # Contributed by Paul Eggert.  This file is in the public domain.
 
 # This is not a general-purpose converter; it is designed for current tzdata.
+# It just converts from current source to main, vanguard, and rearguard forms.
+# Although it might be nice for it to be idempotent, or to be useful
+# for converting back and forth between vanguard and rearguard formats,
+# it does not do these nonessential tasks now.
+#
+# Although main and vanguard forms are currently equivalent,
+# this need not always be the case.
 #
 # When converting to vanguard form, the output can use negative SAVE
 # values.
@@ -28,9 +35,9 @@ DATAFORM != "main" {
   in_comment = /^#/
   uncomment = comment_out = 0
 
-  # If the line should differ due to Czechoslovakia using negative SAVE values,
+  # If this line should differ due to Czechoslovakia using negative SAVE values,
   # uncomment the desired version and comment out the undesired one.
-  if (zone == "Europe/Prague" && /1947 Feb 23/) {
+  if (zone == "Europe/Prague" && /^#?[\t ]+[01]:00[\t ]/ && /1947 Feb 23/) {
     if (($(in_comment + 2) != "-") == vanguard) {
       uncomment = in_comment
     } else {
@@ -58,10 +65,11 @@ DATAFORM != "main" {
   # uncomment the desired version and comment out the undesired one.
   Rule_Namibia = /^#?Rule[\t ]+Namibia[\t ]/
   Zone_using_Namibia_rule \
-    = (zone == "Africa/Windhoek" \
+    = (zone == "Africa/Windhoek" && /^#?[\t ]+[12]:00[\t ]/ \
        && ($(in_comment + 2) == "Namibia" \
-	   || (1994 <= $(in_comment + 4) && $(in_comment + 4) <= 2017) \
-	   || in_comment + 3 == NF))
+	   || ($(in_comment + 2) == "-" && $(in_comment + 3) == "CAT" \
+	       && ((1994 <= $(in_comment + 4) && $(in_comment + 4) <= 2017) \
+		   || in_comment + 3 == NF))))
   if (Rule_Namibia || Zone_using_Namibia_rule) {
       if ((Rule_Namibia \
 	   ? ($(in_comment + 9) ~ /^-/ \

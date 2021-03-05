@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,6 +60,9 @@ char const* ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BLINK = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_BRIGHT = NoColor;
 char const* ShellColorsFeature::SHELL_COLOR_RESET = NoColor;
+char const* ShellColorsFeature::SHELL_COLOR_LINK_START = NoColor;
+char const* ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE = NoColor;
+char const* ShellColorsFeature::SHELL_COLOR_LINK_END = NoColor;
 
 ShellColorsFeature::ShellColorsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "ShellColors"), _initialized(false) {
@@ -99,6 +102,9 @@ void ShellColorsFeature::prepare() {
     SHELL_COLOR_BLINK = "\x1b[5m";
     SHELL_COLOR_BRIGHT = "\x1b[1m";
     SHELL_COLOR_RESET = "\x1b[0m";
+    SHELL_COLOR_LINK_START = "\x1b]8;;";
+    SHELL_COLOR_LINK_MIDDLE = "\x1b\\";
+    SHELL_COLOR_LINK_END = "\x1b]8;;\x1b\\";
   }
 }
 

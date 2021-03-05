@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,8 @@
 
 #include "ActionDescription.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
+#include "Basics/voc-errors.h"
 
 #include <functional>
 #include <boost/functional/hash.hpp>
@@ -45,12 +47,19 @@ ActionDescription::ActionDescription(std::map<std::string, std::string> d,
 /// @brief Default dtor
 ActionDescription::~ActionDescription() = default;
 
-/// @brief Does this description have a "p" parameter?
-bool ActionDescription::has(std::string const& p) const {
-  return _description.find(p) != _description.end();
+/// @brief Does this description have a "key" parameter?
+bool ActionDescription::has(std::string const& key) const noexcept {
+  return _description.find(key) != _description.end();
 }
 
-/// @brief Does this description have a "p" parameter?
+/// @brief Does this description have a "key" parameter and does it
+/// compare equal to "value"?
+bool ActionDescription::has(std::string const& key, std::string const& value) const noexcept {
+  auto it = _description.find(key);
+  return (it != _description.end() && (*it).second == value);
+}
+
+/// @brief Return value for "p" parameter
 std::string ActionDescription::operator()(std::string const& p) const {
   return _description.at(p);
 }
@@ -95,7 +104,7 @@ bool ActionDescription::operator==(ActionDescription const& other) const {
 }
 
 /// @brief Get action name. Cannot throw. See constructor
-std::string const& ActionDescription::name() const {
+std::string const& ActionDescription::name() const noexcept {
   auto const& it = _description.find(NAME);
   return (it != _description.end()) ? it->second : StaticStrings::Empty;
 }

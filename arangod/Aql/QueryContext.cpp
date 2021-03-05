@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,8 +51,8 @@ using namespace arangodb::aql;
 
 /// @brief creates a query
 QueryContext::QueryContext(TRI_vocbase_t& vocbase)
-    : _queryId(TRI_NewServerSpecificTick()),
-      _resourceMonitor(),
+    : _resourceMonitor(),
+      _queryId(TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),
       _execState(QueryExecutionState::ValueType::INVALID_STATE),

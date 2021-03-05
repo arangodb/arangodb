@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -63,12 +63,12 @@ Slice Node::slice() const {
   // Some array
   if (_isArray) {
     rebuildVecBuf();
-    return Slice(_vecBuf.data());
+    return Slice(_vecBuf->data());
   }
 
   // Some value
-  if (!_value.empty()) {
-    return Slice(_value.front().data());
+  if (_value != nullptr && !_value->empty()) {
+    return Slice(_value->front().data());
   }
 
   // Empty object
@@ -82,11 +82,13 @@ void Node::rebuildVecBuf() const {
     Builder tmp;
     {
       VPackArrayBuilder t(&tmp);
-      for (auto const& i : _value) {
-        tmp.add(Slice(i.data()));
+      if (_value != nullptr) {
+        for (auto const& i : *_value) {
+          tmp.add(Slice(i.data()));
+        }
       }
     }
-    _vecBuf = *tmp.steal();
+    _vecBuf = std::make_unique<SmallBuffer>(tmp.data(), tmp.size());
     _vecBufDirty = false;
   }
 }
@@ -123,8 +125,10 @@ Node::Node(Node&& other) noexcept
       _isArray(std::move(other._isArray)) {
   // The _children map has been moved here, therefore we must
   // correct the _parent entry of all direct children:
-  for (auto& child : _children) {
-    child.second->_parent = this;
+  if (_children) {
+    for (auto& child : *_children) {
+      child.second->_parent = this;
+    }
   }
 }
 
@@ -133,15 +137,23 @@ Node::Node(Node const& other)
     : _nodeName(other._nodeName),
       _parent(nullptr),
       _store(nullptr),
+      _children(nullptr),
       _ttl(other._ttl),
-      _value(other._value),
-      _vecBuf(other._vecBuf),
+      _value(nullptr),
+      _vecBuf(other._vecBuf ? std::make_unique<SmallBuffer>(*other._vecBuf) : nullptr),
       _vecBufDirty(other._vecBufDirty),
       _isArray(other._isArray) {
-  for (auto const& p : other._children) {
-    auto copy = std::make_shared<Node>(*p.second);
-    copy->_parent = this;  // new children have us as _parent!
-    _children.insert(std::make_pair(p.first, copy));
+  if (other._children) {
+    _children = std::make_unique<Children>();
+    _children->reserve(other._children->size());
+    for (auto const& p : *other._children) {
+      auto copy = std::make_shared<Node>(*p.second);
+      copy->_parent = this;  // new children have us as _parent!
+      _children->insert(std::make_pair(p.first, copy));
+    }
+  }
+  if (other._value) {
+    _value = std::make_unique<std::vector<SmallBuffer>>(*other._value);
   }
 }
 
@@ -152,19 +164,19 @@ Node::Node(Node const& other)
 /// @brief Must not copy _parent, _store, _ttl
 Node& Node::operator=(VPackSlice const& slice) {
   removeTimeToLive();
-  _children.clear();
-  _value.clear();
+  _children.reset();
+  _value.reset();
   if (slice.isArray()) {
     _isArray = true;
-    _value.resize(slice.length());
+    _value = std::make_unique<std::vector<SmallBuffer>>();
+    _value->reserve(slice.length());
     for (size_t i = 0; i < slice.length(); ++i) {
-      _value.at(i).append(reinterpret_cast<char const*>(slice[i].begin()),
-                          slice[i].byteSize());
+      _value->emplace_back(slice[i].start(), slice[i].byteSize());
     }
   } else {
     _isArray = false;
-    _value.resize(1);
-    _value.front().append(reinterpret_cast<char const*>(slice.begin()), slice.byteSize());
+    _value = std::make_unique<std::vector<SmallBuffer>>();
+    _value->emplace_back(slice.start(), slice.byteSize());
   }
   _vecBufDirty = true;
   return *this;
@@ -181,8 +193,10 @@ Node& Node::operator=(Node&& rhs) noexcept {
   _children = std::move(rhs._children);
   // The _children map has been moved here, therefore we must
   // correct the _parent entry of all direct children:
-  for (auto& child : _children) {
-    child.second->_parent = this;
+  if (_children) {
+    for (auto& child : *_children) {
+      child.second->_parent = this;
+    }
   }
   _value = std::move(rhs._value);
   _vecBuf = std::move(rhs._vecBuf);
@@ -201,14 +215,41 @@ Node& Node::operator=(Node const& rhs) {
   // Must not move rhs's _parent, _store
   removeTimeToLive();
   _nodeName = rhs._nodeName;
-  _children.clear();
-  for (auto const& p : rhs._children) {
-    auto copy = std::make_shared<Node>(*p.second);
-    copy->_parent = this;  // new child copy has us as _parent
-    _children.insert(std::make_pair(p.first, copy));
+  if (rhs._children) {
+    if (_children) {
+      _children->clear();
+    } else {
+      _children = std::make_unique<Children>();
+    }
+    _children->reserve(rhs._children->size());
+    for (auto const& p : *rhs._children) {
+      auto copy = std::make_shared<Node>(*p.second);
+      copy->_parent = this;  // new child copy has us as _parent
+      _children->insert(std::make_pair(p.first, copy));
+    }
+  } else {
+    _children.reset();
   }
-  _value = rhs._value;
-  _vecBuf = rhs._vecBuf;
+  if (rhs._value == nullptr) {
+    _value.reset();
+  } else {
+    if (_value == nullptr) {
+      _value = std::make_unique<std::vector<SmallBuffer>>(*rhs._value);
+    } else {
+      *_value = *rhs._value;
+    }
+  }
+  if (_vecBuf) {
+    if (rhs._vecBuf) {
+      *_vecBuf = *rhs._vecBuf;
+    } else {
+      _vecBuf.reset(nullptr);
+    }
+  } else {
+    if (rhs._vecBuf) {
+      _vecBuf = std::make_unique<SmallBuffer>(*rhs._vecBuf);
+    }
+  }
   _vecBufDirty = rhs._vecBufDirty;
   _isArray = rhs._isArray;
   _ttl = rhs._ttl;
@@ -230,20 +271,23 @@ bool Node::operator!=(VPackSlice const& rhs) const { return !(*this == rhs); }
 
 /// @brief Remove child by name
 arangodb::ResultT<std::shared_ptr<Node>> Node::removeChild(std::string const& key) {
-  auto it = _children.find(key);
-  if (it == _children.end()) {
+  if (_children == nullptr) {
+    return arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
+  }
+  auto it = _children->find(key);
+  if (it == _children->end()) {
     return arangodb::ResultT<std::shared_ptr<Node>>::error(TRI_ERROR_FAILED);
   }
   auto ret = it->second;
   ret->removeTimeToLive();
-  _children.erase(it);
+  _children->erase(it);
   return arangodb::ResultT<std::shared_ptr<Node>>::success(std::move(ret));
 }
 
 /// @brief Node type
 /// The check is if we are an array or a value. => LEAF. NODE else
 NodeType Node::type() const {
-  return (_isArray || _value.size()) ? LEAF : NODE;
+  return (_isArray || (_value != nullptr && _value->size())) ? LEAF : NODE;
 }
 
 
@@ -264,14 +308,17 @@ Node& Node::operator()(std::vector<std::string> const& pv) {
       current->clear();
     }
 
-    auto& children = current->_children;
+    if (!current->_children) {
+      current->_children = std::make_unique<Children>();
+    }
+    auto& children = *current->_children;
     auto  child = children.find(key);
 
     if (child == children.end()) {
 
       current->_isArray = false;
-      if (!current->_value.empty()) {
-        current->_value.clear();
+      if (current->_value != nullptr) {
+        current->_value.reset();
       }
 
       auto const& node = std::make_shared<Node>(key, current);
@@ -293,7 +340,11 @@ Node const& Node::operator()(std::vector<std::string> const& pv) const {
 
   for (std::string const& key : pv) {
 
-    auto const& children = current->_children;
+    if (current->_children == nullptr) {
+      throw StoreException(std::string("Node ") + uri() + "/" + key + " not found!");
+    }
+
+    auto const& children = *current->_children;
     auto const  child = children.find(key);
 
     if (child == children.end() || child->second->lifetimeExpired()) {
@@ -405,10 +456,13 @@ ResultT<std::shared_ptr<Node>> Node::handle<SET>(VPackSlice const& slice) {
 
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
-      if (_children.find("op") == _children.end()) {
-        _children["op"] = std::make_shared<Node>("op", this);
+      if (_children == nullptr) {
+        _children = std::make_unique<Children>();
       }
-      *(_children["op"]) = val.get("op");
+      if (_children->find("op") == _children->end()) {
+        (*_children)["op"] = std::make_shared<Node>("op", this);
+      }
+      *((*_children)["op"]) = val.get("op");
     } else {  // Deeper down
       this->applies(val);
     }
@@ -735,7 +789,7 @@ ResultT<std::shared_ptr<Node>> Node::handle<WRITE_UNLOCK>(VPackSlice const& slic
 }
 
 bool Node::isReadLockable(const VPackStringRef& by) const {
-  if (!_children.empty()) {
+  if (_children != nullptr && !_children->empty()) {
     return false;
   }
   Slice slice = this->slice();
@@ -756,7 +810,7 @@ bool Node::isReadLockable(const VPackStringRef& by) const {
 }
 
 bool Node::isReadUnlockable(const VPackStringRef& by) const {
-  if (!_children.empty()) {
+  if (_children != nullptr && !_children->empty()) {
     return false;
   }
   Slice slice = this->slice();
@@ -779,7 +833,7 @@ bool Node::isReadUnlockable(const VPackStringRef& by) const {
 }
 
 bool Node::isWriteLockable(const VPackStringRef& by) const {
-  if (!_children.empty()) {
+  if (_children != nullptr && !_children->empty()) {
     return false;
   }
   Slice slice = this->slice();
@@ -789,7 +843,7 @@ bool Node::isWriteLockable(const VPackStringRef& by) const {
 }
 
 bool Node::isWriteUnlockable(const VPackStringRef& by) const {
-  if (!_children.empty()) {
+  if (_children != nullptr && !_children->empty()) {
     return false;
   }
   Slice slice = this->slice();
@@ -855,9 +909,12 @@ bool Node::applies(VPackSlice const& slice) {
       if (key.find('/') != std::string::npos) {
         (*this)(key).applies(i.value);
       } else {
-        auto found = _children.find(key);
-        if (found == _children.end()) {
-          found = _children.emplace(key, std::make_shared<Node>(key, this)).first;
+        if (_children == nullptr) {
+          _children = std::make_unique<Children>();
+        }
+        auto found = _children->find(key);
+        if (found == _children->end()) {
+          found = _children->emplace(key, std::make_shared<Node>(key, this)).first;
         }
         (*found).second->applies(i.value);
       }
@@ -874,14 +931,16 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
   try {
     if (type() == NODE) {
       VPackObjectBuilder guard(&builder);
-      for (auto const& child : _children) {
-        auto const& cptr = child.second;
-        if ((cptr->_ttl != clock::time_point() && cptr->_ttl < clock::now()) ||
-            (child.first[0] == '.' && !showHidden)) {
-          continue;
+      if (_children != nullptr) {
+        for (auto const& child : *_children) {
+          auto const& cptr = child.second;
+          if ((cptr->_ttl != clock::time_point() && cptr->_ttl < clock::now()) ||
+              (child.first[0] == '.' && !showHidden)) {
+            continue;
+          }
+          builder.add(VPackValue(child.first));
+          cptr->toBuilder(builder);
         }
-        builder.add(VPackValue(child.first));
-        cptr->toBuilder(builder);
       }
     } else {
       if (!slice().isNone()) {
@@ -902,9 +961,19 @@ std::ostream& Node::print(std::ostream& o) const {
   return o;
 }
 
-Node::Children& Node::children() { return _children; }
+void Node::addChild(std::string const& name, std::shared_ptr<Node>& node) {
+  if (_children == nullptr) {
+    _children = std::make_unique<Children>();
+  }
+  _children->insert(std::make_pair(name, node));
+}
 
-Node::Children const& Node::children() const { return _children; }
+Node::Children const& Node::children() const {
+  if (_children == nullptr) {
+    return dummyChildren;
+  }
+  return *_children;
+}
 
 Builder Node::toBuilder() const {
   Builder builder;
@@ -1196,22 +1265,22 @@ Slice Node::getArray() const {
     throw StoreException("Not an array type");
   }
   rebuildVecBuf();
-  return Slice(_vecBuf.data());
+  return Slice(_vecBuf->data());
 }
 
 void Node::clear() {
-  _children.clear();
+  _children.reset();
   removeTimeToLive();
-  _value.clear();
-  _vecBuf.clear();
+  _value.reset();
+  _vecBuf.reset();
   _vecBufDirty = true;
   _isArray = false;
 }
 
 [[nodiscard]] arangodb::ResultT<std::shared_ptr<Node>> Node::deleteMe() {
   if (_parent == nullptr) {  // root node
-    _children.clear();
-    _value.clear();
+    _children.reset();
+    _value.reset();
     _vecBufDirty = true;  // just in case there was an array
     return arangodb::ResultT<std::shared_ptr<Node>>::success(nullptr);
   } else {
@@ -1222,9 +1291,11 @@ void Node::clear() {
 std::vector<std::string> Node::keys() const {
   std::vector<std::string> result;
   if (!_isArray) {
-    result.reserve(_children.size());
-    for (auto const& i : _children) {
-      result.emplace_back(i.first);
+    if (_children != nullptr) {
+      result.reserve(_children->size());
+      for (auto const& i : *_children) {
+        result.emplace_back(i.first);
+      }
     }
   }
   return result;

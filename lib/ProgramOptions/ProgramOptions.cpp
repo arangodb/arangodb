@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -69,6 +69,23 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
 void ProgramOptions::setTranslator(
     std::function<std::string(std::string const&, char const*)> const& translator) {
   _translator = translator;
+}
+  
+// adds a sub-headline for one option or a group of options
+void ProgramOptions::addHeadline(std::string const& prefix, std::string const& description) {
+  checkIfSealed();
+  
+  auto parts = Option::splitName(prefix);
+  if (parts.first.empty()) {
+    std::swap(parts.first, parts.second);
+  }
+  auto it = _sections.find(parts.first);
+
+  if (it == _sections.end()) {
+    throw std::logic_error(std::string("section '") + parts.first + "' not found");
+  }
+    
+  (*it).second.headlines[parts.second] = description;
 }
 
 // prints usage information
@@ -143,6 +160,9 @@ VPackBuilder ProgramOptions::toVPack(bool onlyTouched, bool detailed,
         if (detailed) {
           builder.openObject();
           builder.add("section", VPackValue(option.section));
+          if (!section.link.empty()) {
+            builder.add("link", VPackValue(section.link));
+          }
           builder.add("description", VPackValue(option.description));
           builder.add("category", VPackValue(option.hasFlag(arangodb::options::Flags::Command)
                                                  ? "command"

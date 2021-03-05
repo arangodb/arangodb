@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -109,8 +109,9 @@ struct HITSGraphFormat : public GraphFormat<HITSValue, int8_t> {
 
   size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& /*documentId*/, arangodb::velocypack::Slice /*document*/,
-                        HITSValue& /*targetPtr*/, uint64_t& /*vertexIdRange*/) override {}
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/, HITSValue& /*targetPtr*/,
+                      uint64_t& /*vertexIdRange*/) override {}
 
   bool buildVertexDocument(arangodb::velocypack::Builder& b, HITSValue const* value) const override {
     b.add(_resultField + "_auth", VPackValue(value->authorityScore));

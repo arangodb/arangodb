@@ -15,12 +15,16 @@ You should reference them via their names instead.
 @RESTURLPARAM{collection-name,string,required}
 The name of the collection.
 
-@RESTURLPARAM{details,boolean,required}
+@RESTQUERYPARAMETERS
+
+@RESTQUERYPARAM{details,boolean,optional}
 Setting `details` to `true` will return extended storage engine-specific
 details to the figures. The details are intended for debugging ArangoDB itself
 and their format is subject to change. By default, `details` is set to `false`,
 so no details are returned and the behavior is identical to previous versions
 of ArangoDB.
+Please note that requesting `details` may cause additional load and thus have
+an impact on performace.
 
 @RESTDESCRIPTION
 In addition to the above, the result also contains the number of documents

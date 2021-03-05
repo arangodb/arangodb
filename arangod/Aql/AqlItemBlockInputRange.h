@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -78,6 +78,8 @@ class AqlItemBlockInputRange {
 
   size_t skipAllRemainingDataRows();
 
+  size_t skipAllShadowRowsOfDepth(size_t depth);
+
   // Subtract up to this many rows from the local `_skipped` state; return
   // the number actually skipped. Does not skip data rows.
   [[nodiscard]] auto skip(std::size_t) noexcept -> std::size_t;
@@ -101,6 +103,12 @@ class AqlItemBlockInputRange {
   [[nodiscard]] auto countShadowRows() const noexcept -> std::size_t;
 
   [[nodiscard]] auto finalState() const noexcept -> ExecutorState;
+
+  /**
+   * @brief Skip over all remaining data rows until the next shadow row.
+   * Count how many rows are skipped
+   */
+  [[nodiscard]] auto countAndSkipAllRemainingDataRows() -> std::size_t;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;

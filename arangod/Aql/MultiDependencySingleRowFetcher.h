@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,6 +65,7 @@ class MultiDependencySingleRowFetcher {
 
     auto setSkipped(size_t subqueryDepth, size_t skipped) -> void;
     auto setFullCount(size_t subqueryDepth, size_t skipped) -> void;
+    auto incFullCount(size_t subqueryDepth, size_t skipped) -> void;
 
    private:
     bool _isInitialized{false};
@@ -127,6 +128,13 @@ class MultiDependencySingleRowFetcher {
 
   auto resetDidReturnSubquerySkips(size_t shadowRowDepth) -> void;
 
+  void reportSubqueryFullCounts(size_t subqueryDepth,
+                                std::vector<size_t> const& skippedInDependency);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  auto initialize(size_t subqueryDepth) -> void;
+#endif
+
  private:
   DependencyProxy<BlockPassthrough::Disable>* _dependencyProxy;
 
@@ -164,6 +172,8 @@ class MultiDependencySingleRowFetcher {
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
                                SkipResult const& skipped, const size_t dependency);
+
+  void initializeReports(size_t subqueryDepth);
 };
 
 }  // namespace arangodb::aql

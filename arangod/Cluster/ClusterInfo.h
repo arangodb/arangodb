@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,6 +55,7 @@
 
 namespace arangodb {
 namespace velocypack {
+class Builder;
 class Slice;
 }
 
@@ -68,24 +69,7 @@ struct ClusterCollectionCreationInfo;
 class CollectionWatcher {
  public:
   CollectionWatcher(CollectionWatcher const&) = delete;
-  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection)
-    : _agencyCallbackRegistry(agencyCallbackRegistry), _present(true) {
-
-    std::string databaseName = collection.vocbase().name();
-    std::string collectionID = std::to_string(collection.id().id());
-    std::string where = "Plan/Collections/" + databaseName + "/" + collectionID;
-
-    _agencyCallback = std::make_shared<AgencyCallback>(
-        collection.vocbase().server(), where,
-        [this](VPackSlice const& result) {
-          if (result.isNone()) {
-            _present.store(false);
-          }
-          return true;
-        },
-        true, false);
-    _agencyCallbackRegistry->registerCallback(_agencyCallback);
-  }
+  CollectionWatcher(AgencyCallbackRegistry* agencyCallbackRegistry, LogicalCollection const& collection);
   ~CollectionWatcher();
 
   bool isPresent() {
@@ -370,7 +354,7 @@ class ClusterInfo final {
     ~SyncerThread();
     void beginShutdown() override;
     void run() override;
-    void start();
+    bool start();
     bool notify(velocypack::Slice const&);
 
    private:
@@ -421,7 +405,8 @@ public:
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(application_features::ApplicationServer&, AgencyCallbackRegistry*);
+  explicit ClusterInfo(application_features::ApplicationServer& server, AgencyCallbackRegistry* agencyCallbackRegistry,
+                       ErrorCode syncerShutdownCode);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -434,6 +419,9 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   void cleanup();
+  
+  /// @brief cancel all pending wait-for-syncer operations
+  void drainSyncers();
 
   /**
    * @brief begin shutting down plan and current syncers
@@ -489,7 +477,7 @@ public:
    * @param    Plan Raft index to wait for
    * @return       Operation's result
    */
-  futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -530,13 +518,13 @@ public:
   /// @brief ask whether a cluster database exists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool doesDatabaseExist(DatabaseID const&, bool reload = false);
+  bool doesDatabaseExist(DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get list of databases in the cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<DatabaseID> databases(bool reload = false);
+  std::vector<DatabaseID> databases();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection
@@ -608,6 +596,22 @@ public:
   QueryAnalyzerRevisions getQueryAnalyzersRevision(
       DatabaseID const& databaseID);
 
+  /// @brief return shard statistics for the specified database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsForDatabase(DatabaseID const& dbName,
+                                       std::string const& restrictServer,
+                                       arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics for all databases, totals,
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobal(std::string const& restrictServer,
+                                  arangodb::velocypack::Builder& builder) const;
+  
+  /// @brief return shard statistics, separate for each database, 
+  /// optionally restricted to anything on the specified server
+  Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
+                                          arangodb::velocypack::Builder& builder) const;
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
@@ -651,7 +655,7 @@ public:
       std::string const& name,     // database name
       double timeout               // request timeout
   );
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief create collection in coordinator
   //////////////////////////////////////////////////////////////////////////////
@@ -873,19 +877,7 @@ public:
   //////////////////////////////////////////////////////////////////////////////
 
   ServerID getCoordinatorByShortID(ServerShortID const& shortId);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate planned
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidatePlan();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief invalidate current
-  //////////////////////////////////////////////////////////////////////////////
-
-  void invalidateCurrent();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invalidate current coordinators
   //////////////////////////////////////////////////////////////////////////////
@@ -988,6 +980,12 @@ public:
   application_features::ApplicationServer& server() const;
 
  private:
+  /// @brief worker function for dropIndexCoordinator
+  Result dropIndexCoordinatorInner(
+      std::string const& databaseName, 
+      std::string const& collectionID,
+      IndexId iid,                   
+      double endTime);
 
   /// @brief helper function to build a new LogicalCollection object from the velocypack
   /// input
@@ -1095,6 +1093,10 @@ public:
 
   cluster::RebootTracker _rebootTracker;
 
+  /// @brief error code sent to all remaining promises of the syncers at shutdown. 
+  /// normally this is TRI_ERROR_SHUTTING_DOWN, but it can be overridden during testing
+  ErrorCode const _syncerShutdownCode;
+
   // The servers, first all, we only need Current here:
   std::unordered_map<ServerID, std::string> _servers;  // from Current/ServersRegistered
   std::unordered_map<ServerID, std::string> _serverAliases;  // from Current/ServersRegistered
@@ -1187,28 +1189,10 @@ public:
   Mutex _idLock;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the sole instance
-  //////////////////////////////////////////////////////////////////////////////
-
-  static ClusterInfo* _theinstance;
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief how big a batch is for unique ids
   //////////////////////////////////////////////////////////////////////////////
 
-  static uint64_t const MinIdsPerBatch = 1000000;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief default wait timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const operationTimeout;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reload timeout
-  //////////////////////////////////////////////////////////////////////////////
-
-  static double const reloadServerListTimeout;
+  static constexpr uint64_t MinIdsPerBatch = 1000000;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief check analyzers precondition timeout in seconds

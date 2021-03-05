@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,21 +53,21 @@ RestAgencyHandler::RestAgencyHandler(application_features::ApplicationServer& se
 inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
-  generateError(rest::ResponseCode::NOT_FOUND, 405);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
@@ -159,78 +159,87 @@ RestStatus RestAgencyHandler::handleTransient() {
 RestStatus RestAgencyHandler::pollIndex(
   index_t const& start, double const& timeout) {
   auto pollResult = _agent->poll(start, timeout);
-  
-  if (pollResult.second) {
+
+  if (std::get<1>(pollResult)) {
     return waitForFuture(
-      std::move(pollResult.first).thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
-        VPackSlice res = rb->slice();
+        std::move(std::get<0>(pollResult))
+            .thenValue([this, start](std::shared_ptr<VPackBuilder>&& rb) {
+              VPackSlice res = rb->slice();
 
-        if (res.isObject() && res.hasKey("result")) {
+              if (res.isObject() && res.hasKey("result")) {
+                if (res.hasKey("error")) {  // leadership loss
+                  generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                                TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+                  return;
+                }
 
-          if (res.hasKey("error")) { // leadership loss
-            generateError(
-              rest::ResponseCode::SERVICE_UNAVAILABLE,
-              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-            return;
-          }
+                VPackSlice slice = res.get("result");
 
-          VPackSlice slice = res.get("result");
+                if (slice.hasKey("log")) {
+                  VPackBuilder builder;
+                  {
+                    VPackObjectBuilder ob(&builder);
+                    builder.add(StaticStrings::Error, VPackValue(false));
+                    builder.add("code", VPackValue(int(ResponseCode::OK)));
+                    builder.add(VPackValue("result"));
+                    VPackObjectBuilder r(&builder);
+                    if (!slice.get("firstIndex").isNumber()) {
+                      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                                    "invalid first log index.");
+                      return;
+                    } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
+                      generateError(
+                          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                          "first log index is greater than requested.");
+                      return;
+                    }
+                    uint64_t firstIndex = slice.get("firstIndex").getNumber<uint64_t>(),
+                             i = 0;
 
-          if (slice.hasKey("log")) {
-            VPackBuilder builder;
-            {
-              VPackObjectBuilder ob(&builder);
-              builder.add(StaticStrings::Error, VPackValue(false));
-              builder.add("code", VPackValue(int(ResponseCode::OK)));
-              builder.add(VPackValue("result"));
-              VPackObjectBuilder r(&builder);
-              if (!slice.get("firstIndex").isNumber()) {
-                generateError(
-                  rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "invalid first log index.");
-                return;
-              } else if (slice.get("firstIndex").getNumber<uint64_t>() > start) {
-                generateError(
-                  rest::ResponseCode::SERVER_ERROR,
-                  TRI_ERROR_HTTP_SERVER_ERROR, "first log index is greater than requested.");
-                return;
+                    builder.add("commitIndex", slice.get("commitIndex"));
+                    VPackSlice logs = slice.get("log");
+                    if (start <= firstIndex) {
+                      builder.add("firstIndex", logs[i].get("index"));
+                    }
+                    builder.add(VPackValue("log"));
+                    VPackArrayBuilder a(&builder);
+                    if (start <= firstIndex) {
+                      uint64_t i = start - firstIndex;
+                      for (; i < logs.length(); ++i) {
+                        builder.add(logs[i]);
+                      }
+                    }
+                  }
+                  generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
+                  return;
+                } else {
+                  generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
+                  return;
+                }
+              } else {
+                generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                              TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
               }
-              uint64_t i = start - slice.get("firstIndex").getNumber<uint64_t>();
-              builder.add("commitIndex", slice.get("commitIndex"));
-              VPackSlice logs = slice.get("log");
-              builder.add("firstIndex", logs[i].get("index"));
-              builder.add(VPackValue("log"));
-              VPackArrayBuilder a(&builder);
-              for (; i < logs.length(); ++i) {
-                builder.add(logs[i]);
-              }
-            }
-            generateResult(rest::ResponseCode::OK, std::move(*builder.steal()));
-            return;
-          } else {
-            generateResult(rest::ResponseCode::OK, std::move(*rb->steal()));
-            return;
-          }
-        } else {
-          generateError(
-            rest::ResponseCode::SERVICE_UNAVAILABLE,
-            TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
-        }
-      })
-      .thenError<VPackException>([this](VPackException const& e) {
-        generateError(Result{e.errorCode(), e.what()});
-      })
-      .thenError<std::exception>([this](std::exception const& e) {
-        generateError(
-          rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-      }));
+            })
+            .thenError<VPackException>([this](VPackException const& e) {
+              generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+            })
+            .thenError<std::exception>([this](std::exception const& e) {
+              generateError(rest::ResponseCode::SERVER_ERROR,
+                            TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+            }));
   } else {
-    generateError(
-      rest::ResponseCode::SERVICE_UNAVAILABLE,
-      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    auto const& leader = std::get<2>(pollResult);
+    if (leader == NO_LEADER) {
+      generateError(
+        rest::ResponseCode::SERVICE_UNAVAILABLE,
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE, "No leader");
+    } else {
+      redirectRequest(leader);
+    }
     return RestStatus::DONE;
   }
-  
+
 }
 
 namespace {
@@ -261,11 +270,16 @@ RestStatus RestAgencyHandler::handlePoll() {
 
   // WARNING ////////////////////////////////////////////////////
   // Leader only
+  auto const& leaderId = _agent->leaderID();
   if (!_agent->leading()) {  // Redirect to leader
-    if (_agent->leaderID() == NO_LEADER) {
+    if (leaderId == NO_LEADER) {
       return reportMessage(
         rest::ResponseCode::SERVICE_UNAVAILABLE, "No leader");
-    } // WARNING REDIRECTS NEEDS BE DOING
+    } else {
+      TRI_ASSERT(leaderId != _agent->id());
+      redirectRequest(leaderId);
+      return RestStatus::DONE;
+    }
   }
 
   // Get queryString index
@@ -330,7 +344,7 @@ RestStatus RestAgencyHandler::handleStore() {
       query_t builder = _agent->buildDB(index);
       generateResult(rest::ResponseCode::OK, builder->slice());
     } catch (...) {
-      generateError(rest::ResponseCode::BAD, 400);
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     }
 
     return RestStatus::DONE;
@@ -432,7 +446,7 @@ RestStatus RestAgencyHandler::handleWrite() {
         if (max_index > 0) {
           result = _agent->waitFor(max_index);
           _agent->commitHist().count(
-            duration<float,std::milli>(high_resolution_clock::now()-start).count());
+            duration<float, std::milli>(high_resolution_clock::now()-start).count());
         }
       }
     }
@@ -442,7 +456,7 @@ RestStatus RestAgencyHandler::handleWrite() {
     if (result == Agent::raft_commit_t::UNKNOWN) {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (forbidden > 0) {
         generateResult(rest::ResponseCode::FORBIDDEN, body.slice());
@@ -538,7 +552,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     query = _request->toVelocyPackBuilderPtr();
   } catch (std::exception const& ex) {
     LOG_TOPIC("78755", DEBUG, Logger::AGENCY) << ex.what();
-    generateError(rest::ResponseCode::BAD, 400);
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return RestStatus::DONE;
   }
 
@@ -612,7 +626,7 @@ RestStatus RestAgencyHandler::handleInquire() {
     if (result == Agent::raft_commit_t::UNKNOWN) {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_HTTP_SERVICE_UNAVAILABLE);
     } else if (result == Agent::raft_commit_t::TIMEOUT) {
-      generateError(rest::ResponseCode::REQUEST_TIMEOUT, 408);
+      generateError(rest::ResponseCode::REQUEST_TIMEOUT, TRI_ERROR_HTTP_REQUEST_TIMEOUT);
     } else {
       if (failed) {  // Some/all requests failed
         generateResult(rest::ResponseCode::NOT_FOUND, body.slice());
@@ -745,7 +759,7 @@ RestStatus RestAgencyHandler::handleState() {
 }
 
 RestStatus RestAgencyHandler::reportMethodNotAllowed() {
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 

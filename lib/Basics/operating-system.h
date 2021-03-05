@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -729,7 +729,7 @@ void TRI_GET_ARGV_WIN(int& argc, char** argv);
 #define TRI_SYSTEM_ERROR()                                                    \
   do {                                                                        \
     auto result = translateWindowsError(::GetLastError());                    \
-    errno = result.errorNumber();                                             \
+    errno = static_cast<int>(result.errorNumber());                           \
     auto const& mesg = result.errorMessage();                                 \
     memset(windowsErrorBuf, 0, sizeof(windowsErrorBuf));                      \
     if (mesg.empty()) {                                                       \

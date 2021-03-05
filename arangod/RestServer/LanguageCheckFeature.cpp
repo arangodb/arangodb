@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -72,8 +72,8 @@ arangodb::Result readLanguage(arangodb::application_features::ApplicationServer&
 }
 
 /// @brief writes the default language to file
-int writeLanguage(arangodb::application_features::ApplicationServer& server,
-                  std::string const& language) {
+ErrorCode writeLanguage(arangodb::application_features::ApplicationServer& server,
+                        std::string const& language) {
   auto& databasePath = server.getFeature<arangodb::DatabasePathFeature>();
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 

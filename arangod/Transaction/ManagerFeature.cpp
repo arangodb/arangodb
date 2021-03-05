@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -77,13 +78,15 @@ ManagerFeature::ManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "TransactionManager"),
       _workItem(nullptr),
       _gcfunc(),
-      _streamingLockTimeout(8.0) {
+      _streamingLockTimeout(8.0),
+      _numExpiredTransactions(
+        server.getFeature<arangodb::MetricsFeature>().counter(
+          "arangodb_transactions_expired", 0, "Total number of expired transactions")) {
   setOptional(false);
   startsAfter<BasicFeaturePhaseServer>();
-
   startsAfter<EngineSelectorFeature>();
+  startsAfter<MetricsFeature>();
   startsAfter<SchedulerFeature>();
-
   startsBefore<DatabaseFeature>();
 
   _gcfunc = [this] (bool canceled) {
@@ -161,6 +164,12 @@ void ManagerFeature::stop() {
 
 void ManagerFeature::unprepare() {
   MANAGER.reset();
+}
+
+void ManagerFeature::trackExpired(uint64_t numExpired) {
+  if (numExpired > 0) {
+    _numExpiredTransactions.count(numExpired);
+  }
 }
 
 }  // namespace transaction

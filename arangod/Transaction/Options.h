@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,6 +51,11 @@ struct Options {
 
   /// @brief add the options to an opened vpack builder
   void toVelocyPack(arangodb::velocypack::Builder&) const;
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /// @brief patch intermediateCommitCount for testing
+  static void adjustIntermediateCommitCount(Options& options);
+#endif
 
   static constexpr double defaultLockTimeout = 900.0;
   static uint64_t defaultMaxTransactionSize;

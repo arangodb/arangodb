@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -89,10 +89,11 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction& trx, VPackBuilder& lineBuilder,
-                           RestImportResult& result, arangodb::velocypack::Builder& babies,
-                           arangodb::velocypack::Slice slice,
-                           bool isEdgeCollection, size_t);
+  ErrorCode handleSingleDocument(SingleCollectionTransaction& trx,
+                                 VPackBuilder& tempBuilder, RestImportResult& result,
+                                 arangodb::velocypack::Builder& babies,
+                                 arangodb::velocypack::Slice slice,
+                                 bool isEdgeCollection, size_t i);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects

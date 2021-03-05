@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
@@ -44,7 +45,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
-#include "VocBase/LogicalCollection.h"
 
 #include "IResearchView.h"
 
@@ -601,8 +601,9 @@ arangodb::Result IResearchView::dropImpl() {
     if (!res.ok()) {
       return arangodb::Result( // result
         res.errorNumber(), // code
-        std::string("failed to remove links while removing arangosearch view '") + name() + "': " + res.errorMessage()
-      );
+        arangodb::basics::StringUtils::concatT(
+              "failed to remove links while removing arangosearch view '",
+              name(), "': ", res.errorMessage()));
     }
   }
 

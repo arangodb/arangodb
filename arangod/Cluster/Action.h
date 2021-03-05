@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,7 +155,7 @@ class Action {
   bool done() const { return _action->done(); }
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const { return _action->runable(); }
+  bool runnable() const { return _action->runnable(); }
 
   /// @brief When object was constructed
   std::chrono::system_clock::time_point getCreateTime() const {

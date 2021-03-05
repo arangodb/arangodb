@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,7 +123,8 @@ class Agent final : public arangodb::Thread, public AgentInterface {
   read_ret_t read(query_t const&);
 
   /// @brief Long pool for higher index than given if leader or else empty builder and false
-  std::pair<futures::Future<query_t>, bool> poll(index_t const& index, double const& timeout);
+  std::tuple<futures::Future<query_t>, bool, std::string> poll(
+    index_t const& index, double const& timeout);
 
   /// @brief Inquire success of logs given clientIds
   write_ret_t inquire(query_t const&);

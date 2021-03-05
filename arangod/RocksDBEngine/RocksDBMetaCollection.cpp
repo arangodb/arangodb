@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,6 +31,7 @@
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -132,7 +133,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(transaction::Methods* trx) const
 }
 
 /// @brief write locks a collection, with a timeout
-int RocksDBMetaCollection::lockWrite(double timeout) {
+ErrorCode RocksDBMetaCollection::lockWrite(double timeout) {
   return doLock(timeout, AccessMode::Type::WRITE);
 }
 
@@ -140,7 +141,7 @@ int RocksDBMetaCollection::lockWrite(double timeout) {
 void RocksDBMetaCollection::unlockWrite() { _exclusiveLock.unlockWrite(); }
 
 /// @brief read locks a collection, with a timeout
-int RocksDBMetaCollection::lockRead(double timeout) {
+ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -194,7 +195,7 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto lockGuard = scopeGuard([this] { unlockWrite(); });
-    int res = lockWrite(transaction::Options::defaultLockTimeout);
+    auto res = lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       lockGuard.cancel();
       THROW_ARANGO_EXCEPTION(res);
@@ -263,13 +264,20 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
     LOG_TOPIC("ad613", WARN, Logger::REPLICATION)
       << "inconsistent collection count detected for "
       << vocbase.name() << "/" << _logicalCollection.name()
-      << ", an offet of " << adjustment << " will be applied";
+      << ": counted value: " << count << ", snapshot value: " << snapNumberOfDocuments 
+      << ", current value: " << _meta.numberDocuments()
+      << ",  an offet of " << adjustment << " will be applied";
     auto adjustSeq = engine.db()->GetLatestSequenceNumber();
     if (adjustSeq <= snapSeq) {
       adjustSeq = ::forceWrite(engine);
       TRI_ASSERT(adjustSeq > snapSeq);
     }
     _meta.adjustNumberDocuments(adjustSeq, RevisionId::none(), adjustment);
+  } else {
+    LOG_TOPIC("55df5", INFO, Logger::REPLICATION)
+      << "no collection count adjustment needs to be applied for "
+      << vocbase.name() << "/" << _logicalCollection.name()
+      << ": counted value: " << count;
   }
   
   return _meta.numberDocuments();
@@ -581,7 +589,9 @@ void RocksDBMetaCollection::rebuildRevisionTree(std::unique_ptr<rocksdb::Iterato
 
   RocksDBKeyBounds documentBounds =
       RocksDBKeyBounds::CollectionDocuments(_objectId.load());
-  rocksdb::Comparator const* cmp = RocksDBColumnFamily::documents()->GetComparator();
+  rocksdb::Comparator const* cmp =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+          ->GetComparator();
   rocksdb::ReadOptions ro;
   rocksdb::Slice const end = documentBounds.end();
   ro.iterate_upper_bound = &end;
@@ -864,7 +874,7 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(containers::RevisionTre
 }
 
 /// @brief lock a collection, with a timeout
-int RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
+ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   uint64_t waitTime = 0;  // indicates that time is uninitialized
   double startTime = 0.0;
 

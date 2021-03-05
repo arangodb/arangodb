@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,39 +88,6 @@ struct VPackHashedSlice {
 
   ~VPackHashedSlice() = default;
 };
-
-namespace detail {
-template <class>
-inline constexpr bool always_false_v = false;
-template <typename... Ts, std::size_t... Is>
-auto unpackTuple(VPackArrayIterator& iter, std::index_sequence<Is...>) -> std::tuple<Ts...> {
-  return {  // evaluation order is sequenced https://stackoverflow.com/questions/37254813/evaluation-order-of-elements-in-an-initializer-list
-      ([&](VPackSlice slice) {
-        TRI_ASSERT(!slice.isNone());
-        if constexpr (std::is_integral_v<Ts>) {
-          TRI_ASSERT(slice.template isNumber<Ts>());
-          return slice.template getNumericValue<Ts>();
-        } else if constexpr (std::is_same_v<Ts, double>) {
-          TRI_ASSERT(slice.isDouble());
-          return slice.getDouble();
-        } else if constexpr (std::is_same_v<Ts, std::string>) {
-          TRI_ASSERT(slice.isString());
-          return slice.copyString();
-        } else if constexpr (std::is_same_v<Ts, std::string_view>) {
-          TRI_ASSERT(slice.isString());
-          return slice.stringView();
-        } else if constexpr (std::is_same_v<Ts, VPackStringRef>) {
-          TRI_ASSERT(slice.isString());
-          return slice.stringRef();
-        } else if constexpr (std::is_same_v<Ts, VPackSlice>) {
-          return slice;
-        } else {
-          static_assert(always_false_v<Ts>, "Unhandled value type requested");
-        }
-      }(*(iter++)))
-      ...};
-}
-}
 
 class VelocyPackHelper {
  private:
@@ -221,13 +188,12 @@ class VelocyPackHelper {
   /// @brief unpacks an array as tuple. Use like this: auto&& [a, b, c] = unpack<size_t, std::string, double>(slice);
   template <typename... Ts>
   static std::tuple<Ts...> unpackTuple(VPackSlice slice) {
-    VPackArrayIterator iter(slice);
-    return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
+    return slice.template unpackTuple<Ts...>();
   }
 
   template <typename... Ts>
   static std::tuple<Ts...> unpackTuple(VPackArrayIterator& iter) {
-    return detail::unpackTuple<Ts...>(iter, std::index_sequence_for<Ts...>{});
+    return iter.template unpackPrefixAsTuple<Ts...>();
   }
 
   /// @brief returns a numeric value
@@ -261,15 +227,7 @@ class VelocyPackHelper {
 
   /// @brief returns a numeric sub-element, or a default if it does not exist
   template <typename T, typename NumberType = T, typename NameType>
-  static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue) {
-    if (slice.isObject()) {
-      VPackSlice sub = slice.get(name);
-      if (sub.isNumber()) {
-        return static_cast<T>(sub.getNumber<NumberType>());
-      }
-    }
-    return defaultValue;
-  }
+  static T getNumericValue(VPackSlice const& slice, NameType const& name, T defaultValue);
 
   /// @brief returns a boolean sub-element, or a default if it does not exist
   template <typename NameType>
@@ -402,13 +360,6 @@ class VelocyPackHelper {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
 
-  /// @brief Transforms any VelocyPack to a double value. The second parameter
-  ///        indicates if the transformation was successful.
-  static double toDouble(VPackSlice const&, bool&);
-
-  // modify a VPack double value in place
-  static void patchDouble(VPackSlice slice, double value);
-
   static bool hasNonClientTypes(arangodb::velocypack::Slice,
                                 bool checkExternals, bool checkCustom);
 
@@ -418,11 +369,6 @@ class VelocyPackHelper {
                                      arangodb::velocypack::Options const*,
                                      bool sanitizeExternals, bool sanitizeCustom,
                                      bool allowUnindexed = false);
-
-  static VPackBuffer<uint8_t> sanitizeNonClientTypesChecked(
-      arangodb::velocypack::Slice,
-      VPackOptions const* options = &VPackOptions::Options::Defaults,
-      bool sanitizeExternals = true, bool sanitizeCustom = true);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 
@@ -444,6 +390,32 @@ class VelocyPackHelper {
   static_assert(FromAttribute < ToAttribute,
                 "invalid value for _from attribute");
 };
+
+template <typename T, typename NumberType, typename NameType>
+T VelocyPackHelper::getNumericValue(VPackSlice const& slice,
+                                    NameType const& name, T defaultValue) {
+  if (slice.isObject()) {
+    VPackSlice sub = slice.get(name);
+    if (sub.isNumber()) {
+      return static_cast<T>(sub.getNumber<NumberType>());
+    }
+  }
+  return defaultValue;
+}
+
+/// @brief specializations for ErrorCode, shortcut to avoid back-and-forth
+/// casts from and to int.
+template <>
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string_view>(
+    VPackSlice const& slice, std::string_view const& name, ErrorCode defaultValue) {
+  return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+}
+template <>
+inline ErrorCode VelocyPackHelper::getNumericValue<ErrorCode, ErrorCode, std::string>(
+    VPackSlice const& slice, std::string const& name, ErrorCode defaultValue) {
+  return ErrorCode{getNumericValue<int>(slice, name, static_cast<int>(defaultValue))};
+}
+
 }  // namespace basics
 }  // namespace arangodb
 

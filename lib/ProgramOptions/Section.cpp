@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,22 +48,44 @@ void Section::printHelp(std::string const& search, size_t tw, size_t ow, bool co
     return;
   }
 
-  if (colors) {
-    std::cout << "Section '" << ShellColorsFeature::SHELL_COLOR_BRIGHT
-              << displayName() << ShellColorsFeature::SHELL_COLOR_RESET << "' ("
-              << description << ")" << std::endl;
-  } else {
-    std::cout << "Section '" << displayName() << "' (" << description << ")" << std::endl;
+  std::cout 
+    << "Section '" 
+    << (colors ? ShellColorsFeature::SHELL_COLOR_BRIGHT : "")
+    << displayName() 
+    << (colors ? ShellColorsFeature::SHELL_COLOR_RESET : "")
+    << "' (" << description << ")";
+
+  if (!link.empty()) {
+    std::cout << " [";
+    if (colors) {
+      std::cout 
+        << ShellColorsFeature::SHELL_COLOR_LINK_START << link 
+        << ShellColorsFeature::SHELL_COLOR_LINK_MIDDLE << link 
+        << ShellColorsFeature::SHELL_COLOR_LINK_END;
+    } else {
+      std::cout << link;
+    }
+    std::cout << "]";
   }
+  std::cout << std::endl;
+
+  auto hl = headlines.begin();
 
   // propagate print command to options
   for (auto const& it : options) {
+    if (hl != headlines.end() && it.first >= (*hl).first) {
+      // must print a headline
+      std::cout << " # " << (*hl).second << std::endl;
+      ++hl;
+    }
+
+    // print help for option
     it.second.printHelp(search, tw, ow, colors);
   }
 
   std::cout << std::endl;
 }
-
+  
 // determine display width for a section
 size_t Section::optionsWidth() const {
   size_t width = 0;

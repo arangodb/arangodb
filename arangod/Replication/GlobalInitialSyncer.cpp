@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,6 +53,16 @@ GlobalInitialSyncer::GlobalInitialSyncer(ReplicationApplierConfiguration const& 
     : InitialSyncer(configuration) {
   // has to be set here, otherwise broken
   _state.databaseName = StaticStrings::SystemDatabase;
+}
+
+std::shared_ptr<GlobalInitialSyncer> GlobalInitialSyncer::create(ReplicationApplierConfiguration const& configuration) {
+  // enable make_shared on a class with a private constructor
+  struct Enabler final : public GlobalInitialSyncer {
+    explicit Enabler(ReplicationApplierConfiguration const& configuration)
+      : GlobalInitialSyncer(configuration) {}
+  };
+
+  return std::make_shared<Enabler>(configuration);
 }
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
@@ -111,7 +121,7 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
   if (!_state.isChildSyncer) {
     // start batch is required for the inventory request
     LOG_TOPIC("0da14", DEBUG, Logger::REPLICATION) << "sending start batch";
-    r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId);
+    r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId, nullptr);
     if (r.fail()) {
       return r;
     }
@@ -182,13 +192,13 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
 
-      DatabaseGuard guard(nameSlice.copyString());
+      DatabaseGuard guard(*vocbase);
 
       // change database name in place
       ReplicationApplierConfiguration configurationCopy = _state.applier;
       configurationCopy._database = nameSlice.copyString();
 
-      auto syncer = std::make_shared<DatabaseInitialSyncer>(*vocbase, configurationCopy);
+      auto syncer = DatabaseInitialSyncer::create(*vocbase, configurationCopy);
       syncer->useAsChildSyncer(_state.leader, _state.syncerId, _batch.id, _batch.updateTime);
 
       // run the syncer with the supplied inventory collections
@@ -219,7 +229,8 @@ Result GlobalInitialSyncer::runInternal(bool incremental, char const* context) {
 /// mirrors the leader's
 Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& leaderDatabases) {
   std::set<std::string> existingDBs;
-  DatabaseFeature::DATABASE->enumerateDatabases(
+  auto& server = _state.applier._server;
+  server.getFeature<DatabaseFeature>().enumerateDatabases(
       [&](TRI_vocbase_t& vocbase) -> void { existingDBs.insert(vocbase.name()); });
 
   for (auto const& database : VPackObjectIterator(leaderDatabases)) {
@@ -349,7 +360,7 @@ Result GlobalInitialSyncer::getInventory(VPackBuilder& builder) {
     return Result(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  auto r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId);
+  auto r = _batch.start(_state.connection, _progress, _state.leader, _state.syncerId, nullptr);
   if (r.fail()) {
     return r;
   }

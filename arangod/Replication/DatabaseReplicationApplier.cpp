@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -117,7 +117,7 @@ void DatabaseReplicationApplier::forget() {
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t& vocbase) {
   // TODO: move to ReplicationApplier
   StorageEngine& engine = vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
@@ -149,7 +149,7 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
       << _databaseName;
 
   StorageEngine& engine = _vocbase.server().getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -157,13 +157,12 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
 }
 
 std::shared_ptr<InitialSyncer> DatabaseReplicationApplier::buildInitialSyncer() const {
-  return std::make_shared<arangodb::DatabaseInitialSyncer>(_vocbase, _configuration);
+  return arangodb::DatabaseInitialSyncer::create(_vocbase, _configuration);
 }
 
 std::shared_ptr<TailingSyncer> DatabaseReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return std::make_shared<arangodb::DatabaseTailingSyncer>(_vocbase, _configuration,
-                                                           initialTick, useTick);
+  return arangodb::DatabaseTailingSyncer::create(_vocbase, _configuration, initialTick, useTick);
 }
 
 std::string DatabaseReplicationApplier::getStateFilename() const {

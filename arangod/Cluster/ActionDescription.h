@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,15 @@
 #ifndef ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 #define ARANGODB_CLUSTER_MAINTENANCE_ACTION_DESCRIPTION_H
 
-#include "MaintenanceStrings.h"
-
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/Result.h"
+#include "Cluster/MaintenanceStrings.h"
 
 #include <map>
+#include <memory>
 #include <string>
+
+#include <velocypack/Builder.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
 namespace maintenance {
@@ -43,9 +46,9 @@ enum ActionState {
   READY = 1,        // waiting for a worker on the deque
   EXECUTING = 2,    // user or worker thread currently executing
   WAITING = 3,      // initiated a pre-task, waiting for its completion
-  WAITINGPRE = 4,   // parent task created, about to execute on parent's thread
-  WAITINGPOST = 5,  // parent task created, will execute after parent's success
-  PAUSED = 6,       // (not implemented) user paused task
+  WAITINGPRE = 4,   // parent task created, about to execute on parent's thread - not used
+  WAITINGPOST = 5,  // parent task created, will execute after parent's success - not used
+  PAUSED = 6,       // (not implemented) user paused task - not used
   COMPLETE = 7,     // task completed successfully
   FAILED = 8,       // task failed, no longer executing
 };
@@ -87,19 +90,27 @@ struct ActionDescription final {
   static std::size_t hash(std::map<std::string, std::string> const& desc) noexcept;
 
   /// @brief Name of action
-  std::string const& name() const;
+  std::string const& name() const noexcept;
 
   /**
-   * @brief Check if key exists in discrimantory container
+   * @brief Check if key exists in discriminatory container
    * @param  key   Key to lookup
    * @return       true if key is found
    */
-  bool has(std::string const& key) const;
+  bool has(std::string const& key) const noexcept;
+  
+  /**
+   * @brief Check if key exists in discriminatory container and if it has the specified value
+   * @param  key   Key to lookup
+   * @param  value Value to compare against
+   * @return       true if key is found and has the exact same value
+   */
+  bool has(std::string const& key, std::string const& value) const noexcept;
 
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in discrimatory container
+   * @exception    std::out_of_range if the we do not have this key in discriminatory container
    * @return       Value to specified key
    */
   std::string get(std::string const& key) const;
@@ -107,7 +118,7 @@ struct ActionDescription final {
   /**
    * @brief Get a string value from description
    * @param  key   Key to get
-   * @exception    std::out_of_range if the we do not have this key in discrimatory container
+   * @exception    std::out_of_range if the we do not have this key in discriminatory container
    * @return       Value to specified key
    */
   std::string operator()(std::string const& key) const;
@@ -147,8 +158,8 @@ struct ActionDescription final {
   std::ostream& print(std::ostream& os) const;
 
   /**
-   * @brief Get non discrimantory properties
-   *            Get non discrimantory properties.
+   * @brief Get non discriminatory properties
+   *            Get non discriminatory properties.
    *            This function does not throw as builder is always when here.
    * @return    Non discriminatory properties
    */

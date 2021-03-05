@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,13 +52,13 @@ RestStatus RestGraphHandler::execute() {
   return RestStatus::DONE;
 }
 
-Result RestGraphHandler::returnError(int errorNumber) {
+Result RestGraphHandler::returnError(ErrorCode errorNumber) {
   auto res = Result(errorNumber);
   generateError(res);
   return res;
 }
 
-Result RestGraphHandler::returnError(int errorNumber, char const* message) {
+Result RestGraphHandler::returnError(ErrorCode errorNumber, std::string_view message) {
   auto res = Result(errorNumber, message);
   generateError(res);
   return res;

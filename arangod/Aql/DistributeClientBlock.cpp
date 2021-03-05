@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +60,7 @@ DistributeClientBlock::DistributeClientBlock(ExecutionEngine& engine,
                                              RegisterInfos const& registerInfos)
     : _blockManager(engine.itemBlockManager()), registerInfos(registerInfos) {
   // We only get shared ptrs to const data. so we need to copy here...
-  auto executorInfos = IdExecutorInfos{false, 0, "", false};
+  auto executorInfos = IdExecutorInfos{false, RegisterId(0), "", false};
   auto idExecutorRegisterInfos =
       RegisterInfos{{},
                     {},

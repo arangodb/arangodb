@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -148,6 +148,10 @@ class RocksDBReplicationContext {
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
                       bool includeFoxxQueues, bool global,
                       velocypack::Builder&);
+  
+  // returns inventory for a single shard (DB server only!)
+  Result getInventory(TRI_vocbase_t& vocbase, std::string const& collectionName,
+                      velocypack::Builder&);
 
   void setPatchCount(std::string const& patchCount);
   std::string const& patchCount() const;
@@ -155,8 +159,9 @@ class RocksDBReplicationContext {
   // ========================= Dump API =============================
 
   struct DumpResult {
-    explicit DumpResult(int res) : hasMore(false), includedTick(0), _result(res) {}
-    DumpResult(int res, bool hm, uint64_t tick)
+    explicit DumpResult(ErrorCode res)
+        : hasMore(false), includedTick(0), _result(res) {}
+    DumpResult(ErrorCode res, bool hm, uint64_t tick)
         : hasMore(hm), includedTick(tick), _result(res) {}
     bool hasMore;
     uint64_t includedTick;  // tick increases for each fetch
@@ -164,9 +169,9 @@ class RocksDBReplicationContext {
     // forwarded methods
     bool ok() const { return _result.ok(); }
     bool fail() const { return _result.fail(); }
-    int errorNumber() const { return _result.errorNumber(); }
-    std::string errorMessage() const { return _result.errorMessage(); }
-    bool is(int code) const { return _result.is(code); }
+    ErrorCode errorNumber() const { return _result.errorNumber(); }
+    std::string_view errorMessage() const { return _result.errorMessage(); }
+    bool is(ErrorCode code) const { return _result.is(code); }
 
     // access methods
     Result const& result() const& { return _result; }

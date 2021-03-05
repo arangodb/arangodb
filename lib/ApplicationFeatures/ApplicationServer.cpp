@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,12 +87,12 @@ bool ApplicationServer::isPrepared() {
          tmp == State::IN_STOP;
 }
 
-bool ApplicationServer::isStopping() {
+bool ApplicationServer::isStopping() const {
   auto tmp = state();
   return isStoppingState(tmp);
 }
 
-bool ApplicationServer::isStoppingState(State state) {
+bool ApplicationServer::isStoppingState(State state) const {
   return state == State::IN_SHUTDOWN ||
          state == State::IN_STOP ||
          state == State::IN_UNPREPARE ||
@@ -290,7 +290,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
 void ApplicationServer::collectOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
-  _options->addSection(Section("", "Global configuration", "global options", false, false));
+  _options->addSection(Section("", "Global configuration", "", "global options", false, false));
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),

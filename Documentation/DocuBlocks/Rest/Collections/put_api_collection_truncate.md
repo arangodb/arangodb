@@ -17,11 +17,11 @@ The name of the collection.
 
 @RESTQUERYPARAMETERS
 
-@RESTQUERYPARAM{waitForSync,boolean,optional,}
+@RESTQUERYPARAM{waitForSync,boolean,optional}
 If *true* then the data is synchronized to disk before returning from the
 truncate operation (default: *false*)
 
-@RESTQUERYPARAM{compact,boolean,optional,}
+@RESTQUERYPARAM{compact,boolean,optional}
 If *true* (default) then the storage engine is told to start a compaction
 in order to free up disk space. This can be resource intensive. If the only 
 intention is to start over with an empty collection, specify *false*.

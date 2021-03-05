@@ -38,7 +38,7 @@ while (<>) {
     }
     $contZone = $fields[1] if @fields > 5;
   } elsif ($type eq 'rule') {
-    # Rule  NAME  FROM  TO  TYPE  IN  ON  AT  SAVE  LETTER/S
+    # Rule  NAME  FROM  TO  -  IN  ON  AT  SAVE  LETTER/S
     @fields == 10 or warn "bad rule line";
   } elsif ($type eq 'link') {
     # Link  TARGET  LINK-NAME

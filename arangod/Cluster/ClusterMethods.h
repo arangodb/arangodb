@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -88,6 +88,17 @@ futures::Future<OperationResult> revisionOnCoordinator(ClusterFeature&,
                                                        std::string const& dbname,
                                                        std::string const& collname,
                                                        OperationOptions const& options);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns checksum for a sharded collection
+////////////////////////////////////////////////////////////////////////////////
+
+futures::Future<OperationResult> checksumOnCoordinator(ClusterFeature& feature,
+                                                       std::string const& dbname,
+                                                       std::string const& collname,
+                                                       OperationOptions const& options,
+                                                       bool withRevisions,
+                                                       bool withData);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Warmup index caches on Shards
@@ -224,8 +235,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
 /// @brief flush Wal on all DBservers
 ////////////////////////////////////////////////////////////////////////////////
 
-int flushWalOnAllDBServers(ClusterFeature&, bool waitForSync,
-                           bool waitForCollector);
+ErrorCode flushWalOnAllDBServers(ClusterFeature&, bool waitForSync, bool waitForCollector);
 
 /// @brief compact the database on all DB servers
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel, bool compactBottomMostLevel);
@@ -328,11 +338,22 @@ class ClusterMethods {
       std::shared_ptr<LogicalCollection> const& colPtr);
 
   ////////////////////////////////////////////////////////////////////////////////
-  /// @brief Enterprise Relecant code to filter out hidden collections
-  ///        that should ne be triggered directly by operations.
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be triggered directly by operations.
   ////////////////////////////////////////////////////////////////////////////////
 
   static bool filterHiddenCollections(LogicalCollection const& c);
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Enterprise Relevant code to filter out hidden collections
+  ///        that should not be included in links
+  ////////////////////////////////////////////////////////////////////////////////
+  static bool includeHiddenCollectionInLink(std::string const& name);
+
+  /// @brief removes smart name suffixes from collection names.
+  /// @param possiblySmartName  collection name with possible smart suffixes.
+  /// Will be modified inplace 
+  static void realNameFromSmartName(std::string& possiblySmartName);
 
  private:
   ////////////////////////////////////////////////////////////////////////////////

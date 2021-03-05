@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,8 +28,9 @@
 #include "Basics/application-exit.h"
 #include "Containers/HashSet.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
@@ -102,8 +103,8 @@ void RocksDBBuilderIndex::toVelocyPack(VPackBuilder& builder,
 /// insert index elements into the specified write batch.
 Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const slice,
-                                   OperationOptions& options) {
+                                   arangodb::velocypack::Slice slice,
+                                   OperationOptions const& /*options*/) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -127,7 +128,7 @@ Result RocksDBBuilderIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 /// remove index elements and put it in the specified write batch.
 Result RocksDBBuilderIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   arangodb::velocypack::Slice const slice) {
+                                   arangodb::velocypack::Slice slice) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   auto* ctx = dynamic_cast<::BuilderCookie*>(trx.state()->cookie(this));
 #else
@@ -169,7 +170,8 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
   ro.prefix_same_as_start = true;
   ro.iterate_upper_bound = &upper;
 
-  rocksdb::ColumnFamilyHandle* docCF = RocksDBColumnFamily::documents();
+  rocksdb::ColumnFamilyHandle* docCF =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents);
   std::unique_ptr<rocksdb::Iterator> it(rootDB->NewIterator(ro, docCF));
 
   auto mode = snap == nullptr ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::WRITE;
@@ -206,19 +208,22 @@ static arangodb::Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      
-      if (foreground) {
-        for (uint64_t hash : it->second.inserts) {
-          ridx.estimator()->insert(hash);
+
+      auto* estimator = ridx.estimator();
+      if (estimator != nullptr) {
+        if (foreground) {
+          for (uint64_t hash : it->second.inserts) {
+            estimator->insert(hash);
+          }
+          for (uint64_t hash : it->second.removals) {
+            estimator->remove(hash);
+          }
+        } else {
+          uint64_t seq = rootDB->GetLatestSequenceNumber();
+          // since cuckoo estimator uses a map with seq as key we need to 
+          estimator->bufferUpdates(seq, std::move(it->second.inserts),
+                                   std::move(it->second.removals));
         }
-        for (uint64_t hash : it->second.removals) {
-          ridx.estimator()->remove(hash);
-        }
-      } else {
-        uint64_t seq = rootDB->GetLatestSequenceNumber();
-        // since cuckoo estimator uses a map with seq as key we need to 
-        ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                             std::move(it->second.removals));
       }
     }
   };
@@ -359,9 +364,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
   rocksdb::Status PutCF(uint32_t column_family_id, const rocksdb::Slice& key,
                         rocksdb::Slice const& value) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
 
@@ -370,9 +379,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status DeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();
@@ -380,9 +393,13 @@ struct ReplayHandler final : public rocksdb::WriteBatch::Handler {
 
   rocksdb::Status SingleDeleteCF(uint32_t column_family_id, const rocksdb::Slice& key) override {
     incTick();
-    if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+            ->GetID()) {
       _lastObjectID = 0;
-    } else if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                   ->GetID()) {
       _lastObjectID = RocksDBKey::objectId(key);
     }
     return rocksdb::Status();
@@ -473,8 +490,11 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx, WriteBatchType& wb,
       TRI_ASSERT(ridx.hasSelectivityEstimate() && ops.size() == 1);
       auto it = ops.begin();
       TRI_ASSERT(ridx.id() == it->first);
-      ridx.estimator()->bufferUpdates(seq, std::move(it->second.inserts),
-                                      std::move(it->second.removals));
+      auto* estimator = ridx.estimator();
+      if (estimator != nullptr) {
+        estimator->bufferUpdates(seq, std::move(it->second.inserts),
+                                 std::move(it->second.removals));
+      }
     }
   };
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,8 @@
 #include "FollowerInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
@@ -33,11 +35,49 @@
 #include "Logger/LoggerStream.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "Basics/ScopeGuard.h"
-
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
-static std::string inline reportName(bool isRemove) {
+namespace {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// compare the two vectors for equality, regardless of the order
+// of their items. will trigger an assertion failure in maintainer mode
+// if the vector elements are not identical
+void checkDifference(std::vector<ServerID> const& followers,
+                     std::vector<ServerID> const& failoverCandidates) {
+  // intentionally copy the vectors here, as we don't want to modify the originals
+  auto followersCopy = followers;
+  auto failoverCandidatesCopy = failoverCandidates;
+  std::sort(failoverCandidatesCopy.begin(), failoverCandidatesCopy.end());
+  std::sort(followersCopy.begin(), followersCopy.end());
+  
+  std::vector<std::string> diff;
+  std::set_symmetric_difference(failoverCandidatesCopy.begin(),
+                                failoverCandidatesCopy.end(), 
+                                followersCopy.begin(),
+                                followersCopy.end(), 
+                                std::back_inserter(diff));
+  if (!diff.empty()) {
+    std::stringstream s;
+    s << "Symmetric difference alert: ";
+    for (auto const& d : diff) { 
+      s << d << " "; 
+    }
+    s << "failoverCandidates: ";
+    for (auto const& d : failoverCandidates) { 
+      s << d << " "; 
+    }
+    s << "followers: ";
+    for (auto const& d : followers) { 
+      s << d << " "; 
+    }
+    LOG_TOPIC("9d8ec", ERR, Logger::CLUSTER) << s.str();
+  }
+  TRI_ASSERT(diff.empty());
+}
+#endif
+
+char const* reportName(bool isRemove) {
   if (isRemove) {
     return "FollowerInfo::remove";
   } else {
@@ -45,29 +85,31 @@ static std::string inline reportName(bool isRemove) {
   }
 }
 
-static std::string CurrentShardPath(arangodb::LogicalCollection const& col) {
+std::string currentShardPath(arangodb::LogicalCollection const& col) {
   // Agency path is
   //   Current/Collections/<dbName>/<collectionID>/<shardID>
   return "Current/Collections/" + col.vocbase().name() + "/" +
          std::to_string(col.planId().id()) + "/" + col.name();
 }
 
-static VPackSlice CurrentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
+VPackSlice currentShardEntry(arangodb::LogicalCollection const& col, VPackSlice current) {
   return current.get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Current", "Collections", col.vocbase().name(),
        std::to_string(col.planId().id()), col.name()}));
 }
 
-static std::string PlanShardPath(arangodb::LogicalCollection const& col) {
+std::string planShardPath(arangodb::LogicalCollection const& col) {
   return "Plan/Collections/" + col.vocbase().name() + "/" +
          std::to_string(col.planId().id()) + "/shards/" + col.name();
 }
 
-static VPackSlice PlanShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
+VPackSlice planShardEntry(arangodb::LogicalCollection const& col, VPackSlice plan) {
   return plan.get(std::vector<std::string>(
       {AgencyCommHelper::path(), "Plan", "Collections", col.vocbase().name(),
        std::to_string(col.planId().id()), "shards", col.name()}));
 }
+
+} // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief add a follower to a shard, this is only done by the server side
@@ -118,11 +160,11 @@ Result FollowerInfo::add(ServerID const& sid) {
   if (!agencyRes.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
       !agencyRes.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
     // "Real error", report and log
-    std::string errorMessage =
+    auto errorMessage = StringUtils::concatT(
         "unable to add follower in agency, timeout in agency CAS operation for "
-        "key " +
-        _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-        ": " + TRI_errno_string(agencyRes.errorNumber());
+        "key ",
+        _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+        TRI_errno_string(agencyRes.errorNumber()));
     LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << errorMessage;
     agencyRes.reset(agencyRes.errorNumber(), std::move(errorMessage));
   }
@@ -219,14 +261,13 @@ Result FollowerInfo::remove(ServerID const& sid) {
   // rollback:
   _followers = oldFollowers;
   _failoverCandidates = oldFailovers;
-  std::string errorMessage =
+  auto errorMessage = StringUtils::concatT(
       "unable to remove follower from agency, timeout in agency CAS operation "
-      "for key " +
-      _docColl->vocbase().name() + "/" + std::to_string(_docColl->planId().id()) +
-      ": " + TRI_errno_string(agencyRes.errorNumber());
+      "for key ",
+      _docColl->vocbase().name(), "/", _docColl->planId().id(), ": ",
+      TRI_errno_string(agencyRes.errorNumber()));
   LOG_TOPIC("a0dcc", ERR, Logger::CLUSTER) << errorMessage;
-  agencyRes.resetErrorMessage<std::string>(std::move(errorMessage));
-  return agencyRes;
+  return Result{agencyRes.errorNumber(), std::move(errorMessage)};
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -305,26 +346,18 @@ bool FollowerInfo::updateFailoverCandidates() {
 // All followers can return as soon as the lock is released
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_failoverCandidates->size() == _followers->size());
-    std::vector<std::string> diff;
-    std::set_symmetric_difference(_failoverCandidates->begin(),
-                                  _failoverCandidates->end(), _followers->begin(),
-                                  _followers->end(), std::back_inserter(diff));
-    TRI_ASSERT(diff.empty());
+    checkDifference(*_followers, *_failoverCandidates);
 #endif
     return _canWrite;
   }
   TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
   // Update both lists (we use a copy here, as we are modifying them in other places individually!)
-  _failoverCandidates = std::make_shared<std::vector<ServerID> const>(*_followers);
+  _failoverCandidates = std::make_shared<std::vector<ServerID>>(*_followers);
   // Just be sure
   TRI_ASSERT(_failoverCandidates.get() != _followers.get());
   TRI_ASSERT(_failoverCandidates->size() == _followers->size());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  std::vector<std::string> diff;
-  std::set_symmetric_difference(_failoverCandidates->begin(),
-                                _failoverCandidates->end(), _followers->begin(),
-                                _followers->end(), std::back_inserter(diff));
-  TRI_ASSERT(diff.empty());
+  checkDifference(*_followers, *_failoverCandidates);
 #endif
   Result res = persistInAgency(true);
   if (!res.ok()) {
@@ -347,8 +380,8 @@ bool FollowerInfo::updateFailoverCandidates() {
 Result FollowerInfo::persistInAgency(bool isRemove) const {
   // Now tell the agency
   TRI_ASSERT(_docColl != nullptr);
-  std::string curPath = CurrentShardPath(*_docColl);
-  std::string planPath = PlanShardPath(*_docColl);
+  std::string curPath = ::currentShardPath(*_docColl);
+  std::string planPath = ::planShardPath(*_docColl);
   AgencyComm ac(_docColl->vocbase().server());
   int badCurrentCount = 0;
   using namespace std::chrono_literals;
@@ -365,12 +398,12 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
       TRI_ASSERT(res.slice().isArray() && res.slice().length() == 1);
       VPackSlice resSlice = res.slice()[0];
       // Let's look at the results, note that both can be None!
-      velocypack::Slice planEntry = PlanShardEntry(*_docColl, resSlice);
-      velocypack::Slice currentEntry = CurrentShardEntry(*_docColl, resSlice);
+      velocypack::Slice planEntry = ::planShardEntry(*_docColl, resSlice);
+      velocypack::Slice currentEntry = ::currentShardEntry(*_docColl, resSlice);
 
       if (!currentEntry.isObject()) {
         LOG_TOPIC("01896", ERR, Logger::CLUSTER)
-            << reportName(isRemove) << ", did not find object in " << curPath;
+            << ::reportName(isRemove) << ", did not find object in " << curPath;
         if (!currentEntry.isNone()) {
           LOG_TOPIC("57c84", ERR, Logger::CLUSTER) << "Found: " << currentEntry.toJson();
         }
@@ -388,7 +421,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
             !(planEntry[0].isEqualString(ServerState::instance()->getId()) ||
               planEntry[0].isEqualString("_" + ServerState::instance()->getId()))) {
           LOG_TOPIC("42231", INFO, Logger::CLUSTER)
-              << reportName(isRemove)
+              << ::reportName(isRemove)
               << ", did not find myself in Plan: " << _docColl->vocbase().name()
               << "/" << std::to_string(_docColl->planId().id())
               << " (can happen when the leader changed recently).";
@@ -415,7 +448,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
       }
     } else {
       LOG_TOPIC("b7333", WARN, Logger::CLUSTER)
-          << reportName(isRemove) << ", could not read " << planPath << " and "
+          << ::reportName(isRemove) << ", could not read " << planPath << " and "
           << curPath << " in agency.";
     }
 

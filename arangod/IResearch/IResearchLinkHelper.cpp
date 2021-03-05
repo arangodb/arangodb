@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,9 +112,10 @@ arangodb::Result createLink( // create link
 
     // ensure link is synchronized after upgrade in single-server
     if (arangodb::ServerState::instance()->isSingleServer()) {
-      auto* db = arangodb::DatabaseFeature::DATABASE;
+      auto& server = collection.vocbase().server();
+      auto& db = server.getFeature<arangodb::DatabaseFeature>();
 
-      if (db && (db->checkVersion() || db->upgrade())) {
+      if (db.checkVersion() || db.upgrade()) {
         // FIXME find a better way to retrieve an IResearch Link
         // cannot use static_cast/reinterpret_cast since Index is not related to
         // IResearchLink
@@ -287,7 +288,7 @@ arangodb::Result modifyLinks(                              // modify links
     auto res = arangodb::iresearch::IResearchLinkHelper::normalize( // normalize to validate analyzer definitions
         normalized, link, true, view.vocbase(), &view.primarySort(),
         &view.primarySortCompression(), &view.storedValues(),
-        link.get(arangodb::StaticStrings::IndexId)
+        link.get(arangodb::StaticStrings::IndexId), collectionName
     );
 
     if (!res.ok()) {
@@ -532,10 +533,13 @@ arangodb::Result modifyLinks(                              // modify links
   // validate success
   for (auto& state: linkModifications) {
     if (!state._result.ok()) {
-      error.append(error.empty() ? "" : ", ") // separator
-        .append(collectionsToLock[state._collectionsToLockOffset]) // collection name
-        .append(": ").append(std::to_string(state._result.errorNumber())) // error code
-        .append(" ").append(state._result.errorMessage()); // error message
+      error
+          .append(error.empty() ? "" : ", ")  // separator
+          .append(collectionsToLock[state._collectionsToLockOffset])  // collection name
+          .append(": ")
+          .append(std::to_string(static_cast<int>(state._result.errorNumber())))  // error code
+          .append(" ")
+          .append(state._result.errorMessage());  // error message
     }
   }
 
@@ -554,28 +558,23 @@ arangodb::Result modifyLinks(                              // modify links
 namespace arangodb {
 namespace iresearch {
 
-/*static*/ VPackSlice const& IResearchLinkHelper::emptyIndexSlice() {
-  static const struct EmptySlice {
-    VPackBuilder _builder;
-    VPackSlice _slice;
-    EmptySlice() {
-      VPackBuilder fieldsBuilder;
+/*static*/ VPackBuilder IResearchLinkHelper::emptyIndexSlice(uint64_t objectId) {
+  VPackBuilder builder;
+  VPackBuilder fieldsBuilder;
 
-      fieldsBuilder.openArray();
-      fieldsBuilder.close();  // empty array
-      _builder.openObject();
-      _builder.add(arangodb::StaticStrings::IndexFields,
-                   fieldsBuilder.slice());  // empty array
-      _builder.add(arangodb::StaticStrings::IndexType,
-                   arangodb::velocypack::Value(LINK_TYPE));  // the index type required by Index
-      _builder.close();  // object with just one field required by the Index
-                         // constructor
-      _slice = _builder.slice();
-    }
-  } emptySlice;
-
-  // cppcheck-suppress returnReference
-  return emptySlice._slice;
+  fieldsBuilder.openArray();
+  fieldsBuilder.close();  // empty array
+  builder.openObject();
+  if (objectId) {
+    builder.add(arangodb::StaticStrings::ObjectId, VPackValue(std::to_string(objectId)));
+  }
+  builder.add(arangodb::StaticStrings::IndexFields,
+              fieldsBuilder.slice());  // empty array
+  builder.add(arangodb::StaticStrings::IndexType,
+              arangodb::velocypack::Value(LINK_TYPE));  // the index type required by Index
+  builder.close();  // object with just one field required by the Index
+                    // constructor
+  return builder;
 }
 
 /*static*/ bool IResearchLinkHelper::equal(  // are link definitions equal
@@ -670,7 +669,8 @@ namespace iresearch {
     IResearchViewSort const* primarySort, /* = nullptr */
     irs::type_info::type_id const* primarySortCompression /*= nullptr*/,
     IResearchViewStoredValues const* storedValues, /* = nullptr */
-    arangodb::velocypack::Slice idSlice /* = arangodb::velocypack::Slice()*/ // id for normalized
+    arangodb::velocypack::Slice idSlice, /* = arangodb::velocypack::Slice()*/ // id for normalized
+    irs::string_ref collectionName /*= irs::string_ref::NIL*/
 ) {
   if (!normalized.isOpenObject()) {
     return arangodb::Result(
@@ -702,6 +702,16 @@ namespace iresearch {
   normalized.add(
     arangodb::StaticStrings::IndexType, arangodb::velocypack::Value(LINK_TYPE)
   );
+
+  if (ServerState::instance()->isClusterRole() && 
+      isCreation &&
+      !collectionName.empty() &&
+      meta._collectionName.empty()) {
+    meta._collectionName  = collectionName;
+#ifdef USE_ENTERPRISE
+    arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+#endif
+  }
 
   // copy over IResearch Link identifier
   if (!idSlice.isNone()) {

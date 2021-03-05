@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,7 +54,7 @@ void CacheRebalancerThread::beginShutdown() {
 void CacheRebalancerThread::run() {
   while (!isStopping()) {
     try {
-      int result = _rebalancer.rebalance();
+      auto result = _rebalancer.rebalance();
       std::uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval : _shortInterval;
 
       CONDITION_LOCKER(guard, _condition);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,12 +29,16 @@
 #include <utils/singleton.hpp>
 
 #include "IResearchLink.h"
+#include "IResearchDocument.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#ifdef USE_ENTERPRISE
+#include "Cluster/ClusterMethods.h"
+#endif
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchCompression.h"
 #include "IResearch/IResearchFeature.h"
@@ -155,45 +159,7 @@ inline Result insertDocument(irs::index_writer::documents_context& ctx,
 
   // Stored value field
   {
-    struct StoredValue {
-      StoredValue(transaction::Methods const& trx, VPackSlice const& document) : trx(trx), document(document) {}
-
-      bool write(irs::data_output& out) const {
-        auto size = fields->size();
-        for (auto const& storedValue : *fields) {
-          auto slice = get(document, storedValue.second, VPackSlice::nullSlice());
-          // null value optimization
-          if (1 == size && slice.isNull()) {
-            return true;
-          }
-
-          // _id field
-          if (slice.isCustom()) {
-            TRI_ASSERT(1 == storedValue.second.size() &&
-                       storedValue.second[0].name == arangodb::StaticStrings::IdString);
-            buffer.reset();
-            VPackBuilder builder(buffer);
-            builder.add(VPackValue(transaction::helpers::extractIdString(
-              trx.resolver(), slice, document)));
-            slice = builder.slice();
-            // a builder is destroyed but a buffer is alive
-          }
-          out.write_bytes(slice.start(), slice.byteSize());
-        }
-        return true;
-      }
-
-      irs::string_ref const& name() const noexcept {
-        return fieldName;
-      }
-
-      mutable VPackBuffer<uint8_t> buffer;
-      transaction::Methods const& trx;
-      velocypack::Slice const& document;
-      irs::string_ref fieldName;
-      std::vector<std::pair<std::string, std::vector<basics::AttributeName>>> const* fields;
-    } field(trx, document); // StoredValue
-
+    StoredValue field(trx, meta._collectionName, document, id);
     for (auto const& column : meta._storedValues.columns()) {
       field.fieldName = column.name;
       field.fields = &column.fields;
@@ -227,7 +193,7 @@ class IResearchFlushSubscription final : public FlushSubscription {
   }
 
   /// @brief earliest tick that can be released
-  TRI_voc_tick_t tick() const noexcept final {
+  TRI_voc_tick_t tick() const noexcept override final {
     return _tick.load(std::memory_order_acquire);
   }
 
@@ -439,13 +405,16 @@ void CommitTask::operator()() {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  auto const syncStart = std::chrono::steady_clock::now(); // FIXME: add sync durations to metrics
   auto res = link->commitUnsafe(false, &code); // run commit ('_asyncSelf' locked by async task)
 
   if (res.ok()) {
     LOG_TOPIC("7e323", TRACE, iresearch::TOPIC)
         << "successful sync of arangosearch link '" << id
-        << "', run id '" << size_t(&runId) << "'";
-
+        << "', run id '" << size_t(&runId) << "', took: " << 
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - syncStart).count()
+        << "ms";
     if (code == IResearchLink::CommitResult::DONE) {
       if (cleanupIntervalStep && cleanupIntervalCount++ > cleanupIntervalStep) { // if enabled
         cleanupIntervalCount = 0;
@@ -454,15 +423,22 @@ void CommitTask::operator()() {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
+        auto const cleanupStart = std::chrono::steady_clock::now(); // FIXME: add cleanup durations to metrics
         res = link->cleanupUnsafe(); // run cleanup ('_asyncSelf' locked by async task)
 
         if (res.ok()) {
           LOG_TOPIC("7e821", TRACE, iresearch::TOPIC)
               << "successful cleanup of arangosearch link '" << id
-              << "', run id '" << size_t(&runId) << "'";
+              << "', run id '" << size_t(&runId) << "', took: " << 
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - cleanupStart).count()
+              << "ms";
         } else {
           LOG_TOPIC("130de", WARN, iresearch::TOPIC)
-              << "error while cleaning up arangosearch link '" << id
+              << "error after running for " <<
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - cleanupStart).count()
+              << "ms while cleaning up arangosearch link '" << id
               << "', run id '" << size_t(&runId)
               << "': " << res.errorNumber() << " " << res.errorMessage();
         }
@@ -470,7 +446,10 @@ void CommitTask::operator()() {
     }
   } else {
     LOG_TOPIC("8377b", WARN, iresearch::TOPIC)
-        << "error while committing arangosearch link '" << link->id()
+        << "error after running for " <<
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - syncStart).count()
+        << "ms while committing arangosearch link '" << link->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -576,6 +555,7 @@ void ConsolidationTask::operator()() {
   }
 
   // run consolidation ('_asyncSelf' locked by async task)
+  auto const consolidationStart = std::chrono::steady_clock::now(); // FIXME: add consolidation durations to metrics
   bool emptyConsolidation = false;
   auto const res = link->consolidateUnsafe(consolidationPolicy, progress, emptyConsolidation);
 
@@ -585,13 +565,18 @@ void ConsolidationTask::operator()() {
     } else {
        state->noopConsolidationCount = 0;
     }
-
     LOG_TOPIC("7e828", TRACE, iresearch::TOPIC)
         << "successful consolidation of arangosearch link '" << link->id()
-        << "', run id '" << size_t(&runId) << "'";
+        << "', run id '" << size_t(&runId) << "', took: " << 
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - consolidationStart).count()
+        << "ms";
   } else {
     LOG_TOPIC("bce4f", DEBUG, iresearch::TOPIC)
-        << "error while consolidating arangosearch link '" << link->id()
+        << "error after running for " <<
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::steady_clock::now() - consolidationStart).count()
+        << "ms while consolidating arangosearch link '" << link->id()
         << "', run id '" << size_t(&runId)
         << "': " << res.errorNumber() << " " << res.errorMessage();
   }
@@ -608,7 +593,7 @@ AsyncLinkHandle::AsyncLinkHandle(IResearchLink* link)
 }
 
 AsyncLinkHandle::~AsyncLinkHandle() {
- --LinksCount;
+  --LinksCount;
 }
 
 void AsyncLinkHandle::reset() {
@@ -1093,78 +1078,110 @@ Result IResearchLink::init(
           "failure to get cluster info while initializing arangosearch link '" +
               std::to_string(_id.id()) + "'"};
     }
-    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    if (vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
+      auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
 
-    // cluster-wide link
-    auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
+      // cluster-wide link
+      auto clusterWideLink = _collection.id() == _collection.planId() && _collection.isAStub();
 
-    if (!clusterWideLink) {
-      // prepare data-store which can then update options
-      // via the IResearchView::link(...) call
-      auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
-
-      if (!res.ok()) {
-        return res;
-      }
-    }
-
-    // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
-    auto logicalView = ci.getView(vocbase.name(), viewId);
-
-    // if there is no logicalView present yet then skip this step
-    if (logicalView) {
-      if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
-        unload(); // unlock the data store directory
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                "error finding view: '" + viewId + "' for link '" +
-                    std::to_string(_id.id()) + "' : no such view"};
-      }
-
-      auto* view = LogicalView::cast<IResearchView>(logicalView.get());
-
-      if (!view) {
-        unload(); // unlock the data store directory
-        return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                "error finding view: '" + viewId + "' for link '" +
-                    std::to_string(_id.id()) + "'"};
-      }
-
-      viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
-
-      if (clusterWideLink) { // cluster cluster-wide link
-        auto shardIds = _collection.shardIds();
-
-        // go through all shard IDs of the collection and try to link any links
-        // missing links will be populated when they are created in the
-        // per-shard collection
-        if (shardIds) {
-          for (auto& entry : *shardIds) {
-            auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
-
-            if (!collection) {
-              continue; // missing collection should be created after Plan becomes Current
-            }
-
-            auto link = IResearchLinkHelper::find(*collection, *view);
-
-            if (link) {
-              auto res = view->link(link->self());
-
-              if (!res.ok()) {
-                return res;
-              }
-            }
-          }
+      // upgrade step for old link definition without collection name
+      // this could be received from  agency while shard of the collection was moved (or added)
+      // to the server.
+      // New links already has collection name set, but here we must get this name on our own
+      if (meta._collectionName.empty()) {
+        if (clusterWideLink) {// could set directly
+          LOG_TOPIC("86ecd", TRACE, iresearch::TOPIC) << "Setting collection name '" << _collection.name() << "' for new link '"
+            << this->id().id() << "'";
+          meta._collectionName = _collection.name();
+        } else {
+          meta._collectionName = ci.getCollectionNameForShard(_collection.name());
+          LOG_TOPIC("86ece", TRACE, iresearch::TOPIC) << "Setting collection name '" << meta._collectionName << "' for new link '"
+            << this->id().id() << "'";
         }
-      } else { // cluster per-shard link
-        auto res = view->link(_asyncSelf);
+        if (ADB_UNLIKELY(meta._collectionName.empty())) {
+          LOG_TOPIC("67da6", WARN, iresearch::TOPIC) << "Failed to init collection name for the link '"
+            << this->id().id() << "'. Link will not index '_id' attribute. Please recreate the link if this is necessary!";
+        }
+
+  #ifdef USE_ENTERPRISE
+        // enterprise name is not used in _id so should not be here!
+        if (ADB_LIKELY(!meta._collectionName.empty())) {
+          arangodb::ClusterMethods::realNameFromSmartName(meta._collectionName);
+        }
+  #endif
+      }
+
+      if (!clusterWideLink) {
+        // prepare data-store which can then update options
+        // via the IResearchView::link(...) call
+        auto const res = initDataStore(initCallback, sorted, storedValuesColumns, primarySortCompression);
 
         if (!res.ok()) {
-          unload(); // unlock the data store directory
-
           return res;
         }
       }
+
+      // valid to call ClusterInfo (initialized in ClusterFeature::prepare()) even from Databasefeature::start()
+      auto logicalView = ci.getView(vocbase.name(), viewId);
+
+      // if there is no logicalView present yet then skip this step
+      if (logicalView) {
+        if (iresearch::DATA_SOURCE_TYPE != logicalView->type()) {
+          unload(); // unlock the data store directory
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "error finding view: '" + viewId + "' for link '" +
+                      std::to_string(_id.id()) + "' : no such view"};
+        }
+
+        auto* view = LogicalView::cast<IResearchView>(logicalView.get());
+
+        if (!view) {
+          unload(); // unlock the data store directory
+          return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "error finding view: '" + viewId + "' for link '" +
+                      std::to_string(_id.id()) + "'"};
+        }
+
+        viewId = view->guid(); // ensue that this is a GUID (required by operator==(IResearchView))
+
+        if (clusterWideLink) { // cluster cluster-wide link
+          auto shardIds = _collection.shardIds();
+
+          // go through all shard IDs of the collection and try to link any links
+          // missing links will be populated when they are created in the
+          // per-shard collection
+          if (shardIds) {
+            for (auto& entry : *shardIds) {
+              auto collection = vocbase.lookupCollection(entry.first); // per-shard collections are always in 'vocbase'
+
+              if (!collection) {
+                continue; // missing collection should be created after Plan becomes Current
+              }
+
+              auto link = IResearchLinkHelper::find(*collection, *view);
+
+              if (link) {
+                auto res = view->link(link->self());
+
+                if (!res.ok()) {
+                  return res;
+                }
+              }
+            }
+          }
+        } else { // cluster per-shard link
+          auto res = view->link(_asyncSelf);
+
+          if (!res.ok()) {
+            unload(); // unlock the data store directory
+
+            return res;
+          }
+        }
+      }
+    } else {
+      LOG_TOPIC("67dd6", DEBUG, iresearch::TOPIC) << "Skipped link '"
+        << this->id().id() << "' due to disabled cluster features.";
     }
   } else if (ServerState::instance()->isSingleServer()) {  // single-server link
     // prepare data-store which can then update options
@@ -1521,7 +1538,7 @@ Result IResearchLink::insert(
   auto insertImpl = [this, &trx, &doc, &documentId](
                         irs::index_writer::documents_context& ctx) -> Result {
     try {
-      FieldIterator body(trx);
+      FieldIterator body(trx, _meta._collectionName, _id);
 
       return insertDocument(ctx, trx, body, doc, documentId, _meta, id());
     } catch (basics::Exception const& e) {
@@ -1751,8 +1768,7 @@ Result IResearchLink::remove(
     TRI_ASSERT(_dataStore); // must be valid if _asyncSelf->get() is valid
 
     auto ptr = irs::memory::make_unique<LinkTrxState>(
-      std::move(lock), *(_dataStore._writer)
-    );
+      std::move(lock), *(_dataStore._writer));
 
     ctx = ptr.get();
     state.cookie(key, std::move(ptr));
@@ -1824,6 +1840,20 @@ Index::IndexType IResearchLink::type() const {
 
 char const* IResearchLink::typeName() const {
   return IResearchLinkHelper::type().c_str();
+}
+
+bool IResearchLink::setCollectionName(irs::string_ref name) noexcept {
+  TRI_ASSERT(!name.empty());
+  if (_meta._collectionName.empty()) {
+    auto nonConstMeta = const_cast<IResearchLinkMeta*>(&_meta);
+    nonConstMeta->_collectionName = name;
+    return true;
+  }
+  LOG_TOPIC_IF("5573c", ERR, iresearch::TOPIC, name != _meta._collectionName)
+        << "Collection name mismatch for arangosearch link '" << id() << "'."
+        << " Meta name '" << _meta._collectionName << "' setting name '" << name << "'";
+  TRI_ASSERT(name == _meta._collectionName);
+  return false;
 }
 
 Result IResearchLink::unload() {
