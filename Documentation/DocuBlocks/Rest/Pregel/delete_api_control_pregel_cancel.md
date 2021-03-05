@@ -35,14 +35,15 @@ is found or the execution number is invalid.
 Cancel a Pregel job to stop the execution or to free up the results if
 `"store": false` is used:
 
-@EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponents}
+@EXAMPLE_ARANGOSH_RUN{RestPregelCancelConnectedComponents}
 
 ~ var examples = require("@arangodb/graph-examples/example-graph.js");
 ~ var graph = examples.loadGraph("connectedComponentsGraph");
 
 ~ var url = "/_api/control_pregel";
 ~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", store: false, params: { maxGSS: graph.components.count(), resultField: "component" } };
-~ var id = JSON.parse(curlRequest("POST", url, body));
+~ var response = curlRequest("POST", url, body);
+~ var id = JSON.parse(response.body);
 
   var url = "/_api/control_pregel/" + id;
   var response = logCurlRequest("DELETE", url);
