@@ -1,3 +1,11 @@
+v3.7.10 (XXXX-XX-XX)
+--------------------
+
+* Fixed a problem that coordinators would vanish from the UI and the Health
+  API if one switched the agency Supervision into maintenance mode and kept
+  left that maintenance mode on for more than 24h.
+
+
 v3.7.9 (XXXX-XX-XX)
 -------------------
 
