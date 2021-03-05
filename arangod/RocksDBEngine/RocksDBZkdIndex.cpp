@@ -345,6 +345,11 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
     return FilterCosts();
   }
 
+  if (extractedBounds.empty()) {
+    LOG_DEVEL << "no attribute covered at all!";
+    return FilterCosts();
+  }
+
   LOG_DEVEL << "We can use this index!";
   // TODO -- actually return costs
   return FilterCosts::zeroCosts();
