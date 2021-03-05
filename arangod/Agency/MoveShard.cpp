@@ -406,7 +406,7 @@ bool MoveShard::start(bool&) {
                              pending.add(plan[i]);
                            }
                          } else {
-                           if (!plan.isArray()) {
+                           if (plan.isArray()) {
                              for (VPackSlice srv : VPackArrayIterator(plan)) {
                                pending.add(srv);
                                TRI_ASSERT(srv.copyString() != _to);
