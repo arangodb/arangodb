@@ -1090,7 +1090,12 @@
       var self = event.currentTarget;
 
       var url;
-      var doc = $(self).attr('id').substr(4);
+      var doc;
+      if ($(self).attr('id')) {
+        doc = $(self).attr('id').substr(4);
+      } else {
+        return;
+      }
 
       try {
         url = 'collection/' + this.collection.collectionID + '/' + doc;
