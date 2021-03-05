@@ -88,7 +88,9 @@ var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 var AqlHighlightRules = function() {
 
     var keywords = (
-        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|k_shortest_paths|k_paths|prune|window"
+        "for|return|filter|search|sort|limit|let|collect|asc|desc|in|into|insert|update|remove|replace|upsert|" +
+        "options|with|and|or|not|distinct|graph|shortest_path|outbound|inbound|any|all|none|aggregate|like|" +
+        "k_shortest_paths|k_paths|prune|window"
     );
 
     var builtinFunctions = (
@@ -97,7 +99,7 @@ var AqlHighlightRules = function() {
         "log|log2|log10|exp|exp2|sin|cos|tan|asin|acos|atan|atan2|radians|degrees|pi|regex_test|" +
         "like|floor|ceil|round|abs|rand|sqrt|pow|length|count|min|max|average|sum|product|median|variance_population|" +
         "variance_sample|first|last|unique|outersection|interleave|in_range|jaccard|matches|merge|merge_recursive|has|attributes|values|unset|unset_recursive|keep|" +
-        "near|within|within_rectangle|is_in_polygon|distance|fulltext|paths|traversal|traversal_tree|edges|stddev_sample|stddev_population|" +
+        "near|within|within_rectangle|is_in_polygon|distance|fulltext|stddev_sample|stddev_population|" +
         "slice|nth|position|translate|zip|call|apply|push|append|pop|shift|unshift|remove_value|remove_values|" + 
         "remove_nth|replace_nth|date_now|date_timestamp|date_iso8601|date_dayofweek|date_year|date_month|date_day|date_hour|" +
         "date_minute|date_second|date_millisecond|date_dayofyear|date_isoweek|date_leapyear|date_quarter|date_days_in_month|" + 
@@ -105,10 +107,9 @@ var AqlHighlightRules = function() {
         "first_list|first_document|parse_identifier|current_user|current_database|" +
         "collections|document|decode_rev|union|union_distinct|intersection|flatten|is_same_collection|check_document|" +
         "ltrim|rtrim|find_first|find_last|split|substitute|ipv4_to_number|ipv4_from_number|is_ipv4|md5|sha1|crc32|fnv64|hash|random_token|to_base64|" +
-        "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
+        "to_hex|encode_uri_component|soundex|assert|warn|pregel_result|is_key|sorted|sorted_unique|count_distinct|" +
         "levenshtein_distance|levenshtein_match|regex_matches|regex_split|ngram_match|ngram_similarity|ngram_positional_similarity|uuid|" +
         "tokens|exists|starts_with|phrase|min_match|boost|analyzer|" +
-        "to_hex|encode_uri_component|soundex|assert|warn|is_key|sorted|sorted_unique|count_distinct|" +
         "geo_point|geo_multipoint|geo_polygon|geo_linestring|geo_multilinestring|geo_contains|geo_intersects|" +
         "geo_equals|geo_distance|geo_area|AQL_LAST_ENTRY)"
     );
