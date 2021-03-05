@@ -76,7 +76,8 @@ Will only be present if returnNew is true.
 
 @RESTRETURNCODE{400}
 Returned if the input document is invalid.
-This can for instance be the case if `_from` or `_to` is missing.
+This can for instance be the case if the `_from` or `_to` attribute is missing
+or malformed, or if the referenced vertex collection is not part of the graph.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
@@ -113,8 +114,9 @@ A message created for this error.
 @RESTRETURNCODE{404}
 Returned in any of the following cases:
 * no graph with this name could be found.
-* this edge collection is not part of the graph.
-* either `_from` or `_to` vertex does not exist.
+* the edge collection is not part of the graph.
+* the vertex collection is part of the graph, but does not exist.
+* `_from` or `_to` vertex does not exist.
 
 @RESTREPLYBODY{error,boolean,required,}
 Flag if there was an error (true) or not (false).
