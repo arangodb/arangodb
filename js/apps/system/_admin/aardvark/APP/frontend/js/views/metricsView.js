@@ -5,22 +5,29 @@
   'use strict';
 
   window.MetricsView = Backbone.View.extend({
-    el: '#content',
     template: templateEngine.createTemplate('metricsView.ejs'),
+    el: '#content',
+    metricsel: undefined,
     interval: 10000,
     activeView: 'table',
 
     events: {
       'click #toggleView': "toggleView",
-      'click #downloadAs': "downloadAs"
+      'click #downloadAs': "downloadAs",
+      'click #reloadMetrics': "reloadMetrics"
     },
 
     initialize: function (options) {
-      // start polling with interval
-      window.setInterval(function () {
-        if (window.location.hash === '#metrics') {
+      if (options) {
+        this.options = options;
+
+        if (options.endpoint) {
+          this.endpoint = options.endpoint;
         }
-      }, this.interval);
+        if (options.contentDiv) {
+          this.metricsel = options.contentDiv;
+        }
+      }
     },
 
     downloadAs: function () {
@@ -34,7 +41,6 @@
     },
 
     toggleView: function () {
-      console.log("click");
       if (this.activeView === 'table') {
         $('#toggleView').text('Show as table');
         $('#metricsAsText').show();
@@ -48,16 +54,18 @@
       }
     },
 
-    remove: function () {
-      this.$el.empty().off(); /* off to unbind the events */
-      this.stopListening();
-      this.unbind();
-      delete this.el;
-      return this;
-    },
-
     breadcrumb: function (name) {
       $('#subNavigationBar .breadcrumb').html('Metrics');
+    },
+
+    reloadMetrics: function () {
+      let self = this;
+      this.collection.fetch({
+        success: function () {
+          arangoHelper.arangoNotification('Metrics', 'Reloaded metrics.');
+          self.continueRender();
+        }
+      });
     },
 
     render: function () {
@@ -68,21 +76,19 @@
           self.continueRender();
         }
       });
-
-      this.$el.html(this.template.render({
-        collection: this.collection
-      }));
-
-      var metricsCallback = function () {
-        this.continueRender();
-      }.bind(this);
     },
 
     continueRender: function () {
-      this.$el.html(this.template.render({
-        collection: this.collection
-      }));
-    }
+      if (this.metricsel) {
+        $(this.metricsel).html(this.template.render({
+          collection: this.collection
+        }));
+      } else {
+        this.$el.html(this.template.render({
+          collection: this.collection
+        }));
+      }
 
+    }
   });
 }());
