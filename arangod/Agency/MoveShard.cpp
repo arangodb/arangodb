@@ -416,17 +416,18 @@ bool MoveShard::start(bool&) {
                              LOG_TOPIC("3b2fd", WARN, Logger::SUPERVISION) <<
                                "plan entry not an array while iterating over all shard clones";
                              TRI_ASSERT(false);
-                             failed |= true;
+                             failed = true;
+                             return;
                            }
                          }
                        }
                      });
 
-      addIncreasePlanVersion(pending);
-
       if (failed) { // Cannot start the job - we'll be back.
         return false;
       }
+      
+      addIncreasePlanVersion(pending);
 
     }  // mutation part of transaction done
 
@@ -541,6 +542,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                        for (VPackSlice s : VPackArrayIterator(current)) {
                          if (s.copyString() == _to) {
                            ++done;
+                           return;
                          }
                        }
                      } else {
@@ -586,6 +588,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                                << _shard << " or a clone, retrying";
                              failed = true;
                              TRI_ASSERT(false);
+                             return;
                            }
                          }
                          // Precondition: Plan still as it was
@@ -681,6 +684,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                                << _shard << " or one of its clones";
                              failed = true;
                              TRI_ASSERT(false);
+                             return;
                            }
                            // add the old leader as follower in case of a rollback
                            trx.add(VPackValue(_from));
@@ -722,7 +726,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          size_t found = 0;
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
-                           if (current.isArray()) { // done is not incremented, we'll remain pending
+                           if (current.isArray()) { // found is not incremented, we'll remain pending
                              for (auto const& c : VPackArrayIterator(current)) {
                                if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
                                  ++found;
@@ -760,7 +764,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         VPackObjectBuilder preObject(&pre);
         bool failed = false;
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [&trx, &pre, this](Slice plan, Slice current,
+                       [&trx, &pre, this, &failed](Slice plan, Slice current,
                                           std::string& planPath, std::string& curPath) {
                          if (!_remainsFollower) {
                            // Remove _from from the list of follower
@@ -777,6 +781,8 @@ JOB_STATUS MoveShard::pendingLeader() {
                                LOG_TOPIC("37714", WARN, Logger::SUPERVISION)
                                  << "failed to iterate over planned servers for "
                                  << _shard << " or one of its clones";
+                               failed = true;
+                               return;
                              }
                            }
                          }
@@ -901,6 +907,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                              << _shard << " or one of its followers, we'll be back";
                            failed = true;
                            TRI_ASSERT(false);
+                           return;
                          }
                        }
                        // Precondition: Plan still as it was
@@ -1029,6 +1036,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                              LOG_TOPIC("2e7b9", WARN, Logger::SUPERVISION) 
                                << "failed to iterate over planned servers for shard "
                                << _shard << " or a clone";
+                             TRI_ASSERT(false);
                            }
                            // Add to server last. Will be removed by removeFollower if to much
                            trx.add(VPackValue(_to));
