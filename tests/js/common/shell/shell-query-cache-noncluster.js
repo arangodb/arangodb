@@ -619,7 +619,7 @@ function AqlQueryCacheSuite () {
     
     testMaxResultsSize1 : function () {
       const query = "FOR i IN 1..@value RETURN i";
-      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 8192 });
+      cache.properties({ mode: "demand", maxResults: 10, maxResultsSize: 16384 });
       
       let q = query + " // 1000";
       let res = db._query(q, { value: 1000 }, cached);
@@ -645,6 +645,11 @@ function AqlQueryCacheSuite () {
       res = db._query(q, { value: 1001 }, cached);
       assertTrue(res._cached);
       assertInCache(q, 1);
+      
+      q = query + " // 5000";
+      res = db._query(q, { value: 5000 }, cached);
+      assertFalse(res._cached);
+      assertNotInCache(q);
     },
     
     testMaxResultsSize2 : function () {

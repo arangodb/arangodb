@@ -130,8 +130,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.history",
                      "whether or not to load and persist command-line history",
                      new BooleanParameter(&_useHistory))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 
