@@ -10,6 +10,7 @@
     dbServers: [],
     isCluster: undefined,
     foxxApiEnabled: undefined,
+    statisticsInAllDatabases: undefined,
     lastRoute: undefined,
 
     routes: {
@@ -220,6 +221,9 @@
       if (typeof frontendConfig.foxxApiEnabled === "boolean") {
         this.foxxApiEnabled = frontendConfig.foxxApiEnabled;
       }
+      if (typeof frontendConfig.statisticsInAllDatabases === "boolean") {
+        this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
+      }
 
       document.addEventListener('keyup', this.listener, false);
 
@@ -304,7 +308,8 @@
               notificationCollection: self.notificationList,
               userCollection: self.userCollection,
               isCluster: self.isCluster,
-              foxxApiEnabled: self.foxxApiEnabled
+              foxxApiEnabled: self.foxxApiEnabled,
+              statisticsInAllDatabases: self.statisticsInAllDatabases
             });
             self.naviView.render();
           }
@@ -366,6 +371,11 @@
           this.routes[''] = 'collections';
           this.navigate('#collections', {trigger: true});
         }
+        return;
+      }
+      if (this.currentDB.get('name') !== '_system' &&
+          !this.statisticsInAllDatabases) {
+        this.navigate('#nodes', {trigger: true});
         return;
       }
 

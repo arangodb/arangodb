@@ -303,9 +303,8 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "a warning (in milliseconds, use 0 for no warnings)",
                      new UInt64Parameter(&_syncDelayThreshold),
                      arangodb::options::makeFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30800)
-                     .setIntroducedIn(30705)
-                     .setIntroducedIn(30608);
+                     .setIntroducedIn(30608)
+                     .setIntroducedIn(30705);
 
   options->addOption("--rocksdb.wal-file-timeout",
                      "timeout after which unused WAL files are deleted",

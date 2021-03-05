@@ -411,7 +411,7 @@ OperationResult GraphOperations::eraseOrphanCollection(bool waitForSync, std::st
     gmngr.pushCollectionIfMayBeDropped(collectionName, "", collectionsToBeRemoved);
 
     for (auto const& cname : collectionsToBeRemoved) {
-      
+
       std::shared_ptr<LogicalCollection> coll;
       Result res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
@@ -506,7 +506,7 @@ OperationResult GraphOperations::getDocument(std::string const& collectionName,
   return result;
 }
 
-GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key, 
+GraphOperations::VPackBufferPtr GraphOperations::_getSearchSlice(std::string const& key,
                                                                  std::optional<TRI_voc_rid_t>& rev) const {
   VPackBuilder builder;
   {
@@ -708,6 +708,7 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
     std::string& toCollectionName, std::string& toCollectionKey, bool isUpdate) {
   VPackSlice fromStringSlice = document.get(StaticStrings::FromString);
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
+  OperationOptions options;
 
   if (fromStringSlice.isNone() || toStringSlice.isNone()) {
     if (isUpdate) {
@@ -736,14 +737,23 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
 
   // check if vertex collections are part of the graph definition
   auto it = _graph.vertexCollections().find(fromCollectionName);
+
   if (it == _graph.vertexCollections().end()) {
-    // not found from vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
+    // not found _from vertex
+    return std::make_pair(
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _from collection '" + fromCollectionName + "' is not part of the graph"),
+                        options),
+        true);
   }
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
-    // not found to vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND), true);
+    // not found _to vertex
+    return std::make_pair(
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _to collection '" + toCollectionName + "' is not part of the graph"),
+                        options),
+        true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR), true);
