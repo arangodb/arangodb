@@ -63,25 +63,19 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
     for (auto i = size_t{0}; i < limit; ) {
       switch (_iterState) {
-        case IterState::NEW: {
+        case IterState::SEEK_ITER_TO_CUR: {
           RocksDBKey rocks_key;
           rocks_key.constructZkdIndexValue(_index->objectId(), _cur);
           _iter->Seek(rocks_key.string());
           if (!_iter->Valid()) {
             arangodb::rocksutils::checkIteratorStatus(_iter.get());
-            // if (auto const status = _iter->status(); !status.IsNotFound()) {
-              // TODO handle errors correctly
-              // using namespace std::string_literals;
-              // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-              //                                "unhandled status "s + status.ToString());
-            // }
             _iterState = IterState::DONE;
           } else {
             TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iter->key()));
-            _iterState = IterState::SOUGHT;
+            _iterState = IterState::CHECK_CURRENT_ITER;
           }
         } break;
-        case IterState::SOUGHT: {
+        case IterState::CHECK_CURRENT_ITER: {
           auto const rocksKey = _iter->key();
           auto const byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
           if (!zkd::testInBox(byteStringKey, _min, _max, _dim)) {
@@ -94,7 +88,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               _iterState = IterState::DONE;
             } else {
               _cur = next.value();
-              _iterState = IterState::NEW;
+              _iterState = IterState::SEEK_ITER_TO_CUR;
             }
           } else {
             auto const documentId = RocksDBKey::indexDocumentId(rocksKey);
@@ -105,7 +99,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               arangodb::rocksutils::checkIteratorStatus(_iter.get());
               _iterState = IterState::DONE;
             } else {
-              // stay in ::SOUGHT
+              // stay in ::CHECK_CURRENT_ITER
             }
           }
         } break;
@@ -127,11 +121,11 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   const std::size_t _dim;
 
   enum class IterState {
-    NEW = 0,
-    SOUGHT,
+    SEEK_ITER_TO_CUR = 0,
+    CHECK_CURRENT_ITER,
     DONE,
   };
-  IterState _iterState = IterState::NEW;
+  IterState _iterState = IterState::SEEK_ITER_TO_CUR;
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBZkdIndex* _index = nullptr;
