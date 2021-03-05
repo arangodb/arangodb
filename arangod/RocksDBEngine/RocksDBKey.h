@@ -167,6 +167,7 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for zkd index
   //////////////////////////////////////////////////////////////////////////////
+  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
   void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value, LocalDocumentId documentId);
 
  public:

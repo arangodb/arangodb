@@ -60,69 +60,64 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
 
  protected:
-  bool nextImpl(const LocalDocumentIdCallback& callback, size_t limit) override {
-    while (true) {
-      if (!_iter->Valid()) {
-        arangodb::rocksutils::checkIteratorStatus(_iter.get());
-        return false;
-      }
+  bool nextImpl(LocalDocumentIdCallback const& callback, size_t limit) override {
+    for (auto i = size_t{0}; i < limit; ) {
+      switch (_iterState) {
+        case IterState::NEW: {
+          RocksDBKey rocks_key;
+          rocks_key.constructZkdIndexValue(_index->objectId(), _cur);
+          _iter->Seek(rocks_key.string());
+          if (!_iter->Valid()) {
+            arangodb::rocksutils::checkIteratorStatus(_iter.get());
+            // if (auto const status = _iter->status(); !status.IsNotFound()) {
+              // TODO handle errors correctly
+              // using namespace std::string_literals;
+              // THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
+              //                                "unhandled status "s + status.ToString());
+            // }
+            _iterState = IterState::DONE;
+          } else {
+            TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iter->key()));
+            _iterState = IterState::SOUGHT;
+          }
+        } break;
+        case IterState::SOUGHT: {
+          auto const rocksKey = _iter->key();
+          auto const byteStringKey = RocksDBKey::zkdIndexValue(rocksKey);
+          if (!zkd::testInBox(byteStringKey, _min, _max, _dim)) {
+            _cur = byteStringKey;
 
-      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iter->key()));
+            auto cmp = zkd::compareWithBox(_cur, _min, _max, _dim);
 
-      bool more = callback(RocksDBKey::documentId(_iter->key()));
-      _iter->Next();
-      if (!more) {
-        break;
+            auto const next = zkd::getNextZValue(_cur, _min, _max, cmp);
+            if (!next) {
+              _iterState = IterState::DONE;
+            } else {
+              _cur = next.value();
+              _iterState = IterState::NEW;
+            }
+          } else {
+            auto const documentId = RocksDBKey::indexDocumentId(rocksKey);
+            std::ignore = callback(documentId);
+            ++i;
+            _iter->Next();
+            if (!_iter->Valid()) {
+              arangodb::rocksutils::checkIteratorStatus(_iter.get());
+              _iterState = IterState::DONE;
+            } else {
+              // stay in ::SOUGHT
+            }
+          }
+        } break;
+        case IterState::DONE:
+          return false;
+        default:
+          TRI_ASSERT(false);
       }
     }
 
-    return _iter->Valid();
+    return true;
   }
-
-  /*
-
-  auto iter = std::unique_ptr<rocksdb::Iterator>{rocks->db->NewIterator(rocksdb::ReadOptions{})};
-
-  while (true) {
-    //std::cout << "Seeking to " << cur << std::endl;
-    iter->Seek(sliceFromString(cur));
-    num_seeks += 1;
-    auto s = iter->status();
-    if (!s.ok()) {
-      std::cerr << s.ToString() << std::endl;
-      return {};
-    }
-    if (!iter->Valid()) {
-      break;
-    }
-
-    while (true) {
-      auto key = viewFromSlice(iter->key());
-      if (!testInBox(key, min_s, max_s, 4)) {
-        cur = key;
-        break;
-      }
-
-      auto value = transpose(byte_string{key}, 4);
-
-      //std::cout << value[0] << " " << value[1] << " " << value[2] << " " << value[3] << std::endl;
-      res.insert({from_byte_string_fixed_length<double>(value[0]),
-          from_byte_string_fixed_length<double>(value[1]),
-                 from_byte_string_fixed_length<double>(value[2]),
-                 from_byte_string_fixed_length<double>(value[3])});
-      iter->Next();
-    }
-
-    auto cmp = compareWithBox(cur, min_s, max_s, 4);
-
-    auto next = getNextZValue(cur, min_s, max_s, cmp);
-    if (!next) {
-      break;
-    }
-
-    cur = next.value();
-  }
-   */
 
   RocksDBKeyBounds _bound;
   rocksdb::Slice _upperBound;
@@ -131,8 +126,15 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   const zkd::byte_string _max;
   const std::size_t _dim;
 
+  enum class IterState {
+    NEW = 0,
+    SOUGHT,
+    DONE,
+  };
+  IterState _iterState = IterState::NEW;
+
   std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBZkdIndex* _index;
+  RocksDBZkdIndex* _index = nullptr;
 };
 
 }  // namespace arangodb
