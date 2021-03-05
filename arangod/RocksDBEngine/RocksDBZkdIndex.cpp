@@ -263,9 +263,6 @@ arangodb::Result arangodb::RocksDBZkdIndex::insert(
 
   auto key_value = readDocumentKey(doc, _fields);
 
-  LOG_DEVEL << "RocksDBZkdIndex::insert documentId = " << documentId.id()
-            << " doc = " << doc.toJson() << " key = " << key_value;
-
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
 
@@ -287,9 +284,6 @@ arangodb::Result arangodb::RocksDBZkdIndex::remove(arangodb::transaction::Method
 
   auto key_value = readDocumentKey(doc, _fields) +
                    zkd::to_byte_string_fixed_length(documentId.id());
-
-  LOG_DEVEL << "RocksDBZkdIndex::remove documentId = " << documentId.id()
-            << " doc = " << doc.toJson() << " key = " << key_value;
 
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
