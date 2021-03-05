@@ -67,11 +67,17 @@
     },
 
     initialize: function (options) {
+      if (options.endpoint) {
+        this.endpoint = options.endpoint;
+      }
     },
 
     model: window.ArangoMetricModel,
 
     url: function () {
+      if (this.endpoint) {
+        return arangoHelper.databaseUrl('/_admin/metrics?server=' + encodeURIComponent(this.endpoint));
+      }
       return arangoHelper.databaseUrl('/_admin/metrics');
     }
 
