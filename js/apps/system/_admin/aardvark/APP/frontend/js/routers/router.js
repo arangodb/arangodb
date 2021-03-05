@@ -41,6 +41,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
+      'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
@@ -1214,6 +1215,23 @@
       } else if (initialized === false) {
         this.waitForInit(this.userView.bind(this), name);
       }
+    },
+
+    metrics: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.metrics.bind(this));
+        return;
+      }
+      if (this.metricsView) {
+        this.metricsView.remove();
+      }
+
+      let metrics = new window.ArangoMetrics({});
+      this.metricsView = new window.MetricsView({
+        collection: metrics
+      });
+      this.metricsView.render();
     },
 
     userManagement: function (initialized) {
