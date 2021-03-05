@@ -76,7 +76,7 @@
 
     url: function () {
       if (this.endpoint) {
-        return arangoHelper.databaseUrl('/_admin/metrics?server=' + encodeURIComponent(this.endpoint));
+        return arangoHelper.databaseUrl('/_admin/metrics?serverId=' + encodeURIComponent(this.endpoint));
       }
       return arangoHelper.databaseUrl('/_admin/metrics');
     }
