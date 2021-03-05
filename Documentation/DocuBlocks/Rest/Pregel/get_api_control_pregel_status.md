@@ -82,7 +82,8 @@ Get the execution status
 
 ~ var url = "/_api/control_pregel";
 ~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", params: { maxGSS: graph.components.count(), resultField: "component" } };
-~ var id = curlRequest("POST", url, body);
+~ var response = logCurlRequest("POST", url, body);
+~ var id = JSON.parse(response.body);
 
   var url = "/_api/control_pregel/" + id;
   var response = logCurlRequest("GET", url);
