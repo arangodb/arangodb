@@ -42,7 +42,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
         _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
         _min(std::move(min)),
         _max(std::move(max)),
-        _dim(dim) {
+        _dim(dim), _index(index) {
     _cur = _min;
     _upperBound = _bound.end();
 
@@ -52,6 +52,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     TRI_ASSERT(options.prefix_same_as_start);
     _iter = mthds->NewIterator(options, index->columnFamily());
     TRI_ASSERT(_iter != nullptr);
+    _iter->SeekToFirst();
   }
 
 
@@ -59,8 +60,23 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
  protected:
   bool nextImpl(const LocalDocumentIdCallback& callback, size_t limit) override {
+    while (true) {
+      if (!_iter->Valid()) {
+        arangodb::rocksutils::checkIteratorStatus(_iter.get());
+        return false;
+      }
 
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iter->key()));
 
+      bool more = callback(
+          RocksDBKey::documentId(_iter->key()));
+      _iter->Next();
+      if (!more) {
+        break;
+      }
+    }
+
+    return _iter->Valid();
   }
 
   /*
@@ -118,6 +134,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
 
   std::unique_ptr<rocksdb::Iterator> _iter;
+  RocksDBZkdIndex* _index;
 };
 
 }  // namespace arangodb

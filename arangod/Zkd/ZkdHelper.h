@@ -12,12 +12,12 @@ namespace zkd {
 inline static std::byte operator"" _b(unsigned long long b) {
   return std::byte{(unsigned char) b};
 }
-
+/*
 struct byte_string : public std::basic_string<std::byte> {
   using std::basic_string<std::byte>::basic_string;
   using std::basic_string<std::byte>::operator=;
 
-  byte_string(std::basic_string<std::byte> str) : std::basic_string<std::byte>(std::move(str)) {}
+  //byte_string(std::basic_string<std::byte> str) : std::basic_string<std::byte>(std::move(str)) {}
 
   template<typename T>
   auto operator+(T&& other) -> byte_string {
@@ -27,14 +27,12 @@ struct byte_string : public std::basic_string<std::byte> {
   auto as_string_view() const -> std::string_view {
     return std::string_view(reinterpret_cast<const char *>(data()), size());
   }
-};
+};*/
+using byte_string = std::basic_string<std::byte>;
 using byte_string_view = std::basic_string_view<std::byte>;
 
 byte_string operator"" _bs(const char* str, std::size_t len);
 byte_string operator"" _bss(const char* str, std::size_t len);
-
-std::ostream& operator<<(std::ostream& ostream, byte_string const& string);
-std::ostream& operator<<(std::ostream& ostream, byte_string_view string);
 
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
 auto transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<byte_string>;
@@ -140,5 +138,8 @@ struct RandomBitManipulator {
 };
 
 } // namespace zkd
+
+std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string);
+std::ostream& operator<<(std::ostream& ostream, zkd::byte_string_view string);
 
 #endif //ZKD_TREE_LIBRARY_H

@@ -81,7 +81,7 @@ void RocksDBKey::constructZkdIndexValue(uint64_t indexId, zkd::byte_string const
   _buffer->clear();
   _buffer->reserve(keyLength);
   uint64ToPersistent(*_buffer, indexId);
-  auto sv = value.as_string_view();
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()), value.size()};
   _buffer->append(sv.data(), sv.size());
   uint64ToPersistent(*_buffer, documentId.id());
   TRI_ASSERT(_buffer->size() == keyLength);

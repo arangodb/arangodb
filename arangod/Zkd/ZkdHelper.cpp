@@ -429,7 +429,7 @@ struct floating_point {
   uint64_t base;
 };
 
-std::ostream& operator<<(std::ostream& os, struct floating_point const& fp) {
+static inline std::ostream& operator<<(std::ostream& os, struct floating_point const& fp) {
   std::cout << (fp.positive ? "p" : "n") << fp.exp << "E" << fp.base;
   return os;
 }
@@ -511,11 +511,11 @@ auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
   return construct_double({isPositive, exp, base});
 }
 
-std::ostream& zkd::operator<<(std::ostream& ostream, zkd::byte_string const& string) {
+std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string) {
   return operator<<(ostream, byte_string_view{string});
 }
 
-std::ostream& zkd::operator<<(std::ostream& ostream, byte_string_view string) {
+std::ostream& operator<<(std::ostream& ostream, byte_string_view string) {
   ostream << "[0x ";
   bool first = true;
   for (auto const& it : string) {
