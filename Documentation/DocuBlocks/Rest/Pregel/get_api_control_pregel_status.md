@@ -73,7 +73,7 @@ is found or the execution number is invalid.
 
 @EXAMPLES
 
-Get the execution status
+Get the execution status of a Pregel job:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponents}
 

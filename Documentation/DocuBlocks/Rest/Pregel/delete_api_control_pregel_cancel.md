@@ -30,4 +30,28 @@ HTTP 200 will be returned in case the job execution id was valid.
 An HTTP 404 error is returned if no Pregel job with the specified execution number
 is found or the execution number is invalid.
 
+@EXAMPLES
+
+Cancel a Pregel job to stop the execution or to free up the results if
+`"store": false` is used:
+
+@EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponents}
+
+~ var examples = require("@arangodb/graph-examples/example-graph.js");
+~ var graph = examples.loadGraph("connectedComponentsGraph");
+
+~ var url = "/_api/control_pregel";
+~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", store: false, params: { maxGSS: graph.components.count(), resultField: "component" } };
+~ var id = JSON.parse(curlRequest("POST", url, body));
+
+  var url = "/_api/control_pregel/" + id;
+  var response = logCurlRequest("DELETE", url);
+
+  assert(response.code === 200);
+
+  logJsonResponse(response);
+~ examples.dropGraph("connectedComponentsGraph");
+
+@END_EXAMPLE_ARANGOSH_RUN
+
 @endDocuBlock
