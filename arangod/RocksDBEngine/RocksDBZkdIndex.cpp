@@ -174,15 +174,16 @@ void extractBoundsFromCondition(
     return extractedBounds[idx] = std::make_pair(nullptr, nullptr);
   };
 
-  auto const useAsLowerBound = [&](size_t idx, aql::AstNode* node) {
-    ensureBounds(idx).first = node;
-  };
-  auto const useAsUpperBound = [&](size_t idx, aql::AstNode* node) {
-    ensureBounds(idx).second = node;
+  auto const useAsBound = [&](size_t idx, aql::AstNode* node, bool asLower) {
+    if (asLower) {
+      ensureBounds(idx).first = node;
+    } else {
+      ensureBounds(idx).second = node;
+    }
   };
 
   auto const checkIsBoundForAttribute = [&](aql::AstNode* op, aql::AstNode* access,
-                                            aql::AstNode* other) -> bool {
+                                            aql::AstNode* other, bool reverse) -> bool {
 
     std::unordered_set<std::string> nonNullAttributes;  // TODO only used in sparse case
     if (!index->canUseConditionPart(access, other, op, reference, nonNullAttributes, false)) {
@@ -211,14 +212,14 @@ void extractBoundsFromCondition(
       if (name == field[0].name) {
         switch (op->type) {
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
-            useAsLowerBound(idx, other);
-            useAsUpperBound(idx, other);
+            useAsBound(idx, other, true);
+            useAsBound(idx, other, false);
             return true;
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            useAsLowerBound(idx, other);
+            useAsBound(idx, other, reverse);
             return true;
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-            useAsUpperBound(idx, other);
+            useAsBound(idx, other, !reverse);
             return true;
           default:
             break;
@@ -237,8 +238,8 @@ void extractBoundsFromCondition(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        ok |= checkIsBoundForAttribute(op, op->getMember(0), op->getMember(1));
-        ok |= checkIsBoundForAttribute(op, op->getMember(1), op->getMember(0));
+        ok |= checkIsBoundForAttribute(op, op->getMember(0), op->getMember(1), false);
+        ok |= checkIsBoundForAttribute(op, op->getMember(1), op->getMember(0), true);
         break;
       default:
         break;
@@ -387,6 +388,9 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
   for (auto&& [idx, bounds] : extractedBounds) {
     min[idx] = zkd::to_byte_string_fixed_length(bounds.first->getDoubleValue());
     max[idx] = zkd::to_byte_string_fixed_length(bounds.second->getDoubleValue());
+    LOG_DEVEL << "for field " << _fields[idx][0] << " search in ["
+              << bounds.first->getDoubleValue() << ", "
+              << bounds.second->getDoubleValue() << "]";
   }
 
   TRI_ASSERT(min.size() == dim);
