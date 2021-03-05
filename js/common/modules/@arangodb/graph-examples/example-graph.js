@@ -374,6 +374,7 @@ var createWorldCountryGraph = function () {
   /* jshint ignore:end */
   // and load the data of the graph into the collections created by the graph module:
   saveWorldCountryGraphData();
+  return worldCountryGraph;
 };
 
 var createWorldCountryGraphUnManaged = function () {
@@ -424,6 +425,8 @@ var createTraversalGraph = function () {
   graph.edges.save('circles/H', 'circles/I', {theFalse: false, theTruth: true, 'label': 'right_blub'});
   graph.edges.save('circles/G', 'circles/J', {theFalse: false, theTruth: true, 'label': 'right_zip'});
   graph.edges.save('circles/J', 'circles/K', {theFalse: false, theTruth: true, 'label': 'right_zup'});
+
+  return graph;
 };
 
 var createKShortestPathsGraph = function() {
@@ -540,6 +543,8 @@ var createConnectedComponentsGraph = function () {
   for (var [from, to] of edges) {
     graph.connections.save({ _from: `components/${from}`, _to: `components/${to}` });
   }
+
+  return graph;
 };
 
 var knownGraphs = {
