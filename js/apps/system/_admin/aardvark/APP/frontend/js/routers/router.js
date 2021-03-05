@@ -1217,30 +1217,6 @@
       }
     },
 
-    metrics: function (initialized) {
-      this.checkUser();
-      if (!initialized) {
-        this.waitForInit(this.metrics.bind(this));
-        return;
-      }
-
-      if (this.isCluster) {
-        this.routes[''] = 'cluster';
-        this.navigate('#cluster', {trigger: true});
-        return;
-      }
-
-      if (this.metricsView) {
-        this.metricsView.remove();
-      }
-
-      let metrics = new window.ArangoMetrics({});
-      this.metricsView = new window.MetricsView({
-        collection: metrics
-      });
-      this.metricsView.render();
-    },
-
     userManagement: function (initialized) {
       this.checkUser();
       if (!initialized) {
