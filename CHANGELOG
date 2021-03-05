@@ -8,7 +8,7 @@ v3.7.10 (XXXX-XX-XX)
   graph.
 
 
-v3.7.9 (XXXX-XX-XX)
+v3.7.9 (2021-03-01)
 -------------------
 
 * Fix issue #13476: The Java driver v6.9.0 (and older) has bad performance when
