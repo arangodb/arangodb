@@ -154,9 +154,14 @@
     toggleViews: function (e) {
       let self = this;
       let id = e.currentTarget.id.split('-')[0];
-      let views = ['requests', 'system', 'logs'];
+      let views = ['requests', 'system'];
+      if (frontendConfig.isCluster) {
+        views.push('logs');
+        views.push('metrics');
+      }
 
       _.each(views, function (view) {
+        console.log(views);
         if (id !== view) {
           $('#' + view).hide();
         } else {
@@ -169,7 +174,7 @@
       $('.subMenuEntries').children().removeClass('active');
       $('#' + id + '-statistics').addClass('active');
 
-      if (id === 'logs') {
+      if (id === 'logs' && frontendConfig.isCluster) {
         let contentDiv = '#nodeLogContentView';
         let endpoint = this.serverInfo.target;
 
@@ -185,6 +190,19 @@
           contentDiv: contentDiv
         });
         this.currentLogView.render(true);
+      } else if (id === 'metrics' && frontendConfig.isCluster) {
+        let contentDiv = '#nodeMetricsContentView';
+        let endpoint = this.serverInfo.target;
+
+        let metrics = new window.ArangoMetrics({
+          endpoint: endpoint
+        });
+        this.currentMetricsView = new window.MetricsView({
+          collection: metrics,
+          endpoint: endpoint,
+          contentDiv: contentDiv
+        });
+        this.currentMetricsView.render();
       }
 
       window.setTimeout(function () {
@@ -1063,7 +1081,8 @@
         var callback = function (enabled, modalView) {
           if (!modalView) {
             $(this.el).html(this.template.render({
-              hideStatistics: false
+              hideStatistics: false,
+              isCluster: frontendConfig.isCluster
             }));
             this.getNodeInfo();
           }
@@ -1123,7 +1142,8 @@
         }
       } else {
         $(this.el).html(this.template.render({
-          hideStatistics: true
+          hideStatistics: true,
+          isCluster: frontendConfig.isCluster
         }));
         // hide menu entries
         if (!frontendConfig.isCluster) {
