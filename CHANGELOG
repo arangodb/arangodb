@@ -5,8 +5,7 @@ v3.7.10 (XXXX-XX-XX)
   API if one switched the agency Supervision into maintenance mode and kept
   left that maintenance mode on for more than 24h.
 
-
-v3.7.9 (XXXX-XX-XX)
+v3.7.9 (2021-03-01)
 -------------------
 
 * Fix issue #13476: The Java driver v6.9.0 (and older) has bad performance when
