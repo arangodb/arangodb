@@ -137,6 +137,10 @@ struct RandomBitManipulator {
   byte_string& ref;
 };
 
+
+template<typename T>
+void into_bit_writer_fixed_length(BitWriter&, T);
+
 } // namespace zkd
 
 std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string);

@@ -141,6 +141,20 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
 namespace {
 
+auto convertDouble(double x) -> zkd::byte_string {
+  zkd::BitWriter bw;
+  bw.append(zkd::Bit::ZERO); // add zero bit for `not infinity`
+  zkd::into_bit_writer_fixed_length(bw, x);
+  return std::move(bw).str();
+}
+
+auto nodeExtractDouble(aql::AstNode const* node) -> std::optional<zkd::byte_string> {
+  if (node != nullptr) {
+    return convertDouble(node->getDoubleValue());
+  }
+  return std::nullopt;
+}
+
 auto readDocumentKey(VPackSlice doc,
                      std::vector<std::vector<basics::AttributeName>> const& fields)
     -> zkd::byte_string {
@@ -154,7 +168,7 @@ auto readDocumentKey(VPackSlice doc,
     if (!value.isNumber<double>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     }
-    v.emplace_back(zkd::to_byte_string_fixed_length(value.getNumericValue<double>()));
+    v.emplace_back(convertDouble(value.getNumericValue<double>()));
   }
 
   return zkd::interleave(v);
@@ -282,8 +296,7 @@ arangodb::Result arangodb::RocksDBZkdIndex::remove(arangodb::transaction::Method
   TRI_ASSERT(_unique == false);
   TRI_ASSERT(_sparse == false);
 
-  auto key_value = readDocumentKey(doc, _fields) +
-                   zkd::to_byte_string_fixed_length(documentId.id());
+  auto key_value = readDocumentKey(doc, _fields);
 
   RocksDBKey rocks_key;
   rocks_key.constructZkdIndexValue(objectId(), key_value, documentId);
@@ -332,16 +345,6 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
     return FilterCosts();
   }
 
-  bool allBound =
-      std::all_of(extractedBounds.begin(), extractedBounds.end(), [&](auto&& kv) {
-        auto&& [idx, bounds] = kv;
-        return bounds.first != nullptr && bounds.second != nullptr;
-      });
-  if (!allBound || extractedBounds.size() != _fields.size()) {
-    LOG_DEVEL << "Not all variables are bound";
-    return FilterCosts();
-  }
-
   LOG_DEVEL << "We can use this index!";
   // TODO -- actually return costs
   return FilterCosts::zeroCosts();
@@ -368,25 +371,26 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
 
   TRI_ASSERT(unusedExpressions.empty());
 
-  bool allBound =
-      std::all_of(extractedBounds.begin(), extractedBounds.end(), [&](auto&& kv) {
-        auto&& [idx, bounds] = kv;
-        return bounds.first != nullptr && bounds.second != nullptr;
-      });
-  TRI_ASSERT(allBound && extractedBounds.size() == _fields.size());
-
   const size_t dim = _fields.size();
   std::vector<zkd::byte_string> min;
   min.resize(dim);
   std::vector<zkd::byte_string> max;
   max.resize(dim);
 
-  for (auto&& [idx, bounds] : extractedBounds) {
-    min[idx] = zkd::to_byte_string_fixed_length(bounds.first->getDoubleValue());
-    max[idx] = zkd::to_byte_string_fixed_length(bounds.second->getDoubleValue());
-    LOG_DEVEL << "for field " << _fields[idx][0] << " search in ["
-              << bounds.first->getDoubleValue() << ", "
-              << bounds.second->getDoubleValue() << "]";
+  static const auto ByteStringPosInfinity = zkd::byte_string {std::byte{0xff}};
+  static const auto ByteStringNegInfinity = zkd::byte_string {std::byte{0}};
+
+  for (auto&& [idx, field] : enumerate(fields())) {
+    if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
+      auto const& bounds = it->second;
+      min[idx] = nodeExtractDouble(bounds.first).value_or(ByteStringNegInfinity);
+      max[idx] = nodeExtractDouble(bounds.second).value_or(ByteStringPosInfinity);
+
+    } else {
+      min[idx] = ByteStringNegInfinity;
+      max[idx] = ByteStringPosInfinity;
+      LOG_DEVEL << "for field " << _fields[idx][0] << " search is unbounded";
+    }
   }
 
   TRI_ASSERT(min.size() == dim);

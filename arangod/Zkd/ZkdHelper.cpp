@@ -459,10 +459,9 @@ auto construct_double(floating_point const& fp) -> double {
 }
 
 template<>
-auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
+void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
   auto [p, exp, base] = destruct_double(x);
 
-  BitWriter bw;
   bw.append(p ? Bit::ONE : Bit::ZERO);
 
   if (!p) {
@@ -473,6 +472,12 @@ auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
   bw.write_big_endian_bits(exp, 11);
   bw.write_big_endian_bits(base, 52);
 
+}
+
+template<>
+auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
+  BitWriter bw;
+  zkd::into_bit_writer_fixed_length(bw, x);
   return std::move(bw).str();
 }
 
