@@ -1,0 +1,145 @@
+<div id="metricContent" class="innerContent" style="padding-top: 0;">
+
+  <div class="bottomButtonBar">
+    <button id="downloadAs" class="pull-right button-success">Download</button>
+    <button id="toggleView" class="pull-right button-close">Show as Text</button>
+  </div>
+
+  <div id="metricsAsTable">
+    <div class="header first">Counters</div>
+    <div class="pure-g">
+      <div id="<%= name %>" class="metricsBox pure-u-1-1">
+        <table class="pure-table pure-table-metrics-counter">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Info</th>
+            <th>Role</th>
+            <th>Shortname</th>
+          </tr>
+          </thead>
+          <tbody>
+
+          <% _.each(collection.where({type: "counter"}), (model) => { %>
+            <tr>
+              <td><%= model.get('name') %></td>
+              <td><%= model.get('metrics')[0].value %></td>
+              <td><%= model.get('info') %></td>
+              <% if (model.get('metrics')[0].hasOwnProperty('labels')) { %>
+                <td><%= JSON.stringify(model.get('metrics')[0].labels.role) %></td>
+                <td><%= JSON.stringify(model.get('metrics')[0].labels.shortname) %></td>
+              <% } else { %>
+                <td><span class="emptySpanEntry">empty</span></td>
+                <td><span class="emptySpanEntry">empty</span></td>
+              <% } %>
+            </tr>
+
+          <% }); %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="header child">Gauges</div>
+    <div class="pure-g">
+      <% _.each(collection.where({type: "gauge"}), (model) => { console.log(model.toJSON()); %>
+      <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-3">
+        <div class="tableHeader"><%= model.get("name") %></div>
+        <table class="pure-table pure-table-metrics-gauge">
+          <thead>
+          <tr>
+            <th>Label</th>
+            <th>Value</th>
+            <th>Role</th>
+            <th>Shortname</th>
+          </tr>
+          </thead>
+          <tbody>
+
+          <% _.each(model.get("metrics"), (metric) => {
+            let role = '<span class="emptySpanEntry">empty</span>';
+            let shortname = '<span class="emptySpanEntry">empty</span>';
+            let le = '';
+
+            if (metric.labels) {
+              if (metric.labels.role) {
+                role = metric.labels.role;
+              }
+              if (metric.labels.le) {
+                le = metric.labels.le;
+              }
+              if (metric.labels.shortname) {
+                shortname = metric.labels.shortname;
+              }
+            }
+          %>
+          <tr>
+            <td><%= le %></td>
+            <td><%= metric.value %></td>
+            <td><%= role %></td>
+            <td><%= shortname %></td>
+          </tr>
+          <% }); %>
+
+          </tbody>
+        </table>
+      </div>
+      <% }); %>
+    </div>
+
+    <div class="header child">Histograms</div>
+
+    <div class="pure-g">
+      <% _.each(collection.where({type: "histogram"}), (model) => { %>
+        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-3">
+          <div class="tableHeader"><%= model.get("name") %></div>
+          <table class="pure-table pure-table-metrics-histogram">
+            <thead>
+            <tr>
+              <th>Label</th>
+              <th>Value</th>
+              <th>Role</th>
+              <th>Shortname</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <% _.each(model.get("metrics"), (metric) => {
+              let role = '<span class="emptySpanEntry">empty</span>';
+              let shortname = '<span class="emptySpanEntry">empty</span>';
+              let le = '';
+
+              if (metric.labels) {
+                if (metric.labels.role) {
+                  role = metric.labels.role;
+                }
+                if (metric.labels.le) {
+                  le = metric.labels.le;
+                }
+                if (metric.labels.shortname) {
+                  shortname = metric.labels.shortname;
+                }
+              }
+            %>
+            <tr>
+              <td><%= le %></td>
+              <td><%= metric.value %></td>
+              <td><%= role %></td>
+              <td><%= shortname %></td>
+            </tr>
+            <% }); %>
+
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+
+    </div>
+  </div>
+
+  <div id="metricsAsText" style="display: none;">
+    <pre><%= collection.metricsAsText() %></pre>
+  </div>
+
+</div>
