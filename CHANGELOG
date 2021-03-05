@@ -1,9 +1,67 @@
 devel
 -----
 
-* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
+* Fixed a problem that coordinators would vanish from the UI and the Health
+  API if one switched the agency Supervision into maintenance mode and kept
+  left that maintenance mode on for more than 24h.
 
-* added logging of elapsed time of ArangoSearch commit/consolidation/cleanup jobs
+* Fixed a bug in the web interface that displayed the error "Not authorized to 
+  execute this request" when trying to create an index in the web interface in a
+  database other than `_system` with a user that does not have any access
+  permissions for the `_system` database.
+  The error message previously displayed error actually came from an internal
+  request made by the web interface, but it did not affect the actual index
+  creation.
+
+* Added ability to display Coordinator and DBServer logs from inside the Web UI
+  in a clustered environment when privileges are sufficient. 
+  Additionally, displayed log entries can now be downloaded from the web UI in
+  single server and in cluster mode.
+
+* The Web UI's info view of a collection now displays additional properties and
+  statistics (e.g. RocksDB related figures, sharding information and more).
+
+* Improve progress reporting for shard synchronization in the web UI.
+  The UI will now show how many shards are actively syncing data, and will 
+  provide a better progress indicator, especially if there is more than one
+  follower for a shard.
+
+* Fixed issue BTS-309: The Graph API (Gharial) did not respond with the correct
+  HTTP status code when validating edges. It now responds with 400 (Bad Request)
+  as documented and a new, more precise error code (1947) and message if a vertex
+  collection referenced in the _from or _to attribute is not part of the graph.
+
+* Added `--shard` option to arangodump, so that dumps can be restricted to one or
+  multiple shards only.
+
+* Enable statistics in web UI in non-`_system` databases in cluster mode.
+  In cluster mode, the web UI dashboard did not display statistics properly
+  when not being logged in to the `_system` database. For all other databases
+  than `_system`, no statistics were displayed but just some "No data..."
+  placeholders.
+  Statistics for non-`_system` databases were not properly displayed since
+  3.7.6 due to an internal change in the statistics processing.
+
+  In addition, a new startup option `--server.statistics-all-databases`
+  controls whether cluster statistics are displayed in the web interface for
+  all databases (if the option is set to `true`) or just for the system
+  database (if the option is set to `false`).
+  The default value for the option is `true`, meaning statistics will be
+  displayed in the web interface for all databases. 
+
+* Add optional hostname logging to log messages.
+  Whether or not the hostname is added to each log message can be controlled via
+  the new startup option `--log.hostname`. Its default value is the empty string,
+  meaning no hostname will be added to log messages.
+  Setting the option to an arbitrary string value will make this string be logged
+  in front of each regular log message, and inside the `hostname` attribute in
+  case of JSON-based logging. Setting the option to a value of `auto` will use
+  the hostname as returned by `gethostbyname`.
+
+* Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
+  jobs.
+
+* Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Prevent arangosh from trying to connect after every executed command.
   This fixes the case when arangosh is started with default options, but no
@@ -16,6 +74,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Reduce memory footprint of agency Store in Node class.
+
+* Cleanup old hotbackup transfer jobs in agency.
 
 * On Windows create a minidump in case of an unhandled SEH exception for
   post-mortem debugging.
@@ -65,6 +127,10 @@ devel
 * Fixed issue DEVSUP-720: Within an AQL query, the "COLLECT WITH COUNT INTO"
   statement could lead to a wrong count output when used in combination with
   an index which has been created with an array index attribute.
+
+* Fixed issue #13117: Aardvark: Weird cursor offsets in query editor.
+
+  Disabled font ligatures for Ace editor in Web UI to avoid rare display issue.
 
 * Fixed ES-784 regression related to encryption cipher propagation to
   ArangoSearch data.
@@ -179,14 +245,14 @@ devel
 * More improvements for logging:
   
   * Added new REST API endpoint GET `/_admin/log/entries` to return log entries
-    in a more intuitve format, putting each log entry with all its properties
+    in a more intuitive format, putting each log entry with all its properties
     into an object. The API response is an array with all log message objects
     that match the search criteria.
     This is an extension to the already existing API endpoint GET `/_admin/log`,
     which returned log messages fragmented into 5 separate arrays.
 
     The already existing API endpoint GET `/_admin/log` for retrieving log 
-    messages is now deprecated, altough it will stay available for some time.
+    messages is now deprecated, although it will stay available for some time.
 
   * Truncation of log messages now takes JSON format into account, so that
     the truncation of oversized JSON log messages still keeps a valid JSON
@@ -205,7 +271,7 @@ devel
     shorten long log messages in case there is not a lot of space for logfiles, 
     and to keep rogue log messages from overusing resources. 
     The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    mean downwards-compatibility with previous arangod versions, which did not
     restrict the maximum size of log messages.
   
   - `--audit.max-entry-length`: controls the maximum line length for individual
@@ -213,7 +279,7 @@ devel
     log messages longer than the specified value will be truncated and the 
     suffix '...' will be added to them. 
     The default value is 128 MB, which is very high and should effectively
-    mean downwards-compatiblity with previous arangod versions, which did not
+    mean downwards-compatibility with previous arangod versions, which did not
     restrict the maximum size of log messages.
 
   - `--log.in-memory-level`: controls which log messages are preserved in 
@@ -258,7 +324,7 @@ devel
 
 * Don't allocate ahead-of-time memory for striped PRNG array in arangod,
   but instead use thread-local PRNG instances. Not only does this save a
-  few megabytes or memory, but it also avoids potential (but unlikely)
+  few megabytes of memory, but it also avoids potential (but unlikely)
   sharing of the same PRNG instance by multiple threads.
 
 * Remove undocumented CMake variable `USE_BACKTRACE`, and remove define
@@ -550,8 +616,9 @@ devel
   from previously `0` (meaning: no limit) to a dynamically calculated value.
   The per-query memory limits defaults are now:
 
-    Available memory:    134217728    (128MiB)  Limit:            0      (0MiB), %mem:  0.0
-    Available memory:    268435456    (256MiB)  Limit:            0      (0MiB), %mem:  0.0
+    Available memory:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+    Available memory:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+    Available memory:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
     Available memory:    536870912    (512MiB)  Limit:    201326592    (192MiB), %mem: 37.5
     Available memory:    805306368    (768MiB)  Limit:    402653184    (384MiB), %mem: 50.0
     Available memory:   1073741824   (1024MiB)  Limit:    603979776    (576MiB), %mem: 56.2
@@ -779,7 +846,7 @@ devel
 * Fixed agency redirect in poll api.
 
 * Fixed issue #12248: Web UI - Added missing HTML escaping in the setup script
-  section of a foxx app.
+  section of a Foxx app.
 
 * The scheduler will now run a minimum of 4 threads at all times, and the
   default and minimal value for `--server.maximal-threads` has been lowered from
@@ -1236,7 +1303,7 @@ devel
   any of these attributes produces an error when using the RocksDB engine
   may need adjustment now.
 
-* Added a --continue options to arango restore. arangorestore now keeps track of the progress
+* Added a --continue option to arangorestore. arangorestore now keeps track of the progress
   and can continue the restore operation when some error occured.
 
 * Added the following metrics for synchronous replication in the cluster:

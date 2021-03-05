@@ -113,8 +113,8 @@ class Conductor {
   Scheduler::WorkHandle _workHandle;
 
   bool _startGlobalStep();
-  int _initializeWorkers(std::string const& path, VPackSlice additional);
-  int _finalizeWorkers();
+  ErrorCode _initializeWorkers(std::string const& suffix, VPackSlice additional);
+  ErrorCode _finalizeWorkers();
   ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message);
   ErrorCode _sendToAllDBServers(std::string const& path, VPackBuilder const& message,
                                 std::function<void(VPackSlice)> handle);

@@ -65,6 +65,9 @@ void MaintenanceWorker::run() {
             break;
 
           case eRUN_FIRST:
+            if (_curAction->getState() == READY) {
+              _curAction->setState(EXECUTING);
+            }
             _curAction->startStats();
             more = _curAction->first();
             break;

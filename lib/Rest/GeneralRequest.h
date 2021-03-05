@@ -29,6 +29,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <map>
 #include <utility>
 #include <vector>
 
@@ -184,6 +185,9 @@ class GeneralRequest {
   std::unordered_map<std::string, std::string> const& values() const {
     return _values;
   }
+
+  // returns the query parameters as fuerte needs them (as a map)
+  std::map<std::string, std::string> parameters() const;
 
   std::unordered_map<std::string, std::vector<std::string>> const& arrayValues() const {
     return _arrayValues;

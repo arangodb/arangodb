@@ -64,7 +64,7 @@ struct OperationResult final {
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   OperationOptions options,
-                  std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
+                  std::unordered_map<ErrorCode, size_t> countErrorCodes = {})
       : result(std::move(result)),
         buffer(std::move(buffer)),
         options(std::move(options)),
@@ -81,10 +81,10 @@ struct OperationResult final {
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
   ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
-  bool is(int errorNumber) const noexcept {
+  bool is(ErrorCode errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }
-  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
+  bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }
@@ -107,7 +107,7 @@ struct OperationResult final {
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of
   // the failed documents.
-  std::unordered_map<int, size_t> countErrorCodes;
+  std::unordered_map<ErrorCode, size_t> countErrorCodes;
 };
 
 }  // namespace arangodb
