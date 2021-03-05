@@ -211,7 +211,7 @@ void extractBoundsFromCondition(
 
       if (name == field[0].name) {
         switch (op->type) {
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
             useAsBound(idx, other, true);
             useAsBound(idx, other, false);
             return true;
