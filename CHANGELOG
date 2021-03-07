@@ -1,9 +1,24 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
-* Fixed a problem that coordinators would vanish from the UI and the Health
-  API if one switched the agency Supervision into maintenance mode and kept
-  left that maintenance mode on for more than 24h.
+* Fixed a problem that coordinators would vanish from the UI and the Health API
+  if one switched the agency Supervision into maintenance mode and kept left
+  that maintenance mode on for more than 24h.
+
+* Fixed a bug in the web interface that displayed the error "Not authorized to
+  execute this request" when trying to create an index in the web interface in a
+  database other than `_system` with a user that does not have any access
+  permissions for the `_system` database.
+  The error message previously displayed error actually came from an internal
+  request made by the web interface, but it did not affect the actual index
+  creation.
+
+* Fixed issue BTS-309: The Graph API (Gharial) did not respond with the correct
+  HTTP status code when validating edges. It now responds with 400 (Bad Request)
+  as documented and a new, more precise error code (1947) and message if a
+  vertex collection referenced in the _from or _to attribute is not part of the
+  graph.
+
 
 v3.7.9 (2021-03-01)
 -------------------
