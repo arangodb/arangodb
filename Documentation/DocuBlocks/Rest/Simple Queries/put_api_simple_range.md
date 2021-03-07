@@ -39,7 +39,7 @@ is applied before the *limit* restriction. (optional)
 This will find all documents within a given range. In order to execute a
 range query, a skip-list index on the queried attribute must be present.
 
-Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result.
 
 Note: the *range* simple query is **deprecated** as of ArangoDB 2.6.
 The function may be removed in future versions of ArangoDB. The preferred
