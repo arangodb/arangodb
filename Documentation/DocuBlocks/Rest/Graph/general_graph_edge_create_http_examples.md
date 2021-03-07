@@ -6,8 +6,7 @@
 @RESTDESCRIPTION
 Creates a new edge in the collection.
 Within the body the edge has to contain a *_from* and *_to* value referencing to valid vertices in the graph.
-Furthermore the edge has to be valid in the definition of the used
-[edge collection](../../Manual/Appendix/Glossary.html#edge-collection).
+Furthermore the edge has to be valid in the definition of the used edge collection.
 
 @RESTURLPARAMETERS
 
