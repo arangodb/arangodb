@@ -10,8 +10,7 @@
 single collection name as string. Collections that will be written to in the
 transaction must be declared with the *write* or *exclusive* attribute or it
 will fail, whereas non-declared collections from which is solely read will be
-added lazily. See [locking and isolation](../../Manual/Transactions/LockingAndIsolation.html)
-for more information.
+added lazily.
 
 @RESTBODYPARAM{waitForSync,boolean,optional,}
 an optional boolean flag that, if set, will force the
