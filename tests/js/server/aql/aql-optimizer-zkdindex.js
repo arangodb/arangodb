@@ -87,6 +87,43 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual([ 0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1 ], res);
     },
 
+    test3: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 <= d.x && d.y <= 1
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "ReturnNode" ], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([ 0, 0.1, 0.2, 0.3, 0.4, 0.5 ], res);
+    },
+
+    test4: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 >= d.x
+          FILTER 10 <= d.y && d.y <= 16
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual([ "SingletonNode", "IndexNode", "CalculationNode", "ReturnNode" ], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([ ], res);
+    },
+
   };
 }
 

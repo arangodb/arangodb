@@ -33,6 +33,24 @@
 
 using namespace arangodb;
 
+/*namespace {
+
+auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double> {
+  auto vs = zkd::transpose(bs, dim);
+
+  std::vector<double> res;
+  res.reserve(dim);
+
+  for (auto&& v : vs) {
+    zkd::BitReader r(v);
+    std::ignore = r.next();
+    res.push_back(zkd::from_bit_reader_fixed_length<double>(r));
+  }
+  return res;
+}
+
+}*/
+
 namespace arangodb {
 class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
@@ -376,7 +394,7 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
   std::vector<zkd::byte_string> max;
   max.resize(dim);
 
-  static const auto ByteStringPosInfinity = zkd::byte_string {std::byte{0xff}};
+  static const auto ByteStringPosInfinity = zkd::byte_string {std::byte{0x80}};
   static const auto ByteStringNegInfinity = zkd::byte_string {std::byte{0}};
 
   for (auto&& [idx, field] : enumerate(fields())) {

@@ -141,6 +141,8 @@ struct RandomBitManipulator {
 
 template<typename T>
 void into_bit_writer_fixed_length(BitWriter&, T);
+template<typename T>
+auto from_bit_reader_fixed_length(BitReader&) -> T;
 
 struct floating_point {
   bool positive;

@@ -89,7 +89,7 @@ TEST(Zkd_byte_string_conversion, double_float_cmp) {
       std::pair{1000.0, 100000.0}, std::pair{-1000.0, 100000.0},
       std::pair{.0001, .001},      std::pair{-5., -10.},
       std::pair{0., -10.},         std::pair{0., -0.},
-      std::pair{7., 7.},           std::pair{7.E15, 7.E15},
+      std::pair{7., 7.},           std::pair{7.E15, 7.E15}, std::pair{0., 0.1},
   };
 
   for (auto&& [a, b] : tests) {
@@ -98,7 +98,7 @@ TEST(Zkd_byte_string_conversion, double_float_cmp) {
 
     EXPECT_EQ(a < b, a_bs < b_bs)
         << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs;
+        << " does not compare equally: " << a_bs << " " << b_bs << " cnvrt = " << destruct_double(a) << " b = " << destruct_double(b);
     EXPECT_EQ(a == b, a_bs == b_bs)
         << "byte string of " << a << " and " << b
         << " does not compare equally: " << a_bs << " " << b_bs;

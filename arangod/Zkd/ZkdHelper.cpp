@@ -432,7 +432,11 @@ auto zkd::destruct_double(double x) -> floating_point {
   }
 
   auto int_base = uint64_t((uint64_t{1} << 53) * base);
-  return {positive, exp + (1u << 10) - 1, int_base};
+  auto biased_exp = exp + (1u << 10) - 1;
+  if (int_base == 0) {
+    biased_exp = 0;
+  }
+  return {positive, biased_exp, int_base};
 }
 
 auto zkd::construct_double(floating_point const& fp) -> double {
@@ -474,6 +478,21 @@ auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
 }
 
 
+
+template<>
+auto zkd::from_bit_reader_fixed_length<double>(BitReader& r) -> double{
+  bool isPositive = r.next_or_zero() == Bit::ONE;
+
+  auto exp = r.read_big_endian_bits(11);
+  auto base = r.read_big_endian_bits(53);
+  if (!isPositive) {
+    exp ^= (uint64_t{1} << 11) - 1;
+    base ^= (uint64_t{1} << 53) - 1;
+  }
+
+  return construct_double({isPositive, exp, base});
+}
+
 template<typename T>
 auto zkd::from_byte_string_fixed_length(byte_string_view bs) -> T {
   T result = 0;
@@ -495,17 +514,7 @@ template auto zkd::from_byte_string_fixed_length<uint64_t>(byte_string_view) -> 
 template<>
 auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
   BitReader r(bs);
-
-  bool isPositive = r.next_or_zero() == Bit::ONE;
-
-  auto exp = r.read_big_endian_bits(11);
-  auto base = r.read_big_endian_bits(53);
-  if (!isPositive) {
-    exp ^= (uint64_t{1} << 11) - 1;
-    base ^= (uint64_t{1} << 53) - 1;
-  }
-
-  return construct_double({isPositive, exp, base});
+  return from_bit_reader_fixed_length<double>(r);
 }
 
 std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string) {
