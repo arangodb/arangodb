@@ -80,9 +80,9 @@ struct metrics_key {
 namespace metrics {
 
 struct Builder {
+  virtual ~Builder() = default;
   virtual char const* type() const = 0;
   virtual std::shared_ptr<::Metric> build() const = 0;
-  virtual ~Builder() {}
 
   std::string const& name() const { return _name; }
   metrics_key key() const { return metrics_key(name(), _labels); }
@@ -124,11 +124,6 @@ struct CounterBuilder : GenericBuilder<Derived> {
 template <class Derived, typename T>
 struct GaugeBuilder : GenericBuilder<Derived> {
   using metric_t = ::Gauge<T>;
-
-  Derived&& withInitialValue(std::uint64_t v) && {
-    this->_initialValue = v;
-    return this->self();
-  }
 
   std::shared_ptr<::Metric> build() const override {
     return std::make_shared<::Gauge<T>>(T{}, this->name(), this->_help, this->_labels);
