@@ -141,7 +141,7 @@ template <class Derived, class Scale>
 struct HistogramBuilder : GenericBuilder<Derived> {
   using metric_t = ::Histogram<decltype(Scale::scale())>;
 
-  std::shared_ptr<::Metric> build() const {
+  std::shared_ptr<::Metric> build() const override {
     return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help, this->_labels);
   }
 
@@ -340,7 +340,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
             TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
         } else {
           auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
-          return counter<name>(mk, 0, tmp->help());
+          return counter<Metric>(mk, 0, tmp->help());
         }
       }
       try {
@@ -433,7 +433,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
               TRI_ERROR_INTERNAL,
               std::string("Non matching type for cloning ") + mk.name);
         }
-        return gauge<name>(mk, T(0), metric->help());
+        return gauge<Metric>(mk, T(0), metric->help());
       }
 
       try {
