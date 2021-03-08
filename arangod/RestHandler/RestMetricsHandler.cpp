@@ -130,8 +130,6 @@ RestStatus RestMetricsHandler::execute() {
             }
             return RestStatus::DONE;
           }));
-
-      return RestStatus::DONE;
     }
   }
 
