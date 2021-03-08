@@ -160,7 +160,6 @@
       }
 
       _.each(views, function (view) {
-        console.log(views);
         if (id !== view) {
           $('#' + view).hide();
         } else {
