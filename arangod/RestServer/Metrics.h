@@ -470,8 +470,8 @@ template<typename Scale> class Histogram : public Metric {
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-    result += "# HELP " + name() + " " + help() + "\n";
-    result += "\n# TYPE " + name() + " histogram\n";
+    result += "\n# HELP " + name() + " " + help() + "\n";
+    result += "# TYPE " + name() + " histogram\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';
