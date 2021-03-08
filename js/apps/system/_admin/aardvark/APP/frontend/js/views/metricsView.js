@@ -42,12 +42,12 @@
 
     toggleView: function () {
       if (this.activeView === 'table') {
-        $('#toggleView').text('Show as table');
+        $('#toggleView').text('Show Table');
         $('#metricsAsText').show();
         $('#metricsAsTable').hide();
         this.activeView = 'text';
       } else {
-        $('#toggleView').text('Show as text');
+        $('#toggleView').text('Show Text');
         $('#metricsAsText').hide();
         $('#metricsAsTable').show();
         this.activeView = 'table';
@@ -79,13 +79,16 @@
     },
 
     continueRender: function () {
+      console.log(this.activeView);
       if (this.metricsel) {
         $(this.metricsel).html(this.template.render({
-          collection: this.collection
+          collection: this.collection,
+          activeView: this.activeView
         }));
       } else {
         this.$el.html(this.template.render({
-          collection: this.collection
+          collection: this.collection,
+          activeView: this.activeView
         }));
       }
 
