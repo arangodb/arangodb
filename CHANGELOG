@@ -4,9 +4,9 @@ devel
 * Added a new maintenance mode tab to the web UI in cluster mode. 
   The new tab shows the current state of the cluster supervision maintenance 
   and allows to enable/disable the maintenance mode from there. The tab will
-  only be visible in the `_system` database and only if sufficient privileges
-  are available. This required privileges are the as for using the REST API for 
-  toggling the maintenance mode.
+  only be visible in the `_system` database. The required privileges for
+  displaying the maintenance mode status and/or changing it are the as for 
+  using the REST APIs for the maintenance mode.
 
 * Fixed a problem that coordinators would vanish from the UI and the Health
   API if one switched the agency Supervision into maintenance mode and kept
