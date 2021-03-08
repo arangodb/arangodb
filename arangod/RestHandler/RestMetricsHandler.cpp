@@ -83,7 +83,7 @@ RestStatus RestMetricsHandler::execute() {
   }
 
   bool foundServerIdParameter;
-  std::string serverId = _request->value("serverId", foundServerIdParameter);
+  std::string const& serverId = _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
@@ -94,7 +94,6 @@ RestStatus RestMetricsHandler::execute() {
       for (auto const& srv : ci.getServers()) {
         // validate if server id exists
         if (srv.first == serverId) {
-          serverId = srv.first;
           found = true;
           break;
         }
@@ -102,7 +101,7 @@ RestStatus RestMetricsHandler::execute() {
 
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied.'"));
+                      std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
 
@@ -126,7 +125,12 @@ RestStatus RestMetricsHandler::execute() {
             if (r.fail()) {
               self->generateError(r.combinedResult());
             } else {
-              self->generateResult(rest::ResponseCode::OK, r.slice());
+             // the response will not contain any velocypack.
+             // we need to forward the request with content-type text/plain.
+              self->_response->setResponseCode(rest::ResponseCode::OK);
+              self->_response->setContentType(rest::ContentType::TEXT);
+              auto payload = r.response().stealPayload();
+              self->_response->addRawPayload(VPackStringRef(reinterpret_cast<char const*>(payload->data()), payload->size()));
             }
             return RestStatus::DONE;
           }));
