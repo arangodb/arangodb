@@ -6,6 +6,7 @@
 
   window.MetricsView = Backbone.View.extend({
     template: templateEngine.createTemplate('metricsView.ejs'),
+    infoTemplate: templateEngine.createTemplate('infoView.ejs'),
     el: '#content',
     metricsel: undefined,
     interval: 10000,
@@ -71,11 +72,24 @@
     render: function () {
       var self = this;
 
-      this.collection.fetch({
-        success: function () {
-          self.continueRender();
+      if (!frontendConfig.metricsEnabled) {
+        let disabled = {
+          title: "Metrics",
+          message: "Metrics are disabled."
+        };
+
+        if (this.metricsel) {
+          $(this.metricsel).html(this.infoTemplate.render(disabled));
+        } else {
+          this.$el.html(this.infoTemplate.render(disabled));
         }
-      });
+      } else {
+        this.collection.fetch({
+          success: function () {
+            self.continueRender();
+          }
+        });
+      }
     },
 
     continueRender: function () {

@@ -27,42 +27,14 @@
       this.txt = response;
       let json = window.parsePrometheusTextFormat(response);
 
-      let currentType;
-      let currentName;
-      let currentInfo;
-      let currentData = [];
-
-      for (let i = 0; i < json.length; i++) {
-        if (json[i].name === '#TYPE') {
-          if (i > 0) {
-            // push to models
-            models.push({
-              name: currentName,
-              type: currentType,
-              info: currentInfo,
-              metrics: currentData
-            });
-
-            // clear states
-            currentType = '';
-            currentName = '';
-            currentInfo = '';
-            currentData = [];
-          }
-
-          // found type definition
-          currentName = json[i].metrics[0].value;
-          currentType = json[i].metrics[0].timestamp_ms;
-        } else if (json[i].name === '#HELP') {
-          // found help definition
-          currentInfo = json[i].metrics[0].timestamp_ms;
-        } else {
-          // found data entry
-          _.each(json[i].metrics, (metric) => {
-            currentData.push(metric);
+      _.each(json, (entry) => {
+        models.push({
+            name: entry.name,
+            type: entry.type,
+            info: entry.help,
+            metrics: entry.metrics
           });
-        }
-      }
+      });
       return models;
     },
 

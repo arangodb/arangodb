@@ -22,7 +22,7 @@ if (activeView === "text") {
 
   <div id="metricsAsTable" style="<%= tableStyle %>">
     <div class="header first">Counters</div>
-    <div class="pure-g">
+    <div class="pure-g" style="background: white; padding-top: 10px;">
       <div id="<%= name %>" class="metricsBox pure-u-1-1">
         <table class="pure-table pure-table-metrics-counter">
           <thead>
@@ -36,7 +36,7 @@ if (activeView === "text") {
           </thead>
           <tbody>
 
-          <% _.each(collection.where({type: "counter"}), (model) => { %>
+          <% _.each(collection.where({type: "COUNTER"}), (model) => { %>
             <tr>
               <td><%= model.get('name') %></td>
               <td><%= model.get('metrics')[0].value %></td>
@@ -57,97 +57,88 @@ if (activeView === "text") {
     </div>
 
     <div class="header child">Gauges</div>
-    <div class="pure-g">
-      <% _.each(collection.where({type: "gauge"}), (model) => { %>
-        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-3">
-          <div class="tableHeader"><%= model.get("name") %></div>
-          <table class="pure-table pure-table-metrics-gauge">
-            <thead>
+    <div class="pure-g pure-table-metrics-gauge" style="letter-spacing: normal; box-sizing: border-box;">
+      <% let entries = collection.where({type: "GAUGE"}); %>
+      <div class="metricsBox pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
+        <table class="pure-table" style="display: table; border-right: 10px solid #fff;">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+          </tr>
+          </thead>
+          <tbody>
+          <%
+          let counter = 0;
+          _.each(entries, (model) => {
+          if (counter % 2 === 0) {
+          %>
             <tr>
-              <th>Label</th>
-              <th>Value</th>
-              <th>Role</th>
-              <th>Shortname</th>
+              <td><%= model.get('name') %></td>
+              <td><%= model.get('metrics')[0].value %></td>
             </tr>
-            </thead>
-            <tbody>
-
-            <% _.each(model.get("metrics"), (metric) => {
-              let role = '<span class="emptySpanEntry">empty</span>';
-              let shortname = '<span class="emptySpanEntry">empty</span>';
-              let le = '';
-
-              if (metric.labels) {
-                if (metric.labels.role) {
-                  role = metric.labels.role;
-                }
-                if (metric.labels.le) {
-                  le = metric.labels.le;
-                }
-                if (metric.labels.shortname) {
-                  shortname = metric.labels.shortname;
-                }
-              }
-            %>
+          <%
+          }
+            counter++;
+          });
+          %>
+          </tbody>
+        </table>
+      </div>
+      <div class="metricsBox pure-u-1-1 pure-u-md-1-2">
+        <table class="pure-table" style="display: table;">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+          </tr>
+          </thead>
+          <tbody>
+          <%
+          let countersecond = 0;
+          _.each(entries, (model) => {
+          if (countersecond % 2 !== 0) {
+          %>
             <tr>
-              <td><%= le %></td>
-              <td><%= metric.value %></td>
-              <td><%= role %></td>
-              <td><%= shortname %></td>
+              <td><%= model.get('name') %></td>
+              <td><%= model.get('metrics')[0].value %></td>
             </tr>
-            <% }); %>
-
-            </tbody>
-          </table>
-        </div>
-      <% }); %>
+          <%
+          }
+            countersecond++;
+          });
+          %>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="header child">Histograms</div>
-
-    <div class="pure-g">
-      <% _.each(collection.where({type: "histogram"}), (model) => { %>
-        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-3">
-          <div class="tableHeader"><%= model.get("name") %></div>
-          <table class="pure-table pure-table-metrics-histogram">
-            <thead>
-            <tr>
-              <th>Label</th>
-              <th>Value</th>
-              <th>Role</th>
-              <th>Shortname</th>
-            </tr>
-            </thead>
-            <tbody>
-
-            <% _.each(model.get("metrics"), (metric) => {
-              let role = '<span class="emptySpanEntry">empty</span>';
-              let shortname = '<span class="emptySpanEntry">empty</span>';
-              let le = '';
-
-              if (metric.labels) {
-                if (metric.labels.role) {
-                  role = metric.labels.role;
-                }
-                if (metric.labels.le) {
-                  le = metric.labels.le;
-                }
-                if (metric.labels.shortname) {
-                  shortname = metric.labels.shortname;
-                }
-              }
-            %>
-            <tr>
-              <td><%= le %></td>
-              <td><%= metric.value %></td>
-              <td><%= role %></td>
-              <td><%= shortname %></td>
-            </tr>
-            <% }); %>
-
-            </tbody>
-          </table>
+    <div class="pure-g" style="background: white; padding-top: 10px;">
+      <% _.each(collection.where({type: "HISTOGRAM"}), (model) => {console.log(model.toJSON()); %>
+      <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-2">
+        <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0%>): <div
+            style="font-weight: 100"><%= model.get("info") %></div>
         </div>
+        <table class="pure-table pure-table-metrics-histogram">
+          <thead>
+          <tr>
+            <th>Bucket</th>
+            <th>Value</th>
+          </tr>
+          </thead>
+          <tbody>
+
+          <% _.forEach(model.get("metrics")[0].buckets, (value, key) => { %>
+            <tr>
+              <td><%= key %></td>
+              <td><%= value %></td>
+            </tr>
+          <% }); %>
+
+          </tbody>
+        </table>
+      </div>
       <% }); %>
 
     </div>
