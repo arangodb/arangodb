@@ -461,7 +461,7 @@
         },
         Maintenance: {
           route: '#maintenance',
-          disabled: enableMaintenanceMode
+          disabled: !enableMaintenanceMode
         }
       };
 
