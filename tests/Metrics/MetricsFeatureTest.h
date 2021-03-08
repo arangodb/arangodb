@@ -24,7 +24,10 @@
 
 #ifndef METRICS_FEATURE_TEST_H
 #define METRICS_FEATURE_TEST_H
-inline extern constexpr char COUNTER[] = "counter";
-inline extern constexpr char HISTOGRAM[] = "histogram";
-inline extern constexpr char GAUGE[] = "gauge";
+
+#include <string>
+
+struct COUNTER { static std::string name() { return "counter"; } };
+struct HISTOGRAM { static std::string name() { return "histogram"; } };
+struct GAUGE { static std::string name() { return "gauge"; } };
 #endif
