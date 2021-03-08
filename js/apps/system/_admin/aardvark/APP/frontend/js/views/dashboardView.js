@@ -152,8 +152,9 @@
     },
 
     toggleViews: function (e) {
-      var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['requests', 'system'];
+      let self = this;
+      let id = e.currentTarget.id.split('-')[0];
+      let views = ['requests', 'system', 'logs'];
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -167,6 +168,24 @@
 
       $('.subMenuEntries').children().removeClass('active');
       $('#' + id + '-statistics').addClass('active');
+
+      if (id === 'logs') {
+        let contentDiv = '#nodeLogContentView';
+        let endpoint = this.serverInfo.target;
+
+        let arangoLogs = new window.ArangoLogs({
+          upto: true,
+          loglevel: 4,
+          endpoint: endpoint
+        });
+
+        this.currentLogView = new window.LoggerView({
+          collection: arangoLogs,
+          endpoint: endpoint,
+          contentDiv: contentDiv
+        });
+        this.currentLogView.render(true);
+      }
 
       window.setTimeout(function () {
         self.resize();
@@ -552,15 +571,6 @@
         }
 
         this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
-        /*
-        if (this.serverInfo.endpoint) {
-          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
-        } else {
-          this.renderStatisticBox('Protocol', 'Error');
-        }
-
-        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
-        */
 
         // get node version + license
         $.ajax({
@@ -1120,7 +1130,6 @@
           $('#subNavigationBar .breadcrumb').html('');
         } else {
           // in cluster mode and db node got found, remove menu entries, as we do not have them here
-          $('#requests-statistics').remove();
           $('#system-statistics').remove();
         }
         this.getNodeInfo();
