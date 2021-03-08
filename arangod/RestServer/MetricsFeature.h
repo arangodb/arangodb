@@ -313,7 +313,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
               TRI_ERROR_INTERNAL,
               std::string("Non matching type for cloning ") + mk.name);
         }
-        return gauge<name>(mk, T(0), metric->help());
+        return gauge<MetricDecl>(mk, T(0), metric->help());
       }
 
       try {
