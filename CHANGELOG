@@ -2,7 +2,6 @@ devel
 -----
 
 * Added a new maintenance mode tab to the web UI in cluster mode. 
-
   The new tab shows the current state of the cluster supervision maintenance 
   and allows to enable/disable the maintenance mode from there. The tab will
   only be visible in the `_system` database and only if sufficient privileges
