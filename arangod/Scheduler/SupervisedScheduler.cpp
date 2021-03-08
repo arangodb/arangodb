@@ -158,7 +158,7 @@ DECLARE_METRIC(arangodb_scheduler_num_worker_threads);
 DECLARE_METRIC(arangodb_scheduler_ongoing_low_prio);
 DECLARE_METRIC(arangodb_scheduler_queue_full_failures);
 //DECLARE_METRIC(arangodb_scheduler_queue_length);
-DECLARE_GAUGE(arangodb_scheduler_queue_length, "Server's internal queue length");
+DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t, "Server's internal queue length");
 //DECLARE_METRIC(arangodb_scheduler_threads_started);
 DECLARE_COUNTER(arangodb_scheduler_threads_started, "Number of scheduler threads started");
 DECLARE_METRIC(arangodb_scheduler_threads_stopped);

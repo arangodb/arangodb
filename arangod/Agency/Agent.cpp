@@ -54,7 +54,7 @@ DECLARE_METRIC(arangodb_agency_append_hist);
 DECLARE_METRIC(arangodb_agency_commit_hist);
 DECLARE_METRIC(arangodb_agency_compaction_hist);
 //DECLARE_METRIC(arangodb_agency_local_commit_index);
-DECLARE_GAUGE(arangodb_agency_local_commit_index, "This agent's commit index");
+DECLARE_GAUGE(arangodb_agency_local_commit_index, uint64_t, "This agent's commit index");
 DECLARE_METRIC(arangodb_agency_read_no_leader);
 DECLARE_METRIC(arangodb_agency_read_ok);
 DECLARE_METRIC(arangodb_agency_write_hist);
