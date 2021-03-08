@@ -172,8 +172,8 @@ template<typename T> class Gauge : public Metric {
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
   void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n" + name();
+    result += "# HELP " + name() + " " + help() + "\n" + name();
+    result += "\n# TYPE " + name() + " gauge\n";
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
@@ -470,8 +470,8 @@ template<typename Scale> class Histogram : public Metric {
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + help() + "\n";
+    result += "# HELP " + name() + " " + help() + "\n";
+    result += "\n# TYPE " + name() + " histogram\n";
     std::string lbs = labels();
     auto const haveLabels = !lbs.empty();
     auto const separator = haveLabels && lbs.back() != ',';
