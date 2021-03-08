@@ -199,15 +199,20 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_supervision_accum_runtime_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_msec{})),
       _supervision_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_supervision_runtime_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_msec{})),
       _supervision_accum_runtime_wait_for_sync_msec(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_failed_server_counter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_supervision_failed_server_count{})) {}
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_failed_server_count{})) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
