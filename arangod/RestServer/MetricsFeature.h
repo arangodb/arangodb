@@ -80,9 +80,9 @@ struct metrics_key {
 namespace metrics {
 
 struct Builder {
+  virtual ~Builder() = default;
   virtual char const* type() const = 0;
   virtual std::shared_ptr<::Metric> build() const = 0;
-  virtual ~Builder() {}
 
   std::string const& name() const { return _name; }
   metrics_key key() const { return metrics_key(name(), _labels); }
@@ -124,11 +124,6 @@ struct CounterBuilder : GenericBuilder<Derived> {
 template <class Derived, typename T>
 struct GaugeBuilder : GenericBuilder<Derived> {
   using metric_t = ::Gauge<T>;
-
-  Derived&& withInitialValue(std::uint64_t v) && {
-    this->_initialValue = v;
-    return this->self();
-  }
 
   std::shared_ptr<::Metric> build() const override {
     return std::make_shared<::Gauge<T>>(T{}, this->name(), this->_help, this->_labels);
@@ -340,7 +335,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
             TRI_ERROR_INTERNAL, std::string("No counter booked as ") + mk.name);
         } else {
           auto tmp = std::dynamic_pointer_cast<Counter>(it->second);
-          return counter<name>(mk, 0, tmp->help());
+          return counter<Metric>(mk, 0, tmp->help());
         }
       }
       try {
@@ -433,7 +428,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
               TRI_ERROR_INTERNAL,
               std::string("Non matching type for cloning ") + mk.name);
         }
-        return gauge<name>(mk, T(0), metric->help());
+        return gauge<Metric>(mk, T(0), metric->help());
       }
 
       try {
