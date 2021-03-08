@@ -115,9 +115,9 @@ if (activeView === "text") {
 
     <div class="header child">Histograms</div>
     <div class="pure-g" style="background: white; padding-top: 10px;">
-      <% _.each(collection.where({type: "HISTOGRAM"}), (model) => {console.log(model.toJSON()); %>
+      <% _.each(collection.where({type: "HISTOGRAM"}), (model) => { %>
       <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-2">
-        <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0%>): <div
+        <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0%>) <div
             style="font-weight: 100"><%= model.get("info") %></div>
         </div>
         <table class="pure-table pure-table-metrics-histogram">

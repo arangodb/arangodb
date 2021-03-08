@@ -93,7 +93,6 @@
     },
 
     continueRender: function () {
-      console.log(this.activeView);
       if (this.metricsel) {
         $(this.metricsel).html(this.template.render({
           collection: this.collection,
