@@ -172,8 +172,8 @@ template<typename T> class Gauge : public Metric {
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
   void toPrometheus(std::string& result) const override {
-    result += "# HELP " + name() + " " + help() + "\n" + name();
-    result += "\n# TYPE " + name() + " gauge\n";
+    result += "\n# HELP " + name() + " " + help() + "\n" + name();
+    result += "# TYPE " + name() + " gauge\n";
     if (!labels().empty()) {
       result += "{" + labels() + "}";
     }
