@@ -189,7 +189,8 @@ class HeartbeatBackgroundJobThread : public Thread {
 ////////////////////////////////////////////////////////////////////////////////
 
 DECLARE_METRIC(arangodb_heartbeat_failures);
-DECLARE_METRIC(arangodb_heartbeat_send_time_msec);
+//DECLARE_METRIC(arangodb_heartbeat_send_time_msec);
+DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, log_scale_t<uint64_t>, "Time required to send heartbeat [ms]");
 
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -218,9 +219,9 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _updateCounter(0),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
-      _heartbeat_send_time_ms(
-        server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_heartbeat_send_time_msec>(
-          log_scale_t<uint64_t>(2, 4, 8000, 10), "Time required to send heartbeat [ms]")),
+      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{}::withScale(2, 4, 8000, 10))),
+      //  server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_heartbeat_send_time_msec>(
+      //    log_scale_t<uint64_t>(2, 4, 8000, 10), "Time required to send heartbeat [ms]")),
       _heartbeat_failure_counter(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_heartbeat_failures>(
           0, "Counting failed heartbeat transmissions")) {}

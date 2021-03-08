@@ -157,8 +157,10 @@ DECLARE_METRIC(arangodb_scheduler_num_working_threads);
 DECLARE_METRIC(arangodb_scheduler_num_worker_threads);
 DECLARE_METRIC(arangodb_scheduler_ongoing_low_prio);
 DECLARE_METRIC(arangodb_scheduler_queue_full_failures);
-DECLARE_METRIC(arangodb_scheduler_queue_length);
-DECLARE_METRIC(arangodb_scheduler_threads_started);
+//DECLARE_METRIC(arangodb_scheduler_queue_length);
+DECLARE_GAUGE(arangodb_scheduler_queue_length, "Server's internal queue length");
+//DECLARE_METRIC(arangodb_scheduler_threads_started);
+DECLARE_COUNTER(arangodb_scheduler_threads_started, "Number of scheduler threads started");
 DECLARE_METRIC(arangodb_scheduler_threads_stopped);
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
@@ -183,9 +185,9 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
-      _metricsQueueLength(
-        server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_queue_length>(
-          uint64_t(0),"Server's internal queue length")),
+      _metricsQueueLength(server.getFeature<arangodb::MetricsFeature>().add(arangodb_scheduler_queue_length{})),
+        //server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_queue_length>(
+        //  uint64_t(0),"Server's internal queue length")),
       _metricsJobsDone(
         server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_jobs_done>(
           uint64_t(0),"Total number of queue jobs done")),
@@ -204,9 +206,9 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _metricsNumWorkerThreads(
         server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_scheduler_num_worker_threads>(
           uint64_t(0),"Number of worker threads")),
-      _metricsThreadsStarted(
-        server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_started>(
-          uint64_t(0),"Number of scheduler threads started")),
+      _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().add(arangodb_scheduler_threads_started{})),
+        //server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_started>(
+        //  uint64_t(0),"Number of scheduler threads started")),
       _metricsThreadsStopped(
         server.getFeature<arangodb::MetricsFeature>().counter<arangodb_scheduler_threads_stopped>(
           uint64_t(0),"Number of scheduler threads stopped")),

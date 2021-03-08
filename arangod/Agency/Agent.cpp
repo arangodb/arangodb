@@ -53,12 +53,14 @@ using namespace std::chrono;
 DECLARE_METRIC(arangodb_agency_append_hist);
 DECLARE_METRIC(arangodb_agency_commit_hist);
 DECLARE_METRIC(arangodb_agency_compaction_hist);
-DECLARE_METRIC(arangodb_agency_local_commit_index);
+//DECLARE_METRIC(arangodb_agency_local_commit_index);
+DECLARE_GAUGE(arangodb_agency_local_commit_index, "This agent's commit index");
 DECLARE_METRIC(arangodb_agency_read_no_leader);
 DECLARE_METRIC(arangodb_agency_read_ok);
 DECLARE_METRIC(arangodb_agency_write_hist);
 DECLARE_METRIC(arangodb_agency_write_no_leader);
-DECLARE_METRIC(arangodb_agency_write_ok);
+//DECLARE_METRIC(arangodb_agency_write_ok);
+DECLARE_COUNTER(arangodb_agency_write_ok, "Agency write ok");
 
 namespace arangodb {
 namespace consensus {
@@ -85,9 +87,7 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_ok>(
-          0, "Agency write ok")),
+      _write_ok(_server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok{})),
       _write_no_leader(
         _server.getFeature<arangodb::MetricsFeature>().counter<arangodb_agency_write_no_leader>(
           0, "Agency write no leader")),
@@ -109,9 +109,10 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _compaction_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agency_compaction_hist>(
           log_scale_t(std::exp(1.f), 0.f, 200.f, 10), "Agency compaction histogram [ms]")),
-      _local_index(
-        _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_agency_local_commit_index>(
-          uint64_t(0), "This agent's commit index")) {
+      _local_index(_server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_local_commit_index{})) {
+      //_local_index(
+      //  _server.getFeature<arangodb::MetricsFeature>().gauge<arangodb_agency_local_commit_index>(
+      //    uint64_t(0), "This agent's commit index")) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {

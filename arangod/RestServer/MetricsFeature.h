@@ -32,7 +32,24 @@
 #include "RestServer/Metrics.h"
 #include "Statistics/ServerStatistics.h"
 
-#define DECLARE_METRIC(x) extern constexpr char x[] = #x
+#define DECLARE_METRIC(x) struct x { static std::string name() { return #x; } }
+
+#define DECLARE_COUNTER(x, help)                \
+  struct x : arangodb::metrics::CounterBuilder<x> { \
+    x() { _name = #x; _help = help; } \
+    }
+
+#define DECLARE_TYPED_GAUGE(x, type, help)    \
+  struct x : arangodb::metrics::GaugeBuilder<x, type> { \
+    x() { _name = #x; _help = help; } \
+    }
+  
+#define DECLARE_GAUGE(name, help) DECLARE_TYPED_GAUGE(name, uint64_t, help)
+  
+#define DECLARE_HISTOGRAM(x, scale, help)                   \
+  struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
+    x() { _name = #x; _help = help; } \
+    }
 
 namespace arangodb {
 struct metrics_key;
@@ -62,6 +79,97 @@ struct metrics_key {
   bool operator==(metrics_key const& other) const;
 };
 
+namespace metrics { 
+
+struct Builder {
+  virtual char const* type() const = 0;
+  virtual std::shared_ptr<::Metric> build() const = 0;
+
+  std::string const& name() const { return _name; }
+  metrics_key key() const { return metrics_key(name(), _labels); }
+  
+  void addLabel(std::string v) {
+    if (!_labels.empty()) {
+      _labels.append(",");
+    }
+    _labels.append(v);
+  }
+ protected:
+  std::string _name;
+  std::string _help;
+  std::string _labels;
+};
+
+template <class Derived>
+struct GenericBuilder : Builder {
+  Derived&& self() { return static_cast<Derived&&>(std::move(*this)); }
+  
+  Derived&& withLabels(std::string v) && {
+    _labels = v;
+    return self();
+  }
+  
+  Derived&& withHelp(std::string v) && {
+    _help = v;
+    return self();
+  }
+};
+
+template <class Derived>
+struct CounterBuilder : GenericBuilder<Derived> {
+  using metric_t = ::Counter;
+
+  Derived&& withInitialValue(std::uint64_t v) && {
+    _initialValue = v;
+    return self();
+  }
+  
+  std::shared_ptr<::Metric> build() const override {
+    return std::make_shared<::Counter>(_initialValue, this->name(), _help, _labels);
+  }
+
+  char const* type() const override { return "counter"; }
+ private:
+  std::uint64_t _initialValue;
+};
+
+template <class Derived, typename T>
+struct GaugeBuilder : GenericBuilder<Derived> {
+  using metric_t = ::Gauge<T>;
+
+  Derived&& withInitialValue(std::uint64_t v) && {
+    _initialValue = v;
+    return self();
+  }
+  
+  std::shared_ptr<::Metric> build() const override {
+    return std::make_shared<::Gauge<T>>(_initialValue, this->name(), _help, _labels);
+  }
+
+  char const* type() const override { return "gauge"; }
+ private:
+  T _initialValue;
+};
+
+template <class Derived, class Scale>
+struct HistogramBuilder : GenericBuilder<Derived> {
+  using metric_t = ::Histogram<Scale>;
+
+  Derived&& withInitialValue(Scale scale) && {
+    _scale = std::move(scale);
+    return self();
+  }
+  
+  std::shared_ptr<::Metric> build() const {
+    return std::make_shared<::Histogram<Scale>>(_scale, this->name(), _help, _labels);
+  }
+  
+  char const* type() const override { return "histogram"; }
+ private:
+  Scale _scale;
+};
+}
+
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:
   using registry_type = std::unordered_map<metrics_key, std::shared_ptr<Metric>>;
@@ -76,21 +184,50 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
 
-  template <char const* name, typename Scale>
+  template <typename MetricBuilder>
+  auto& add(MetricBuilder&& builder) {
+    return static_cast<MetricBuilder::metric_t&>(doAdd(builder));
+  }
+    
+  ::Metric& doAdd(metrics::Builder& builder) {
+    if (ServerState::instance() != nullptr &&
+        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
+      builder.addLabel("role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) + "\"");
+      builder.addLabel("shortname=\"" + ServerState::instance()->getShortName() + "\"");
+    }
+    auto metric = builder.build();
+    auto key = builder.key();
+    bool success = false;
+    {
+      std::lock_guard<std::recursive_mutex> guard(_lock);
+      success = _registry
+                    .try_emplace(std::move(key), std::dynamic_pointer_cast<::Metric>(metric))
+                    .second;
+    }
+    if (!success) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     builder.type() + builder.name() +
+                                         " already exists");
+    }
+    return *metric;
+  }
+    
+  template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(Scale const& scale, std::string const& help = std::string()) {
-    return histogram<name, Scale>(metrics_key(name), scale, help);
+    return histogram<Metric, Scale>(metrics_key(Metric::name()), scale, help);
   }
 
-  template <char const* name, typename Scale>
+  template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& il,
                               Scale const& scale,
                               std::string const& help = std::string()) {
-    return histogram<name, Scale>(metrics_key(name, il), scale, help);
+    return histogram<Metric, Scale>(metrics_key(Metric::name(), il), scale, help);
   }
 
-  template <char const* name, typename Scale>
+  template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(metrics_key const& mk, Scale const& scale,
                               std::string const& help = std::string()) {
+    std::string name = Metric::name();
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -107,7 +244,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
       success =
-          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+          _registry.try_emplace(mk, std::dynamic_pointer_cast<::Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -117,9 +254,10 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   };
 
-  template <char const* name, typename Scale>
+  template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(std::initializer_list<std::string> const& key) {
-    metrics_key mk(name,key);
+    std::string name = Metric::name();
+    metrics_key mk(name, key);
     std::shared_ptr<Histogram<Scale>> metric = nullptr;
     std::string error;
     {
@@ -141,7 +279,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
             TRI_ERROR_INTERNAL,
             std::string("Non matching scale classes for cloning ") + name);
         }
-        return histogram<name>(mk, metric->scale(), metric->help());
+        return histogram<Metric>(mk, metric->scale(), metric->help());
       }
 
       try {
@@ -159,22 +297,22 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template <char const* name, typename Scale>
+  template <typename Metric, typename Scale>
   Histogram<Scale>& histogram() {
-    return histogram<name,Scale>(std::initializer_list<std::string>{});
+    return histogram<Metric, Scale>(std::initializer_list<std::string>{});
   }
 
-  template<const char* name>
+  template<typename Metric>
   Counter& counter(
     std::initializer_list<std::string> const& key, uint64_t const& val,
     std::string const& help) {
-    return counter<name>(metrics_key(name, key), val, help);
+    return counter<Metric>(metrics_key(Metric::name(), key), val, help);
   }
 
-  template<const char* name>
+  template<typename Metric>
   Counter& counter(
     metrics_key const& mk, uint64_t const& val, std::string const& help) {
-
+    std::string name = Metric::name();
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -188,7 +326,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     bool success = false;
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
-      success = _registry.emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+      success = _registry.emplace(mk, std::dynamic_pointer_cast<::Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -197,18 +335,19 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template<const char* name>
+  template <typename Metric>
   Counter& counter(uint64_t const& val, std::string const& help) {
-    return counter<name>(metrics_key(name), val, help);
+    return counter<Metric>(metrics_key(Metric::name()), val, help);
   }
 
-  template<const char* name>
+  template <typename Metric>
   Counter& counter() {
-    return counter<name>({});
+    return counter<Metric>({});
   }
 
-  template<const char* name>
+  template <typename Metric>
   Counter& counter(std::initializer_list<std::string> const& key) {
+    std::string name = Metric::name();
     metrics_key mk(name, key);
     std::shared_ptr<Counter> metric = nullptr;
     std::string error;
@@ -240,20 +379,21 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template <const char* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge(T const& t, std::string const& help) {
-    return gauge<name>(metrics_key(name), t, help);
+    return gauge<Metric>(metrics_key(Metric::name()), t, help);
   }
 
-  template <const char* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& il, T const& t,
                   std::string const& help) {
-    return gauge<name>(metrics_key(name, il), t, help);
+    return gauge<Metric>(metrics_key(Metric::name(), il), t, help);
   }
 
-  template <const char* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge(metrics_key const& key, T const& t,
                   std::string const& help = std::string()) {
+    std::string name = Metric::name();
     metrics_key mk(key);
     std::string labels = mk.labels;
     if (ServerState::instance() != nullptr &&
@@ -270,7 +410,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     {
       std::lock_guard<std::recursive_mutex> guard(_lock);
       success =
-          _registry.try_emplace(mk, std::dynamic_pointer_cast<Metric>(metric)).second;
+          _registry.try_emplace(mk, std::dynamic_pointer_cast<::Metric>(metric)).second;
     }
     if (!success) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("gauge ") + name +
@@ -279,18 +419,19 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return *metric;
   }
 
-  template <char const* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge() {
-    return gauge<name,T>(metrics_key(name));
+    return gauge<Metric, T>(metrics_key(Metric::name()));
   }
 
-  template <char const* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge(std::initializer_list<std::string> const& il) {
-    return gauge<name,T>(metrics_key(name, il));
+    return gauge<Metric, T>(metrics_key(Metric::name(), il));
   }
 
-  template <char const* name, typename T>
+  template <typename Metric, typename T>
   Gauge<T>& gauge(metrics_key const& key) {
+    std::string name = Metric::name();
     metrics_key mk(key);
     std::shared_ptr<Gauge<T>> metric = nullptr;
     std::string error;
