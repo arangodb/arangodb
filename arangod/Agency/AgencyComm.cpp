@@ -75,7 +75,7 @@ static std::string const writeURL{"/_api/agency/write"};
 const std::vector<std::string> AgencyTransaction::TypeUrl({"/read", "/write",
                                                            "/transact",
                                                            "/transient"});
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                AgencyPrecondition
 // -----------------------------------------------------------------------------
@@ -531,7 +531,7 @@ VPackSlice AgencyCommResult::slice() const {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "call to AgencyCommResult::slice() without valid precondition check");
   }
-  return _vpack->slice(); 
+  return _vpack->slice();
 }
 
 void AgencyCommResult::toVelocyPack(VPackBuilder& builder) const {
@@ -633,13 +633,13 @@ std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(application_features::ApplicationServer& server)
   : _server(server),
-    _agency_comm_request_time_ms( 
+    _agency_comm_request_time_ms(
       _server.getFeature<arangodb::ClusterFeature>().agency_comm_request_time_ms()) {}
 
   AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
   VPackBuilder builder;
-  
+
   try {
     builder.openObject();
     std::string const status =

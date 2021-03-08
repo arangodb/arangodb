@@ -43,9 +43,9 @@
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
     x() { _name = #x; _help = help; } \
     }
-  
+
 #define DECLARE_GAUGE(name, help) DECLARE_TYPED_GAUGE(name, uint64_t, help)
-  
+
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
     x() { _name = #x; _help = help; } \
@@ -79,7 +79,7 @@ struct metrics_key {
   bool operator==(metrics_key const& other) const;
 };
 
-namespace metrics { 
+namespace metrics {
 
 struct Builder {
   virtual char const* type() const = 0;
@@ -87,7 +87,7 @@ struct Builder {
 
   std::string const& name() const { return _name; }
   metrics_key key() const { return metrics_key(name(), _labels); }
-  
+
   void addLabel(std::string v) {
     if (!_labels.empty()) {
       _labels.append(",");
@@ -103,12 +103,12 @@ struct Builder {
 template <class Derived>
 struct GenericBuilder : Builder {
   Derived&& self() { return static_cast<Derived&&>(std::move(*this)); }
-  
+
   Derived&& withLabels(std::string v) && {
     _labels = v;
     return self();
   }
-  
+
   Derived&& withHelp(std::string v) && {
     _help = v;
     return self();
@@ -123,7 +123,7 @@ struct CounterBuilder : GenericBuilder<Derived> {
     _initialValue = v;
     return self();
   }
-  
+
   std::shared_ptr<::Metric> build() const override {
     return std::make_shared<::Counter>(_initialValue, this->name(), _help, _labels);
   }
@@ -141,7 +141,7 @@ struct GaugeBuilder : GenericBuilder<Derived> {
     _initialValue = v;
     return self();
   }
-  
+
   std::shared_ptr<::Metric> build() const override {
     return std::make_shared<::Gauge<T>>(_initialValue, this->name(), _help, _labels);
   }
@@ -159,11 +159,11 @@ struct HistogramBuilder : GenericBuilder<Derived> {
     _scale = std::move(scale);
     return self();
   }
-  
+
   std::shared_ptr<::Metric> build() const {
     return std::make_shared<::Histogram<Scale>>(_scale, this->name(), _help, _labels);
   }
-  
+
   char const* type() const override { return "histogram"; }
  private:
   Scale _scale;
@@ -188,7 +188,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   auto& add(MetricBuilder&& builder) {
     return static_cast<MetricBuilder::metric_t&>(doAdd(builder));
   }
-    
+
   ::Metric& doAdd(metrics::Builder& builder) {
     if (ServerState::instance() != nullptr &&
         ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
@@ -211,7 +211,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     }
     return *metric;
   }
-    
+
   template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(Scale const& scale, std::string const& help = std::string()) {
     return histogram<Metric, Scale>(metrics_key(Metric::name()), scale, help);
