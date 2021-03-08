@@ -82,6 +82,7 @@ namespace metrics {
 struct Builder {
   virtual char const* type() const = 0;
   virtual std::shared_ptr<::Metric> build() const = 0;
+  virtual ~Builder() {}
 
   std::string const& name() const { return _name; }
   metrics_key key() const { return metrics_key(name(), _labels); }
@@ -114,7 +115,7 @@ struct CounterBuilder : GenericBuilder<Derived> {
   using metric_t = ::Counter;
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<::Counter>(0, this->name(), _help, _labels);
+    return std::make_shared<::Counter>(0, this->name(), this->_help, this->_labels);
   }
 
   char const* type() const override { return "counter"; }
@@ -125,12 +126,12 @@ struct GaugeBuilder : GenericBuilder<Derived> {
   using metric_t = ::Gauge<T>;
 
   Derived&& withInitialValue(std::uint64_t v) && {
-    _initialValue = v;
-    return self();
+    this->_initialValue = v;
+    return this->self();
   }
 
   std::shared_ptr<::Metric> build() const override {
-    return std::make_shared<::Gauge<T>>(T{}, this->name(), _help, _labels);
+    return std::make_shared<::Gauge<T>>(T{}, this->name(), this->_help, this->_labels);
   }
 
   char const* type() const override { return "gauge"; }
@@ -141,7 +142,7 @@ struct HistogramBuilder : GenericBuilder<Derived> {
   using metric_t = ::Histogram<decltype(Scale::scale())>;
 
   std::shared_ptr<::Metric> build() const {
-    return std::make_shared<metric_t>(Scale::scale(), this->name(), _help, _labels);
+    return std::make_shared<metric_t>(Scale::scale(), this->name(), this->_help, this->_labels);
   }
 
   char const* type() const override { return "histogram"; }
@@ -164,7 +165,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   template <typename MetricBuilder>
   auto& add(MetricBuilder&& builder) {
-    return static_cast<MetricBuilder::metric_t&>(doAdd(builder));
+    return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
     
   ::Metric& doAdd(metrics::Builder& builder) {
