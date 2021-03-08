@@ -12,13 +12,15 @@
 
       <% if (maintenanceMode) { %>
         <div id="maintenanceMode" class="infoBox warningBox" style="margin-top: 15px; margin-bottom: 20px">
-          <h4>Attention <i class="fa fa-check fa-exclamation"></i></h4>
-          <p>The maintenance mode is enabled.</p>
+          <h4>Maintenance mode enabled <i class="fa fa-check fa-exclamation"></i></h4>
+          <p>The cluster supervision maintenance mode is currently enabled.</p>
+          <p>While the maintenance mode is enabled, the agency will not organize failovers for shards that are located on unavailable leaders or follower DB servers. This mode can be used for controlled shutdown/restart of servers, e.g. or for upgrading or other planned maintenance.</p>
         </div>
       <% } else { %>
         <div id="maintenanceMode" class="infoBox successBox" style="margin-top: 15px; margin-bottom: 20px">
-          <h4>Normal <i class="fa fa-check"></i></h4>
-          <p>The maintenance mode is disabled.</p>
+          <h4>Maintenance mode disabled <i class="fa fa-check"></i></h4>
+          <p>The cluster supervision maintenance mode is currently disabled.</p>
+          <p>This is the expected setting for normal operations: in case a leader or follower DB server becomes unavailable, the agency will organize failovers for all affected shards.
         </div>
       <% } %>
 

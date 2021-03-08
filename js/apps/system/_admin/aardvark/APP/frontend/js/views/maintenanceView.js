@@ -84,9 +84,9 @@
       }
 
       let info = `<blockquote>
-        Modifies the supervision maintenance mode. Be aware that no automatic failovers of any
+        Modifies the cluster supervision maintenance mode. Be aware that no automatic failovers of any
         kind will take place while the maintenance mode is enabled. The cluster supervision reactivates
-        itself automatically 60 minutes after disabling it.<blockquote>
+        itself automatically 60 minutes after disabling it, in case it is not manually prolonged.<blockquote>
       `;
 
       tableContent.push(
@@ -116,7 +116,7 @@
 
       window.modalView.show(
         'modalTable.ejs',
-        'Maintenance Mode',
+        'Supervision Maintenance Mode',
         buttons,
         tableContent
       );
@@ -135,11 +135,11 @@
         data: JSON.stringify(data),
         async: true,
         success: function () {
-          arangoHelper.arangoNotification('Maintenance', 'Set maintenance mode to: ' + mode);
+          arangoHelper.arangoNotification('Maintenance', 'Set supervision maintenance mode to: ' + mode);
           self.render();
         },
         error: function () {
-          arangoHelper.arangoError('Maintenance', 'Could not change maintenance mode!');
+          arangoHelper.arangoError('Maintenance', 'Could not change supervision maintenance mode!');
         }
       });
 
