@@ -1,6 +1,6 @@
-#include "gtest/gtest.h"
-
 #include "Zkd/ZkdHelper.h"
+
+#include "gtest/gtest.h"
 
 using namespace zkd;
 
@@ -154,15 +154,31 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
   }
 }
 
+TEST(Zkd_byte_string_conversion, construct_destruct_double) {
+  auto tests = {0.0,  0.1,    0.2,   0.3,     0.4,    1.0,    10.0,
+                -1.0, -0.001, 1000., -.00001, -100.0, 4.e-12, -5e+15};
+
+  for (auto const a : tests) {
+    auto destructed = destruct_double(a);
+    auto reconstructed = construct_double(destructed);
+    ASSERT_EQ(a, reconstructed) << "testee: " << a << ", "
+                                << "destructed: " << destructed << ", "
+                                << ", reconstructed: " << reconstructed;
+  }
+}
+
 TEST(Zkd_byte_string_conversion, double_from_byte_string) {
-  auto tests = {0.0,   1.0,     10.0,   -1.0,   -0.001,
-                1000., -.00001, -100.0, 4.e-12, -5e+15};
+  auto tests = {0.0,  0.1,    0.2,   0.3,     0.4,    1.0,    10.0,
+                -1.0, -0.001, 1000., -.00001, -100.0, 4.e-12, -5e+15};
 
   for (auto a : tests) {
-    auto a_bs = to_byte_string_fixed_length(a);
+    double a1;
+    memcpy(&a1, &a, sizeof(double));
+
+    auto a_bs = to_byte_string_fixed_length(a1);
     auto b = from_byte_string_fixed_length<double>(a_bs);
 
-    EXPECT_EQ(a, b) << "byte string of " << a << " is " << a_bs
-                    << " and was read as " << b;
+    EXPECT_EQ(a1, b) << "byte string of " << a1 << " is " << a_bs
+                     << " and was read as " << b;
   }
 }

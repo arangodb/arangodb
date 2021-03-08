@@ -90,7 +90,7 @@ auto zkd::BitReader::next() -> std::optional<zkd::Bit> {
 auto zkd::BitReader::read_big_endian_bits(unsigned bits) -> uint64_t {
   uint64_t result = 0;
   for (size_t i = 0; i < bits; i++) {
-    uint64_t bit = 1ul << (bits - i - 1);
+    uint64_t bit = uint64_t{1} << (bits - i - 1);
     if (next_or_zero() == Bit::ONE) {
       result |= bit;
     }
@@ -122,7 +122,7 @@ void zkd::BitWriter::append(Bit bit) {
 
 void zkd::BitWriter::write_big_endian_bits(uint64_t v, unsigned bits) {
   for (size_t i = 0; i < bits; i++) {
-    auto b = (v & (1ul << (bits - i - 1))) == 0 ? Bit::ZERO : Bit::ONE;
+    auto b = (v & (uint64_t{1} << (bits - i - 1))) == 0 ? Bit::ZERO : Bit::ONE;
     append(b);
   }
 }
@@ -142,7 +142,7 @@ void zkd::BitWriter::reserve(std::size_t amount) {
 
 zkd::RandomBitReader::RandomBitReader(byte_string_view ref) : ref(ref) {}
 
-auto zkd::RandomBitReader::getBit(unsigned int index) -> Bit {
+auto zkd::RandomBitReader::getBit(std::size_t index) -> Bit {
   auto byte = index / 8;
   auto nibble = index % 8;
 
@@ -156,7 +156,7 @@ auto zkd::RandomBitReader::getBit(unsigned int index) -> Bit {
 
 zkd::RandomBitManipulator::RandomBitManipulator(byte_string& ref) : ref(ref) {}
 
-auto zkd::RandomBitManipulator::getBit(unsigned int index) -> Bit {
+auto zkd::RandomBitManipulator::getBit(std::size_t index) -> Bit {
   auto byte = index / 8;
   auto nibble = index % 8;
 
@@ -168,7 +168,7 @@ auto zkd::RandomBitManipulator::getBit(unsigned int index) -> Bit {
   return b != 0_b ? Bit::ONE : Bit::ZERO;
 }
 
-auto zkd::RandomBitManipulator::setBit(unsigned int index, Bit value) -> void {
+auto zkd::RandomBitManipulator::setBit(std::size_t index, Bit value) -> void {
   auto byte = index / 8;
   auto nibble = index % 8;
 
@@ -422,19 +422,7 @@ template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t) -> zkd::byte_st
 template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t) -> zkd::byte_string;
 template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t) -> zkd::byte_string;
 
-namespace {
-struct floating_point {
-  bool positive;
-  uint64_t exp;
-  uint64_t base;
-};
-
-static inline std::ostream& operator<<(std::ostream& os, struct floating_point const& fp) {
-  std::cout << (fp.positive ? "p" : "n") << fp.exp << "E" << fp.base;
-  return os;
-}
-
-auto destruct_double(double x) -> floating_point {
+auto zkd::destruct_double(double x) -> floating_point {
   bool positive = true;
   int exp;
   double base = frexp(x, &exp);
@@ -443,19 +431,23 @@ auto destruct_double(double x) -> floating_point {
     base = - base;
   }
 
-  auto int_base = uint64_t((1ull << 52) * base);
+  auto int_base = uint64_t((uint64_t{1} << 53) * base);
   return {positive, exp + (1u << 10) - 1, int_base};
 }
 
-auto construct_double(floating_point const& fp) -> double {
+auto zkd::construct_double(floating_point const& fp) -> double {
   int exp = int(fp.exp) - (1u << 10) + 1;
-  double base = (double) fp.base / double(1ull << 52);
+  double base = (double) fp.base / double(uint64_t{1} << 53);
 
   if (!fp.positive) {
     base = -base;
   }
   return std::ldexp(base, exp);
 }
+
+std::ostream& zkd::operator<<(std::ostream& os, struct floating_point const& fp) {
+  os << (fp.positive ? "p" : "n") << fp.exp << "E" << fp.base;
+  return os;
 }
 
 template<>
@@ -465,12 +457,12 @@ void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
   bw.append(p ? Bit::ONE : Bit::ZERO);
 
   if (!p) {
-    exp ^= (1ul << 11) - 1;
-    base ^= (1ul << 52) - 1;
+    exp ^= (uint64_t{1} << 11) - 1;
+    base ^= (uint64_t{1} << 53) - 1;
   }
 
   bw.write_big_endian_bits(exp, 11);
-  bw.write_big_endian_bits(base, 52);
+  bw.write_big_endian_bits(base, 53);
 
 }
 
@@ -507,17 +499,17 @@ auto zkd::from_byte_string_fixed_length<double>(byte_string_view bs) -> double {
   bool isPositive = r.next_or_zero() == Bit::ONE;
 
   auto exp = r.read_big_endian_bits(11);
-  auto base = r.read_big_endian_bits(52);
+  auto base = r.read_big_endian_bits(53);
   if (!isPositive) {
-    exp ^= (1ul << 11) - 1;
-    base ^= (1ul << 52) - 1;
+    exp ^= (uint64_t{1} << 11) - 1;
+    base ^= (uint64_t{1} << 53) - 1;
   }
 
   return construct_double({isPositive, exp, base});
 }
 
 std::ostream& operator<<(std::ostream& ostream, zkd::byte_string const& string) {
-  return operator<<(ostream, byte_string_view{string});
+  return ::operator<<(ostream, byte_string_view{string});
 }
 
 std::ostream& operator<<(std::ostream& ostream, byte_string_view string) {

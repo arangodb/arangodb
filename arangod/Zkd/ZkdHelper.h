@@ -6,6 +6,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <iosfwd>
 
 namespace zkd {
 
@@ -38,12 +39,12 @@ auto interleave(std::vector<byte_string> const& vec) -> byte_string;
 auto transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<byte_string>;
 
 struct CompareResult {
-  static constexpr auto max = std::numeric_limits<unsigned>::max();
+  static constexpr auto max = std::numeric_limits<std::size_t>::max();
 
   signed flag = 0;
-  unsigned outStep = CompareResult::max;
-  unsigned saveMin = CompareResult::max;
-  unsigned saveMax = CompareResult::max;
+  std::size_t outStep = CompareResult::max;
+  std::size_t saveMin = CompareResult::max;
+  std::size_t saveMax = CompareResult::max;
 };
 
 std::ostream& operator<<(std::ostream& ostream, CompareResult const& string);
@@ -120,7 +121,7 @@ class BitWriter {
 struct RandomBitReader {
   explicit RandomBitReader(byte_string_view ref);
 
-  auto getBit(unsigned index) -> Bit;
+  auto getBit(std::size_t index) -> Bit;
 
  private:
   byte_string_view ref;
@@ -129,9 +130,9 @@ struct RandomBitReader {
 struct RandomBitManipulator {
   explicit RandomBitManipulator(byte_string& ref);
 
-  auto getBit(unsigned index) -> Bit;
+  auto getBit(std::size_t index) -> Bit;
 
-  auto setBit(unsigned index, Bit value) -> void;
+  auto setBit(std::size_t index, Bit value) -> void;
 
  private:
   byte_string& ref;
@@ -140,6 +141,18 @@ struct RandomBitManipulator {
 
 template<typename T>
 void into_bit_writer_fixed_length(BitWriter&, T);
+
+struct floating_point {
+  bool positive;
+  uint64_t exp;
+  uint64_t base;
+};
+
+auto destruct_double(double x) -> floating_point;
+
+auto construct_double(floating_point const& fp) -> double;
+
+std::ostream& operator<<(std::ostream& os, struct floating_point const& fp);
 
 } // namespace zkd
 

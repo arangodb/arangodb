@@ -1,16 +1,12 @@
-
 #include <array>
+#include <iostream>
 #include <utility>
 #include <vector>
-
-#include "gtest/gtest.h"
 
 #include "Zkd/ZkdHelper.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
-
-using namespace zkd;
 
 static std::ostream& operator<<(std::ostream& os, std::vector<zkd::byte_string> const& bsvec) {
   os << "{";
@@ -42,6 +38,10 @@ static std::ostream& operator<<(std::ostream& os,
 
   return os;
 }
+
+#include "gtest/gtest.h"
+
+using namespace zkd;
 
 TEST(Zkd_byteStringLiteral, bs) {
   EXPECT_THROW(""_bs, std::invalid_argument);
