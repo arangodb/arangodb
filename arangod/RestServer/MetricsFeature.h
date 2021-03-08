@@ -163,29 +163,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
     
-  ::Metric& doAdd(metrics::Builder& builder) {
-    if (ServerState::instance() != nullptr &&
-        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
-      builder.addLabel("role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) + "\"");
-      builder.addLabel("shortname=\"" + ServerState::instance()->getShortName() + "\"");
-    }
-    auto metric = builder.build();
-    auto key = builder.key();
-    bool success = false;
-    {
-      std::lock_guard<std::recursive_mutex> guard(_lock);
-      success = _registry
-                    .try_emplace(std::move(key), std::dynamic_pointer_cast<::Metric>(metric))
-                    .second;
-    }
-    if (!success) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     builder.type() + builder.name() +
-                                         " already exists");
-    }
-    return *metric;
-  }
-    
+  ::Metric& doAdd(metrics::Builder& builder);
+  
   template <typename Metric, typename Scale>
   Histogram<Scale>& histogram(Scale const& scale, std::string const& help = std::string()) {
     return histogram<Metric, Scale>(metrics_key(Metric::name()), scale, help);

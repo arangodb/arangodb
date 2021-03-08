@@ -77,6 +77,29 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      .setIntroducedIn(30707);
 }
 
+::Metric& MetricsFeature::doAdd(metrics::Builder& builder) {
+  if (ServerState::instance() != nullptr &&
+      ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
+    builder.addLabel("role=\"" + ServerState::roleToString(ServerState::instance()->getRole()) + "\"");
+    builder.addLabel("shortname=\"" + ServerState::instance()->getShortName() + "\"");
+  }
+  auto metric = builder.build();
+  auto key = builder.key();
+  bool success = false;
+  {
+    std::lock_guard<std::recursive_mutex> guard(_lock);
+    success = _registry
+      .try_emplace(std::move(key), std::dynamic_pointer_cast<::Metric>(metric))
+      .second;
+  }
+  if (!success) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, builder.type() + builder.name() + " already exists");
+  }
+  return *metric;
+}
+
+
 bool MetricsFeature::exportAPI() const {
   return _export;
 }
