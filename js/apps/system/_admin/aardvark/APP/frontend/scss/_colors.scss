@@ -10,16 +10,11 @@ $c-lightgreen-2-transp-bg: rgba(245, 248, 240, .95);
 
 $c-pong-green: rgb(140, 219, 139);
 
-//$c-positive: #8aa051;
-//$c-positive: rgb(125, 188, 66);
 $c-positive: #2ecc71;
 $c-positive-hover: #58d68d;
-//$c-positive-hover: #788f3d;
 
 $c-table-odd-color: rgba(104, 103, 102, .05);
 
-//$c-negative: #da4f49;
-//$c-negative-hover: #be342e;
 $c-negative: #e74c3c;
 $c-negative-hover: #ec7063;
 $c-negative-bg: desaturate(lighten($c-negative-hover, 40%), 50%);
@@ -29,12 +24,8 @@ $c-neutral-hover: #736b68;
 
 $c-warning: #f1c40f;
 $c-warning-hover: #f4d313;
-//$c-warning: #faa732;
-//$c-warning-hover: #f89406;
 $c-unloaded: #ff8f35;
 
-//$c-primary: #564e4a;
-//$c-primary-hover: #3a322e;
 $c-primary: #34495e;
 $c-primary-hover: #415b76;
 
