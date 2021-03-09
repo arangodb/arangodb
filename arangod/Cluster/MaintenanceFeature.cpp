@@ -77,7 +77,7 @@ struct MaintenanceScale3 {
 
 DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale, "Maintenance Phase 1 runtime histogram [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale, "Maintenance Phase 2 runtime histogram [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spend on agency sync [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spent on agency sync [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceScale2, "Time spent executing a maintenance action [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceScale3, "Time spent in the queue before execution for maintenance actions [ms]");
 DECLARE_COUNTER(arangodb_maintenance_action_done_counter, "Counter of actions that are done and have been removed from the registry");
