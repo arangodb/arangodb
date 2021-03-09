@@ -20,6 +20,10 @@
       return this.txt;
     },
 
+    comparator: function(metric) {
+      return metric.get('name');
+    },
+
     // store response in content attribute
     parse: function (response) {
       let models = [];
