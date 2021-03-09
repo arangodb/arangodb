@@ -31,15 +31,37 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/LogBufferFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+network::Headers buildHeaders(std::unordered_map<std::string, std::string> const& originalHeaders) {
+  auto auth = AuthenticationFeature::instance();
+
+  network::Headers headers;
+  if (auth != nullptr && auth->isActive()) {
+    headers.try_emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().jwtToken());
+  }
+  for (auto& header : originalHeaders) {
+    headers.try_emplace(header.first, header.second);
+  }
+  return headers;
+}
+}  // namespace
 
 RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::ApplicationServer& server,
                                          GeneralRequest* request, GeneralResponse* response)
@@ -47,10 +69,9 @@ RestAdminLogHandler::RestAdminLogHandler(arangodb::application_features::Applica
 
 arangodb::Result RestAdminLogHandler::verifyPermitted() {
   auto& loggerFeature = server().getFeature<arangodb::LoggerFeature>();
-  
+
   if (!loggerFeature.isAPIEnabled()) {
-      return arangodb::Result(
-          TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
+    return arangodb::Result(TRI_ERROR_HTTP_FORBIDDEN, "log API is disabled");
   }
 
   // do we have admin rights (if rights are active)
@@ -84,9 +105,9 @@ RestStatus RestAdminLogHandler::execute() {
     clearLogs();
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      reportLogs(/*newFormat*/ false);
+      return reportLogs(/*newFormat*/ false);
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
-      reportLogs(/*newFormat*/ true);
+      return reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       handleLogLevel();
     } else {
@@ -105,7 +126,58 @@ void RestAdminLogHandler::clearLogs() {
   generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
-void RestAdminLogHandler::reportLogs(bool newFormat) {
+RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
+  bool foundServerIdParameter;
+  std::string serverId = _request->value("serverId", foundServerIdParameter);
+
+  if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
+    if (serverId != ServerState::instance()->getId()) {
+      // not ourselves! - need to pass through the request
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+      bool found = false;
+      for (auto const& srv : ci.getServers()) {
+        // validate if server id exists
+        if (srv.first == serverId) {
+          serverId = srv.first;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      std::string("unknown serverId supplied.'"));
+        return RestStatus::DONE;
+      }
+
+      NetworkFeature const& nf = server().getFeature<NetworkFeature>();
+      network::ConnectionPool* pool = nf.pool();
+      if (pool == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+      }
+
+      network::RequestOptions options;
+      options.timeout = network::Timeout(30.0);
+      options.database = _request->databaseName();
+      options.parameters = _request->parameters();
+
+      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
+                                    _request->requestPath(), VPackBuffer<uint8_t>{},
+                                    options, buildHeaders(_request->headers()));
+      return waitForFuture(std::move(f).thenValue(
+          [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
+               shared_from_this())](network::Response const& r) {
+            if (r.fail()) {
+              self->generateError(r.combinedResult());
+            } else {
+              self->generateResult(rest::ResponseCode::OK, r.slice());
+            }
+            return RestStatus::DONE;
+          }));
+    }
+  }
+
   // check the maximal log level to report
   bool found1;
   std::string const& upto = StringUtils::tolower(_request->value("upto", found1));
@@ -142,7 +214,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown '") + (found2 ? "level" : "upto") +
                           "' log level: '" + logLevel + "'");
-        return;
+        return RestStatus::DONE;
       }
     }
   }
@@ -315,6 +387,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
   } // format end
 
   generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
 }
 
 void RestAdminLogHandler::handleLogLevel() {

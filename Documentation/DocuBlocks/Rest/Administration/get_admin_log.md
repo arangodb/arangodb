@@ -37,6 +37,11 @@ Sort the log entries either ascending (if *sort* is *asc*) or descending
 (if *sort* is *desc*) according to their *id* values. Note that the *id*
 imposes a chronological order. The default value is *asc*.
 
+@RESTQUERYPARAM{serverId,string,optional}
+Returns all log entries of a specified server by supplying the serverId. All
+other query parameters remain valid. If no serverId is given, the asked server
+will reply.
+
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
 The result is a JSON object with the following properties:
