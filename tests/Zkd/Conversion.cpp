@@ -81,38 +81,53 @@ TEST(Zkd_byte_string_conversion, double_float) {
   }
 }
 
+auto const doubles_worth_testing = {0.0,
+                                    0.1,
+                                    0.2,
+                                    0.3,
+                                    0.4,
+                                    1.0,
+                                    10.0,
+                                    -1.0,
+                                    -0.001,
+                                    1000.,
+                                    -.00001,
+                                    -100.0,
+                                    4.e-12,
+                                    100000.0
+                                    -5e+15,
+                                    std::numeric_limits<double>::epsilon(),
+                                    std::numeric_limits<double>::max(),
+                                    std::numeric_limits<double>::min(),
+                                    std::numeric_limits<double>::denorm_min(),
+                                    std::numeric_limits<double>::infinity(),
+                                    -std::numeric_limits<double>::infinity(),
+                                    std::numeric_limits<double>::lowest()};
+
 TEST(Zkd_byte_string_conversion, double_float_cmp) {
-  auto tests = {
-      std::pair{1.0, 0.0},         std::pair{-1.0, 1.0},
-      std::pair{1.0, 1.2},         std::pair{10.0, 1.2},
-      std::pair{-10.0, 1.2},       std::pair{1.0, 1.0},
-      std::pair{1000.0, 100000.0}, std::pair{-1000.0, 100000.0},
-      std::pair{.0001, .001},      std::pair{-5., -10.},
-      std::pair{0., -10.},         std::pair{0., -0.},
-      std::pair{7., 7.},           std::pair{7.E15, 7.E15}, std::pair{0., 0.1}, std::pair{std::numeric_limits<double>::denorm_min(), 0.},
-      std::pair{std::numeric_limits<double>::max(), std::numeric_limits<double>::infinity()},
-      std::pair{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::infinity()}
-  };
 
-  for (auto&& [a, b] : tests) {
-    auto a_bs = to_byte_string_fixed_length(a);
-    auto b_bs = to_byte_string_fixed_length(b);
+  for (auto&& a : doubles_worth_testing) {
+    for (auto&& b : doubles_worth_testing) {
+      auto a_bs = to_byte_string_fixed_length(a);
+      auto b_bs = to_byte_string_fixed_length(b);
 
-    EXPECT_EQ(a < b, a_bs < b_bs)
-        << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs << " cnvrt = " << destruct_double(a) << " b = " << destruct_double(b);
-    EXPECT_EQ(a == b, a_bs == b_bs)
-        << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs;
-    EXPECT_EQ(a > b, a_bs > b_bs)
-        << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs;
-    EXPECT_EQ(a >= b, a_bs >= b_bs)
-        << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs;
-    EXPECT_EQ(a <= b, a_bs <= b_bs)
-        << "byte string of " << a << " and " << b
-        << " does not compare equally: " << a_bs << " " << b_bs;
+      EXPECT_EQ(a < b, a_bs < b_bs)
+          << "byte string of " << a << " and " << b
+          << " does not compare equally: " << a_bs << " " << b_bs
+          << " cnvrt = " << destruct_double(a) << " b = " << destruct_double(b);
+      EXPECT_EQ(a == b, a_bs == b_bs)
+          << "byte string of " << a << " and " << b
+          << " does not compare equally: " << a_bs << " " << b_bs;
+      EXPECT_EQ(a > b, a_bs > b_bs)
+          << "byte string of " << a << " and " << b
+          << " does not compare equally: " << a_bs << " " << b_bs;
+      EXPECT_EQ(a >= b, a_bs >= b_bs)
+          << "byte string of " << a << " and " << b
+          << " does not compare equally: " << a_bs << " " << b_bs;
+      EXPECT_EQ(a <= b, a_bs <= b_bs)
+          << "byte string of " << a << " and " << b
+          << " does not compare equally: " << a_bs << " " << b_bs;
+    }
   }
 }
 
@@ -157,28 +172,8 @@ TEST(Zkd_byte_string_conversion, bit_reader_test_different_sizes) {
 }
 
 TEST(Zkd_byte_string_conversion, construct_destruct_double) {
-  auto tests = {0.0,
-                0.1,
-                0.2,
-                0.3,
-                0.4,
-                1.0,
-                10.0,
-                -1.0,
-                -0.001,
-                1000.,
-                -.00001,
-                -100.0,
-                4.e-12,
-                -5e+15,
-                std::numeric_limits<double>::epsilon(),
-                std::numeric_limits<double>::max(),
-                std::numeric_limits<double>::min(),
-                std::numeric_limits<double>::denorm_min(),
-                std::numeric_limits<double>::infinity(),
-                -std::numeric_limits<double>::infinity()};
 
-  for (auto const a : tests) {
+  for (auto const a : doubles_worth_testing) {
     auto destructed = destruct_double(a);
     auto reconstructed = construct_double(destructed);
     ASSERT_EQ(a, reconstructed) << "testee: " << a << ", "
@@ -188,28 +183,8 @@ TEST(Zkd_byte_string_conversion, construct_destruct_double) {
 }
 
 TEST(Zkd_byte_string_conversion, double_from_byte_string) {
-  auto tests = {0.0,
-                0.1,
-                0.2,
-                0.3,
-                0.4,
-                1.0,
-                10.0,
-                -1.0,
-                -0.001,
-                1000.,
-                -.00001,
-                -100.0,
-                4.e-12,
-                -5e+15,
-                std::numeric_limits<double>::epsilon(),
-                std::numeric_limits<double>::max(),
-                std::numeric_limits<double>::min(),
-                std::numeric_limits<double>::denorm_min(),
-                std::numeric_limits<double>::infinity(),
-                -std::numeric_limits<double>::infinity()};
 
-  for (auto a : tests) {
+  for (auto a : doubles_worth_testing) {
     double a1;
     memcpy(&a1, &a, sizeof(double));
 
