@@ -39,12 +39,15 @@
 #include "Meta/conversion.h"
 #include "Rest/VstRequest.h"
 
+#include <iostream>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
     : GeneralResponse(code, id) {
   _contentType = ContentType::VPACK;
+  std::cerr << "creating object\n";
 }
 
 void VstResponse::reset(ResponseCode code) {
@@ -57,6 +60,7 @@ void VstResponse::reset(ResponseCode code) {
 void VstResponse::addPayload(VPackSlice const& slice,
                              VPackOptions const* options,
                              bool resolveExternals) {
+    std::cerr << __FILE__ << ":" << __LINE__ << " addPayload starts\n";
   if (_contentType == rest::ContentType::VPACK &&
       _contentTypeRequested == rest::ContentType::JSON) {
     // content type was set by a handler to VPACK but the client requested JSON
@@ -68,8 +72,10 @@ void VstResponse::addPayload(VPackSlice const& slice,
   }
 
   // only copy buffer if it contains externals
+    std::cerr << __FILE__ << ":" << __LINE__ << " \n";
   if (resolveExternals) {
     bool resolveExt = VelocyPackHelper::hasNonClientTypes(slice, true, true);
+    std::cerr << __FILE__ << ":" << __LINE__ << " \n";
     if (resolveExt) {  // resolve
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(slice.byteSize());  // reserve space already
