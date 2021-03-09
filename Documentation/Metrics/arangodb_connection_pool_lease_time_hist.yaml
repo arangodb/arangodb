@@ -9,6 +9,6 @@ exposedBy:
   - coordinator
   - dbserver
 description: |
-  Time to lease a connection from the connection. There are two pools,
+  Time to lease a connection from the connection pool. There are two pools,
   one for the agency communication with label `AgencyComm` and one for
   the other cluster internal communication with label `ClusterComm`.
