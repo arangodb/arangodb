@@ -68,7 +68,7 @@ if (activeView === "text") {
     <div class="header child">Histograms</div>
     <div class="pure-g" style="background: white; padding-top: 10px;">
       <% _.each(collection.where({type: "HISTOGRAM"}), (model) => { %>
-        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-2">
+        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2 pure-u-lg-1-3 pure-u-xl-1-4">
           <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0 %>)
             <div
               style="font-weight: 100"><%= model.get("info") %></div>
@@ -85,7 +85,7 @@ if (activeView === "text") {
             <% _.forEach(model.get("metrics")[0].buckets, (value, key) => { %>
               <tr>
                 <td><%= key %></td>
-                <td><%= value %></td>
+                <td class="alignRight"><%= value %></td>
               </tr>
             <% }); %>
 
