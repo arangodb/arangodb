@@ -68,7 +68,7 @@ class PhysicalCollection {
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual int close() = 0;
+  virtual ErrorCode close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
 

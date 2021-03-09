@@ -767,7 +767,7 @@ std::string getSingleShardId(arangodb::aql::ExecutionPlan const* plan,
   // find the responsible shard for the data
   std::string shardId;
 
-  int res = collection->getCollection()->getResponsibleShard(builder.slice(), true, shardId);
+  auto res = collection->getCollection()->getResponsibleShard(builder.slice(), true, shardId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     // some error occurred. better do not use the

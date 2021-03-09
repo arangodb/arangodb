@@ -51,6 +51,13 @@ void enforceReplicationFunctional(Node const& snapshot,
                                   uint64_t& jobId,
                                   std::shared_ptr<VPackBuilder> envelope);
 
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::cleanupHotbackupTransferJobs
+// and the unit tests:
+void cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot, 
+    std::shared_ptr<VPackBuilder> envelope);
+
 class Supervision : public arangodb::Thread {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
@@ -199,8 +206,11 @@ class Supervision : public arangodb::Thread {
   // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
-  // @brief
+  /// @brief Cleanup old Supervision jobs
   void cleanupFinishedAndFailedJobs();
+
+  /// @brief Cleanup old hotbackup transfer jobs
+  void cleanupHotbackupTransferJobs();
 
   // @brief these servers have gone for too long without any responsibility
   //        and this are safely removable and so they are

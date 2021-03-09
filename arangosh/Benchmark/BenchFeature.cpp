@@ -96,11 +96,35 @@ BenchFeature::BenchFeature(application_features::ApplicationServer& server, int*
       _result(result),
       _histogramNumIntervals(1000),
       _histogramIntervalSize(0.0),
-      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0})
-{
+      _percentiles({50.0, 80.0, 85.0, 90.0, 95.0, 99.0}) {
   requiresElevatedPrivileges(false);
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseClient>();
+
+  // the following is not awesome, as all test classes need to be repeated here.
+  // however, it works portably across different compilers.
+  AqlInsertTest::registerTestcase();
+  AqlV8Test::registerTestcase();
+  CollectionCreationTest::registerTestcase();
+  CustomQueryTest::registerTestcase();
+  DocumentCreationTest::registerTestcase();
+  DocumentCrudAppendTest::registerTestcase();
+  DocumentCrudTest::registerTestcase();
+  DocumentCrudWriteReadTest::registerTestcase();
+  DocumentImportTest::registerTestcase();
+  EdgeCrudTest::registerTestcase();
+  HashTest::registerTestcase();
+  RandomShapesTest::registerTestcase();
+  ShapesAppendTest::registerTestcase();
+  ShapesTest::registerTestcase();
+  SkiplistTest::registerTestcase();
+  StreamCursorTest::registerTestcase();
+  TransactionAqlTest::registerTestcase();
+  TransactionCountTest::registerTestcase();
+  TransactionDeadlockTest::registerTestcase();
+  TransactionMultiCollectionTest::registerTestcase();
+  TransactionMultiTest::registerTestcase();
+  VersionTest::registerTestcase();
 }
 
 void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -162,7 +186,7 @@ void BenchFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   std::unordered_set<std::string> cases;
   for (auto& [name, _] : BenchmarkOperation::allBenchmarks()) {
     cases.emplace(name);
-  };
+  }
   options->addOption("--test-case", "test case to use",
                      new DiscreteValuesParameter<StringParameter>(&_testCase, cases));
 

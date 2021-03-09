@@ -59,7 +59,7 @@ public:
   
   void updateOptions(QueryOptions const&);
   
-  std::vector<std::pair<int, std::string>> all() const;
+  std::vector<std::pair<ErrorCode, std::string>> all() const;
 
   static std::string buildFormattedString(ErrorCode code, char const* details);
 
@@ -68,7 +68,7 @@ public:
   mutable std::mutex _mutex;
   
   /// @brief warnings collected during execution
-  std::vector<std::pair<int, std::string>> _list;
+  std::vector<std::pair<ErrorCode, std::string>> _list;
   
   size_t _maxWarningCount;
   bool _failOnWarning;

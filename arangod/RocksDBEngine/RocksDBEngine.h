@@ -185,10 +185,10 @@ class RocksDBEngine final : public StorageEngine {
   void cleanupReplicationContexts() override;
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                         int& status) override;
-  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
-  int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
-  int removeReplicationApplierConfiguration() override;
+                                                         ErrorCode& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(ErrorCode& status) override;
+  ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
+  ErrorCode removeReplicationApplierConfiguration() override;
   ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                 velocypack::Slice slice, bool doSync) override;
   ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
@@ -225,7 +225,7 @@ class RocksDBEngine final : public StorageEngine {
   virtual std::unique_ptr<TRI_vocbase_t> openDatabase(arangodb::CreateDatabaseInfo&& info,
                                                       bool isUpgrade) override;
   std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                int& status) override;
+                                                ErrorCode& status) override;
   Result writeCreateDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice) override;
   Result prepareDropDatabase(TRI_vocbase_t& vocbase) override;
   Result dropDatabase(TRI_vocbase_t& database) override;
@@ -373,8 +373,9 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   void shutdownRocksDBInstance() noexcept;
-  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
-  int removeReplicationApplierConfiguration(RocksDBKey const& key);
+  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
+                                                         ErrorCode& status);
+  ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
   ErrorCode saveReplicationApplierConfiguration(RocksDBKey const& key,
                                                 arangodb::velocypack::Slice slice,
                                                 bool doSync);

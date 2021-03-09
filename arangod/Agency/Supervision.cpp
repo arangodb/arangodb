@@ -1067,16 +1067,6 @@ void Supervision::run() {
                 // 55 seconds is less than a minute, which fits to the
                 // 60 seconds timeout in /_admin/cluster/health
 
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
                 try {
                   LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
                       << "Begin doChecks";
@@ -1091,6 +1081,29 @@ void Supervision::run() {
                       << "Supervision::doChecks() generated an uncaught "
                          "exception.";
                 }
+
+                // wait 5 min or until next scheduled run
+                if (_agent->leaderFor() > 300 &&
+                    _nextServerCleanup < std::chrono::system_clock::now()) {
+                  // Make sure that we have the latest and greatest information
+                  // about heartbeats in _transient. Note that after a long
+                  // Maintenance mode of the supervision, the `doChecks` above
+                  // might have updated /arango/Supervision/Health in the transient
+                  // store *just now above*. We need to reflect these changes in
+                  // _transient.
+                  _agent->executeTransientLocked([&]() {
+                    if (_agent->transient().has(_agencyPrefix)) {
+                      _transient = _agent->transient().get(_agencyPrefix);
+                    }
+                  });
+
+                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+                      << "Begin cleanupExpiredServers";
+                  cleanupExpiredServers(snapshot(), _transient);
+                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+                      << "Finished cleanupExpiredServers";
+                }
+
               } else {
                 LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                     << "Postponing supervision for now, waiting for incoming "
@@ -1625,6 +1638,10 @@ bool Supervision::handleJobs() {
       << "Begin cleanupFinishedAndFailedJobs";
   cleanupFinishedAndFailedJobs();
 
+  LOG_TOPIC("0892c", TRACE, Logger::SUPERVISION)
+      << "Begin cleanupHotbackupTransferJobs";
+  cleanupHotbackupTransferJobs();
+
   return true;
 }
 
@@ -1682,6 +1699,93 @@ void Supervision::cleanupFinishedAndFailedJobs() {
 
   cleanup(finishedPrefix, maximalFinishedJobs);
   cleanup(failedPrefix, maximalFailedJobs);
+}
+
+// Guarded by caller
+void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope) {
+  // This deletes old Hotbackup transfer jobs in 
+  // /Target/HotBackup/TransferJobs according to their time stamp.
+  // We keep at most 100 transfer jobs which are completed.
+  constexpr uint64_t maximalNumberTransferJobs = 100;
+  constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
+
+  auto const& jobs = snapshot.hasAsChildren(prefix).first;
+  if (jobs.size() <= maximalNumberTransferJobs + 6) {
+    // We tolerate some more jobs before we take action. This is to
+    // avoid that we go through all jobs every second. Oasis takes
+    // a hotbackup every 2h, so this number 6 would lead to the list
+    // being traversed approximately every 12h.
+    return;
+  }
+  typedef std::pair<std::string, std::string> keyDate;
+  std::vector<keyDate> v;
+  v.reserve(jobs.size());
+  for (auto const& p : jobs) {
+    auto const& dbservers = p.second->hasAsChildren("DBServers");
+    if (!dbservers.second) {
+      continue;
+    }
+    bool completed = true;
+    for (auto const& pp : dbservers.first) {
+      auto const& status = pp.second->hasAsString("Status");
+      if (!status.second) {
+        completed = false;
+      } else {
+        if (status.first.compare("COMPLETED") != 0) {
+          completed = false;
+        }
+      }
+    }
+    if (!completed) {
+      continue;
+    }
+    auto created = p.second->hasAsString("timestamp");
+    if (created.second) {
+      v.emplace_back(p.first, created.first);
+    } else {
+      v.emplace_back(p.first, "1970");  // will be sorted very early
+    }
+  }
+  std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
+    return a.second < b.second;
+  });
+  if (v.size() <= maximalNumberTransferJobs) {
+    return;
+  }
+  size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
+  LOG_TOPIC("98452", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
+                                           << " old transfer jobs"
+                                              " in "
+                                           << prefix;
+  // We build a transaction here
+  for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+    envelope->add(VPackValue(prefix + it->first));
+    {
+      VPackObjectBuilder guard2(envelope.get());
+      envelope->add("op", VPackValue("delete"));
+    }
+  }
+}
+
+void Supervision::cleanupHotbackupTransferJobs() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard1(envelope.get());
+    VPackObjectBuilder guard2(envelope.get());
+    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+        snapshot(), envelope);
+  }
+  if (envelope->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+    }
+  }
 }
 
 // Guarded by caller

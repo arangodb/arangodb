@@ -1,4 +1,4 @@
-/* global window, Backbone, $, arangoHelper */
+/* global window, Backbone, $, arangoHelper, frontendConfig */
 (function () {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
@@ -83,6 +83,26 @@
       };
       this.getFigures(shardsCallback);
     },
+
+    getShardCounts: function (callback) {
+      if (!frontendConfig.isCluster) {
+        return;
+      }
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/count?details=true'),
+        contentType: 'application/json',
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function () {
+          callback(true);
+        }
+      });
+    },
+
     getRevision: function (callback, figures) {
       $.ajax({
         type: 'GET',

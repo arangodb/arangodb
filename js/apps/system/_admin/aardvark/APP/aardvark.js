@@ -89,13 +89,15 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
       minReplicationFactor: internal.minReplicationFactor,
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      forceOneShard: internal.forceOneShard,
+      showMaintenanceStatus: true
     })}`
   );
 })
@@ -398,7 +400,7 @@ authRouter.delete('/job/:id', function (req, res) {
   if (frontend) {
     // get the job result and return before deletion
     let resp = request.put({
-      url: '/_api/job/' + encodeURIComponent(req.pathParams.id),
+      url: '/_db/' + encodeURIComponent(db._name()) + '/_api/job/' + encodeURIComponent(req.pathParams.id),
       json: true,
       headers: {
         'Authorization': req.headers.authorization

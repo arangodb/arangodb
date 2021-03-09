@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
