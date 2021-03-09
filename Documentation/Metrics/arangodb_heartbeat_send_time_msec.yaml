@@ -9,4 +9,5 @@ exposedBy:
   - coordinator
   - dbserver
 description: |
-  Time required to send a heartbeat.
+  Histogram of times required to send heartbeats. For every heartbeat
+  sent the time is measured and an event is put into the histogram.
