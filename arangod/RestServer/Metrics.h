@@ -486,7 +486,7 @@ template<typename Scale> class Histogram : public Metric {
       if (separator) {
         result += ",";
       }
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(sum) + "\n";
     }
     result += name() + "_count";
     if (!labels().empty()) {
