@@ -1023,7 +1023,7 @@
       } else if (type === 'json') {
         dlType = 'application/json; charset=utf-8';
       } else if (type === 'text') {
-        dlType = 'text/html; charset=utf8';
+        dlType = 'text/plain; charset=utf8';
       }
 
       if (dlType) {
