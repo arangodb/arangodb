@@ -91,7 +91,7 @@ declared by using one of the macros
 in some `.cpp` file (please put only one on a line). Then, when the
 metric is actually requested in the source code, it gets a template
 added to the metrics feature with the `add` method and its name.
-Labels can be added with the `withLabels` method. In this way, the
+Labels can be added with the `withLabel` method. In this way, the
 compiler ensures that the metric declaration is actually there if
 the metric is used.
 
