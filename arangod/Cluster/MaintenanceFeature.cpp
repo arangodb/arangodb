@@ -206,16 +206,16 @@ void MaintenanceFeature::initializeMetrics() {
   const char* instrumentedActions[] =
     {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
 
+  std::string key("action");
   for (const char* action : instrumentedActions) {
-    std::string action_label = std::string{"action=\""} + action + '"';
 
     _maintenance_job_metrics_map.try_emplace(
       action,
-      metricsFeature.add(arangodb_maintenance_action_runtime_msec{}.withLabels(action_label)),
-      metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabels(action_label)),
-      metricsFeature.add(arangodb_maintenance_action_accum_runtime_msec{}.withLabels(action_label)),
-      metricsFeature.add(arangodb_maintenance_action_accum_queue_time_msec{}.withLabels(action_label)),
-      metricsFeature.add(arangodb_maintenance_action_failure_counter{}.withLabels(action_label)));
+      metricsFeature.add(arangodb_maintenance_action_runtime_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_accum_runtime_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_accum_queue_time_msec{}.withLabel(key, action)),
+      metricsFeature.add(arangodb_maintenance_action_failure_counter{}.withLabel(key, action)));
   }
 }
 

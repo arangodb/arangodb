@@ -85,11 +85,11 @@ struct Builder {
   std::string const& name() const { return _name; }
   metrics_key key() const { return metrics_key(name(), _labels); }
 
-  void addLabel(std::string v) {
+  void addLabel(std::string const& key, std::string const& value) {
     if (!_labels.empty()) {
       _labels.append(",");
     }
-    _labels.append(v);
+    _labels += key + "=\"" + value + "\"";
   }
 
  protected:
@@ -102,8 +102,8 @@ template <class Derived>
 struct GenericBuilder : Builder {
   Derived&& self() { return static_cast<Derived&&>(std::move(*this)); }
 
-  Derived&& withLabels(std::string v) && {
-    _labels = v;
+  Derived&& withLabel(std::string const& key, std::string const& value) && {
+    Builder::addLabel(key, value);
     return self();
   }
 };

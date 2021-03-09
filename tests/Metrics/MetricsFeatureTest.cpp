@@ -46,7 +46,7 @@ Metric* thatMetric;
 TEST_F(MetricsFeatureTest, test_counter) {
 
   auto& counter = feature.add(COUNTER{});
-  auto& labeledCounter = feature.add(COUNTER{}.withLabels("label=\"label\""));
+  auto& labeledCounter = feature.add(COUNTER{}.withLabel("label", "label"));
 
   ASSERT_EQ(counter.load(), 0);
   std::string s;
@@ -76,7 +76,7 @@ TEST_F(MetricsFeatureTest, fail_recreate_counter) {
 TEST_F(MetricsFeatureTest, test_histogram) {
 
   auto& histogram = feature.add(HISTOGRAMLIN{});
-  auto& labeledHistogram = feature.add(HISTOGRAMLIN{}.withLabels("label=\"label\""));
+  auto& labeledHistogram = feature.add(HISTOGRAMLIN{}.withLabel("label", "label"));
 
   std::string s;
   histogram.toPrometheus(s);
@@ -105,7 +105,7 @@ TEST_F(MetricsFeatureTest, fail_recreate_histogram) {
 TEST_F(MetricsFeatureTest, test_gauge) {
 
   auto& gauge = feature.add(GAUGE{});
-  auto& labeledGauge = feature.add(GAUGE{}.withLabels("label=\"label\""));
+  auto& labeledGauge = feature.add(GAUGE{}.withLabel("label", "label"));
 
   std::string s;
   gauge.toPrometheus(s);

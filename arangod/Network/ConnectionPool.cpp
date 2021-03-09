@@ -58,19 +58,19 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     _loop(config.numIOThreads, config.name),
     _totalConnectionsInPool(
       _config.metricsFeature.add(
-        arangodb_connection_pool_connections_current{}.withLabels(std::string("pool=") + _config.name))),
+        arangodb_connection_pool_connections_current{}.withLabel("pool", _config.name))),
     _successSelect(
       _config.metricsFeature.add(
-        arangodb_connection_pool_leases_successful{}.withLabels(std::string("pool=") + config.name))),
+        arangodb_connection_pool_leases_successful{}.withLabel("pool", config.name))),
     _noSuccessSelect(
       _config.metricsFeature.add(
-        arangodb_connection_pool_leases_failed{}.withLabels(std::string("pool=") + config.name))),
+        arangodb_connection_pool_leases_failed{}.withLabel("pool", config.name))),
     _connectionsCreated(
       _config.metricsFeature.add(
-        arangodb_connection_pool_connections_created{}.withLabels(std::string("pool=") + config.name))),
+        arangodb_connection_pool_connections_created{}.withLabel("pool", config.name))),
     _leaseHistMSec(
       _config.metricsFeature.add(
-        arangodb_connection_pool_lease_time_hist{}.withLabels(std::string("pool=") + config.name))) {
+        arangodb_connection_pool_lease_time_hist{}.withLabel("pool", config.name))) {
   TRI_ASSERT(config.numIOThreads > 0);
 }
 
