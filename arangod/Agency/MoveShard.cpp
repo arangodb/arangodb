@@ -1012,6 +1012,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   {
     VPackArrayBuilder arrayForTransactionPair(&trx);
     {
+      bool failed = false;
       VPackObjectBuilder transactionObj(&trx);
       if (_isLeader) {
         // All changes to Plan for all shards:
@@ -1036,7 +1037,9 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                              LOG_TOPIC("2e7b9", WARN, Logger::SUPERVISION) 
                                << "failed to iterate over planned servers for shard "
                                << _shard << " or a clone";
+                             failed = true;
                              TRI_ASSERT(false);
+                             return;
                            }
                            // Add to server last. Will be removed by removeFollower if to much
                            trx.add(VPackValue(_to));
@@ -1061,10 +1064,17 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                              LOG_TOPIC("2eb79", WARN, Logger::SUPERVISION) 
                                << "failed to iterate over planned servers for shard "
                                << _shard << " or a clone";
+                             failed = true;
+                             TRI_ASSERT(false);
+                             return;
                            }
                          }
                        });
       }
+      result = Result(
+        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+        std::string("no planned servers means a failure to abort ") + _jobId);
+      return result;
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
