@@ -124,6 +124,61 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertEqual([ ], res);
     },
 
+    test5: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 >= d.x || d.x >= 10
+          FILTER d.y >= 0 && d.y <= 11
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "FilterNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      //assertTrue(appliedRules.includes(removeFilterCoveredByIndex)); -- TODO
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([-0.1, -0.2, -0.3, -0.4, -0.5, 0, 10, 10.1, 10.2, 10.3, 10.4, 10.5].sort(), res);
+    },
+
+    test6: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 == d.x
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([0].sort(), res);
+    },
+
+    test7: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 == d.x && 0 == d.y
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([].sort(), res);
+    },
+
   };
 }
 
