@@ -48,13 +48,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-DECLARE_METRIC(arangodb_agencycomm_request_time_msec);
+struct ClusterFeatureScale {
+  static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests");
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),
     _agency_comm_request_time_ms(
-      server.getFeature<arangodb::MetricsFeature>().histogram<arangodb_agencycomm_request_time_msec>(
-        log_scale_t<uint64_t>(2, 58, 120000, 10), "Request time for Agency requests")){
+      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
