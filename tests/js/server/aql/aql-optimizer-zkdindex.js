@@ -69,6 +69,20 @@ function optimizerRuleZkd2dIndexTestSuite() {
       assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
     },
 
+    test1_2: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER d.x >= 0 && d.i == 0
+          RETURN d
+      `;
+      const res = AQL_EXPLAIN(query.query, query.bindVars);
+      const nodeTypes = res.plan.nodes.map(n => n.type);
+      const appliedRules = res.plan.rules;
+      assertEqual([ "SingletonNode", "EnumerateCollectionNode", "ReturnNode" ], nodeTypes);
+      assertFalse(appliedRules.includes(useIndexes));
+      assertFalse(appliedRules.includes(removeFilterCoveredByIndex));
+    },
+
     test2: function () {
       const query = aql`
         FOR d IN ${col}
