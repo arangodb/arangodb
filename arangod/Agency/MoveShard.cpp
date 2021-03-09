@@ -493,6 +493,7 @@ JOB_STATUS MoveShard::status() {
 }
 
 JOB_STATUS MoveShard::pendingLeader() {
+
   auto considerTimeout = [&]() -> bool {
     // Not yet all in sync, consider timeout:
     std::string timeCreatedString =
@@ -1017,7 +1018,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       if (_isLeader) {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current,
+                       [this, &trx, &failed](Slice plan, Slice current,
                                     std::string& planPath, std::string& curPath) {
                          // Restore leader to be _from:
                          trx.add(VPackValue(planPath));
@@ -1048,7 +1049,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       } else {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx](Slice plan, Slice current,
+                       [this, &trx, &failed](Slice plan, Slice current,
                                     std::string& planPath, std::string& curPath) {
                          // Remove toServer from Plan:
                          trx.add(VPackValue(planPath));
