@@ -39,10 +39,6 @@
 
 #include "counter.h"
 
-namespace arangodb {
-extern char const* metricsNameList[];
-}
-
 class Metric {
  public:
   Metric(std::string const& name, std::string const& help, std::string const& labels);
