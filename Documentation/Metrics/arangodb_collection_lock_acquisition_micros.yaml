@@ -1,7 +1,7 @@
 name: arangodb_collection_lock_acquisition_micros
 help: |
   Total amount of collection lock acquisition time.
-unit: microseconds
+unit: us
 type: counter
 category: AQL
 complexity: medium
