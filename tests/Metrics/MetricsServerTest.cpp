@@ -34,7 +34,7 @@ TEST(MetricsServerTest, test_setup) {
   tests::mocks::MockMetricsServer server;
   MetricsFeature& feature = server.getFeature<MetricsFeature>();
 
-  auto& counter = feature.counter<COUNTER>(0, "one counter");
+  auto& counter = feature.add(COUNTER{});
   ASSERT_EQ(counter.load(), 0);
   counter.count();
   ASSERT_EQ(counter.load(), 1);
