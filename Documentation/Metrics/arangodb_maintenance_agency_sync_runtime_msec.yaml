@@ -1,6 +1,6 @@
 name: arangodb_maintenance_agency_sync_runtime_msec
 help: |
-  Total time spend on agency sync.
+  Total time spent on agency sync.
 unit: ms
 type: histogram
 category: Maintenance
