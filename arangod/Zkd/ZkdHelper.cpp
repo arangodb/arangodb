@@ -1,12 +1,13 @@
 #include "ZkdHelper.h"
 
+#include <Basics/debugging.h>
 #include <algorithm>
 #include <cassert>
+#include <cmath>
 #include <cstddef>
 #include <iomanip>
 #include <iostream>
 #include <optional>
-#include <cmath>
 
 using namespace zkd;
 
@@ -422,26 +423,70 @@ template auto zkd::to_byte_string_fixed_length<int64_t>(int64_t) -> zkd::byte_st
 template auto zkd::to_byte_string_fixed_length<uint32_t>(uint32_t) -> zkd::byte_string;
 template auto zkd::to_byte_string_fixed_length<int32_t>(int32_t) -> zkd::byte_string;
 
+inline constexpr auto fp_infinity_expo_biased = (1u << 11) - 1;
+inline constexpr auto fp_denorm_expo_biased = 0;
+inline constexpr auto fp_min_expo_biased = std::numeric_limits<double>::min_exponent - 1;
+
 auto zkd::destruct_double(double x) -> floating_point {
+  TRI_ASSERT(!std::isnan(x));
+
   bool positive = true;
-  int exp;
+  int exp = 0;
   double base = frexp(x, &exp);
+
+  // handle negative values
   if (base < 0) {
     positive = false;
     base = - base;
   }
 
-  auto int_base = uint64_t((uint64_t{1} << 53) * base);
-  auto biased_exp = exp + (1u << 10) - 1;
-  if (int_base == 0) {
-    biased_exp = 0;
+  if (std::isinf(base)) {
+    // deal with +- infinity
+    return {positive, fp_infinity_expo_biased, 0};
   }
-  return {positive, biased_exp, int_base};
+
+  auto int_base = uint64_t((uint64_t{1} << 53) * base);
+
+
+  if (exp < std::numeric_limits<double>::min_exponent) {
+    // handle denormalized case
+    auto divide_by = std::numeric_limits<double>::min_exponent - exp;
+
+    exp = fp_denorm_expo_biased;
+
+    int_base >>= divide_by;
+    return {positive, fp_denorm_expo_biased, int_base };
+  } else {
+    //TRI_ASSERT(int_base & (uint64_t{1} << 53));
+    uint64_t biased_exp = exp - fp_min_expo_biased;
+    if (int_base == 0) {
+      // handle zero case, assign smallest exponent
+      biased_exp = 0;
+    }
+
+    return {positive, biased_exp, int_base};
+  }
 }
 
 auto zkd::construct_double(floating_point const& fp) -> double {
-  int exp = int(fp.exp) - (1u << 10) + 1;
-  double base = (double) fp.base / double(uint64_t{1} << 53);
+  if (fp.exp == fp_infinity_expo_biased) {
+    // first handle infinity
+    auto base = std::numeric_limits<double>::infinity();
+    return fp.positive ? base : -base;
+  }
+
+  uint64_t int_base = fp.base;
+
+
+  int exp = int(fp.exp) + fp_min_expo_biased;
+
+  if (fp.exp != fp_denorm_expo_biased) {
+    int_base |= uint64_t{1} << 52;
+  } else {
+    exp = std::numeric_limits<double>::min_exponent;
+  }
+
+  double base = (double) int_base / double(uint64_t{1} << 53);
 
   if (!fp.positive) {
     base = -base;
@@ -462,12 +507,11 @@ void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
 
   if (!p) {
     exp ^= (uint64_t{1} << 11) - 1;
-    base ^= (uint64_t{1} << 53) - 1;
+    base ^= (uint64_t{1} << 52) - 1;
   }
 
   bw.write_big_endian_bits(exp, 11);
-  bw.write_big_endian_bits(base, 53);
-
+  bw.write_big_endian_bits(base, 52);
 }
 
 template<>
@@ -484,10 +528,10 @@ auto zkd::from_bit_reader_fixed_length<double>(BitReader& r) -> double{
   bool isPositive = r.next_or_zero() == Bit::ONE;
 
   auto exp = r.read_big_endian_bits(11);
-  auto base = r.read_big_endian_bits(53);
+  auto base = r.read_big_endian_bits(52);
   if (!isPositive) {
     exp ^= (uint64_t{1} << 11) - 1;
-    base ^= (uint64_t{1} << 53) - 1;
+    base ^= (uint64_t{1} << 52) - 1;
   }
 
   return construct_double({isPositive, exp, base});

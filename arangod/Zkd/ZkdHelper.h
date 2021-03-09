@@ -145,9 +145,9 @@ template<typename T>
 auto from_bit_reader_fixed_length(BitReader&) -> T;
 
 struct floating_point {
-  bool positive;
-  uint64_t exp;
-  uint64_t base;
+  bool positive : 1;
+  uint64_t exp : 11;
+  uint64_t base : 52;
 };
 
 auto destruct_double(double x) -> floating_point;
