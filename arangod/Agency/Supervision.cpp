@@ -1080,16 +1080,6 @@ void Supervision::run() {
                 // 55 seconds is less than a minute, which fits to the
                 // 60 seconds timeout in /_admin/cluster/health
 
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
                 try {
                   LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
                       << "Begin doChecks";
@@ -1104,6 +1094,29 @@ void Supervision::run() {
                       << "Supervision::doChecks() generated an uncaught "
                          "exception.";
                 }
+
+                // wait 5 min or until next scheduled run
+                if (_agent->leaderFor() > 300 &&
+                    _nextServerCleanup < std::chrono::system_clock::now()) {
+                  // Make sure that we have the latest and greatest information
+                  // about heartbeats in _transient. Note that after a long
+                  // Maintenance mode of the supervision, the `doChecks` above
+                  // might have updated /arango/Supervision/Health in the transient
+                  // store *just now above*. We need to reflect these changes in
+                  // _transient.
+                  _agent->executeTransientLocked([&]() {
+                    if (_agent->transient().has(_agencyPrefix)) {
+                      _transient = _agent->transient().get(_agencyPrefix);
+                    }
+                  });
+
+                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+                      << "Begin cleanupExpiredServers";
+                  cleanupExpiredServers(snapshot(), _transient);
+                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+                      << "Finished cleanupExpiredServers";
+                }
+
               } else {
                 LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                     << "Postponing supervision for now, waiting for incoming "

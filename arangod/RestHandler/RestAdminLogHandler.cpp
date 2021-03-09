@@ -105,9 +105,9 @@ RestStatus RestAdminLogHandler::execute() {
     clearLogs();
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      reportLogs(/*newFormat*/ false);
+      return reportLogs(/*newFormat*/ false);
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
-      reportLogs(/*newFormat*/ true);
+      return reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       handleLogLevel();
     } else {
@@ -126,7 +126,7 @@ void RestAdminLogHandler::clearLogs() {
   generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
-void RestAdminLogHandler::reportLogs(bool newFormat) {
+RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   bool foundServerIdParameter;
   std::string serverId = _request->value("serverId", foundServerIdParameter);
 
@@ -148,7 +148,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown serverId supplied.'"));
-        return;
+        return RestStatus::DONE;
       }
 
       NetworkFeature const& nf = server().getFeature<NetworkFeature>();
@@ -162,19 +162,19 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f =
-          network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                               _request->requestPath(),
-                               VPackBuffer<uint8_t>{}, options, buildHeaders(_request->headers()));
-
-      network::Response const& r = f.get();
-      if (r.fail()) {
-        generateError(r.combinedResult());
-      } else {
-        generateResult(rest::ResponseCode::OK, r.slice());
-      }
-
-      return;
+      auto f = network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
+                                    _request->requestPath(), VPackBuffer<uint8_t>{},
+                                    options, buildHeaders(_request->headers()));
+      return waitForFuture(std::move(f).thenValue(
+          [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
+               shared_from_this())](network::Response const& r) {
+            if (r.fail()) {
+              self->generateError(r.combinedResult());
+            } else {
+              self->generateResult(rest::ResponseCode::OK, r.slice());
+            }
+            return RestStatus::DONE;
+          }));
     }
   }
 
@@ -214,7 +214,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       std::string("unknown '") + (found2 ? "level" : "upto") +
                           "' log level: '" + logLevel + "'");
-        return;
+        return RestStatus::DONE;
       }
     }
   }
@@ -387,6 +387,7 @@ void RestAdminLogHandler::reportLogs(bool newFormat) {
   } // format end
 
   generateResult(rest::ResponseCode::OK, result.slice());
+  return RestStatus::DONE;
 }
 
 void RestAdminLogHandler::handleLogLevel() {
