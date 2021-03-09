@@ -224,12 +224,12 @@ static void JS_EnabledStatisticsAllDatabases(v8::FunctionCallbackInfo<v8::Value>
 
 static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
-    v8::HandleScope scope(isolate);
+  v8::HandleScope scope(isolate);
 
-    TRI_GET_GLOBALS();
-    bool enabled = v8g->_server.getFeature<MetricsFeature>().exportAPI();
-    v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
-    TRI_V8_RETURN(result);
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<MetricsFeature>().exportAPI();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
