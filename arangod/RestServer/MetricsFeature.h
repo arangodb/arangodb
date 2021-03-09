@@ -160,15 +160,15 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   auto& add(MetricBuilder&& builder) {
     return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
-    
-  ::Metric& doAdd(metrics::Builder& builder);
-  
 
   void toPrometheus(std::string& result) const;
 
   ServerStatistics& serverStatistics();
 
  private:
+  Metric& doAdd(metrics::Builder& builder);
+
+
   registry_type _registry;
 
   mutable std::recursive_mutex _lock;
