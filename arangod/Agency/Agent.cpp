@@ -55,7 +55,7 @@ struct AppendScale {
   static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
 };
 struct AgentScale {
-  static log_scale_t<float> scale() { return {1.f, 0.f, 200.f, 10}; }
+  static log_scale_t<float> scale() { return {std::exp(1.f), 0.f, 200.f, 10}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_agency_append_hist, AppendScale, "Agency write histogram [ms]");
