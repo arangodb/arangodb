@@ -46,7 +46,7 @@ struct LeaseTimeScale {
 };
 DECLARE_HISTOGRAM(
   arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
-  "Time to lease a connection from pool");
+  "Time to lease a connection from pool [ms]");
 
 namespace arangodb {
 namespace network {

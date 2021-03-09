@@ -52,7 +52,7 @@ struct ClusterFeatureScale {
   static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
 };
 
-DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests");
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
 
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
   : ApplicationFeature(server, "Cluster"),

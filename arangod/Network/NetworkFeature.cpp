@@ -87,7 +87,6 @@ DECLARE_COUNTER(arangodb_network_request_timeouts, "Number of internal requests 
 DECLARE_HISTOGRAM(arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale, "Internal request round-trip time as a percentage of timeout [%]");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t, "Number of outgoing internal requests in flight");
 
-
 NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
                                network::ConnectionPool::Config config)
     : ApplicationFeature(server, "Network"),

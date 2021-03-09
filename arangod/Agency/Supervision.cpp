@@ -65,7 +65,7 @@ DECLARE_COUNTER(arangodb_agency_supervision_failed_server_count,
 DECLARE_COUNTER(arangodb_agency_supervision_runtime_msec,
                 "Accumulated Supervision Runtime [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_runtime_wait_for_replication_msec,
-                "Accumulated Supervision  wait for replication time  [ms]");
+                "Accumulated Supervision wait for replication time [ms]");
 
 struct HealthRecord {
   std::string shortName;
