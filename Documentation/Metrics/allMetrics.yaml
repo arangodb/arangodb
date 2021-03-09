@@ -615,24 +615,6 @@
   type: gauge
   unit: number
 - category: Connectivity
-  complexity: simple
-  description: 'Time to lease a connection from the connection. There are two pools,
-
-    one for the agency communication with label `AgencyComm` and one for
-
-    the other cluster internal communication with label `ClusterComm`.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Time to lease a connection from the connection pool.
-
-    '
-  name: arangodb_connection_pool_lease_time_hist
-  type: histogram
-  unit: ms
-- category: Connectivity
   complexity: medium
   description: 'Total number of failed connection leases. There are two pools, one
     for
@@ -1213,19 +1195,6 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Accumulated wait time for replication key chunks determination requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated wait time for replication key chunks determination requests.
-
-    '
-  name: arangodb_replication_initial_chunks_requests_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
   description: 'Accumulated time needed to apply replication docs data.
 
     '
@@ -1235,19 +1204,6 @@
 
     '
   name: arangodb_replication_initial_docs_requests_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
-  description: 'Accumulated time needed to apply replication initial sync insertions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated time needed to apply replication initial sync insertions.
-
-    '
-  name: arangodb_replication_initial_insert_apply_time
   type: counter
   unit: ms
 - category: Replication
@@ -1382,19 +1338,6 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Total time needed for all synchronous replication requests.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time needed for all synchronous replication requests.
-
-    '
-  name: arangodb_replication_synchronous_requests_total_time
-  type: counter
-  unit: ms
-- category: Replication
-  complexity: medium
   description: 'Accumulated time needed to apply replication tailing data.
 
     '
@@ -1419,33 +1362,6 @@
   name: arangodb_replication_tailing_bytes_received
   type: counter
   unit: bytes
-- category: Replication
-  complexity: medium
-  description: 'Accumulated number of replication tailing document inserts/replaces
-    processed.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of replication tailing document inserts/replaces processed.
-
-    '
-  name: arangodb_replication_tailing_documents
-  type: counter
-  unit: number
-- category: Replication
-  complexity: advanced
-  description: 'Number of replication tailing failures due to missing tick on leader.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Number of replication tailing failures due to missing tick on leader.
-
-    '
-  name: arangodb_replication_tailing_follow_tick_failures
-  type: counter
-  unit: number
 - category: Replication
   complexity: medium
   description: 'Number of replication tailing markers processed.
@@ -1542,21 +1458,6 @@
   type: gauge
   unit: number
 - category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the high priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the high priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_high_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
   complexity: advanced
   description: 'Total number of jobs dequeued.
 
@@ -1617,51 +1518,6 @@
   type: gauge
   unit: ms
 - category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the low priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the low priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_low_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the maintenance priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the maintenance priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_maintenance_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: medium
-  description: 'Current queue length of the medium priority queue in the scheduler.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Current queue length of the medium priority queue in the scheduler.
-
-    '
-  name: arangodb_scheduler_medium_prio_queue_length
-  type: gauge
-  unit: number
-- category: Scheduler
   complexity: simple
   description: 'Current number of worker threads.
 
@@ -1689,21 +1545,6 @@
 
     '
   name: arangodb_scheduler_num_working_threads
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: simple
-  description: 'Total number of ongoing RestHandlers coming from the low prio queue.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of ongoing RestHandlers coming from the low prio queue.
-
-    '
-  name: arangodb_scheduler_ongoing_low_prio
   type: gauge
   unit: number
 - category: Scheduler

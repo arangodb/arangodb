@@ -21,7 +21,9 @@ yamlfiles.sort()
 
 # Read list of metrics from source:
 metricsList = []
-linematch = re.compile("DECLARE_METRIC\(([a-z_A-Z]*)\)")
+linematchcounter = re.compile("DECLARE_COUNTER\s*\(\s*([a-z_A-Z]*)\s*,")
+linematchgauge = re.compile("DECLARE_GAUGE\s*\(\s*([a-z_A-Z]*)\s*,")
+linematchhistogram = re.compile("DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z]*)\s*,")
 for root, dirs, files in os.walk("."):
     if root[:10] == "./arangod/" or root[:6] == "./lib/":
       for f in files:
@@ -32,7 +34,13 @@ for root, dirs, files in os.walk("."):
               l = s.readline()
               if l == "":
                   break
-              m = linematch.search(l)
+              m = linematchcounter.search(l)
+              if m:
+                  metricsList.append(m.group(1))
+              m = linematchgauge.search(l)
+              if m:
+                  metricsList.append(m.group(1))
+              m = linematchhistogram.search(l)
               if m:
                   metricsList.append(m.group(1))
           s.close()
