@@ -463,7 +463,7 @@
     '
   name: arangodb_collection_lock_acquisition_micros
   type: counter
-  unit: microseconds
+  unit: us
 - category: AQL
   complexity: medium
   description: 'Collection lock acquisition time histogram.
