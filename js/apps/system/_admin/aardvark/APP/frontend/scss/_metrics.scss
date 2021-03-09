@@ -35,6 +35,11 @@
   }
 }
 
+.pure-table-metrics-gauge,
+.pure-table-metrics-counter {
+  margin-top: -10px;
+}
+
 .pure-table-metrics-histogram,
 .pure-table-metrics-gauge,
 .pure-table-metrics-counter {
@@ -54,10 +59,14 @@
       font-weight: 200;
       color: rgba(0, 0, 0, .2);
     }
+
+    .alignRight {
+
+    }
   }
+
 }
 
-.pure-table-metrics-gauge,
 .pure-table-metrics-histogram {
   border: 10px solid #fff;
 }

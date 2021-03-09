@@ -30,85 +30,37 @@ if (activeView === "text") {
             <th>Name</th>
             <th>Value</th>
             <th>Info</th>
-            <th>Role</th>
-            <th>Shortname</th>
           </tr>
           </thead>
-          <tbody>
 
+          <tbody>
           <% _.each(collection.where({type: "COUNTER"}), (model) => { %>
             <tr>
               <td><%= model.get('name') %></td>
-              <td><%= model.get('metrics')[0].value %></td>
+              <td class="alignRight"><%= model.get('metrics')[0].value %></td>
               <td><%= model.get('info') %></td>
-              <% if (model.get('metrics')[0].hasOwnProperty('labels')) { %>
-                <td><%= JSON.stringify(model.get('metrics')[0].labels.role) %></td>
-                <td><%= JSON.stringify(model.get('metrics')[0].labels.shortname) %></td>
-              <% } else { %>
-                <td><span class="emptySpanEntry">empty</span></td>
-                <td><span class="emptySpanEntry">empty</span></td>
-              <% } %>
             </tr>
-
           <% }); %>
           </tbody>
-        </table>
-      </div>
-    </div>
 
-    <div class="header child">Gauges</div>
-    <div class="pure-g pure-table-metrics-gauge" style="letter-spacing: normal; box-sizing: border-box;">
-      <% let entries = collection.where({type: "GAUGE"}); %>
-      <div class="metricsBox pure-u-1-1 pure-u-md-1-1 pure-u-lg-1-1 pure-u-xl-1-2">
-        <table class="pure-table" style="display: table; border-right: 10px solid #fff;">
-          <thead>
-          <tr>
-            <th>Name</th>
-            <th>Value</th>
-          </tr>
-          </thead>
           <tbody>
-          <%
-          let counter = 0;
-          _.each(entries, (model) => {
-          if (counter % 2 === 0) {
-          %>
+            <tr>
+              <td style="border-right: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);"><div class="header">Gauges</div></td>
+              <td style="border-left: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);"><div class="header"></div></td>
+              <td style="border-left: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);"><div class="header"></div></td>
+            </tr>
+          </tbody>
+
+          <tbody>
+          <% _.each(collection.where({type: "GAUGE"}), (model) => { %>
             <tr>
               <td><%= model.get('name') %></td>
-              <td><%= model.get('metrics')[0].value %></td>
+              <td class="alignRight"><%= model.get('metrics')[0].value %></td>
+              <td><%= model.get('info') %></td>
             </tr>
-          <%
-          }
-            counter++;
-          });
-          %>
+          <% }); %>
           </tbody>
-        </table>
-      </div>
-      <div class="metricsBox pure-u-1-1 pure-u-md-1-2">
-        <table class="pure-table" style="display: table;">
-          <thead>
-          <tr>
-            <th>Name</th>
-            <th>Value</th>
-          </tr>
-          </thead>
-          <tbody>
-          <%
-          let countersecond = 0;
-          _.each(entries, (model) => {
-          if (countersecond % 2 !== 0) {
-          %>
-            <tr>
-              <td><%= model.get('name') %></td>
-              <td><%= model.get('metrics')[0].value %></td>
-            </tr>
-          <%
-          }
-            countersecond++;
-          });
-          %>
-          </tbody>
+
         </table>
       </div>
     </div>
@@ -116,29 +68,30 @@ if (activeView === "text") {
     <div class="header child">Histograms</div>
     <div class="pure-g" style="background: white; padding-top: 10px;">
       <% _.each(collection.where({type: "HISTOGRAM"}), (model) => { %>
-      <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-2">
-        <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0%>) <div
-            style="font-weight: 100"><%= model.get("info") %></div>
-        </div>
-        <table class="pure-table pure-table-metrics-histogram">
-          <thead>
-          <tr>
-            <th>Bucket</th>
-            <th>Value</th>
-          </tr>
-          </thead>
-          <tbody>
-
-          <% _.forEach(model.get("metrics")[0].buckets, (value, key) => { %>
+        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-md-1-2 pure-u-lg-1-2 pure-u-xl-1-2">
+          <div class="tableHeader"><%= model.get("name") %> (<%= model.get("metrics")[0].count || 0 %>)
+            <div
+              style="font-weight: 100"><%= model.get("info") %></div>
+          </div>
+          <table class="pure-table pure-table-metrics-histogram">
+            <thead>
             <tr>
-              <td><%= key %></td>
-              <td><%= value %></td>
+              <th>Bucket</th>
+              <th>Value</th>
             </tr>
-          <% }); %>
+            </thead>
+            <tbody>
 
-          </tbody>
-        </table>
-      </div>
+            <% _.forEach(model.get("metrics")[0].buckets, (value, key) => { %>
+              <tr>
+                <td><%= key %></td>
+                <td><%= value %></td>
+              </tr>
+            <% }); %>
+
+            </tbody>
+          </table>
+        </div>
       <% }); %>
 
     </div>
