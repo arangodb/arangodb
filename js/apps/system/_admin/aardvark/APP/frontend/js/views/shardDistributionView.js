@@ -37,23 +37,23 @@
     },
 
     render: function (navi) {
-      console.log('started');
       if (window.location.hash === this.hash) {
-        console.log(':-)');
+        // pre-render without data (placeholders)
+        this.$el.html(this.template.render({}));
         var self = this;
 
         $.ajax({
           type: 'GET',
           cache: false,
-          url: arangoHelper.databaseUrl('/_admin/cluster/shardDistribution'),
+          url: arangoHelper.databaseUrl('/_admin/cluster/shardStatistics'),
           contentType: 'application/json',
           processData: false,
           async: true,
           success: function (data) {
-            self.continueRender(data.results, false);
+            self.rerenderValues(data.result);
           },
-          error: function (data) {
-            self.continueRender(data, true);
+          error: function () {
+            arangoHelper.arangoError('Distribution', 'Could not fetch "shardStatistics"');
           }
         });
 
@@ -63,8 +63,18 @@
       }
     },
 
-    continueRender: function (data, error) {
+    rerenderValues: function (data) {
       console.log(data);
+      arangoHelper.renderStatisticsBoxValue('#clusterDatabases', data.databases);
+      arangoHelper.renderStatisticsBoxValue('#clusterCollections', data.collections);
+      arangoHelper.renderStatisticsBoxValue('#clusterDBServers', data.servers);
+      arangoHelper.renderStatisticsBoxValue('#clusterLeaders', data.leaders);
+      arangoHelper.renderStatisticsBoxValue('#clusterRealLeaders', data.realLeaders);
+      arangoHelper.renderStatisticsBoxValue('#clusterFollowers', data.followers);
+      arangoHelper.renderStatisticsBoxValue('#clusterShards', data.shards);
+    },
+
+    continueRender: function (data, error) {
       this.$el.html(this.template.render({}));
     }
   });
