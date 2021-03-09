@@ -180,7 +180,11 @@ auto readDocumentKey(VPackSlice doc,
     if (!value.isNumber<double>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     }
-    v.emplace_back(convertDouble(value.getNumericValue<double>()));
+    double dv = value.getNumericValue<double>();
+    if (std::isnan(dv)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "NaN is not allowed");
+    }
+    v.emplace_back(convertDouble(dv));
   }
 
   return zkd::interleave(v);
