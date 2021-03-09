@@ -1377,7 +1377,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
                                                    LogicalCollection& collection) {
 
   auto* rocksdb = static_cast<RocksDBMetaCollection*>(collection.getPhysical());
-  bool const compactAfterDrop = rocksdb->meta().numberDocuments() >= 32 * 1024;
+  bool const compactAfterDrop = true; //rocksdb->meta().numberDocuments() >= 32 * 1024;
 
   rocksdb::DB* db = _db->GetRootDB();
 
