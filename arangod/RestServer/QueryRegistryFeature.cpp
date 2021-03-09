@@ -97,17 +97,17 @@ namespace arangodb {
 
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
-struct QueryRegistryScale {
+struct QueryTimeScale {
   static log_scale_t<double> scale() { return {2., 0.0, 50.0, 20}; }
 };
-struct QueryRegistryScale2 {
+struct SlowQueryTimeScale {
   static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
 };
 
 DECLARE_COUNTER(arangodb_aql_all_query, "Total number of AQL queries finished");
-DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryRegistryScale, "Execution time histogram for all AQL queries [s]");
+DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale, "Execution time histogram for all AQL queries [s]");
 DECLARE_COUNTER(arangodb_aql_slow_query, "Total number of slow AQL queries finished");
-DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, QueryRegistryScale2, "Execution time histogram for slow AQL queries [s]");
+DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale, "Execution time histogram for slow AQL queries [s]");
 DECLARE_COUNTER(arangodb_aql_total_query_time_msec, "Total execution time of all AQL queries [ms]");
 DECLARE_GAUGE(arangodb_aql_current_query, uint64_t, "Current number of AQL queries executing");
 

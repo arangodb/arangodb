@@ -68,18 +68,18 @@ DECLARE_COUNTER(arangodb_maintenance_action_failure_counter, "Failure counter fo
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
 };
-struct MaintenanceScale2 {
+struct MaintenanceActionRuntimeScale {
   static log_scale_t<uint64_t> scale() { return {4, 82, 86400000, 10}; }
 };
-struct MaintenanceScale3 {
+struct MaintenanceActionQueueTimeScale {
   static log_scale_t<uint64_t> scale() { return {2, 82, 3600000, 12}; }
 };
 
 DECLARE_HISTOGRAM(arangodb_maintenance_phase1_runtime_msec, MaintenanceScale, "Maintenance Phase 1 runtime histogram [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale, "Maintenance Phase 2 runtime histogram [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spent on agency sync [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceScale2, "Time spent executing a maintenance action [ms]");
-DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceScale3, "Time spent in the queue before execution for maintenance actions [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRuntimeScale, "Time spent executing a maintenance action [ms]");
+DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale, "Time spent in the queue before execution for maintenance actions [ms]");
 DECLARE_COUNTER(arangodb_maintenance_action_done_counter, "Counter of actions that are done and have been removed from the registry");
 DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t, "Number of leader shards not fully replicated");
 DECLARE_GAUGE(arangodb_shards_total_count, uint64_t, "Number of shards on this machine");
