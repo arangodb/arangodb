@@ -97,7 +97,8 @@ router.get('/config.js', function (req, res) {
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      forceOneShard: internal.forceOneShard,
+      showMaintenanceStatus: true
     })}`
   );
 })
