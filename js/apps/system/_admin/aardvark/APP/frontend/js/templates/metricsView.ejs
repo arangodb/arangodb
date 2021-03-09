@@ -74,7 +74,7 @@ if (activeView === "text") {
     <div class="header child">Histograms</div>
     <div class="pure-g" style="background: white; padding-top: 10px;">
       <% _.each(collection.where({type: "HISTOGRAM"}), (model) => { %>
-        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2 pure-u-lg-1-3 pure-u-xl-1-4">
+        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2 pure-u-lg-1-3 pure-u-xl-1-3">
           <%
             let count = model.get("metrics")[0].count;
             if (!count) {
