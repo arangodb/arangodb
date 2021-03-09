@@ -18,31 +18,58 @@ if not("arangod" in lshere and "arangosh" in lshere and \
 # List files in Documentation/Metrics:
 yamlfiles = os.listdir("Documentation/Metrics")
 yamlfiles.sort()
+if "allMetrics.yaml" in yamlfiles:
+    yamlfiles.remove("allMetrics.yaml")
+if "template.yaml" in yamlfiles:
+    yamlfiles.remove("template.yaml")
 
 # Read list of metrics from source:
 metricsList = []
-linematchcounter = re.compile("DECLARE_COUNTER\s*\(\s*([a-z_A-Z]*)\s*,")
-linematchgauge = re.compile("DECLARE_GAUGE\s*\(\s*([a-z_A-Z]*)\s*,")
-linematchhistogram = re.compile("DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z]*)\s*,")
+linematchcounter = re.compile(r"DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+linematchgauge = re.compile(r"DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+linematchhistogram = re.compile(r"DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
+headercounter = re.compile(r"DECLARE_COUNTER\s*\(")
+headergauge = re.compile(r"DECLARE_GAUGE\s*\(")
+headerhistogram = re.compile(r"DECLARE_HISTOGRAM\s*\(")
+namematch = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
 for root, dirs, files in os.walk("."):
     if root[:10] == "./arangod/" or root[:6] == "./lib/":
       for f in files:
         if f[-4:] == ".cpp":
           ff = os.path.join(root, f)
+          continuation = False
           s = open(ff)
           while True:
               l = s.readline()
-              if l == "":
-                  break
-              m = linematchcounter.search(l)
-              if m:
-                  metricsList.append(m.group(1))
-              m = linematchgauge.search(l)
-              if m:
-                  metricsList.append(m.group(1))
-              m = linematchhistogram.search(l)
-              if m:
-                  metricsList.append(m.group(1))
+              if not(continuation):
+                  if l == "":
+                      break
+                  m = linematchcounter.search(l)
+                  if m:
+                      metricsList.append(m.group(1))
+                      continue
+                  m = linematchgauge.search(l)
+                  if m:
+                      metricsList.append(m.group(1))
+                      continue
+                  m = linematchhistogram.search(l)
+                  if m:
+                      metricsList.append(m.group(1))
+                      continue
+                  m = headercounter.search(l)
+                  if m:
+                      continuation = True
+                  m = headergauge.search(l)
+                  if m:
+                      continuation = True
+                  m = headerhistogram.search(l)
+                  if m:
+                      continuation = True
+              else:
+                  continuation = False
+                  m = namematch.search(l)
+                  if m:
+                      metricsList.append(m.group(1))
           s.close()
 if len(metricsList) == 0:
     print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
@@ -95,6 +122,13 @@ for i in range(0, len(metricsList)):
     if bad:
         missing = True
     
+tooMany = False
+for i in range(0, len(yamlfiles)):
+    name = yamlfiles[i][:-5]
+    if not(name in metricsList):
+        tooMany = True
+        print("YAML file '" + name + ".yaml'\n  does not have a corresponding metric declared in the source code!")
+
 onlyCheck = False
 if len(sys.argv) > 1 and sys.argv[1] == "-c":
   onlyCheck = True
@@ -123,3 +157,6 @@ else:
 
 if missing:
     sys.exit(17)
+
+if tooMany:
+    sys.exit(18)
