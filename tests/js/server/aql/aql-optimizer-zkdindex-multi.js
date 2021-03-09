@@ -23,7 +23,6 @@
 
 'use strict';
 
-const internal = require("internal");
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
@@ -112,7 +111,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
             for (let z of opCases) {
                 for (let w of opCases) {
                     if (x === "none" && y === "none" && z === "none" && w === "none") {
-                        continue;
+                        continue; // does not use the index
                     }
 
                     testObject[["testCase", x, y, z, w].join("_")] = function () {
@@ -142,7 +141,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
     }
 
     return testObject;
-
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);
