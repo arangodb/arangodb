@@ -1072,10 +1072,12 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                          }
                        });
       }
-      result = Result(
-        TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-        std::string("no planned servers means a failure to abort ") + _jobId);
-      return result;
+      if (failed) {
+        result = Result(
+          TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
+          std::string("no planned servers means a failure to abort ") + _jobId);
+        return result;
+      }
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
       _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
