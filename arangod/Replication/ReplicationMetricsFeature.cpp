@@ -98,7 +98,7 @@ ReplicationMetricsFeature::ReplicationMetricsFeature(arangodb::application_featu
       _numDumpRequests(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_dump_requests{})),
       _numDumpBytesReceived(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_replication_dump_bytes_received{} {})),
+          arangodb_replication_dump_bytes_received{})),
       _numDumpDocuments(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_replication_dump_documents{})),
       _waitedForDump(server.getFeature<arangodb::MetricsFeature>().add(
