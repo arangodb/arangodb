@@ -523,9 +523,9 @@ void ClusterFeature::prepare() {
 
 }
 
-DECLARE_METRIC(arangodb_dropped_followers_count);
-DECLARE_METRIC(arangodb_refused_followers_count);
-DECLARE_METRIC(arangodb_sync_wrong_checksum);
+DECLARE_COUNTER(arangodb_dropped_followers_count, "Number of drop-follower events");
+DECLARE_COUNTER(arangodb_refused_followers_count, "Number of refusal answers from a follower during synchronous replication");
+DECLARE_COUNTER(arangodb_sync_wrong_checksum, "Number of times a mismatching shard checksum was detected when syncing shards");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -595,14 +595,11 @@ void ClusterFeature::start() {
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
     _followersDroppedCounter =
-      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_dropped_followers_count>(
-        0, "Number of drop-follower events");
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_count{});
     _followersRefusedCounter =
-      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_refused_followers_count>(
-        0, "Number of refusal answers from a follower during synchronous replication");
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_count{});
     _followersWrongChecksumCounter =
-      server().getFeature<arangodb::MetricsFeature>().counter<arangodb_sync_wrong_checksum>(
-        0, "Number of times a mismatching shard checksum was detected when syncing shards");
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
