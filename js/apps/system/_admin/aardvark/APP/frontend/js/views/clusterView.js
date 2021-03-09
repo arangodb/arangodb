@@ -59,7 +59,6 @@
     render: function () {
       var self = this;
       this.$el.html(this.template.render({}));
-      // this.initValues()
 
       if (!this.initDone) {
         if (this.coordinators.first() !== undefined) {
@@ -76,6 +75,8 @@
         self.rerenderValues(data);
       };
       this.getCoordStatHistory(callback);
+
+      arangoHelper.buildClusterSubNav('Dashboard');
     },
 
     waitForCoordinators: function () {
