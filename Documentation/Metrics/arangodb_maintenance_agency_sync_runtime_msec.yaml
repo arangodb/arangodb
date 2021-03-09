@@ -8,4 +8,4 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Histogram for total time spend on agency sync.
+  Histogram for total time spent on agency sync.
