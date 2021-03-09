@@ -451,13 +451,22 @@
 
     buildClusterSubNav: function (activeKey, disabled) {
       let enableMaintenanceMode = false;
+      let enableDistribution = false;
+
       if (frontendConfig.showMaintenanceStatus && frontendConfig.db === '_system') {
         enableMaintenanceMode = true;
+      }
+      if (frontendConfig.db === '_system') {
+        enableDistribution = true;
       }
 
       var menus = {
         Dashboard: {
           route: '#cluster'
+        },
+        Distribution: {
+          route: '#distribution',
+          disabled: !enableDistribution
         },
         Maintenance: {
           route: '#maintenance',
