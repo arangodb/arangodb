@@ -142,6 +142,7 @@ struct ClusterProvider {
 
   void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
     // TODO fix or rm. (do not need that method)
+    // Currently blocked by ProviderTracer as it needs the implementation ...
   }
 
 
