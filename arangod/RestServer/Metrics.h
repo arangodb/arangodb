@@ -483,7 +483,7 @@ template<typename Scale> class Histogram : public Metric {
       ls += globals + ",";
     }
     if (!labels().empty()) {
-      ls += labels() + ",";
+      ls += labels();
     }
 
     for (size_t i = 0; i < size(); ++i) {
@@ -491,7 +491,9 @@ template<typename Scale> class Histogram : public Metric {
       sum += n;
       result += name();
       result += "{";
-      result += ls;
+      if (!ls.empty()) {
+        result += ls + ",";
+      }
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(sum) + "\n";
     }
     result += name() + "_count";
