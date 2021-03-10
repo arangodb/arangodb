@@ -113,36 +113,22 @@ auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey
   return _vertexData.find(vertexKey) != _vertexData.end();
 }
 
-auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType const& vertexKey,
-                                                             bool backward) const -> bool {
-  if (backward) {
-    return (_vertexConnectedEdgesBackward.find(vertexKey) ==
-            _vertexConnectedEdgesBackward.end())
-               ? false
-               : true;
-  }
-  return (_vertexConnectedEdgesForward.find(vertexKey) ==
-          _vertexConnectedEdgesForward.end())
-             ? false
-             : true;
-}
-
 auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey,
                                                    bool backward) const -> bool {
   if (backward) {
-    return (_edgeDataBackward.find(edgeKey) == _edgeDataBackward.end()) ? false : true;
+    return _edgeDataBackward.find(edgeKey) != _edgeDataBackward.end();
   }
-  return (_edgeDataForward.find(edgeKey) == _edgeDataForward.end()) ? false : true;
+  return _edgeDataForward.find(edgeKey) != _edgeDataForward.end();
 }
 
-auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) -> VPackSlice {
+auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
   if (!isVertexCached(vertex)) {
     return VPackSlice::noneSlice();
   }
   return _vertexData.at(vertex);
 }
 
-auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge, bool backward)
+auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge, bool backward) const
     -> VPackSlice {
   if (!isEdgeCached(edge, backward)) {
     return VPackSlice::noneSlice();
