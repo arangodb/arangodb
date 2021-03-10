@@ -32,7 +32,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/tri-strings.h"
@@ -72,7 +71,6 @@ void VstResponse::addPayload(VPackSlice const& slice,
   }
 
   // only copy buffer if it contains externals
-    std::cerr << __FILE__ << ":" << __LINE__ << " \n";
   if (resolveExternals) {
     bool resolveExt = VelocyPackHelper::hasNonClientTypes(slice, true, true);
     std::cerr << __FILE__ << ":" << __LINE__ << " \n";
@@ -80,7 +78,7 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(slice.byteSize());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
+       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
       if (_contentType == rest::ContentType::VPACK) {
         if (_payload.empty()) {
@@ -90,11 +88,10 @@ void VstResponse::addPayload(VPackSlice const& slice,
         }
       } else if (_contentType == rest::ContentType::JSON) {
         VPackSlice finalSlice(tmpBuffer.data());
-        StringBuffer plainBuffer;
-        arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
-        dumper.dumpValue(finalSlice);
         _payload.reset();
-        _payload.append(plainBuffer.data(), plainBuffer.length());
+        velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
+        VPackDumper dumper(&sink, options);
+        dumper.dump(finalSlice);
       } else {
         _payload.reset();
         _payload.append(slice.start(), slice.byteSize());
