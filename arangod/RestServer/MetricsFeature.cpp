@@ -78,11 +78,6 @@ void MetricsFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 ::Metric& MetricsFeature::doAdd(metrics::Builder& builder) {
-  if (ServerState::instance() != nullptr &&
-      ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
-    builder.addLabel("role", ServerState::roleToString(ServerState::instance()->getRole()));
-    builder.addLabel("shortname", ServerState::instance()->getShortName());
-  }
   auto metric = builder.build();
   auto key = builder.key();
   bool success = false;
