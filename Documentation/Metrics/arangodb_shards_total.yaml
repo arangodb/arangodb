@@ -1,4 +1,4 @@
-name: arangodb_shards_total_count
+name: arangodb_shards_total
 help: |
   Number of shards on this machine.
 unit: number

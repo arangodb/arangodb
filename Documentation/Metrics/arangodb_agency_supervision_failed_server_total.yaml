@@ -1,4 +1,4 @@
-name: arangodb_agency_supervision_failed_server_count
+name: arangodb_agency_supervision_failed_server_total
 help: |
   Counter for FailedServer jobs.
 unit: number
