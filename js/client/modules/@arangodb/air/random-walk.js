@@ -303,9 +303,6 @@ function random_walk_program(
     };
 }
 
-/* `single_source_shortest_path` executes the program
-   returned by `single_source_shortest_path_program`
-   on the graph identified by `graphName`. */
 function random_walk(
     graphName,
     resultField
