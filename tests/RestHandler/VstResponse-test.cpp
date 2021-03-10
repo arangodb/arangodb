@@ -26,8 +26,6 @@
 #include "velocypack/Parser.h"
 #include "Basics/encoding.h"
 
-#include <iostream>
-
 #define ASSERT_ARANGO_OK(x) \
   { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
 
@@ -49,7 +47,6 @@ class VstResponseTest
 // -----------------------------------------------------------------------------
 
 TEST_F(VstResponseTest, add_payload_slice_json) {
-  std::cerr << "starting test!\n";
   arangodb::VstResponse resp{arangodb::rest::ResponseCode::OK, 0};
   resp.setContentTypeRequested(arangodb::rest::ContentType::JSON);
 
