@@ -136,11 +136,11 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       bool first = true;
       for (auto const& i : _globalLabels) {
         if (!first) {
-          _globalLabelsStr += ",";          
+          _globalLabelsStr += ","; 
         } else {
           first = false;
         }
-        _globalLabelsStr += i.first + "=" + i.second;
+        _globalLabelsStr += i.first + "=\"" + i.second + "\"";
       }
     }
 
