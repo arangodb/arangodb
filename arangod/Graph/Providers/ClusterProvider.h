@@ -140,12 +140,6 @@ struct ClusterProvider {
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
 
-  void insertEdgeIntoResult(EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
-    // TODO fix or rm. (do not need that method)
-    // Currently blocked by ProviderTracer as it needs the implementation ...
-  }
-
-
   void addVertexToBuilder(Step::Vertex const& vertex, arangodb::velocypack::Builder& builder);
   void addEdgeToBuilder(Step::Edge const& edge, arangodb::velocypack::Builder& builder);
 
