@@ -190,7 +190,17 @@ auto readDocumentKey(VPackSlice doc,
   return zkd::interleave(v);
 }
 
-using ExpressionBounds = std::pair<aql::AstNode const*, aql::AstNode const*>;
+struct ExpressionBounds {
+  struct Bound {
+    aql::AstNode const* op_node = nullptr;
+    aql::AstNode const* bounded_expr = nullptr;
+    aql::AstNode const* bound_value = nullptr;
+    bool isStrict = false;
+  };
+
+  Bound lower;
+  Bound upper;
+};
 
 void extractBoundsFromCondition(
     RocksDBZkdIndex const* index,
@@ -203,14 +213,22 @@ void extractBoundsFromCondition(
     if (auto it = extractedBounds.find(idx); it != std::end(extractedBounds)) {
       return it->second;
     }
-    return extractedBounds[idx] = std::make_pair(nullptr, nullptr);
+    return extractedBounds[idx];
   };
 
-  auto const useAsBound = [&](size_t idx, aql::AstNode* node, bool asLower) {
+  auto const useAsBound = [&](size_t idx, aql::AstNode* op_node, aql::AstNode* bounded_expr,
+                              aql::AstNode* bound_value, bool asLower, bool isStrict) {
+    auto& bounds = ensureBounds(idx);
     if (asLower) {
-      ensureBounds(idx).first = node;
+      bounds.lower.op_node = op_node;
+      bounds.lower.bound_value = bound_value;
+      bounds.lower.bounded_expr = bounded_expr;
+      bounds.lower.isStrict = isStrict;
     } else {
-      ensureBounds(idx).second = node;
+      bounds.upper.op_node = op_node;
+      bounds.upper.bound_value = bound_value;
+      bounds.upper.bounded_expr = bounded_expr;
+      bounds.upper.isStrict = isStrict;
     }
   };
 
@@ -244,14 +262,20 @@ void extractBoundsFromCondition(
       if (name == field[0].name) {
         switch (op->type) {
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-            useAsBound(idx, other, true);
-            useAsBound(idx, other, false);
+            useAsBound(idx, op, access, other, true, false);
+            useAsBound(idx, op, access, other, false, false);
             return true;
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            useAsBound(idx, other, reverse);
+            useAsBound(idx, op, access, other, reverse, false);
             return true;
           case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-            useAsBound(idx, other, !reverse);
+            useAsBound(idx, op, access, other, !reverse, false);
+            return true;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+            useAsBound(idx, op, access, other, reverse, true);
+            return true;
+          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+            useAsBound(idx, op, access, other, !reverse, true);
             return true;
           default:
             break;
@@ -270,6 +294,8 @@ void extractBoundsFromCondition(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+      case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
         ok |= checkIsBoundForAttribute(op, op->getMember(0), op->getMember(1), false);
         ok |= checkIsBoundForAttribute(op, op->getMember(1), op->getMember(0), true);
         break;
@@ -348,8 +374,6 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
     const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
     const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, size_t itemsInIndex) const {
-  LOG_DEVEL << "RocksDBZkdIndex::supportsFilterCondition node = " << node->toString()
-            << " reference = " << reference->name;
 
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -362,27 +386,54 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
   }
 
   if (extractedBounds.empty()) {
-    LOG_DEVEL << "no attribute covered at all!";
     return FilterCosts();
   }
 
-  LOG_DEVEL << "We can use this index!";
   // TODO -- actually return costs
   return FilterCosts::zeroCosts();
 }
 arangodb::aql::AstNode* arangodb::RocksDBZkdIndex::specializeCondition(
-    arangodb::aql::AstNode* node, const arangodb::aql::Variable* reference) const {
-  // TRI_ASSERT(false);
-  // THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  // TODO -- implement something here
-  return node;
+    arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference) const {
+  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(this, condition, reference, extractedBounds, unusedExpressions);
+
+  std::vector<arangodb::aql::AstNode const*> children;
+
+  for (size_t i = 0; i < condition->numMembers(); ++i) {
+    auto op = condition->getMemberUnchecked(i);
+
+    if (unusedExpressions.find(op) == unusedExpressions.end()) {
+      switch (op->type) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          children.emplace_back(op);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(condition);
+  condition->clearMembers();
+
+  for (auto& it : children) {
+    TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
+    condition->addMember(it);
+  }
+
+  LOG_DEVEL << "specialized condition = " << condition->toString();
+
+  return condition;
 }
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
-  LOG_DEVEL << "RocksDBZkdIndex::iteratorForCondition node = " << node->toString()
-            << " ref = " << reference->id;
 
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
@@ -404,13 +455,11 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
   for (auto&& [idx, field] : enumerate(fields())) {
     if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
       auto const& bounds = it->second;
-      min[idx] = nodeExtractDouble(bounds.first).value_or(ByteStringNegInfinity);
-      max[idx] = nodeExtractDouble(bounds.second).value_or(ByteStringPosInfinity);
-
+      min[idx] = nodeExtractDouble(bounds.lower.bound_value).value_or(ByteStringNegInfinity);
+      max[idx] = nodeExtractDouble(bounds.upper.bound_value).value_or(ByteStringPosInfinity);
     } else {
       min[idx] = ByteStringNegInfinity;
       max[idx] = ByteStringPosInfinity;
-      LOG_DEVEL << "for field " << _fields[idx][0] << " search is unbounded";
     }
   }
 

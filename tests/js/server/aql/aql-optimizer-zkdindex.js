@@ -32,6 +32,7 @@ const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
+const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
 function optimizerRuleZkd2dIndexTestSuite() {
   const colName = 'UnitTestZkdIndexCollection';
@@ -191,6 +192,25 @@ function optimizerRuleZkd2dIndexTestSuite() {
       const res = executeRes.json;
       res.sort();
       assertEqual([].sort(), res);
+    },
+
+    test8: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 < d.x && d.y <= 1
+          RETURN d.x
+      `;
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      assertTrue(appliedRules.includes(moveFiltersIntoEnumerate));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([0.1, 0.2, 0.3, 0.4, 0.5].sort(), res);
     },
 
   };

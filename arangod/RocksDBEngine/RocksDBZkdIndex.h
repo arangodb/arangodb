@@ -52,7 +52,7 @@ class RocksDBZkdIndex final : public RocksDBIndex {
                                       const arangodb::aql::Variable* reference,
                                       size_t itemsInIndex) const override;
 
-  aql::AstNode* specializeCondition(arangodb::aql::AstNode* node,
+  aql::AstNode* specializeCondition(arangodb::aql::AstNode* condition,
                                     const arangodb::aql::Variable* reference) const override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
