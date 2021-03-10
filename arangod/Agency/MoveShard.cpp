@@ -426,7 +426,7 @@ bool MoveShard::start(bool&) {
       if (failed) { // Cannot start the job - we'll be back.
         return false;
       }
-      
+
       addIncreasePlanVersion(pending);
 
     }  // mutation part of transaction done
@@ -1035,7 +1035,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                                trx.add(srv);
                              }
                            } else {
-                             LOG_TOPIC("2e7b9", WARN, Logger::SUPERVISION) 
+                             LOG_TOPIC("2e7b9", WARN, Logger::SUPERVISION)
                                << "failed to iterate over planned servers for shard "
                                << _shard << " or a clone";
                              failed = true;
@@ -1062,7 +1062,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
                                }
                              }
                            } else {
-                             LOG_TOPIC("2eb79", WARN, Logger::SUPERVISION) 
+                             LOG_TOPIC("2eb79", WARN, Logger::SUPERVISION)
                                << "failed to iterate over planned servers for shard "
                                << _shard << " or a clone";
                              failed = true;
