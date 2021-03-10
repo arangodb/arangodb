@@ -100,10 +100,8 @@ void Counter::store(uint64_t const& n) {
   _c.exchange(n);
 }
 
-void Counter::toPrometheus(std::string& result) const {
+void Counter::toPrometheus(std::string& result, std::string const& globals) const {
   _b.push();
-  result += "\n#TYPE " + name() + " counter\n";
-  result += "#HELP " + name() + " " + help() + "\n";
   result += name();
   if (!labels().empty()) {
     result += "{" + labels() + "}";

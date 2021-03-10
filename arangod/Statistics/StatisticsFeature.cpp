@@ -71,7 +71,7 @@ using namespace arangodb::statistics;
 
 namespace {
 std::string const stats15Query = "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections LET clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent) RETURN {clientConnections15M: clientConnections15M || 0}";
-  
+
 std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, physicalMemory: s.server.physicalMemory, residentSizeCurrent: s.system.residentSize, clientConnectionsCurrent: s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: s.client.bytesReceivedPerSecond, http: { optionsPerSecond: s.http.requestsOptionsPerSecond, putsPerSecond: s.http.requestsPutPerSecond, headsPerSecond: s.http.requestsHeadPerSecond, postsPerSecond: s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: s.http.requestsOptionsPerSecond, patchesPerSecond: s.http.requestsPatchPerSecond } }";
 } // namespace
 
@@ -280,7 +280,7 @@ RequestFigures UserRequestFigures;
 
 class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread(ApplicationServer& server) 
+  explicit StatisticsThread(ApplicationServer& server)
     : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
@@ -412,7 +412,7 @@ void StatisticsFeature::start() {
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() && !_statisticsHistoryTouched) {
     _statisticsHistory = false;
-  } 
+  }
 
   if (ServerState::instance()->isDBServer()) {
     // the StatisticsWorker runs queries against the _statistics
@@ -481,13 +481,13 @@ void StatisticsFeature::appendHistogram(
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
-  
-  auto const& stat = statStrings.at(label); 
+
+  auto const& stat = statStrings.at(label);
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] + 
-    "\n#HELP " + name + " " + stat[2] + '\n';
+    "\n# TYPE " + name + " " + stat[1] +
+    "\n# HELP " + name + " " + stat[2] + '\n';
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
@@ -499,12 +499,12 @@ void StatisticsFeature::appendHistogram(
 }
 
 void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label) {
-  auto const& stat = statStrings.at(label); 
+  auto const& stat = statStrings.at(label);
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] +
-    "\n#HELP " + name + " " + stat[2] + 
+    "\n# TYPE " + name + " " + stat[1] +
+    "\n# HELP " + name + " " + stat[2] +
     '\n' + name + " " + val + '\n';
 }
 
@@ -554,7 +554,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 
     RequestStatistics::Snapshot requestStats;
     RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
-    
+
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
@@ -606,7 +606,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
-                                                     double start, 
+                                                     double start,
                                                      arangodb::velocypack::Builder& result) const {
   if (!ServerState::instance()->isCoordinator()) {
     return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
@@ -624,7 +624,7 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
   ExecContextSuperuserScope exscope;
 
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    
+
   // build bind variables for query
   auto bindVars = std::make_shared<VPackBuilder>();
 
@@ -650,10 +650,10 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
                                arangodb::aql::QueryString(stats15Query),
                                bindVars);
-  
+
     query.queryOptions().cache = false;
     query.queryOptions().skipAudit = true;
-  
+
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
@@ -662,16 +662,16 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
 
     result.add("stats15", queryResult.data->slice());
   }
-  
+
   {
     buildBindVars(StaticStrings::StatisticsCollection);
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
                                arangodb::aql::QueryString(statsSamplesQuery),
                                bindVars);
-  
+
     query.queryOptions().cache = false;
     query.queryOptions().skipAudit = true;
-  
+
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {

@@ -71,8 +71,7 @@ struct metrics_key {
   metrics_key(std::string const& name, std::string const& labels);
   metrics_key(std::initializer_list<std::string> const& il);
   metrics_key(std::string const& name, std::initializer_list<std::string> const& il);
-  std::size_t hash() const noexcept;
-  bool operator==(metrics_key const& other) const;
+  bool operator<(metrics_key const& other) const;
 };
 
 namespace metrics {
@@ -144,7 +143,7 @@ struct HistogramBuilder : GenericBuilder<Derived> {
 
 class MetricsFeature final : public application_features::ApplicationFeature {
  public:
-  using registry_type = std::unordered_map<metrics_key, std::shared_ptr<Metric>>;
+  using registry_type = std::map<metrics_key, std::shared_ptr<Metric>>;
 
   static double time();
 
@@ -170,6 +169,8 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
 
   registry_type _registry;
+  mutable std::unordered_map<std::string,std::string> _globalLabels;
+  mutable std::string _globalLabelsStr;
 
   mutable std::recursive_mutex _lock;
 

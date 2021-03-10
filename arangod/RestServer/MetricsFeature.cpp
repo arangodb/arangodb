@@ -52,8 +52,8 @@ using namespace arangodb::options;
 
 
 MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Metrics"), 
-    _export(true) , 
+  : ApplicationFeature(server, "Metrics"),
+    _export(true) ,
     _exportReadWriteMetrics(false) {
   setOptional(false);
   startsAfter<LoggerFeature>();
@@ -118,11 +118,38 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
   // minimize reallocs
   result.reserve(32768);
-
   {
+    bool changed = false;
     std::lock_guard<std::recursive_mutex> guard(_lock);
+    if (_globalLabels.find("shortname") == _globalLabels.end()) {
+      _globalLabels.try_emplace("shortname", ServerState::instance()->getShortName());
+      changed = true;
+    }
+    if (_globalLabels.find("role") == _globalLabels.end() &&
+        ServerState::instance() != nullptr &&
+        ServerState::instance()->getRole() != ServerState::ROLE_UNDEFINED) {
+      _globalLabels.try_emplace(
+        "role", ServerState::roleToString(ServerState::instance()->getRole()));
+      changed = true;
+    }
+    if (changed) {
+      bool first = true;
+      for (auto const& i : _globalLabels) {
+        if (!first) {
+          _globalLabelsStr += ",";
+          first = false;
+        }
+        _globalLabelsStr += i.first + "=" + i.second;
+      }
+    }
+
+    std::string lastType{};
     for (auto const& i : _registry) {
-      i.second->toPrometheus(result);
+      if (lastType != i.second->name()) {
+        result += "\n# TYPE " + i.second->name() + " " + i.second->type() + "\n";
+        result +=   "# HELP " + i.second->name() + " " + i.second->help() + "\n" + name();
+      }
+      i.second->toPrometheus(result, _globalLabelsStr);
     }
   }
 
@@ -148,7 +175,6 @@ metrics_key::metrics_key(std::string const& name, std::initializer_list<std::str
   if (il.size() == 1) {
     labels = *(il.begin());
   }
-  _hash = std::hash<std::string>{}(name + labels);
 }
 
 metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
@@ -158,32 +184,19 @@ metrics_key::metrics_key(std::initializer_list<std::string> const& il) {
   if (il.size() == 2) {
     labels = *(il.begin()+1);
   }
-  _hash = std::hash<std::string>{}(name + labels);
 }
 
 metrics_key::metrics_key(std::string const& name) : name(name) {
   // the metric name should not include any spaces
   TRI_ASSERT(name.find(' ') == std::string::npos);
-  _hash = std::hash<std::string>{}(name);
 }
 
 metrics_key::metrics_key(std::string const& name, std::string const& labels) :
   name(name), labels(labels) {
   // the metric name should not include any spaces
   TRI_ASSERT(name.find(' ') == std::string::npos);
-  _hash = std::hash<std::string>{}(name + labels);
 }
 
-std::size_t metrics_key::hash() const noexcept {
-  return _hash;
-}
-
-bool metrics_key::operator== (metrics_key const& other) const {
-  return name == other.name && labels == other.labels;
-}
-
-namespace std {
-std::size_t hash<arangodb::metrics_key>::operator()(arangodb::metrics_key const& m) const noexcept {
-  return m.hash();
-}
+bool metrics_key::operator< (metrics_key const& other) const {
+  return name+labels < other.name+other.labels;
 }
