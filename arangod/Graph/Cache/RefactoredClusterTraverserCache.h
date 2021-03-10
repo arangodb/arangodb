@@ -76,19 +76,20 @@ class RefactoredClusterTraverserCache {
   }
 
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
-  auto cacheEdge(VertexType origin, EdgeType edgeId, velocypack::Slice edgeSlice, bool backward) -> void;
+  auto cacheEdge(VertexType origin, EdgeType edgeId,
+                 velocypack::Slice edgeSlice, bool backward) -> void;
 
-  auto isVertexCached(VertexType const& vertexKey) -> bool;
-  auto isVertexRelationCached(VertexType const& vertex, bool backward) -> bool;
-  auto isEdgeCached(EdgeType const& edge, bool backward) -> bool;
+  auto isVertexCached(VertexType const& vertexKey) const -> bool;
+  auto isVertexRelationCached(VertexType const& vertex, bool backward) const -> bool;
+  auto isEdgeCached(EdgeType const& edge, bool backward) const -> bool;
 
   auto getVertexRelations(VertexType const& vertex, bool backward)
       -> std::vector<std::pair<EdgeType, VertexType>> const&;
 
   auto getCachedVertex(VertexType const& vertex) -> VPackSlice;
   auto getCachedEdge(EdgeType const& edge, bool backward) -> VPackSlice;
-  auto persistString(arangodb::velocypack::HashedStringRef idString) -> arangodb::velocypack::HashedStringRef;
-  
+  auto persistString(arangodb::velocypack::HashedStringRef idString)
+      -> arangodb::velocypack::HashedStringRef;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;

@@ -85,43 +85,36 @@ auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edge
 
   auto edgeToEmplace =
       std::pair{edgeId, VertexType{getEdgeDestination(edgeSlice, origin)}};
-  std::vector<std::pair<EdgeType, VertexType>> initVector{};
 
   if (backward) {
     _edgeDataBackward.try_emplace(edgeId, edgeSlice);
-    _vertexConnectedEdgesBackward.try_emplace(origin, initVector);
-    auto& edgeVectorBackward = _vertexConnectedEdgesBackward.at(origin);
+    auto& edgeVectorBackward = _vertexConnectedEdgesBackward[origin];
     edgeVectorBackward.emplace_back(std::move(edgeToEmplace));
   } else {
     _edgeDataForward.try_emplace(edgeId, edgeSlice);
-    _vertexConnectedEdgesForward.try_emplace(origin, initVector);
-    auto& edgeVectorForward = _vertexConnectedEdgesForward.at(origin);
+    auto& edgeVectorForward = _vertexConnectedEdgesForward[origin];
     edgeVectorForward.emplace_back(std::move(edgeToEmplace));
   }
 }
 
-auto RefactoredClusterTraverserCache::getVertexRelations(const VertexType& vertex, bool backward)
+auto RefactoredClusterTraverserCache::getVertexRelations(VertexType const& vertex, bool backward)
     -> std::vector<std::pair<EdgeType, VertexType>> const& {
   TRI_ASSERT(isVertexCached(vertex));
 
-  if (!isVertexRelationCached(vertex, backward)) {
-    std::vector<std::pair<EdgeType, VertexType>> empty;
-    return std::move(empty);
-  }
-
   if (backward) {
-    return _vertexConnectedEdgesBackward.at(vertex);
+    return _vertexConnectedEdgesBackward[vertex];
   }
 
-  return _vertexConnectedEdgesForward.at(vertex);
+  return _vertexConnectedEdgesForward[vertex];
 }
 
-auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) -> bool {
-  return (_vertexData.find(vertexKey) == _vertexData.end()) ? false : true;
+auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
+    -> bool {
+  return _vertexData.find(vertexKey) != _vertexData.end();
 }
 
 auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType const& vertexKey,
-                                                             bool backward) -> bool {
+                                                             bool backward) const -> bool {
   if (backward) {
     return (_vertexConnectedEdgesBackward.find(vertexKey) ==
             _vertexConnectedEdgesBackward.end())
@@ -135,7 +128,7 @@ auto RefactoredClusterTraverserCache::isVertexRelationCached(VertexType const& v
 }
 
 auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey,
-                                                   bool backward) -> bool {
+                                                   bool backward) const -> bool {
   if (backward) {
     return (_edgeDataBackward.find(edgeKey) == _edgeDataBackward.end()) ? false : true;
   }
