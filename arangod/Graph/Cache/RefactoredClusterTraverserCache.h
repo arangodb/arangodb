@@ -83,7 +83,7 @@ class RefactoredClusterTraverserCache {
   auto isEdgeCached(EdgeType const& edge, bool backward) -> bool;
 
   auto getVertexRelations(VertexType const& vertex, bool backward)
-      -> std::vector<std::pair<EdgeType, VertexType>>;
+      -> std::vector<std::pair<EdgeType, VertexType>> const&;
 
   auto getCachedVertex(VertexType const& vertex) -> VPackSlice;
   auto getCachedEdge(EdgeType const& edge, bool backward) -> VPackSlice;

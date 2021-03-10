@@ -101,11 +101,12 @@ auto RefactoredClusterTraverserCache::cacheEdge(VertexType origin, EdgeType edge
 }
 
 auto RefactoredClusterTraverserCache::getVertexRelations(const VertexType& vertex, bool backward)
-    -> std::vector<std::pair<EdgeType, VertexType>> {
+    -> std::vector<std::pair<EdgeType, VertexType>> const& {
   TRI_ASSERT(isVertexCached(vertex));
 
   if (!isVertexRelationCached(vertex, backward)) {
-    return {};
+    std::vector<std::pair<EdgeType, VertexType>> empty;
+    return std::move(empty);
   }
 
   if (backward) {
