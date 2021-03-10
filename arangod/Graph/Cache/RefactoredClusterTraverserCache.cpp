@@ -35,12 +35,13 @@ using namespace arangodb::graph;
 
 namespace {
 constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t heapBlockSize = 4096;
 };
 
 RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines, ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
-      _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
       _datalake(resourceMonitor),
       _engines(engines) {}
 
