@@ -75,11 +75,7 @@ VertexType const& ClusterProvider::Step::Vertex::getID() const {
 
 EdgeType const& ClusterProvider::Step::Edge::getID() const { return _edge; }
 bool ClusterProvider::Step::Edge::isValid() const {
-  // TODO: Check isValid, when it is actually valid here in cluster case?
-  if (_edge.size() > 0) {
-    return true;
-  }
-  return false;
+  return !_edge.empty();
 };
 
 ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
