@@ -61,6 +61,7 @@
     "noty": "^3.2.0-beta",
     "nvd3": "^1.8.6",
     "optimize-css-assets-webpack-plugin": "5.0.1",
+    "parse-prometheus-text-format": "^1.1.1",
     "pnp-webpack-plugin": "1.1.0",
     "postcss-flexbugs-fixes": "4.1.0",
     "postcss-loader": "3.0.0",

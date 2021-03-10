@@ -3,6 +3,11 @@ devel
 
 * Removed older reference to VelocyPackDumper.
 
+* Added a new metrics view to the web UI. This view can be used in a clustered
+  environment as well as in a single instance. Metrics are displayed either in
+  a tabular format or as plain text (Prometheus Text-based format).
+  Additionally, the metrics can be downloaded there.
+
 * Added a new maintenance mode tab to the web UI in cluster mode. 
   The new tab shows the current state of the cluster supervision maintenance 
   and allows to enable/disable the maintenance mode from there. The tab will
