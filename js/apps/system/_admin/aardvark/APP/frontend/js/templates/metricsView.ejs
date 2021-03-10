@@ -103,7 +103,7 @@ if (activeView === "text") {
 
             <% _.forEach(model.get("metrics")[0].buckets, (value, key) => { %>
               <tr>
-                <td class="alignRight">&lt;=<%= key %></td>
+                <td class="alignRight">&lt;= <%= key %></td>
                 <td class="alignRight"><%= value %></td>
               </tr>
             <% }); %>
