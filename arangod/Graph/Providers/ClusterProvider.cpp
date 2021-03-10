@@ -65,9 +65,6 @@ ClusterProvider::Step::Step(VertexType v)
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(false) {}
 
-ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev, bool fetched)
-    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(fetched) {}  // TODO:: remove
-
 ClusterProvider::Step::~Step() = default;
 
 VertexType const& ClusterProvider::Step::Vertex::getID() const {
@@ -90,9 +87,8 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
-  // Create default initial step
-  // Note: Refactor naming, Strings in our cache here are not allowed to be removed.
-  return Step(_opts.getCache()->persistString(vertex));  // TODO check / get rid of persit string
+  // Create the default initial step.
+  return Step(_opts.getCache()->persistString(vertex));
 }
 
 void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,

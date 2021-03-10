@@ -59,9 +59,12 @@ namespace graph {
 // TODO: we need to control from the outside if and which parts of the vertex - (will be implemented in the future via template parameters)
 // data should be returned THis is most-likely done via Template Parameter like
 // this: template<ProduceVertexData>
-struct ClusterProvider {
+class ClusterProvider {
+ public:
   using Options = ClusterBaseProviderOptions;
   class Step : public arangodb::graph::BaseStep<Step> {
+    friend class ClusterProvider;
+
    public:
     class Vertex {
      public:
@@ -89,16 +92,18 @@ struct ClusterProvider {
       explicit Edge() : _edge() { _edge = EdgeType(); }
 
       void addToBuilder(ClusterProvider& provider, arangodb::velocypack::Builder& builder) const;
-      EdgeType const& getID() const; // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
+      EdgeType const& getID() const;  // TODO: Performance Test compare EdgeType <-> EdgeDocumentToken
       bool isValid() const;
 
      private:
       EdgeType _edge;
     };
 
+   private:
     Step(VertexType v);
     Step(VertexType v, EdgeType edge, size_t prev);
-    Step(VertexType v, EdgeType edge, size_t prev, bool fetched);
+
+   public:
     ~Step();
 
     bool operator<(Step const& other) const noexcept {
@@ -113,12 +118,13 @@ struct ClusterProvider {
     }
     bool isProcessable() const { return !isLooseEnd(); }
     bool isLooseEnd() const { return _fetched ? false : true; }
-    void setFetched() { _fetched = true; }
 
     VertexType getVertexIdentifier() const { return _vertex.getID(); }
-    EdgeType getEdgeIdentifier() const { return _edge.getID(); } // TODO: maybe remove this and above vertex method as well
 
     friend auto operator<<(std::ostream& out, Step const& step) -> std::ostream&;
+
+   private:
+    void setFetched() { _fetched = true; }
 
    private:
     Vertex _vertex;
