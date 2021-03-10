@@ -37,7 +37,7 @@
   help: 'Current number of entries in agency cache callbacks table.
 
     '
-  name: arangodb_agency_cache_callback_count
+  name: arangodb_agency_cache_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
     '
@@ -62,7 +62,7 @@
   help: 'Current number of agency callbacks registered.
 
     '
-  name: arangodb_agency_callback_count
+  name: arangodb_agency_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
     '
@@ -229,7 +229,7 @@
   help: 'Counter for FailedServer jobs.
 
     '
-  name: arangodb_agency_supervision_failed_server_count
+  name: arangodb_agency_supervision_failed_server_total
   threshold: 'Many FailedServer jobs indicate frequent failures of dbservers. This
 
     is generally not good.
@@ -616,7 +616,8 @@
   unit: number
 - category: Connectivity
   complexity: simple
-  description: 'Time to lease a connection from the connection. There are two pools,
+  description: 'Time to lease a connection from the connection pool. There are two
+    pools,
 
     one for the agency communication with label `AgencyComm` and one for
 
@@ -801,7 +802,7 @@
   help: 'Number of drop-follower events.
 
     '
-  name: arangodb_dropped_followers_count
+  name: arangodb_dropped_followers_total
   threshold: 'Usually, drop-follower events should only happen if servers are
 
     restarted.
@@ -835,7 +836,9 @@
   unit: number
 - category: Health
   complexity: medium
-  description: 'Time required to send a heartbeat.
+  description: 'Histogram of times required to send heartbeats. For every heartbeat
+
+    sent the time is measured and an event is put into the histogram.
 
     '
   exposedBy:
@@ -1038,12 +1041,12 @@
   unit: ms
 - category: Maintenance
   complexity: medium
-  description: 'Histogram for total time spend on agency sync.
+  description: 'Histogram for total time spent on agency sync.
 
     '
   exposedBy:
   - dbserver
-  help: 'Total time spend on agency sync.
+  help: 'Total time spent on agency sync.
 
     '
   name: arangodb_maintenance_agency_sync_runtime_msec
@@ -1169,7 +1172,7 @@
   help: 'Number of refusal answers from a follower during synchronous replication.
 
     '
-  name: arangodb_refused_followers_count
+  name: arangodb_refused_followers_total
   type: counter
   unit: number
 - category: Replication
@@ -1830,7 +1833,7 @@
   help: 'Number of leader shards on this machine.
 
     '
-  name: arangodb_shards_leader_count
+  name: arangodb_shards_leader_total
   type: gauge
   unit: number
 - category: Replication
@@ -1875,7 +1878,7 @@
   help: 'Number of shards on this machine.
 
     '
-  name: arangodb_shards_total_count
+  name: arangodb_shards_total
   type: gauge
   unit: number
 - category: Replication

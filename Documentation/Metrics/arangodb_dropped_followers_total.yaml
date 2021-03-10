@@ -1,4 +1,4 @@
-name: arangodb_dropped_followers_count
+name: arangodb_dropped_followers_total
 help: |
   Number of drop-follower events.
 unit: number

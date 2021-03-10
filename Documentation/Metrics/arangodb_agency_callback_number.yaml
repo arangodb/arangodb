@@ -1,19 +1,20 @@
-name: arangodb_agency_cache_callback_count
+name: arangodb_agency_callback_number
 help: |
-  Current number of entries in agency cache callbacks table.
+  Current number of agency callbacks registered.
 unit: number
 type: gauge
 category: Agency
 complexity: advanced
 exposedBy:
-  - agent
-  - dbserver
   - coordinator
+  - dbserver
+  - agent
 description: |
-  This reflects the current number of callbacks the local `AgencyCache`
-  has registered.
+  This metric reflects the current number of agency callbacks being
+  registered.
 threshold: |
   This number will usually be very low, something like 2 or 3.
 troubleshoot: |
   If this number is considerably higher, this should be investigated.
   Please contact support.
+  

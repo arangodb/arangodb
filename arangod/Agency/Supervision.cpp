@@ -60,7 +60,7 @@ DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_msec,
                   "Accumulated Supervision Runtime [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec,
                   "Accumulated Supervision wait for replication time [ms]");
-DECLARE_COUNTER(arangodb_agency_supervision_failed_server_count,
+DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
                   "Counter for FailedServer jobs");
 DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_msec, RuntimeScale,
                   "Agency Supervision runtime histogram [ms]");
@@ -212,7 +212,7 @@ Supervision::Supervision(application_features::ApplicationServer& server)
           arangodb_agency_supervision_accum_runtime_wait_for_replication_msec{})),
       _supervision_failed_server_counter(
         server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_agency_supervision_failed_server_count{})) {}
+          arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
