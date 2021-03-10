@@ -32,6 +32,7 @@
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
 
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -119,13 +120,22 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
 
+  TRI_DEFER({
+    for (Future<network::Response>& f : futures) {
+      try {
+        // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
+        f.wait();
+      } catch (...) {
+      }
+    }
+  });
+
   for (auto const& engine : *engines) {
     futures.emplace_back(
         network::sendRequestRetry(pool, "server:" + engine.first, fuerte::RestVerb::Put,
                                   ::vertexUrl + StringUtils::itoa(engine.second),
                                   leased->bufferRef(), reqOpts));
   }
-
 
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
@@ -173,6 +183,9 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     */
   }
 
+  // Note: This disables the TRI_DEFER
+  futures.clear();
+
   // put back all looseEnds we we're able to cache
   for (auto& lE : looseEnds) {
     if (!_opts.getCache()->isVertexCached(lE->getVertexIdentifier())) {
@@ -205,6 +218,16 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(engines->size());
+
+  TRI_DEFER({
+    for (Future<network::Response>& f : futures) {
+      try {
+        // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
+        f.wait();
+      } catch (...) {
+      }
+    }
+  });
 
   for (auto const& engine : *engines) {
     futures.emplace_back(
@@ -256,6 +279,9 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
       _opts.getCache()->datalake().add(std::move(payload));
     }
   }
+
+  // Note: This disables the TRI_DEFER
+  futures.clear();
 
   return TRI_ERROR_NO_ERROR;
 }
