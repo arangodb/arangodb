@@ -71,14 +71,6 @@ auto ProviderTracer<ProviderImpl>::expand(Step const& from, size_t previous,
 }
 
 template <class ProviderImpl>
-void ProviderTracer<ProviderImpl>::insertEdgeIntoResult(EdgeDocumentToken edge,
-                                                        arangodb::velocypack::Builder& builder) {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["insertEdgeIntoResult"].addTiming(TRI_microtime() - start));
-  return _impl.insertEdgeIntoResult(edge, builder);
-}
-
-template <class ProviderImpl>
 void ProviderTracer<ProviderImpl>::addVertexToBuilder(typename Step::Vertex const& vertex,
                                                       arangodb::velocypack::Builder& builder) {
   double start = TRI_microtime();
@@ -92,6 +84,13 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(typename Step::Edge const& e
   double start = TRI_microtime();
   TRI_DEFER(_stats["addEdgeToBuilder"].addTiming(TRI_microtime() - start));
   return _impl.addEdgeToBuilder(edge, builder);
+}
+
+template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::destroyEngines() {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["destroyEngines"].addTiming(TRI_microtime() - start));
+  return _impl.destroyEngines();
 }
 
 template <class ProviderImpl>
