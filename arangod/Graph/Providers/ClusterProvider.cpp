@@ -261,7 +261,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     }
   }
 
-  return {};
+  return TRI_ERROR_NO_ERROR;
 }
 
 auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
