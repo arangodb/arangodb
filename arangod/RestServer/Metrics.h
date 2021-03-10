@@ -477,25 +477,26 @@ template<typename Scale> class Histogram : public Metric {
   size_t size() const { return _c.size(); }
 
   virtual void toPrometheus(std::string& result, std::string const& globals) const override {
-    std::string lbs = labels();
-    auto const haveLabels = !lbs.empty();
-    auto const separator = haveLabels && lbs.back() != ',';
     uint64_t sum(0);
+    std::string ls;
+    if (!globals.empty()) {
+      ls += globals + ",";
+    }
+    if (!labels().empty()) {
+      ls += labels() + ",";
+    }
+
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{";
-      if (haveLabels) {
-        result += lbs;
-      }
-      if (separator) {
-        result += ",";
-      }
+      result += name();
+      result += "{";
+      result += ls;
       result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(sum) + "\n";
     }
     result += name() + "_count";
-    if (!labels().empty()) {
-      result += "{" + labels() + "}";
+    if (!ls.empty()) {
+      result += "{" + ls + "}";
     }
     result += " " + std::to_string(sum) + "\n";
   }
