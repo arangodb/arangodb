@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/ResourceUsage.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb;
 
@@ -54,11 +55,14 @@ void ResourceMonitor::decreaseMemoryUsage(std::size_t value) noexcept {
   [[maybe_unused]] std::size_t previous = currentResources.memoryUsage.fetch_sub(value, std::memory_order_relaxed);
   TRI_ASSERT(previous >= value);
 }
+
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept
+    : _resourceMonitor(resourceMonitor), _value(0) {}
   
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::size_t value)
-    : _resourceMonitor(resourceMonitor), _value(value) {
+    : ResourceUsageScope(resourceMonitor) {
   // may throw
-  increase(_value);
+  increase(value);
 }
   
 ResourceUsageScope::~ResourceUsageScope() {
@@ -73,11 +77,14 @@ void ResourceUsageScope::increase(std::size_t value) {
   if (value > 0) {
     // may throw
     _resourceMonitor.increaseMemoryUsage(value);
+    _value += value;
   }
 }
   
 void ResourceUsageScope::decrease(std::size_t value) noexcept {
   if (value > 0) {
+    TRI_ASSERT(_value >= value);
     _resourceMonitor.decreaseMemoryUsage(value);
+    _value -= value;
   }
 }

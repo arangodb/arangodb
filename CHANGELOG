@@ -1,6 +1,11 @@
 devel
 -----
 
+* Added `--batch-size` option to arangoexport.
+  This option allows to control the number of documents to be returned by each
+  server-side batch. It can be used to limit the number of documents per batch
+  when exporting collections with large documents.
+
 * Added a new maintenance mode tab to the web UI in cluster mode. 
   The new tab shows the current state of the cluster supervision maintenance 
   and allows to enable/disable the maintenance mode from there. The tab will
