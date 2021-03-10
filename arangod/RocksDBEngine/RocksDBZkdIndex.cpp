@@ -430,7 +430,6 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndex::specializeCondition(
     condition->addMember(it);
   }
 
-  LOG_DEVEL << "specialized condition = " << condition->toString();
 
   return condition;
 }
