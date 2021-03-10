@@ -33,7 +33,7 @@ const _ = require("lodash");
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 
-const opCases = ["none", "eq", "le", "ge", "le2", "ge2"];
+const opCases = ["none", "eq", "le", "ge", "le2", "ge2", "lt", "gt", "legt"];
 
 function conditionForVariable(op, name) {
     if (op === "none") {
@@ -48,6 +48,12 @@ function conditionForVariable(op, name) {
         return `${name} >= 5 && ${name} <= 6`;
     } else if (op === "le2") {
         return `${name} <= 5 && ${name} >= 4`;
+    } else if (op === "lt") {
+        return `${name} < 5`;
+    } else if (op === "gt") {
+        return `${name} > 5`;
+    } else if (op === "legt") {
+        return `${name} <= 5 && ${name} > 4`;
     }
 }
 
@@ -65,6 +71,12 @@ function resultSetForConditoin(op) {
         return all.filter((x) => x >= 5 && x <= 6);
     } else if (op === "le2") {
         return all.filter((x) => x <= 5 && x >= 4);
+    } else if (op === "lt") {
+        return all.filter((x) => x < 5);
+    } else if (op === "gt") {
+        return all.filter((x) => x > 5);
+    } else if (op === "legt") {
+        return all.filter((x) => x <= 5 && x > 4);
     }
 }
 
@@ -74,7 +86,7 @@ function productSet(x, y, z, w) {
         for (let dy of resultSetForConditoin(y)) {
             for (let dz of resultSetForConditoin(z)) {
                 for (let dw of resultSetForConditoin(w)) {
-                     result.unshift([dx, dy, dz, dw]);
+                    result.unshift([dx, dy, dz, dw]);
                 }
             }
         }
@@ -106,8 +118,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
     };
 
-    for (let x of opCases) {
-        for (let y of opCases) {
+    for (let x of ["none", "eq"]) {
+        for (let y of ["none", "le", "gt"]) {
             for (let z of opCases) {
                 for (let w of opCases) {
                     if (x === "none" && y === "none" && z === "none" && w === "none") {
@@ -128,7 +140,11 @@ function optimizerRuleZkd2dIndexTestSuite() {
                         const nodeTypes = explainRes.plan.nodes.map(n => n.type);
                         assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
                         assertTrue(appliedRules.includes(useIndexes));
-                        assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+
+                        const conds = [x, y, z, w];
+                        if (!conds.includes("lt") && !conds.includes("gt") && !conds.includes("legt")) {
+                            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+                        }
                         const executeRes = AQL_EXECUTE(query);
                         const res = executeRes.json;
                         res.sort();
