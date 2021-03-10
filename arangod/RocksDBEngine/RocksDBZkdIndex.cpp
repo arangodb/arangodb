@@ -381,10 +381,6 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
 
-  if (!unusedExpressions.empty()) {
-    return FilterCosts();
-  }
-
   if (extractedBounds.empty()) {
     return FilterCosts();
   }
@@ -408,6 +404,14 @@ arangodb::aql::AstNode* arangodb::RocksDBZkdIndex::specializeCondition(
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          children.emplace_back(op);
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+          op->type = aql::NODE_TYPE_OPERATOR_BINARY_LE;
+          children.emplace_back(op);
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+          op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
           children.emplace_back(op);
           break;
         default:
