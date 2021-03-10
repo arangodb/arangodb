@@ -102,6 +102,9 @@ class ResourceUsageScope {
   /// @brief steal responsibility for decreasing the memory 
   /// usage on destruction
   void steal() noexcept;
+
+  /// @brief revert all memory usage tracking operations in this scope
+  void revert() noexcept;
   
   /// @brief track <value> bytes of memory, may throw!
   void increase(std::size_t value);

@@ -397,6 +397,10 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (!hasMore) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
+  
+    // very important here, because _query may become invalid after here!
+    guard.revert();
+
     _query.reset();
     this->setDeleted();
     return ExecutionState::DONE;

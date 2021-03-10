@@ -83,7 +83,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
   bool _progress;
   bool _useGzip;
   bool _firstLine;
-  uint64_t _batchSize;
+  uint64_t _documentsPerBatch;
   uint64_t _skippedDeepNested;
   uint64_t _httpRequestsDone;
   std::string _currentCollection;

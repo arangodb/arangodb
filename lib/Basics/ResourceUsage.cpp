@@ -66,11 +66,15 @@ ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::si
 }
   
 ResourceUsageScope::~ResourceUsageScope() {
-  decrease(_value);
+  revert();
 }
 
 void ResourceUsageScope::steal() noexcept {
   _value = 0;
+}
+
+void ResourceUsageScope::revert() noexcept {
+  decrease(_value);
 }
   
 void ResourceUsageScope::increase(std::size_t value) {
