@@ -136,7 +136,8 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       bool first = true;
       for (auto const& i : _globalLabels) {
         if (!first) {
-          _globalLabelsStr += ",";
+          _globalLabelsStr += ",";          
+        } else {
           first = false;
         }
         _globalLabelsStr += i.first + "=" + i.second;
@@ -148,6 +149,7 @@ void MetricsFeature::toPrometheus(std::string& result) const {
       if (lastType != i.second->name()) {
         result += "\n# TYPE " + i.second->name() + " " + i.second->type() + "\n";
         result +=   "# HELP " + i.second->name() + " " + i.second->help() + "\n";
+        lastType = i.second->name();
       }
       i.second->toPrometheus(result, _globalLabelsStr);
     }

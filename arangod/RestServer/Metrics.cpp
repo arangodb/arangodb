@@ -103,10 +103,14 @@ void Counter::store(uint64_t const& n) {
 void Counter::toPrometheus(std::string& result, std::string const& globals) const {
   _b.push();
   result += name();
-  if (!labels().empty()) {
-    result += "{" + labels() + "}";
+  result += "{";
+  if (!globals.empty()) {
+    result += globals + ",";
   }
-  result += " " + std::to_string(load()) + "\n";
+  if (!labels().empty()) {
+    result += labels();
+  }
+  result += "} " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(
