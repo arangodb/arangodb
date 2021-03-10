@@ -190,20 +190,11 @@ auto readDocumentKey(VPackSlice doc,
   return zkd::interleave(v);
 }
 
-struct ExpressionBounds {
-  struct Bound {
-    aql::AstNode const* op_node = nullptr;
-    aql::AstNode const* bounded_expr = nullptr;
-    aql::AstNode const* bound_value = nullptr;
-    bool isStrict = false;
-  };
+}  // namespace
 
-  Bound lower;
-  Bound upper;
-};
 
-void extractBoundsFromCondition(
-    RocksDBZkdIndex const* index,
+void zkd::extractBoundsFromCondition(
+    arangodb::Index const* index,
     const arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference,
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions) {
@@ -308,7 +299,72 @@ void extractBoundsFromCondition(
   }
 }
 
-}  // namespace
+auto zkd::supportsFilterCondition(
+    arangodb::Index const* index,const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
+                             const arangodb::aql::AstNode* node,
+                             const arangodb::aql::Variable* reference,
+                             size_t itemsInIndex) -> Index::FilterCosts {
+
+  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(index, node, reference, extractedBounds, unusedExpressions);
+
+  if (extractedBounds.empty()) {
+    return Index::FilterCosts();
+  }
+
+  // TODO -- actually return costs
+  return Index::FilterCosts::zeroCosts();
+}
+
+auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* condition,
+                         const arangodb::aql::Variable* reference) -> aql::AstNode* {
+  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(index, condition, reference, extractedBounds, unusedExpressions);
+
+  std::vector<arangodb::aql::AstNode const*> children;
+
+  for (size_t i = 0; i < condition->numMembers(); ++i) {
+    auto op = condition->getMemberUnchecked(i);
+
+    if (unusedExpressions.find(op) == unusedExpressions.end()) {
+      switch (op->type) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          children.emplace_back(op);
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+          op->type = aql::NODE_TYPE_OPERATOR_BINARY_LE;
+          children.emplace_back(op);
+          break;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+          op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
+          children.emplace_back(op);
+          break;
+        default:
+          break;
+      }
+    }
+  }
+
+  // must edit in place, no access to AST; TODO change so we can replace with
+  // copy
+  TEMPORARILY_UNLOCK_NODE(condition);
+  condition->clearMembers();
+
+  for (auto& it : children) {
+    TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
+    condition->addMember(it);
+  }
+
+
+  return condition;
+
+}
 
 arangodb::Result arangodb::RocksDBZkdIndex::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
@@ -375,63 +431,12 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
     const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, size_t itemsInIndex) const {
 
-  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
-  std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
-
-  if (extractedBounds.empty()) {
-    return FilterCosts();
-  }
-
-  // TODO -- actually return costs
-  return FilterCosts::zeroCosts();
+  return zkd::supportsFilterCondition(this, allIndexes, node, reference, itemsInIndex);
 }
+
 arangodb::aql::AstNode* arangodb::RocksDBZkdIndex::specializeCondition(
     arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference) const {
-  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
-  std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(this, condition, reference, extractedBounds, unusedExpressions);
-
-  std::vector<arangodb::aql::AstNode const*> children;
-
-  for (size_t i = 0; i < condition->numMembers(); ++i) {
-    auto op = condition->getMemberUnchecked(i);
-
-    if (unusedExpressions.find(op) == unusedExpressions.end()) {
-      switch (op->type) {
-        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-          children.emplace_back(op);
-          break;
-        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-          op->type = aql::NODE_TYPE_OPERATOR_BINARY_LE;
-          children.emplace_back(op);
-          break;
-        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-          op->type = aql::NODE_TYPE_OPERATOR_BINARY_GE;
-          children.emplace_back(op);
-          break;
-        default:
-          break;
-      }
-    }
-  }
-
-  // must edit in place, no access to AST; TODO change so we can replace with
-  // copy
-  TEMPORARILY_UNLOCK_NODE(condition);
-  condition->clearMembers();
-
-  for (auto& it : children) {
-    TRI_ASSERT(it->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE);
-    condition->addMember(it);
-  }
-
-
-  return condition;
+  return zkd::specializeCondition(this, condition, reference);
 }
 
 std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
@@ -440,7 +445,7 @@ std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
 
   TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
 
-  std::unordered_map<size_t, ExpressionBounds> extractedBounds;
+  std::unordered_map<size_t, zkd::ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
 

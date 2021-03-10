@@ -166,6 +166,7 @@ ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
+  static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
 
   emplace(edgeIndexFactory._type, edgeIndexFactory);
   emplace(fulltextIndexFactory._type, fulltextIndexFactory);
@@ -177,6 +178,7 @@ ClusterIndexFactory::ClusterIndexFactory(application_features::ApplicationServer
   emplace(primaryIndexFactory._type, primaryIndexFactory);
   emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   emplace(ttlIndexFactory._type, ttlIndexFactory);
+  emplace(zkdIndexFactory._type, zkdIndexFactory);
 }
 
 /// @brief index name aliases (e.g. "persistent" => "hash", "skiplist" =>

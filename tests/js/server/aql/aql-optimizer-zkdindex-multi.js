@@ -27,8 +27,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const aql = arangodb.aql;
-const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
-const _ = require("lodash");
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
@@ -103,12 +102,12 @@ function optimizerRuleZkd2dIndexTestSuite() {
             col = db._create(colName);
             col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'w']});
             db._query(aql`
-        FOR x IN 0..10
-        FOR y IN 0..10
-        FOR z IN 0..10
-        FOR w IN 0..10
-          INSERT {x, y, z, w} INTO ${col}
-      `);
+                FOR x IN 0..10
+                FOR y IN 0..10
+                FOR z IN 0..10
+                FOR w IN 0..10
+                  INSERT {x, y, z, w} INTO ${col}
+              `);
         },
 
         tearDownAll: function () {
@@ -128,16 +127,16 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
                     testObject[["testCase", x, y, z, w].join("_")] = function () {
                         const query = `
-        FOR d IN ${colName}
-          FILTER ${conditionForVariable(x, "d.x")}
-          FILTER ${conditionForVariable(y, "d.y")}
-          FILTER ${conditionForVariable(z, "d.z")}
-          FILTER ${conditionForVariable(w, "d.w")}
-          RETURN [d.x, d.y, d.z, d.w]
-      `;
+                            FOR d IN ${colName}
+                              FILTER ${conditionForVariable(x, "d.x")}
+                              FILTER ${conditionForVariable(y, "d.y")}
+                              FILTER ${conditionForVariable(z, "d.z")}
+                              FILTER ${conditionForVariable(w, "d.w")}
+                              RETURN [d.x, d.y, d.z, d.w]
+                          `;
                         const explainRes = AQL_EXPLAIN(query);
                         const appliedRules = explainRes.plan.rules;
-                        const nodeTypes = explainRes.plan.nodes.map(n => n.type);
+                        const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
                         assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
                         assertTrue(appliedRules.includes(useIndexes));
 

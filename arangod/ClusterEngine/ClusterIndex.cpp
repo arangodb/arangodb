@@ -27,6 +27,7 @@
 #include "ClusterIndex.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
+#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -268,8 +269,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      return zkd::supportsFilterCondition(this, allIndexes, node, reference, itemsInIndex);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -359,8 +359,7 @@ aql::AstNode* ClusterIndex::specializeCondition(aql::AstNode* node,
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
-      TRI_ASSERT(false);
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+      return zkd::specializeCondition(this, node, reference);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
