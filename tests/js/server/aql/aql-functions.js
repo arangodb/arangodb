@@ -939,6 +939,10 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testReplaceNthIssue13632 : function () {
+      if (require("internal").isCluster()) {
+        return;
+      }
+
       const cn = "UnitTestsCollection";
       db._drop(cn);
       db._create(cn);
@@ -958,6 +962,7 @@ function ahuacatlFunctionsTestSuite () {
         let actual = getQueryResults(query);
         assertEqual(2, actual.length);
 
+        print(actual);
         let OLD, NEW;
         [OLD, NEW] = actual[0];
         assertNull(OLD);
