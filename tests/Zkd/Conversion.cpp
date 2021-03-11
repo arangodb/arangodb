@@ -72,16 +72,6 @@ TEST(Zkd_byte_string_conversion, int64_compare) {
   }
 }
 
-TEST(Zkd_byte_string_conversion, double_float) {
-  auto tests = {std::pair{0.0, byte_string{0b10111111_b, 0b11110000_b, 0_b, 0_b,
-                                           0_b, 0_b, 0_b, 0_b}}};
-
-  for (auto&& [v, bs] : tests) {
-    auto result = to_byte_string_fixed_length(v);
-    EXPECT_EQ(result, bs);
-  }
-}
-
 auto const doubles_worth_testing = {0.0,
                                     0.1,
                                     0.2,

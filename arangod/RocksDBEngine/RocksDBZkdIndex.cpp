@@ -167,6 +167,19 @@ auto nodeExtractDouble(aql::AstNode const* node) -> std::optional<zkd::byte_stri
   return std::nullopt;
 }
 
+auto accessDocumentPath(VPackSlice doc, std::vector<basics::AttributeName> const& path) -> VPackSlice {
+  for (auto&& attrib : path) {
+    TRI_ASSERT(attrib.shouldExpand == false);
+    if (!doc.isObject()) {
+      return VPackSlice::noneSlice();
+    }
+
+    doc = doc.get(attrib.name);
+  }
+
+  return doc;
+}
+
 auto readDocumentKey(VPackSlice doc,
                      std::vector<std::vector<basics::AttributeName>> const& fields)
     -> zkd::byte_string {
@@ -174,13 +187,11 @@ auto readDocumentKey(VPackSlice doc,
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
-    TRI_ASSERT(path.size() == 1);
-    TRI_ASSERT(path[0].shouldExpand == false);
-    VPackSlice value = doc.get(path[0].name);
+    VPackSlice value = accessDocumentPath(doc, path);
     if (!value.isNumber<double>()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
     }
-    double dv = value.getNumericValue<double>();
+    auto dv = value.getNumericValue<double>();
     if (std::isnan(dv)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "NaN is not allowed");
     }
@@ -238,39 +249,30 @@ void zkd::extractBoundsFromCondition(
       return false;
     }
 
-    auto& path = attributeData.second;
-    // TODO -- make this more generic
-    TRI_ASSERT(path.size() == 1 && !path[0].shouldExpand);
-
-    auto& name = path[0].name;
     for (auto&& [idx, field] : enumerate(index->fields())) {
-      TRI_ASSERT(field.size() == 1);
-
-      if (name != field[0].name) {
+      if (attributeData.second != field) {
         continue;
       }
 
-      if (name == field[0].name) {
-        switch (op->type) {
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-            useAsBound(idx, op, access, other, true, false);
-            useAsBound(idx, op, access, other, false, false);
-            return true;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
-            useAsBound(idx, op, access, other, reverse, false);
-            return true;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
-            useAsBound(idx, op, access, other, !reverse, false);
-            return true;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
-            useAsBound(idx, op, access, other, reverse, true);
-            return true;
-          case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
-            useAsBound(idx, op, access, other, !reverse, true);
-            return true;
-          default:
-            break;
-        }
+      switch (op->type) {
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
+          useAsBound(idx, op, access, other, true, false);
+          useAsBound(idx, op, access, other, false, false);
+          return true;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
+          useAsBound(idx, op, access, other, reverse, false);
+          return true;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
+          useAsBound(idx, op, access, other, !reverse, false);
+          return true;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT:
+          useAsBound(idx, op, access, other, reverse, true);
+          return true;
+        case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT:
+          useAsBound(idx, op, access, other, !reverse, true);
+          return true;
+        default:
+          break;
       }
     }
 

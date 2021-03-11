@@ -204,7 +204,7 @@ Result IndexFactory::emplace(std::string const& type, IndexTypeFactory const& fa
   return arangodb::Result();
 }
 
-Result IndexFactory::enhanceIndexDefinition(  // normalizze deefinition
+Result IndexFactory::enhanceIndexDefinition(  // normalize definition
     velocypack::Slice const definition,       // source definition
     velocypack::Builder& normalized,  // normalized definition (out-param)
     bool isCreation,                  // definition for index creation
