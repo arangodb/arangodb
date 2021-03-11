@@ -131,6 +131,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
+    TRI_ASSERT(looseEnd->isLooseEnd());
     TRI_ASSERT(_vertexConnectedEdges.find(looseEnd->getVertexIdentifier()) == _vertexConnectedEdges.end());
     leased->add(VPackValuePair(looseEnd->getVertex().getID().data(),
                                looseEnd->getVertex().getID().length(),
