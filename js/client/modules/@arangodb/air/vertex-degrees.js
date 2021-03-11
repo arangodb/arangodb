@@ -91,7 +91,7 @@ function vertex_degrees(
  */
 function exec_test_vertex_degrees_on_graph(graphSpec) {
   testhelpers.wait_for_pregel("AIR vertex-degree", vertex_degrees(graphSpec.name, "vertexDegrees"));
-
+  /*
   db._profileQuery(`
     FOR d IN @@V
       LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
@@ -103,7 +103,7 @@ function exec_test_vertex_degrees_on_graph(graphSpec) {
         "@V": graphSpec.vname,
         "@E": graphSpec.ename
       });
-
+  */
   return testhelpers.compare_pregel(db._query(`
     FOR d IN @@V
       LET outDegree = LENGTH(FOR x IN @@E FILTER x._from == d._id RETURN x)
