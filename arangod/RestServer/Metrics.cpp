@@ -104,10 +104,15 @@ void Counter::toPrometheus(std::string& result, std::string const& globals) cons
   _b.push();
   result += name();
   result += "{";
+  bool haveGlobals = false;
   if (!globals.empty()) {
-    result += globals + ",";
+    result += globals;
+    haveGlobals = true;
   }
   if (!labels().empty()) {
+    if (haveGlobals) {
+      result += ",";
+    }
     result += labels();
   }
   result += "} " + std::to_string(load()) + "\n";

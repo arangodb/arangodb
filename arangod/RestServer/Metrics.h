@@ -176,10 +176,15 @@ template<typename T> class Gauge : public Metric {
   void toPrometheus(std::string& result, std::string const& globalLabels) const override {
     result += name();
     result += "{";
+    bool haveGlobals = false;
     if (!globalLabels.empty()) {
-      result += globalLabels + ",";
+      result += globalLabels;
+      haveGlobals = true;
     }
     if (!labels().empty()) {
+      if (haveGlobals) {
+        result += ",";
+      }
       result += labels();
     }
     result += "} " + std::to_string(load()) + "\n";
@@ -479,10 +484,15 @@ template<typename Scale> class Histogram : public Metric {
   virtual void toPrometheus(std::string& result, std::string const& globals) const override {
     uint64_t sum(0);
     std::string ls;
+    bool haveGlobals = false;
     if (!globals.empty()) {
-      ls += globals + ",";
+      ls += globals;
+      haveGlobals = true;
     }
     if (!labels().empty()) {
+      if (haveGlobals) {
+        ls += ",";
+      }
       ls += labels();
     }
 
