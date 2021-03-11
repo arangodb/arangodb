@@ -61,135 +61,10 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
 
   try {
     nameVersionTable.reserve(64);
-    nameVersionTable.try_emplace(arangodb_agency_supervision_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec, "");
-    nameVersionTable.try_emplace(arangodb_agency_supervision_failed_server_total, "");
-    nameVersionTable.try_emplace(arangodb_agency_supervision_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_agency_supervision_runtime_wait_for_replication_msec, "");
-    nameVersionTable.try_emplace(arangodb_agency_append_hist, "");
-    nameVersionTable.try_emplace(arangodb_agency_commit_hist, "");
-    nameVersionTable.try_emplace(arangodb_agency_compaction_hist, "");
-    nameVersionTable.try_emplace(arangodb_agency_local_commit_index, "");
-    nameVersionTable.try_emplace(arangodb_agency_read_no_leader, "");
-    nameVersionTable.try_emplace(arangodb_agency_read_ok, "");
-    nameVersionTable.try_emplace(arangodb_agency_write_hist, "");
-    nameVersionTable.try_emplace(arangodb_agency_write_no_leader, "");
-    nameVersionTable.try_emplace(arangodb_agency_write_ok, "");
-    nameVersionTable.try_emplace(arangodb_agency_term, "");
-    nameVersionTable.try_emplace(arangodb_agency_log_size_bytes, "");
-    nameVersionTable.try_emplace(arangodb_agency_client_lookup_table_size, "");
-    nameVersionTable.try_emplace(arangodb_agency_cache_callback_number, "");
-    nameVersionTable.try_emplace(arangodb_load_current_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_load_current_runtime, "");
-    nameVersionTable.try_emplace(arangodb_load_plan_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_load_plan_runtime, "");
-    nameVersionTable.try_emplace(arangodb_agencycomm_request_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_dropped_followers_total, "");
-    nameVersionTable.try_emplace(arangodb_refused_followers_total, "");
-    nameVersionTable.try_emplace(arangodb_sync_wrong_checksum, "");
-    nameVersionTable.try_emplace(arangodb_agency_callback_registered, "");
-    nameVersionTable.try_emplace(arangodb_agency_callback_number, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_phase1_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_phase2_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_agency_sync_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_duplicate_counter, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_registered_counter, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_accum_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_accum_queue_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_failure_counter, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_phase1_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_phase2_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_agency_sync_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_runtime_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_queue_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_maintenance_action_done_counter, "");
-    nameVersionTable.try_emplace(arangodb_shards_out_of_sync, "");
-    nameVersionTable.try_emplace(arangodb_shards_total, "");
-    nameVersionTable.try_emplace(arangodb_shards_leader_total, "");
-    nameVersionTable.try_emplace(arangodb_shards_not_replicated, "");
-    nameVersionTable.try_emplace(arangodb_heartbeat_failures, "");
-    nameVersionTable.try_emplace(arangodb_heartbeat_send_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_connection_pool_connections_current, "");
-    nameVersionTable.try_emplace(arangodb_connection_pool_leases_successful, "");
-    nameVersionTable.try_emplace(arangodb_connection_pool_leases_failed, "");
-    nameVersionTable.try_emplace(arangodb_connection_pool_connections_created, "");
-    nameVersionTable.try_emplace(arangodb_network_forwarded_requests, "");
-    nameVersionTable.try_emplace(arangodb_network_request_timeouts, "");
-    nameVersionTable.try_emplace(arangodb_network_request_duration_as_percentage_of_timeout, "");
-    nameVersionTable.try_emplace(arangodb_network_requests_in_flight, "");
-    nameVersionTable.try_emplace(arangodb_replication_cluster_inventory_requests, "");
-    nameVersionTable.try_emplace(arangodb_replication_dump_requests, "");
-    nameVersionTable.try_emplace(arangodb_replication_dump_bytes_received, "");
-    nameVersionTable.try_emplace(arangodb_replication_dump_documents, "");
-    nameVersionTable.try_emplace(arangodb_replication_dump_request_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_dump_apply_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_keys_requests, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_docs_requests, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_docs_requested, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_docs_inserted, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_docs_removed, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_sync_bytes_received, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_keys_requests_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_docs_requests_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_remove_apply_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_initial_lookup_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_requests, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_markers, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_removals, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_bytes_received, "");
-    nameVersionTable.try_emplace(arangodb_replication_failed_connects, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_request_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_tailing_apply_time, "");
-    nameVersionTable.try_emplace(arangodb_replication_synchronous_requests_total_number, "");
-    nameVersionTable.try_emplace(arangodb_aql_all_query, "");
-    nameVersionTable.try_emplace(arangodb_aql_query_time, "");
-    nameVersionTable.try_emplace(arangodb_aql_slow_query, "");
-    nameVersionTable.try_emplace(arangodb_aql_slow_query_time, "");
-    nameVersionTable.try_emplace(arangodb_aql_total_query_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_aql_current_query, "");
-    nameVersionTable.try_emplace(arangodb_rocksdb_write_stalls, "");
-    nameVersionTable.try_emplace(arangodb_rocksdb_write_stops, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_awake_threads, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_jobs_dequeued, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_jobs_done, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_jobs_submitted, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_low_prio_queue_last_dequeue_time, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_num_working_threads, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_num_worker_threads, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_queue_full_failures, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_queue_length, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_threads_started, "");
-    nameVersionTable.try_emplace(arangodb_scheduler_threads_stopped, "");
-    nameVersionTable.try_emplace(arangodb_collection_lock_acquisition_micros, "");
-    nameVersionTable.try_emplace(arangodb_collection_lock_acquisition_time, "");
-    nameVersionTable.try_emplace(arangodb_collection_lock_sequential_mode, "");
-    nameVersionTable.try_emplace(arangodb_collection_lock_timeouts_exclusive, "");
-    nameVersionTable.try_emplace(arangodb_collection_lock_timeouts_write, "");
-    nameVersionTable.try_emplace(arangodb_transactions_aborted, "");
-    nameVersionTable.try_emplace(arangodb_transactions_committed, "");
-    nameVersionTable.try_emplace(arangodb_transactions_started, "");
-    nameVersionTable.try_emplace(arangodb_intermediate_commits, "");
-    nameVersionTable.try_emplace(arangodb_collection_truncates, "");
-    nameVersionTable.try_emplace(arangodb_collection_truncates_replication, "");
-    nameVersionTable.try_emplace(arangodb_document_writes, "");
-    nameVersionTable.try_emplace(arangodb_document_writes_replication, "");
-    nameVersionTable.try_emplace(arangodb_document_read_time, "");
-    nameVersionTable.try_emplace(arangodb_document_insert_time, "");
-    nameVersionTable.try_emplace(arangodb_document_replace_time, "");
-    nameVersionTable.try_emplace(arangodb_document_remove_time, "");
-    nameVersionTable.try_emplace(arangodb_document_update_time, "");
-    nameVersionTable.try_emplace(arangodb_collection_truncate_time, "");
-    nameVersionTable.try_emplace(arangodb_transactions_expired, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_created, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_creation_time_msec, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_destroyed, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_enter_failures, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_entered, "");
-    nameVersionTable.try_emplace(arangodb_v8_context_exited, "");
   } catch (std::exception const& e) {
-    LOG_TOPIC("efd51", ERR, Logger::METRICS) <<
+    LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
-    EXIT_FATAL_ERROR();
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -242,7 +117,7 @@ void MetricsFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-void MetricsFeature::toPrometheus(std::string& result) const {
+void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
 
   // minimize reallocs
   result.reserve(32768);
@@ -274,12 +149,23 @@ void MetricsFeature::toPrometheus(std::string& result) const {
 
     std::string lastType{};
     for (auto const& i : _registry) {
-      if (lastType != i.second->name()) {
-        result +=   "# HELP " + i.second->name() + " " + i.second->help() + "\n";
-        result += "\n# TYPE " + i.second->name() + " " + i.second->type() + "\n";
-        lastType = i.second->name();
+      std::string name = i.second->name();
+      std::string alternativeName;
+      if (!v2) {
+        auto it = nameVersionTable.find(i.second->name());
+        if (it == nameVersionTable.end()) {
+          alternativeName = i.second->name();
+          name = alternativeName;
+        } else {
+          alternativeName = it->second;
+        }
       }
-      i.second->toPrometheus(result, _globalLabelsStr);
+      if (lastType != i.second->name()) {
+        result +=   "# HELP " + name + " " + i.second->help() + "\n";
+        result += "\n# TYPE " + name + " " + i.second->type() + "\n";
+        lastType = name;
+      }
+      i.second->toPrometheus(result, _globalLabelsStr, alternativeName);
     }
   }
 

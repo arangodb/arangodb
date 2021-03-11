@@ -100,9 +100,9 @@ void Counter::store(uint64_t const& n) {
   _c.exchange(n);
 }
 
-void Counter::toPrometheus(std::string& result, std::string const& globals) const {
+void Counter::toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const {
   _b.push();
-  result += name();
+  result += !alternativeName.empty() ? alternativeName : name();
   result += "{";
   bool haveGlobals = false;
   if (!globals.empty()) {

@@ -160,7 +160,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
     return static_cast<typename MetricBuilder::metric_t&>(doAdd(builder));
   }
 
-  void toPrometheus(std::string& result) const;
+  void toPrometheus(std::string& result, bool V2) const;
 
   ServerStatistics& serverStatistics();
 

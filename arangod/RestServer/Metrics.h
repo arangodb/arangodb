@@ -47,7 +47,7 @@ class Metric {
   std::string const& name() const;
   std::string const& labels() const;
   virtual std::string type() const = 0;
-  virtual void toPrometheus(std::string& result, std::string const& globals) const = 0;
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
@@ -81,7 +81,7 @@ class Counter : public Metric {
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&, std::string const&) const override;
+  virtual void toPrometheus(std::string&, std::string const&, std::string const&) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -173,8 +173,8 @@ template<typename T> class Gauge : public Metric {
   
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
-  void toPrometheus(std::string& result, std::string const& globalLabels) const override {
-    result += name();
+  void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
+    result += !alternativeName.empty() ? alternativeName : name();
     result += "{";
     bool haveGlobals = false;
     if (!globalLabels.empty()) {
@@ -481,7 +481,7 @@ template<typename Scale> class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result, std::string const& globals) const override {
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const override {
     uint64_t sum(0);
     std::string ls;
     bool haveGlobals = false;
@@ -496,17 +496,21 @@ template<typename Scale> class Histogram : public Metric {
       ls += labels();
     }
 
+    std::string const& theName 
+      = !alternativeName.empty() ? alternativeName : name();
+
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name();
+      result += theName;
       result += "{";
       if (!ls.empty()) {
         result += ls + ",";
       }
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(sum) + "\n";
+      auto v = !alternativeName.empty() ? n : sum;
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(v) + "\n";
     }
-    result += name() + "_count";
+    result += theName + "_count";
     if (!ls.empty()) {
       result += "{" + ls + "}";
     }
