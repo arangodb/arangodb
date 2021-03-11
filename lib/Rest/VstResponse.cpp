@@ -73,7 +73,7 @@ void VstResponse::addPayload(VPackSlice const& slice,
       VPackBuffer<uint8_t> tmpBuffer;
       tmpBuffer.reserve(slice.byteSize());  // reserve space already
       VPackBuilder builder(tmpBuffer, options);
-       VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
+      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
                                                builder, options, true, true, true);
       if (_contentType == rest::ContentType::VPACK) {
         if (_payload.empty()) {

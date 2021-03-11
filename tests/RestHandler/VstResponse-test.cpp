@@ -24,10 +24,8 @@
 #include "gtest/gtest.h"
 #include "Rest/VstResponse.h"
 #include "velocypack/Parser.h"
+#include "velocypack/Dumper.h"
 #include "Basics/encoding.h"
-
-#define ASSERT_ARANGO_OK(x) \
-  { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
@@ -35,16 +33,28 @@
 
 class VstResponseTest
     : public ::testing::Test {
- protected:
-
-  VstResponseTest() {
-  }
-
 };
+
+auto const MAGIC_TYPE {0xf3};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+
+struct TestTypeHandler final : public arangodb::velocypack::CustomTypeHandler {
+  void dump(arangodb::velocypack::Slice const& value, arangodb::velocypack::Dumper* dumper, arangodb::velocypack::Slice const& base) override final {
+    throw std::runtime_error("Not implemented");
+  }
+  std::string toString(arangodb::velocypack::Slice const& value, arangodb::velocypack::Options const* options,
+                       arangodb::velocypack::Slice const& base) override final {
+    auto p {value.begin()};
+    if (*p++ != MAGIC_TYPE) {
+      throw std::runtime_error("This is not my type");
+    }
+    auto const v {arangodb::encoding::readNumber<uint64_t>(p, sizeof(uint64_t))};
+    return std::to_string(v);
+  }
+};
 
 TEST_F(VstResponseTest, add_payload_slice_json) {
   arangodb::VstResponse resp{arangodb::rest::ResponseCode::OK, 0};
@@ -53,23 +63,23 @@ TEST_F(VstResponseTest, add_payload_slice_json) {
   // create a builder
   arangodb::velocypack::Builder builder;
 
+  builder.openObject();
+
   // use the builder to create the value I want
   uint8_t* p = builder.add(arangodb::StaticStrings::IdString,
                            arangodb::velocypack::ValuePair(9ULL, arangodb::velocypack::ValueType::Custom));
 
-  *p++ = 0xf3;  // custom type for _id
+  *p++ = MAGIC_TYPE;
   arangodb::encoding::storeNumber<uint64_t>(p, 12345, sizeof(uint64_t));
+  builder.close();
 
-  // get a slice, from the builder
   auto const slice {builder.slice()};
-
-  // add the payload
-  resp.addPayload(slice, nullptr, true);
-
-  // retrieve the payload
+  arangodb::velocypack::Options options;
+  TestTypeHandler handler;
+  options.customTypeHandler = &handler;
+  resp.addPayload(slice, &options, true);
   auto const payload {resp.payload()};
 
-  EXPECT_EQ(payload.length(), 1);
-  EXPECT_EQ(payload.byteSize(), 1);
-  EXPECT_EQ(payload[0], '3');
+  EXPECT_EQ(payload.length(), 15);
+  EXPECT_EQ(payload.toString(), "{\"_id\":\"12345\"}");
 }
