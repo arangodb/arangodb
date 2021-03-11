@@ -76,19 +76,23 @@ class RefactoredClusterTraverserCache {
   }
 
   auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
-  auto cacheEdge(VertexType origin, EdgeType edgeId,
-                 velocypack::Slice edgeSlice, bool backward) -> void;
 
   auto isVertexCached(VertexType const& vertexKey) const -> bool;
-  auto isEdgeCached(EdgeType const& edge, bool backward) const -> bool;
+  auto isEdgeCached(EdgeType const& edge) const -> bool;
 
-  auto getVertexRelations(VertexType const& vertex, bool backward)
-      -> std::vector<std::pair<EdgeType, VertexType>> const&;
 
   auto getCachedVertex(VertexType const& vertex) const -> VPackSlice;
-  auto getCachedEdge(EdgeType const& edge, bool backward) const -> VPackSlice;
+  auto getCachedEdge(EdgeType const& edge) const -> VPackSlice;
   auto persistString(arangodb::velocypack::HashedStringRef idString)
       -> arangodb::velocypack::HashedStringRef;
+
+/**
+ * @brief
+ * 
+ * Returns: first entry is the vpack that is inside the cache and stays valid during computation
+ * The second entry indicates if the caller need to retain the handed in slice buffer.
+ */
+  auto persistEdgeData(velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool>;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;
@@ -107,13 +111,8 @@ class RefactoredClusterTraverserCache {
   /// @brief vertex reference to vertex data slice
   std::unordered_map<VertexType, velocypack::Slice> _vertexData;
 
-  /// @brief vertex reference to all connected edges including the edges target
-  std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdgesForward;
-  std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdgesBackward;
-
-  /// @brief edge reference to edge data slice (TODO: one map will be enough here)
-  std::unordered_map<EdgeType, velocypack::Slice> _edgeDataForward;
-  std::unordered_map<EdgeType, velocypack::Slice> _edgeDataBackward;
+  /// @brief edge reference to edge data slice
+  std::unordered_map<EdgeType, velocypack::Slice> _edgeData;
 
   std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };

@@ -48,7 +48,24 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
+
+VertexType getEdgeDestination(arangodb::velocypack::Slice edge, VertexType const& origin) {
+  if (edge.isString()) {
+    return VertexType{edge};
+  }
+
+  TRI_ASSERT(edge.isObject());
+  auto from = edge.get(arangodb::StaticStrings::FromString);
+  TRI_ASSERT(from.isString());
+  if (from.stringRef() == origin.stringRef()) {
+    auto to = edge.get(arangodb::StaticStrings::ToString);
+    TRI_ASSERT(to.isString());
+    return VertexType{to};
+  }
+  return VertexType{from};
+}
 }  // namespace
+
 
 namespace arangodb {
 namespace graph {
@@ -194,11 +211,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 }
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
-  // Currently unused. This is just here as a placeholder. Needs to be implemented in the future
-  // as soon as we enable the ClusterProvider globally.
   auto const* engines = _opts.getCache()->engines();
-
-  // TRI_ASSERT(vertexId.isString() || vertexId.isArray());
 
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -232,6 +245,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
                                   leased->bufferRef(), reqOpts));
   }
 
+  std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
@@ -263,21 +277,26 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
         continue;
       }
 
-      arangodb::velocypack::HashedStringRef edgeIdRef(id);
-
-      if (!_opts.getCache()->isEdgeCached(edgeIdRef, _opts.isBackward())) {
+      auto [edge, needToCache] = _opts.getCache()->persistEdgeData(e);
+      if (needToCache) {
         allCached = false;
-        _opts.getCache()->cacheEdge(vertex, edgeIdRef, e, _opts.isBackward());
       }
+
+      arangodb::velocypack::HashedStringRef edgeIdRef(edge.get(StaticStrings::IdString));
+
+      auto edgeToEmplace = std::make_pair(edgeIdRef, VertexType{getEdgeDestination(edge, vertex)});
+
+      connectedEdges.emplace_back(edgeToEmplace);
     }
 
     if (!allCached) {
       _opts.getCache()->datalake().add(std::move(payload));
     }
   }
-
   // Note: This disables the TRI_DEFER
   futures.clear();
+
+  _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -317,8 +336,8 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   auto const& vertex = step.getVertex();
 
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
-  for (auto const& relation :
-       _opts.getCache()->getVertexRelations(vertex.getID(), _opts.isBackward())) {
+  TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
+  for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
     callback(Step{relation.second, relation.first, previous});
   }
 }
@@ -331,7 +350,7 @@ void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
 
 auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
                                        arangodb::velocypack::Builder& builder) -> void {
-  builder.add(_opts.getCache()->getCachedEdge(edge.getID(), _opts.isBackward()));
+  builder.add(_opts.getCache()->getCachedEdge(edge.getID()));
 }
 
 arangodb::transaction::Methods* ClusterProvider::trx() { return _trx.get(); }

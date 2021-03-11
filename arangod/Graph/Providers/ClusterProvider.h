@@ -174,6 +174,9 @@ class ClusterProvider {
   ClusterBaseProviderOptions _opts;
 
   arangodb::aql::TraversalStats _stats;
+
+  /// @brief vertex reference to all connected edges including the edges target
+  std::unordered_map<VertexType, std::vector<std::pair<EdgeType, VertexType>>> _vertexConnectedEdges;
 };
 }  // namespace graph
 }  // namespace arangodb
