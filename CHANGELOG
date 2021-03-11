@@ -3,6 +3,10 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
+* Resonably harden MoveShard against VelopcyPack more.
+
+* Removed older reference to VelocyPackDumper.
+
 * Added `--documents-per-batch` option to arangoexport.
   This option allows to control the number of documents to be returned by each
   server-side batch. It can be used to limit the number of documents per batch
