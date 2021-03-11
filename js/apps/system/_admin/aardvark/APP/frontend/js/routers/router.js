@@ -41,6 +41,7 @@
       'store/:name': 'storeDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
+      'metrics': 'metrics',
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
