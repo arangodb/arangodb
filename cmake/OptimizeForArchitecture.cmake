@@ -57,9 +57,7 @@ macro(_my_find _list _value _ret)
    endif(_found EQUAL -1)
 endmacro(_my_find)
 
-macro(AutodetectHostArchitecture)
-   set(TARGET_ARCHITECTURE "generic")
-   set(Vc_ARCHITECTURE_FLAGS)
+macro(OFA_AutodetectX86)
    set(_vendor_id)
    set(_cpu_family)
    set(_cpu_model)
@@ -177,7 +175,9 @@ macro(AutodetectHostArchitecture)
          endif(_cpu_model GREATER 2)
       endif(_cpu_family EQUAL 6)
    elseif(_vendor_id STREQUAL "AuthenticAMD")
-      if(_cpu_family EQUAL 23)
+      if(_cpu_family EQUAL 25)
+         set(TARGET_ARCHITECTURE "zen3")
+      elseif(_cpu_family EQUAL 23)
          set(TARGET_ARCHITECTURE "zen")
       elseif(_cpu_family EQUAL 22) # 16h
          set(TARGET_ARCHITECTURE "AMD 16h")
@@ -201,33 +201,25 @@ macro(AutodetectHostArchitecture)
    endif(_vendor_id STREQUAL "GenuineIntel")
 endmacro()
 
-macro(OptimizeForArchitecture)
-   set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
-Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
-Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
-Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
-\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
-\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
-\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
-\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\", \"zen\".")
-   set(_force)
-   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
-      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
-      set(_force FORCE)
-   endif()
-   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
-   mark_as_advanced(_last_target_arch)
-   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
+macro(OFA_AutodetectArm)
+   message(WARNING "Architecture auto-detection for CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake")
+endmacro()
 
+macro(OFA_AutodetectHostArchitecture)
+   set(TARGET_ARCHITECTURE "generic")
+   set(Vc_ARCHITECTURE_FLAGS)
+   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(x86|AMD64)")
+      OFA_AutodetectX86()
+   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+      OFA_AutodetectArm()
+   else()
+      message(FATAL_ERROR "OptimizeForArchitecture.cmake does not implement support for CMAKE_SYSTEM_PROCESSOR: ${CMAKE_SYSTEM_PROCESSOR}")
+   endif()
+endmacro()
+
+macro(OFA_HandleX86Options)
    set(_march_flag_list)
    set(_available_vector_units_list)
-
-   if(TARGET_ARCHITECTURE STREQUAL "auto")
-      AutodetectHostArchitecture()
-      message(STATUS "Detected CPU: ${TARGET_ARCHITECTURE}")
-   endif(TARGET_ARCHITECTURE STREQUAL "auto")
-
    macro(_nehalem)
       list(APPEND _march_flag_list "nehalem")
       list(APPEND _march_flag_list "corei7")
@@ -355,6 +347,9 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       list(APPEND _march_flag_list "znver1")
       _skylake()
       list(APPEND _available_vector_units_list "sse4a")
+   elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
+      list(APPEND _march_flag_list "znver3")
+      list(APPEND _available_vector_units_list "bmi" "bmi2" "fma" "fma4" "avx" "avx2" "sse" "sse2" "sse3" "sse4a" "ssse3" "sse4.1" "sse4.2")
    elseif(TARGET_ARCHITECTURE STREQUAL "piledriver")
       list(APPEND _march_flag_list "bdver2")
       list(APPEND _march_flag_list "bdver1")
@@ -398,7 +393,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       set(_disable_vector_unit_list)
       set(_enable_vector_unit_list)
       if(DEFINED Vc_AVX_INTRINSICS_BROKEN AND Vc_AVX_INTRINSICS_BROKEN)
-         UserWarning("AVX disabled per default because of old/broken toolchain")
+         message(STATUS "AVX disabled because of old/broken toolchain")
          set(_avx_broken true)
          set(_avx2_broken true)
          set(_fma4_broken true)
@@ -406,19 +401,19 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       else()
          set(_avx_broken false)
          if(DEFINED Vc_FMA4_INTRINSICS_BROKEN AND Vc_FMA4_INTRINSICS_BROKEN)
-            UserWarning("FMA4 disabled per default because of old/broken toolchain")
+            message(STATUS "FMA4 disabled because of old/broken toolchain")
             set(_fma4_broken true)
          else()
             set(_fma4_broken false)
          endif()
          if(DEFINED Vc_XOP_INTRINSICS_BROKEN AND Vc_XOP_INTRINSICS_BROKEN)
-            UserWarning("XOP disabled per default because of old/broken toolchain")
+            message(STATUS "XOP disabled because of old/broken toolchain")
             set(_xop_broken true)
          else()
             set(_xop_broken false)
          endif()
          if(DEFINED Vc_AVX2_INTRINSICS_BROKEN AND Vc_AVX2_INTRINSICS_BROKEN)
-            UserWarning("AVX2 disabled per default because of old/broken toolchain")
+            message(STATUS "AVX2 disabled because of old/broken toolchain")
             set(_avx2_broken true)
          else()
             set(_avx2_broken false)
@@ -557,7 +552,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
                   endif()
                endif()
                if(NOT _header OR ${_resultVar})
-                  AddCompilerFlag("-m${_flag}" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+                  list(APPEND Vc_ARCHITECTURE_FLAGS "-m${_flag}")
                endif()
             endif()
          endforeach(_flag)
@@ -565,5 +560,53 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
             AddCompilerFlag("-mno-${_flag}" CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
          endforeach(_flag)
       endif()
+   endif()
+endmacro()
+
+macro(OFA_HandleArmOptions)
+   option(USE_NEON "Enable use of NEON instructions" ON)
+   if(USE_NEON)
+      AddCompilerFlag(-mfloat-abi=softfp CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+      AddCompilerFlag(-mfpu=neon CXX_FLAGS Vc_ARCHITECTURE_FLAGS)
+   endif()
+endmacro()
+
+macro(OptimizeForArchitecture)
+   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(x86|AMD64)")
+      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Core2), \
+\"penryn\" (45nm Core2), \"nehalem\", \"westmere\", \"sandy-bridge\", \"ivy-bridge\", \
+\"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
+\"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
+\"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
+\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
+   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+      set(TARGET_ARCHITECTURE "auto" CACHE STRING "CPU architecture to optimize for. \
+Using an incorrect setting here can result in crashes of the resulting binary because of invalid instructions used. \
+Setting the value to \"auto\" will try to optimize for the architecture where cmake is called. \
+Other supported values are: \"none\", \"generic\", TODO...")
+   else()
+      message(WARNING "The CMAKE_SYSTEM_PROCESSOR '${CMAKE_SYSTEM_PROCESSOR}' is not supported by OptimizeForArchitecture.cmake")
+   endif()
+   set(_force)
+   if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
+      message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
+      set(_force FORCE)
+   endif()
+   set(_last_target_arch "${TARGET_ARCHITECTURE}" CACHE STRING "" FORCE)
+   mark_as_advanced(_last_target_arch)
+   string(TOLOWER "${TARGET_ARCHITECTURE}" TARGET_ARCHITECTURE)
+
+   if(TARGET_ARCHITECTURE STREQUAL "auto")
+      OFA_AutodetectHostArchitecture()
+      message(STATUS "Detected Host CPU: ${TARGET_ARCHITECTURE}")
+   endif()
+
+   if("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(x86|AMD64)")
+      OFA_HandleX86Options()
+   elseif("${CMAKE_SYSTEM_PROCESSOR}" MATCHES "(arm|aarch32|aarch64)")
+      OFA_HandleArmOptions()
    endif()
 endmacro(OptimizeForArchitecture)

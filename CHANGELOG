@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add support for building with Zen 3 CPU when optimizing for the local
+  architecture.
+
 * Removed older reference to VelocyPackDumper.
 
 * Added `--documents-per-batch` option to arangoexport.
