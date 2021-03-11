@@ -939,6 +939,10 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testReplaceNthIssue13632 : function () {
+      if (require("internal").isCluster()) {
+        return;
+      }
+
       const cn = "UnitTestsCollection";
       db._drop(cn);
       db._create(cn);
