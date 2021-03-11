@@ -142,8 +142,8 @@ void MetricsFeature::toPrometheus(std::string& result) const {
     std::string lastType{};
     for (auto const& i : _registry) {
       if (lastType != i.second->name()) {
-        result += "\n# TYPE " + i.second->name() + " " + i.second->type() + "\n";
         result +=   "# HELP " + i.second->name() + " " + i.second->help() + "\n";
+        result += "\n# TYPE " + i.second->name() + " " + i.second->type() + "\n";
         lastType = i.second->name();
       }
       i.second->toPrometheus(result, _globalLabelsStr);

@@ -39,6 +39,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/HealthData.h"
@@ -492,9 +493,9 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
 void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                     HealthRecord& transisted, std::string const& serverID,
                     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-  if (serverID.compare(0, 4, "PRMR") == 0) {
+  if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
-  } else if (serverID.compare(0, 4, "CRDN") == 0) {
+  } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
@@ -540,8 +541,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       snapshot().hasAsNode(currentServersRegisteredPrefix).first;
   std::vector<std::string> todelete;
   for (auto const& machine : snapshot().hasAsChildren(healthPrefix).first) {
-    if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
-        (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
+    if ((type == "DBServers" && ClusterHelpers::isDBServerName(machine.first)) ||
+        (type == "Coordinators" && ClusterHelpers::isCoordinatorName(machine.first)) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
