@@ -93,7 +93,7 @@ if (USE_LOCAL_CLOCK_GETTIME)
   set(LIB_CLOCK_GETTIME Utilities/clock_gettime.cpp)
 endif ()
 
-add_library(arango STATIC
+add_library(arango
   ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
@@ -244,6 +244,8 @@ target_link_libraries(arango
   s2
   boost_system
   boost_boost
+  rocksdb
+  snappy
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
@@ -293,7 +295,7 @@ set(LIB_ARANGO_AIR_SOURCES
   Greenspun/lib/Dicts.cpp
   Greenspun/lib/Dicts.h)
 
-add_library(arango_greenspun STATIC
+add_library(arango_greenspun
         ${LIB_ARANGO_AIR_SOURCES})
 
 target_link_libraries(arango_greenspun immer)
@@ -303,7 +305,7 @@ target_link_libraries(arango_greenspun arango)
 ## LIB_ARANGO_GEO
 ################################################################################
 
-add_library(arango_geo STATIC
+add_library(arango_geo
   Geo/Ellipsoid.cpp
   Geo/GeoJson.cpp
   Geo/GeoParams.cpp
@@ -336,7 +338,7 @@ endif()
 ## LIB_ARANGO_V8
 ################################################################################
 
-add_library(arango_v8 STATIC
+add_library(arango_v8
   ApplicationFeatures/V8SecurityFeature.cpp
   V8/JavaScriptSecurityContext.cpp
   V8/JSLoader.cpp
@@ -349,11 +351,11 @@ add_library(arango_v8 STATIC
   V8/v8-vpack.cpp
   V8/v8-environment.cpp
   )
-add_library(arango_v8_deadline STATIC
+add_library(arango_v8_deadline
   V8/v8-deadline.cpp
   )
 
-add_library(arango_v8_no_deadline STATIC
+add_library(arango_v8_no_deadline
   V8/v8-no-deadline.cpp
   )
 

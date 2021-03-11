@@ -169,7 +169,19 @@ if (WIN32)
   list(APPEND V8_GYP_ARGS ../gypfiles/all.gyp)
 
   list(APPEND V8_TARGET_ARCHS "Release")
-  
+
+  if (BUILD_SHARED_LIBS)
+    # TODO I haven't yet had a chance to try this on Windows
+    message(FATAL_ERROR "BUILD_SHARED_LIBS isn't implemented for MSVC, yet")
+    list(APPEND V8_GYP_ARGS
+      -Dlibrary=shared
+      -Dis_component_build=true)
+  else ()
+    list(APPEND V8_GYP_ARGS
+      -Dcomponent=static_library
+      -Dlibrary=static_library)
+  endif ()
+
   if (USE_DEBUG_V8)
     list(APPEND V8_TARGET_ARCHS "Debug")
   endif()
@@ -180,8 +192,6 @@ if (WIN32)
 
   list(APPEND V8_GYP_ARGS
     -I../gypfiles/standalone.gypi
-    -Dcomponent=static_library
-    -Dlibrary=static_library
     -Dgenerator_output=${V8_TARGET_DIR}
     -Ggenerator_output=${V8_TARGET_DIR}
     --depth=.
@@ -354,6 +364,20 @@ else ()
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -fno-delete-null-pointer-checks")
   endif()
 
+  if (BUILD_SHARED_LIBS AND CMAKE_POSITION_INDEPENDENT_CODE)
+    set(V8_CFLAGS   "${V8_CFLAGS} -fPIC")
+    set(V8_CXXFLAGS "${V8_CXXFLAGS} -fPIC")
+    list(APPEND V8_GYP_ARGS
+      -Dlibrary=shared
+      -Dis_component_build=true)
+  elseif(NOT BUILD_SHARED_LIBS AND NOT CMAKE_POSITION_INDEPENDENT_CODE)
+    list(APPEND V8_GYP_ARGS
+      -Dstandalone_static_library=1)
+  else()
+    # TODO I haven't thought through what'd be reasonable to do here if only one of these is set.
+    message(FATAL_ERROR "Expecting CMAKE_POSITION_INDEPENDENT_CODE to be set alongside with BUILD_SHARED_LIBS")
+  endif()
+
   if (USE_DEBUG_V8)
     set(V8_TARGET_ARCH "${V8_PROC_ARCH}.debug")
   else ()
@@ -384,7 +408,6 @@ else ()
     -I../gypfiles/standalone.gypi
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
-    -Dstandalone_static_library=1
     -Dlinux_use_bundled_gold=0
     -Dlinux_use_gold_flags=0
     -Dv8_no_strict_aliasing=1

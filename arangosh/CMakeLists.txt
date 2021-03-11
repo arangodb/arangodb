@@ -12,18 +12,25 @@ set(LIB_ARANGO_SHELL_SOURCES
   FeaturePhases/BasicFeaturePhaseClient.cpp
   FeaturePhases/V8ShellFeaturePhase.cpp
   Shell/ClientFeature.cpp
-  Shell/ConsoleFeature.cpp  
+  Shell/ConsoleFeature.cpp
+  Shell/ShellFeature.cpp
+  Shell/V8ClientConnection.cpp
+  Shell/V8ShellFeature.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
-add_library(arango_shell STATIC
+add_library(arango_shell
   ${LIB_ARANGO_SHELL_SOURCES}
 )
 
 target_link_libraries(arango_shell
   arango
+  arango_v8
+  arango_v8_deadline
+  arango_import
+  fuerte
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -280,12 +287,22 @@ if (MSVC AND NOT(SKIP_PACKAGING))
   )
 endif ()
 
-add_executable(${BIN_ARANGOIMPORT}
-  ${ProductVersionFiles_arangoimport}
+
+set(LIB_ARANGO_IMPORT_SOURCES
   Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
   Import/ImportHelper.cpp
   Import/SenderThread.cpp
+)
+
+add_library(arango_import
+  ${LIB_ARANGO_IMPORT_SOURCES}
+)
+
+target_link_libraries(arango_import arangoserver)
+
+add_executable(${BIN_ARANGOIMPORT}
+  ${ProductVersionFiles_arangoimport}
   Import/arangoimport.cpp
 )
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
@@ -407,12 +424,6 @@ endif ()
 
 add_executable(${BIN_ARANGOSH}
   ${ProductVersionFiles_arangosh}
-  Import/AutoTuneThread.cpp
-  Import/ImportHelper.cpp
-  Import/SenderThread.cpp
-  Shell/ShellFeature.cpp
-  Shell/V8ClientConnection.cpp
-  Shell/V8ShellFeature.cpp
   Shell/arangosh.cpp
 )
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
@@ -429,6 +440,7 @@ target_link_libraries(${BIN_ARANGOSH}
   boost_system
   boost_boost
   arango_shell
+  arango_import
 )
 
 install(

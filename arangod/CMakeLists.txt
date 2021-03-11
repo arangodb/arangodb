@@ -749,6 +749,7 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/LanguageCheckFeature.cpp
   RestServer/LockfileFeature.cpp
   RestServer/QueryRegistryFeature.cpp
+  RestServer/RestartAction.cpp
   RestServer/ScriptFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
@@ -805,78 +806,80 @@ endif()
 include(ClusterEngine/CMakeLists.txt)
 include(RocksDBEngine/CMakeLists.txt)
 
-add_library(arango_graph STATIC
+add_library(arango_graph
   ${LIB_ARANGO_GRAPH_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_GRAPH_SOURCES}
 )
 
-add_library(arango_pregel STATIC
+add_library(arango_pregel
   ${LIB_ARANGO_PREGEL_SOURCES}
   ${LIB_ARANGO_PREGEL_AIR_SOURCES}
 )
 
-add_library(arango_aql STATIC
+add_library(arango_aql
   ${LIB_ARANGO_AQL_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_AQL_SOURCES}
 )
 
-add_library(arango_health STATIC
+add_library(arango_health
   ${LIB_ARANGO_HEALTH_SOURCES}
 )
 
-add_library(arango_vocbase STATIC
+add_library(arango_vocbase
   ${LIB_ARANGO_VOCBASE_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
+# TODO Currently, cannot be built shared because of a cycle with arangoserver
+#      which isn't trivial to resolve.
 add_library(arango_v8server STATIC
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
-add_library(arango_utils STATIC
+add_library(arango_utils
   ${LIB_ARANGO_UTILS_SOURCES}
 )
 
-add_library(arango_storage_engine STATIC
+add_library(arango_storage_engine
   ${LIB_ARANGO_STORAGE_ENGINE_SOURCES}
 )
 
 # arango_storage_engine uses arango_rocksdb.
 # In turn, arango_storage_engine_common provides something for both.
-add_library(arango_storage_engine_common STATIC
+add_library(arango_storage_engine_common
   ${LIB_ARANGO_STORAGE_ENGINE_COMMON_SOURCES}
 )
 
-add_library(arango_indexes STATIC
+add_library(arango_indexes
   ${LIB_ARANGO_INDEXES_SOURCES}
 )
 
-add_library(arango_cache STATIC
+add_library(arango_cache
   ${LIB_ARANGO_CACHE_SOURCES}
 )
 
-add_library(arango_replication STATIC
+add_library(arango_replication
   ${LIB_ARANGO_REPLICATION_SOURCES}
 )
 
-add_library(arango_metrics STATIC
+add_library(arango_metrics
   ${LIB_ARANGO_METRICS_SOURCES}
 )
 
-add_library(arango_agency STATIC
+add_library(arango_agency
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
-add_library(arangoserver STATIC
+add_library(arangoserver SHARED
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
 )
 
-add_library(arango_network STATIC
+add_library(arango_network
   ${LIB_ARANGO_NETWORK_SOURCES}
 )
 
-add_library(arango_rocksdb STATIC
+add_library(arango_rocksdb
   ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
 )
@@ -890,20 +893,20 @@ if (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG)
   target_compile_options(arango_rocksdb PUBLIC "-maes")
 endif ()
 
-add_library(arango_cluster_engine STATIC
+add_library(arango_cluster_engine
   ${CLUSTER_ENGINE_SOURCES}
 )
 
-add_library(arango_common_rest_handler STATIC
+add_library(arango_common_rest_handler
   ${LIB_ARANGO_COMMON_REST_HANDLER_SOURCES}
 )
 
-add_library(arango_cluster_methods STATIC
+add_library(arango_cluster_methods
   ${LIB_ARANGO_CLUSTER_METHODS_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_CLUSTER_METHODS_SOURCES}
 )
 
-add_library(llhttp STATIC
+add_library(llhttp
   ${LLHTTP_SOURCES}
 )
 
@@ -954,7 +957,6 @@ target_link_libraries(arango_common_rest_handler arango_utils)
 target_link_libraries(arango_common_rest_handler arango_iresearch)
 
 target_link_libraries(arango_graph arango)
-target_link_libraries(arango_graph arango_aql)
 target_link_libraries(arango_graph arango_cache)
 target_link_libraries(arango_graph arango_vocbase)
 target_link_libraries(arango_graph boost_boost)
@@ -982,7 +984,6 @@ target_link_libraries(arango_pregel boost_system)
 
 target_link_libraries(arango_replication arango_storage_engine)
 target_link_libraries(arango_replication arango_utils)
-target_link_libraries(arango_replication arango_vocbase)
 
 target_link_libraries(arango_rocksdb ${ROCKSDB_LIBS})
 target_link_libraries(arango_rocksdb arango_cache)
@@ -1011,11 +1012,13 @@ target_link_libraries(arango_utils boost_boost)
 target_link_libraries(arango_utils arango::validation)
 
 target_link_libraries(arango_v8server arango_agency)
+target_link_libraries(arango_v8server arango_aql)
 target_link_libraries(arango_v8server arango_iresearch)
 target_link_libraries(arango_v8server arango_replication)
 target_link_libraries(arango_v8server arango_v8)
 target_link_libraries(arango_v8server arango_v8_no_deadline)
 target_link_libraries(arango_v8server ${V8_LIBS})
+target_link_libraries(arango_v8server arango_vocbase)
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
@@ -1053,7 +1056,7 @@ if (MSVC)
 endif()
 
 if (USE_ENTERPRISE)
-  add_library(arango_rclone STATIC
+  add_library(arango_rclone
     ${LIB_RCLONE_SOURCES}
   )
 

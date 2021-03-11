@@ -30,6 +30,7 @@ target_link_libraries(fuertetest
     boost_boost
     arango
     arango_v8server
+    arangoserver
     ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
@@ -302,16 +303,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
 endif()
 
 target_link_libraries(arangodbtests
-  arango_agency
-  arango_cluster_engine
-  arango_rocksdb
-  arango_v8server
   arangoserver
-  fuerte
-  rocksdb
-  snappy
   gtest
-  boost_boost
 )
 
 if (USE_ENTERPRISE)

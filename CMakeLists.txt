@@ -282,6 +282,23 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+if(BUILD_SHARED_LIBS)
+  if(USE_JEMALLOC)
+    # TODO We should solve and allow this
+    message(FATAL_ERROR "USE_JEMALLOC and BUILD_SHARED_LIBS don't work together. Please turn one of them off.")
+  endif()
+  if(USE_LIBUNWIND)
+    # TODO We should solve and allow this
+    message(FATAL_ERROR "USE_LIBUNWIND and BUILD_SHARED_LIBS don't work together. Please turn one of them off.")
+  endif()
+  if(STATIC_EXECUTABLES)
+    # TODO I actually haven't tried what happens, I just don't think it makes sense.
+    message(FATAL_ERROR "STATIC_EXECUTABLES and BUILD_SHARED_LIBS don't work together. Please turn one of them off.")
+  endif()
+
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+endif()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
