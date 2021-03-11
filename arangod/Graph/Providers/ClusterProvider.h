@@ -138,9 +138,11 @@ class ClusterProvider {
                   arangodb::ResourceMonitor& resourceMonitor);
   ClusterProvider(ClusterProvider const&) = delete;
   ClusterProvider(ClusterProvider&&) = default;
-  ~ClusterProvider() = default;
+  ~ClusterProvider();
 
   ClusterProvider& operator=(ClusterProvider const&) = delete;
+
+  void clear();
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds) -> futures::Future<std::vector<Step*>>;

@@ -46,6 +46,8 @@ using namespace arangodb::graph;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
+constexpr size_t costPerVertexOrEdgeType = sizeof(arangodb::velocypack::HashedStringRef);
+
 std::string const edgeUrl = "/_internal/traverser/edge/";
 std::string const vertexUrl = "/_internal/traverser/vertex/";
 
@@ -104,6 +106,16 @@ ClusterProvider::ClusterProvider(arangodb::aql::QueryContext& queryContext,
       _resourceMonitor(&resourceMonitor),
       _opts(std::move(opts)),
       _stats{} {}
+
+ClusterProvider::~ClusterProvider() {
+  clear();
+}
+
+void ClusterProvider::clear() {
+  for (auto const& entry : _vertexConnectedEdges) {
+    _resourceMonitor->decreaseMemoryUsage(costPerVertexOrEdgeType + (entry.second.size() * (costPerVertexOrEdgeType * 2)));
+  }
+}
 
 auto ClusterProvider::startVertex(VertexType vertex) -> Step {
   LOG_TOPIC("da308", TRACE, Logger::GRAPHS) << "<ClusterProvider> Start Vertex:" << vertex;
@@ -299,6 +311,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   // Note: This disables the TRI_DEFER
   futures.clear();
 
+  _resourceMonitor->increaseMemoryUsage(costPerVertexOrEdgeType + (connectedEdges.size() * (costPerVertexOrEdgeType * 2)));
   _vertexConnectedEdges.emplace(vertex, std::move(connectedEdges));
 
   return TRI_ERROR_NO_ERROR;
