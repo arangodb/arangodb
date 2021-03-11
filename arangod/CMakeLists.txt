@@ -870,7 +870,7 @@ add_library(arango_agency
   ${LIB_ARANGO_AGENCY_SOURCES}
 )
 
-add_library(arangoserver SHARED
+add_library(arangoserver
   ${LIB_ARANGOSERVER_SOURCES}
   ${ADDITIONAL_LIB_ARANGOSERVER_SOURCES}
 )
