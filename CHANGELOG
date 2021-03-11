@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed older reference to VelocyPackDumper.
+
 * Added `--documents-per-batch` option to arangoexport.
   This option allows to control the number of documents to be returned by each
   server-side batch. It can be used to limit the number of documents per batch
