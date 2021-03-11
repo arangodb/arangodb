@@ -1,6 +1,23 @@
 devel
 -----
 
+* Added `--documents-per-batch` option to arangoexport.
+  This option allows to control the number of documents to be returned by each
+  server-side batch. It can be used to limit the number of documents per batch
+  when exporting collections with large documents.
+
+* Added a new metrics view to the web UI. This view can be used in a clustered
+  environment as well as in a single instance. Metrics are displayed either in
+  a tabular format or as plain text (Prometheus Text-based format).
+  Additionally, the metrics can be downloaded there.
+
+* Added a new maintenance mode tab to the web UI in cluster mode. 
+  The new tab shows the current state of the cluster supervision maintenance 
+  and allows to enable/disable the maintenance mode from there. The tab will
+  only be visible in the `_system` database. The required privileges for
+  displaying the maintenance mode status and/or changing it are the as for 
+  using the REST APIs for the maintenance mode.
+
 * Fixed a problem that coordinators would vanish from the UI and the Health
   API if one switched the agency Supervision into maintenance mode and kept
   left that maintenance mode on for more than 24h.

@@ -32,16 +32,12 @@ namespace arangodb::arangobench {
 template <class Derived>
 struct Benchmark : public BenchmarkOperation {
   explicit Benchmark(BenchFeature& arangobench) : BenchmarkOperation(arangobench) {}
- private:
-  struct Registrar {
-    Registrar() {
-      registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {
-        return std::make_unique<Derived>(arangobench);
-      });
-    }
-  };
 
-  static inline Registrar _registrar;
+  static void registerTestcase() {
+    registerBenchmark(Derived::name(), [](BenchFeature& arangobench) {
+      return std::make_unique<Derived>(arangobench);
+    });
+  }
 };
 
 }  // namespace arangodb::arangobench
