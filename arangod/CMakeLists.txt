@@ -969,6 +969,7 @@ target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
 
 target_link_libraries(arango_metrics arango)
+target_link_libraries(arango_metrics arango::validation)
 
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)

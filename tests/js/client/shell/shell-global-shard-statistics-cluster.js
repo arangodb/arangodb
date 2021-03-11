@@ -32,13 +32,19 @@ function shardStatisticsSuite() {
   'use strict';
 
   const cn = "UnitTestsDatabase";
-
-  let fetchStats = function (append = '') {
+  
+  let fetchStatsRaw = function (append = '') {
     let old = db._name();
     db._useDatabase("_system");
-    let result = arango.GET("/_admin/cluster/shardStatistics" + append).result;
-    db._useDatabase(old);
-    return result;
+    try {
+      return arango.GET("/_admin/cluster/shardStatistics" + append);
+    } finally {
+      db._useDatabase(old);
+    }
+  };
+
+  let fetchStats = function (append = '') {
+    return fetchStatsRaw(append).result;
   };
 
   let cleanCollections = function () {
@@ -64,6 +70,20 @@ function shardStatisticsSuite() {
       try {
         db._dropDatabase(cn);
       } catch (err) {}
+    },
+
+    testShardStatisticsInvalidServer: function () {
+      // fetch statistics for an invalid server id
+      let result = fetchStatsRaw("?DBserver=foobar");
+      assertTrue(result.error);
+      assertEqual(400, result.code);
+        
+      // fetch statistics for a coordinator
+      let coordinators = getServersByType("coordinator");
+      assertTrue(coordinators.length > 0);
+      result = fetchStatsRaw("?DBserver=" + coordinators[0].id);
+      assertTrue(result.error);
+      assertEqual(400, result.code);
     },
     
     testShardStatisticsNewDatabase: function () {
@@ -109,7 +129,6 @@ function shardStatisticsSuite() {
 
         newValues = fetchStats("?details=true");
         let keys = Object.keys(newValues);
-
 
         expected.forEach((dbName) => {
           assertTrue(newValues.hasOwnProperty(dbName));
@@ -245,6 +264,47 @@ function shardStatisticsSuite() {
         assertEqual(baseValues.leaders + 5 * 4, newValues.leaders);
         assertEqual(baseValues.followers + 5 * 4, newValues.followers);
         assertEqual(baseValues.realLeaders + 5 * 4, newValues.realLeaders);
+      } finally {
+        cleanCollections();
+      }
+    },
+    
+    testShardStatisticsByDBServer: function () {
+      const dbservers = getServersByType("dbserver");
+      assertTrue(dbservers.length > 0);
+      
+      let baseValues = fetchStats("?DBserver=all");
+      let aggregatedBaseValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
+
+      dbservers.map((s) => s.id).forEach((s) => {
+        assertTrue(baseValues.hasOwnProperty(s));
+        aggregatedBaseValues.shards += baseValues[s].shards;
+        aggregatedBaseValues.leaders += baseValues[s].leaders;
+        aggregatedBaseValues.followers += baseValues[s].followers;
+        aggregatedBaseValues.realLeaders += baseValues[s].realLeaders;
+      });
+
+      try {
+        // create some collections
+        db._useDatabase(cn);
+        for (let i = 0; i < 5; ++i) {
+          db._create(cn + i, { numberOfShards: 4, replicationFactor: 2 });
+        }
+
+        let newValues = fetchStats("?DBserver=all");
+        let aggregatedNewValues = { shards: 0, leaders: 0, followers: 0, realLeaders: 0 };
+        dbservers.map((s) => s.id).forEach((s) => {
+          assertTrue(newValues.hasOwnProperty(s));
+          aggregatedNewValues.shards += newValues[s].shards;
+          aggregatedNewValues.leaders += newValues[s].leaders;
+          aggregatedNewValues.followers += newValues[s].followers;
+          aggregatedNewValues.realLeaders += newValues[s].realLeaders;
+        });
+
+        assertEqual(aggregatedBaseValues.shards + 5 * 4 * 2, aggregatedNewValues.shards);
+        assertEqual(aggregatedBaseValues.leaders + 5 * 4, aggregatedNewValues.leaders);
+        assertEqual(aggregatedBaseValues.followers + 5 * 4, aggregatedNewValues.followers);
+        assertEqual(aggregatedBaseValues.realLeaders + 5 * 4, aggregatedNewValues.realLeaders);
       } finally {
         cleanCollections();
       }
