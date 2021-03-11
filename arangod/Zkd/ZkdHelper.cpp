@@ -9,7 +9,8 @@
 #include <iostream>
 #include <optional>
 
-using namespace zkd;
+using namespace arangodb;
+using namespace arangodb::zkd;
 
 zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
   using namespace std::string_literals;

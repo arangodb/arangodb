@@ -300,8 +300,9 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(velocypack::Slice def
 
 /// same for both storage engines
 std::vector<std::string> IndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary", "edge",       "hash", "skiplist",
-                                  "ttl",     "persistent", "geo",  "fulltext"};
+  return std::vector<std::string>{"primary",  "edge",     "hash",
+                                  "skiplist", "ttl",      "persistent",
+                                  "geo",      "fulltext", "zkd"};
 }
 
 std::unordered_map<std::string, std::string> IndexFactory::indexAliases() const {

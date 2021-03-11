@@ -8,6 +8,8 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
 
+using namespace arangodb;
+
 static std::ostream& operator<<(std::ostream& os, std::vector<zkd::byte_string> const& bsvec) {
   os << "{";
   if (!bsvec.empty()) {

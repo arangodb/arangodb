@@ -61,6 +61,36 @@ class RocksDBZkdIndex final : public RocksDBIndex {
                                                       const IndexIteratorOptions& opts) override;
 };
 
+namespace zkd {
+
+struct ExpressionBounds {
+  struct Bound {
+    aql::AstNode const* op_node = nullptr;
+    aql::AstNode const* bounded_expr = nullptr;
+    aql::AstNode const* bound_value = nullptr;
+    bool isStrict = false;
+  };
+
+  Bound lower;
+  Bound upper;
+};
+
+void extractBoundsFromCondition(arangodb::Index const* index,
+                                const arangodb::aql::AstNode* condition,
+                                const arangodb::aql::Variable* reference,
+                                std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
+                                std::unordered_set<aql::AstNode const*>& unusedExpressions);
+
+auto supportsFilterCondition(arangodb::Index const* index,
+                             const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
+                             const arangodb::aql::AstNode* node,
+                             const arangodb::aql::Variable* reference,
+                             size_t itemsInIndex) -> Index::FilterCosts;
+
+auto specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* condition,
+                         const arangodb::aql::Variable* reference) -> aql::AstNode*;
+}
+
 }
 
 #endif  // ARANGOD_ROCKSDB_ZKD_INDEX_H
