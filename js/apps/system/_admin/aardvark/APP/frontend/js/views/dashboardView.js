@@ -152,8 +152,12 @@
     },
 
     toggleViews: function (e) {
-      var id = e.currentTarget.id.split('-')[0]; var self = this;
-      var views = ['requests', 'system'];
+      let self = this;
+      let id = e.currentTarget.id.split('-')[0];
+      let views = ['requests', 'system', 'metrics'];
+      if (frontendConfig.isCluster) {
+        views.push('logs');
+      }
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -167,6 +171,47 @@
 
       $('.subMenuEntries').children().removeClass('active');
       $('#' + id + '-statistics').addClass('active');
+
+      if (id === 'logs' && frontendConfig.isCluster) {
+        let contentDiv = '#nodeLogContentView';
+        let endpoint = this.serverInfo.target;
+
+        let arangoLogs = new window.ArangoLogs({
+          upto: true,
+          loglevel: 4,
+          endpoint: endpoint
+        });
+
+        this.currentLogView = new window.LoggerView({
+          collection: arangoLogs,
+          endpoint: endpoint,
+          contentDiv: contentDiv
+        });
+        this.currentLogView.render(true);
+      } else if (id === 'metrics') {
+        let contentDiv = '#nodeMetricsContentView';
+        let endpoint = this.serverInfo.target;
+
+        let metrics;
+        if (frontendConfig.isCluster) {
+          metrics = new window.ArangoMetrics({
+            endpoint: endpoint
+          });
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            endpoint: endpoint,
+            contentDiv: contentDiv
+          });
+        } else {
+          metrics = new window.ArangoMetrics({});
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            contentDiv: contentDiv
+          });
+        }
+
+        this.currentMetricsView.render();
+      }
 
       window.setTimeout(function () {
         self.resize();
@@ -552,15 +597,6 @@
         }
 
         this.renderStatisticBox('Host', this.serverInfo.raw, this.serverInfo.raw, 6);
-        /*
-        if (this.serverInfo.endpoint) {
-          this.renderStatisticBox('Protocol', this.serverInfo.endpoint.substr(0, this.serverInfo.endpoint.indexOf('/') - 1));
-        } else {
-          this.renderStatisticBox('Protocol', 'Error');
-        }
-
-        this.renderStatisticBox('ID', this.serverInfo.target, this.serverInfo.target);
-        */
 
         // get node version + license
         $.ajax({
@@ -1053,7 +1089,8 @@
         var callback = function (enabled, modalView) {
           if (!modalView) {
             $(this.el).html(this.template.render({
-              hideStatistics: false
+              hideStatistics: false,
+              isCluster: frontendConfig.isCluster
             }));
             this.getNodeInfo();
           }
@@ -1113,14 +1150,14 @@
         }
       } else {
         $(this.el).html(this.template.render({
-          hideStatistics: true
+          hideStatistics: true,
+          isCluster: frontendConfig.isCluster
         }));
         // hide menu entries
         if (!frontendConfig.isCluster) {
           $('#subNavigationBar .breadcrumb').html('');
         } else {
           // in cluster mode and db node got found, remove menu entries, as we do not have them here
-          $('#requests-statistics').remove();
           $('#system-statistics').remove();
         }
         this.getNodeInfo();

@@ -102,6 +102,8 @@ class ResourceUsageScope {
   ResourceUsageScope(ResourceUsageScope const&) = delete;
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
 
+  explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
+
   /// @brief track <value> bytes of memory, may throw!
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value);
 
@@ -111,7 +113,9 @@ class ResourceUsageScope {
   /// usage on destruction
   void steal() noexcept;
 
- private:
+  /// @brief revert all memory usage tracking operations in this scope
+  void revert() noexcept;
+  
   /// @brief track <value> bytes of memory, may throw!
   void increase(std::uint64_t value);
   

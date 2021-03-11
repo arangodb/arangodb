@@ -179,6 +179,9 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
     // no need to update the peak memory usage counter here
   }
 }
+
+ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept
+    : _resourceMonitor(resourceMonitor), _value(0) {}
   
 std::uint64_t ResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
@@ -194,28 +197,35 @@ void ResourceMonitor::clear() noexcept {
 }
   
 ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor, std::uint64_t value)
-    : _resourceMonitor(resourceMonitor), _value(value) {
+    : ResourceUsageScope(resourceMonitor) {
   // may throw
-  increase(_value);
+  increase(value);
 }
   
 ResourceUsageScope::~ResourceUsageScope() {
-  decrease(_value);
+  revert();
 }
 
 void ResourceUsageScope::steal() noexcept {
   _value = 0;
+}
+
+void ResourceUsageScope::revert() noexcept {
+  decrease(_value);
 }
   
 void ResourceUsageScope::increase(std::uint64_t value) {
   if (value > 0) {
     // may throw
     _resourceMonitor.increaseMemoryUsage(value);
+    _value += value;
   }
 }
   
 void ResourceUsageScope::decrease(std::uint64_t value) noexcept {
   if (value > 0) {
+    TRI_ASSERT(_value >= value);
     _resourceMonitor.decreaseMemoryUsage(value);
+    _value -= value;
   }
 }

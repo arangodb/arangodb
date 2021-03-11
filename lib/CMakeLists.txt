@@ -160,7 +160,6 @@ add_library(arango STATIC
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
-  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
