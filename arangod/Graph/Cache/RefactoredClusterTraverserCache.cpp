@@ -35,6 +35,7 @@ using namespace arangodb::graph;
 
 namespace {
 constexpr size_t costPerPersistedString = sizeof(void*) + sizeof(arangodb::velocypack::HashedStringRef);
+constexpr size_t costPerVertexOrEdgeStringRefSlice = sizeof(velocypack::Slice) + sizeof(arangodb::velocypack::HashedStringRef);
 constexpr size_t heapBlockSize = 4096;
 };
 
@@ -51,12 +52,15 @@ RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
 
 void RefactoredClusterTraverserCache::clear() {
   _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * ::costPerPersistedString);
+  _resourceMonitor.decreaseMemoryUsage(_vertexData.size() * ::costPerVertexOrEdgeStringRefSlice);
+  _resourceMonitor.decreaseMemoryUsage(_edgeData.size() * ::costPerVertexOrEdgeStringRefSlice);
   _stringHeap.clear();
   _persistedStrings.clear();
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
                                                   velocypack::Slice vertexSlice) -> void {
+  _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
   _vertexData.try_emplace(vertexId, vertexSlice);
 }
 
@@ -105,5 +109,8 @@ auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlic
     -> std::pair<velocypack::Slice, bool> {
   arangodb::velocypack::HashedStringRef edgeIdRef(edgeSlice.get(StaticStrings::IdString));
   auto const [it, inserted] = _edgeData.try_emplace(edgeIdRef, edgeSlice);
+  if (inserted) {
+    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+  }
   return {it->second, inserted};
 }
