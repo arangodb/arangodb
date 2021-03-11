@@ -3,6 +3,11 @@ devel
 
 * Removed older reference to VelocyPackDumper.
 
+* Added `--documents-per-batch` option to arangoexport.
+  This option allows to control the number of documents to be returned by each
+  server-side batch. It can be used to limit the number of documents per batch
+  when exporting collections with large documents.
+
 * Added a new metrics view to the web UI. This view can be used in a clustered
   environment as well as in a single instance. Metrics are displayed either in
   a tabular format or as plain text (Prometheus Text-based format).
