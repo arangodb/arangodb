@@ -102,6 +102,7 @@ class ClusterProvider {
    private:
     Step(VertexType v);
     Step(VertexType v, EdgeType edge, size_t prev);
+    Step(VertexType v, EdgeType edge, size_t prev, bool fetched);
 
    public:
     ~Step();

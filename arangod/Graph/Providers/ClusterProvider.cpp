@@ -82,6 +82,9 @@ ClusterProvider::Step::Step(VertexType v)
 ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev)
     : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(false) {}
 
+ClusterProvider::Step::Step(VertexType v, EdgeType edge, size_t prev, bool fetched)
+    : BaseStep(prev), _vertex(v), _edge(std::move(edge)), _fetched(fetched) {}
+
 ClusterProvider::Step::~Step() = default;
 
 VertexType const& ClusterProvider::Step::Vertex::getID() const {
@@ -116,7 +119,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
-    // TODO: (after No-loose-end-handling) Assert that the vertex is not yet cached. In _vertexConnections
+    TRI_ASSERT(_vertexConnectedEdges.find(looseEnd->getVertexIdentifier()) == _vertexConnectedEdges.end());
     leased->add(VPackValuePair(looseEnd->getVertex().getID().data(),
                                looseEnd->getVertex().getID().length(),
                                VPackValueType::String));
@@ -338,8 +341,10 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
   for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    // TODO: (No-Loose-End handling) Test if we know, the other side already, we can validate this based on the _vertexConnections
-    // If we have the other part already, it is NOT a loose end.
+    if (_vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end()) {
+      // If we have the other part already, it is NOT a loose end.
+      callback(Step{relation.second, relation.first, previous, true});
+    }
     callback(Step{relation.second, relation.first, previous});
   }
 }
