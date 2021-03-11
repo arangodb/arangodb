@@ -2,7 +2,8 @@
 
 #include "gtest/gtest.h"
 
-using namespace zkd;
+using namespace arangodb;
+using namespace arangodb::zkd;
 
 TEST(Zkd_byte_string_conversion, uint64) {
   auto tests = {std::pair{uint64_t{12}, byte_string{0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 0_b, 12_b}},
