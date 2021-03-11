@@ -962,7 +962,6 @@ function ahuacatlFunctionsTestSuite () {
         let actual = getQueryResults(query);
         assertEqual(2, actual.length);
 
-        print(actual);
         let OLD, NEW;
         [OLD, NEW] = actual[0];
         assertNull(OLD);
