@@ -1,6 +1,8 @@
 devel
 -----
 
+* Resonably harden MoveShard against VelopcyPack more.
+
 * Removed older reference to VelocyPackDumper.
 
 * Added `--documents-per-batch` option to arangoexport.
