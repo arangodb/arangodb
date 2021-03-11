@@ -336,13 +336,6 @@ auto ClusterProvider::addEdgeToBuilder(Step::Edge const& edge,
 
 arangodb::transaction::Methods* ClusterProvider::trx() { return _trx.get(); }
 
-arangodb::ResourceMonitor& ClusterProvider::resourceMonitor() {
-  TRI_ASSERT(_resourceMonitor != nullptr);
-  return *_resourceMonitor;
-}
-
-arangodb::aql::QueryContext* ClusterProvider::query() const { return _query; }
-
 arangodb::aql::TraversalStats ClusterProvider::stealStats() {
   auto t = _stats;
   // Placement new of stats, do not reallocate space.

@@ -107,12 +107,5 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   return _impl.trx();
 }
 
-template <class ProviderImpl>
-arangodb::ResourceMonitor& ProviderTracer<ProviderImpl>::resourceMonitor() {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["resourceMonitor"].addTiming(TRI_microtime() - start));
-  return _impl.resourceMonitor();
-}
-
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>;
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::ClusterProvider>;

@@ -159,14 +159,8 @@ class ClusterProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
-  arangodb::ResourceMonitor& resourceMonitor();
 
   aql::TraversalStats stealStats();
-
- private:
-  void activateCache(bool enableDocumentCache);
-
-  [[nodiscard]] arangodb::aql::QueryContext* query() const;
 
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()

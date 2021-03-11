@@ -146,7 +146,6 @@ struct SingleServerProvider {
   void destroyEngines(){};
 
   [[nodiscard]] transaction::Methods* trx();
-  arangodb::ResourceMonitor& resourceMonitor();
 
   aql::TraversalStats stealStats();
 
@@ -155,18 +154,12 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
 
-  [[nodiscard]] arangodb::aql::QueryContext* query() const;
-
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
   std::unique_ptr<arangodb::transaction::Methods> _trx;
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
-
-  arangodb::aql::QueryContext* _query;
-
-  arangodb::ResourceMonitor* _resourceMonitor;
 
   RefactoredTraverserCache _cache;
 

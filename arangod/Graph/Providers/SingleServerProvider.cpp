@@ -88,8 +88,6 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
                                            BaseProviderOptions opts,
                                            arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
-      _query(&queryContext),
-      _resourceMonitor(&resourceMonitor),
       _cache(_trx.get(), &queryContext, resourceMonitor),
       _opts(std::move(opts)),
       _stats{} {
@@ -176,15 +174,6 @@ std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCur
 
 arangodb::transaction::Methods* SingleServerProvider::trx() {
   return _trx.get();
-}
-
-arangodb::ResourceMonitor& SingleServerProvider::resourceMonitor() {
-  TRI_ASSERT(_resourceMonitor != nullptr);
-  return *_resourceMonitor;
-}
-
-arangodb::aql::QueryContext* SingleServerProvider::query() const {
-  return _query;
 }
 
 arangodb::aql::TraversalStats SingleServerProvider::stealStats() {
