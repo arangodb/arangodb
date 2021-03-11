@@ -1956,6 +1956,7 @@ TEST_F(MoveShardTest, after_the_new_leader_has_synchronized_the_new_leader_shoul
 }
 
 TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
+
   std::function<std::unique_ptr<VPackBuilder>(VPackSlice const&, std::string const&)> createTestStructure =
       [&](VPackSlice const& s, std::string const& path) {
         std::unique_ptr<VPackBuilder> builder;
@@ -1986,17 +1987,16 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
             builder->add(FREE_SERVER, VPackValue("1"));
           } else if (path == "/arango/Supervision/Shards") {
             builder->add(SHARD, VPackValue("1"));
-          }
+          } else if (path == "/arango/Current/Collections/" + DATABASE) {
+            builder->add(VPackValue(COLLECTION));
+            VPackObjectBuilder a(builder.get());
+          } 
           builder->close();
         } else {
-          if (path == "/arango/Current/Collections/" + DATABASE + "/" +
-                          COLLECTION) {
-            builder->add(VPackValue(VPackValueType::Object));
-            builder->close();
-          } else if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
-                                 COLLECTION + "/shards/" + SHARD) {
+          if (path == "/arango/Plan/Collections/" + DATABASE + "/" +
+              COLLECTION + "/shards/" + SHARD) {
             builder->add(VPackValue(VPackValueType::Array));
-            builder->add(VPackValue("_" + SHARD_LEADER));
+            builder->add(VPackValue(SHARD_LEADER));
             builder->add(VPackValue(SHARD_FOLLOWER1));
             builder->add(VPackValue(FREE_SERVER));
             builder->close();
@@ -2014,6 +2014,7 @@ TEST_F(MoveShardTest, if_current_entry_missing_nothing_should_happen) {
   auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   Node agency = createAgencyFromBuilder(*builder);
+  
 
   auto moveShard = MoveShard(agency, &agent, PENDING, jobId);
   moveShard.run(aborts);
@@ -2033,7 +2034,7 @@ TEST_F(MoveShardTest, when_the_old_leader_is_not_yet_ready_for_resign_nothing_sh
               builder->add(it.key.copyString(), childBuilder->slice());
             }
           }
-
+          
           if (path == "/arango/Target/Pending") {
             VPackBuilder pendingJob;
             {
