@@ -111,12 +111,12 @@ auto ClusterProvider::startVertex(VertexType vertex) -> Step {
 void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
                                                std::vector<Step*>& result) {
   auto const* engines = _opts.getCache()->engines();
-
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
   leased->add("keys", VPackValue(VPackValueType::Array));
   for (auto const& looseEnd : looseEnds) {
+    // TODO: (after No-loose-end-handling) Assert that the vertex is not yet cached. In _vertexConnections
     leased->add(VPackValuePair(looseEnd->getVertex().getID().data(),
                                looseEnd->getVertex().getID().length(),
                                VPackValueType::String));
@@ -212,7 +212,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
   auto const* engines = _opts.getCache()->engines();
-
+  // TODO Assert that the vertex is not in _vertexConnections after no-loose-end handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
   leased->add("backward", VPackValue(_opts.isBackward()));
@@ -338,9 +338,12 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
   for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
+    // TODO: (No-Loose-End handling) Test if we know, the other side already, we can validate this based on the _vertexConnections
+    // If we have the other part already, it is NOT a loose end.
     callback(Step{relation.second, relation.first, previous});
   }
 }
+
 
 void ClusterProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                          arangodb::velocypack::Builder& builder) {
