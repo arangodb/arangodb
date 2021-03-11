@@ -41,7 +41,7 @@
   struct x : arangodb::metrics::GaugeBuilder<x, type> { \
     x() { _name = #x; _help = help; } \
     }
-    
+
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
     x() { _name = #x; _help = help; } \
@@ -169,6 +169,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
 
   registry_type _registry;
+
   mutable std::unordered_map<std::string,std::string> _globalLabels;
   mutable std::string _globalLabelsStr;
 
@@ -178,6 +179,9 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   bool _export;
   bool _exportReadWriteMetrics;
+
+  std::unordered_map<std::string,std::string> nameVersionTable;
+
 };
 
 }  // namespace arangodb
