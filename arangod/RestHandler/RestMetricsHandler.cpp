@@ -144,6 +144,12 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
+  std::vector<std::string> const& suffixes = _request->suffixes();
+
+  if (suffixes.size() > 0 && suffixes[0] == "v2") {
+    LOG_DEVEL << "Using v2 of metrics API";
+  }
+
   std::string result;
   metrics.toPrometheus(result);
   _response->setResponseCode(rest::ResponseCode::OK);
