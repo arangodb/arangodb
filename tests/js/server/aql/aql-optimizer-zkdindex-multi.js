@@ -100,13 +100,13 @@ function optimizerRuleZkd2dIndexTestSuite() {
     let testObject = {
         setUpAll: function () {
             col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'w']});
+            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'a.w']});
             db._query(aql`
                 FOR x IN 0..10
                 FOR y IN 0..10
                 FOR z IN 0..10
                 FOR w IN 0..10
-                  INSERT {x, y, z, w} INTO ${col}
+                  INSERT {x, y, z, a: {w}} INTO ${col}
               `);
         },
 
@@ -131,8 +131,8 @@ function optimizerRuleZkd2dIndexTestSuite() {
                               FILTER ${conditionForVariable(x, "d.x")}
                               FILTER ${conditionForVariable(y, "d.y")}
                               FILTER ${conditionForVariable(z, "d.z")}
-                              FILTER ${conditionForVariable(w, "d.w")}
-                              RETURN [d.x, d.y, d.z, d.w]
+                              FILTER ${conditionForVariable(w, "d.a.w")}
+                              RETURN [d.x, d.y, d.z, d.a.w]
                           `;
                         const explainRes = AQL_EXPLAIN(query);
                         const appliedRules = explainRes.plan.rules;
