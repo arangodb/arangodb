@@ -32,7 +32,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackDumper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/tri-strings.h"
@@ -84,11 +83,10 @@ void VstResponse::addPayload(VPackSlice const& slice,
         }
       } else if (_contentType == rest::ContentType::JSON) {
         VPackSlice finalSlice(tmpBuffer.data());
-        StringBuffer plainBuffer;
-        arangodb::basics::VelocyPackDumper dumper(&plainBuffer, options);
-        dumper.dumpValue(finalSlice);
         _payload.reset();
-        _payload.append(plainBuffer.data(), plainBuffer.length());
+        velocypack::ByteBufferSinkImpl<uint8_t> sink(&_payload);
+        VPackDumper dumper(&sink, options);
+        dumper.dump(finalSlice);
       } else {
         _payload.reset();
         _payload.append(slice.start(), slice.byteSize());
