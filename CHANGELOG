@@ -3,6 +3,45 @@ v3.7.10 (XXXX-XX-XX)
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
+* Backported AQL sort performance improvements from devel.
+  This change can improve the performance of local sorts operations, e.g.
+
+  Baseline (3.7.9):
+
+      Query String (94 chars, cacheable: false):
+       FOR i IN 1..500000 LET value = CONCAT('testvalue-to-be-sorted', i) SORT value ASC RETURN value
+
+      Execution plan:
+       Id   NodeType            Calls    Items   Runtime [s]   Comment
+        1   SingletonNode           1        1       0.00003   * ROOT
+        2   CalculationNode         1        1       0.00003     - LET #2 = 1 .. 500000   /* range */   /* simple expression */
+        3   EnumerateListNode     500   500000       0.08725     - FOR i IN #2   /* list iteration */
+        4   CalculationNode       500   500000       0.22722       - LET value = CONCAT("testvalue-to-be-sorted", i)   /* simple expression */
+        5   SortNode              500   500000       2.05180       - SORT value ASC   /* sorting strategy: standard */
+        6   ReturnNode            500   500000       0.02911       - RETURN value
+
+      Query Statistics:
+       Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
+                 0            0           0            0          0         2.39644
+
+  With sort optimization (3.7.10):
+
+      Query String (94 chars, cacheable: false):
+       FOR i IN 1..500000 LET value = CONCAT('testvalue-to-be-sorted', i) SORT value ASC RETURN value
+
+      Execution plan:
+       Id   NodeType            Calls    Items   Runtime [s]   Comment
+        1   SingletonNode           1        1       0.00002   * ROOT
+        2   CalculationNode         1        1       0.00003     - LET #2 = 1 .. 500000   /* range */   /* simple expression */
+        3   EnumerateListNode     500   500000       0.08755     - FOR i IN #2   /* list iteration */
+        4   CalculationNode       500   500000       0.26161       - LET value = CONCAT("testvalue-to-be-sorted", i)   /* simple expression */
+        5   SortNode              500   500000       1.36070       - SORT value ASC   /* sorting strategy: standard */
+        6   ReturnNode            500   500000       0.02864       - RETURN value
+
+      Query Statistics:
+       Writes Exec   Writes Ign   Scan Full   Scan Index   Filtered   Exec Time [s]
+                 0            0           0            0          0         1.73940
+
 * Fixed a problem that coordinators would vanish from the UI and the Health API
   if one switched the agency Supervision into maintenance mode and kept left
   that maintenance mode on for more than 24h.
