@@ -261,6 +261,29 @@
       average: []
     },
 
+    insertDummyElements: function () {
+      // method to push dummy values in case of initialization
+      // reason: make the graph more human readable in init case.
+      var self = this;
+      _.each(self.chartsOptions, function (val1, key1) {
+        _.each(val1.options, function (val2, key2) {
+          if (val2.values.length < self.maxValues - 1) {
+            let dummyElementsToInsert =  self.maxValues - val2.values.length;
+            let initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
+            for (let counter = 0; counter < dummyElementsToInsert; counter++) {
+              let time = initTimeToUse - ((self.interval / 1000) * counter);
+              time = parseInt(time);
+              self.chartsOptions[key1].options[key2].values.unshift({
+                x: time,
+                y: 0.00
+              });
+            }
+          }
+        });
+      });
+
+    },
+
     checkArraySizes: function () {
       var self = this;
 
@@ -289,6 +312,8 @@
           self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key]});
         });
         self.historyInit = true;
+        // will insert zero entries in case we're below max history array size
+        self.insertDummyElements();
       } else {
         self.checkArraySizes();
 
