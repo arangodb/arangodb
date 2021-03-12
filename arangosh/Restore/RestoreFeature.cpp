@@ -832,11 +832,11 @@ arangodb::Result restoreData(arangodb::httpclient::SimpleHttpClient& httpClient,
       // note that we have to store the uncompressed offset here, because we
       // potentially have consumed more data than we have sent.
       datafileReadOffset += length;
-      jobData.progressTracker.updateStatus(
+      [[maybe_unused]] bool wasSynced = jobData.progressTracker.updateStatus(
           cname, arangodb::RestoreFeature::CollectionStatus{arangodb::RestoreFeature::RESTORING,
                                                             datafileReadOffset});
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-      if (jobData.options.failOnUpdateContinueFile && length != 0) {
+      if (wasSynced && jobData.options.failOnUpdateContinueFile && length != 0) {
         LOG_TOPIC("a87bf", WARN, Logger::RESTORE) << "triggered failure point at offset " << datafileReadOffset << "!";
         FATAL_ERROR_EXIT_CODE(38); // exit with exit code 38 to report to the test frame work that this was an intentional crash
       }
@@ -1164,7 +1164,9 @@ arangodb::Result processInputDirectory(
         if (result.fail()) {
           return result;
         }
+      }
 
+      if (progressTracker.getStatus(name.copyString()).state < arangodb::RestoreFeature::CREATED) {
         progressTracker.updateStatus(name.copyString(),
                                      arangodb::RestoreFeature::CollectionStatus{
                                          arangodb::RestoreFeature::CREATED});
@@ -1763,6 +1765,8 @@ void RestoreFeature::start() {
       << basics::StringUtils::join(dbs, "', '") << "' from dump directory '" << _options.inputPath << "'...";
   }
 
+  std::vector<std::string> filesToClean;
+    
   for (auto& db : databases) {
     result.reset();
 
@@ -1835,6 +1839,8 @@ void RestoreFeature::start() {
     LOG_TOPIC_IF("52b23", INFO, arangodb::Logger::RESTORE, _options.continueRestore) << "try to continue previous restore";
     _progressTracker = std::make_unique<RestoreProgressTracker>(*_directory, !_options.continueRestore);
 
+    filesToClean.push_back(_progressTracker->filename());
+
     // run the actual restore
     try {
       result = ::processInputDirectory(*httpClient, _clientTaskQueue, *this,
@@ -1855,13 +1861,15 @@ void RestoreFeature::start() {
     if (result.fail()) {
       break;
     }
-    
-    _progressTracker->cleanup();
   }
 
   if (result.fail()) {
     LOG_TOPIC("cb69f", ERR, arangodb::Logger::RESTORE) << result.errorMessage();
     _exitCode = EXIT_FAILURE;
+  } else {
+    for (auto const& fn : filesToClean) {
+      [[maybe_unused]] auto result = basics::FileUtils::remove(fn);
+    }
   }
 
   if (_options.progress) {

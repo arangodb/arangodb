@@ -113,9 +113,11 @@ function transactionFailuresSuite () {
     },
 
     testCommitTransactionWithRemovalsFailure : function () {
+      let docs = [];
       for (var i = 0; i < 100; ++i) {
-        c.insert({ _key: "test" + i });
+        docs.push({ _key: "test" + i });
       }
+      c.insert(docs);
       assertEqual(100, c.count());
       
       internal.debugSetFailAt("TransactionCommitFail");
