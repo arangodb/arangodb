@@ -303,7 +303,7 @@ bool MoveShard::start(bool&) {
     }
   } else {
     // We really should never be ever here
-    moveShardFinish(false,  false, std::string("shard ") + _shard + "has no planned database servers");
+    moveShardFinish(false,  false, std::string("shard ") + _shard + " has no planned database servers");
     TRI_ASSERT(false);
   }
   if ((_isLeader && found != 0) || (!_isLeader && found < 1)) {
