@@ -202,8 +202,8 @@
         <div class="pure-g cluster-nodes-title pure-table pure-table-header pure-title" style="clear: both">
           <div class="pure-table-row">
             <div class="pure-u-9-24 left">Name</div>
-            <div class="pure-u-1-24 left">Leading</div>
-            <div class="pure-u-8-24 left">Endpoint</div>
+            <div class="pure-u-3-24 left" style="text-align: center">Leading</div>
+            <div class="pure-u-6-24 left">Endpoint</div>
             <div class="pure-u-3-24">Version</div>
             <div class="pure-u-2-24 mid hide-small">Since</div>
             <div class="pure-u-1-24 mid"></div>
@@ -220,17 +220,17 @@
                 <%= node.id %>
               </div>
               <% if (node.Leading) { %>
-                <div class="pure-u-1-24 left">
+                <div class="pure-u-3-24 left" style="text-align: center">
                   <i class="fa fa-check-circle tippy" title="The current leading agent!"></i>
                 </div>
               <% } else { %>
-                <div class="pure-u-1-24 left">
+                <div class="pure-u-3-24 left" style="text-align: center">
                   <i style="color: rgba(0,0,0,.2); font-size: 16px;" class="fa fa-circle-o tippy"
                      title="This agent is not leading."></i>
                 </div>
               <% } %>
 
-              <div class="pure-u-8-24 left"><%= node.Endpoint %></div>
+              <div class="pure-u-6-24 left"><%= node.Endpoint %></div>
 
               <div class="pure-u-3-24"><%= node.Version %></div>
 
