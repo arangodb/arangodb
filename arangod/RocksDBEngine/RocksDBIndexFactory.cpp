@@ -301,6 +301,15 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
           "zkd index does not support sparse property");
     }
 
+    if (auto fieldValueTypes = definition.get("fieldValueTypes");
+        !fieldValueTypes.isString() ||
+        !fieldValueTypes.isEqualString("double")) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "zkd index requires `fieldValueTypes` to be set to `double` - future "
+          "releases might lift this requirement");
+    }
+
     return IndexFactory::enhanceJsonIndexGeneric(definition, normalized, isCreation);
   }
 };
