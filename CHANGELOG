@@ -20,7 +20,7 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
-* Resonably harden MoveShard against VelopcyPack more.
+* Reasonably harden MoveShard against invalid VelocyPack input.
 
 * Removed older reference to VelocyPackDumper.
 
