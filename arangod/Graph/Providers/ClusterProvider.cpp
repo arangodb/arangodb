@@ -133,10 +133,10 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   for (auto const& looseEnd : looseEnds) {
     LOG_DEVEL << "looseEnd name is: " << looseEnd->getVertex().getID();
     TRI_ASSERT(looseEnd->isLooseEnd());
-    TRI_ASSERT(_vertexConnectedEdges.find(looseEnd->getVertexIdentifier()) == _vertexConnectedEdges.end());
-    leased->add(VPackValuePair(looseEnd->getVertex().getID().data(),
-                               looseEnd->getVertex().getID().length(),
-                               VPackValueType::String));
+    auto const& vertexId = looseEnd->getVertex().getID();
+    if (!_opts.getCache()->isVertexCached(vertexId)) {
+      leased->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
+    }
   }
   leased->close();  // 'keys' Array
   leased->close();  // base object
@@ -175,7 +175,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     }
 
     auto payload = r.response().stealPayload();
-    bool isPayloadCached = false;
+    bool needToRetainPayload = false;
 
     VPackSlice resSlice(payload->data());
     if (!resSlice.isObject()) {
@@ -190,15 +190,18 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
       VertexType vertexKey(pair.key);
 
-      if (!isPayloadCached) {
-        _opts.getCache()->datalake().add(payload);
-        isPayloadCached = true;
-      }
-
       if (!_opts.getCache()->isVertexCached(vertexKey)) {
-        // Protected by datalake (Cache)
+        // Will be protected by the datalake.
+        // We flag to retain the payload.
         _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
+        needToRetainPayload = true;
       }
+    }
+
+    if (needToRetainPayload) {
+      // We have stored at least one entry from this payload.
+      // Retain it.
+      _opts.getCache()->datalake().add(std::move(payload));
     }
 
     /* TODO: Needs to be taken care of as soon as we enable shortest paths for ClusterProvider
@@ -330,14 +333,18 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
     _stats.addHttpRequests(_opts.getCache()->engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
-      auto res = fetchEdgesFromEngines(step->getVertex().getID());
-      // TODO: check stats (also take a look of vertex stats)
-      // add http stats
-      _stats.addHttpRequests(_opts.getCache()->engines()->size());
+      if (_vertexConnectedEdges.find(step->getVertex().getID()) ==
+          _vertexConnectedEdges.end()) {
+        auto res = fetchEdgesFromEngines(step->getVertex().getID());
+        // TODO: check stats (also take a look of vertex stats)
+        // add http stats
+        _stats.addHttpRequests(_opts.getCache()->engines()->size());
 
-      if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+        if (res.fail()) {
+          THROW_ARANGO_EXCEPTION(res);
+        }
       }
+      // else: We already fetched this vertex.
 
       // mark a looseEnd as fetched as vertex fetch + edges fetch was a success
       step->setFetched();
