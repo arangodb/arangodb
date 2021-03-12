@@ -171,8 +171,6 @@ if (WIN32)
   list(APPEND V8_TARGET_ARCHS "Release")
 
   if (BUILD_SHARED_LIBS)
-    # TODO I haven't yet had a chance to try this on Windows
-    message(FATAL_ERROR "BUILD_SHARED_LIBS isn't implemented for MSVC, yet")
     list(APPEND V8_GYP_ARGS
       -Dlibrary=shared
       -Dis_component_build=true)
@@ -469,7 +467,7 @@ message(${V8_GYP_ARGS})
   list(APPEND LINK_DIRECTORIES "${V8_LIBRARY_DIR}")
 
   set(V8_LIBS
-    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;;v8_initializers;v8_snapshot"
+    "v8_base_without_compiler;v8_compiler;v8_base_without_compiler;torque_base;v8_libplatform;v8_libsampler;v8_libbase;v8_init;v8_initializers;v8_snapshot"
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
   )

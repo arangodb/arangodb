@@ -216,7 +216,7 @@ if (EXISTS ${STARTER_SOURCE})
   endif()
 endif()
 
-add_library(fuerte STATIC
+add_library(fuerte
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/connection.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/ConnectionBuilder.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/fuerte/src/helper.cpp

@@ -360,9 +360,10 @@ add_library(arango_v8_no_deadline
   )
 
 target_link_libraries(arango_v8
-    boost_system
-    boost_boost
-)
+  arango
+  boost_system
+  boost_boost
+  )
 
 # Enterprise
 if (USE_ENTERPRISE)
