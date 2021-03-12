@@ -1,6 +1,8 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
+* Reasonably harden MoveShard against unexpected VelocyPack input.
+
 * Follower DB servers will now respond with error code
   `TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION`
   to any read request. This fixes inadequate HTTP 404 responses from followers,
