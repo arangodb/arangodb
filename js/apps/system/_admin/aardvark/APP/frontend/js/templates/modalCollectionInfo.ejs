@@ -295,13 +295,26 @@ if (!figuresData.figures) {
                   <span><%= count %>
                 </td>
                 <td>
-                  <span><%= figuresData.shards[shardName][0] %></span>
+                  <%
+                    let leaderName = figuresData.shards[shardName][0];
+                    try {
+                      leaderName = window.arangoHelper.getDatabaseShortName(leaderName);
+                    } catch (ignore) {
+                    }
+                  %>
+                  <span><%= leaderName %></span>
                 </td>
                 <td>
                   <ul>
-                    <% figuresData.shards[shardName].splice(1, figuresData.shards[shardName].length).forEach(follower => { %>
+                    <% figuresData.shards[shardName].splice(1, figuresData.shards[shardName].length).forEach(follower => {
+                      let followerName = follower;
+                      try {
+                        followerName = window.arangoHelper.getDatabaseShortName(followerName);
+                      } catch (ignore) {
+                      }
+                    %>
                       <li>
-                        <span><%=follower%></span>
+                        <span><%= followerName %></span>
                       </li>
                     <% }); %>
 
