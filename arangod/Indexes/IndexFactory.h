@@ -157,9 +157,13 @@ class IndexFactory {
   static Result enhanceJsonIndexGeo(arangodb::velocypack::Slice definition,
                                     arangodb::velocypack::Builder& builder, bool create,
                                     int minFields, int maxFields);
-  
+
   /// @brief enhances the json of a fulltext index
   static Result enhanceJsonIndexFulltext(arangodb::velocypack::Slice definition,
+                                         arangodb::velocypack::Builder& builder, bool create);
+
+  /// @brief enhances the json of a zkd index
+  static Result enhanceJsonIndexZkd(arangodb::velocypack::Slice definition,
                                          arangodb::velocypack::Builder& builder, bool create);
 
  protected:

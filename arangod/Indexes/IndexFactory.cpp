@@ -581,4 +581,33 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
   return res;
 }
 
+/// @brief enhances the json of a fulltext index
+Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
+                                              VPackBuilder& builder, bool create) {
+  if (auto fieldValueTypes = definition.get("fieldValueTypes");
+      !fieldValueTypes.isString() || !fieldValueTypes.isEqualString("double")) {
+    return Result(
+        TRI_ERROR_BAD_PARAMETER,
+        "zkd index requires `fieldValueTypes` to be set to `double` - future "
+        "releases might lift this requirement");
+  }
+
+  Result res = processIndexFields(definition, builder, 1, INT_MAX, create, false);
+
+  if (res.ok()) {
+    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue(); isSparse) {
+      return Result(TRI_ERROR_BAD_PARAMETER,
+                    "zkd index does not support sparse property");
+    }
+
+    processIndexUniqueFlag(definition, builder);
+
+    bool bck = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexInBackground,
+                                                         false);
+    builder.add(StaticStrings::IndexInBackground, VPackValue(bck));
+  }
+
+  return res;
+}
+
 }  // namespace arangodb
