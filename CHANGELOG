@@ -1,7 +1,7 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
-* Resonably harden MoveShard against VelopcyPack more.
+* Reasonably harden MoveShard against unexpected VelocyPack input.
 
 * Fixed a problem that coordinators would vanish from the UI and the Health API
   if one switched the agency Supervision into maintenance mode and kept left
