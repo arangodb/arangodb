@@ -5623,7 +5623,7 @@ function testUnconnectedGraphKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
 
   const query = aql`
-        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.additionalVertices[0]} TO ${testGraph.additionalVertices[1]}
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('B')}
         GRAPH ${testGraph.name()}
         RETURN path.vertices[* RETURN CURRENT.key]
       `;
@@ -5636,9 +5636,8 @@ function testUnconnectedGraphKPathsOutbound(testGraph) {
 function testUnconnectedGraphKPathsOutboundInvalidFromVertex(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
 
-  // C does not exist
   const query = aql`
-        FOR path IN 1..3 OUTBOUND K_PATHS ${'C'} TO ${testGraph.additionalVertices[0]}
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex()} TO ${testGraph.vertex('A')}
         GRAPH ${testGraph.name()}
         RETURN path.vertices[* RETURN CURRENT.key]
       `;
@@ -5651,9 +5650,8 @@ function testUnconnectedGraphKPathsOutboundInvalidFromVertex(testGraph) {
 function testUnconnectedGraphKPathsOutboundInvalidToVertex(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
 
-  // C does not exist
   const query = aql`
-        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.additionalVertices[0]} TO ${'C'}
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.nonExistingVertex()}
         GRAPH ${testGraph.name()}
         RETURN path.vertices[* RETURN CURRENT.key]
       `;
@@ -5667,8 +5665,7 @@ function testEmptyGraphKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
 
   const query = aql`
-        WITH v
-        FOR path IN 1..3 OUTBOUND K_PATHS ${"v/0"} TO ${"v/1"}
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex() + "0"} TO ${testGraph.nonExistingVertex() + "1"}
         GRAPH ${testGraph.name()}
         RETURN path.vertices[* RETURN CURRENT.key]
       `;
