@@ -139,6 +139,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
   result.reserve(32768);
   {
     bool changed = false;
+    
     std::lock_guard<std::recursive_mutex> guard(_lock);
     if (_globalLabels.find("shortname") == _globalLabels.end()) {
       _globalLabels.try_emplace("shortname", ServerState::instance()->getShortName());
@@ -171,7 +172,22 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         auto it = nameVersionTable.find(i.second->name());
         if (it == nameVersionTable.end()) {
           alternativeName = i.second->name();
-          name = alternativeName;
+          name = alternativeName;                        
+          static std::string const ARANGODB_CONNECTION = "arangodb_connection_";
+          static std::string const POOL_AGENCYCOMM = "pool=\"AgencyComm\"";
+          static std::string const POOL_CLUSTERCOMM = "pool=\"ClusterComm\"";
+          if (name.compare(0, 20, ARANGODB_CONNECTION) == 0) {
+            auto const labels = i.second->labels();
+            if (labels == POOL_AGENCYCOMM) {
+              name += "_AgencyComm";
+            } else if (labels == POOL_CLUSTERCOMM) {
+              name += "_ClusterComm";
+            } else {
+              // Avoid someone sneaking in an other connection
+              // pool without dedicated metric for v1
+              TRI_ASSERT(false);
+            }
+          }
         } else {
           alternativeName = it->second;
         }
