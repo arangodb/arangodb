@@ -210,7 +210,7 @@ void NetworkFeature::prepare() {
       }
 
       if (!server().isStopping() && !canceled) {
-        std::chrono::seconds off(120);
+        std::chrono::seconds off(12);
         ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
       }
     };
