@@ -113,19 +113,6 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
   builder.close();
 }
 
-bool ClusterIndex::isPersistent() const {
-  if (_engineType == ClusterEngineType::RocksDBEngine) {
-    return true;
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  } else if (_engineType == ClusterEngineType::MockEngine) {
-    return false;
-#endif
-  }
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "unsupported cluster storage engine");
-}
-
 bool ClusterIndex::hasSelectivityEstimate() const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
@@ -310,7 +297,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(arangodb::aql::SortConditio
   }
 
   TRI_ASSERT(_engineType == ClusterEngineType::MockEngine);
-  return Index::SortCosts::defaultCosts(itemsInIndex, false);
+  return Index::SortCosts::defaultCosts(itemsInIndex);
 }
 
 /// @brief specializes the condition for use with the index

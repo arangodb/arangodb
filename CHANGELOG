@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Github issue #13665: Improve index selection when there are multiple
+  candidate indexes.
+
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
 * Resonably harden MoveShard against VelopcyPack more.
