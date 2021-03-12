@@ -89,6 +89,8 @@ devel
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
   jobs.
 
+* Added list-repeat AIR primitive that creates a list containing n copies of the input value.
+
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Prevent arangosh from trying to connect after every executed command.
