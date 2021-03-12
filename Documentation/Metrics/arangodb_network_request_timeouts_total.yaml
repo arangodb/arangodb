@@ -1,0 +1,13 @@
+name: arangodb_network_request_timeouts_total
+help: |
+  Number of internal requests that have timed out.
+unit: number
+type: counter
+category: Network
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of internal requests that have timed out.

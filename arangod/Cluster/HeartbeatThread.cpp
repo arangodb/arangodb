@@ -191,7 +191,7 @@ class HeartbeatBackgroundJobThread : public Thread {
 struct HeartbeatScale {
   static log_scale_t<uint64_t> scale() { return {2, 4, 8000, 10}; }
 };
-DECLARE_COUNTER(arangodb_heartbeat_failures, "Counting failed heartbeat transmissions");
+DECLARE_COUNTER(arangodb_heartbeat_failures_total, "Counting failed heartbeat transmissions");
 DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale, "Time required to send heartbeat [ms]");
 
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
@@ -224,7 +224,7 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _heartbeat_send_time_ms(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures{})) {}
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread

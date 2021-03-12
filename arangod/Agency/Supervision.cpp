@@ -57,9 +57,9 @@ struct WaitForReplicationScale {
   static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
   
-DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_msec,
+DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
                   "Accumulated Supervision Runtime [ms]");
-DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec,
+DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
                   "Accumulated Supervision wait for replication time [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
                   "Counter for FailedServer jobs");
@@ -207,10 +207,10 @@ Supervision::Supervision(application_features::ApplicationServer& server)
           arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
         server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_agency_supervision_accum_runtime_msec{})),
+          arangodb_agency_supervision_accum_runtime_msec_total{})),
       _supervision_accum_runtime_wait_for_sync_msec(
         server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_agency_supervision_accum_runtime_wait_for_replication_msec{})),
+          arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
         server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_agency_supervision_failed_server_total{})) {}

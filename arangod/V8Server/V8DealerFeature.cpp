@@ -109,12 +109,12 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
-DECLARE_COUNTER(arangodb_v8_context_created, "V8 contexts created");
-DECLARE_COUNTER(arangodb_v8_context_creation_time_msec, "Total time for creating V8 contexts [ms]");
-DECLARE_COUNTER(arangodb_v8_context_destroyed, "V8 contexts destroyed");
-DECLARE_COUNTER(arangodb_v8_context_enter_failures, "V8 context enter failures");
+DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
+DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
+DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
+DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
 DECLARE_COUNTER(arangodb_v8_context_entered, "V8 context enter events");
-DECLARE_COUNTER(arangodb_v8_context_exited, "V8 context exit events");
+DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
@@ -135,17 +135,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
       _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
       _contextsCreated(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
       _contextsDestroyed(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
       _contextsEntered(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered{})),
       _contextsExited(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
       _contextsEnterFailures(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures{})) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 

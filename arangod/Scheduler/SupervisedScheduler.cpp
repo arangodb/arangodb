@@ -173,13 +173,13 @@ DECLARE_GAUGE(arangodb_scheduler_num_worker_threads, uint64_t,
 DECLARE_GAUGE(
     arangodb_scheduler_ongoing_low_prio, uint64_t,
     "Total number of ongoing RestHandlers coming from the low prio queue");
-DECLARE_COUNTER(arangodb_scheduler_queue_full_failures,
+DECLARE_COUNTER(arangodb_scheduler_queue_full_failures_total,
                 "Tasks dropped and not added to internal queue");
 DECLARE_GAUGE(arangodb_scheduler_queue_length, uint64_t,
               "Server's internal queue length");
-DECLARE_COUNTER(arangodb_scheduler_threads_started,
+DECLARE_COUNTER(arangodb_scheduler_threads_started_total,
                 "Number of scheduler threads started");
-DECLARE_COUNTER(arangodb_scheduler_threads_stopped,
+DECLARE_COUNTER(arangodb_scheduler_threads_stopped_total,
                 "Number of scheduler threads stopped");
 
 SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer& server,
@@ -219,11 +219,11 @@ SupervisedScheduler::SupervisedScheduler(application_features::ApplicationServer
       _metricsNumWorkerThreads(server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_num_worker_threads{})),
       _metricsThreadsStarted(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_scheduler_threads_started{})),
+          arangodb_scheduler_threads_started_total{})),
       _metricsThreadsStopped(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_scheduler_threads_stopped{})),
+          arangodb_scheduler_threads_stopped_total{})),
       _metricsQueueFull(server.getFeature<arangodb::MetricsFeature>().add(
-          arangodb_scheduler_queue_full_failures{})),
+          arangodb_scheduler_queue_full_failures_total{})),
       _ongoingLowPriorityGauge(_server.getFeature<arangodb::MetricsFeature>().add(
           arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(

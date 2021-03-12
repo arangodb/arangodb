@@ -104,11 +104,11 @@ struct SlowQueryTimeScale {
   static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
 };
 
-DECLARE_COUNTER(arangodb_aql_all_query, "Total number of AQL queries finished");
+DECLARE_COUNTER(arangodb_aql_all_query_total, "Total number of AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale, "Execution time histogram for all AQL queries [s]");
-DECLARE_COUNTER(arangodb_aql_slow_query, "Total number of slow AQL queries finished");
+DECLARE_COUNTER(arangodb_aql_slow_query_total, "Total number of slow AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale, "Execution time histogram for slow AQL queries [s]");
-DECLARE_COUNTER(arangodb_aql_total_query_time_msec, "Total execution time of all AQL queries [ms]");
+DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total, "Total execution time of all AQL queries [ms]");
 DECLARE_GAUGE(arangodb_aql_current_query, uint64_t, "Current number of AQL queries executing");
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
@@ -140,11 +140,11 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowQueryTimes(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_total_query_time_msec{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_total_query_time_msec_total{})),
       _queriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_all_query{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_all_query_total{})),
       _slowQueriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
       _runningQueries(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})) {
   setOptional(false);

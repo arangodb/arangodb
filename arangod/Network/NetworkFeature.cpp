@@ -82,8 +82,8 @@ struct NetworkFeatureScale {
   static fixed_scale_t<double> scale() { return { 0.0, 100.0, {1.0, 5.0, 15.0, 50.0} }; }
 };
 
-DECLARE_COUNTER(arangodb_network_forwarded_requests, "Number of requests forwarded to another coordinator");
-DECLARE_COUNTER(arangodb_network_request_timeouts, "Number of internal requests that have timed out");
+DECLARE_COUNTER(arangodb_network_forwarded_requests_total, "Number of requests forwarded to another coordinator");
+DECLARE_COUNTER(arangodb_network_request_timeouts_total, "Number of internal requests that have timed out");
 DECLARE_HISTOGRAM(arangodb_network_request_duration_as_percentage_of_timeout, NetworkFeatureScale, "Internal request round-trip time as a percentage of timeout [%]");
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t, "Number of outgoing internal requests in flight");
 
@@ -97,12 +97,12 @@ NetworkFeature::NetworkFeature(application_features::ApplicationServer& server,
       _verifyHosts(config.verifyHosts),
       _prepared(false),
       _forwardedRequests(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_forwarded_requests{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_forwarded_requests_total{})),
       _maxInFlight(::MaxAllowedInFlight),
       _requestsInFlight(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_requests_in_flight{})),
       _requestTimeouts(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_timeouts{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_timeouts_total{})),
       _requestDurations(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_network_request_duration_as_percentage_of_timeout{})) {
   setOptional(true);

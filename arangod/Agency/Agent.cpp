@@ -62,11 +62,11 @@ DECLARE_HISTOGRAM(arangodb_agency_append_hist, AppendScale, "Agency write histog
 DECLARE_HISTOGRAM(arangodb_agency_commit_hist, AgentScale, "Agency RAFT commit histogram [ms]");
 DECLARE_HISTOGRAM(arangodb_agency_compaction_hist, AgentScale, "Agency compaction histogram [ms]");
 DECLARE_GAUGE(arangodb_agency_local_commit_index, uint64_t, "This agent's commit index");
-DECLARE_COUNTER(arangodb_agency_read_no_leader, "Agency read no leader");
-DECLARE_COUNTER(arangodb_agency_read_ok, "Agency read ok");
+DECLARE_COUNTER(arangodb_agency_read_no_leader_total, "Agency read no leader");
+DECLARE_COUNTER(arangodb_agency_read_ok_total, "Agency read ok");
 DECLARE_HISTOGRAM(arangodb_agency_write_hist, AgentScale, "Agency write histogram [ms]");
-DECLARE_COUNTER(arangodb_agency_write_no_leader, "Agency write no leader");
-DECLARE_COUNTER(arangodb_agency_write_ok, "Agency write ok");
+DECLARE_COUNTER(arangodb_agency_write_no_leader_total, "Agency write no leader");
+DECLARE_COUNTER(arangodb_agency_write_ok_total, "Agency write ok");
 
 namespace arangodb {
 namespace consensus {
@@ -94,13 +94,13 @@ Agent::Agent(application_features::ApplicationServer& server, config_t const& co
       _preparing(0),
       _loaded(false),
       _write_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok{})),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_ok_total{})),
       _write_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_no_leader{})),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_no_leader_total{})),
       _read_ok(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_ok{})),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_ok_total{})),
       _read_no_leader(
-        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_no_leader{})),
+        _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_read_no_leader_total{})),
       _write_hist_msec(
         _server.getFeature<arangodb::MetricsFeature>().add(arangodb_agency_write_hist{})),
       _commit_hist_msec(

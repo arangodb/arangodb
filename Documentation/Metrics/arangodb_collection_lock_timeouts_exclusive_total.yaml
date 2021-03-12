@@ -1,0 +1,13 @@
+name: arangodb_collection_lock_timeouts_exclusive_total
+help: |
+  Number of timeouts when trying to acquire collection exclusive locks.
+unit: number
+type: counter
+category: AQL
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of timeouts when trying to acquire collection exclusive locks.
