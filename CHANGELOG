@@ -120,6 +120,10 @@ devel
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
 
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
+
 * Reduce memory footprint of agency Store in Node class.
 
 * Cleanup old hotbackup transfer jobs in agency.

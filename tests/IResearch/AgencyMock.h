@@ -25,6 +25,8 @@
 #ifndef ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H
 #define ARANGODB_IRESEARCH__IRESEARCH_AGENCY_MOCK_H 1
 
+#include <fuerte/connection.h>
+
 #include "Basics/debugging.h"
 #include "Cluster/AgencyCache.h"
 #include "Network/ConnectionPool.h"
@@ -35,6 +37,23 @@ inline namespace v1 {
 class ConnectionBuilder;
 }
 }
+
+struct AsyncAgencyStorePoolConnection final : public arangodb::fuerte::Connection {
+  AsyncAgencyStorePoolConnection(arangodb::AgencyCache& cache, std::string endpoint);
+
+  std::size_t requestsLeft() const override { return 1; }
+  State state() const override;
+
+  void cancel() override;
+
+  auto handleRead(VPackSlice body) -> std::unique_ptr<arangodb::fuerte::Response>;
+  auto handleWrite(VPackSlice body) -> std::unique_ptr<arangodb::fuerte::Response>;
+  void sendRequest(std::unique_ptr<arangodb::fuerte::Request> req,
+                   arangodb::fuerte::RequestCallback cb) override;
+
+  arangodb::AgencyCache& _cache;
+  std::string _endpoint;
+};
 
 struct AsyncAgencyStorePoolMock final : public arangodb::network::ConnectionPool {
 
