@@ -1,6 +1,11 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
+* Follower DB servers will now respond with error code
+  `TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION`
+  to any read request. This fixes inadequate HTTP 404 responses from followers,
+  e.g. during chaos tests.
+
 * Fixed a problem that coordinators would vanish from the UI and the Health API
   if one switched the agency Supervision into maintenance mode and kept left
   that maintenance mode on for more than 24h.
@@ -22,11 +27,6 @@ v3.7.10 (XXXX-XX-XX)
 
 v3.7.9 (2021-03-01)
 -------------------
-
-* Follower primaries respond with
-  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
-  to any read request. Fixes a wrongly responded 404 from chaos
-  tests.
 
 * Fix issue #13476: The Java driver v6.9.0 (and older) has bad performance when
   iterating over AQL cursor results in certain cases. This works around this.
