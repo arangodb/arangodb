@@ -42,6 +42,8 @@ class BaseStep {
     return _previous == std::numeric_limits<size_t>::max();
   }
 
+  bool isLooseEnd() const {return static_cast<StepDetails*>(this)->isLooseEnd();}
+
  private:
   size_t const _previous;
 };

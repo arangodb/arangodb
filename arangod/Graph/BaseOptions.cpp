@@ -41,6 +41,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -230,7 +231,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VP
   if (read.isInteger()) {
     _parallelism = read.getNumber<size_t>();
   }
-  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag, false);
+  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag,
+                                                        false);
 
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
@@ -383,7 +385,7 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
-  
+
   result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
 }
 
@@ -460,9 +462,11 @@ void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   _cache = std::move(testCache);
 }
 
-aql::Variable const* BaseOptions::tmpVar() {
-  return _tmpVar;
+arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {
+  return _expressionCtx;
 }
+
+aql::Variable const* BaseOptions::tmpVar() { return _tmpVar; }
 
 void BaseOptions::isQueryKilledCallback() const {
   if (query().killed()) {

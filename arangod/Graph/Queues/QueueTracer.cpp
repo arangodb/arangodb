@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Logger/LogMacros.h"
@@ -33,7 +34,8 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 template <class QueueImpl>
-QueueTracer<QueueImpl>::QueueTracer(arangodb::ResourceMonitor& resourceMonitor) : _impl{resourceMonitor} {}
+QueueTracer<QueueImpl>::QueueTracer(arangodb::ResourceMonitor& resourceMonitor)
+    : _impl{resourceMonitor} {}
 
 template <class QueueImpl>
 QueueTracer<QueueImpl>::~QueueTracer() {
@@ -92,4 +94,8 @@ auto QueueTracer<QueueImpl>::pop() -> typename QueueImpl::Step {
   return _impl.pop();
 }
 
+/* SingleServerProvider Section */
 template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::SingleServerProvider::Step>>;
+
+/* ClusterServerProvider Section */
+template class ::arangodb::graph::QueueTracer<arangodb::graph::FifoQueue<arangodb::graph::ClusterProvider::Step>>;
