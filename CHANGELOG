@@ -5,6 +5,8 @@ devel
   initialization phase. Additionally, the amount of agents are now displayed
   there as well. An agent failure will also appear here in case it exists.
 
+* The web UI's node overview now displays also agent information (cluster only).
+
 * The statistics view in the web UI does now provide more system specific
   information in case the Metrics API is enabled. Different statistics may
   be visible depending on the operating system.
