@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -279,32 +279,28 @@ bool MoveShard::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
   Slice planned = _snapshot.hasAsSlice(planPath).first;
+  TRI_ASSERT(planned.isArray());
 
   int found = -1;
   int foundTo = -1;
   int count = 0;
   _toServerIsFollower = false;
-  if (planned.isArray()) {
-    for (VPackSlice srv : VPackArrayIterator(planned)) {
-      TRI_ASSERT(srv.isString());
-      if (srv.copyString() == _to) {
-        foundTo = count;
-        if (!_isLeader) {
-          moveShardFinish(false, false, "toServer must not be planned for a following shard");
-          return false;
-        } else {
-          _toServerIsFollower = true;
-        }
+  for (VPackSlice srv : VPackArrayIterator(planned)) {
+    TRI_ASSERT(srv.isString());
+    if (srv.copyString() == _to) {
+      foundTo = count;
+      if (!_isLeader) {
+        moveShardFinish(false,  false,
+               "toServer must not be planned for a following shard");
+        return false;
+      } else {
+        _toServerIsFollower = true;
       }
-      if (srv.copyString() == _from) {
-        found = count;
-      }
-      ++count;
     }
-  } else {
-    // We really should never be ever here
-    moveShardFinish(false,  false, std::string("shard ") + _shard + "has no planned database servers");
-    TRI_ASSERT(false);
+    if (srv.copyString() == _from) {
+      found = count;
+    }
+    ++count;
   }
   if ((_isLeader && found != 0) || (!_isLeader && found < 1)) {
     if (_isLeader) {
@@ -387,11 +383,9 @@ bool MoveShard::start(bool&) {
       addMoveShardToServerLock(pending);
       addMoveShardFromServerLock(pending);
 
-      bool failed = false;
-
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [this, &pending, &failed](Slice plan, Slice current,
+                     [this, &pending](Slice plan, Slice current,
                                       std::string& planPath, std::string& curPath) {
                        pending.add(VPackValue(planPath));
                        {
@@ -406,29 +400,16 @@ bool MoveShard::start(bool&) {
                              pending.add(plan[i]);
                            }
                          } else {
-                           if (plan.isArray()) {
-                             for (VPackSlice srv : VPackArrayIterator(plan)) {
-                               pending.add(srv);
-                               TRI_ASSERT(srv.copyString() != _to);
-                             }
-                             pending.add(VPackValue(_to));
-                           } else {
-                             LOG_TOPIC("3b2fd", WARN, Logger::SUPERVISION) <<
-                               "plan entry not an array while iterating over all shard clones";
-                             TRI_ASSERT(false);
-                             failed = true;
-                             return;
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             pending.add(srv);
+                             TRI_ASSERT(srv.copyString() != _to);
                            }
+                           pending.add(VPackValue(_to));
                          }
                        }
                      });
 
-      if (failed) { // Cannot start the job - we'll be back.
-        return false;
-      }
-
       addIncreasePlanVersion(pending);
-
     }  // mutation part of transaction done
 
     // Preconditions
@@ -488,12 +469,14 @@ JOB_STATUS MoveShard::status() {
     return FINISHED;
   }
 
-  return (_isLeader) ? pendingLeader() : pendingFollower();
-
+  if (_isLeader) {
+    return pendingLeader();
+  } else {
+    return pendingFollower();
+  }
 }
 
 JOB_STATUS MoveShard::pendingLeader() {
-
   auto considerTimeout = [&]() -> bool {
     // Not yet all in sync, consider timeout:
     std::string timeCreatedString =
@@ -536,20 +519,11 @@ JOB_STATUS MoveShard::pendingLeader() {
     doForAllShards(_snapshot, _database, shardsLikeMe,
                    [this, &done](Slice plan, Slice current,
                                  std::string& planPath, std::string& curPath) {
-                     // If current of any shard clone is not an array, the collection
-                     // is still being created, as we run. We will come back next
-                     // round as we don't increment "done". And thus return PENDING.
-                     if (current.isArray()) { // No additional action need. done is not incremented
-                       for (VPackSlice s : VPackArrayIterator(current)) {
-                         if (s.copyString() == _to) {
-                           ++done;
-                           return;
-                         }
+                     for (VPackSlice s : VPackArrayIterator(current)) {
+                       if (s.copyString() == _to) {
+                         ++done;
+                         return;
                        }
-                     } else {
-                       LOG_TOPIC("edfc7", WARN, Logger::SUPERVISION)
-                         << "missing current entry for " << _shard << " or a clone, we'll be back";
-                       TRI_ASSERT(false);
                      }
                    });
 
@@ -563,33 +537,23 @@ JOB_STATUS MoveShard::pendingLeader() {
 
     // We need to ask the old leader to retire:
     {
-      bool failed = false;
       VPackArrayBuilder trxArray(&trx);
       {
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &pre, &failed](Slice plan, Slice current,
+                       [this, &trx, &pre](Slice plan, Slice current,
                                           std::string& planPath, std::string& curPath) {
                          // Replace _from by "_" + _from
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           if (plan.isArray()) {
-                             for (VPackSlice srv : VPackArrayIterator(plan)) {
-                               if (srv.copyString() == _from) {
-                                 trx.add(VPackValue("_" + srv.copyString()));
-                               } else {
-                                 trx.add(srv);
-                               }
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             if (srv.copyString() == _from) {
+                               trx.add(VPackValue("_" + srv.copyString()));
+                             } else {
+                               trx.add(srv);
                              }
-                           } else {
-                             LOG_TOPIC("98371", WARN, Logger::SUPERVISION)
-                               << "failed iterating over planned servers for "
-                               << _shard << " or a clone, retrying";
-                             failed = true;
-                             TRI_ASSERT(false);
-                             return;
                            }
                          }
                          // Precondition: Plan still as it was
@@ -602,9 +566,6 @@ JOB_STATUS MoveShard::pendingLeader() {
                        });
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addIncreasePlanVersion(trx);
-        if (failed) {
-          return PENDING;
-        }
       }
       // Add precondition to transaction:
       trx.add(pre.slice());
@@ -639,7 +600,7 @@ JOB_STATUS MoveShard::pendingLeader() {
       for (auto const& sh : shardsLikeMe) {
         auto const shardPath = curColPrefix + _database + "/" + sh.collection + "/" + sh.shard;
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
-        if (tmp.second) { // safe iterator below
+        if (tmp.second) {
           bool found = false;
           for (auto const& server : VPackArrayIterator(tmp.first)) {
             if (server.isEqualString(_to)) {
@@ -647,7 +608,6 @@ JOB_STATUS MoveShard::pendingLeader() {
               break;
             }
           }
-
           if (!found) {
             // _to server no longer replica of this shard
             abort(_to + " no longer holds a replica of " + shardPath);
@@ -661,31 +621,21 @@ JOB_STATUS MoveShard::pendingLeader() {
       }
       VPackArrayBuilder trxArray(&trx);
       {
-        bool failed = false;
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &pre, &failed](Slice plan, Slice current,
+                       [this, &trx, &pre](Slice plan, Slice current,
                                           std::string& planPath, std::string& curPath) {
                          // Replace "_" + _from by _to and leave _from out:
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           if (plan.isArray()) {
-                             for (VPackSlice srv : VPackArrayIterator(plan)) {
-                               if (srv.copyString() == "_" + _from) {
-                                 trx.add(VPackValue(_to));
-                               } else if (srv.copyString() != _to) {
-                                 trx.add(srv);
-                               }
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             if (srv.copyString() == "_" + _from) {
+                               trx.add(VPackValue(_to));
+                             } else if (srv.copyString() != _to) {
+                               trx.add(srv);
                              }
-                           } else {
-                             LOG_TOPIC("3249e", WARN, Logger::SUPERVISION)
-                               << "failed to iterate through planned shard servers for shard "
-                               << _shard << " or one of its clones";
-                             failed = true;
-                             TRI_ASSERT(false);
-                             return;
                            }
                            // add the old leader as follower in case of a rollback
                            trx.add(VPackValue(_from));
@@ -698,9 +648,6 @@ JOB_STATUS MoveShard::pendingLeader() {
                            pre.add(plan);
                          }
                        });
-        if (failed) {
-          return PENDING;
-        }
         addPreconditionCollectionStillThere(pre, _database, _collection);
         addPreconditionCurrentReplicaShardGroup(pre, _database, shardsLikeMe, _to);
         addIncreasePlanVersion(trx);
@@ -727,19 +674,11 @@ JOB_STATUS MoveShard::pendingLeader() {
                          size_t found = 0;
                          for (size_t i = 1; i < plan.length() - 1; ++i) {
                            VPackSlice p = plan[i];
-                           if (current.isArray()) { // found is not incremented, we'll remain pending
-                             for (auto const& c : VPackArrayIterator(current)) {
-                               if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
-                                 ++found;
-                                 break;
-                               }
+                           for (auto const& c : VPackArrayIterator(current)) {
+                             if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
+                               ++found;
+                               break;
                              }
-                           } else {
-                             LOG_TOPIC("3294e", WARN, Logger::SUPERVISION)
-                               << "failed to iterate through current shard servers for shard "
-                               << _shard << " or one of its clones";
-                             TRI_ASSERT(false);
-                             return; // we don't increment done and remain PENDING
                            }
                          }
                          if (found >= plan.length() - 2) {
@@ -763,27 +702,18 @@ JOB_STATUS MoveShard::pendingLeader() {
       {
         VPackObjectBuilder trxObject(&trx);
         VPackObjectBuilder preObject(&pre);
-        bool failed = false;
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [&trx, &pre, this, &failed](Slice plan, Slice current,
+                       [&trx, &pre, this](Slice plan, Slice current,
                                           std::string& planPath, std::string& curPath) {
                          if (!_remainsFollower) {
                            // Remove _from from the list of follower
                            trx.add(VPackValue(planPath));
                            {
                              VPackArrayBuilder guard(&trx);
-                             if (plan.isArray()) {
-                               for (VPackSlice srv : VPackArrayIterator(plan)) {
-                                 if (!srv.isEqualString(_from)) {
-                                   trx.add(srv);
-                                 }
+                             for (VPackSlice srv : VPackArrayIterator(plan)) {
+                               if (!srv.isEqualString(_from)) {
+                                 trx.add(srv);
                                }
-                             } else {
-                               LOG_TOPIC("37714", WARN, Logger::SUPERVISION)
-                                 << "failed to iterate over planned servers for "
-                                 << _shard << " or one of its clones";
-                               failed = true;
-                               return;
                              }
                            }
                          }
@@ -796,9 +726,6 @@ JOB_STATUS MoveShard::pendingLeader() {
                            pre.add(plan);
                          }
                        });
-        if (failed) {
-          return PENDING;
-        }
         if (!_remainsFollower) {
           addIncreasePlanVersion(trx);
         }
@@ -887,28 +814,19 @@ JOB_STATUS MoveShard::pendingFollower() {
     {
       VPackObjectBuilder transactionObj(&trx);
       VPackObjectBuilder preconditionObj(&precondition);
-      bool failed = false;
+
       // All changes to Plan for all shards, with precondition:
       doForAllShards(_snapshot, _database, shardsLikeMe,
-                     [this, &trx, &precondition, &failed](Slice plan, Slice current,
+                     [this, &trx, &precondition](Slice plan, Slice current,
                                                  std::string& planPath, std::string& curPath) {
                        // Remove fromServer from Plan:
                        trx.add(VPackValue(planPath));
                        {
                          VPackArrayBuilder guard(&trx);
-                         if (plan.isArray()) {
-                           for (VPackSlice srv : VPackArrayIterator(plan)) {
-                             if (srv.copyString() != _from) {
-                               trx.add(srv);
-                             }
+                         for (VPackSlice srv : VPackArrayIterator(plan)) {
+                           if (srv.copyString() != _from) {
+                             trx.add(srv);
                            }
-                         } else {
-                           LOG_TOPIC("dbc18", WARN, Logger::SUPERVISION)
-                             << "failed to iterator of planned servers for shard "
-                             << _shard << " or one of its followers, we'll be back";
-                           failed = true;
-                           TRI_ASSERT(false);
-                           return;
                          }
                        }
                        // Precondition: Plan still as it was
@@ -919,9 +837,6 @@ JOB_STATUS MoveShard::pendingFollower() {
                          precondition.add(plan);
                        }
                      });
-      if (failed) {
-        return PENDING;
-      }
 
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
@@ -1013,34 +928,24 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   {
     VPackArrayBuilder arrayForTransactionPair(&trx);
     {
-      bool failed = false;
       VPackObjectBuilder transactionObj(&trx);
       if (_isLeader) {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &failed](Slice plan, Slice current,
+                       [this, &trx](Slice plan, Slice current,
                                     std::string& planPath, std::string& curPath) {
                          // Restore leader to be _from:
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
                            trx.add(VPackValue(_from));
-                           if (plan.isArray()) {
-                             for (VPackSlice srv : VPackArrayIterator(plan)) {
-                               // from could be in plan as <from> or <_from>. Exclude to server always.
-                               if (srv.isEqualString(_from) || srv.isEqualString("_" + _from) ||
-                                   srv.isEqualString(_to)) {
-                                 continue;
-                               }
-                               trx.add(srv);
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             // from could be in plan as <from> or <_from>. Exclude to server always.
+                             if (srv.isEqualString(_from) || srv.isEqualString("_" + _from) ||
+                                 srv.isEqualString(_to)) {
+                               continue;
                              }
-                           } else {
-                             LOG_TOPIC("2e7b9", WARN, Logger::SUPERVISION)
-                               << "failed to iterate over planned servers for shard "
-                               << _shard << " or a clone";
-                             failed = true;
-                             TRI_ASSERT(false);
-                             return;
+                             trx.add(srv);
                            }
                            // Add to server last. Will be removed by removeFollower if to much
                            trx.add(VPackValue(_to));
@@ -1049,34 +954,19 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       } else {
         // All changes to Plan for all shards:
         doForAllShards(_snapshot, _database, shardsLikeMe,
-                       [this, &trx, &failed](Slice plan, Slice current,
+                       [this, &trx](Slice plan, Slice current,
                                     std::string& planPath, std::string& curPath) {
                          // Remove toServer from Plan:
                          trx.add(VPackValue(planPath));
                          {
                            VPackArrayBuilder guard(&trx);
-                           if (plan.isArray()) {
-                             for (VPackSlice srv : VPackArrayIterator(plan)) {
-                               if (!srv.isEqualString(_to)) {
-                                 trx.add(srv);
-                               }
+                           for (VPackSlice srv : VPackArrayIterator(plan)) {
+                             if (!srv.isEqualString(_to)) {
+                               trx.add(srv);
                              }
-                           } else {
-                             LOG_TOPIC("2eb79", WARN, Logger::SUPERVISION)
-                               << "failed to iterate over planned servers for shard "
-                               << _shard << " or a clone";
-                             failed = true;
-                             TRI_ASSERT(false);
-                             return;
                            }
                          }
                        });
-      }
-      if (failed) {
-        result = Result(
-          TRI_ERROR_SUPERVISION_GENERAL_FAILURE,
-          std::string("no planned servers means a failure to abort ") + _jobId);
-        return result;
       }
       addRemoveJobFromSomewhere(trx, "Pending", _jobId);
       Builder job;
