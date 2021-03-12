@@ -5598,8 +5598,9 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read({{"Plan"}, {"Sync/LatestID"}});
-  auto result = acb->slice();
+  auto [acb, index] = agencyCache.read({AgencyCommHelper::path("Plan"),
+                                        AgencyCommHelper::path("Sync/LatestID")});
+  VPackSlice result = acb->slice();
 
   if (result.isArray()) {
     body->add(acb->slice());
@@ -5627,6 +5628,13 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP),
       AgencyOperation("Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP)});
 
+  VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
+  if (!latestIdSlice.isNone()) {
+    planTransaction.operations.push_back(
+        AgencyOperation(
+          "Sync/LatestID", AgencyValueOperationType::SET,
+          latestIdSlice));
+  }
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
     arangodb::Result result(
