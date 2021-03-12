@@ -5463,8 +5463,7 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{AgencyCommHelper::path("Plan")});
+  auto [acb, index] = agencyCache.read({"Plan"}, {"Sync/LatestID"});
   auto result = acb->slice();
 
   if (result.isArray()) {
