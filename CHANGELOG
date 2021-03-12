@@ -1,8 +1,11 @@
 devel
 -----
 
+* Log the actual signal instead of "control-c" and also include the process id
+  of the process that sent the signal.
+
 * Added a new cluster distribution view to the web UI. The view includes general
-  details about cluster-wide distrubution in general as well as more detailed 
+  details about cluster-wide distribution in general as well as more detailed 
   shard distribution specific information.
 
 * Follower primaries respond with
@@ -12,7 +15,7 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
-* Resonably harden MoveShard against VelopcyPack more.
+* Reasonably harden MoveShard against VelocyPack more.
 
 * Removed older reference to VelocyPackDumper.
 
