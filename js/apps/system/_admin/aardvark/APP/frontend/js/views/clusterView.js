@@ -269,7 +269,15 @@
         _.each(val1.options, function (val2, key2) {
           if (val2.values.length < self.maxValues - 1) {
             let dummyElementsToInsert =  self.maxValues - val2.values.length;
-            let initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
+            let initTimeToUse;
+            try {
+              initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
+            } catch (ignore) {
+              // format to write here timestamp like: 1615569682 (10 chars)
+              // Date.now() gives => 1615569844407 (13 chars)
+              initTimeToUse = (Date.now() / 1000).toFixed(0);
+            }
+
             for (let counter = 0; counter < dummyElementsToInsert; counter++) {
               let time = initTimeToUse - ((self.interval / 1000) * counter);
               time = parseInt(time);
