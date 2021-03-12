@@ -75,7 +75,6 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
     return selectConnection(endpoint,*it2->second, isFromPool);
   }
-  LOG_DEVEL << "Found " << it->second->list.size() << " connections in pool.";
   return selectConnection(endpoint, *it->second, isFromPool);
 }
 
@@ -104,7 +103,6 @@ void ConnectionPool::shutdownConnections() {
 
 /// remove unused and broken connections
 void ConnectionPool::pruneConnections() {
-  LOG_DEVEL << "Pruning connections in pool.";
   const std::chrono::milliseconds ttl(_config.idleConnectionMilli);
 
   READ_LOCKER(guard, _lock);
