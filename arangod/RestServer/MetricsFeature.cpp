@@ -412,10 +412,11 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
-        auto it = nameVersionTable.find(i.second->name());
+        // In v1 we do a nameing conversion. Note that we set 
+        // alternativeName == name in the end, in v2 though,
+        // alternativeName is empty and no conversion happens.
+        auto it = nameVersionTable.find(name);
         if (it == nameVersionTable.end()) {
-          alternativeName = i.second->name();
-          name = alternativeName;                        
           static std::string const ARANGODB_CONNECTION = "arangodb_connection_";
           static std::string const POOL_AGENCYCOMM = "pool=\"AgencyComm\"";
           static std::string const POOL_CLUSTERCOMM = "pool=\"ClusterComm\"";
@@ -431,8 +432,10 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
               TRI_ASSERT(false);
             }
           }
+          alternativeName = name;
         } else {
           alternativeName = it->second;
+          name = alternativeName;
         }
       }
       if (lastType != i.second->name()) {
@@ -448,7 +451,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
   // StatisticsFeature
   auto& sf = server().getFeature<StatisticsFeature>();
   sf.toPrometheus(result, std::chrono::duration<double, std::milli>(
-                    std::chrono::system_clock::now().time_since_epoch()).count());
+                    std::chrono::system_clock::now().time_since_epoch()).count(), v2);
 
   // RocksDBEngine
   auto& es = server().getFeature<EngineSelectorFeature>().engine();

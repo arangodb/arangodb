@@ -81,7 +81,7 @@ namespace statistics {
 // local_name: {"prometheus_name", "type", "help"}
 std::map<std::string, std::vector<std::string>> statStrings{
   {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket", "histogram",
+   {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
   {"bytesReceivedCount",
    {"arangodb_client_connection_statistics_bytes_received_count", "gauge",
@@ -90,7 +90,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_bytes_received_sum", "gauge",
     "Bytes received for a request"}},
   {"bytesSent",
-   {"arangodb_client_connection_statistics_bytes_sent_bucket", "histogram",
+   {"arangodb_client_connection_statistics_bytes_sent", "histogram",
     "Bytes sent for a request"}},
   {"bytesSentCount",
    {"arangodb_client_connection_statistics_bytes_sent_count", "gauge",
@@ -105,7 +105,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_process_statistics_major_page_faults", "gauge",
     "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk"}},
   {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket", "histogram",
+   {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
@@ -126,7 +126,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_client_connections", "gauge",
     "The number of client connections that are currently open"}},
   {"connectionTime",
-   {"arangodb_client_connection_statistics_connection_time_bucket", "histogram",
+   {"arangodb_client_connection_statistics_connection_time", "histogram",
     "Total connection time of a client"}},
   {"connectionTimeCount",
    {"arangodb_client_connection_statistics_connection_time_count", "gauge",
@@ -135,7 +135,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
     "Total connection time of a client"}},
   {"totalTime",
-   {"arangodb_client_connection_statistics_total_time_bucket", "histogram",
+   {"arangodb_client_connection_statistics_total_time", "histogram",
     "Total time needed to answer a request"}},
   {"totalTimeCount",
    {"arangodb_client_connection_statistics_total_time_count", "gauge",
@@ -144,7 +144,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_total_time_sum", "gauge",
     "Total time needed to answer a request"}},
   {"requestTime",
-   {"arangodb_client_connection_statistics_request_time_bucket", "histogram",
+   {"arangodb_client_connection_statistics_request_time", "histogram",
     "Request time needed to answer a request"}},
   {"requestTimeCount",
    {"arangodb_client_connection_statistics_request_time_count", "gauge",
@@ -153,7 +153,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_request_time_sum", "gauge",
     "Request time needed to answer a request"}},
   {"queueTime",
-   {"arangodb_client_connection_statistics_queue_time_bucket", "histogram",
+   {"arangodb_client_connection_statistics_queue_time", "histogram",
     "Request time needed to answer a request"}},
   {"queueTimeCount",
    {"arangodb_client_connection_statistics_queue_time_count", "gauge",
@@ -162,7 +162,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_queue_time_sum", "gauge",
     "Request time needed to answer a request"}},
   {"ioTime",
-   {"arangodb_client_connection_statistics_io_time_bucket", "histogram",
+   {"arangodb_client_connection_statistics_io_time", "histogram",
     "Request time needed to answer a request"}},
   {"ioTimeCount",
    {"arangodb_client_connection_statistics_io_time_count", "gauge",
@@ -474,7 +474,8 @@ VPackBuilder StatisticsFeature::fillDistribution(statistics::Distribution const&
 
 void StatisticsFeature::appendHistogram(
   std::string& result, statistics::Distribution const& dist,
-  std::string const& label, std::initializer_list<std::string> const& les) {
+  std::string const& label, std::initializer_list<std::string> const& les,
+  bool v2) {
 
   auto const countLabel = label + "Count";
   auto const countSum = label + "Sum";
@@ -491,11 +492,16 @@ void StatisticsFeature::appendHistogram(
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
+  uint64_t sum = 0;
   for (auto const& le : les) {
+    uint64_t v = counts.at(i++).getNumber<uint64_t>();
+    sum += v;
+    v = v2 ? sum : v;
     result +=
-      name + "{le=\"" + le + "\"}"  + " " +
-      std::to_string(counts.at(i++).getNumber<uint64_t>()) + '\n';
+      name + "_bucket{le=\"" + le + "\"}"  + " " +
+      std::to_string(v) + '\n';
   }
+  result += name + "_count " + std::to_string(sum) + '\n';
 }
 
 void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label) {
@@ -508,7 +514,7 @@ void StatisticsFeature::appendMetric(std::string& result, std::string const& val
     '\n' + name + " " + val + '\n';
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -557,21 +563,21 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
-    appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
+    appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.totalTime, "totalTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.requestTime, "requestTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.queueTime, "queueTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.ioTime, "ioTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
-    appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
-    appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
+                   "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+    appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
 
     // _httpStatistics()
     using rest::RequestType;
