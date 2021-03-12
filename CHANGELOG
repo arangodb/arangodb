@@ -1,6 +1,8 @@
 devel
 -----
 
+* The web UI's node overview now displays also agent information (cluster only).
+
 * Added metrics documentation snippets and infrastructure for that.
 
 * Added a new cluster distribution view to the web UI. The view includes general
