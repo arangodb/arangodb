@@ -7798,9 +7798,10 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
-  AqlValueMaterializer materializer(vopts);
-  VPackSlice arraySlice = materializer.slice(baseArray, false);
-  VPackSlice replaceValue = materializer.slice(newValue, false);
+  AqlValueMaterializer materializer1(vopts);
+  VPackSlice arraySlice = materializer1.slice(baseArray, false);
+  AqlValueMaterializer materializer2(vopts);
+  VPackSlice replaceValue = materializer2.slice(newValue, false);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -7817,6 +7818,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
 
   uint64_t pos = length;
   if (replaceOffset >= length) {
+    AqlValueMaterializer materializer(vopts);
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);
