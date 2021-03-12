@@ -362,8 +362,8 @@ auto ClusterProvider::expand(Step const& step, size_t previous,
   TRI_ASSERT(_opts.getCache()->isVertexCached(vertex.getID()));
   TRI_ASSERT(_vertexConnectedEdges.find(vertex.getID()) != _vertexConnectedEdges.end());
   for (auto const& relation : _vertexConnectedEdges.at(vertex.getID())) {
-    bool isLooseEnd = _vertexConnectedEdges.find(relation.second) == _vertexConnectedEdges.end();
-    callback(Step{relation.second, relation.first, previous, isLooseEnd});
+    bool fetched = _vertexConnectedEdges.find(relation.second) != _vertexConnectedEdges.end();
+    callback(Step{relation.second, relation.first, previous, fetched});
   }
 }
 
