@@ -185,8 +185,12 @@
     renderNodes: function () {
       var self = this;
       var callbackFunction = function (data) {
-        var coords = 0; var coordsErrors = 0;
-        var dbs = 0; var dbsErrors = 0;
+        let coords = 0;
+        let coordsErrors = 0;
+        let dbs = 0;
+        let dbsErrors = 0;
+        let agents = 0;
+        let agentsErrors = 0;
 
         _.each(data, function (node) {
           if (node.Role === 'Coordinator') {
@@ -198,6 +202,11 @@
             dbs++;
             if (node.Status !== 'GOOD') {
               dbsErrors++;
+            }
+          } else if (node.Role === 'Agent') {
+            agents++;
+            if (node.Status !== 'GOOD') {
+              agentsErrors++;
             }
           }
         });
@@ -213,6 +222,13 @@
         } else {
           arangoHelper.renderStatisticsBoxValue('#clusterDBServers', dbs);
         }
+
+        if (agentsErrors > 0) {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents - agentsErrors + '/' + agents, true);
+        } else {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents);
+        }
+
       }.bind(this);
 
       if (window.App && window.App.lastHealthCheckResult) {
