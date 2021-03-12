@@ -1,0 +1,11 @@
+name: arangodb_replication_initial_keys_requests_time_total
+help: |
+  Accumulated wait time for replication keys requests.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Accumulated wait time for replication keys requests.

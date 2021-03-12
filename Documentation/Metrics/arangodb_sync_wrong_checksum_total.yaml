@@ -1,0 +1,13 @@
+name: arangodb_sync_wrong_checksum_total
+help: |
+  Number of times a mismatching shard checksum was detected when syncing shards.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of times a mismatching shard checksum was detected when syncing shards.

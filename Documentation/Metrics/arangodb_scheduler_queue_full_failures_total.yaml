@@ -1,0 +1,13 @@
+name: arangodb_scheduler_queue_full_failures_total
+help: |
+  Number of tasks dropped and not added to internal queue.
+unit: number
+type: counter
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of tasks dropped and not added to internal queue.
