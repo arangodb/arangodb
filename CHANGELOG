@@ -1,6 +1,38 @@
 devel
 -----
 
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+  to any read request. Fixes a wrongly responded 404 from chaos
+  tests.
+
+* Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
+
+* Resonably harden MoveShard against VelopcyPack more.
+
+* Removed older reference to VelocyPackDumper.
+
+* Added `--documents-per-batch` option to arangoexport.
+  This option allows to control the number of documents to be returned by each
+  server-side batch. It can be used to limit the number of documents per batch
+  when exporting collections with large documents.
+
+* Added a new metrics view to the web UI. This view can be used in a clustered
+  environment as well as in a single instance. Metrics are displayed either in
+  a tabular format or as plain text (Prometheus Text-based format).
+  Additionally, the metrics can be downloaded there.
+
+* Added a new maintenance mode tab to the web UI in cluster mode. 
+  The new tab shows the current state of the cluster supervision maintenance 
+  and allows to enable/disable the maintenance mode from there. The tab will
+  only be visible in the `_system` database. The required privileges for
+  displaying the maintenance mode status and/or changing it are the as for 
+  using the REST APIs for the maintenance mode.
+
+* Fixed a problem that coordinators would vanish from the UI and the Health
+  API if one switched the agency Supervision into maintenance mode and kept
+  left that maintenance mode on for more than 24h.
+
 * Fixed a bug in the web interface that displayed the error "Not authorized to 
   execute this request" when trying to create an index in the web interface in a
   database other than `_system` with a user that does not have any access
@@ -56,6 +88,8 @@ devel
 
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
   jobs.
+
+* Added list-repeat AIR primitive that creates a list containing n copies of the input value.
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
@@ -353,17 +387,17 @@ devel
   possible for a very small number of queries and even had adverse effects,
   so it is now removed entirely.
 
-* On Linux and MacOS, require at least 65535 usable file descriptors at startup.
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup.
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
-  Even the chosen minimum value of 65535 will often not be high enough to
+  Even the chosen minimum value of 8192 will often not be high enough to
   store considerable amounts of data. However, no higher value was chosen
   in order to not make too many existing small installations fail at startup
   after upgrading.
 
   The required number of file descriptors can be configured using the startup
-  option `--server.descriptors-minimum`. It defaults to 65535, but it can be
+  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
   increased to ensure that arangod can make use of a sufficiently high number
   of files. Setting `--server.descriptors-minimum` to a value of `0` will
   make the startup require only an absolute minimum limit of 1024 file

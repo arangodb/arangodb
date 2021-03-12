@@ -583,6 +583,22 @@
       color: $c-negative;
     }
   }
+
+  &.warningBox {
+    border-left-color: $c-warning;
+
+    h4 {
+      color: $c-warning;
+    }
+  }
+
+  &.successBox {
+    border-left-color: $c-positive;
+
+    h4 {
+      color: $c-positive;
+    }
+  }
 }
 
 @-moz-document url-prefix() {

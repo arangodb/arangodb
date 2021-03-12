@@ -43,6 +43,7 @@ const sssp = require("@arangodb/air/single-source-shortest-paths");
 const scc = require("@arangodb/air/strongly-connected-components");
 const ad = require("@arangodb/air/access-data");
 const ga = require("@arangodb/air/global-accumulator-test");
+const rw = require("@arangodb/air/random-walk");
 
 function basicTestSuite() {
   'use strict';
@@ -119,6 +120,14 @@ function basicTestSuite() {
         return;
       }
       assertTrue(ga.test());
+    },
+
+    testRandomWalk: function () {
+      if (!isEnterprise && isCluster) {
+        // we do not want to test general graphs module here
+        return;
+      }
+      assertTrue(rw.test());
     }
   };
 }

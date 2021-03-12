@@ -154,7 +154,10 @@
     toggleViews: function (e) {
       let self = this;
       let id = e.currentTarget.id.split('-')[0];
-      let views = ['requests', 'system', 'logs'];
+      let views = ['requests', 'system', 'metrics'];
+      if (frontendConfig.isCluster) {
+        views.push('logs');
+      }
 
       _.each(views, function (view) {
         if (id !== view) {
@@ -169,7 +172,7 @@
       $('.subMenuEntries').children().removeClass('active');
       $('#' + id + '-statistics').addClass('active');
 
-      if (id === 'logs') {
+      if (id === 'logs' && frontendConfig.isCluster) {
         let contentDiv = '#nodeLogContentView';
         let endpoint = this.serverInfo.target;
 
@@ -185,6 +188,29 @@
           contentDiv: contentDiv
         });
         this.currentLogView.render(true);
+      } else if (id === 'metrics') {
+        let contentDiv = '#nodeMetricsContentView';
+        let endpoint = this.serverInfo.target;
+
+        let metrics;
+        if (frontendConfig.isCluster) {
+          metrics = new window.ArangoMetrics({
+            endpoint: endpoint
+          });
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            endpoint: endpoint,
+            contentDiv: contentDiv
+          });
+        } else {
+          metrics = new window.ArangoMetrics({});
+          this.currentMetricsView = new window.MetricsView({
+            collection: metrics,
+            contentDiv: contentDiv
+          });
+        }
+
+        this.currentMetricsView.render();
       }
 
       window.setTimeout(function () {
@@ -1063,7 +1089,8 @@
         var callback = function (enabled, modalView) {
           if (!modalView) {
             $(this.el).html(this.template.render({
-              hideStatistics: false
+              hideStatistics: false,
+              isCluster: frontendConfig.isCluster
             }));
             this.getNodeInfo();
           }
@@ -1123,7 +1150,8 @@
         }
       } else {
         $(this.el).html(this.template.render({
-          hideStatistics: true
+          hideStatistics: true,
+          isCluster: frontendConfig.isCluster
         }));
         // hide menu entries
         if (!frontendConfig.isCluster) {

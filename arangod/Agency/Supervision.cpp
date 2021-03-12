@@ -39,6 +39,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/HealthData.h"
@@ -479,9 +480,9 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
 void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                     HealthRecord& transisted, std::string const& serverID,
                     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-  if (serverID.compare(0, 4, "PRMR") == 0) {
+  if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
-  } else if (serverID.compare(0, 4, "CRDN") == 0) {
+  } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
@@ -527,8 +528,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       snapshot().hasAsNode(currentServersRegisteredPrefix).first;
   std::vector<std::string> todelete;
   for (auto const& machine : snapshot().hasAsChildren(healthPrefix).first) {
-    if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
-        (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
+    if ((type == "DBServers" && ClusterHelpers::isDBServerName(machine.first)) ||
+        (type == "Coordinators" && ClusterHelpers::isCoordinatorName(machine.first)) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
@@ -1067,16 +1068,6 @@ void Supervision::run() {
                 // 55 seconds is less than a minute, which fits to the
                 // 60 seconds timeout in /_admin/cluster/health
 
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
                 try {
                   LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
                       << "Begin doChecks";
@@ -1091,6 +1082,29 @@ void Supervision::run() {
                       << "Supervision::doChecks() generated an uncaught "
                          "exception.";
                 }
+
+                // wait 5 min or until next scheduled run
+                if (_agent->leaderFor() > 300 &&
+                    _nextServerCleanup < std::chrono::system_clock::now()) {
+                  // Make sure that we have the latest and greatest information
+                  // about heartbeats in _transient. Note that after a long
+                  // Maintenance mode of the supervision, the `doChecks` above
+                  // might have updated /arango/Supervision/Health in the transient
+                  // store *just now above*. We need to reflect these changes in
+                  // _transient.
+                  _agent->executeTransientLocked([&]() {
+                    if (_agent->transient().has(_agencyPrefix)) {
+                      _transient = _agent->transient().get(_agencyPrefix);
+                    }
+                  });
+
+                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+                      << "Begin cleanupExpiredServers";
+                  cleanupExpiredServers(snapshot(), _transient);
+                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+                      << "Finished cleanupExpiredServers";
+                }
+
               } else {
                 LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                     << "Postponing supervision for now, waiting for incoming "
