@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -547,6 +547,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          }
                        }
                      } else {
+                       
                        LOG_TOPIC("edfc7", WARN, Logger::SUPERVISION)
                          << "missing current entry for " << _shard << " or a clone, we'll be back";
 #ifndef ARANGODB_USE_GOOGLE_TESTS
