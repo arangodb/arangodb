@@ -302,7 +302,8 @@ bool MoveShard::start(bool&) {
       ++count;
     }
   } else {
-    // We really should never be ever here
+    // This is a serious problem. Under no circumstances should the shard
+    // be without planned database server. This is a failure.
     moveShardFinish(false,  false, std::string("shard ") + _shard + "has no planned database servers");
     TRI_ASSERT(false);
   }
