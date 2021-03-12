@@ -1,0 +1,14 @@
+name: arangodb_dropped_followers_total
+help: |
+  Number of drop-follower events.
+unit: number
+type: counter
+category: Health
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of drop-follower events.
+threshold: |
+  Usually, drop-follower events should only happen if servers are
+  restarted.

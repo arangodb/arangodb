@@ -1,0 +1,18 @@
+name: arangodb_agency_append_hist_total
+help: |
+  Agency RAFT follower append histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  This measures the time an agency follower needs for individual
+  append operations resulting from `AppendEntriesRPC` requests.
+threshold: |
+  Normally these times should be clearly sub-second.
+troubleshoot: |
+  If you see delays here, the agents might not have enough IO bandwidth
+  or might be overloaded. Try to provision more IOPS or more CPU capacity,
+  potentially moving agents to separate machines.

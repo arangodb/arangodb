@@ -1,0 +1,11 @@
+name: arangodb_replication_synchronous_requests_total_number._total
+help: |
+  Total number of synchronous replication requests.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Total number of synchronous replication requests.

@@ -58,7 +58,7 @@ or PRs.
 
 ======================================================================
 
-tests/js/client/shell/shell-custom-pregel-grey.js 
+tests/js/client/shell/shell-custom-pregel--timecritical.js 
 
      - fix community cluster issues in test:  "testVertexDegrees" failed: ArangoError: Edge collection needs to be sharded by shardKeyAttribute parameter ('vertex'), or use SmartGraphs. The current shardKey is: '_key'
      - check whether the algorithms should double as examples then:

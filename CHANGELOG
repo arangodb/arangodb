@@ -4,6 +4,20 @@ devel
 * Log the actual signal instead of "control-c" and also include the process id
   of the process that sent the signal.
 
+* Added more useful information during the SmartGraph creation in the web UI
+  in case the current database is a OneShard database.
+
+* Add support for building with Zen 3 CPU when optimizing for the local
+  architecture.
+  
+* The web UI's node overview now displays also agent information (cluster only).
+
+* The statistics view in the web UI does now provide more system specific
+  information in case the Metrics API is enabled. Different statistics may
+  be visible depending on the operating system.
+
+* Added metrics documentation snippets and infrastructure for that.
+
 * Added a new cluster distribution view to the web UI. The view includes general
   details about cluster-wide distribution in general as well as more detailed 
   shard distribution specific information.
@@ -15,7 +29,7 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
-* Reasonably harden MoveShard against VelocyPack more.
+* Reasonably harden MoveShard against invalid VelocyPack input.
 
 * Removed older reference to VelocyPackDumper.
 
@@ -111,6 +125,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
 
 * Reduce memory footprint of agency Store in Node class.
 

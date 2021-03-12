@@ -48,8 +48,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+struct ClusterFeatureScale {
+  static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
+
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster"),
+    _agency_comm_request_time_ms(
+      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -515,6 +523,10 @@ void ClusterFeature::prepare() {
 
 }
 
+DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
+DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
+DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
+
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
 void ClusterFeature::start() {
@@ -582,15 +594,12 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _followersDroppedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        StaticStrings::DroppedFollowerCount, 0,
-        "Number of drop-follower events");
-    _followersRefusedCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_refused_followers_count", 0,
-        "Number of refusal answers from a follower during synchronous replication");
-    _followersWrongChecksumCounter = server().getFeature<arangodb::MetricsFeature>().counter(
-        "arangodb_sync_wrong_checksum", 0,
-        "Number of times a mismatching shard checksum was detected when syncing shards");
+    _followersDroppedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_total{});
+    _followersRefusedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
+    _followersWrongChecksumCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -796,11 +805,6 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  try {
-    server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-  } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
   _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =
