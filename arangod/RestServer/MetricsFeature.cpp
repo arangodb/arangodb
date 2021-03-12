@@ -70,6 +70,8 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_refused_followers_total", "arangodb_refused_followers_count");
     nameVersionTable.try_emplace(
+      "arangodb_dropped_followers_total", "arangodb_dropped_followers_count");
+    nameVersionTable.try_emplace(
       "arangodb_rocksdb_write_stalls rocksdb_write_stalls");
     nameVersionTable.try_emplace(
       "arangodb_rocksdb_write_stops rocksdb_write_stops");
