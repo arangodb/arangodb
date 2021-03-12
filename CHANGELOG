@@ -1,6 +1,11 @@
 devel
 -----
 
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+  to any read request. Fixes a wrongly responded 404 from chaos
+  tests.
+
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
 * Resonably harden MoveShard against VelopcyPack more.
