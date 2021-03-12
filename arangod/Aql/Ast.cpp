@@ -2446,39 +2446,47 @@ bool Ast::getReferencedAttributes(AstNode const* node, Variable const* variable,
   // traversal state
   struct TraversalState {
     Variable const* variable;
+    char const* attributeName;
+    size_t nameLength;
     bool isSafeForOptimization;
     std::unordered_set<std::string>& vars;
   };
 
-  TraversalState state{variable, true, vars};
+  TraversalState state{variable, nullptr, 0, true, vars};
 
   auto visitor = [&state](AstNode const* node) -> bool {
     if (node == nullptr || !state.isSafeForOptimization) {
       return false;
     }
 
-    if (node->type == NODE_TYPE_REFERENCE &&
-        static_cast<Variable const*>(node->getData()) == state.variable) {
-      // we haven't seen an attribute access directly before...
-      // this may have been an access to an indexed property, e.g value[0]
-      // or a reference to the complete value, e.g. FUNC(value) note that
-      // this is unsafe to optimize this away
-      state.isSafeForOptimization = false;
-      return false;
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      state.attributeName = node->getStringValue();
+      state.nameLength = node->getStringLength();
+      return true;
     }
 
-    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS &&
-        node->numMembers() == 1) {
-      AstNode const* subNode = node->getMemberUnchecked(0);
-      if (subNode->type == NODE_TYPE_REFERENCE &&
-          static_cast<Variable const*>(subNode->getData()) == state.variable) {
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+      if (v == state.variable) {
+        if (state.attributeName == nullptr) {
+          // we haven't seen an attribute access directly before...
+          // this may have been an access to an indexed property, e.g value[0]
+          // or a reference to the complete value, e.g. FUNC(value) note that
+          // this is unsafe to optimize this away
+          state.isSafeForOptimization = false;
+          return false;
+        }
         // insert attributeName only
-        state.vars.emplace(node->getStringValue(), node->getStringLength());
-        // don't descend deeper, as we would only find the reference node then
-        return false;
+        state.vars.emplace(state.attributeName, state.nameLength);
       }
+
+      // fall-through
     }
-    
+
+    state.attributeName = nullptr;
+    state.nameLength = 0;
+
     return true;
   };
 
