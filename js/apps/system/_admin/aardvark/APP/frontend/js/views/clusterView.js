@@ -505,6 +505,12 @@
       }
 
       var self = this; var data; var lines;
+
+      if (Object.keys(input).length === 0) {
+        // data not ready yet, need to wait one more iteration.
+        return;
+      }
+
       this.formatDataForGraph(input);
 
       _.each(self.chartsOptions, function (c) {
