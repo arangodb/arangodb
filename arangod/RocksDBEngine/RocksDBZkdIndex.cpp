@@ -26,6 +26,7 @@
 
 #include <Aql/Variable.h>
 #include <Containers/Enumerate.h>
+#include <Transaction/Helpers.h>
 #include "RocksDBColumnFamilyManager.h"
 #include "RocksDBMethods.h"
 #include "RocksDBZkdIndex.h"
@@ -52,9 +53,11 @@ auto coordsToVector(zkd::byte_string_view bs, size_t dim) -> std::vector<double>
 }*/
 
 namespace arangodb {
+
+template<bool isUnique = false>
 class RocksDBZkdIndexIterator final : public IndexIterator {
  public:
-  RocksDBZkdIndexIterator(LogicalCollection* collection, RocksDBZkdIndex* index,
+  RocksDBZkdIndexIterator(LogicalCollection* collection, RocksDBZkdIndexBase* index,
                           transaction::Methods* trx, zkd::byte_string min,
                           zkd::byte_string max, std::size_t dim)
       : IndexIterator(collection, trx),
@@ -109,7 +112,13 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
               _iterState = IterState::SEEK_ITER_TO_CUR;
             }
           } else {
-            auto const documentId = RocksDBKey::indexDocumentId(rocksKey);
+            auto const documentId = std::invoke([&]{
+              if constexpr(isUnique) {
+                return RocksDBValue::documentId(_iter->value());
+              } else {
+                return RocksDBKey::indexDocumentId(rocksKey);
+              }
+            });
             std::ignore = callback(documentId);
             ++i;
             _iter->Next();
@@ -146,7 +155,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   IterState _iterState = IterState::SEEK_ITER_TO_CUR;
 
   std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBZkdIndex* _index = nullptr;
+  RocksDBZkdIndexBase* _index = nullptr;
 };
 
 }  // namespace arangodb
@@ -193,7 +202,7 @@ auto readDocumentKey(VPackSlice doc,
     }
     auto dv = value.getNumericValue<double>();
     if (std::isnan(dv)) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "NaN is not allowed");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE, "NaN is not allowed");
     }
     v.emplace_back(convertDouble(dv));
   }
@@ -201,6 +210,43 @@ auto readDocumentKey(VPackSlice doc,
   return zkd::interleave(v);
 }
 
+auto boundsForIterator(arangodb::Index const* index, const arangodb::aql::AstNode* node,
+                       const arangodb::aql::Variable* reference,
+                       const arangodb::IndexIteratorOptions& opts)
+    -> std::pair<zkd::byte_string, zkd::byte_string> {
+  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+
+  std::unordered_map<size_t, zkd::ExpressionBounds> extractedBounds;
+  std::unordered_set<aql::AstNode const*> unusedExpressions;
+  extractBoundsFromCondition(index, node, reference, extractedBounds, unusedExpressions);
+
+  TRI_ASSERT(unusedExpressions.empty());
+
+  const size_t dim = index->fields().size();
+  std::vector<zkd::byte_string> min;
+  min.resize(dim);
+  std::vector<zkd::byte_string> max;
+  max.resize(dim);
+
+  static const auto ByteStringPosInfinity = zkd::byte_string{std::byte{0x80}};
+  static const auto ByteStringNegInfinity = zkd::byte_string{std::byte{0}};
+
+  for (auto&& [idx, field] : enumerate(index->fields())) {
+    if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
+      auto const& bounds = it->second;
+      min[idx] = nodeExtractDouble(bounds.lower.bound_value).value_or(ByteStringNegInfinity);
+      max[idx] = nodeExtractDouble(bounds.upper.bound_value).value_or(ByteStringPosInfinity);
+    } else {
+      min[idx] = ByteStringNegInfinity;
+      max[idx] = ByteStringPosInfinity;
+    }
+  }
+
+  TRI_ASSERT(min.size() == dim);
+  TRI_ASSERT(max.size() == dim);
+
+  return std::make_pair(zkd::interleave(min), zkd::interleave(max));
+}
 }  // namespace
 
 
@@ -368,7 +414,7 @@ auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNo
 
 }
 
-arangodb::Result arangodb::RocksDBZkdIndex::insert(
+arangodb::Result arangodb::RocksDBZkdIndexBase::insert(
     arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
     const arangodb::LocalDocumentId& documentId,
     arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options) {
@@ -389,7 +435,7 @@ arangodb::Result arangodb::RocksDBZkdIndex::insert(
   return Result();
 }
 
-arangodb::Result arangodb::RocksDBZkdIndex::remove(arangodb::transaction::Methods& trx,
+arangodb::Result arangodb::RocksDBZkdIndexBase::remove(arangodb::transaction::Methods& trx,
                                                    arangodb::RocksDBMethods* methods,
                                                    const arangodb::LocalDocumentId& documentId,
                                                    arangodb::velocypack::Slice doc) {
@@ -410,7 +456,7 @@ arangodb::Result arangodb::RocksDBZkdIndex::remove(arangodb::transaction::Method
   return Result();
 }
 
-arangodb::RocksDBZkdIndex::RocksDBZkdIndex(arangodb::IndexId iid,
+arangodb::RocksDBZkdIndexBase::RocksDBZkdIndexBase(arangodb::IndexId iid,
                                            arangodb::LogicalCollection& coll,
                                            const arangodb::velocypack::Slice& info)
     : RocksDBIndex(iid, coll, info,
@@ -420,15 +466,14 @@ arangodb::RocksDBZkdIndex::RocksDBZkdIndex(arangodb::IndexId iid,
                    RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
                    false) {}
 
-void arangodb::RocksDBZkdIndex::toVelocyPack(
+void arangodb::RocksDBZkdIndexBase::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     std::underlying_type<arangodb::Index::Serialize>::type type) const {
   VPackObjectBuilder ob(&builder);
   RocksDBIndex::toVelocyPack(builder, type);
-  builder.add("dimension", VPackValue(_fields.size()));
 }
 
-arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
+arangodb::Index::FilterCosts arangodb::RocksDBZkdIndexBase::supportsFilterCondition(
     const std::vector<std::shared_ptr<arangodb::Index>>& allIndexes,
     const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, size_t itemsInIndex) const {
@@ -436,46 +481,83 @@ arangodb::Index::FilterCosts arangodb::RocksDBZkdIndex::supportsFilterCondition(
   return zkd::supportsFilterCondition(this, allIndexes, node, reference, itemsInIndex);
 }
 
-arangodb::aql::AstNode* arangodb::RocksDBZkdIndex::specializeCondition(
+arangodb::aql::AstNode* arangodb::RocksDBZkdIndexBase::specializeCondition(
     arangodb::aql::AstNode* condition, const arangodb::aql::Variable* reference) const {
   return zkd::specializeCondition(this, condition, reference);
 }
 
-std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndex::iteratorForCondition(
+std::unique_ptr<IndexIterator> arangodb::RocksDBZkdIndexBase::iteratorForCondition(
     arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
     const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
 
-  TRI_ASSERT(node->type == arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND);
+  auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
-  std::unordered_map<size_t, zkd::ExpressionBounds> extractedBounds;
-  std::unordered_set<aql::AstNode const*> unusedExpressions;
-  extractBoundsFromCondition(this, node, reference, extractedBounds, unusedExpressions);
+  return std::make_unique<RocksDBZkdIndexIterator<false>>(&_collection, this, trx,
+                                                   std::move(min), std::move(max),
+                                                   fields().size());
+}
 
-  TRI_ASSERT(unusedExpressions.empty());
 
-  const size_t dim = _fields.size();
-  std::vector<zkd::byte_string> min;
-  min.resize(dim);
-  std::vector<zkd::byte_string> max;
-  max.resize(dim);
+std::unique_ptr<IndexIterator> arangodb::RocksDBUniqueZkdIndex::iteratorForCondition(
+    arangodb::transaction::Methods* trx, const arangodb::aql::AstNode* node,
+    const arangodb::aql::Variable* reference, const arangodb::IndexIteratorOptions& opts) {
 
-  static const auto ByteStringPosInfinity = zkd::byte_string {std::byte{0x80}};
-  static const auto ByteStringNegInfinity = zkd::byte_string {std::byte{0}};
+  auto&& [min, max] = boundsForIterator(this, node, reference, opts);
 
-  for (auto&& [idx, field] : enumerate(fields())) {
-    if (auto it = extractedBounds.find(idx); it != extractedBounds.end()) {
-      auto const& bounds = it->second;
-      min[idx] = nodeExtractDouble(bounds.lower.bound_value).value_or(ByteStringNegInfinity);
-      max[idx] = nodeExtractDouble(bounds.upper.bound_value).value_or(ByteStringPosInfinity);
-    } else {
-      min[idx] = ByteStringNegInfinity;
-      max[idx] = ByteStringPosInfinity;
+  return std::make_unique<RocksDBZkdIndexIterator<true>>(&_collection, this, trx,
+                                                          std::move(min), std::move(max),
+                                                          fields().size());
+}
+
+
+arangodb::Result arangodb::RocksDBUniqueZkdIndex::insert(
+    arangodb::transaction::Methods& trx, arangodb::RocksDBMethods* methods,
+    const arangodb::LocalDocumentId& documentId,
+    arangodb::velocypack::Slice doc, const arangodb::OperationOptions& options) {
+  TRI_ASSERT(_unique == true);
+  TRI_ASSERT(_sparse == false);
+
+  auto key_value = readDocumentKey(doc, _fields);
+
+  RocksDBKey rocks_key;
+  rocks_key.constructZkdIndexValue(objectId(), key_value);
+
+  if (!options.checkUniqueConstraintsInPreflight) {
+    transaction::StringLeaser leased(&trx);
+    rocksdb::PinnableSlice existing(leased.get());
+    if (auto s = methods->GetForUpdate(_cf, rocks_key.string(), &existing); s.ok()) {  // detected conflicting index entry
+      return Result(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    } else if (!s.IsNotFound()) {
+      return Result(rocksutils::convertStatus(s));
     }
   }
 
-  TRI_ASSERT(min.size() == dim);
-  TRI_ASSERT(max.size() == dim);
-  return std::make_unique<RocksDBZkdIndexIterator>(&_collection, this, trx,
-                                                   zkd::interleave(min),
-                                                   zkd::interleave(max), dim);
+  auto value = RocksDBValue::UniqueZkdIndexValue(documentId);
+
+  if (auto s = methods->PutUntracked(_cf, rocks_key, value.string()); !s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  return Result();
+}
+
+arangodb::Result arangodb::RocksDBUniqueZkdIndex::remove(arangodb::transaction::Methods& trx,
+                                                       arangodb::RocksDBMethods* methods,
+                                                       const arangodb::LocalDocumentId& documentId,
+                                                       arangodb::velocypack::Slice doc) {
+  TRI_ASSERT(_unique == true);
+  TRI_ASSERT(_sparse == false);
+
+  auto key_value = readDocumentKey(doc, _fields);
+
+  RocksDBKey rocks_key;
+  rocks_key.constructZkdIndexValue(objectId(), key_value);
+
+  auto value = RocksDBValue::ZkdIndexValue();
+  auto s = methods->SingleDelete(_cf, rocks_key);
+  if (!s.ok()) {
+    return rocksutils::convertStatus(s);
+  }
+
+  return Result();
 }

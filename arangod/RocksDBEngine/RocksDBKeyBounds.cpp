@@ -229,6 +229,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
     case RocksDBEntryType::ZkdIndexValue:
+    case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
