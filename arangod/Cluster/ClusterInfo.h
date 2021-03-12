@@ -374,7 +374,7 @@ class ClusterInfo final {
   /// new instances or copy them, except we ourselves.
   //////////////////////////////////////////////////////////////////////////////
 
-public:
+ public:
   ClusterInfo(ClusterInfo const&) = delete;             // not implemented
   ClusterInfo& operator=(ClusterInfo const&) = delete;  // not implemented
 
@@ -611,6 +611,9 @@ public:
   /// optionally restricted to anything on the specified server
   Result getShardStatisticsGlobalDetailed(std::string const& restrictServer,
                                           arangodb::velocypack::Builder& builder) const;
+
+  /// @brief get shard statistics for all databases, split by servers.
+  Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
@@ -908,31 +911,40 @@ public:
   std::unordered_map<std::string,std::shared_ptr<VPackBuilder>>
     getCurrent(uint64_t& currentIndex, std::unordered_set<std::string> const&);
 
-  std::vector<std::string> getFailedServers() {
-    MUTEX_LOCKER(guard, _failedServersMutex);
-    return _failedServers;
-  }
-  void setFailedServers(std::vector<std::string> const& failedServers) {
-    MUTEX_LOCKER(guard, _failedServersMutex);
-    _failedServers = failedServers;
-  }
+  std::vector<std::string> getFailedServers() const;
+
+  void setFailedServers(std::vector<std::string> const& failedServers);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setServers(std::unordered_map<ServerID, std::string> servers);
+
+  void setServerAliases(std::unordered_map<ServerID, std::string> aliases);
+  
+  void setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints);
+  
+  void setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps);
+#endif
+  
+  bool serverExists(ServerID const& serverId) const noexcept;
+  
+  bool serverAliasExists(std::string const& alias) const noexcept;
 
   std::unordered_map<ServerID, std::string> getServers();
 
   TEST_VIRTUAL std::unordered_map<ServerID, std::string> getServerAliases();
 
-  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints();
+  std::unordered_map<ServerID, std::string> getServerAdvertisedEndpoints() const;
 
-  std::unordered_map<ServerID, std::string> getServerTimestamps();
+  std::unordered_map<ServerID, std::string> getServerTimestamps() const;
 
   std::unordered_map<ServerID, RebootId> rebootIds() const;
 
-  uint64_t getPlanVersion() {
+  uint64_t getPlanVersion() const {
     READ_LOCKER(guard, _planProt.lock);
     return _planVersion;
   }
 
-  uint64_t getCurrentVersion() {
+  uint64_t getCurrentVersion() const {
     READ_LOCKER(guard, _currentProt.lock);
     return _currentVersion;
   }
@@ -1025,7 +1037,6 @@ public:
   void triggerWaiting(
     std::multimap<uint64_t, futures::Promise<arangodb::Result>>& mm, uint64_t commitIndex);
 
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the poll interval
   //////////////////////////////////////////////////////////////////////////////
@@ -1086,7 +1097,7 @@ public:
     mutable Mutex mutex;
     std::atomic<uint64_t> wantedVersion;
     std::atomic<uint64_t> doneVersion;
-    arangodb::basics::ReadWriteLock lock;
+    mutable arangodb::basics::ReadWriteLock lock;
 
     ProtectionData() : isValid(false), wantedVersion(0), doneVersion(0) {}
   };
@@ -1200,7 +1211,7 @@ public:
 
   static constexpr double checkAnalyzersPreconditionTimeout = 10.0;
 
-  arangodb::Mutex _failedServersMutex;
+  mutable arangodb::Mutex _failedServersMutex;
   std::vector<std::string> _failedServers;
 
   //////////////////////////////////////////////////////////////////////////////

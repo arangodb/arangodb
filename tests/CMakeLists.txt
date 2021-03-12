@@ -201,6 +201,7 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionsWithBackingStore.cpp
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterInfoTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/QueryAnalyzerRevisions-test.cpp
@@ -247,6 +248,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
+  RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp

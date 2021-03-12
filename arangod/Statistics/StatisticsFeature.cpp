@@ -486,8 +486,8 @@ void StatisticsFeature::appendHistogram(
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] + 
-    "\n#HELP " + name + " " + stat[2] + '\n';
+    "\n# HELP " + name + " " + stat[2] +
+    "\n# TYPE " + name + " " + stat[1] + '\n';
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
@@ -503,8 +503,8 @@ void StatisticsFeature::appendMetric(std::string& result, std::string const& val
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] +
-    "\n#HELP " + name + " " + stat[2] + 
+    "\n# HELP " + name + " " + stat[2] +
+    "\n# TYPE " + name + " " + stat[1] +
     '\n' + name + " " + val + '\n';
 }
 
