@@ -96,7 +96,7 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   void prepare() override final;
   void start() override final;
   void stop() override final;
-  void toPrometheus(std::string& result, double const& now);
+  void toPrometheus(std::string& result, double const& now, bool v2);
 
   stats::Descriptions const& descriptions() const {
     return _descriptions;
@@ -106,7 +106,8 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
   
   static void appendHistogram(
     std::string& result, statistics::Distribution const& dist,
-    std::string const& label, std::initializer_list<std::string> const& les);
+    std::string const& label, std::initializer_list<std::string> const& les,
+    bool v2);
   static void appendMetric(
     std::string& result, std::string const& val, std::string const& label);
 

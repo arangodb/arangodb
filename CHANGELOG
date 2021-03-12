@@ -5,6 +5,21 @@ devel
   if it is in the backup. This helps with unique key generation after
   a hotbackup is restored to a young cluster.
 
+* The statistics view in the web UI does now provide more system specific
+  information in case the Metrics API is enabled. Different statistics may
+  be visible depending on the operating system.
+
+* Added metrics documentation snippets and infrastructure for that.
+
+* Added a new cluster distribution view to the web UI. The view includes general
+  details about cluster-wide distrubution in general as well as more detailed 
+  shard distribution specific information.
+
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+  to any read request. Fixes a wrongly responded 404 from chaos
+  tests.
+
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
 * Resonably harden MoveShard against VelopcyPack more.
@@ -87,6 +102,8 @@ devel
 
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
   jobs.
+
+* Added list-repeat AIR primitive that creates a list containing n copies of the input value.
 
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
@@ -384,17 +401,17 @@ devel
   possible for a very small number of queries and even had adverse effects,
   so it is now removed entirely.
 
-* On Linux and MacOS, require at least 65535 usable file descriptors at startup.
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup.
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
-  Even the chosen minimum value of 65535 will often not be high enough to
+  Even the chosen minimum value of 8192 will often not be high enough to
   store considerable amounts of data. However, no higher value was chosen
   in order to not make too many existing small installations fail at startup
   after upgrading.
 
   The required number of file descriptors can be configured using the startup
-  option `--server.descriptors-minimum`. It defaults to 65535, but it can be
+  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
   increased to ensure that arangod can make use of a sufficiently high number
   of files. Setting `--server.descriptors-minimum` to a value of `0` will
   make the startup require only an absolute minimum limit of 1024 file

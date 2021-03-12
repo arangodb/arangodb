@@ -1,0 +1,11 @@
+name: arangodb_replication_failed_connects_total
+help: |
+  Number of failed connection attempts and response errors during replication.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of failed connection attempts and response errors during replication.

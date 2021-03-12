@@ -134,6 +134,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
 
+  Histogram<log_scale_t<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
+
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                             uint64_t interval_ms, uint64_t maxFailsBeforeWarning,
@@ -166,6 +168,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;

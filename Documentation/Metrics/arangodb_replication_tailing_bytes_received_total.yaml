@@ -1,0 +1,11 @@
+name: arangodb_replication_tailing_bytes_received_total
+help: |
+  Accumulated number of bytes received for replication tailing requests.
+unit: bytes
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Accumulated number of bytes received for replication tailing requests.

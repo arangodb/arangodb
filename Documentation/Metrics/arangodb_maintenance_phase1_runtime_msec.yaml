@@ -1,0 +1,11 @@
+name: arangodb_maintenance_phase1_runtime_msec
+help: |
+  Maintenance Phase 1 runtime histogram.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Maintenance Phase 1 runtime histogram.

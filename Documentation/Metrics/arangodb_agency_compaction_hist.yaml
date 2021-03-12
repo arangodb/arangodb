@@ -1,0 +1,11 @@
+name: arangodb_agency_compaction_hist
+help: |
+  Agency compaction time histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Agency compaction time histogram.

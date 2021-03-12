@@ -1,0 +1,12 @@
+name: arangodb_collection_truncate_time
+help: |
+  Total time spent in collection truncate operations.
+unit: s
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Total time spent in collection truncate operations.

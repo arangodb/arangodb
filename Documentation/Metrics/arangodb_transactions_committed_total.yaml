@@ -1,0 +1,13 @@
+name: arangodb_transactions_committed_total
+help: |
+  Number of transactions committed.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of transactions committed.

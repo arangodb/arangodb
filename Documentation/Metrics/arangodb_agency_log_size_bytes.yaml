@@ -1,0 +1,11 @@
+name: arangodb_agency_log_size_bytes
+help: |
+  Agency replicated log size.
+unit: bytes
+type: gauge
+category: Agency
+complexity: simple
+exposedBy:
+  - agent
+description: |
+  Agency replicated log size in bytes.
