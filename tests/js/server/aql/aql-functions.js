@@ -885,7 +885,6 @@ function ahuacatlFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReplaceNthCxx : function () {
-
       var testArray = [
         null,
         true,
@@ -937,6 +936,29 @@ function ahuacatlFunctionsTestSuite () {
           assertEqual(actual[0][actualReplaceIndex], testArray[replaceValue], msg);
         }
       }
+    },
+
+    testReplaceNthIssue13632 : function () {
+      let query = `
+LET first = NOOPT({v: {t1: []}})
+FOR s IN NOOPT([["t1", 0, 0, null], ["t1", 1, 0, first]])
+  LET t = s[0]
+  LET index = s[1]
+  LET value = s[2]
+  LET old = s[3]
+  RETURN [old, IS_NULL(old) ? first : MERGE(first, {v: {[t]: REPLACE_NTH(old.v[t], index, value, value)}})]
+`;
+      let actual = getQueryResults(query);
+      assertEqual(2, actual.length);
+
+      let OLD, NEW;
+      [OLD, NEW] = actual[0];
+      assertNull(OLD);
+      assertEqual({ t1: [] }, NEW.v);
+
+      [OLD, NEW] = actual[1];
+      assertEqual({ t1: [] }, OLD.v);
+      assertEqual({ t1: [0, 0] }, NEW.v);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
