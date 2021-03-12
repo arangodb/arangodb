@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, templateEngine, $, window, _ */
+/* global arangoHelper, Backbone, templateEngine, $, d3, nv, window, _ */
 (function () {
   'use strict';
 
@@ -84,18 +84,18 @@
         nv.addGraph(function () {
           var chart = nv.models.pieChart()
             .x(function (d) {
-              return d.label
+              return d.label;
             })
             .y(function (d) {
-              return d.value
+              return d.value;
             })
             .showLabels(true)
             .showTooltipPercent(true)
             .legendPosition("bottom")
-            .labelThreshold(.05)
+            .labelThreshold(0.05)
             .labelType("percent")
             .donut(true)
-            .donutRatio(0.35)
+            .donutRatio(0.35);
           ;
 
           let id = `${idSelector} svg`;
@@ -107,11 +107,10 @@
           return chart;
         });
       };
-      console.log(donutChartData)
 
-      renderDonut(donutChartData.shards, '#totalDonut')
-      renderDonut(donutChartData.leaders, '#leaderDonut')
-      renderDonut(donutChartData.followers, '#followerDonut')
+      renderDonut(donutChartData.shards, '#totalDonut');
+      renderDonut(donutChartData.leaders, '#leaderDonut');
+      renderDonut(donutChartData.followers, '#followerDonut');
     },
 
     rerenderDistributionTable: function (data) {
@@ -141,7 +140,7 @@
               <td class="alignRight">${formatPercent(info.followers.percent)}</td>
              </tr>
           `
-        )
+        );
       });
     },
 
@@ -174,21 +173,21 @@
           value: (info.shards / totalShards)
         });
         tableData[shortName].shards.total = info.shards;
-        tableData[shortName].shards.percent = (info.shards / totalShards)
+        tableData[shortName].shards.percent = (info.shards / totalShards);
 
         donutChartData.leaders.push({
           label: shortName,
           value: (info.leaders / totalLeaders)
         });
         tableData[shortName].leaders.total = info.leaders;
-        tableData[shortName].leaders.percent = (info.leaders / totalLeaders)
+        tableData[shortName].leaders.percent = (info.leaders / totalLeaders);
 
         donutChartData.followers.push({
           label: shortName,
           value: (info.followers / totalFollowers)
         });
         tableData[shortName].followers.total = info.followers;
-        tableData[shortName].followers.percent = (info.followers / totalFollowers)
+        tableData[shortName].followers.percent = (info.followers / totalFollowers);
       });
 
       this.rerenderDistributionDonuts(donutChartData);

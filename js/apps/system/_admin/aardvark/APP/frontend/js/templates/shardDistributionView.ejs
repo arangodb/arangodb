@@ -6,7 +6,7 @@
       <div class="valueWrapper">
         <div id="clusterDatabases" class="value"><i class="fa fa-spin fa-circle-o-notch"
                                                     style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">created databases</div>
+        <div class="graphLabel">databases</div>
       </div>
     </div>
 
@@ -14,23 +14,7 @@
       <div class="valueWrapper">
         <div id="clusterCollections" class="value"><i class="fa fa-spin fa-circle-o-notch"
                                                       style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">created collections</div>
-      </div>
-    </div>
-
-    <div class="pure-u-1-2 pure-u-md-1-4">
-      <div class="valueWrapper">
-        <div id="clusterDBServers" class="value"><i class="fa fa-spin fa-circle-o-notch"
-                                                    style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">amount db servers</div>
-      </div>
-    </div>
-
-    <div class="pure-u-1-2 pure-u-md-1-4">
-      <div class="valueWrapper">
-        <div id="clusterRealLeaders" class="value"><i class="fa fa-spin fa-circle-o-notch"
-                                                      style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">real shard leaders</div>
+        <div class="graphLabel">collections</div>
       </div>
     </div>
 
@@ -41,12 +25,28 @@
         <div class="graphLabel">total shards</div>
       </div>
     </div>
+    
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterDBServers" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                    style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">db servers with shards</div>
+      </div>
+    </div>
 
     <div class="pure-u-1-2 pure-u-md-1-4">
       <div class="valueWrapper">
         <div id="clusterLeaders" class="value"><i class="fa fa-spin fa-circle-o-notch"
                                                   style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">shard leaders</div>
+        <div class="graphLabel">leader shards</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterRealLeaders" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                      style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">shard group leader shards</div>
       </div>
     </div>
 
@@ -54,10 +54,10 @@
       <div class="valueWrapper">
         <div id="clusterFollowers" class="value"><i class="fa fa-spin fa-circle-o-notch"
                                                     style="color: rgba(0, 0, 0, 0.64);"></i></div>
-        <div class="graphLabel">shard followers</div>
+        <div class="graphLabel">follower shards</div>
       </div>
     </div>
-
+    
   </div>
 
   <div class="pure-g cluster-values">
@@ -93,10 +93,10 @@
           <th>DB Server</th>
           <th>Total (absolute)</th>
           <th>Total (percent)</th>
-          <th>Leader (absolute)</th>
-          <th>Leader (percent)</th>
-          <th>Follower (absolute)</th>
-          <th>Follower (percent)</th>
+          <th>Leaders (absolute)</th>
+          <th>Leaders (percent)</th>
+          <th>Followers (absolute)</th>
+          <th>Followers (percent)</th>
         </tr>
         </thead>
         <tbody>
