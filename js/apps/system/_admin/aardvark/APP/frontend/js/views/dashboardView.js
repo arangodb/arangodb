@@ -602,8 +602,14 @@
         _.each(metricsToRender, (info) => {
           let model = collection.findWhere({name: info.name});
           if (model) { // means we found an entry
-            if (info.type && info.type === 'bytes') {
-              this.renderStatisticBox(info.shortName, prettyBytes(parseInt(model.get('metrics')[0].value)), model.get('info'), 6);
+            if (info.type) {
+              if (info.type === 'bytes') {
+                this.renderStatisticBox(info.shortName, prettyBytes(parseInt(model.get('metrics')[0].value)), model.get('info'), 6);
+              } else if (info.type === 'percent') {
+                this.renderStatisticBox(info.shortName, parseFloat(model.get('metrics')[0].value).toFixed(2) + ' %', model.get('info'), 6);
+              } else if (info.type === 'ms') {
+                this.renderStatisticBox(info.shortName, parseInt(model.get('metrics')[0].value) + ' ms', model.get('info'), 6);
+              }
             } else {
               this.renderStatisticBox(info.shortName, model.get('metrics')[0].value, model.get('info'), 6);
             }
@@ -624,7 +630,8 @@
       let dbServerMetrics = [
         {
           name: 'arangodb_scheduler_low_prio_queue_last_dequeue_time',
-          shortName: 'lowprio queue dequeue time'
+          shortName: 'lowprio queue dequeue time',
+          type: 'ms'
         },
         {
           name: 'arangodb_scheduler_queue_length',
@@ -632,32 +639,36 @@
         },
         {
           name: 'arangodb_server_statistics_cpu_cores',
-          shortName: 'amount of cpu cores'
+          shortName: 'number of cpu cores'
         },
         {
           name: 'arangodb_server_statistics_user_percent',
-          shortName: 'cpu user time'
+          shortName: 'user cpu time',
+          type: 'percent'
         },
         {
           name: 'arangodb_server_statistics_system_percent',
-          shortName: 'cpu system time'
+          shortName: 'system cpu time',
+          type: 'percent'
         },
         {
           name: 'arangodb_server_statistics_idle_percent',
-          shortName: 'idle percent'
+          shortName: 'idle cpu time',
+          type: 'percent'
         },
         {
           name: 'arangodb_server_statistics_iowait_percent',
-          shortName: 'iowait percent'
+          shortName: 'iowait cpu time',
+          type: 'percent'
         },
         {
           name: 'rocksdb_free_disk_space',
-          shortName: 'rocksdb free disk space',
+          shortName: 'database directory free disk space',
           type: 'bytes'
         },
         {
           name: 'rocksdb_total_disk_space',
-          shortName: 'rocksdb total disk space',
+          shortName: 'database directory total disk space',
           type: 'bytes'
         }
       ];
