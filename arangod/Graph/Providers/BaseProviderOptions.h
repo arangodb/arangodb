@@ -26,6 +26,9 @@
 
 #include "Transaction/Methods.h"
 
+#include <Aql/FixedVarExpressionContext.h>
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
+
 #include <optional>
 #include <vector>
 
@@ -64,6 +67,18 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+};
+
+struct ClusterBaseProviderOptions {
+ public:
+  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache, bool backward);
+
+  RefactoredClusterTraverserCache* getCache();
+  bool isBackward();
+
+ private:
+  std::shared_ptr<RefactoredClusterTraverserCache> _cache;
+  bool _backward;
 };
 
 }  // namespace graph
