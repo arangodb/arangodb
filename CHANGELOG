@@ -1,6 +1,10 @@
 devel
 -----
 
+* The statistics view in the web UI does now provide more system specific
+  information in case the Metrics API is enabled. Different statistics may
+  be visible depending on the operating system.
+
 * Added metrics documentation snippets and infrastructure for that.
 
 * Added a new cluster distribution view to the web UI. The view includes general
@@ -14,7 +18,7 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
-* Resonably harden MoveShard against VelopcyPack more.
+* Reasonably harden MoveShard against invalid VelocyPack input.
 
 * Removed older reference to VelocyPackDumper.
 
