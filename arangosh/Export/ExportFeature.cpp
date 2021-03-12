@@ -77,6 +77,7 @@ ExportFeature::ExportFeature(application_features::ApplicationServer& server, in
       _progress(true),
       _useGzip(false),
       _firstLine(true),
+      _documentsPerBatch(1000),
       _skippedDeepNested(0),
       _httpRequestsDone(0),
       _currentCollection(),
@@ -110,6 +111,10 @@ void ExportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption("--output-directory", "output directory",
                      new StringParameter(&_outputDirectory));
+  
+  options->addOption("--documents-per-batch", "number of documents to return in each batch",
+                     new UInt64Parameter(&_documentsPerBatch))
+                     .setIntroducedIn(30800);
 
   options->addOption("--overwrite", "overwrite data in output directory",
                      new BooleanParameter(&_overwrite));
@@ -318,6 +323,7 @@ void ExportFeature::collectionExport(SimpleHttpClient* httpClient) {
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
@@ -371,6 +377,7 @@ void ExportFeature::queryExport(SimpleHttpClient* httpClient) {
   post.openObject();
   post.add("query", VPackValue(_query));
   post.add("ttl", VPackValue(::ttlValue));
+  post.add("batchSize", VPackValue(_documentsPerBatch));
   post.add("options", VPackValue(VPackValueType::Object));
   post.add("stream", VPackSlice::trueSlice());
   post.close();
@@ -540,6 +547,7 @@ void ExportFeature::writeBatch(ManagedDirectory::File & fd, VPackArrayIterator i
 
 void ExportFeature::writeToFile(ManagedDirectory::File & fd, std::string const& line) {
   fd.write(line.c_str(), line.size());
+  THROW_ARANGO_EXCEPTION_IF_FAIL(fd.status());
 }
 
 std::shared_ptr<VPackBuilder> ExportFeature::httpCall(SimpleHttpClient* httpClient,
@@ -662,6 +670,7 @@ directed="1">
     post.add("@collection", VPackValue(collection));
     post.close();
     post.add("ttl", VPackValue(::ttlValue));
+    post.add("batchSize", VPackValue(_documentsPerBatch));
     post.add("options", VPackValue(VPackValueType::Object));
     post.add("stream", VPackSlice::trueSlice());
     post.close();
