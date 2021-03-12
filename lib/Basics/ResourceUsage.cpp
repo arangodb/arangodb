@@ -111,11 +111,11 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       std::uint64_t adjustedPrevious = _current.fetch_sub(value, std::memory_order_relaxed);
       std::uint64_t adjustedCurrent = adjustedPrevious - value;
   
-      std::int64_t adjustedDiff = diff - (numChunks(adjustedPrevious) - numChunks(adjustedCurrent));
+      std::int64_t adjustedDiff = diff + (numChunks(adjustedCurrent) - numChunks(adjustedPrevious));
       if (adjustedDiff != 0) {
         TRI_ASSERT(adjustedDiff == 1 || adjustedDiff == -1);
         // adjustment can be off by at most 1.
-        // forceIncreaseMemoryUsage takes a signed int64, so we can increase/decrease
+        // forceUpdateMemoryUsage takes a signed int64, so we can increase/decrease
         _global.forceUpdateMemoryUsage(adjustedDiff * chunkSize);
       }
     };

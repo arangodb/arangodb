@@ -386,8 +386,6 @@ void QueryRegistryFeature::unprepare() {
 
 void QueryRegistryFeature::updateMetrics() {
   GlobalResourceMonitor const& global = GlobalResourceMonitor::instance();
-  _globalQueryMemoryLimit = global.memoryLimit();
-
   _globalQueryMemoryUsage = global.current();
   _globalQueryMemoryLimit = global.memoryLimit();
 }

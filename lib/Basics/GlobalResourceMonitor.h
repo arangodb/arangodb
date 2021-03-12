@@ -68,13 +68,12 @@ class alignas(64) GlobalResourceMonitor final {
 
  private:
   /// @brief the current combined memory usage of all tracked operations.
-  /// should only very brief go above "_globalMemoryLimit" (if it goes
-  /// above it, it will instantly throw an exception so that memory usage
-  /// will go down again quickly).
-  /// this counter is updated by local instances only if there is a substantial
-  /// allocation/deallocation. it is intentionally _not_ updated on every
-  /// small allocation/deallocation. the granularity for the values in this
-  /// counter is chunkSize.
+  /// Theoretically it can happen that the global limit is exceeded due to the
+  /// correction applied as part of the rollback in increaseMemoryUsage, but at
+  /// least this excess is bounded. This counter is updated by local instances
+  /// only if there is a substantial allocation/deallocation. it is intentionally
+  /// _not_ updated on every small allocation/deallocation. the granularity for
+  /// the values in this counter is chunkSize.
   std::atomic<std::int64_t> _current;
 
   /// @brief maximum allowed global memory limit for all tracked operations combined.
