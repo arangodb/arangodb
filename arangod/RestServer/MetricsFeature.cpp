@@ -420,7 +420,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
         if (it != nameVersionTable.end()) {
-          name = alternativeName;
+          name = it->second;
         }
         static std::string const ARANGODB_CONNECTION = "arangodb_connection_";
         static std::string const POOL_AGENCYCOMM = "pool=\"AgencyComm\"";
