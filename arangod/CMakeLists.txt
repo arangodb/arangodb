@@ -50,7 +50,6 @@ endif ()
 find_package(IResearch REQUIRED)
 
 add_library(arango_iresearch
-  STATIC
   IResearch/ApplicationServerHelper.h IResearch/ApplicationServerHelper.cpp
   IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   IResearch/Containers.cpp IResearch/Containers.h
@@ -92,8 +91,12 @@ target_compile_definitions(arango_iresearch
   PUBLIC "$<$<CONFIG:Debug>:IRESEARCH_DEBUG=1>"
 )
 
-set(IRESEARCH_TARGET_DEPENDENCY iresearch-static) # use static to match ArangoDB
-
+get_target_property(arango_iresearch_type arango_iresearch TYPE)
+if (arango_iresearch_type STREQUAL STATIC_LIBRARY)
+  set(IRESEARCH_TARGET_DEPENDENCY iresearch-static)
+else()
+  set(IRESEARCH_TARGET_DEPENDENCY iresearch-shared)
+endif()
 
 get_target_property(IRESEARCH_INCLUDE
   ${IRESEARCH_TARGET_DEPENDENCY} INCLUDE_DIRECTORIES)

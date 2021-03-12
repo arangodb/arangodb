@@ -33,6 +33,7 @@ if (WIN32)
 endif ()
 set(PORTABLE On CACHE BOOL "enable portable rocksdb build (disabling might yield better performance but break portability)")
 
+# TODO set ROCKSDB_BUILD_SHARED to BUILD_SHARED_LIBS
 set(ROCKSDB_BUILD_SHARED OFF CACHE BOOL "build shared libraries")
 set(WITH_TOOLS OFF CACHE BOOL "disable tools")
 set(WITH_CORE_TOOLS OFF CACHE BOOL "disable core tools")
