@@ -265,13 +265,16 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_network_request_timeouts");
     nameVersionTable.try_emplace(
       "arangodb_connection_pool_leases_successful_total",
-      "arangodb_connection_pool_leases_successful");
+      "arangodb_connection_leases_successful");
     nameVersionTable.try_emplace(
       "arangodb_connection_pool_leases_failed_total",
       "arangodb_connection_pool_leases_failed");
     nameVersionTable.try_emplace(
       "arangodb_connection_pool_connections_created_total",
       "arangodb_connection_pool_connections_created");
+    nameVersionTable.try_emplace(
+      "arangodb_connection_pool_connections_current",
+      "arangodb_connection_connections_current");
     nameVersionTable.try_emplace(
       "arangodb_agency_supervision_accum_runtime_msec_total",
       "arangodb_agency_supervision_accum_runtime_msec");
