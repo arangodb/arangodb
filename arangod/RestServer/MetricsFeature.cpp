@@ -419,27 +419,25 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
-        if (it == nameVersionTable.end()) {
-          static std::string const ARANGODB_CONNECTION = "arangodb_connection_";
-          static std::string const POOL_AGENCYCOMM = "pool=\"AgencyComm\"";
-          static std::string const POOL_CLUSTERCOMM = "pool=\"ClusterComm\"";
-          if (name.compare(0, 20, ARANGODB_CONNECTION) == 0) {
-            auto const labels = i.second->labels();
-            if (labels == POOL_AGENCYCOMM) {
-              name += "_AgencyComm";
-            } else if (labels == POOL_CLUSTERCOMM) {
-              name += "_ClusterComm";
-            } else {
-              // Avoid someone sneaking in an other connection
-              // pool without dedicated metric for v1
-              TRI_ASSERT(false);
-            }
-          }
-          alternativeName = name;
-        } else {
-          alternativeName = it->second;
+        if (it != nameVersionTable.end()) {
           name = alternativeName;
         }
+        static std::string const ARANGODB_CONNECTION = "arangodb_connection_";
+        static std::string const POOL_AGENCYCOMM = "pool=\"AgencyComm\"";
+        static std::string const POOL_CLUSTERCOMM = "pool=\"ClusterComm\"";
+        if (name.compare(0, 20, ARANGODB_CONNECTION) == 0) {
+          auto const labels = i.second->labels();
+          if (labels == POOL_AGENCYCOMM) {
+            name += "_AgencyComm";
+          } else if (labels == POOL_CLUSTERCOMM) {
+            name += "_ClusterComm";
+          } else {
+            // Avoid someone sneaking in an other connection
+            // pool without dedicated metric for v1
+            TRI_ASSERT(false);
+          }
+        }
+        alternativeName = name;
       }
       if (lastType != name) {
         result += "# HELP " + name + " " + i.second->help() + "\n";
