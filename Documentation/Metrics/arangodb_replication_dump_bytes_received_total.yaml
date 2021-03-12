@@ -1,0 +1,11 @@
+name: arangodb_replication_dump_bytes_received_total
+help: |
+  Number of bytes received in replication dump requests.
+unit: bytes
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of bytes received in replication dump requests.

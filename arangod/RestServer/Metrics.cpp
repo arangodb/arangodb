@@ -50,7 +50,7 @@ std::ostream& operator<< (std::ostream& o, Metrics::hist_type const& v) {
 }
 
 Metric::Metric(std::string const& name, std::string const& help, std::string const& labels)
-  : _name(name), _help(help), _labels(labels) {};
+  : _name(name), _help(help), _labels(labels) {}
 
 Metric::~Metric() = default;
 
@@ -100,15 +100,22 @@ void Counter::store(uint64_t const& n) {
   _c.exchange(n);
 }
 
-void Counter::toPrometheus(std::string& result) const {
+void Counter::toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const {
   _b.push();
-  result += "\n# HELP " + name() + " " + help() + "\n";
-  result += "# TYPE " + name() + " counter\n";
-  result += name();
-  if (!labels().empty()) {
-    result += "{" + labels() + "}";
+  result += !alternativeName.empty() ? alternativeName : name();
+  result += "{";
+  bool haveGlobals = false;
+  if (!globals.empty()) {
+    result += globals;
+    haveGlobals = true;
   }
-  result += " " + std::to_string(load()) + "\n";
+  if (!labels().empty()) {
+    if (haveGlobals) {
+      result += ",";
+    }
+    result += labels();
+  }
+  result += "} " + std::to_string(load()) + "\n";
 }
 
 Counter::Counter(

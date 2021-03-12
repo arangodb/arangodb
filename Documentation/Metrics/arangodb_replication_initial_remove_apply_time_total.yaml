@@ -1,0 +1,11 @@
+name: arangodb_replication_initial_remove_apply_time_total
+help: |
+  Accumulated time needed to apply replication initial sync removals.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Accumulated time needed to apply replication initial sync removals.
