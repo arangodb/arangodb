@@ -105,6 +105,10 @@ static rocksdb::Slice RevisionTreeValue(
 static RocksDBEntryType zkdIndexValue = RocksDBEntryType::ZkdIndexValue;
 static rocksdb::Slice ZdkIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&zkdIndexValue), 1);
+
+static RocksDBEntryType uniqueZkdIndexValue = RocksDBEntryType::UniqueZkdIndexValue;
+static rocksdb::Slice UniqueZdkIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(&uniqueZkdIndexValue), 1);
 }  // namespace
 
 char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
@@ -147,6 +151,8 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "RevisionTreeValue";
     case arangodb::RocksDBEntryType::ZkdIndexValue:
       return "ZkdIndexValue";
+    case arangodb::RocksDBEntryType::UniqueZkdIndexValue:
+      return "UniqueZkdIndexValue";
   }
   return "Invalid";
 }
@@ -247,6 +253,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return RevisionTreeValue;
     case RocksDBEntryType::ZkdIndexValue:
       return ZdkIndexValue;
+    case RocksDBEntryType::UniqueZkdIndexValue:
+      return UniqueZdkIndexValue;
   }
 
   return Placeholder;  // avoids warning - errorslice instead ?!

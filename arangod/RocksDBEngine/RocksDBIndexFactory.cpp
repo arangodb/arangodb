@@ -263,6 +263,48 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
+struct ZkdIndexFactory : public DefaultIndexFactory {
+  ZkdIndexFactory(arangodb::application_features::ApplicationServer& server)
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_ZKD_INDEX) {}
+
+  std::shared_ptr<arangodb::Index> instantiate(arangodb::LogicalCollection& collection,
+                                               arangodb::velocypack::Slice const& definition,
+                                               IndexId id,
+                                               bool isClusterConstructor) const override {
+    if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue(); isUnique) {
+      return std::make_shared<RocksDBUniqueZkdIndex>(id, collection, definition);
+    }
+
+    return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
+  }
+
+  virtual arangodb::Result normalize(             // normalize definition
+      arangodb::velocypack::Builder& normalized,  // normalized definition (out-param)
+      arangodb::velocypack::Slice definition,  // source definition
+      bool isCreation,                         // definition for index creation
+      TRI_vocbase_t const& vocbase             // index vocbase
+  ) const override {
+    TRI_ASSERT(normalized.isOpenObject());
+    normalized.add(arangodb::StaticStrings::IndexType,
+                   arangodb::velocypack::Value(
+                       arangodb::Index::oldtypeName(Index::TRI_IDX_TYPE_ZKD_INDEX)));
+
+    if (isCreation && !ServerState::instance()->isCoordinator() &&
+        !definition.hasKey("objectId")) {
+      normalized.add("objectId",
+                     arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
+    }
+
+    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue(); isSparse) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "zkd index does not support sparse property");
+    }
+
+    return IndexFactory::enhanceJsonIndexGeneric(definition, normalized, isCreation);
+  }
+};
+
 struct TtlIndexFactory : public DefaultIndexFactory {
   explicit TtlIndexFactory(arangodb::application_features::ApplicationServer& server,
                            arangodb::Index::IndexType type)
@@ -348,8 +390,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(application_features::ApplicationServer
       server);
   static const TtlIndexFactory ttlIndexFactory(server, arangodb::Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const SecondaryIndexFactory<arangodb::RocksDBZkdIndex, arangodb::Index::TRI_IDX_TYPE_ZKD_INDEX> zkdIndexFactory(
-      server);
+  static const ZkdIndexFactory zkdIndexFactory(server);
 
   emplace("edge", edgeIndexFactory);
   emplace("fulltext", fulltextIndexFactory);

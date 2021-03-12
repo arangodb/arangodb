@@ -29,10 +29,10 @@
 
 namespace arangodb {
 
-class RocksDBZkdIndex final : public RocksDBIndex {
+class RocksDBZkdIndexBase : public RocksDBIndex {
 
  public:
-  RocksDBZkdIndex(IndexId iid, LogicalCollection& coll,
+  RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
       arangodb::velocypack::Slice const& info);
   void toVelocyPack(velocypack::Builder& builder,
                     std::underlying_type<Index::Serialize>::type type) const override;
@@ -54,6 +54,25 @@ class RocksDBZkdIndex final : public RocksDBIndex {
 
   aql::AstNode* specializeCondition(arangodb::aql::AstNode* condition,
                                     const arangodb::aql::Variable* reference) const override;
+
+  std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
+                                                      const aql::AstNode* node,
+                                                      const aql::Variable* reference,
+                                                      const IndexIteratorOptions& opts) override;
+};
+
+class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
+  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
+};
+
+class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
+  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
+
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                const LocalDocumentId& documentId, arangodb::velocypack::Slice doc,
+                const OperationOptions& options) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                const LocalDocumentId& documentId, arangodb::velocypack::Slice doc) override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(transaction::Methods* trx,
                                                       const aql::AstNode* node,

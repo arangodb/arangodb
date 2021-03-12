@@ -55,6 +55,7 @@ class RocksDBValue {
   static RocksDBValue EdgeIndexValue(arangodb::velocypack::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue ZkdIndexValue();
+  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);

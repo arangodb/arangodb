@@ -113,8 +113,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
         tearDownAll: function () {
             col.drop();
         },
-
-
     };
 
     for (let x of ["none", "eq"]) {
