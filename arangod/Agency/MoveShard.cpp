@@ -907,7 +907,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                            }
                          } else {
                            LOG_TOPIC("dbc18", WARN, Logger::SUPERVISION)
-                             << "failed to iterator of planned servers for shard "
+                             << "failed to iterate over planned servers for shard "
                              << _shard << " or one of its followers, we'll be back";
                            failed = true;
                            TRI_ASSERT(false);
