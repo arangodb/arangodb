@@ -939,40 +939,27 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testReplaceNthIssue13632 : function () {
-      if (require("internal").isCluster()) {
-        return;
-      }
+      let query = `
+LET first = NOOPT({v: {t1: []}})
+FOR s IN NOOPT([["t1", 0, 0, null], ["t1", 1, 0, first]])
+  LET t = s[0]
+  LET index = s[1]
+  LET value = s[2]
+  LET old = s[3]
+  RETURN [old, IS_NULL(old) ? first : MERGE(first, {v: {[t]: REPLACE_NTH(old.v[t], index, value, value)}})]
+`;
+      let actual = getQueryResults(query);
+      print(actual);
+      assertEqual(2, actual.length);
 
-      const cn = "UnitTestsCollection";
-      db._drop(cn);
-      db._create(cn);
-      try {
-        let query = `
-  LET values = [["t1", 0, 0], ["t1", 1, 0]]
-  FOR value_set IN values
-    LET t = value_set[0]
-    LET index = value_set[1]
-    LET value = value_set[2]
-    UPSERT {}
-    INSERT {v: {[t]: []}}
-    UPDATE { 
-      'v' : {[t]: REPLACE_NTH(OLD.v[t], index, value, value)}
-    } IN ${cn}
-    RETURN [OLD, NEW]`;
-        let actual = getQueryResults(query);
-        assertEqual(2, actual.length);
+      let OLD, NEW;
+      [OLD, NEW] = actual[0];
+      assertNull(OLD);
+      assertEqual({ t1: [] }, NEW.v);
 
-        let OLD, NEW;
-        [OLD, NEW] = actual[0];
-        assertNull(OLD);
-        assertEqual({ t1: [] }, NEW.v);
-
-        [OLD, NEW] = actual[1];
-        assertEqual({ t1: [] }, OLD.v);
-        assertEqual({ t1: [0, 0] }, NEW.v);
-      } finally {
-        db._drop(cn);
-      }
+      [OLD, NEW] = actual[1];
+      assertEqual({ t1: [] }, OLD.v);
+      assertEqual({ t1: [0, 0] }, NEW.v);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
