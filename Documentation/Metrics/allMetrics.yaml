@@ -946,6 +946,45 @@
   type: counter
   unit: ms
 - category: Maintenance
+  complexity: advanced
+  description: 'Accumulated action runtime for Maintenance.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Accumulated number of action queue time for Maintenance.
+
+    '
+  name: arangodb_maintenance_action_done_msec_total
+  type: counter
+  unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Counter of actions that have been discarded because of a duplicate.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Counter of actions that have been discarded because of a duplicate.
+
+    '
+  name: arangodb_maintenance_action_duplicate_total
+  type: counter
+  unit: number
+- category: Maintenance
+  complexity: medium
+  description: 'Failure counter for the maintenance actions.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Failure counter for the maintenance actions.
+
+    '
+  name: arangodb_maintenance_action_failure_total
+  type: counter
+  unit: number
+- category: Maintenance
   complexity: medium
   description: 'Time spent in the queue before execution for maintenance actions.
 
@@ -958,6 +997,19 @@
   name: arangodb_maintenance_action_queue_time_msec
   type: histogram
   unit: ms
+- category: Maintenance
+  complexity: medium
+  description: 'Counter of actions that have been registered in the action registry.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Counter of actions that have been registered in the action registry.
+
+    '
+  name: arangodb_maintenance_action_registered_total
+  type: counter
+  unit: number
 - category: Maintenance
   complexity: medium
   description: 'Histogram of time spent execution maintenance actions.
