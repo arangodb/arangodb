@@ -8,6 +8,21 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ## shell common
 ################################################################################
 
+set(LIB_ARANGO_SHELL_COMMON_SOURCES
+  Utils/ClientManager.cpp
+  Utils/ManagedDirectory.cpp
+)
+
+add_library(arango_shell_common
+  ${LIB_ARANGO_SHELL_COMMON_SOURCES}
+)
+
+# TODO ManagedDirectory needs some symbols, e.g. EncryptionFeature, directly
+#      from arangoserver.
+#      It might be a good idea to see if we can move those into a smaller
+#      library to link here.
+target_link_libraries(arango_shell_common arangoserver)
+
 set(LIB_ARANGO_SHELL_SOURCES
   FeaturePhases/BasicFeaturePhaseClient.cpp
   FeaturePhases/V8ShellFeaturePhase.cpp
@@ -16,8 +31,6 @@ set(LIB_ARANGO_SHELL_SOURCES
   Shell/ShellFeature.cpp
   Shell/V8ClientConnection.cpp
   Shell/V8ShellFeature.cpp
-  Utils/ClientManager.cpp
-  Utils/ManagedDirectory.cpp
   V8Client/ArangoClientHelper.cpp
 )
 
@@ -25,16 +38,16 @@ add_library(arango_shell
   ${LIB_ARANGO_SHELL_SOURCES}
 )
 
-target_link_libraries(arango_shell
-  arango
-  arango_v8
-  arango_v8_deadline
-  arango_import
-  fuerte
-  ${MSVC_LIBS}
-  ${SYSTEM_LIBRARIES}
-  boost_system
-  boost_boost
+target_link_libraries(arango_shell arango_shell_common
+# None of the following is currently needed, as arango_shell_common needs to pull in arangoserver.
+#  arango
+#  arango_v8
+#  arango_v8_deadline
+#  fuerte
+#  ${MSVC_LIBS}
+#  ${SYSTEM_LIBRARIES}
+#  boost_system
+#  boost_boost
 )
 
 ################################################################################
@@ -299,6 +312,7 @@ add_library(arango_import
   ${LIB_ARANGO_IMPORT_SOURCES}
 )
 
+target_link_libraries(arango_import arango_shell_common)
 target_link_libraries(arango_import arangoserver)
 
 add_executable(${BIN_ARANGOIMPORT}
@@ -308,6 +322,7 @@ add_executable(${BIN_ARANGOIMPORT}
 target_include_directories(${BIN_ARANGOIMPORT} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOIMPORT}
+  arango_import
   arango
   ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
