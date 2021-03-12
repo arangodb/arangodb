@@ -355,7 +355,7 @@ describe('_admin/metrics', () => {
     };
 
     const loadMetrics = (role, idx) =>  {
-      const url = `${servers.get(role)[idx]}/_admin/metrics`;
+      const url = `${servers.get(role)[idx]}/_admin/metrics/v2`;
 
       const res = request({
         json: true,
