@@ -69,10 +69,17 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
 )
 
+add_library(arango_tests_common
+  ${ARANGODB_TESTS_COMMON_SOURCES}
+)
+
+target_link_libraries(arango_tests_common arango_iresearch)
+target_link_libraries(arango_tests_common iresearch-shared)
+target_link_libraries(arango_tests_common gtest)
+
 add_subdirectory(IResearch)
 
-set(ARANGODB_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
+set(ARANGODB_TESTS_AGENCY_SOURCES
   Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
@@ -85,7 +92,8 @@ set(ARANGODB_TESTS_SOURCES
   Agency/RemoveFollowerTest.cpp
   Agency/StoreTest.cpp
   Agency/SupervisionTest.cpp
-  Agency/TransactionBuilderTests.cpp
+  Agency/TransactionBuilderTests.cpp)
+set(ARANGODB_TESTS_AQL_SOURCES
   Aql/AqlCallListTest.cpp
   Aql/AqlExecutorTestCase.cpp
   Aql/AqlSharedExecutionBlockImplTest.cpp
@@ -155,9 +163,8 @@ set(ARANGODB_TESTS_SOURCES
   Aql/UpsertExecutorTest.cpp
   Aql/VelocyPackHelper.cpp
   Aql/WaitingExecutionBlockMock.cpp
-  Aql/WindowExecutorTest.cpp
-  AsyncAgencyComm/AsyncAgencyCommTest.cpp
-  Auth/UserManagerTest.cpp
+  Aql/WindowExecutorTest.cpp)
+set(ARANGODB_TESTS_BASICS_SOURCES
   Basics/conversions-test.cpp
   Basics/csv-test.cpp
   Basics/datetime.cpp
@@ -184,7 +191,8 @@ set(ARANGODB_TESTS_SOURCES
   Basics/SpinLockTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
-  Basics/VelocyPackHelper-test.cpp
+  Basics/VelocyPackHelper-test.cpp)
+set(ARANGODB_TESTS_CACHE_SOURCES
   Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
@@ -199,12 +207,41 @@ set(ARANGODB_TESTS_SOURCES
   Cache/TransactionalCache.cpp
   Cache/TransactionalStore.cpp
   Cache/TransactionManager.cpp
-  Cache/TransactionsWithBackingStore.cpp
+  Cache/TransactionsWithBackingStore.cpp)
+set(ARANGODB_TESTS_CLUSTER_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
-  Cluster/QueryAnalyzerRevisions-test.cpp
+  Cluster/QueryAnalyzerRevisions-test.cpp)
+set(ARANGODB_TESTS_GRAPH_SOURCES
+  Graph/ClusterTraverserCacheTest.cpp
+  Graph/ConstantWeightShortestPathFinder.cpp
+  Graph/GenericGraphProviderTest.cpp
+  Graph/GraphMockProviderInstances.cpp
+  Graph/GraphTestTools.cpp
+  Graph/KPathFinderTest.cpp
+  Graph/KPathFinderTest_Refactored.cpp
+  Graph/KShortestPathsFinder.cpp
+  Graph/MockGraphProvider.cpp
+  Graph/PathStoreTest.cpp
+  Graph/PathValidatorTest.cpp
+  Graph/QueueTest.cpp
+  Graph/SingleServerProviderTest.cpp)
+set(ARANGODB_TESTS_IRESEARCH_SOURCES
+  ${ARANGODB_IRESEARCH_TESTS_SOURCES})
+set(ARANGODB_TESTS_ROCKSDB_SOURCES
+  RocksDBEngine/Endian.cpp
+  RocksDBEngine/KeyTest.cpp
+  RocksDBEngine/HotBackupTest.cpp
+  RocksDBEngine/EncryptionProviderTest.cpp
+  RocksDBEngine/IndexEstimatorTest.cpp
+  RocksDBEngine/ShaEventListener.cpp
+  RocksDBEngine/TransactionManagerTest.cpp)
+
+set(ARANGODB_TESTS_SOURCES
+  AsyncAgencyComm/AsyncAgencyCommTest.cpp
+  Auth/UserManagerTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -216,22 +253,8 @@ set(ARANGODB_TESTS_SOURCES
   Geo/GeoJsonTest.cpp
   Geo/NearUtilsTest.cpp
   Geo/ShapeContainerTest.cpp
-  Graph/ClusterTraverserCacheTest.cpp
-  Graph/ConstantWeightShortestPathFinder.cpp
-  Graph/GenericGraphProviderTest.cpp
-  Graph/GraphMockProviderInstances.cpp
-  Graph/GraphTestTools.cpp
-  Graph/KPathFinderTest.cpp
-  Graph/KPathFinderTest_Refactored.cpp
-  Graph/KShortestPathsFinder.cpp
   Greenspun/PrimitivesTest.cpp
-  Graph/MockGraphProvider.cpp
-  Graph/PathStoreTest.cpp
-  Graph/PathValidatorTest.cpp
-  Graph/QueueTest.cpp
-  Graph/SingleServerProviderTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
-  ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
@@ -249,13 +272,6 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
   RestServer/FlushFeature-test.cpp
-  RocksDBEngine/Endian.cpp
-  RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
-  RocksDBEngine/EncryptionProviderTest.cpp
-  RocksDBEngine/IndexEstimatorTest.cpp
-  RocksDBEngine/ShaEventListener.cpp
-  RocksDBEngine/TransactionManagerTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp
   Transaction/Context-test.cpp
@@ -274,68 +290,153 @@ set(ARANGODB_TESTS_SOURCES
 
 if (USE_FAILURE_TESTS)
   # add test that depends on USE_FAILURE_TESTS
-  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES} Aql/OldSubqueriesTest.cpp)
+  set(ARANGODB_TESTS_AQL_SOURCES ${ARANGODB_TESTS_AQL_SOURCES} Aql/OldSubqueriesTest.cpp)
 endif ()
-
 
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
   # and prevents the "variable tracking size limit exceeded warnings" from
   # occurring
+  set(TEST_COMPILE_FLAGS "-fno-var-tracking")
   if (CMAKE_COMPILER_IS_GNUCC)
     # also turn off super-expensive global common subexpression elimination for tests
-    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS "-fno-var-tracking -fno-gcse")
-  else ()
-    set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
+    set(TEST_COMPILE_FLAGS "${TEST_COMPILE_FLAGS} -fno-gcse")
   endif ()
+  set_source_files_properties(ARANGODB_TESTS_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_AGENCY_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_AQL_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_BASICS_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_CACHE_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_CLUSTER_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_GRAPH_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_IRESEARCH_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
+  set_source_files_properties(ARANGODB_TESTS_ROCKSDB_SOURCES PROPERTIES COMPILE_FLAGS ${TEST_COMPILE_FLAGS})
 endif ()
 
-add_executable(
-  arangodbtests
-  ${ARANGODB_TESTS_SOURCES}
-  main.cpp
-)
+set(TEST_EXECUTABLES "")
 
-#required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
-if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
-  target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+if (NOT SPLIT_GOOGLE_TESTS)
+  set(ARANGODB_TESTS_SOURCES
+    ${ARANGODB_TESTS_SOURCES}
+    ${ARANGODB_TESTS_AGENCY_SOURCES}
+    ${ARANGODB_TESTS_AQL_SOURCES}
+    ${ARANGODB_TESTS_BASICS_SOURCES}
+    ${ARANGODB_TESTS_CACHE_SOURCES}
+    ${ARANGODB_TESTS_CLUSTER_SOURCES}
+    ${ARANGODB_TESTS_GRAPH_SOURCES}
+    ${ARANGODB_TESTS_IRESEARCH_SOURCES}
+    ${ARANGODB_TESTS_ROCKSDB_SOURCES})
+  add_executable(arangodbtests
+    ${ARANGODB_TESTS_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests)
+  target_link_libraries(arangodbtests
+    arango_tests_common
+    arangoserver)
+else()
+  add_executable(arangodbtests
+    ${ARANGODB_TESTS_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests)
+  add_executable(arangodbtests_agency
+    ${ARANGODB_TESTS_AGENCY_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_agency)
+  add_executable(arangodbtests_aql
+    ${ARANGODB_TESTS_AQL_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_aql)
+  add_executable(arangodbtests_basics
+    ${ARANGODB_TESTS_BASICS_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_basics)
+  add_executable(arangodbtests_cache
+    ${ARANGODB_TESTS_CACHE_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_cache)
+  add_executable(arangodbtests_cluster
+    ${ARANGODB_TESTS_CLUSTER_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_cluster)
+  add_executable(arangodbtests_graph
+    ${ARANGODB_TESTS_GRAPH_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_graph)
+  add_executable(arangodbtests_iresearch
+    ${ARANGODB_TESTS_IRESEARCH_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_iresearch)
+  add_executable(arangodbtests_rocksdb
+    ${ARANGODB_TESTS_ROCKSDB_SOURCES}
+    main.cpp)
+  list(APPEND TEST_EXECUTABLES arangodbtests_rocksdb)
+
+  target_link_libraries(arangodbtests
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_agency
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_aql
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_basics
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_cache
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_cluster
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_graph
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_iresearch
+    arango_tests_common
+    arangoserver)
+  target_link_libraries(arangodbtests_rocksdb
+    arango_tests_common
+    arangoserver)
 endif()
-
-target_link_libraries(arangodbtests
-  arangoserver
-  gtest
-)
 
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif()
 
-target_include_directories(arangodbtests PRIVATE
-  ${INCLUDE_DIRECTORIES}
-)
+foreach (TEST_EXECUTABLE IN LISTS TEST_EXECUTABLES)
+  #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
+  if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+    target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
+  endif()
 
-if(MSVC AND USE_FAIL_ON_WARNINGS)
-  target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-endif()
+  target_include_directories(${TEST_EXECUTABLE} PRIVATE
+    ${INCLUDE_DIRECTORIES}
+    )
 
-if (DARWIN AND USE_FAIL_ON_WARNINGS)
-  # Missing Braces is broken in older CLangs - disable them here.
-  target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
-endif()
+  # add these includes as system includes because otherwise
+  # the compiler will emit warnings for fakeit.hpp
+  target_include_directories(${TEST_EXECUTABLE} SYSTEM PRIVATE
+    ${V8_INCLUDE_DIR}
+    ${V8_INTERNAL_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+    ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+    )
 
-# add these includes as system includes because otherwise
-# the compiler will emit warnings for fakeit.hpp
-target_include_directories(arangodbtests SYSTEM PRIVATE
-  ${V8_INCLUDE_DIR}
-  ${V8_INTERNAL_INCLUDE_DIR}
-  ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
-  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
-)
+  if(MSVC AND USE_FAIL_ON_WARNINGS)
+    target_compile_options(${TEST_EXECUTABLE} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  endif()
 
-if (USE_JEMALLOC)
-  add_dependencies(arangodbtests jemalloc_build)
-endif ()
+  if (DARWIN AND USE_FAIL_ON_WARNINGS)
+    # Missing Braces is broken in older CLangs - disable them here.
+    target_compile_options(${TEST_EXECUTABLE} PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  endif()
+
+  if (USE_JEMALLOC)
+    add_dependencies(${TEST_EXECUTABLE} jemalloc_build)
+  endif ()
+endforeach()
 
 find_package(OpenSSL REQUIRED)
 list(APPEND IRESEARCH_LIB_RESOURCES

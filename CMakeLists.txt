@@ -777,6 +777,14 @@ if (USE_GOOGLE_TESTS)
   add_definitions("-DARANGODB_USE_GOOGLE_TESTS=1")
 endif()
 
+# instead of one monolithic executable, build multiple smaller ones
+option(SPLIT_GOOGLE_TESTS "split tests in multiple files" OFF)
+if (USE_GOOGLE_TESTS)
+  if (SPLIT_GOOGLE_TESTS AND NOT BUILD_SHARED_LIBS)
+    message(WARNING "SPLIT_GOOGLE_TESTS is ON, while BUILD_SHARED_LIBS is OFF. This will result in a lot of huge executables!")
+  endif()
+endif()
+
 include(debugInformation)
 find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
