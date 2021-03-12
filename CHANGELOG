@@ -1,6 +1,8 @@
 devel
 -----
 
+* Added metrics documentation snippets and infrastructure for that.
+
 * Added a new cluster distribution view to the web UI. The view includes general
   details about cluster-wide distrubution in general as well as more detailed 
   shard distribution specific information.
