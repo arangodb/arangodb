@@ -82,8 +82,8 @@ DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRun
 DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale, "Time spent in the queue before execution for maintenance actions [ms]");
 DECLARE_COUNTER(arangodb_maintenance_action_done_total, "Counter of actions that are done and have been removed from the registry");
 DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t, "Number of leader shards not fully replicated");
-DECLARE_GAUGE(arangodb_shards_total, uint64_t, "Number of shards on this machine");
-DECLARE_GAUGE(arangodb_shards_leader_total, uint64_t, "Number of leader shards on this machine");
+DECLARE_GAUGE(arangodb_shards_number, uint64_t, "Number of shards on this machine");
+DECLARE_GAUGE(arangodb_shards_leader_number, uint64_t, "Number of leader shards on this machine");
 DECLARE_GAUGE(arangodb_shards_not_replicated, uint64_t, "Number of shards not replicated at all");
 
 namespace {
@@ -195,8 +195,8 @@ void MaintenanceFeature::initializeMetrics() {
     metricsFeature.add(arangodb_maintenance_agency_sync_accum_runtime_msec_total{});
 
   _shards_out_of_sync = metricsFeature.add(arangodb_shards_out_of_sync{});
-  _shards_total_count = metricsFeature.add(arangodb_shards_total{});
-  _shards_leader_count = metricsFeature.add(arangodb_shards_leader_total{});
+  _shards_total_count = metricsFeature.add(arangodb_shards_number{});
+  _shards_leader_count = metricsFeature.add(arangodb_shards_leader_number{});
   _shards_not_replicated_count = metricsFeature.add(arangodb_shards_not_replicated{});
 
   _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_total{});

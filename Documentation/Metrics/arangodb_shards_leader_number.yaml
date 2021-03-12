@@ -1,6 +1,6 @@
-name: arangodb_shards_total
+name: arangodb_shards_leader_number
 help: |
-  Number of shards on this machine.
+  Number of leader shards on this machine.
 unit: number
 type: gauge
 category: Replication
@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
   - agent
 description: |
-  Number of shards on this machine.
+  Number of leader shards on this machine.

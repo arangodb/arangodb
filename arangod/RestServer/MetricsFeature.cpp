@@ -74,9 +74,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_rocksdb_write_stops rocksdb_write_stops");
     nameVersionTable.try_emplace(
-      "arangodb_shards_leader_total", "arangodb_shards_leader_count");
+      "arangodb_shards_leader_number", "arangodb_shards_leader_count");
     nameVersionTable.try_emplace(
-      "arangodb_shards_total", "arangodb_shards_total_count");
+      "arangodb_shards_number", "arangodb_shards_total_count");
     nameVersionTable.try_emplace(
       "arangodb_replication_cluster_inventory_requests_total",
       "arangodb_replication_cluster_inventory_requests");
@@ -302,6 +302,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_v8_context_destroyed_total",
       "arangodb_v8_context_destroyed");
+    nameVersionTable.try_emplace(
+      "arangodb_v8_context_entered_total",
+      "arangodb_v8_context_entered");
     nameVersionTable.try_emplace(
       "arangodb_v8_context_enter_failures_total",
       "arangodb_v8_context_enter_failures");

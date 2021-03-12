@@ -113,7 +113,7 @@ DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
 DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
 DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
 DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
-DECLARE_COUNTER(arangodb_v8_context_entered, "V8 context enter events");
+DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
@@ -141,7 +141,7 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _contextsDestroyed(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
       _contextsEntered(
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered{})),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
       _contextsExited(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
       _contextsEnterFailures(

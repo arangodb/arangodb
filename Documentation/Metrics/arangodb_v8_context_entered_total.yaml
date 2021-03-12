@@ -1,4 +1,4 @@
-name: arangodb_v8_context_entered
+name: arangodb_v8_context_entered_total
 help: |
   Total number of V8 context enter events.
 unit: number
