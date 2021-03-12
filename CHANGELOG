@@ -1,6 +1,9 @@
 devel
 -----
 
+* Added more useful information during the SmartGraph creation in the web UI
+  in case the current database is a OneShard database.
+
 * Add support for building with Zen 3 CPU when optimizing for the local
   architecture.
   
