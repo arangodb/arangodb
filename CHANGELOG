@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added a new cluster distribution view to the web UI. The view includes general
+  details about cluster-wide distrubution in general as well as more detailed 
+  shard distribution specific information.
+
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
 * Resonably harden MoveShard against VelopcyPack more.
