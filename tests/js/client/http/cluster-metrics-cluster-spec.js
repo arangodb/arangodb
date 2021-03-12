@@ -42,7 +42,7 @@ const expectOneBucketChanged = (actual, old) => {
 };
 
 const MetricNames = {
-  QUERY_TIME: "arangodb_aql_total_query_time_msec",
+  QUERY_TIME: "arangodb_aql_total_query_time_msec_total",
   PHASE_1_BUCKET: "arangodb_maintenance_phase1_runtime_msec_bucket",
   PHASE_1_COUNT: "arangodb_maintenance_phase1_runtime_msec_count",
   PHASE_2_BUCKET: "arangodb_maintenance_phase2_runtime_msec_bucket",
