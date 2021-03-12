@@ -1,6 +1,8 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
+* Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
+
 * Backported AQL sort performance improvements from devel.
   This change can improve the performance of local sorts operations, e.g.
 
