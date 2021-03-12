@@ -5,6 +5,10 @@ devel
   information in case the Metrics API is enabled. Different statistics may
   be visible depending on the operating system.
 
+* Added a new cluster distribution view to the web UI. The view includes general
+  details about cluster-wide distrubution in general as well as more detailed 
+  shard distribution specific information.
+
 * Follower primaries respond with
   TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
   to any read request. Fixes a wrongly responded 404 from chaos
