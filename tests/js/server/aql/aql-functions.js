@@ -949,7 +949,6 @@ FOR s IN NOOPT([["t1", 0, 0, null], ["t1", 1, 0, first]])
   RETURN [old, IS_NULL(old) ? first : MERGE(first, {v: {[t]: REPLACE_NTH(old.v[t], index, value, value)}})]
 `;
       let actual = getQueryResults(query);
-      print(actual);
       assertEqual(2, actual.length);
 
       let OLD, NEW;
