@@ -5,6 +5,12 @@ devel
   initialization phase. Additionally, the amount of agents are now displayed
   there as well. An agent failure will also appear here in case it exists.
 
+* Added more useful information during the SmartGraph creation in the web UI
+  in case the current database is a OneShard database.
+
+* Add support for building with Zen 3 CPU when optimizing for the local
+  architecture.
+  
 * The web UI's node overview now displays also agent information (cluster only).
 
 * The statistics view in the web UI does now provide more system specific
@@ -120,6 +126,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
 
 * Reduce memory footprint of agency Store in Node class.
 
