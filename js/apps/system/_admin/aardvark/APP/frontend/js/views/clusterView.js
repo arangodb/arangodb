@@ -185,8 +185,12 @@
     renderNodes: function () {
       var self = this;
       var callbackFunction = function (data) {
-        var coords = 0; var coordsErrors = 0;
-        var dbs = 0; var dbsErrors = 0;
+        let coords = 0;
+        let coordsErrors = 0;
+        let dbs = 0;
+        let dbsErrors = 0;
+        let agents = 0;
+        let agentsErrors = 0;
 
         _.each(data, function (node) {
           if (node.Role === 'Coordinator') {
@@ -198,6 +202,11 @@
             dbs++;
             if (node.Status !== 'GOOD') {
               dbsErrors++;
+            }
+          } else if (node.Role === 'Agent') {
+            agents++;
+            if (node.Status !== 'GOOD') {
+              agentsErrors++;
             }
           }
         });
@@ -213,6 +222,13 @@
         } else {
           arangoHelper.renderStatisticsBoxValue('#clusterDBServers', dbs);
         }
+
+        if (agentsErrors > 0) {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents - agentsErrors + '/' + agents, true);
+        } else {
+          arangoHelper.renderStatisticsBoxValue('#clusterAgentServers', agents);
+        }
+
       }.bind(this);
 
       if (window.App && window.App.lastHealthCheckResult) {
@@ -245,6 +261,37 @@
       average: []
     },
 
+    insertDummyElements: function () {
+      // method to push dummy values in case of initialization
+      // reason: make the graph more human readable in init case.
+      var self = this;
+      _.each(self.chartsOptions, function (val1, key1) {
+        _.each(val1.options, function (val2, key2) {
+          if (val2.values.length < self.maxValues - 1) {
+            let dummyElementsToInsert =  self.maxValues - val2.values.length;
+            let initTimeToUse;
+            try {
+              initTimeToUse = self.chartsOptions[key1].options[key2].values[0].x;
+            } catch (ignore) {
+              // format to write here timestamp like: 1615569682 (10 chars)
+              // Date.now() gives => 1615569844407 (13 chars)
+              initTimeToUse = (Date.now() / 1000).toFixed(0);
+            }
+
+            for (let counter = 0; counter < dummyElementsToInsert; counter++) {
+              let time = initTimeToUse - ((self.interval / 1000) * counter);
+              time = parseInt(time);
+              self.chartsOptions[key1].options[key2].values.unshift({
+                x: time,
+                y: 0.00
+              });
+            }
+          }
+        });
+      });
+
+    },
+
     checkArraySizes: function () {
       var self = this;
 
@@ -273,6 +320,8 @@
           self.chartsOptions[2].options[0].values.push({x: time, y: data.avgRequestTime[key]});
         });
         self.historyInit = true;
+        // will insert zero entries in case we're below max history array size
+        self.insertDummyElements();
       } else {
         self.checkArraySizes();
 
@@ -456,6 +505,12 @@
       }
 
       var self = this; var data; var lines;
+
+      if (Object.keys(input).length === 0) {
+        // data not ready yet, need to wait one more iteration.
+        return;
+      }
+
       this.formatDataForGraph(input);
 
       _.each(self.chartsOptions, function (c) {

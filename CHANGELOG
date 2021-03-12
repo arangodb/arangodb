@@ -1,6 +1,10 @@
 devel
 -----
 
+* The cluster dashboard charts in the web UI are now more readable during the
+  initialization phase. Additionally, the amount of agents are now displayed
+  there as well. An agent failure will also appear here in case it exists.
+
 * Added more useful information during the SmartGraph creation in the web UI
   in case the current database is a OneShard database.
 
