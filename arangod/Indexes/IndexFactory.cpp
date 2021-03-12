@@ -592,6 +592,7 @@ Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
         "releases might lift this requirement");
   }
 
+  builder.add("fieldValueTypes", VPackValue("double"));
   Result res = processIndexFields(definition, builder, 1, INT_MAX, create, false);
 
   if (res.ok()) {
