@@ -64,7 +64,7 @@ ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
 /// is always the same, we do not do any post-processing
-network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint) {
+network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoint, bool& isFromPool) {
   READ_LOCKER(guard, _lock);
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
@@ -73,9 +73,10 @@ network::ConnectionPtr ConnectionPool::leaseConnection(std::string const& endpoi
     auto tmp = std::make_unique<Bucket>(); //get memory outside lock
     WRITE_LOCKER(wguard, _lock);
     auto [it2, emplaced] = _connections.try_emplace(endpoint, std::move(tmp));
-    return selectConnection(endpoint,*it2->second);
+    return selectConnection(endpoint,*it2->second, isFromPool);
   }
-  return selectConnection(endpoint, *it->second);
+  LOG_DEVEL << "Found " << it->second->list.size() << " connections in pool.";
+  return selectConnection(endpoint, *it->second, isFromPool);
 }
 
 /// @brief drain all connections
@@ -103,6 +104,7 @@ void ConnectionPool::shutdownConnections() {
 
 /// remove unused and broken connections
 void ConnectionPool::pruneConnections() {
+  LOG_DEVEL << "Pruning connections in pool.";
   const std::chrono::milliseconds ttl(_config.idleConnectionMilli);
 
   READ_LOCKER(guard, _lock);
@@ -207,7 +209,8 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(fuerte::Con
 }
 
 ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
-                                               ConnectionPool::Bucket& bucket) {
+                                               ConnectionPool::Bucket& bucket,
+                                               bool& isFromPool) {
   using namespace std::chrono;
   const milliseconds ttl(_config.idleConnectionMilli);
   
@@ -215,6 +218,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
 
   auto start = steady_clock::now();
   
+  isFromPool = true;  // Will revert for new collections
   for (std::shared_ptr<Context>& c : bucket.list) {
     if (c->fuerte->state() == fuerte::Connection::State::Closed ||
         (start - c->lastLeased) > ttl) {
@@ -256,6 +260,7 @@ ConnectionPtr ConnectionPool::selectConnection(std::string const& endpoint,
   }
   
   _connectionsCreated++;
+  isFromPool = false;
   
   // no free connection found, so we add one
   LOG_TOPIC("2d6ab", DEBUG, Logger::COMMUNICATION) << "creating connection to "

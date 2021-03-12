@@ -210,7 +210,7 @@ void NetworkFeature::prepare() {
       }
 
       if (!server().isStopping() && !canceled) {
-        std::chrono::seconds off(12);
+        std::chrono::seconds off(120);
         ::queueGarbageCollection(_workItemMutex, _workItem, _gcfunc, off);
       }
     };
@@ -292,16 +292,17 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  RequestCallback&& cb) {
   TRI_ASSERT(req != nullptr);
   prepareRequest(pool, req);
-  auto conn = pool.leaseConnection(endpoint);
+  bool isFromPool = false;
+  auto conn = pool.leaseConnection(endpoint, isFromPool);
   conn->sendRequest(std::move(req),
-                    [this, &pool,
+                    [this, &pool, isFromPool,
                      cb = std::move(cb)](fuerte::Error err,
                                          std::unique_ptr<fuerte::Request> req,
                                          std::unique_ptr<fuerte::Response> res) {
                       TRI_ASSERT(req != nullptr);
                       finishRequest(pool, err, req, res);
                       TRI_ASSERT(req != nullptr);
-                      cb(err, std::move(req), std::move(res));
+                      cb(err, std::move(req), std::move(res), isFromPool);
                     });
 }
 
