@@ -699,6 +699,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::VPackIndex);
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies = RocksDBColumnFamilyManager::minNumberOfColumnFamilies;
@@ -816,6 +817,8 @@ void RocksDBEngine::start() {
                                   cfHandles[5]);
   RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::FulltextIndex,
                                   cfHandles[6]);
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
+                                  cfHandles[7]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
 
