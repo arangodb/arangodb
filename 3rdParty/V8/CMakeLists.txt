@@ -171,8 +171,6 @@ if (WIN32)
   list(APPEND V8_TARGET_ARCHS "Release")
 
   if (BUILD_SHARED_LIBS)
-    # TODO I haven't yet had a chance to try this on Windows
-    message(FATAL_ERROR "BUILD_SHARED_LIBS isn't implemented for MSVC, yet")
     list(APPEND V8_GYP_ARGS
       -Dlibrary=shared
       -Dis_component_build=true)
