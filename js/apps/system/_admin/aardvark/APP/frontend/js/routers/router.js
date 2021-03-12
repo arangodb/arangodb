@@ -50,6 +50,7 @@
       'nodes': 'nodes',
       'shards': 'shards',
       'maintenance': 'maintenance',
+      'distribution': 'distribution',
       'node/:name': 'node',
       'nodeInfo/:id': 'nodeInfo',
       'logs': 'logger',
@@ -437,6 +438,30 @@
       });
       this.shardsView.render();
 
+    },
+
+    distribution: function (initialized) {
+      this.checkUser();
+      if (!initialized || this.isCluster === undefined) {
+        this.waitForInit(this.distribution.bind(this));
+        return;
+      }
+      if (this.currentDB.get('name') !== '_system') {
+        if (!this.isCluster) {
+          this.routes[''] = 'dashboard';
+          this.navigate('#dashboard', {trigger: true});
+        } else {
+          this.routes[''] = 'cluster';
+          this.navigate('#cluster', {trigger: true});
+        }
+        return;
+      }
+
+      if (this.shardDistributionView) {
+        this.shardDistributionView.remove();
+      }
+      this.shardDistributionView = new window.ShardDistributionView({});
+      this.shardDistributionView.render();
     },
 
     maintenance: function (initialized) {
