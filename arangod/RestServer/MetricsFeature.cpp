@@ -60,7 +60,23 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
   startsBefore<GreetingsFeaturePhase>();
 
   try {
-    nameVersionTable.reserve(64);
+    nameVersionTable.reserve(16);
+    nameVersionTable.try_emplace(
+      "arangodb_agency_cache_callback_number", "arangodb_agency_cache_callback_count");
+    nameVersionTable.try_emplace(
+      "arangodb_agency_callback_number", "arangodb_agency_callback_count");
+    nameVersionTable.try_emplace(
+      "arangodb_agency_supervision_failed_server_total", "arangodb_agency_supervision_failed_server_count");
+    nameVersionTable.try_emplace(
+      "arangodb_refused_followers_total", "arangodb_refused_followers_count");
+    nameVersionTable.try_emplace(
+      "arangodb_rocksdb_write_stalls rocksdb_write_stalls");
+    nameVersionTable.try_emplace(
+      "arangodb_rocksdb_write_stops rocksdb_write_stops");
+    nameVersionTable.try_emplace(
+      "arangodb_shards_leader_total", "arangodb_shards_leader_count");
+    nameVersionTable.try_emplace(
+      "arangodb_shards_total", "arangodb_shards_total_count");
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
