@@ -302,8 +302,9 @@ bool MoveShard::start(bool&) {
       ++count;
     }
   } else {
-    // We really should never be ever here
-    moveShardFinish(false,  false, std::string("shard ") + _shard + "has no planned database servers");
+    // This is a serious problem. Under no circumstances should the shard
+    // be without planned database server. This is a failure.
+    moveShardFinish(false,  false, std::string("shard ") + _shard + " has no planned database servers");
     TRI_ASSERT(false);
   }
   if ((_isLeader && found != 0) || (!_isLeader && found < 1)) {
@@ -906,7 +907,7 @@ JOB_STATUS MoveShard::pendingFollower() {
                            }
                          } else {
                            LOG_TOPIC("dbc18", WARN, Logger::SUPERVISION)
-                             << "failed to iterator of planned servers for shard "
+                             << "failed to iterate over planned servers for shard "
                              << _shard << " or one of its followers, we'll be back";
                            failed = true;
                            TRI_ASSERT(false);

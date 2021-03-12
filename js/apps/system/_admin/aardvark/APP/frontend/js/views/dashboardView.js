@@ -6,7 +6,7 @@
 (function () {
   'use strict';
 
-  function fmtNumber (n, nk) {
+  function fmtNumber(n, nk) {
     if (n === undefined || n === null) {
       n = 0;
     }
@@ -111,7 +111,8 @@
     },
 
     prepareDygraphs: function () {
-      var self = this; var options;
+      var self = this;
+      var options;
       this.dygraphConfig.getDashBoardFigures().forEach(function (f) {
         options = self.dygraphConfig.getDefaultConfig(f);
         var dimensions = self.getCurrentSize(options.div);
@@ -188,7 +189,7 @@
           contentDiv: contentDiv
         });
         this.currentLogView.render(true);
-      } else if (id === 'metrics') {
+      } else if (id === 'metrics' && frontendConfig.metricsEnabled) {
         let contentDiv = '#nodeMetricsContentView';
         let endpoint = this.serverInfo.target;
 
@@ -234,7 +235,8 @@
     },
 
     updateTendencies: function () {
-      var self = this; var map = this.tendencies;
+      var self = this;
+      var map = this.tendencies;
 
       var tempColor = '';
       Object.keys(map).forEach(function (a) {
@@ -282,7 +284,8 @@
       };
 
       // round line chart values to 10th decimals
-      var pointer = 0; var dates = [];
+      var pointer = 0;
+      var dates = [];
       _.each(opts.file, function (value) {
         var rounded = value[0].getSeconds() - (value[0].getSeconds() % 10);
         opts.file[pointer][0].setSeconds(rounded);
@@ -392,7 +395,8 @@
           // 0: date, 1: GET", 2: "PUT", 3: "POST", 4: "DELETE", 5: "PATCH",
           // 6: "HEAD", 7: "OPTIONS", 8: "OTHER"
           //
-          var read = 0; var write = 0;
+          var read = 0;
+          var write = 0;
           if (valueList.length === 9) {
             read += valueList[1];
             read += valueList[6];
@@ -445,7 +449,8 @@
     },
 
     mergeHistory: function (newData) {
-      var self = this; var i;
+      var self = this;
+      var i;
 
       for (i = 0; i < newData.times.length; ++i) {
         this.mergeDygraphHistory(newData, i);
@@ -541,7 +546,7 @@
         return '>' + cuts[counter - 1];
       }
       return counter === 0 ? '0 - ' +
-      cuts[counter] : cuts[counter - 1] + ' - ' + cuts[counter];
+        cuts[counter] : cuts[counter - 1] + ' - ' + cuts[counter];
     },
 
     checkState: function () {
@@ -562,6 +567,8 @@
     },
 
     renderStatisticBox: function (name, value, title, rowCount) {
+      let id = name.replaceAll(' ', ''); // remove potential whitespaces
+
       // box already rendered, just update value
       if ($('#node-info #nodeattribute-' + name).length) {
         $('#node-info #nodeattribute-' + name).html(value);
@@ -574,15 +581,99 @@
         }
         elem += '<div class="valueWrapper">';
         if (title) {
-          elem += '<div id="nodeattribute-' + name + '" class="value tippy" title="' + value + '">' + value + '</div>';
+          elem += '<div id="nodeattribute-' + id + '" class="value tippy" title="' + title + '">' + value + '</div>';
         } else {
-          elem += '<div id="nodeattribute-' + name + '" class="value">' + value + '</div>';
+          elem += '<div id="nodeattribute-' + id + '" class="value">' + value + '</div>';
         }
         elem += '<div class="graphLabel">' + name + '</div>';
         elem += '</div>';
         elem += '</div>';
         $('#node-info').append(elem);
       }
+    },
+
+    fetchMetricsNodeBased: function (metricsToRender) {
+      let endpoint = this.serverInfo.target;
+      let metrics = new window.ArangoMetrics({
+        endpoint: endpoint
+      });
+
+      let renderMetrics = (collection) => {
+        _.each(metricsToRender, (info) => {
+          let model = collection.findWhere({name: info.name});
+          if (model) { // means we found an entry
+            if (info.type) {
+              if (info.type === 'bytes') {
+                this.renderStatisticBox(info.shortName, prettyBytes(parseInt(model.get('metrics')[0].value)), model.get('info'), 6);
+              } else if (info.type === 'percent') {
+                this.renderStatisticBox(info.shortName, parseFloat(model.get('metrics')[0].value).toFixed(2) + ' %', model.get('info'), 6);
+              } else if (info.type === 'ms') {
+                this.renderStatisticBox(info.shortName, parseInt(model.get('metrics')[0].value) + ' ms', model.get('info'), 6);
+              }
+            } else {
+              this.renderStatisticBox(info.shortName, model.get('metrics')[0].value, model.get('info'), 6);
+            }
+          }
+        });
+
+        arangoHelper.createTooltips();
+      };
+
+      metrics.fetch({
+        success: function (collection) {
+          renderMetrics(collection);
+        }
+      });
+    },
+
+    fetchAdditionalDBStatistics: function () {
+      let dbServerMetrics = [
+        {
+          name: 'arangodb_scheduler_low_prio_queue_last_dequeue_time',
+          shortName: 'lowprio queue dequeue time',
+          type: 'ms'
+        },
+        {
+          name: 'arangodb_scheduler_queue_length',
+          shortName: 'scheduler queue length'
+        },
+        {
+          name: 'arangodb_server_statistics_cpu_cores',
+          shortName: 'number of cpu cores'
+        },
+        {
+          name: 'arangodb_server_statistics_user_percent',
+          shortName: 'user cpu time',
+          type: 'percent'
+        },
+        {
+          name: 'arangodb_server_statistics_system_percent',
+          shortName: 'system cpu time',
+          type: 'percent'
+        },
+        {
+          name: 'arangodb_server_statistics_idle_percent',
+          shortName: 'idle cpu time',
+          type: 'percent'
+        },
+        {
+          name: 'arangodb_server_statistics_iowait_percent',
+          shortName: 'iowait cpu time',
+          type: 'percent'
+        },
+        {
+          name: 'rocksdb_free_disk_space',
+          shortName: 'database directory free disk space',
+          type: 'bytes'
+        },
+        {
+          name: 'rocksdb_total_disk_space',
+          shortName: 'database directory total disk space',
+          type: 'bytes'
+        }
+      ];
+
+      this.fetchMetricsNodeBased(dbServerMetrics);
     },
 
     getNodeInfo: function () {
@@ -644,6 +735,10 @@
             self.renderStatisticBox('Uptime', 'Error', undefined, 6);
           }
         });
+
+        if (this.serverInfo.isDBServer && frontendConfig.metricsEnabled) {
+          this.fetchAdditionalDBStatistics();
+        }
       } else {
         // Standalone
         // version + license
@@ -893,9 +988,9 @@
           // append custom legend
           $('#' + k + 'Container').append(
             '<div class="dashboard-legend-inner">' +
-              '<span style="color: rgb(238, 190, 77);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(238, 190, 77);"></div> Bytes sent</span>' +
-              '<span style="color: rgb(142, 209, 220);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(142, 209, 220);"></div> Bytes received</span>' +
-                '</div>'
+            '<span style="color: rgb(238, 190, 77);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(238, 190, 77);"></div> Bytes sent</span>' +
+            '<span style="color: rgb(142, 209, 220);"><div style="display: inline-block; position: relative; bottom: .5ex; padding-left: 1em; height: 1px; border-bottom: 2px solid rgb(142, 209, 220);"></div> Bytes received</span>' +
+            '</div>'
           );
 
           nv.addGraph(function () {
@@ -1020,14 +1115,14 @@
         return;
       }
       self.timer = window.setInterval(function () {
-        if (window.App.isCluster) {
-          if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+          if (window.App.isCluster) {
+            if (window.location.hash.indexOf(self.serverInfo.target) > -1) {
+              self.getStatistics();
+            }
+          } else {
             self.getStatistics();
           }
-        } else {
-          self.getStatistics();
-        }
-      }, self.interval
+        }, self.interval
       );
     },
 
@@ -1041,7 +1136,8 @@
       if (!this.isUpdating) {
         return;
       }
-      var self = this; var dimensions;
+      var self = this;
+      var dimensions;
       _.each(this.graphs, function (g) {
         dimensions = self.getCurrentSize(g.maindiv_.id);
         g.resize(dimensions.width, dimensions.height);

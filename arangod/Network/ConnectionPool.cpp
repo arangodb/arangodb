@@ -32,30 +32,45 @@
 
 #include <fuerte/connection.h>
 
+DECLARE_GAUGE(arangodb_connection_pool_connections_current,
+              uint64_t, "Current number of connections in pool");
+DECLARE_COUNTER(arangodb_connection_pool_leases_successful_total,
+                "Total number of successful connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_leases_failed_total,
+                "Total number of failed connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_connections_created_total,
+                "Total number of connections created");
+
+struct LeaseTimeScale {
+  static log_scale_t<float> scale() { return {2.f, 0.f, 1000.f, 10}; }
+};
+DECLARE_HISTOGRAM(
+  arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
+  "Time to lease a connection from pool [ms]");
+
 namespace arangodb {
 namespace network {
 
 using namespace arangodb::fuerte::v1;
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _config(config), 
-      _loop(config.numIOThreads, config.name),
-      _totalConnectionsInPool(
-        _config.metricsFeature.gauge(
-          std::string("arangodb_connection_connections_current_") + _config.name, uint64_t(0), "Current number of connections in pool")),
-      _successSelect(
-        _config.metricsFeature.counter(
-        std::string("arangodb_connection_leases_successful_") + _config.name, 0, "Total number of successful connection leases")),
-      _noSuccessSelect(
-        _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_leases_failed_") + _config.name, 0, "Total number of failed connection leases")),
-      _connectionsCreated(
-        _config.metricsFeature.counter(
-          std::string("arangodb_connection_pool_connections_created_") + _config.name, 0, "Total number of connections created")),
-      _leaseHistMSec(
-        _config.metricsFeature.histogram(
-          std::string("arangodb_connection_pool_lease_time_hist_")+ _config.name, log_scale_t(2.f, 0.f, 1000.f, 10),
-          std::string("Time to lease a connection from pool ") + _config.name + " [us]")) {
+  : _config(config), 
+    _loop(config.numIOThreads, config.name),
+    _totalConnectionsInPool(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_connections_current{}.withLabel("pool", _config.name))),
+    _successSelect(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_leases_successful_total{}.withLabel("pool", config.name))),
+    _noSuccessSelect(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_leases_failed_total{}.withLabel("pool", config.name))),
+    _connectionsCreated(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_connections_created_total{}.withLabel("pool", config.name))),
+    _leaseHistMSec(
+      _config.metricsFeature.add(
+        arangodb_connection_pool_lease_time_hist{}.withLabel("pool", config.name))) {
   TRI_ASSERT(config.numIOThreads > 0);
 }
 
