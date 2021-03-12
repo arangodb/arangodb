@@ -1,4 +1,4 @@
-name: arangodb_maintenance_action_registered_counter_total
+name: arangodb_maintenance_action_registered_total
 help: |
   Counter of actions that have been registered in the action registry.
 unit: number

@@ -946,45 +946,6 @@
   type: counter
   unit: ms
 - category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_done_counter_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been discarded because of a duplicate.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Counter of actions that have been discarded because of a duplicate.
-
-    '
-  name: arangodb_maintenance_action_duplicate_counter_total
-  type: counter
-  unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Failure counter for the maintenance actions.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Failure counter for the maintenance actions.
-
-    '
-  name: arangodb_maintenance_action_failure_counter_total
-  type: counter
-  unit: number
-- category: Maintenance
   complexity: medium
   description: 'Time spent in the queue before execution for maintenance actions.
 
@@ -997,19 +958,6 @@
   name: arangodb_maintenance_action_queue_time_msec
   type: histogram
   unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been registered in the action registry.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Counter of actions that have been registered in the action registry.
-
-    '
-  name: arangodb_maintenance_action_registered_counter_total
-  type: counter
-  unit: number
 - category: Maintenance
   complexity: medium
   description: 'Histogram of time spent execution maintenance actions.
@@ -1833,7 +1781,7 @@
   help: 'Number of leader shards on this machine.
 
     '
-  name: arangodb_shards_leader_total
+  name: arangodb_shards_leader_number
   type: gauge
   unit: number
 - category: Replication
@@ -1853,6 +1801,21 @@
   unit: number
 - category: Replication
   complexity: simple
+  description: 'Number of shards on this machine.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of shards on this machine.
+
+    '
+  name: arangodb_shards_number
+  type: gauge
+  unit: number
+- category: Replication
+  complexity: simple
   description: 'Number of leader shards not fully replicated.
 
     '
@@ -1864,21 +1827,6 @@
 
     '
   name: arangodb_shards_out_of_sync
-  type: gauge
-  unit: number
-- category: Replication
-  complexity: simple
-  description: 'Number of shards on this machine.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of shards on this machine.
-
-    '
-  name: arangodb_shards_total
   type: gauge
   unit: number
 - category: Replication
@@ -2026,7 +1974,7 @@
   help: 'Total number of V8 context enter events.
 
     '
-  name: arangodb_v8_context_entered
+  name: arangodb_v8_context_entered_total
   type: counter
   unit: number
 - category: V8

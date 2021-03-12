@@ -1,4 +1,4 @@
-name: arangodb_maintenance_action_done_counter_msec_total
+name: arangodb_maintenance_action_done_msec_total
 help: |
   Accumulated number of action queue time for Maintenance.
 unit: ms

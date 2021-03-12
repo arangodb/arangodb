@@ -1,4 +1,4 @@
-name: arangodb_maintenance_action_failure_counter_total
+name: arangodb_maintenance_action_failure_total
 help: |
   Failure counter for the maintenance actions.
 unit: number
