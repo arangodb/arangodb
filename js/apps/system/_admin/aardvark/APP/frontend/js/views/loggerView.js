@@ -25,6 +25,9 @@
 
         if (options.endpoint) {
           this.endpoint = options.endpoint;
+        }
+
+        if (options.contentDiv) {
           this.el = options.contentDiv;
         }
       }

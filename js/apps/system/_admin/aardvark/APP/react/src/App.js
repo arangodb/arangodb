@@ -5,7 +5,10 @@ import ReactDOM from 'react-dom';
 const jsoneditor = require('jsoneditor');
 const d3 = require('d3');
 const nvd3 = require('nvd3');
-// import * as fs from 'fs';
+
+// parse prometheus
+const parsePrometheusTextFormat = require('parse-prometheus-text-format');
+window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
 // import new react views
 require('./views/shards/ShardsReactView');
@@ -84,6 +87,7 @@ window.Noty = Noty;
 window.ReactDOM = ReactDOM;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
+window.parsePrometheusTextFormat = parsePrometheusTextFormat;
 
 require('../../frontend/js/lib/select2.min.js');
 window._ = _;

@@ -1029,9 +1029,10 @@
       var dlType;
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
-      }
-      if (type === 'json') {
+      } else if (type === 'json') {
         dlType = 'application/json; charset=utf-8';
+      } else if (type === 'text') {
+        dlType = 'text/plain; charset=utf8';
       }
 
       if (dlType) {

@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterUtils.h"
-
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -112,7 +112,7 @@ void abortTransactionsWithFailedServers(ClusterInfo& ci) {
     
     // only care about failed coordinators
     failed.erase(std::remove_if(failed.begin(), failed.end(), [](ServerID const& str) {
-      return str.compare(0, 4, "CRDN") != 0;
+      return !ClusterHelpers::isDBServerName(str);
     }), failed.end());
     if (failed.empty()) {
       return;

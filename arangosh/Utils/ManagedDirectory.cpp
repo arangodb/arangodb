@@ -559,7 +559,10 @@ void ManagedDirectory::File::writeNoLock(char const* data, size_t length) {
   }
 #endif
   if (isGzip()) {
-    gzwrite(_gzFile, data, static_cast<unsigned int>(length));
+    int const written = gzwrite(_gzFile, data, static_cast<unsigned int>(length));
+    if (written < (int)length) {
+      _status = ::genericError(_path, _flags);
+    }
   } else {
     ::rawWrite(_fd, data, length, _status, _path, _flags);
   }
