@@ -59,11 +59,11 @@ using namespace arangodb::maintenance;
 DECLARE_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total, "Accumulated runtime of phase one [ms]");
 DECLARE_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total, "Accumulated runtime of phase two [ms]");
 DECLARE_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total, "Accumulated runtime of agency sync phase [ms]");
-DECLARE_COUNTER(arangodb_maintenance_action_duplicate_counter_total, "Counter of actions that have been discarded because of a duplicate");
-DECLARE_COUNTER(arangodb_maintenance_action_registered_counter_total, "Counter of actions that have been registered in the action registry");
+DECLARE_COUNTER(arangodb_maintenance_action_duplicate_total, "Counter of actions that have been discarded because of a duplicate");
+DECLARE_COUNTER(arangodb_maintenance_action_registered_total, "Counter of actions that have been registered in the action registry");
 DECLARE_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total, "Accumulated action runtime");
 DECLARE_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total, "Accumulated action queue time");
-DECLARE_COUNTER(arangodb_maintenance_action_failure_counter_total, "Failure counter for the maintenance actions");
+DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for the maintenance actions");
 
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
@@ -80,7 +80,7 @@ DECLARE_HISTOGRAM(arangodb_maintenance_phase2_runtime_msec, MaintenanceScale, "M
 DECLARE_HISTOGRAM(arangodb_maintenance_agency_sync_runtime_msec, MaintenanceScale, "Total time spent on agency sync [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_action_runtime_msec, MaintenanceActionRuntimeScale, "Time spent executing a maintenance action [ms]");
 DECLARE_HISTOGRAM(arangodb_maintenance_action_queue_time_msec, MaintenanceActionQueueTimeScale, "Time spent in the queue before execution for maintenance actions [ms]");
-DECLARE_COUNTER(arangodb_maintenance_action_done_counter_total, "Counter of actions that are done and have been removed from the registry");
+DECLARE_COUNTER(arangodb_maintenance_action_done_total, "Counter of actions that are done and have been removed from the registry");
 DECLARE_GAUGE(arangodb_shards_out_of_sync, uint64_t, "Number of leader shards not fully replicated");
 DECLARE_GAUGE(arangodb_shards_total, uint64_t, "Number of shards on this machine");
 DECLARE_GAUGE(arangodb_shards_leader_total, uint64_t, "Number of leader shards on this machine");
@@ -199,9 +199,9 @@ void MaintenanceFeature::initializeMetrics() {
   _shards_leader_count = metricsFeature.add(arangodb_shards_leader_total{});
   _shards_not_replicated_count = metricsFeature.add(arangodb_shards_not_replicated{});
 
-  _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_counter_total{});
-  _action_registered_counter = metricsFeature.add(arangodb_maintenance_action_registered_counter_total{});
-  _action_done_counter = metricsFeature.add(arangodb_maintenance_action_done_counter_total{});
+  _action_duplicated_counter = metricsFeature.add(arangodb_maintenance_action_duplicate_total{});
+  _action_registered_counter = metricsFeature.add(arangodb_maintenance_action_registered_total{});
+  _action_done_counter = metricsFeature.add(arangodb_maintenance_action_done_total{});
 
   const char* instrumentedActions[] =
     {CREATE_COLLECTION, CREATE_DATABASE, UPDATE_COLLECTION, SYNCHRONIZE_SHARD, DROP_COLLECTION, DROP_DATABASE, DROP_INDEX};
@@ -215,7 +215,7 @@ void MaintenanceFeature::initializeMetrics() {
       metricsFeature.add(arangodb_maintenance_action_queue_time_msec{}.withLabel(key, action)),
       metricsFeature.add(arangodb_maintenance_action_accum_runtime_msec_total{}.withLabel(key, action)),
       metricsFeature.add(arangodb_maintenance_action_accum_queue_time_msec_total{}.withLabel(key, action)),
-      metricsFeature.add(arangodb_maintenance_action_failure_counter_total{}.withLabel(key, action)));
+      metricsFeature.add(arangodb_maintenance_action_failure_total{}.withLabel(key, action)));
   }
 }
 

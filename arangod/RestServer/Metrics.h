@@ -503,7 +503,7 @@ template<typename Scale> class Histogram : public Metric {
       uint64_t n = load(i);
       sum += n;
       result += theName;
-      result += "{";
+      result += "_bucket{";
       if (!ls.empty()) {
         result += ls + ",";
       }

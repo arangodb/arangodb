@@ -234,10 +234,10 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
       "arangodb_maintenance_agency_sync_accum_runtime_msec");
     nameVersionTable.try_emplace(
-      "arangodb_maintenance_action_duplicate_counter_total",
+      "arangodb_maintenance_action_duplicate_total",
       "arangodb_maintenance_action_duplicate_counter");
     nameVersionTable.try_emplace(
-      "arangodb_maintenance_action_registered_counter_total",
+      "arangodb_maintenance_action_registered_total",
       "arangodb_maintenance_action_registered_counter");
     nameVersionTable.try_emplace(
       "arangodb_maintenance_action_accum_runtime_msec_total",
@@ -246,10 +246,10 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "arangodb_maintenance_action_accum_queue_time_msec_total",
       "arangodb_maintenance_action_accum_queue_time_msec");
     nameVersionTable.try_emplace(
-      "arangodb_maintenance_action_failure_counter_total",
+      "arangodb_maintenance_action_failure_total",
       "arangodb_maintenance_action_failure_counter");
     nameVersionTable.try_emplace(
-      "arangodb_maintenance_action_done_counter_total",
+      "arangodb_maintenance_action_done_total",
       "arangodb_maintenance_action_done_counter");
     nameVersionTable.try_emplace(
       "arangodb_load_current_accum_runtime_msec_total",
