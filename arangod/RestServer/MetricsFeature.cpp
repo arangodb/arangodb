@@ -305,6 +305,18 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_v8_context_enter_failures_total",
       "arangodb_v8_context_enter_failures");
+    nameVersionTable.try_emplace(
+      "arangodb_v8_context_exited_total",
+      "arangodb_v8_context_exited");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_queue_full_failures_total",
+      "arangodb_scheduler_queue_full_failures");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_threads_started_total",
+      "arangodb_scheduler_threads_started");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_threads_stopped_total",
+      "arangodb_scheduler_threads_stopped");
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();

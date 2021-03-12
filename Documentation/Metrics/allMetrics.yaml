@@ -10,7 +10,7 @@
   help: 'Agency RAFT follower append histogram.
 
     '
-  name: arangodb_agency_append_hist
+  name: arangodb_agency_append_hist_total
   threshold: 'Normally these times should be clearly sub-second.
 
     '
@@ -87,7 +87,7 @@
   help: 'Total number of agency callbacks ever registered.
 
     '
-  name: arangodb_agency_callback_registered
+  name: arangodb_agency_callback_registered_total
   type: counter
   unit: number
 - category: Agency
@@ -165,7 +165,7 @@
   help: 'Agency read no leader.
 
     '
-  name: arangodb_agency_read_no_leader
+  name: arangodb_agency_read_no_leader_total
   threshold: 'This should normally not happen. If it happens regularly, the agency
 
     is reelecting its leader often.
@@ -190,7 +190,7 @@
   help: 'Agency read ok.
 
     '
-  name: arangodb_agency_read_ok
+  name: arangodb_agency_read_ok_total
   type: counter
   unit: number
 - category: Agency
@@ -203,7 +203,7 @@
   help: 'Accumulated supervision runtime.
 
     '
-  name: arangodb_agency_supervision_accum_runtime_msec
+  name: arangodb_agency_supervision_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Agency
@@ -216,7 +216,7 @@
   help: 'Accumulated supervision wait for replication time.
 
     '
-  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec
+  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total
   type: counter
   unit: ms
 - category: Agency
@@ -322,7 +322,7 @@
   help: 'Agency write operations with no leader.
 
     '
-  name: arangodb_agency_write_no_leader
+  name: arangodb_agency_write_no_leader_total
   type: counter
   unit: number
 - category: Agency
@@ -335,7 +335,7 @@
   help: 'Agency write operations which went ok.
 
     '
-  name: arangodb_agency_write_ok
+  name: arangodb_agency_write_ok_total
   type: counter
   unit: number
 - category: Network
@@ -371,7 +371,7 @@
   help: 'Total number of AQL queries finished.
 
     '
-  name: arangodb_aql_all_query
+  name: arangodb_aql_all_query_total
   type: counter
   unit: number
 - category: AQL
@@ -406,21 +406,6 @@
   unit: s
 - category: AQL
   complexity: simple
-  description: 'Number of slow AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query
-  type: counter
-  unit: number
-- category: AQL
-  complexity: simple
   description: 'Execution time histogram for slow AQL queries.
 
     '
@@ -436,6 +421,21 @@
   unit: s
 - category: AQL
   complexity: simple
+  description: 'Number of slow AQL queries.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Number of slow AQL queries.
+
+    '
+  name: arangodb_aql_slow_query_total
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
   description: 'Total execution time of all AQL queries.
 
     '
@@ -446,7 +446,7 @@
   help: 'Total execution time of all AQL queries.
 
     '
-  name: arangodb_aql_total_query_time_msec
+  name: arangodb_aql_total_query_time_msec_total
   type: histogram
   unit: ms
 - category: AQL
@@ -461,7 +461,7 @@
   help: 'Total amount of collection lock acquisition time.
 
     '
-  name: arangodb_collection_lock_acquisition_micros
+  name: arangodb_collection_lock_acquisition_micros_total
   type: counter
   unit: us
 - category: AQL
@@ -492,7 +492,7 @@
   help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
 
     '
-  name: arangodb_collection_lock_sequential_mode
+  name: arangodb_collection_lock_sequential_mode_total
   type: counter
   unit: number
 - category: AQL
@@ -507,7 +507,7 @@
   help: 'Number of timeouts when trying to acquire collection exclusive locks.
 
     '
-  name: arangodb_collection_lock_timeouts_exclusive
+  name: arangodb_collection_lock_timeouts_exclusive_total
   type: counter
   unit: number
 - category: AQL
@@ -522,7 +522,7 @@
   help: 'Number of timeouts when trying to acquire collection write locks.
 
     '
-  name: arangodb_collection_lock_timeouts_write
+  name: arangodb_collection_lock_timeouts_write_total
   type: counter
   unit: number
 - category: Statistics
@@ -540,24 +540,6 @@
   type: histogram
   unit: s
 - category: Statistics
-  complexity: simple
-  description: 'Total number of collection truncate operations (excl. synchronous
-
-    replication). Note that this metric is only present when the command
-
-    line option `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  - coordinator
-  help: 'Total number of collection truncate operations (excl. synchronous replication).
-
-    '
-  name: arangodb_collection_truncates
-  type: counter
-  unit: number
-- category: Statistics
   complexity: medium
   description: 'Total number of collection truncate operations by synchronous
 
@@ -572,7 +554,25 @@
   help: 'Total number of collection truncate operations by synchronous replication.
 
     '
-  name: arangodb_collection_truncates_replication
+  name: arangodb_collection_truncates_replication_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total number of collection truncate operations (excl. synchronous
+
+    replication). Note that this metric is only present when the command
+
+    line option `--server.export-read-write-metrics` is set to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  - coordinator
+  help: 'Total number of collection truncate operations (excl. synchronous replication).
+
+    '
+  name: arangodb_collection_truncates_total
   type: counter
   unit: number
 - category: Connectivity
@@ -592,7 +592,7 @@
   help: 'Total number of connections created for connection pool.
 
     '
-  name: arangodb_connection_pool_connections_created
+  name: arangodb_connection_pool_connections_created_total
   type: counter
   unit: number
 - category: Connectivity
@@ -649,7 +649,7 @@
   help: 'Total number of failed connection leases.
 
     '
-  name: arangodb_connection_pool_leases_failed
+  name: arangodb_connection_pool_leases_failed_total
   type: counter
   unit: number
 - category: Connectivity
@@ -669,7 +669,7 @@
   help: 'Total number of successful connection leases from connection pool.
 
     '
-  name: arangodb_connection_leases_successful
+  name: arangodb_connection_leases_successful_total
   type: counter
   unit: number
 - category: Statistics
@@ -760,23 +760,6 @@
   unit: s
 - category: Statistics
   complexity: medium
-  description: 'Total number of document write operations (excl. synchronous replication).
-
-    This metric is only present if the option
-
-    `--server.export-read-write-metrics` is set to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total number of document write operations (excl. synchronous replication).
-
-    '
-  name: arangodb_document_writes
-  type: counter
-  unit: number
-- category: Statistics
-  complexity: medium
   description: 'Total number of document write operations by synchronous replication.
 
     This metric is only present if the option
@@ -789,7 +772,24 @@
   help: 'Total number of document write operations by synchronous replication.
 
     '
-  name: arangodb_document_writes_replication
+  name: arangodb_document_writes_replication_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: medium
+  description: 'Total number of document write operations (excl. synchronous replication).
+
+    This metric is only present if the option
+
+    `--server.export-read-write-metrics` is set to `true`.
+
+    '
+  exposedBy:
+  - dbserver
+  help: 'Total number of document write operations (excl. synchronous replication).
+
+    '
+  name: arangodb_document_writes_total
   type: counter
   unit: number
 - category: Health
@@ -821,7 +821,7 @@
   help: 'Total number of failed heartbeat transmissions.
 
     '
-  name: arangodb_heartbeat_failures
+  name: arangodb_heartbeat_failures_total
   threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
 
     lead to failover actions which are ultimately bad for the service.
@@ -860,7 +860,7 @@
   help: 'Number of intermediate commits performed in transactions.
 
     '
-  name: arangodb_intermediate_commits
+  name: arangodb_intermediate_commits_total
   type: counter
   unit: number
 - category: Maintenance
@@ -874,7 +874,7 @@
   help: 'Accumulated runtime of `Current` loading.
 
     '
-  name: arangodb_load_current_accum_runtime_msec
+  name: arangodb_load_current_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -902,7 +902,7 @@
   help: 'Accumulated runtime of `Plan` loading
 
     '
-  name: arangodb_load_plan_accum_runtime_msec
+  name: arangodb_load_plan_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -929,7 +929,7 @@
   help: 'Accumulated action queue time for Maintenance.
 
     '
-  name: arangodb_maintenance_action_accum_queue_time_msec
+  name: arangodb_maintenance_action_accum_queue_time_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -942,7 +942,7 @@
   help: 'Accumulated action queue time for Maintenance.
 
     '
-  name: arangodb_maintenance_action_accum_runtime_msec
+  name: arangodb_maintenance_action_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -955,7 +955,7 @@
   help: 'Accumulated number of action queue time for Maintenance.
 
     '
-  name: arangodb_maintenance_action_done_counter_msec
+  name: arangodb_maintenance_action_done_counter_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -968,7 +968,7 @@
   help: 'Counter of actions that have been discarded because of a duplicate.
 
     '
-  name: arangodb_maintenance_action_duplicate_counter
+  name: arangodb_maintenance_action_duplicate_counter_total
   type: counter
   unit: number
 - category: Maintenance
@@ -981,7 +981,7 @@
   help: 'Failure counter for the maintenance actions.
 
     '
-  name: arangodb_maintenance_action_failure_counter
+  name: arangodb_maintenance_action_failure_counter_total
   type: counter
   unit: number
 - category: Maintenance
@@ -1007,7 +1007,7 @@
   help: 'Counter of actions that have been registered in the action registry.
 
     '
-  name: arangodb_maintenance_action_registered_counter
+  name: arangodb_maintenance_action_registered_counter_total
   type: counter
   unit: number
 - category: Maintenance
@@ -1036,7 +1036,7 @@
   help: 'Accumulated runtime of agency sync phase.
 
     '
-  name: arangodb_maintenance_agency_sync_accum_runtime_msec
+  name: arangodb_maintenance_agency_sync_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -1062,7 +1062,7 @@
   help: 'Accumulated runtime of phase one in maintenance.
 
     '
-  name: arangodb_maintenance_phase1_accum_runtime_msec
+  name: arangodb_maintenance_phase1_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -1088,7 +1088,7 @@
   help: 'Accumulated runtime of phase two of maintenance.
 
     '
-  name: arangodb_maintenance_phase2_accum_runtime_msec
+  name: arangodb_maintenance_phase2_accum_runtime_msec_total
   type: counter
   unit: ms
 - category: Maintenance
@@ -1114,7 +1114,7 @@
   help: 'Number of requests forwarded to another coordinator.
 
     '
-  name: arangodb_network_forwarded_requests
+  name: arangodb_network_forwarded_requests_total
   type: counter
   unit: number
 - category: Network
@@ -1144,7 +1144,7 @@
   help: 'Number of internal requests that have timed out.
 
     '
-  name: arangodb_network_request_timeouts
+  name: arangodb_network_request_timeouts_total
   type: counter
   unit: number
 - category: Network
@@ -1185,7 +1185,7 @@
   help: 'Number of cluster replication inventory requests received.
 
     '
-  name: arangodb_replication_cluster_inventory_requests
+  name: arangodb_replication_cluster_inventory_requests_total
   type: counter
   unit: number
 - category: Replication
@@ -1198,7 +1198,7 @@
   help: 'Accumulated time needed to apply replication dump data.
 
     '
-  name: arangodb_replication_dump_apply_time
+  name: arangodb_replication_dump_apply_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1211,7 +1211,7 @@
   help: 'Number of bytes received in replication dump requests.
 
     '
-  name: arangodb_replication_dump_bytes_received
+  name: arangodb_replication_dump_bytes_received_total
   type: counter
   unit: bytes
 - category: Replication
@@ -1224,7 +1224,7 @@
   help: 'Number of documents received in replication dump requests.
 
     '
-  name: arangodb_replication_dump_documents
+  name: arangodb_replication_dump_documents_total
   type: counter
   unit: number
 - category: Replication
@@ -1237,7 +1237,7 @@
   help: 'Accumulated wait time for replication requests.
 
     '
-  name: arangodb_replication_dump_request_time
+  name: arangodb_replication_dump_request_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1250,7 +1250,7 @@
   help: 'Number of replication dump requests.
 
     '
-  name: arangodb_replication_dump_requests
+  name: arangodb_replication_dump_requests_total
   type: counter
   unit: number
 - category: Replication
@@ -1263,7 +1263,7 @@
   help: 'Number of failed connection attempts and response errors during replication.
 
     '
-  name: arangodb_replication_failed_connects
+  name: arangodb_replication_failed_connects_total
   type: counter
   unit: number
 - category: Replication
@@ -1276,7 +1276,7 @@
   help: 'Accumulated wait time for replication key chunks determination requests.
 
     '
-  name: arangodb_replication_initial_chunks_requests_time
+  name: arangodb_replication_initial_chunks_requests_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1289,7 +1289,7 @@
   help: 'Accumulated time needed to apply replication docs data.
 
     '
-  name: arangodb_replication_initial_docs_requests_time
+  name: arangodb_replication_initial_docs_requests_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1302,7 +1302,7 @@
   help: 'Accumulated time needed to apply replication initial sync insertions.
 
     '
-  name: arangodb_replication_initial_insert_apply_time
+  name: arangodb_replication_initial_insert_apply_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1315,7 +1315,7 @@
   help: 'Accumulated wait time for replication keys requests.
 
     '
-  name: arangodb_replication_initial_keys_requests_time
+  name: arangodb_replication_initial_keys_requests_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1328,7 +1328,7 @@
   help: 'Accumulated time needed for replication initial sync key lookups.
 
     '
-  name: arangodb_replication_initial_lookup_time
+  name: arangodb_replication_initial_lookup_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1341,7 +1341,7 @@
   help: 'Accumulated time needed to apply replication initial sync removals.
 
     '
-  name: arangodb_replication_initial_remove_apply_time
+  name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1354,7 +1354,7 @@
   help: 'Accumulated time needed to apply replication initial sync removals:
 
     '
-  name: arangodb_replication_initial_remove_apply_time
+  name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1367,7 +1367,7 @@
   help: 'Number of documents inserted by replication initial sync.
 
     '
-  name: arangodb_replication_initial_sync_docs_inserted
+  name: arangodb_replication_initial_sync_docs_inserted_total
   type: counter
   unit: number
 - category: Replication
@@ -1380,7 +1380,7 @@
   help: 'Number of documents removed by replication initial sync.
 
     '
-  name: arangodb_replication_initial_sync_docs_removed
+  name: arangodb_replication_initial_sync_docs_removed_total
   type: counter
   unit: number
 - category: Replication
@@ -1393,7 +1393,7 @@
   help: 'Number of documents requested by replication initial sync.
 
     '
-  name: arangodb_replication_initial_sync_docs_requested
+  name: arangodb_replication_initial_sync_docs_requested_total
   type: counter
   unit: number
 - category: Replication
@@ -1406,7 +1406,7 @@
   help: 'Number of replication initial sync docs requests.
 
     '
-  name: arangodb_replication_initial_sync_docs_requests
+  name: arangodb_replication_initial_sync_docs_requests_total
   type: counter
   unit: number
 - category: Replication
@@ -1419,7 +1419,7 @@
   help: 'Number of replication initial sync keys requests.
 
     '
-  name: arangodb_replication_initial_sync_keys_requests
+  name: arangodb_replication_initial_sync_keys_requests_total
   type: counter
   unit: number
 - category: Replication
@@ -1432,7 +1432,7 @@
   help: 'Total number of synchronous replication requests.
 
     '
-  name: arangodb_replication_synchronous_requests_total_number.
+  name: arangodb_replication_synchronous_requests_total_number._total
   type: counter
   unit: number
 - category: Replication
@@ -1445,7 +1445,7 @@
   help: 'Total time needed for all synchronous replication requests.
 
     '
-  name: arangodb_replication_synchronous_requests_total_time
+  name: arangodb_replication_synchronous_requests_total_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1458,7 +1458,7 @@
   help: 'Accumulated time needed to apply replication tailing data.
 
     '
-  name: arangodb_replication_tailing_apply_time
+  name: arangodb_replication_tailing_apply_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1471,7 +1471,7 @@
   help: 'Accumulated number of bytes received for replication tailing requests.
 
     '
-  name: arangodb_replication_tailing_bytes_received
+  name: arangodb_replication_tailing_bytes_received_total
   type: counter
   unit: bytes
 - category: Replication
@@ -1485,7 +1485,7 @@
   help: 'Accumulated number of replication tailing document inserts/replaces processed.
 
     '
-  name: arangodb_replication_tailing_documents
+  name: arangodb_replication_tailing_documents_total
   type: counter
   unit: number
 - category: Replication
@@ -1498,7 +1498,7 @@
   help: 'Number of replication tailing failures due to missing tick on leader.
 
     '
-  name: arangodb_replication_tailing_follow_tick_failures
+  name: arangodb_replication_tailing_follow_tick_failures_total
   type: counter
   unit: number
 - category: Replication
@@ -1511,7 +1511,7 @@
   help: 'Number of replication tailing markers processed.
 
     '
-  name: arangodb_replication_tailing_markers
+  name: arangodb_replication_tailing_markers_total
   type: counter
   unit: number
 - category: Replication
@@ -1524,7 +1524,7 @@
   help: 'Number of replication tailing document removals processed.
 
     '
-  name: arangodb_replication_tailing_removals
+  name: arangodb_replication_tailing_removals_total
   type: counter
   unit: number
 - category: Replication
@@ -1537,7 +1537,7 @@
   help: 'Aggregated wait time for replication tailing requests.
 
     '
-  name: arangodb_replication_tailing_request_time
+  name: arangodb_replication_tailing_request_time_total
   type: counter
   unit: ms
 - category: Replication
@@ -1550,7 +1550,7 @@
   help: 'Number of replication tailing requests.
 
     '
-  name: arangodb_replication_tailing_requests
+  name: arangodb_replication_tailing_requests_total
   type: counter
   unit: number
 - category: RocksDB
@@ -1564,7 +1564,7 @@
   help: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
     '
-  name: arangodb_rocksdb_write_stalls
+  name: arangodb_rocksdb_write_stalls_total
   type: counter
   unit: number
 - category: RocksDB
@@ -1578,7 +1578,7 @@
   help: 'Number of times RocksDB has entered a stopped write state.
 
     '
-  name: arangodb_rocksdb_write_stops
+  name: arangodb_rocksdb_write_stops_total
   type: counter
   unit: number
 - category: Scheduler
@@ -1773,7 +1773,7 @@
   help: 'Number of tasks dropped and not added to internal queue.
 
     '
-  name: arangodb_scheduler_queue_full_failures
+  name: arangodb_scheduler_queue_full_failures_total
   type: counter
   unit: number
 - category: Scheduler
@@ -1803,7 +1803,7 @@
   help: 'Total accumulated number of scheduler threads started.
 
     '
-  name: arangodb_scheduler_threads_started
+  name: arangodb_scheduler_threads_started_total
   type: counter
   unit: number
 - category: Scheduler
@@ -1818,7 +1818,7 @@
   help: 'Accumulated total number of scheduler threads stopped.
 
     '
-  name: arangodb_scheduler_threads_stopped
+  name: arangodb_scheduler_threads_stopped_total
   type: counter
   unit: number
 - category: Replication
@@ -1894,7 +1894,7 @@
   help: 'Number of times a mismatching shard checksum was detected when syncing shards.
 
     '
-  name: arangodb_sync_wrong_checksum
+  name: arangodb_sync_wrong_checksum_total
   type: counter
   unit: number
 - category: Transactions
@@ -1909,7 +1909,7 @@
   help: 'Number of transactions aborted.
 
     '
-  name: arangodb_transactions_aborted
+  name: arangodb_transactions_aborted_total
   type: counter
   unit: number
 - category: Transactions
@@ -1924,7 +1924,7 @@
   help: 'Number of transactions committed.
 
     '
-  name: arangodb_transactions_committed
+  name: arangodb_transactions_committed_total
   type: counter
   unit: number
 - category: Transactions
@@ -1939,7 +1939,7 @@
   help: 'Total number of expired transactions.
 
     '
-  name: arangodb_transactions_expired
+  name: arangodb_transactions_expired_total
   type: counter
   unit: number
 - category: Transactions
@@ -1954,7 +1954,7 @@
   help: 'Number of transactions started.
 
     '
-  name: arangodb_transactions_started
+  name: arangodb_transactions_started_total
   type: counter
   unit: number
 - category: V8
@@ -1968,7 +1968,7 @@
   help: 'Total number of V8 contexts ever created.
 
     '
-  name: arangodb_v8_context_created
+  name: arangodb_v8_context_created_total
   type: counter
   unit: number
 - category: V8
@@ -1982,7 +1982,7 @@
   help: 'Accumulated total time for creating V8 contexts.
 
     '
-  name: arangodb_v8_context_creation_time_msec
+  name: arangodb_v8_context_creation_time_msec_total
   type: counter
   unit: ms
 - category: V8
@@ -1996,7 +1996,7 @@
   help: 'Total number of V8 contexts ever destroyed.
 
     '
-  name: arangodb_v8_context_destroyed
+  name: arangodb_v8_context_destroyed_total
   type: counter
   unit: number
 - category: V8
@@ -2011,7 +2011,7 @@
   help: 'Total number of V8 context enter failures.
 
     '
-  name: arangodb_v8_context_enter_failures
+  name: arangodb_v8_context_enter_failures_total
   type: counter
   unit: number
 - category: V8
@@ -2041,6 +2041,6 @@
   help: 'Total number of V8 context exit events.
 
     '
-  name: arangodb_v8_context_exited
+  name: arangodb_v8_context_exited_total
   type: counter
   unit: number

@@ -1,4 +1,4 @@
-name: arangodb_scheduler_threads_started
+name: arangodb_scheduler_threads_started_total
 help: |
   Total accumulated number of scheduler threads started.
 unit: number

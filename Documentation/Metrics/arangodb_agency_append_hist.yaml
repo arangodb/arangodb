@@ -1,4 +1,4 @@
-name: arangodb_agency_append_hist
+name: arangodb_agency_append_hist_total
 help: |
   Agency RAFT follower append histogram.
 unit: ms

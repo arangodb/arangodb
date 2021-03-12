@@ -1,4 +1,4 @@
-name: arangodb_scheduler_threads_stopped
+name: arangodb_scheduler_threads_stopped_total
 help: |
   Accumulated total number of scheduler threads stopped.
 unit: number

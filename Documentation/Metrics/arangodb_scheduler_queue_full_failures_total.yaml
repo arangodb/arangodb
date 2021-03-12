@@ -1,4 +1,4 @@
-name: arangodb_scheduler_queue_full_failures
+name: arangodb_scheduler_queue_full_failures_total
 help: |
   Number of tasks dropped and not added to internal queue.
 unit: number
