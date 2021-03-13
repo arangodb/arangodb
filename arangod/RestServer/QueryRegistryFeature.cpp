@@ -105,12 +105,24 @@ struct SlowQueryTimeScale {
   static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
 };
 
-DECLARE_COUNTER(arangodb_aql_all_query_total, "Total number of AQL queries finished");
-DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale, "Execution time histogram for all AQL queries [s]");
-DECLARE_COUNTER(arangodb_aql_slow_query_total, "Total number of slow AQL queries finished");
-DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale, "Execution time histogram for slow AQL queries [s]");
-DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total, "Total execution time of all AQL queries [ms]");
-DECLARE_GAUGE(arangodb_aql_current_query, uint64_t, "Current number of AQL queries executing");
+DECLARE_COUNTER(arangodb_aql_all_query_total,
+                "Total number of AQL queries finished");
+DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale,
+                  "Execution time histogram for all AQL queries [s]");
+DECLARE_COUNTER(arangodb_aql_slow_query_total,
+                "Total number of slow AQL queries finished");
+DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale,
+                  "Execution time histogram for slow AQL queries [s]");
+DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total,
+                "Total execution time of all AQL queries [ms]");
+DECLARE_GAUGE(arangodb_aql_current_query, uint64_t,
+              "Current number of AQL queries executing");
+DECLARE_GAUGE(
+    arangodb_aql_global_memory_usage, uint64_t,
+    "Total memory usage of all AQL queries executing [bytes], granularity: " +
+        std::to_string(ResourceMonitor::chunkSize) + " bytes steps");
+DECLARE_GAUGE(arangodb_aql_global_memory_limit, uint64_t,
+              "Total memory limit for all AQL queries combined [bytes]");
 
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
@@ -149,17 +161,11 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _slowQueriesCounter(
         server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
       _runningQueries(
-        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})),
       _globalQueryMemoryUsage(
-        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_global_memory_usage", 0, std::string("Total memory usage of all AQL queries executing [bytes]"
-          ", granulariy: ") + std::to_string(ResourceMonitor::chunkSize) + " bytes steps")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
       _globalQueryMemoryLimit(
-        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_global_memory_limit", 0, "Total memory limit for all AQL queries combined [bytes]")) {
-  
-        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
