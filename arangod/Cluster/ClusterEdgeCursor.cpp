@@ -83,7 +83,7 @@ void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(_cache != nullptr);
 
-  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions(), vertexId, depth, _edgeList);
+  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions()->getExpressionCtx(), vertexId, depth, _edgeList);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

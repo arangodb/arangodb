@@ -1,0 +1,13 @@
+name: arangodb_shards_not_replicated
+help: |
+  Number of shards not replicated at all.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of shards not replicated at all.

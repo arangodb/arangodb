@@ -27,15 +27,16 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
 
-
 template <class ProviderImpl>
 ProviderTracer<ProviderImpl>::ProviderTracer(arangodb::aql::QueryContext& queryContext,
-                                             BaseProviderOptions opts, arangodb::ResourceMonitor& resourceMonitor)
+                                             Options opts,
+                                             arangodb::ResourceMonitor& resourceMonitor)
     : _impl{queryContext, opts, resourceMonitor} {}
 
 template <class ProviderImpl>
@@ -62,20 +63,11 @@ futures::Future<std::vector<typename ProviderImpl::Step*>> ProviderTracer<Provid
 }
 
 template <class ProviderImpl>
-auto ProviderTracer<ProviderImpl>::expand(Step const& from,
-                                                                              size_t previous,
-                                                                              std::function<void(Step)> callback) -> void {
+auto ProviderTracer<ProviderImpl>::expand(Step const& from, size_t previous,
+                                          std::function<void(Step)> callback) -> void {
   double start = TRI_microtime();
   TRI_DEFER(_stats["expand"].addTiming(TRI_microtime() - start));
   _impl.expand(from, previous, std::move(callback));
-}
-
-template <class ProviderImpl>
-void ProviderTracer<ProviderImpl>::insertEdgeIntoResult(EdgeDocumentToken edge,
-                                                        arangodb::velocypack::Builder& builder) {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["insertEdgeIntoResult"].addTiming(TRI_microtime() - start));
-  return _impl.insertEdgeIntoResult(edge, builder);
 }
 
 template <class ProviderImpl>
@@ -95,6 +87,13 @@ void ProviderTracer<ProviderImpl>::addEdgeToBuilder(typename Step::Edge const& e
 }
 
 template <class ProviderImpl>
+void ProviderTracer<ProviderImpl>::destroyEngines() {
+  double start = TRI_microtime();
+  TRI_DEFER(_stats["destroyEngines"].addTiming(TRI_microtime() - start));
+  return _impl.destroyEngines();
+}
+
+template <class ProviderImpl>
 aql::TraversalStats ProviderTracer<ProviderImpl>::stealStats() {
   double start = TRI_microtime();
   TRI_DEFER(_stats["stealStats"].addTiming(TRI_microtime() - start));
@@ -108,11 +107,5 @@ transaction::Methods* ProviderTracer<ProviderImpl>::trx() {
   return _impl.trx();
 }
 
-template <class ProviderImpl>
-arangodb::ResourceMonitor* ProviderTracer<ProviderImpl>::resourceMonitor() {
-  double start = TRI_microtime();
-  TRI_DEFER(_stats["resourceMonitor"].addTiming(TRI_microtime() - start));
-  return _impl.resourceMonitor();
-}
-
 template class ::arangodb::graph::ProviderTracer<arangodb::graph::SingleServerProvider>;
+template class ::arangodb::graph::ProviderTracer<arangodb::graph::ClusterProvider>;

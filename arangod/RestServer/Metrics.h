@@ -46,7 +46,8 @@ class Metric {
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
-  virtual void toPrometheus(std::string& result) const = 0;
+  virtual std::string type() const = 0;
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
@@ -59,7 +60,6 @@ struct Metrics {
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
 };
-
 
 /**
  * @brief Counter functionality
@@ -75,12 +75,13 @@ class Counter : public Metric {
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);
+  virtual std::string type() const override { return "counter"; }
   void count();
   void count(uint64_t);
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&) const override;
+  virtual void toPrometheus(std::string&, std::string const&, std::string const&) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -98,6 +99,7 @@ template<typename T> class Gauge : public Metric {
   ~Gauge() = default;
   
   std::ostream& print(std::ostream&) const;
+  virtual std::string type() const override { return "gauge"; }
 
   T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
     if constexpr(std::is_integral_v<T>) {
@@ -171,13 +173,21 @@ template<typename T> class Gauge : public Metric {
   
   T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
   
-  void toPrometheus(std::string& result) const override {
-    result += "\n# HELP " + name() + " " + help() + "\n";
-    result += "# TYPE " + name() + " gauge\n" + name();
-    if (!labels().empty()) {
-      result += "{" + labels() + "}";
+  void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
+    result += !alternativeName.empty() ? alternativeName : name();
+    result += "{";
+    bool haveGlobals = false;
+    if (!globalLabels.empty()) {
+      result += globalLabels;
+      haveGlobals = true;
     }
-    result += " " + std::to_string(load()) + "\n";
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        result += ",";
+      }
+      result += labels();
+    }
+    result += "} " + std::to_string(load()) + "\n";
   }
  private:
   std::atomic<T> _g;
@@ -427,6 +437,8 @@ template<typename Scale> class Histogram : public Metric {
     }
   }
 
+  virtual std::string type() const override { return "histogram"; }
+  
   Scale const& scale() {
     return _scale;
   }
@@ -469,28 +481,38 @@ template<typename Scale> class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result) const override {
-    result += "\n# HELP " + name() + " " + help() + "\n";
-    result += "# TYPE " + name() + " histogram\n";
-    std::string lbs = labels();
-    auto const haveLabels = !lbs.empty();
-    auto const separator = haveLabels && lbs.back() != ',';
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const override {
     uint64_t sum(0);
+    std::string ls;
+    bool haveGlobals = false;
+    if (!globals.empty()) {
+      ls += globals;
+      haveGlobals = true;
+    }
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        ls += ",";
+      }
+      ls += labels();
+    }
+
+    std::string const& theName 
+      = !alternativeName.empty() ? alternativeName : name();
+
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{";
-      if (haveLabels) {
-        result += lbs;
+      result += theName;
+      result += "_bucket{";
+      if (!ls.empty()) {
+        result += ls + ",";
       }
-      if (separator) {
-        result += ",";
-      }
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
+      auto v = !alternativeName.empty() ? n : sum;
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(v) + "\n";
     }
-    result += name() + "_count";
-    if (!labels().empty()) {
-      result += "{" + labels() + "}";
+    result += theName + "_count";
+    if (!ls.empty()) {
+      result += "{" + ls + "}";
     }
     result += " " + std::to_string(sum) + "\n";
   }

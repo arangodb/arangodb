@@ -24,6 +24,7 @@
 #include "PathValidator.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Types/ValidationResult.h"
 
@@ -84,7 +85,8 @@ auto PathValidator<PathStore, vertexUniqueness>::validatePath(
           // If otherUniqueVertices has our step, we will return false and abort.
           // Otherwise we'll return true here.
           // This guarantees we have no vertex on both sides of the path twice.
-          return otherUniqueVertices.find(innerStep.getVertexIdentifier()) == otherUniqueVertices.end();
+          return otherUniqueVertices.find(innerStep.getVertexIdentifier()) ==
+                 otherUniqueVertices.end();
         });
     if (!success) {
       return ValidationResult{ValidationResult::Type::FILTER};
@@ -112,7 +114,14 @@ auto PathValidator<PathStore, vertexUniqueness>::exposeUniqueVertices() const
 
 namespace arangodb {
 namespace graph {
+
+/* SingleServerProvider Section */
 template class PathValidator<PathStore<SingleServerProvider::Step>, VertexUniquenessLevel::PATH>;
 template class PathValidator<PathStoreTracer<PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>;
+
+/* ClusterProvider Section */
+template class PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>;
+template class PathValidator<PathStoreTracer<PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>;
+
 }  // namespace graph
 }  // namespace arangodb
