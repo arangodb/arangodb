@@ -159,7 +159,7 @@ class PhysicalCollection {
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
 
   /// @brief compact-data operation
-  virtual Result compact() = 0;
+  virtual void compact() {}
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop

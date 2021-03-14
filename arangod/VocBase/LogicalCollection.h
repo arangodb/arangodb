@@ -269,7 +269,7 @@ class LogicalCollection : public LogicalDataSource {
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
-  Result compact();
+  void compact();
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,
                    std::pair<LocalDocumentId, TRI_voc_rid_t>& result) const;
