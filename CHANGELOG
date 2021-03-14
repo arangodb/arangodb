@@ -1,6 +1,49 @@
 devel
 -----
 
+* The cluster dashboard charts in the web UI are now more readable during the
+  initialization phase. Additionally, the amount of agents are now displayed
+  there as well. An agent failure will also appear here in case it exists.
+
+* Added more useful information during the SmartGraph creation in the web UI
+  in case the current database is a OneShard database.
+
+* Add support for building with Zen 3 CPU when optimizing for the local
+  architecture.
+  
+* The web UI's node overview now displays also agent information (cluster only).
+
+* The statistics view in the web UI does now provide more system specific
+  information in case the Metrics API is enabled. Different statistics may
+  be visible depending on the operating system.
+
+* Added metrics documentation snippets and infrastructure for that.
+
+* Added a new cluster distribution view to the web UI. The view includes general
+  details about cluster-wide distrubution in general as well as more detailed 
+  shard distribution specific information.
+
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+  to any read request. Fixes a wrongly responded 404 from chaos
+  tests.
+
+* Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
+
+* Reasonably harden MoveShard against invalid VelocyPack input.
+
+* Removed older reference to VelocyPackDumper.
+
+* Added `--documents-per-batch` option to arangoexport.
+  This option allows to control the number of documents to be returned by each
+  server-side batch. It can be used to limit the number of documents per batch
+  when exporting collections with large documents.
+
+* Added a new metrics view to the web UI. This view can be used in a clustered
+  environment as well as in a single instance. Metrics are displayed either in
+  a tabular format or as plain text (Prometheus Text-based format).
+  Additionally, the metrics can be downloaded there.
+
 * Added a new maintenance mode tab to the web UI in cluster mode. 
   The new tab shows the current state of the cluster supervision maintenance 
   and allows to enable/disable the maintenance mode from there. The tab will
@@ -68,6 +111,8 @@ devel
 * Added logging of elapsed time of ArangoSearch commit/consolidation/cleanup 
   jobs.
 
+* Added list-repeat AIR primitive that creates a list containing n copies of the input value.
+
 * Updated OpenSSL to 1.1.1j and OpenLDAP to 2.4.57.
 
 * Prevent arangosh from trying to connect after every executed command.
@@ -81,6 +126,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
 
 * Reduce memory footprint of agency Store in Node class.
 
@@ -367,17 +416,17 @@ devel
   possible for a very small number of queries and even had adverse effects,
   so it is now removed entirely.
 
-* On Linux and MacOS, require at least 65535 usable file descriptors at startup.
+* On Linux and MacOS, require at least 8192 usable file descriptors at startup.
   If less file descriptors are available to the arangod process, then the
   startup is automatically aborted.
 
-  Even the chosen minimum value of 65535 will often not be high enough to
+  Even the chosen minimum value of 8192 will often not be high enough to
   store considerable amounts of data. However, no higher value was chosen
   in order to not make too many existing small installations fail at startup
   after upgrading.
 
   The required number of file descriptors can be configured using the startup
-  option `--server.descriptors-minimum`. It defaults to 65535, but it can be
+  option `--server.descriptors-minimum`. It defaults to 8192, but it can be
   increased to ensure that arangod can make use of a sufficiently high number
   of files. Setting `--server.descriptors-minimum` to a value of `0` will
   make the startup require only an absolute minimum limit of 1024 file

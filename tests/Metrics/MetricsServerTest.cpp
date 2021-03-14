@@ -26,6 +26,7 @@
 
 #include "RestServer/MetricsFeature.h"
 #include "Mocks/Servers.h"
+#include "MetricsFeatureTest.h"
 
 using namespace arangodb;
 
@@ -33,7 +34,7 @@ TEST(MetricsServerTest, test_setup) {
   tests::mocks::MockMetricsServer server;
   MetricsFeature& feature = server.getFeature<MetricsFeature>();
 
-  auto& counter = feature.counter("counter", 0, "one counter");
+  auto& counter = feature.add(COUNTER{});
   ASSERT_EQ(counter.load(), 0);
   counter.count();
   ASSERT_EQ(counter.load(), 1);

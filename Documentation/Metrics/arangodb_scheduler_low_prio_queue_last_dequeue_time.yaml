@@ -1,0 +1,13 @@
+name: arangodb_scheduler_low_prio_queue_last_dequeue_time
+help: |
+  Last recorded dequeue time for a low priority queue item.
+unit: ms
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Last recorded dequeue time for a low priority queue item.
