@@ -1,4 +1,4 @@
-v3.7.10 (XXXX-XX-XX)
+v3.7.10 (2021-03-14)
 --------------------
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
