@@ -100,8 +100,8 @@ void AutoTuneThread::run() {
         newMax = (currentMax + periodActual / period) / 2;
       }
 
-      // grow number slowly if possible (25%)
-      newMax *= 1.25;
+      // grow number slowly (25%)
+      newMax += newMax / 4;
 
       // make "per thread"
       newMax /= _importHelper.getThreadCount();
