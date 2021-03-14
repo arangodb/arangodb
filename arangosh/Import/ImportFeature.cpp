@@ -85,7 +85,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
   options->addOption("--auto-rate-limit",
                      "adjust the data loading rate automatically, starting at --batch-size bytes per thread per second",
                      new BooleanParameter(&_autoChunkSize))
-                     .setIntroducedIn(30800);
+                     .setIntroducedIn(30711);
 
   options->addOption(
       "--backslash-escape",
