@@ -153,7 +153,7 @@ bool ClusterIndex::hasSelectivityEstimate() const {
            (_estimates && 
             (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-              _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
+             _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
