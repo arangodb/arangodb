@@ -4,12 +4,27 @@ devel
 * Fixed a bug in the index count optimization that doubled counted documents
   when using array expansions in the fields definition.
   
+* Don't store selectivity estimate values for newly created system collections.
+
+  Not storing the estimates has a benefit especially for the `_statistics`
+  system collections, which are written to periodically even on otherwise
+  idle servers. In this particular case, the actual statistics data was way
+  smaller than the writes caused by the index estimate values, causing a
+  disproportional overhead just for maintaining the selectivity estimates.
+  The change now turns off the selectivity estimates for indexes in all newly 
+  created system collections, and for new user-defined indexes of type
+  "persistent", "hash" or "skiplist", there is now an attribute "estimates"
+  which can be set to `false` to disable the selectivity estimates for the index.
+  The attribute is optional. Not setting it will lead to the index being
+  created with selectivity estimates, so this is a downwards-compatible change
+  for user-defined indexes.
+
 * Added startup option `--query.global-memory-limit` to set a limit on the
   combined estimated memory usage of all AQL queries (in bytes). 
   If this option has a value of `0`, then no memory limit is in place. 
   This is also the default value and the same behavior as in previous versions
   of ArangoDB. 
-  Setting the option to a value greater zero will mean that the total memory
+  Setting the option to a value greater than zero will mean that the total memory
   usage of all AQL queries will be limited approximately to the configured value. 
   The limit is enforced by each server in a cluster independently, i.e. it can 
   be set separately for coordinators, DB servers etc. The memory usage of a 
@@ -50,6 +65,9 @@ devel
   variable. The `TZ_DATA` variable is useful in environments` that start arangod
   from some unusual locations, when it can't find its `tzdata` directory 
   automatically.
+
+* Fixed a bug in query cost estimation when a NoResults node occured in a spliced
+  subquery. This could lead to a server crash.
 
 * Fix slower-than-necessary arangoimport behavior:
   arangoimport has a built-in rate limiter, which can be useful for importing
