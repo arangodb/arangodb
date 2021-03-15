@@ -1103,10 +1103,9 @@ install(
 
 install_config(arangod)
 
+add_dependencies(arangod ${LIBZLIB} arango_iresearch)
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangod zlibstatic v8_build arango_iresearch)
-else ()
-  add_dependencies(arangod zlibstatic arango_iresearch)
+  add_dependencies(arangod v8_build)
 endif ()
 
 if (USE_JEMALLOC)
