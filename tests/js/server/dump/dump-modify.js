@@ -489,6 +489,20 @@ function dumpTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test latestId
+////////////////////////////////////////////////////////////////////////////////
+
+    testOffsetLatestId : function () {
+      // this should offset the unique id
+      const nextValue = global.ArangoAgency.uniqid(10000000);
+      assertEqual(finalOffset, 20000000);
+      global.ArangoAgency.uniqid(10000000);
+      global.ArangoAgency.uniqid(10000000);
+      const finalOffset = global.ArangoAgency.uniqid(10000000);
+      assertTrue(finalOffset > nextValue);
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring
 ////////////////////////////////////////////////////////////////////////////////
 /* not yet implemented

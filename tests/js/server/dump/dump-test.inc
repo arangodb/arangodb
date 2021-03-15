@@ -1170,7 +1170,10 @@
         assertTrue(doc._key.startsWith("cheese:"));
       },
 
-
+      testLatestId : function() {
+        const nextValue = global.ArangoAgency.uniqid(10000000);
+        assertEqual(finalOffset, 20000000);
+      },
       
     };
   };
