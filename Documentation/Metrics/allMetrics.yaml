@@ -1823,7 +1823,10 @@
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of leader shards on this machine.
+  description: 'Number of leader shards on this machine. Every shard has a leader
+    and
+
+    potentially multiple followers.
 
     '
   exposedBy:
@@ -1834,11 +1837,41 @@
 
     '
   name: arangodb_shards_leader_number
+  troubleshoot: 'Since the leaders perform all the read and write operations and
+
+    the followers only replicate the writes, one should usually have a
+
+    relatively even distribution of leader shards across dbservers. An
+
+    exception can be one-shard deployments, in which every collection has
+
+    a single shard and all shards in a database must have the same leader.
+
+    If you have few databases in a one-shard deployment, then an uneven
+
+    distribution of leader shards is natural.
+
+
+    You can either move shards manually, use the "Rebalance shards" button
+
+    in the UI, or use the cluster maintenance tools in [this repository]
+
+    (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+
+    and `execute-move-plan` specifically). In the latter case, contact
+
+    ArangoDB customer support.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of shards not replicated at all.
+  description: 'Number of shards not replicated at all. This is counted for all shards
+
+    for which this server is currently the leader. The number is increased
+
+    by one for every shards for which no follower is in sync.
 
     '
   exposedBy:
@@ -1849,11 +1882,35 @@
 
     '
   name: arangodb_shards_not_replicated
+  troubleshoot: 'Needless to say, such a situation is very bad for resilience, since
+    it
+
+    indicates a single point of failure. So, if this number is larger than 0,
+
+    then some action is indicated. During an upgrade or when some dbserver
+
+    was restarted, it can happen that shard followers are out of sync.
+
+    Normally, shards should get in sync on their own, so observation
+
+    and waiting is a good measure at first. However, if the situation
+
+    persists, something is wrong, potentially some constant server crash
+
+    (maybe out of memory crashes?) or another situation preventing
+
+    shards to get in sync. Contact ArangoDB customer support in this case.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of shards on this machine.
+  description: 'Number of shards on this machine. Every shard has a leader and
+
+    potentially multiple followers. This metric counts both leader and
+
+    follower shards.
 
     '
   exposedBy:
@@ -1864,11 +1921,33 @@
 
     '
   name: arangodb_shards_number
+  troubleshoot: 'Since both leader and follower shards use memory and disk space,
+
+    the total number of shards should be approximately balanced
+
+    evenly across the dbservers. To achieve this, you can either
+
+    move shards manually, use the "Rebalance shards" button in the
+
+    UI, or use the cluster maintenance tools in [this repository]
+
+    (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+
+    and `execute-move-plan` specifically). In the latter case, contact
+
+    ArangoDB customer support.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of leader shards not fully replicated.
+  description: 'Number of leader shards not fully replicated. This is counted for
+    all
+
+    shards for which this server is currently the leader. The number is
+
+    increased by one for every shards for which not all followers are in sync.
 
     '
   exposedBy:
@@ -1879,6 +1958,27 @@
 
     '
   name: arangodb_shards_out_of_sync
+  troubleshoot: 'Needless to say, such a situation is not good resilience, since we
+
+    do not have as many copies of the data as the `replicationFactor`
+
+    prescribes. If this metrics has a value larger than 0, then some
+
+    action is indicated. During an upgrade or when some dbserver was
+
+    restarted, it can happen that shard followers are out of sync.
+
+    Normally, shards should get in sync on their own, so observation
+
+    and waiting is a good measure at first. However, if the situation
+
+    persists, something is wrong, potentially some constant server crash
+
+    (maybe out of memory crashes?) or another situation preventing shards
+
+    to get in sync. Contact ArangoDB customer support in this case.
+
+    '
   type: gauge
   unit: number
 - category: Replication
