@@ -24,10 +24,10 @@
 
 #include "RefactoredClusterTraverserCache.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/Query.h"
-#include "Graph/BaseOptions.h"
-#include "Graph/EdgeDocumentToken.h"
+#include "Basics/StaticStrings.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -39,12 +39,10 @@ constexpr size_t costPerVertexOrEdgeStringRefSlice = sizeof(velocypack::Slice) +
 constexpr size_t heapBlockSize = 4096;
 };
 
-RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(
-    std::unordered_map<ServerID, aql::EngineId> const* engines, ResourceMonitor& resourceMonitor)
+RefactoredClusterTraverserCache::RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor)
     : _resourceMonitor{resourceMonitor},
       _stringHeap(resourceMonitor, heapBlockSize), /* arbitrary block-size may be adjusted for performance */
-      _datalake(resourceMonitor),
-      _engines(engines) {}
+      _datalake(resourceMonitor) {}
 
 RefactoredClusterTraverserCache::~RefactoredClusterTraverserCache() {
   clear();

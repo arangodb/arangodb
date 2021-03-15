@@ -27,7 +27,6 @@
 
 #include "Aql/types.h"
 #include "Basics/StringHeap.h"
-#include "Cluster/ClusterInfo.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/Providers/TypeAliases.h"
 
@@ -45,16 +44,11 @@ namespace graph {
 
 class RefactoredClusterTraverserCache {
  public:
-  RefactoredClusterTraverserCache(std::unordered_map<ServerID, aql::EngineId> const* engines,
-                                  ResourceMonitor& resourceMonitor);
+  RefactoredClusterTraverserCache(ResourceMonitor& resourceMonitor);
 
   ~RefactoredClusterTraverserCache();
 
   void clear();
-
-  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const {
-    return _engines;
-  }
 
   arangodb::graph::ClusterGraphDatalake& datalake() noexcept {
     return _datalake;
@@ -66,8 +60,8 @@ class RefactoredClusterTraverserCache {
   auto isEdgeCached(EdgeType const& edge) const -> bool;
 
 
-  auto getCachedVertex(VertexType const& vertex) const -> VPackSlice;
-  auto getCachedEdge(EdgeType const& edge) const -> VPackSlice;
+  auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
+  auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
   auto persistString(arangodb::velocypack::HashedStringRef idString)
       -> arangodb::velocypack::HashedStringRef;
 
@@ -99,7 +93,6 @@ class RefactoredClusterTraverserCache {
   /// @brief edge reference to edge data slice
   std::unordered_map<EdgeType, velocypack::Slice> _edgeData;
 
-  std::unordered_map<ServerID, aql::EngineId> const* _engines;
 };
 
 }  // namespace graph
