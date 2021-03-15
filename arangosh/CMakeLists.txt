@@ -90,10 +90,9 @@ install(
 
 install_config(arangobench)
 
+add_dependencies(arangobench ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobench zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangobench zlibstatic)
+  add_dependencies(arangobench v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -150,10 +149,9 @@ install(
 
 install_config(arangobackup)
 
+add_dependencies(arangobackup ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangobackup zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangobackup zlibstatic)
+  add_dependencies(arangobackup v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -210,10 +208,9 @@ install(
 
 install_config(arangodump)
 
+add_dependencies(arangodump ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangodump zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangodump zlibstatic)
+  add_dependencies(arangodump v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -266,10 +263,9 @@ install(
 
 install_config(arangoexport)
 
+add_dependencies(arangoexport ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoexport zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangoexport zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangoexport v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -339,11 +335,9 @@ install_config(arangoimport)
 
 add_dependencies(arangoimport fuerte)
 
+add_dependencies(arangoimport ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangoimport zlibstatic v8_build) # v8_build includes ICU
-                                                     # build
-else ()
-  add_dependencies(arangoimport zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangoimport v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -403,10 +397,9 @@ install(
 
 install_config(arangorestore)
 
+add_dependencies(arangorestore ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangorestore zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangorestore zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangorestore v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
@@ -464,10 +457,9 @@ install(
 
 install_config(arangosh)
 
+add_dependencies(arangosh ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangosh zlibstatic v8_build)
-else ()
-  add_dependencies(arangosh zlibstatic)
+  add_dependencies(arangosh v8_build)
 endif ()
 
 if (USE_JEMALLOC)
@@ -520,10 +512,9 @@ install(
 
 install_config(arangovpack)
 
+add_dependencies(arangovpack ${LIBZLIB})
 if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(arangovpack zlibstatic v8_build) # v8_build includes ICU build
-else ()
-  add_dependencies(arangovpack zlibstatic) # v8_build includes ICU build
+  add_dependencies(arangovpack v8_build) # v8_build includes ICU build
 endif ()
 
 if (USE_JEMALLOC)
