@@ -921,28 +921,12 @@ void RocksDBEngine::stop() {
     _syncThread.reset();
   }
  
-  // wait for started compaction jobs to finish
-  bool compactionWarning = false;
-  while (true) {
-    {
-      READ_LOCKER(locker, _pendingCompactionsLock);
-      if (_runningCompactions == 0) {
-        break;
-      }
-    }
-      
-    if (!compactionWarning) {
-      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
-      compactionWarning = true;
-    }
-    // unfortunately there is not much we can do except waiting for
-    // RocksDB's compaction job(s) to finish.
-    std::this_thread::yield();
-  }
+  waitForCompactionJobsToFinish();
 }
 
 void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
+  waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
 }
 
@@ -2630,6 +2614,28 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
+}
+
+void RocksDBEngine::waitForCompactionJobsToFinish() {
+  // wait for started compaction jobs to finish
+  int iterations = 0;
+
+  do {
+    {
+      READ_LOCKER(locker, _pendingCompactionsLock);
+      if (_runningCompactions == 0) {
+        return;
+      }
+    }
+      
+    // print this only every few seconds
+    if (iterations++ % 200 == 0) {
+      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
+    }
+    // unfortunately there is not much we can do except waiting for
+    // RocksDB's compaction job(s) to finish.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  } while (true);
 }
 
 }  // namespace arangodb
