@@ -58,23 +58,26 @@ if (WINDOWS)
 endif ()
 
 set(ARANGODB_TESTS_COMMON_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/AgencyMock.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
 )
 
 add_library(arango_tests_common
   ${ARANGODB_TESTS_COMMON_SOURCES}
 )
 
+target_include_directories(arango_tests_common PRIVATE
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+)
+
 target_link_libraries(arango_tests_common arango_iresearch)
-target_link_libraries(arango_tests_common iresearch-shared)
 target_link_libraries(arango_tests_common gtest)
 
 add_subdirectory(IResearch)

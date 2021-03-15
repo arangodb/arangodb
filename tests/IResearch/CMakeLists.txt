@@ -1,5 +1,4 @@
 set(ARANGODB_IRESEARCH_TESTS_SOURCES
-  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${CMAKE_CURRENT_SOURCE_DIR}/Containers-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/ExpressionFilter-test.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/GeoAnalyzer-test.cpp
@@ -74,6 +73,7 @@ set(ARANGODB_IRESEARCH_TESTS_SOURCES
 
 add_executable(
   arangodbtests-iresearch
+  ${ARANGODB_TESTS_COMMON_SOURCES}
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   ../main.cpp
 )

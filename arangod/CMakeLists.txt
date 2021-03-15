@@ -293,6 +293,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/CalculationExecutor.cpp
   Aql/CalculationNodeVarFinder.cpp
   Aql/ClusterNodes.cpp
+  Aql/ClusterQuery.cpp
   Aql/CollectNode.cpp
   Aql/CollectOptions.cpp
   Aql/Collection.cpp
@@ -314,7 +315,6 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/DocumentIndexExpressionContext.cpp
   Aql/DocumentProducingHelper.cpp
   Aql/DocumentProducingNode.cpp
-  Aql/ClusterQuery.cpp
   Aql/EngineInfoContainerCoordinator.cpp
   Aql/EngineInfoContainerDBServerServerBased.cpp
   Aql/EnumerateCollectionExecutor.cpp
@@ -430,16 +430,18 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/VarUsageFinder.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
-  Aql/WindowNode.cpp
   Aql/WindowExecutor.cpp
+  Aql/WindowNode.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  RestServer/AqlFeature.cpp
 )
 
 set(LIB_ARANGO_VOCBASE_SOURCES
   Aql/PlanCache.cpp
   Aql/QueryCursor.cpp
   Replication/DatabaseReplicationApplier.cpp
+  RestServer/ViewTypesFeature.cpp
   Utils/CollectionNameResolver.cpp
   Utils/CursorRepository.cpp
   Utils/DatabaseGuard.cpp
@@ -736,7 +738,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
   RestHandler/RestWalAccessHandler.cpp
-  RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/ConsoleFeature.cpp
@@ -745,7 +746,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/DatabasePathFeature.cpp
   RestServer/EndpointFeature.cpp
   RestServer/FileDescriptorsFeature.cpp
-  RestServer/FlushFeature.cpp
   RestServer/FortuneFeature.cpp
   RestServer/FrontendFeature.cpp
   RestServer/InitDatabaseFeature.cpp
@@ -759,7 +759,6 @@ set(LIB_ARANGOSERVER_SOURCES
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TtlFeature.cpp
   RestServer/UpgradeFeature.cpp
-  RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
@@ -885,6 +884,7 @@ add_library(arango_network
 add_library(arango_rocksdb
   ${ROCKSDB_SOURCES}
   ${ADDITIONAL_LIB_ARANGO_ROCKSDB_SOURCES}
+  RestServer/FlushFeature.cpp
 )
 
 add_dependencies(arango_rocksdb snappy-static)
