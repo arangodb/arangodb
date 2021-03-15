@@ -1,0 +1,13 @@
+name: arangodb_aql_global_memory_limit
+help: |
+  Total memory limit for all AQL queries combined.
+unit: number
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total memory limit for all AQL queries combined.

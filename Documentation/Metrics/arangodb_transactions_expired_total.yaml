@@ -1,0 +1,13 @@
+name: arangodb_transactions_expired_total
+help: |
+  Total number of expired transactions.
+unit: number
+type: counter
+category: Transactions
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of expired transactions.

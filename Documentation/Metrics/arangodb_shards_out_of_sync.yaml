@@ -1,0 +1,13 @@
+name: arangodb_shards_out_of_sync
+help: |
+  Number of leader shards not fully replicated.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of leader shards not fully replicated.

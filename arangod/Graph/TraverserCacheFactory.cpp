@@ -24,9 +24,11 @@
 #include "TraverserCacheFactory.h"
 
 #include "Aql/QueryContext.h"
+#include "Basics/ResourceUsage.h"
 #include "Cache/Cache.h"
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserDocumentCache.h"
@@ -36,9 +38,10 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 using namespace arangodb::graph::CacheFactory;
 
-TraverserCache* CacheFactory::CreateCache(
-    arangodb::aql::QueryContext& query, bool activateDocumentCache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines, BaseOptions* opts) {
+TraverserCache* CacheFactory::CreateCache(arangodb::aql::QueryContext& query,
+                                          bool activateDocumentCache,
+                                          std::unordered_map<ServerID, aql::EngineId> const* engines,
+                                          BaseOptions* opts) {
   if (ServerState::instance()->isCoordinator()) {
     return new ClusterTraverserCache(query, engines, opts);
   }
@@ -46,7 +49,8 @@ TraverserCache* CacheFactory::CreateCache(
     auto cacheManager =
         query.vocbase().server().getFeature<CacheManagerFeature>().manager();
     if (cacheManager != nullptr) {
-      std::shared_ptr<arangodb::cache::Cache> cache = cacheManager->createCache(cache::CacheType::Plain);
+      std::shared_ptr<arangodb::cache::Cache> cache =
+          cacheManager->createCache(cache::CacheType::Plain);
       if (cache != nullptr) {
         return new TraverserDocumentCache(query, std::move(cache), opts);
       }

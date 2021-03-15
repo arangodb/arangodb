@@ -1,0 +1,13 @@
+name: arangodb_scheduler_threads_started_total
+help: |
+  Total accumulated number of scheduler threads started.
+unit: number
+type: counter
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total accumulated number of scheduler threads started.

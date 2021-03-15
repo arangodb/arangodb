@@ -1,0 +1,13 @@
+name: arangodb_v8_context_entered_total
+help: |
+  Total number of V8 context enter events.
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of V8 context enter events.

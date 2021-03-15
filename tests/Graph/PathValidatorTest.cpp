@@ -22,14 +22,14 @@
 
 #include "gtest/gtest.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/StringHeap.h"
+#include "Basics/StringUtils.h"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/PathManagement/PathValidator.cpp"
 #include "Graph/Providers/BaseStep.h"
-
 #include "Graph/Types/UniquenessLevel.h"
-
-#include "Basics/StringHeap.h"
-#include "Basics/StringUtils.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -76,7 +76,8 @@ using TypesToTest =
 
 template <class ValidatorType>
 class PathValidatorTest : public ::testing::Test {
-  arangodb::ResourceMonitor _resourceMonitor{};
+  arangodb::GlobalResourceMonitor _global{};
+  arangodb::ResourceMonitor _resourceMonitor{_global};
 
   PathStore<Step> _pathStore{_resourceMonitor};
   StringHeap _heap{_resourceMonitor, 4096};
