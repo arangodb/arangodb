@@ -373,12 +373,22 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
           arangodb::basics::VelocyPackHelper::getBooleanValue(info,
                                                               "deduplicate", true)),
       _allowPartialIndex(true),
+      _estimates(true),
       _estimator(nullptr) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex));
+  
+  if (_unique) {
+    // unique indexes will always have a hard-coded estimate of 1
+    _estimates = true;
+  } else if (VPackSlice s = info.get(StaticStrings::IndexEstimates); s.isBoolean()) {
+    // read "estimates" flag from velocypack if it is present.
+    // if it's not present, we go with the default (estimates = true)
+    _estimates = s.getBoolean();
+  }
 
-  if (!_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
+  if (_estimates && !_unique && !ServerState::instance()->isCoordinator() && !collection.isAStub()) {
     // We activate the estimator for all non unique-indexes.
-    // And only on DBServers
+    // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         RocksDBIndex::ESTIMATOR_SIZE);
   }
@@ -393,7 +403,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, arangodb::LogicalCollection& c
 RocksDBVPackIndex::~RocksDBVPackIndex() = default;
   
 bool RocksDBVPackIndex::hasSelectivityEstimate() const {
-  return true;
+  return _unique || _estimates;
 }
 
 double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef const&) const {
@@ -401,7 +411,10 @@ double RocksDBVPackIndex::selectivityEstimate(arangodb::velocypack::StringRef co
   if (_unique) {
     return 1.0;
   }
-  if (_estimator == nullptr) {
+  if (_estimator == nullptr || !_estimates) {
+    // we turn off the estimates for some system collections to avoid updating them
+    // too often. we also turn off estimates for stub collections on coordinator and
+    // DB servers
     return 0.0;
   }
   TRI_ASSERT(_estimator != nullptr);
@@ -414,6 +427,7 @@ void RocksDBVPackIndex::toVelocyPack(VPackBuilder& builder,
   builder.openObject();
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add("deduplicate", VPackValue(_deduplicate));
+  builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   builder.close();
 }
 
@@ -885,15 +899,15 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd
       }
     }
 
-    if (res.ok()) {
+    if (res.fail()) {
+      addErrorMsg(res);
+    } else if (_estimates) {
       auto* state = RocksDBTransactionState::toState(&trx);
       auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
       TRI_ASSERT(trxc != nullptr);
       for (uint64_t hash : hashes) {
         trxc->trackIndexInsert(id(), hash);
       }
-    } else {
-      addErrorMsg(res);
     }
   }
 
@@ -1041,6 +1055,9 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
     }
+    if (res.fail()) {
+      addErrorMsg(res);
+    }
   } else {
     // non-unique index contain the unique objectID written exactly once
     for (size_t i = 0; i < count; ++i) {
@@ -1050,19 +1067,19 @@ Result RocksDBVPackIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd
         res.reset(rocksutils::convertStatus(s, rocksutils::index));
       }
     }
-  }
 
-  if (res.ok() && !_unique) {
-    auto* state = RocksDBTransactionState::toState(&trx);
-    auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
-    TRI_ASSERT(trxc != nullptr);
-    for (uint64_t hash : hashes) {
-      // The estimator is only useful if we are in a non-unique indexes
-      TRI_ASSERT(!_unique);
-      trxc->trackIndexRemove(id(), hash);
+    if (res.fail()) {
+      addErrorMsg(res);
+    } else if (_estimates) {
+      auto* state = RocksDBTransactionState::toState(&trx);
+      auto* trxc = static_cast<RocksDBTransactionCollection*>(state->findCollection(_collection.id()));
+      TRI_ASSERT(trxc != nullptr);
+      for (uint64_t hash : hashes) {
+        // The estimator is only useful if we are in a non-unique indexes
+        TRI_ASSERT(!_unique);
+        trxc->trackIndexRemove(id(), hash);
+      }
     }
-  } else if (res.fail()) {
-    addErrorMsg(res);
   }
 
   return res;
