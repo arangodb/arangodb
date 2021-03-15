@@ -76,13 +76,13 @@
             <% var full = node.LastAckedTime; %>
             <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
 
+            <div class="pure-u-1-24 right state">
             <% if (node.Status === 'GOOD') { %>
-              <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
-              </div>
+              <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
             <% } else { %>
-              <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
+              <i class="fa fa-exclamation-circle"></i>
             <% } %>
-
+            </div>
           </div>
 
         <% }); %>
@@ -164,12 +164,13 @@
             <% var full = node.LastAckedTime; %>
             <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
 
+            <div class="pure-u-1-24 right state">
             <% if (node.Status === 'GOOD') { %>
-              <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
-              </div>
+              <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
             <% } else { %>
-              <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
+              <i class="fa fa-exclamation-circle"></i>
             <% } %>
+            </div>
 
           </div>
         <% }); %>
@@ -205,8 +206,8 @@
             <div class="pure-u-3-24 left" style="text-align: center">Leading</div>
             <div class="pure-u-6-24 left">Endpoint</div>
             <div class="pure-u-3-24">Version</div>
-            <div class="pure-u-2-24 mid hide-small">Since</div>
-            <div class="pure-u-1-24 mid"></div>
+            <!--div class="pure-u-2-24 mid hide-small">Since</div-->
+            <div class="pure-u-3-24 mid"></div>
           </div>
         </div>
 
@@ -245,15 +246,15 @@
                   full = 'n/A';
                 }
               %>
-              <div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div>
+              <!--div class="pure-u-2-24 hide-small mid" title="<%= full %>"><%= formatted %></div-->
 
+              <div class="pure-u-3-24 right state">
               <% if (node.Status === 'GOOD') { %>
-                <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy"
-                                                      title="<%= node.SyncStatus %>"></i>
-                </div>
+                <i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i>
               <% } else { %>
-                <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
+                <i class="fa fa-exclamation-circle"></i>
               <% } %>
+              </div>
 
             </div>
           <% }); %>
