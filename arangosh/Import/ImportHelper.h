@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -263,8 +263,8 @@ class ImportHelper {
 
   std::vector<std::string> getErrorMessages() { return _errorMessages; }
 
-  uint64_t getMaxUploadSize() { return (_maxUploadSize.load()); }
-  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize); }
+  uint64_t getMaxUploadSize() { return (_maxUploadSize.load(std::memory_order_relaxed)); }
+  void setMaxUploadSize(uint64_t newSize) { _maxUploadSize.store(newSize, std::memory_order_relaxed); }
 
   uint64_t rotatePeriodByteCount() { return (_periodByteCount.exchange(0)); }
   void addPeriodByteCount(uint64_t add) { _periodByteCount.fetch_add(add); }

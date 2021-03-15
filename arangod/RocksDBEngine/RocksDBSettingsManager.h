@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,6 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "RocksDBEngine/RocksDBCommon.h"
-#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/voc-types.h"
 
@@ -50,7 +49,7 @@ class RocksDBSettingsManager {
 
   /// Constructor needs to be called synchronously,
   /// will load counts from the db and scan the WAL
-  explicit RocksDBSettingsManager(rocksdb::TransactionDB* db);
+  explicit RocksDBSettingsManager(RocksDBEngine& engine);
 
  public:
   /// Retrieve initial settings values from database on engine startup
@@ -68,6 +67,8 @@ class RocksDBSettingsManager {
   bool lockForSync(bool force);
 
  private:
+  RocksDBEngine& _engine;
+
   /// @brief a reusable builder, used inside sync() to serialize objects
   arangodb::velocypack::Builder _tmpBuilder;
 

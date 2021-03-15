@@ -47,7 +47,7 @@ class ReplicationClientsProgressTrackerTest_SingleClient
   SyncerId syncerId{};
   ServerId clientId{};
 
-  virtual void SetUp() {
+  virtual void SetUp() override {
     auto const& parm = GetParam();
     syncerId = parm.first;
     clientId = parm.second;

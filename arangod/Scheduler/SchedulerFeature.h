@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,11 +46,14 @@ class SchedulerFeature final : public application_features::ApplicationFeature {
   void unprepare() override final;
 
  private:
-  uint64_t _nrMinimalThreads = 2;
+  uint64_t _nrMinimalThreads = 4;
   uint64_t _nrMaximalThreads = 0;
   uint64_t _queueSize = 4096;
   uint64_t _fifo1Size = 4096;
   uint64_t _fifo2Size = 4096;
+  uint64_t _fifo3Size = 4096;
+  double _ongoingLowPriorityMultiplier = 4.0;
+  double _unavailabilityQueueFillGrade = 0.75;
 
   std::unique_ptr<Scheduler> _scheduler;
 

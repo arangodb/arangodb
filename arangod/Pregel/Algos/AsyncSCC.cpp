@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,8 +60,8 @@ struct ASCCComputation final
     }
 
     SCCValue* vertexState = mutableVertexData();
-    uint32_t const* phase = getAggregatedValue<uint32_t>(kPhase);
-    switch (*phase) {
+    auto const& phase = getAggregatedValueRef<uint32_t>(kPhase);
+    switch (phase) {
       // let all our connected nodes know we are there
       case SCCPhase::TRANSPOSE: {
         // only one step in this phase
@@ -160,25 +160,17 @@ struct SCCGraphFormat : public GraphFormat<SCCValue, int8_t> {
                           std::string const& result)
       : GraphFormat<SCCValue, int8_t>(server), _resultField(result) {}
 
-  size_t estimatedEdgeSize() const override { return 0; };
+  size_t estimatedEdgeSize() const override { return 0; }
 
-  void copyVertexData(std::string const& documentId, arangodb::velocypack::Slice document,
-                        SCCValue& targetPtr) override {
-    targetPtr.vertexID = _vertexIdRange++;
+  void copyVertexData(arangodb::velocypack::Options const&, std::string const& /*documentId*/,
+                      arangodb::velocypack::Slice /*document*/,
+                      SCCValue& targetPtr, uint64_t& vertexIdRange) override {
+    targetPtr.vertexID = vertexIdRange++;
   }
 
-  void copyEdgeData(arangodb::velocypack::Slice document, int8_t& targetPtr) override {}
-
-  bool buildVertexDocument(arangodb::velocypack::Builder& b,
-                           const SCCValue* ptr, size_t size) const override {
-    SCCValue* senders = (SCCValue*)ptr;
-    b.add(_resultField, VPackValue(senders->color));
+  bool buildVertexDocument(arangodb::velocypack::Builder& b, SCCValue const* ptr) const override {
+    b.add(_resultField, VPackValue(ptr->color));
     return true;
-  }
-
-  bool buildEdgeDocument(arangodb::velocypack::Builder& b, const int8_t* ptr,
-                         size_t size) const override {
-    return false;
   }
 };
 

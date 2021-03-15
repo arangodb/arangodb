@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,16 +39,17 @@ class SortCondition;
 struct Variable;
 
 /// @brief condition finder
-class ConditionFinder : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
+class ConditionFinder final : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
  public:
-  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>* changes,
-                  bool* hasEmptyResult, bool viewMode);
+  ConditionFinder(ExecutionPlan* plan, std::unordered_map<ExecutionNodeId, ExecutionNode*>& changes);
 
-  ~ConditionFinder() override = default;
+  ~ConditionFinder() = default;
 
-  bool before(ExecutionNode*) final;
+  bool before(ExecutionNode*) override;
 
-  bool enterSubquery(ExecutionNode*, ExecutionNode*) final;
+  bool enterSubquery(ExecutionNode*, ExecutionNode*) override;
+
+  bool producesEmptyResult() const { return _producesEmptyResult; }
 
  protected:
   bool handleFilterCondition(ExecutionNode* en, std::unique_ptr<Condition> const& condition);
@@ -62,8 +63,8 @@ class ConditionFinder : public WalkerWorker<ExecutionNode, WalkerUniqueness::Non
   ::arangodb::containers::HashSet<VariableId> _filters;
   std::vector<std::pair<Variable const*, bool>> _sorts;
   // note: this class will never free the contents of this map
-  std::unordered_map<aql::ExecutionNodeId, ExecutionNode*>* _changes;
-  bool* _hasEmptyResult;
+  std::unordered_map<aql::ExecutionNodeId, ExecutionNode*>& _changes;
+  bool _producesEmptyResult;
 };
 }  // namespace aql
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,19 +25,18 @@
 #define ARANGODB_REST_SERVER_METRICS_H 1
 
 #include <atomic>
-#include <map>
-#include <iostream>
-#include <string>
-#include <memory>
-#include <variant>
-#include <vector>
-#include <unordered_map>
-#include <cassert>
 #include <cmath>
+#include <iostream>
 #include <limits>
+#include <string>
+#include <vector>
 
-#include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
+#include "Basics/debugging.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Value.h>
+#include <velocypack/velocypack-aliases.h>
+
 #include "counter.h"
 
 class Metric {
@@ -47,7 +46,8 @@ class Metric {
   std::string const& help() const;
   std::string const& name() const;
   std::string const& labels() const;
-  virtual void toPrometheus(std::string& result) const = 0;
+  virtual std::string type() const = 0;
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName = std::string()) const = 0;
   void header(std::string& result) const;
  protected:
   std::string const _name;
@@ -60,7 +60,6 @@ struct Metrics {
   using hist_type = gcl::counter::simplex_array<uint64_t, gcl::counter::atomicity::full>;
   using buffer_type = gcl::counter::buffer<uint64_t, gcl::counter::atomicity::full, gcl::counter::atomicity::full>;
 };
-
 
 /**
  * @brief Counter functionality
@@ -76,12 +75,13 @@ class Counter : public Metric {
   Counter& operator++(int);
   Counter& operator+=(uint64_t const&);
   Counter& operator=(uint64_t const&);
+  virtual std::string type() const override { return "counter"; }
   void count();
   void count(uint64_t);
   uint64_t load() const;
   void store(uint64_t const&);
   void push();
-  virtual void toPrometheus(std::string&) const override;
+  virtual void toPrometheus(std::string&, std::string const&, std::string const&) const override;
  private:
   mutable Metrics::counter_type _c;
   mutable Metrics::buffer_type _b;
@@ -93,48 +93,109 @@ template<typename T> class Gauge : public Metric {
   Gauge() = delete;
   Gauge(T const& val, std::string const& name, std::string const& help,
         std::string const& labels = std::string())
-    : Metric(name, help, labels) {
-    _g.store(val);
-  }
+    : Metric(name, help, labels), _g(val) { }
+  
   Gauge(Gauge const&) = delete;
   ~Gauge() = default;
-  std::ostream& print (std::ostream&) const;
-  Gauge<T>& operator+=(T const& t) {
-    _g.store(_g + t);
+  
+  std::ostream& print(std::ostream&) const;
+  virtual std::string type() const override { return "gauge"; }
+
+  T fetch_add(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
+    if constexpr(std::is_integral_v<T>) {
+      return _g.fetch_add(t, mo);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(tmp, tmp + t, mo, std::memory_order_relaxed));
+      return tmp;
+    }
+  }
+  
+  Gauge<T>& operator+=(T const& t) noexcept {
+    fetch_add(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator-=(T const& t) {
-    _g.store(_g - t);
+  
+  // prefix increment
+  Gauge<T>& operator++() noexcept {
+    fetch_add(1, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator*=(T const& t) {
-    _g.store(_g * t);
+
+  // postfix increment. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator++(int) = delete;
+
+  T fetch_sub(T t, std::memory_order mo = std::memory_order_relaxed) noexcept {
+    if constexpr(std::is_integral_v<T>) {
+      return _g.fetch_sub(t, mo);
+    } else {
+      T tmp(_g.load(std::memory_order_relaxed));
+      do {
+      } while (!_g.compare_exchange_weak(tmp, tmp - t, mo, std::memory_order_relaxed));
+      return tmp;
+    }
+  }
+  
+  Gauge<T>& operator-=(T const& t) noexcept {
+    fetch_sub(t, std::memory_order_relaxed);
     return *this;
   }
-  Gauge<T>& operator/=(T const& t) {
+  
+  // prefix decrement
+  Gauge<T>& operator--() noexcept {
+    fetch_sub(1, std::memory_order_relaxed);
+    return *this;
+  }
+  
+  // postfix decrement. as this would be inefficient, we simply forbid it
+  Gauge<T>& operator--(int) = delete;
+  
+  Gauge<T>& operator*=(T const& t) noexcept {
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp * t));
+    return *this;
+  }
+  
+  Gauge<T>& operator/=(T const& t) noexcept {
     TRI_ASSERT(t != T(0));
-    _g.store(_g / t);
+    T tmp(_g.load(std::memory_order_relaxed));
+    do {
+    } while (!_g.compare_exchange_weak(tmp, tmp / t));
     return *this;
   }
-  Gauge<T>& operator=(T const& t) {
-    _g.store(t);
+  
+  Gauge<T>& operator=(T const& t) noexcept {
+    _g.store(t, std::memory_order_relaxed);
     return *this;
   }
-  T load() const {
-    return _g.load();
+  
+  T load(std::memory_order mo = std::memory_order_relaxed) const noexcept { return _g.load(mo); }
+  
+  void toPrometheus(std::string& result, std::string const& globalLabels, std::string const& alternativeName) const override {
+    result += !alternativeName.empty() ? alternativeName : name();
+    result += "{";
+    bool haveGlobals = false;
+    if (!globalLabels.empty()) {
+      result += globalLabels;
+      haveGlobals = true;
+    }
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        result += ",";
+      }
+      result += labels();
+    }
+    result += "} " + std::to_string(load()) + "\n";
   }
-  virtual void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " gauge\n";
-    result += "#HELP " + name() + " " + help() + "\n";
-    result += name() + "{" + labels() + "} " + std::to_string(load()) + "\n";
-  };
  private:
   std::atomic<T> _g;
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::hist_type const&);
 
-enum ScaleType {LINEAR, LOGARITHMIC};
+enum ScaleType { Fixed, Linear, Logarithmic };
 
 template<typename T>
 struct scale_t {
@@ -216,12 +277,46 @@ std::ostream& operator<< (std::ostream& o, scale_t<T> const& s) {
   return s.print(o);
 }
 
+template <typename T>
+struct fixed_scale_t : public scale_t<T> {
+ public:
+  using value_type = T;
+  static constexpr ScaleType scale_type = Fixed;
+
+  fixed_scale_t(T const& low, T const& high, std::initializer_list<T> const& list)
+      : scale_t<T>(low, high, list.size() + 1) {
+    this->_delim = list;
+  }
+  virtual ~fixed_scale_t() = default;
+  /**
+   * @brief index for val
+   * @param val value
+   * @return    index
+   */
+  size_t pos(T const& val) const {
+    for (std::size_t i = 0; i < this->_delim.size(); ++i) {
+      if (val <= this->_delim[i]) {
+        return i;
+      }
+    }
+    return this->_delim.size();
+  }
+
+  virtual void toVelocyPack(VPackBuilder& b) const override {
+    b.add("scale-type", VPackValue("fixed"));
+    scale_t<T>::toVelocyPack(b);
+  }
+
+ private:
+  T _base, _div;
+};
+
 template<typename T>
 struct log_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LOGARITHMIC;
+  static constexpr ScaleType scale_type = Logarithmic;
 
   log_scale_t(T const& base, T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n), _base(base) {
@@ -249,7 +344,7 @@ struct log_scale_t : public scale_t<T> {
    * @brief Dump to builder
    * @param b Envelope
    */
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("logarithmic"));
     b.add("base", VPackValue(_base));
     scale_t<T>::toVelocyPack(b);
@@ -261,7 +356,7 @@ struct log_scale_t : public scale_t<T> {
   T base() const {
     return _base;
   }
- 
+
  private:
   T _base, _div;
   double _lbase;
@@ -272,7 +367,7 @@ struct lin_scale_t : public scale_t<T> {
  public:
 
   using value_type = T;
-  static constexpr ScaleType scale_type = LINEAR;
+  static constexpr ScaleType scale_type = Linear;
 
   lin_scale_t(T const& low, T const& high, size_t n) :
     scale_t<T>(low, high, n) {
@@ -297,27 +392,14 @@ struct lin_scale_t : public scale_t<T> {
     return static_cast<size_t>(std::floor((val - this->_low)/ _div));
   }
 
-  virtual void toVelocyPack(VPackBuilder& b) const {
+  virtual void toVelocyPack(VPackBuilder& b) const override {
     b.add("scale-type", VPackValue("linear"));
     scale_t<T>::toVelocyPack(b);
   }
- 
+
  private:
   T _base, _div;
 };
-
-
-template<typename ... Args>
-std::string strfmt (std::string const& format, Args ... args) {
-  size_t size = snprintf( nullptr, 0, format.c_str(), args ... ) + 1;
-  if( size <= 0 ) {
-    throw std::runtime_error( "Error during formatting." );
-  }
-  std::unique_ptr<char[]> buf(new char[size]);
-  snprintf(buf.get(), size, format.c_str(), args ...);
-  return std::string(buf.get(), buf.get() + size - 1); // We don't want the '\0' inside
-}
-
 
 
 /**
@@ -355,6 +437,8 @@ template<typename Scale> class Histogram : public Metric {
     }
   }
 
+  virtual std::string type() const override { return "histogram"; }
+  
   Scale const& scale() {
     return _scale;
   }
@@ -397,26 +481,40 @@ template<typename Scale> class Histogram : public Metric {
 
   size_t size() const { return _c.size(); }
 
-  virtual void toPrometheus(std::string& result) const override {
-    result += "\n#TYPE " + name() + " histogram\n";
-    result += "#HELP " + name() + " " + help() + "\n";
-    std::string lbs = labels();
-    auto const haveLabels = !lbs.empty();
-    auto const separator = haveLabels && lbs.back() != ',';
+  virtual void toPrometheus(std::string& result, std::string const& globals, std::string const& alternativeName) const override {
     uint64_t sum(0);
+    std::string ls;
+    bool haveGlobals = false;
+    if (!globals.empty()) {
+      ls += globals;
+      haveGlobals = true;
+    }
+    if (!labels().empty()) {
+      if (haveGlobals) {
+        ls += ",";
+      }
+      ls += labels();
+    }
+
+    std::string const& theName 
+      = !alternativeName.empty() ? alternativeName : name();
+
     for (size_t i = 0; i < size(); ++i) {
       uint64_t n = load(i);
       sum += n;
-      result += name() + "_bucket{";
-      if (haveLabels) {
-        result += lbs;
+      result += theName;
+      result += "_bucket{";
+      if (!ls.empty()) {
+        result += ls + ",";
       }
-      if (separator) {
-        result += ",";
-      }
-      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(n) + "\n";
+      auto v = !alternativeName.empty() ? n : sum;
+      result += "le=\"" + _scale.delim(i) + "\"} " + std::to_string(v) + "\n";
     }
-    result += name() + "_count{" + labels() + "} " + std::to_string(sum) + "\n";
+    result += theName + "_count";
+    if (!ls.empty()) {
+      result += "{" + ls + "}";
+    }
+    result += " " + std::to_string(sum) + "\n";
   }
 
   std::ostream& print(std::ostream& o) const {

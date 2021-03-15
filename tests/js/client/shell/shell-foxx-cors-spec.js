@@ -9,6 +9,8 @@ const arango = require('@arangodb').arango;
 const basePath = fs.makeAbsolute(fs.join(internal.pathForTesting('common'), 'test-data', 'apps', 'headers'));
 const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
 
+require("@arangodb/test-helper").waitForFoxxInitialized();
+
 describe('HTTP headers in Foxx services', function () {
   describe('Check request-response', function () {
     var mount;

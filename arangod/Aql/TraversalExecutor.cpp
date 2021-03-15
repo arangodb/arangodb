@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ TraversalExecutorInfos::TraversalExecutorInfos(
   // _fixedSource XOR _inputRegister
   // note: _fixedSource can be the empty string here
   TRI_ASSERT(_fixedSource.empty() ||
-             (!_fixedSource.empty() && _inputRegister == RegisterPlan::MaxRegisterId));
+             (!_fixedSource.empty() && _inputRegister.value() == RegisterId::maxRegisterId));
 }
 
 Traverser& TraversalExecutorInfos::traverser() {
@@ -117,7 +117,7 @@ RegisterId TraversalExecutorInfos::pathRegister() const {
 }
 
 bool TraversalExecutorInfos::usesFixedSource() const {
-  return _inputRegister == RegisterPlan::MaxRegisterId;
+  return _inputRegister.value() == RegisterId::maxRegisterId;
 }
 
 std::string const& TraversalExecutorInfos::getFixedSource() const {
@@ -127,7 +127,7 @@ std::string const& TraversalExecutorInfos::getFixedSource() const {
 
 RegisterId TraversalExecutorInfos::getInputRegister() const {
   TRI_ASSERT(!usesFixedSource());
-  TRI_ASSERT(_inputRegister != RegisterPlan::MaxRegisterId);
+  TRI_ASSERT(_inputRegister.isValid());
   return _inputRegister;
 }
 

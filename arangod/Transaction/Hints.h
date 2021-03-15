@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,15 +38,17 @@ class Hints {
     NONE = 0,
     SINGLE_OPERATION = 1,
     LOCK_NEVER = 2,
-    NO_USAGE_LOCK = 4, 
-    NO_DLD = 8,       // disable deadlock detection, unsupported in RocksDB
+    NO_USAGE_LOCK = 4,
+    NO_DLD = 8,        // disable deadlock detection, unsupported in RocksDB
     NO_INDEXING = 16,  // use DisableIndexing for RocksDB
     INTERMEDIATE_COMMITS = 32,  // enable intermediate commits in rocksdb
     ALLOW_RANGE_DELETE = 64,    // enable range-delete in rocksdb
     FROM_TOPLEVEL_AQL = 128,    // transaction is only runnning one AQL query
-    GLOBAL_MANAGED = 256,  // transaction with externally managed lifetime
-    INDEX_CREATION = 512, // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
+    GLOBAL_MANAGED = 256,       // transaction with externally managed lifetime
+    INDEX_CREATION = 512,  // transaction is for creating index on existing collection (many inserts, no removes, index will be deleted on any failure anyway)
     IS_FOLLOWER_TRX = 1024,  // transaction used to replicate something on a follower
+    ALLOW_FAST_LOCK_ROUND_CLUSTER =
+        2048,  // allow the coordinator to try a fast-lock path (parallel on all DBServers), and if that fails revert to slow-lock path
   };
 
   Hints() : _value(0) {}

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,10 @@
 #include "RestDatabaseHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ServerState.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -90,6 +94,16 @@ RestStatus RestDatabaseHandler::getDatabases() {
     builder.close();
   } else if (suffixes[0] == "current") {
     _vocbase.toVelocyPack(builder);
+  } else if (suffixes[0] == "shardStatistics") {
+    // shard statistics for the database
+    if (!ServerState::instance()->isCoordinator()) {
+      res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
+    } else {
+      std::string const& restrictServer = _request->value("DBserver");
+      ClusterInfo& ci =
+          server().getFeature<ClusterFeature>().clusterInfo();
+      res = ci.getShardStatisticsForDatabase(_vocbase.name(), restrictServer, builder);
+    }
   }
 
   if (res.fail()) {

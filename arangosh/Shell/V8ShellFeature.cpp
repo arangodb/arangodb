@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Basics/terminal-utils.h"
+#include "Utilities/IsArangoExecutable.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -133,7 +134,7 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 void V8ShellFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   if (_startupDirectory.empty()) {
     LOG_TOPIC("6380f", FATAL, arangodb::Logger::FIXME)
-        << "no 'javascript.startup-directory' has been supplied, giving up";
+        << "no '--javascript.startup-directory' has been supplied, giving up";
     FATAL_ERROR_EXIT();
   }
 
@@ -230,7 +231,7 @@ void V8ShellFeature::unprepare() {
 
 void V8ShellFeature::stop() {
   if (_removeCopyInstallation && !_copyDirectory.empty()) {
-    int res = TRI_RemoveDirectory(_copyDirectory.c_str());
+    auto res = TRI_RemoveDirectory(_copyDirectory.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("cac43", DEBUG, Logger::V8)
@@ -253,11 +254,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
   LOG_TOPIC("65ed7", DEBUG, Logger::V8) << "Copying JS installation files from '" << _startupDirectory
                                << "' to '" << _copyDirectory << "'";
-  int res = TRI_ERROR_NO_ERROR;
 
   _nodeModulesDirectory = _startupDirectory;
 
   if (FileUtils::exists(_copyDirectory)) {
+    auto res = TRI_ERROR_NO_ERROR;
     res = TRI_RemoveDirectory(_copyDirectory.c_str());
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("379f5", FATAL, Logger::V8) << "Error cleaning JS installation path '" << _copyDirectory
@@ -265,9 +266,11 @@ void V8ShellFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
   }
-  if (!FileUtils::createDirectory(_copyDirectory, &res)) {
-    LOG_TOPIC("6d915", FATAL, Logger::V8) << "Error creating JS installation path '"
-                                 << _copyDirectory << "': " << TRI_errno_string(res);
+
+  if (auto res = TRI_ERROR_NO_ERROR; !FileUtils::createDirectory(_copyDirectory, &res)) {
+    auto err = TRI_last_error();
+    LOG_TOPIC("6d915", FATAL, Logger::V8)
+        << "Error creating JS installation path '" << _copyDirectory << "': " << err;
     FATAL_ERROR_EXIT();
   }
 
@@ -436,7 +439,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
   return v8connection;
 }
 
-int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
+ErrorCode V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
 
   auto isolate = _isolate;
@@ -550,12 +553,17 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 
       console.printErrorLine(exception);
       console.log(exception);
+      i = extractShellExecutableName(i);
+      if (!i.empty()) {
+        LOG_TOPIC("abeec", WARN, arangodb::Logger::FIXME)
+          << "This command must be executed in a system shell and cannot be used inside of arangosh: '" << i << "'";
+      }
 
       // this will change the prompt for the next round
       promptError = true;
     }
 
-    if (v8connection != nullptr) {
+    if (v8connection != nullptr && v8connection->isConnected()) {
       v8connection->setInterrupted(false);
     }
 
@@ -586,7 +594,8 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
 }
 
 bool V8ShellFeature::runScript(std::vector<std::string> const& files,
-                               std::vector<std::string> const& positionals, bool execute) {
+                               std::vector<std::string> const& positionals, bool execute,
+                               std::vector<std::string> const& mainArgs, bool runMain) {
   auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
@@ -652,11 +661,65 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         LOG_TOPIC("c254f", ERR, arangodb::Logger::FIXME) << exception;
         ok = false;
       }
+      if (ok && runMain) {
+        v8::TryCatch tryCatch(isolate);
+        // run the garbage collection for at most 30 seconds
+        TRI_RunGarbageCollectionV8(isolate, 30.0);
+
+        // parameter array
+        v8::Handle<v8::Array> params = v8::Array::New(isolate);
+
+        params->Set(context, 0, TRI_V8_STD_STRING(isolate, files[files.size() - 1])).FromMaybe(false);
+
+        for (size_t i = 0; i < mainArgs.size(); ++i) {
+          params
+              ->Set(context, (uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, mainArgs[i]))
+              .FromMaybe(false);
+        }
+
+        // call main
+        v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING(isolate, "main");
+        v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
+            context->Global()->Get(context, mainFuncName).FromMaybe(v8::Handle<v8::Value>()));
+
+        if (!main.IsEmpty() && !main->IsUndefined()) {
+          v8::Handle<v8::Value> args[] = {params};
+          try {
+            v8::Handle<v8::Value> result =
+                main->Call(TRI_IGETC, main, 1, args).FromMaybe(v8::Local<v8::Value>());
+            if (tryCatch.HasCaught()) {
+              if (tryCatch.CanContinue()) {
+                TRI_LogV8Exception(isolate, &tryCatch);
+              } else {
+                // will stop, so need for v8g->_canceled = true;
+                TRI_ASSERT(!ok);
+              }
+            } else {
+              ok = TRI_ObjectToDouble(isolate, result) == 0;
+            }
+          } catch (arangodb::basics::Exception const& ex) {
+            LOG_TOPIC("525a4", ERR, arangodb::Logger::FIXME)
+                << "caught exception " << TRI_errno_string(ex.code()) << ": " << ex.what();
+            ok = false;
+          } catch (std::bad_alloc const&) {
+            LOG_TOPIC("abc8b", ERR, arangodb::Logger::FIXME)
+                << "caught exception " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
+            ok = false;
+          } catch (...) {
+            LOG_TOPIC("4da99", ERR, arangodb::Logger::FIXME)
+                << "caught unknown exception";
+            ok = false;
+          }
+        } else {
+          LOG_TOPIC("5da99", ERR, arangodb::Logger::FIXME)
+                << "Function 'main' was not found";
+          ok = false;
+        }
+      }
     } else {
       ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
     }
   }
-
   ConsoleFeature& console = server().getFeature<ConsoleFeature>();
   console.flushLog();
 

@@ -37,13 +37,12 @@
   let options = internal.options();
   let restServer = true;
   if (options.hasOwnProperty("server.rest-server")) {
-   restServer = options["server.rest-server"];
+    restServer = options["server.rest-server"];
   }
 
   // autoload all modules
   // this functionality is deprecated and will be removed in 3.9
-  if (options.hasOwnProperty("database.old-system-collections") &&
-      options["database.old-system-collections"]) {
+  if (global.USE_OLD_SYSTEM_COLLECTIONS) {
     // check and load all modules in all databases from _modules
     // this can be expensive, so it is guarded by a flag
     internal.loadStartup('server/bootstrap/autoload.js').startup();

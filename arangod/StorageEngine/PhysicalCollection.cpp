@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -87,6 +88,15 @@ void PhysicalCollection::drop() {
   } catch (...) {
     // don't throw from here... dropping should succeed
   }
+}
+
+
+uint64_t PhysicalCollection::recalculateCounts() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "recalculateCounts not implemented for this engine");
+}
+
+bool PhysicalCollection::hasDocuments() {
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "hasDocuments not implemented for this engine");
 }
 
 bool PhysicalCollection::isValidEdgeAttribute(VPackSlice const& slice) const {
@@ -266,9 +276,9 @@ Result PhysicalCollection::mergeObjectsForUpdate(
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    b.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    b.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -295,8 +305,8 @@ Result PhysicalCollection::mergeObjectsForUpdate(
         // merge both values
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          VPackBuilder sub = VPackCollection::merge(current.value, value, true, !keepNull);
-          b.addUnchecked(key.data(), key.size(), sub.slice());
+          b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
+          VPackCollection::merge(b, current.value, value, true, !keepNull);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -322,7 +332,12 @@ Result PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.addUnchecked(it.first.data(), it.first.size(), s);
+    if (!keepNull && s.isObject()) {
+      b.add(VPackValuePair(it.first.data(), it.first.size(), VPackValueType::String));
+      VPackCollection::merge(b, VPackSlice::emptyObjectSlice(), s, true, true);
+    } else {
+      b.addUnchecked(it.first.data(), it.first.size(), s);
+    }
   }
 
   b.close();
@@ -407,6 +422,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
 
   // _rev
   bool handled = false;
+  TRI_IF_FAILURE("Insert::useRev") {
+    isRestore = true;
+  }
   if (isRestore) {
     // copy revision id verbatim
     s = value.get(StaticStrings::RevString);
@@ -420,9 +438,9 @@ Result PhysicalCollection::newObjectForInsert(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
-    builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
+    builder.add(StaticStrings::RevString, revisionId.toValuePair(ridBuffer));
   }
 
   // add other attributes after the system attributes
@@ -447,7 +465,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods*, VPackSlice co
   }
 
   // temporary buffer for stringifying revision ids
-  char ridBuffer[21];
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];
   revisionId = newRevisionId();
   builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   builder.close();
@@ -508,7 +526,7 @@ Result PhysicalCollection::newObjectForReplace(transaction::Methods*,
   }
   if (!handled) {
     // temporary buffer for stringifying revision ids
-    char ridBuffer[21];
+    char ridBuffer[arangodb::basics::maxUInt64StringSize];
     revisionId = newRevisionId();
     builder.add(StaticStrings::RevString, revisionId.toValuePair(&ridBuffer[0]));
   }

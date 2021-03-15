@@ -22,7 +22,7 @@
 
 #include "collectors.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -48,9 +48,9 @@ struct noop_term_collector final : sort::term_collector {
 static noop_field_collector NOOP_FIELD_STATS;
 static noop_term_collector NOOP_TERM_STATS;
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                           field_collector_wrapper
@@ -263,4 +263,4 @@ void term_collectors::finish(
   }
 }
 
-NS_END
+}

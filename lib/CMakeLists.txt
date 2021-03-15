@@ -34,6 +34,8 @@ set(LIB_ARANGO_LINENOISE
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/linenoise.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src/wcwidth.cpp
   Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
 )
 
 set(LIB_ARANGO_DATE
@@ -48,6 +50,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HashedStringRef.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
@@ -65,6 +68,7 @@ set(LIB_ARANGO_VPACK
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
+  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/string-functions.cpp
   ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
   ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
   )
@@ -103,6 +107,7 @@ add_library(arango STATIC
   ApplicationFeatures/ApplicationServer.cpp
   ApplicationFeatures/ConfigFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
+  ApplicationFeatures/CpuUsageFeature.cpp
   ApplicationFeatures/EnvironmentFeature.cpp
   ApplicationFeatures/GreetingsFeature.cpp
   ApplicationFeatures/GreetingsFeaturePhase.cpp
@@ -111,6 +116,7 @@ add_library(arango STATIC
   ApplicationFeatures/MaxMapCountFeature.cpp
   ApplicationFeatures/NonceFeature.cpp
   ApplicationFeatures/PrivilegeFeature.cpp
+  ApplicationFeatures/SharedPRNGFeature.cpp
   ApplicationFeatures/ShellColorsFeature.cpp
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
@@ -120,12 +126,17 @@ add_library(arango STATIC
   Basics/AttributeNameParser.cpp
   Basics/ConditionLocker.cpp
   Basics/ConditionVariable.cpp
+  Basics/CpuUsageSnapshot.cpp
   Basics/CrashHandler.cpp
   Basics/DataProtector.cpp
+  Basics/DebugRaceController.cpp
   Basics/EncodingUtils.cpp
+  Basics/ErrorCode.cpp
+  Basics/ResultError.cpp
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -140,16 +151,15 @@ add_library(arango STATIC
   Basics/Result.cpp
   Basics/FileResult.cpp
   Basics/Identifier.cpp
+  Basics/ResourceUsage.cpp
   Basics/RocksDBLogger.cpp
   Basics/RocksDBUtils.cpp
-  Basics/SharedPRNG.cpp
   Basics/StaticStrings.cpp
   Basics/StringBuffer.cpp
   Basics/StringHeap.cpp
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
-  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
@@ -162,10 +172,8 @@ add_library(arango STATIC
   Basics/files.cpp
   Basics/fpconv.cpp
   Basics/hashes.cpp
-  Basics/json.cpp
   Basics/levenshtein.cpp
   Basics/memory.cpp
-  Basics/prime-numbers.cpp
   Basics/process-utils.cpp
   Basics/signals.cpp
   Basics/socket-utils.cpp
@@ -173,8 +181,6 @@ add_library(arango STATIC
   Basics/terminal-utils.cpp
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
-  Basics/vector.cpp
-  Basics/voc-errors.cpp
   Basics/exitcodes.cpp
   Basics/xxhash.cpp
   Containers/MerkleTree.cpp
@@ -226,9 +232,8 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LineEditor.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
+  Utilities/IsArangoExecutable.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
@@ -242,6 +247,10 @@ target_link_libraries(arango
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )
+
+set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
+
+target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
 
 add_dependencies(arango snappy-static)
 
@@ -267,6 +276,28 @@ if (USE_ENTERPRISE)
   target_compile_definitions(arango PUBLIC "-DUSE_ENTERPRISE=1")
   target_include_directories(arango PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
+
+
+################################################################################
+## LIB_ARANGO_AIR_SOURCES
+################################################################################
+
+set(LIB_ARANGO_AIR_SOURCES
+  Greenspun/Interpreter.cpp
+  Greenspun/Primitives.cpp
+  Greenspun/lib/DateTime.cpp
+  Greenspun/lib/Math.cpp
+  Greenspun/lib/Strings.cpp
+  Greenspun/lib/Lists.cpp
+  Greenspun/lib/Lists.h
+  Greenspun/lib/Dicts.cpp
+  Greenspun/lib/Dicts.h)
+
+add_library(arango_greenspun STATIC
+        ${LIB_ARANGO_AIR_SOURCES})
+
+target_link_libraries(arango_greenspun immer)
+target_link_libraries(arango_greenspun arango)
 
 ################################################################################
 ## LIB_ARANGO_GEO

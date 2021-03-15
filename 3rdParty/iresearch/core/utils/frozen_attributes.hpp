@@ -27,7 +27,7 @@
 
 #include "attribute_provider.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 template<
   size_t Size,
@@ -47,7 +47,7 @@ template<
       attrs_(values) {
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }
@@ -64,6 +64,6 @@ template<
   attribute_map attrs_;
 }; // frozen_token_stream
 
-NS_END
+}
 
 #endif // IRESEARCH_FROZEN_ATTRIBUTES_H

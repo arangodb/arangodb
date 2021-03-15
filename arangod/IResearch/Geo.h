@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@ namespace arangodb {
 
 namespace velocypack {
 class Slice;
+class Builder;
 }
 
 namespace geo{
@@ -42,9 +44,13 @@ struct GeoOptions {
   static constexpr int32_t MIN_LEVEL = 0;
   static constexpr int32_t MAX_LEVEL = S2CellId::kMaxLevel;
 
-  int32_t maxCells{MAX_CELLS};
-  int32_t minLevel{MIN_LEVEL};
-  int32_t maxLevel{MAX_LEVEL};
+  static constexpr int32_t DEFAULT_MAX_CELLS = 20;
+  static constexpr int32_t DEFAULT_MIN_LEVEL = 4;
+  static constexpr int32_t DEFAULT_MAX_LEVEL = 23; // ~1m
+
+  int32_t maxCells{DEFAULT_MAX_CELLS};
+  int32_t minLevel{DEFAULT_MIN_LEVEL};
+  int32_t maxLevel{DEFAULT_MAX_LEVEL};
 };
 
 inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
@@ -58,6 +64,8 @@ inline S2RegionTermIndexer::Options S2Options(GeoOptions const& opts) {
 
 bool parseShape(velocypack::Slice slice, geo::ShapeContainer& shape, bool onlyPoint);
 bool parsePoint(velocypack::Slice latSlice, velocypack::Slice lngSlice, S2LatLng& out);
+
+void toVelocyPack(velocypack::Builder& builder, S2LatLng const& point);
 
 } // iresearch
 } // arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #ifndef ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H
 #define ARANGOD_CLUSTER_ASYNC_AGENCY_COMM_H 1
 
@@ -37,8 +38,10 @@
 
 #include "Agency/PathComponent.h"
 #include "Basics/ResultT.h"
+#include "Basics/debugging.h"
 #include "Futures/Future.h"
 #include "Network/Methods.h"
+#include "Network/Utils.h"
 
 namespace arangodb {
 
@@ -52,30 +55,44 @@ struct AsyncAgencyCommResult {
 
   [[nodiscard]] bool fail() const { return !ok(); }
 
-  VPackSlice slice() const { return response->slice(); }
+  VPackSlice slice() const { 
+    TRI_ASSERT(response != nullptr);
+    return response->slice(); 
+  }
 
   std::shared_ptr<velocypack::Buffer<uint8_t>> copyPayload() const {
+    TRI_ASSERT(response != nullptr);
     return response->copyPayload();
   }
+
   std::shared_ptr<velocypack::Buffer<uint8_t>> stealPayload() const {
+    TRI_ASSERT(response != nullptr);
     return response->stealPayload();
   }
+
   std::string payloadAsString() const {
+    TRI_ASSERT(response != nullptr);
     return response->payloadAsString();
   }
-  std::size_t payloadSize() const { return response->payloadSize(); }
+
+  std::size_t payloadSize() const { 
+    TRI_ASSERT(response != nullptr);
+    return response->payloadSize(); 
+  }
 
   arangodb::fuerte::StatusCode statusCode() const {
+    TRI_ASSERT(response != nullptr);
     return response->statusCode();
   }
 
-  Result asResult() {
+  [[nodiscard]] Result asResult() const {
+    using namespace arangodb::network;
     if (!ok()) {
-      return Result{int(error), to_string(error)};
-    } else if (200 <= statusCode() && statusCode() <= 299) {
-      return Result{};
+      return Result{fuerteToArangoErrorCode(error), to_string(error)};
     } else {
-      return Result{int(statusCode())};
+      auto code = statusCode();
+      return Result{fuerteStatusToArangoErrorCode(code),
+                    fuerteStatusToArangoErrorMessage(code)};
     }
   }
 };

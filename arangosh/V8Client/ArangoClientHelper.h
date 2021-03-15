@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,8 +44,8 @@ class ArangoClientHelper {
   static std::string rewriteLocation(void* data, std::string const& location);
 
  public:
-  std::string getHttpErrorMessage(httpclient::SimpleHttpResult*, int* err);
-  bool getArangoIsCluster(int* err);
+  std::string getHttpErrorMessage(httpclient::SimpleHttpResult* result, ErrorCode* err);
+  bool getArangoIsCluster(ErrorCode* err);
 
  protected:
   std::unique_ptr<httpclient::SimpleHttpClient> _httpClient;

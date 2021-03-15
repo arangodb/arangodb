@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,6 +38,7 @@
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/MetricsFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -57,7 +58,7 @@ std::string fixEndpointProto(std::string const& endpoint) {
   return endpoint;
 }
 
-void writeError(int code, arangodb::GeneralResponse* response) {
+void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
   response->setResponseCode(arangodb::GeneralResponse::responseCode(code));
 
   VPackBuffer<uint8_t> buffer;
@@ -74,9 +75,9 @@ void writeError(int code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
-namespace arangodb {
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
 
-ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
+namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
     : ApplicationFeature(server, "Replication"),
@@ -88,7 +89,10 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _enableActiveFailover(false),
       _syncByRevision(true),
       _parallelTailingInvocations(0),
-      _maxParallelTailingInvocations(0) {
+      _maxParallelTailingInvocations(0),
+      _quickKeysLimit(1000000),
+      _inventoryRequests(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
@@ -135,6 +139,12 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      new DoubleParameter(&_requestTimeout))
                      .setIntroducedIn(30409).setIntroducedIn(30504);
 
+  options->addOption("--replication.quick-keys-limit",
+                     "Limit at which 'quick' calls to the replication keys API return only the document count for second run",
+                     new UInt64Parameter(&_quickKeysLimit),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30709);
+
   options
       ->addOption(
           "--replication.sync-by-revision",
@@ -172,13 +182,11 @@ void ReplicationFeature::prepare() {
     setEnabled(false);
     return;
   }
-
-  INSTANCE = this;
 }
 
 void ReplicationFeature::start() {
-  _globalReplicationApplier.reset(
-      new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(
+      GlobalReplicationApplier::loadConfiguration(server())));
 
   try {
     _globalReplicationApplier->loadState();
@@ -318,9 +326,8 @@ double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,
                                            arangodb::ServerState::Mode mode) {
   std::string endpoint;
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (replication != nullptr && replication->isActiveFailoverEnabled()) {
-    GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  if (isActiveFailoverEnabled()) {
+    GlobalReplicationApplier* applier = globalReplicationApplier();
     if (applier != nullptr) {
       endpoint = applier->endpoint();
       // replace tcp:// with http://, and ssl:// with https://

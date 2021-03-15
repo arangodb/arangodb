@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -42,7 +42,7 @@ class IAggregator {
   IAggregator& operator=(const IAggregator&) = delete;
 
  public:
-  IAggregator() {}
+  IAggregator() = default;
   virtual ~IAggregator() = default;
 
   /// @brief Used when updating aggregator value locally
@@ -58,6 +58,7 @@ class IAggregator {
                          arangodb::velocypack::Builder& builder) const = 0;
 
   virtual void reset() = 0;
+
   virtual bool isConverging() const = 0;
 };
 

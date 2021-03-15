@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,10 +30,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
-#include "Aql/Query.h"
 #include "Aql/OptimizerUtils.h"
-#include "Containers/HashSet.h"
+#include "Aql/Query.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Containers/HashSet.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
@@ -41,6 +41,7 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
+#include <Graph/Cache/RefactoredClusterTraverserCache.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -51,9 +52,7 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 BaseOptions::LookupInfo::LookupInfo()
-    : indexCondition(nullptr),
-      conditionNeedUpdate(false),
-      conditionMemberToUpdate(0) {
+    : indexCondition(nullptr), conditionNeedUpdate(false), conditionMemberToUpdate(0) {
   // NOTE: We need exactly one in this case for the optimizer to update
   idxHandles.resize(1);
 }
@@ -83,7 +82,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::QueryContext& query,
   }
   std::string idxId = read.copyString();
   aql::Collections const& collections = query.collections();
-  
+
   for (VPackSlice it : VPackArrayIterator(shards)) {
     if (!it.isString()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -164,8 +163,8 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   return 1000.0;
 }
 
-std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(arangodb::aql::QueryContext& query,
-                                                                 VPackSlice const& definition) {
+std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
+    arangodb::aql::QueryContext& query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
     return std::make_unique<ShortestPathOptions>(query, definition);
@@ -180,7 +179,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _tmpVar(nullptr),
       _parallelism(1),
       _produceVertices(true),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {}
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _refactor(false) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -190,15 +190,15 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _collectionToShard(other._collectionToShard),
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
-      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()) {
+      _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
+      _refactor(other._refactor) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._tmpVar == nullptr);
   }
 }
 
-BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
-                         VPackSlice info, VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info, VPackSlice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
@@ -225,13 +225,15 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
     itLookup.next();
     itCollections.next();
   }
-      
+
   // parallelism is optional
   read = info.get("parallelism");
   if (read.isInteger()) {
     _parallelism = read.getNumber<size_t>();
   }
-  
+  _refactor = basics::VelocyPackHelper::getBooleanValue(info, StaticStrings::GraphRefactorFlag,
+                                                        false);
+
   TRI_ASSERT(_produceVertices);
   read = info.get("produceVertices");
   if (read.isBool() && !read.getBool()) {
@@ -240,6 +242,10 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
 }
 
 BaseOptions::~BaseOptions() = default;
+
+arangodb::ResourceMonitor& BaseOptions::resourceMonitor() const {
+  return _query.resourceMonitor();
+}
 
 void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
   builder.openObject();
@@ -252,7 +258,7 @@ void BaseOptions::toVelocyPackIndexes(VPackBuilder& builder) const {
       builder.close();
     }
   }
-  builder.close(); // base
+  builder.close();  // base
   builder.close();
 }
 
@@ -269,7 +275,8 @@ void BaseOptions::setVariable(aql::Variable const* variable) {
 void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan, std::string const& collectionName,
                                 std::string const& attributeName,
                                 aql::AstNode* condition, bool onlyEdgeIndexes) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName, condition, onlyEdgeIndexes);
+  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
+                         condition, onlyEdgeIndexes);
 }
 
 void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
@@ -284,9 +291,10 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
   }
 
-  bool res = aql::utils::getBestIndexHandleForFilterCondition(*coll, info.indexCondition,
-                                                              _tmpVar, 1000, aql::IndexHint(),
-                                                              info.idxHandles[0], onlyEdgeIndexes);
+  bool res =
+      aql::utils::getBestIndexHandleForFilterCondition(*coll, info.indexCondition, _tmpVar,
+                                                       1000, aql::IndexHint(),
+                                                       info.idxHandles[0], onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -344,7 +352,9 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   list.emplace_back(std::move(info));
 }
 
-void BaseOptions::clearVariableValues() { _expressionCtx.clearVariableValues(); }
+void BaseOptions::clearVariableValues() {
+  _expressionCtx.clearVariableValues();
+}
 
 void BaseOptions::setVariableValue(aql::Variable const* var, aql::AqlValue const value) {
   _expressionCtx.setVariableValue(var, value);
@@ -375,6 +385,8 @@ void BaseOptions::injectEngineInfo(VPackBuilder& result) const {
   result.add(VPackValue("tmpVar"));
   TRI_ASSERT(_tmpVar != nullptr);
   _tmpVar->toVelocyPack(result);
+
+  result.add(StaticStrings::GraphRefactorFlag, VPackValue(_refactor));
 }
 
 arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
@@ -385,8 +397,7 @@ arangodb::aql::Expression* BaseOptions::getEdgeExpression(size_t cursorId,
   return _baseLookupInfos[cursorId].expression.get();
 }
 
-bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
-                                     VPackSlice value) {
+bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression, VPackSlice value) {
   if (expression == nullptr) {
     return true;
   }
@@ -449,4 +460,16 @@ void BaseOptions::activateCache(bool enableDocumentCache,
 void BaseOptions::injectTestCache(std::unique_ptr<TraverserCache>&& testCache) {
   TRI_ASSERT(_cache == nullptr);
   _cache = std::move(testCache);
+}
+
+arangodb::aql::FixedVarExpressionContext const& BaseOptions::getExpressionCtx() const {
+  return _expressionCtx;
+}
+
+aql::Variable const* BaseOptions::tmpVar() { return _tmpVar; }
+
+void BaseOptions::isQueryKilledCallback() const {
+  if (query().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
 }

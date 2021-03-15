@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
+#include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
@@ -52,8 +53,8 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
       _filename(""),
       _useBackslash(false),
       _convert(true),
-      _autoChunkSize(true),
-      _chunkSize(1024 * 1024 * 1),
+      _autoChunkSize(false),
+      _chunkSize(1024 * 1024 * 8),
       _threadCount(2),
       _collectionName(""),
       _fromCollectionPrefix(""),
@@ -80,6 +81,11 @@ ImportFeature::ImportFeature(application_features::ApplicationServer& server, in
 void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addOption("--file", "file name (\"-\" for STDIN)",
                      new StringParameter(&_filename));
+  
+  options->addOption("--auto-rate-limit",
+                     "adjust the data loading rate automatically, starting at --batch-size bytes per thread per second",
+                     new BooleanParameter(&_autoChunkSize))
+                     .setIntroducedIn(30711);
 
   options->addOption(
       "--backslash-escape",
@@ -92,7 +98,7 @@ void ImportFeature::collectOptions(std::shared_ptr<options::ProgramOptions> opti
 
   options->addOption(
       "--threads",
-      "Number of parallel import threads. Most useful for the rocksdb engine",
+      "Number of parallel import threads",
       new UInt32Parameter(&_threadCount));
 
   options->addOption("--collection", "collection name", new StringParameter(&_collectionName));
@@ -193,21 +199,20 @@ void ImportFeature::validateOptions(std::shared_ptr<options::ProgramOptions> opt
   auto const& positionals = options->processingResult()._positionals;
   size_t n = positionals.size();
 
-  if (1 == n) {
+  if ((1 == n) && (!options->processingResult().touched("--file"))) {
     // only take positional file name attribute into account if user
     // did not specify the --file option as well
-    if (!options->processingResult().touched("--file")) {
-      _filename = positionals[0];
-    }
+    _filename = positionals[0];
   } else if (1 < n) {
     LOG_TOPIC("0dc12", FATAL, arangodb::Logger::FIXME)
         << "expecting at most one filename, got " +
                StringUtils::join(positionals, ", ");
     FATAL_ERROR_EXIT();
+  } else if (n > 0) {
+    LOG_TOPIC("0dc13", FATAL, arangodb::Logger::FIXME)
+      << "Unused commandline arguments: " << positionals;
+    FATAL_ERROR_EXIT();
   }
-
-  // _chunkSize is dynamic ... unless user explicitly sets it
-  _autoChunkSize = !options->processingResult().touched("--batch-size");
 
   if (_chunkSize > arangodb::import::ImportHelper::MaxBatchSize) {
     // it's not sensible to raise the batch size beyond this value
@@ -262,6 +267,28 @@ void ImportFeature::start() {
   int ret = EXIT_SUCCESS;
   *_result = ret;
 
+  // filename
+  if (_filename == "") {
+    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
+    if (!FileUtils::exists(_filename)) {
+      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open file '" << _filename << "'. File not found.";
+    } else if (FileUtils::isDirectory(_filename)) {
+      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
+          << "Specified file '" << _filename
+          << "' is a directory. Please use a regular file.";
+    } else {
+      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
+          << "Cannot open '" << _filename << "'. Invalid file type.";
+    }
+
+    FATAL_ERROR_EXIT();
+  }
+
   if (_typeImport == "auto") {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)(.gz|)", std::regex::ECMAScript);
     std::smatch match;
@@ -296,7 +323,7 @@ void ImportFeature::start() {
 
   // must stay here in order to establish the connection
 
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   auto versionString = _httpClient->getServerVersion(&err);
   auto const dbName = client.databaseName();
 
@@ -330,6 +357,7 @@ void ImportFeature::start() {
       std::cout << "separator:              " << _separator << std::endl;
     }
     std::cout << "threads:                " << _threadCount << std::endl;
+    std::cout << "on duplicate:           " << _onDuplicateAction << std::endl;
 
     std::cout << "connect timeout:        " << client.connectionTimeout() << std::endl;
     std::cout << "request timeout:        " << client.requestTimeout() << std::endl;
@@ -342,7 +370,7 @@ void ImportFeature::start() {
 
     client.setDatabaseName("_system");
 
-    int res = tryCreateDatabase(client, dbName);
+    auto res = tryCreateDatabase(client, dbName);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("90431", ERR, arangodb::Logger::FIXME)
@@ -443,28 +471,6 @@ void ImportFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // filename
-  if (_filename == "") {
-    LOG_TOPIC("10531", FATAL, arangodb::Logger::FIXME) << "File name is missing.";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_filename != "-" && !FileUtils::isRegularFile(_filename)) {
-    if (!FileUtils::exists(_filename)) {
-      LOG_TOPIC("6f83e", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open file '" << _filename << "'. File not found.";
-    } else if (FileUtils::isDirectory(_filename)) {
-      LOG_TOPIC("70dac", FATAL, arangodb::Logger::FIXME)
-          << "Specified file '" << _filename
-          << "' is a directory. Please use a regular file.";
-    } else {
-      LOG_TOPIC("8699d", FATAL, arangodb::Logger::FIXME)
-          << "Cannot open '" << _filename << "'. Invalid file type.";
-    }
-
-    FATAL_ERROR_EXIT();
-  }
-
   // progress
   if (_progress) {
     ih.setProgress(true);
@@ -491,6 +497,7 @@ void ImportFeature::start() {
     ih.setFrom(_fromCollectionPrefix);
     ih.setTo(_toCollectionPrefix);
 
+    TRI_NormalizePath(_filename);
     // import type
     if (_typeImport == "csv") {
       std::cout << "Starting CSV import..." << std::endl;
@@ -545,7 +552,7 @@ void ImportFeature::start() {
   *_result = ret;
 }
 
-int ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
+ErrorCode ImportFeature::tryCreateDatabase(ClientFeature& client, std::string const& name) {
   VPackBuilder builder;
   builder.openObject();
   builder.add("name", VPackValue(name));

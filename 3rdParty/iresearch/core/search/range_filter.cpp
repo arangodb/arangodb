@@ -29,7 +29,7 @@
 #include "search/limited_sample_collector.hpp"
 #include "search/term_filter.hpp"
 
-NS_LOCAL
+namespace {
 
 using namespace irs;
 
@@ -117,9 +117,9 @@ void visit(
   }
 }
 
-NS_END
+}
 
-NS_ROOT
+namespace iresearch {
 
 DEFINE_FACTORY_DEFAULT(by_range)
 
@@ -182,4 +182,4 @@ DEFINE_FACTORY_DEFAULT(by_range)
   ::visit(segment, reader, rng, visitor);
 }
 
-NS_END // ROOT
+} // ROOT

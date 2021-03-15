@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -79,8 +80,9 @@ using namespace arangodb::pregel;
 std::pair<Result, uint64_t> PregelFeature::startExecution(
     TRI_vocbase_t& vocbase, std::string algorithm,
     std::vector<std::string> const& vertexCollections,
-    std::vector<std::string> const& edgeCollections, VPackSlice const& params) {
-
+    std::vector<std::string> const& edgeCollections, 
+    std::unordered_map<std::string, std::vector<std::string>> const& edgeCollectionRestrictions,
+    VPackSlice const& params) {
 
   // make sure no one removes the PregelFeature while in use
   std::shared_ptr<PregelFeature> instance = ::instance;
@@ -172,7 +174,7 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
           if (eKeys.size() != 1 || eKeys[0] != shardKeyAttribute) {
             return std::make_pair(Result{TRI_ERROR_BAD_PARAMETER,
                                          "Edge collection needs to be sharded "
-                                         "after shardKeyAttribute parameter ('"
+                                         "by shardKeyAttribute parameter ('"
                                          + shardKeyAttribute
                                          + "'), or use SmartGraphs. The current shardKey is: "
                                          + (eKeys.empty() ? "undefined" : "'" + eKeys[0] + "'")
@@ -208,7 +210,8 @@ std::pair<Result, uint64_t> PregelFeature::startExecution(
 
   uint64_t en = instance->createExecutionNumber();
   auto c = std::make_shared<pregel::Conductor>(en, vocbase, vertexCollections,
-                                               edgeColls, algorithm, params);
+                                               edgeColls, edgeCollectionRestrictions,
+                                               algorithm, params);
   instance->addConductor(std::move(c), en);
   TRI_ASSERT(instance->conductor(en));
   instance->conductor(en)->start();
@@ -347,14 +350,19 @@ void PregelFeature::cleanupAll() {
   }
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-  if (!sExecutionNum.isInteger()) {
+  if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
     LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
   }
-  uint64_t exeNum = sExecutionNum.getUInt();
+  uint64_t exeNum = 0;
+  if (sExecutionNum.isInteger()) {
+    exeNum = sExecutionNum.getUInt();
+  } else if (sExecutionNum.isString()) {
+    exeNum = basics::StringUtils::uint64(sExecutionNum.copyString());
+  }
   std::shared_ptr<Conductor> co = instance->conductor(exeNum);
   if (!co) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number");
+        TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
   }
 
   if (path == Utils::finishedStartupPath) {
@@ -372,7 +380,7 @@ void PregelFeature::cleanupAll() {
                                                    std::string const& path,
                                                    VPackSlice const& body,
                                                    VPackBuilder& outBuilder) {
-  if (vocbase.server().isStopping()) {
+  if (vocbase.server().isStopping() && path != Utils::finalizeExecutionPath) {
     return;  // shutdown ongoing
   }
 

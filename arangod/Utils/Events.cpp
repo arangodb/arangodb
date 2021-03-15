@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +32,8 @@ void CredentialsBad(GeneralRequest const&, std::string const& username) {}
 void CredentialsBad(GeneralRequest const&, rest::AuthenticationMethod) {}
 void Authenticated(GeneralRequest const&, rest::AuthenticationMethod) {}
 void NotAuthorized(GeneralRequest const&) {}
-void CreateCollection(std::string const& db, std::string const& name, int result) {}
-void DropCollection(std::string const& db, std::string const& name, int result) {}
+void CreateCollection(std::string const& db, std::string const& name, ErrorCode result) {}
+void DropCollection(std::string const& db, std::string const& name, ErrorCode result) {}
 void PropertyUpdateCollection(std::string const& db, std::string const& collectionName,
                               OperationResult const&) {}
 void TruncateCollection(std::string const& db, std::string const& name,
@@ -41,32 +41,30 @@ void TruncateCollection(std::string const& db, std::string const& name,
 void CreateDatabase(std::string const&, Result const&, ExecContext const&) {}
 void DropDatabase(std::string const&, Result const&, ExecContext const&) {}
 void CreateIndex(std::string const& db, std::string const& col,
-                 VPackSlice const&, int result) {}
+                 VPackSlice const& slice, ErrorCode result) {}
 void DropIndex(std::string const& db, std::string const& col,
-               std::string const& idx, int result) {}
-void CreateView(std::string const& db, std::string const& name, int result) {}
-void DropView(std::string const& db, std::string const& name, int result) {}
+               std::string const& idx, ErrorCode result) {}
+void CreateView(std::string const& db, std::string const& name, ErrorCode result) {}
+void DropView(std::string const& db, std::string const& name, ErrorCode result) {}
 void CreateDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
-                    int) {}
+                    ErrorCode) {}
 void DeleteDocument(std::string const& db, std::string const& collection,
                     VPackSlice const& document, OperationOptions const& options,
-                    int) {}
+                    ErrorCode) {}
 void ReadDocument(std::string const& db, std::string const& collection,
-                  VPackSlice const& document, OperationOptions const& options,
-                  int) {}
+                  VPackSlice const& document, OperationOptions const& options, ErrorCode) {}
 void ReplaceDocument(std::string const& db, std::string const& collection,
-                     VPackSlice const& document, OperationOptions const& options,
-                     int) {}
+                     VPackSlice const& document, OperationOptions const& options, ErrorCode) {}
 void ModifyDocument(std::string const& db, std::string const& collection,
-                    VPackSlice const& document, OperationOptions const& options, int code) {}
-void IllegalDocumentOperation(GeneralRequest const&, int result) {}
-void QueryDocument(std::string const& db, std::string const&, std::string const&, int code) {}
+                    VPackSlice const& document, OperationOptions const& options,
+                    ErrorCode code) {}
+void IllegalDocumentOperation(GeneralRequest const& request, rest::ResponseCode result) {}
+void AqlQuery(aql::Query const& /*query*/) {}
 void QueryDocument(std::string const& db, VPackSlice const&, int code) {}
-void QueryDocument(GeneralRequest const&, GeneralResponse const*, VPackSlice const&) {}
-void CreateHotbackup(std::string const& id, int result) {}
-void RestoreHotbackup(std::string const& id, int result) {}
-void DeleteHotbackup(std::string const& id, int result) {}
+void CreateHotbackup(std::string const& id, ErrorCode result) {}
+void RestoreHotbackup(std::string const& id, ErrorCode result) {}
+void DeleteHotbackup(std::string const& id, ErrorCode result) {}
 
 }  // namespace events
 }  // namespace arangodb

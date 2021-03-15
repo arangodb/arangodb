@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -265,10 +265,10 @@ arangodb::aql::AstNode* IndexNode::makeUnique(arangodb::aql::AstNode* node) cons
     if (idx->sparse() || idx->isSorted()) {
       // the index is sorted. we need to use SORTED_UNIQUE to get the
       // result back in index order
-      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array);
+      return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("SORTED_UNIQUE"), array, true);
     }
     // a regular UNIQUE will do
-    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array);
+    return ast->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("UNIQUE"), array, true);
   }
 
   // presumably an array with no or a single member
@@ -299,7 +299,7 @@ void IndexNode::initializeOnce(bool& hasV8Expression, std::vector<Variable const
       inVars.emplace_back(v);
       auto it = getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getRegisterPlan()->varInfo.cend());
-      TRI_ASSERT(it->second.registerId < RegisterPlan::MaxRegisterId);
+      TRI_ASSERT(it->second.registerId.isValid());
       inRegs.emplace_back(it->second.registerId);
     }
   };

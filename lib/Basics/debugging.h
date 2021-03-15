@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,15 +95,6 @@ inline constexpr bool TRI_CanUseFailurePointsDebugging() { return true; }
 inline constexpr bool TRI_CanUseFailurePointsDebugging() { return false; }
 #endif
 
-/// @brief appends a backtrace to the string provided
-void TRI_GetBacktrace(std::string& btstr);
-
-/// @brief prints a backtrace on stderr
-void TRI_PrintBacktrace();
-
-/// @brief logs a backtrace in log level warning
-void TRI_LogBacktrace();
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief container traits
 ////////////////////////////////////////////////////////////////////////////////
@@ -160,17 +151,6 @@ struct is_associative
                        std::true_type, std::false_type>::type {};
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief no std::enable_if_t in c++11
-////////////////////////////////////////////////////////////////////////////////
-
-#if __cplusplus <= 201103L
-namespace std {
-template <bool B, class T = void>
-using enable_if_t = typename std::enable_if<B, T>::type;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief forward declaration for pair output below
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -223,14 +203,15 @@ enable_if_t<is_container<T>::value, std::ostream&> operator<<(std::ostream& o, T
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-#define TRI_ASSERT(expr)                                                               \
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
   if (!(ADB_LIKELY(expr))) {                                                           \
     arangodb::CrashHandler::assertionFailure(__FILE__, __LINE__, __FUNCTION__, #expr); \
   } else {}
 
 #else
 
-#define TRI_ASSERT(expr) while (false) { (void)(expr); }
+#define TRI_ASSERT(expr) /*GCOVR_EXCL_LINE*/                                           \
+  while (false) { (void)(expr); }
 
 #endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 

@@ -1,10 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-//
-/// @brief Infrastructure for ExecutionPlans
-///
 /// DISCLAIMER
 ///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,10 +16,9 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Copyright 2014, triagens GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecutionNode.h"
@@ -41,6 +38,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FilterExecutor.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
 #include "Aql/IdExecutor.h"
@@ -66,6 +64,7 @@
 #include "Aql/SubqueryStartExecutionNode.h"
 #include "Aql/TraversalNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/WindowNode.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
@@ -126,7 +125,29 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
+    {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
 };
+
+void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
+  for (auto const& [id, info] : from.varInfo) {
+    if (info.registerId.isConstRegister()) {
+      to.varInfo.try_emplace(id, info);
+    }
+  }
+}
+
+// we have to ensure that all const variables are available in the
+// register plans of all subqueries. this can be removed once the
+// old-subqueries are fully removed in 3.9.
+void propagateConstVariablesToSubqueries(RegisterPlan& plan) {
+  for (auto& s : plan.subqueryNodes) {
+    auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
+    subqueryPlan.nrConstRegs = plan.nrConstRegs;
+    propagateConstVariables(plan, subqueryPlan);
+    propagateConstVariablesToSubqueries(subqueryPlan);
+  }
+}
 }  // namespace
 
 /// @brief resolve nodeType to a string.
@@ -258,7 +279,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
                                        "invalid \"groups\" definition");
       }
 
-      std::vector<std::pair<Variable const*, Variable const*>> groupVariables;
+      std::vector<GroupVarInfo> groupVariables;
       {
         groupVariables.reserve(groupsSlice.length());
         for (VPackSlice it : VPackArrayIterator(groupsSlice)) {
@@ -267,7 +288,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
-          groupVariables.emplace_back(std::make_pair(outVar, inVar));
+          groupVariables.emplace_back(GroupVarInfo{outVar, inVar});
         }
       }
 
@@ -278,27 +299,27 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
                                        "invalid \"aggregates\" definition");
       }
 
-      std::vector<std::pair<Variable const*, std::pair<Variable const*, std::string>>> aggregateVariables;
+      std::vector<AggregateVarInfo> aggregateVariables;
       {
         aggregateVariables.reserve(aggregatesSlice.length());
         for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
           Variable* outVar =
               Variable::varFromVPack(plan->getAst(), it, "outVariable");
           Variable* inVar =
-              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+              Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
           std::string const type = it.get("type").copyString();
-          aggregateVariables.emplace_back(
-              std::make_pair(outVar, std::make_pair(inVar, type)));
+          aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
         }
       }
 
+      // TODO - this can be removed in 3.9
       bool count = slice.get("count").getBoolean();
       bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
 
       auto node = new CollectNode(plan, slice, expressionVariable, outVariable, keepVariables,
                                   plan->getAst()->variables()->variables(false), groupVariables,
-                                  aggregateVariables, count, isDistinctCommand);
+                                  aggregateVariables, isDistinctCommand, count);
 
       // specialize the node if required
       bool specialized = slice.get("specialized").getBoolean();
@@ -359,6 +380,37 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new MutexNode(plan, slice);
     case READALL:
       return new ReadAllNode(plan, slice);
+    case WINDOW:{
+      
+      Variable* rangeVar =
+          Variable::varFromVPack(plan->getAst(), slice, "rangeVariable", /*optional*/true);
+
+      // aggregates
+      VPackSlice aggregatesSlice = slice.get("aggregates");
+      if (!aggregatesSlice.isArray()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                       "invalid \"aggregates\" definition");
+      }
+
+      std::vector<AggregateVarInfo> aggregateVariables;
+      {
+        aggregateVariables.reserve(aggregatesSlice.length());
+        for (VPackSlice it : VPackArrayIterator(aggregatesSlice)) {
+          Variable* outVar =
+              Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar =
+              Variable::varFromVPack(plan->getAst(), it, "inVariable");
+
+          std::string const type = it.get("type").copyString();
+          aggregateVariables.emplace_back(AggregateVarInfo{outVar, inVar, type});
+        }
+      }
+      
+      auto type = rangeVar != nullptr ? WindowBounds::Type::Range : WindowBounds::Type::Row;
+      WindowBounds bounds(type, slice);
+      return new WindowNode(plan, slice, std::move(bounds),
+                            rangeVar, aggregateVariables);
+    }
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -370,7 +422,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
 /// @brief create an ExecutionNode from VPackSlice
 ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
     : _id(slice.get("id").getNumericValue<size_t>()),
-      _depth(slice.get("depth").getNumericValue<int>()),
+      _depth(slice.get("depth").getNumericValue<unsigned int>()),
       _varUsageValid(true),
       _isInSplicedSubquery(false),
       _plan(plan) {
@@ -385,39 +437,14 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
   _regsToClear.reserve(regsToClearList.length());
   for (VPackSlice it : VPackArrayIterator(regsToClearList)) {
-    _regsToClear.insert(it.getNumericValue<RegisterId>());
+    _regsToClear.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
   }
 
   auto allVars = plan->getAst()->variables();
 
   VPackSlice varsUsedLaterStackSlice = slice.get("varsUsedLaterStack");
 
-  if (varsUsedLaterStackSlice.isNone()) {
-    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
-    VPackSlice varsUsedLaterSlice = slice.get("varsUsedLater");
-    if (!varsUsedLaterSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-          "\"varsUsedLater\" needs to be an array");
-    }
-    auto& varsUsedLater = _varsUsedLaterStack.emplace_back();
-    varsUsedLater.reserve(varsUsedLaterSlice.length());
-    for (VPackSlice it : VPackArrayIterator(varsUsedLaterSlice)) {
-      Variable oneVarUsedLater(it);
-      Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsUsedLater: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarUsedLater.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
-      }
-      varsUsedLater.insert(oneVariable);
-    }
-  } else {
-    if (!varsUsedLaterStackSlice.isArray() || varsUsedLaterStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
-          "\"varsUsedLaterStack\" needs to be a non-empty array");
-    }
-
+  if (varsUsedLaterStackSlice.isArray()) {
     _varsUsedLaterStack.reserve(varsUsedLaterStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsUsedLaterStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -439,39 +466,14 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         varsUsedLater.insert(oneVariable);
       }
     }
+  } else if (!varsUsedLaterStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+        "\"varsUsedLaterStack\" needs to be a non-empty array");
   }
 
   VPackSlice varsValidStackSlice = slice.get("varsValidStack");
 
-  if (varsValidStackSlice.isNone()) {
-    // 3.6 compatibility for rolling upgrades, can be removed in 3.8
-    VPackSlice varsValidSlice = slice.get("varsValid");
-
-    if (!varsValidSlice.isArray()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                     "\"varsValid\" needs to be an array");
-    }
-    auto& varsValid = _varsValidStack.emplace_back();
-
-    varsValid.reserve(varsValidSlice.length());
-    for (VPackSlice it : VPackArrayIterator(varsValidSlice)) {
-      Variable oneVarValid(it);
-      Variable* oneVariable = allVars->getVariable(oneVarValid.id);
-
-      if (oneVariable == nullptr) {
-        std::string errmsg = "varsValid: ID not found in all-array: " +
-                             StringUtils::itoa(oneVarValid.id);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg);
-      }
-      varsValid.insert(oneVariable);
-    }
-  } else {
-    if (!varsValidStackSlice.isArray() || varsValidStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"varsValidStack\" needs to be a non-empty array");
-    }
-
+  if (varsValidStackSlice.isArray()) {
     _varsValidStack.reserve(varsValidStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(varsValidStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -494,16 +496,16 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
         varsValid.insert(oneVariable);
       }
     }
+  } else if (!varsValidStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "\"varsValidStack\" needs to be a non-empty array");
   }
 
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
-  if (!regsToKeepStackSlice.isNone()) {
-    if (!regsToKeepStackSlice.isArray() || regsToKeepStackSlice.length() == 0) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_INTERNAL_AQL,
-          "\"regsToKeepStack\" needs to be a non-empty array");
-    }
-
+  
+  if (regsToKeepStackSlice.isArray()) {
+    // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
       if (!stackEntrySlice.isArray()) {
@@ -515,15 +517,15 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, VPackSlice const& slice)
 
       regsToKeep.reserve(stackEntrySlice.length());
       for (VPackSlice it : VPackArrayIterator(stackEntrySlice)) {
-        regsToKeep.insert(it.getNumericValue<RegisterId>());
+        regsToKeep.insert(RegisterId(it.getNumericValue<RegisterId::value_t>()));
       }
     }
-  } else {
-    // otherwise this is lazily computed in getRegsToKeep.
-    // This is 3.6 compatibility and can be uncommented in 3.7
-    //THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-    //                               "\"regsToKeepStack\" needs to be an array");
+  } else if (!regsToKeepStackSlice.isNone()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "\"regsToKeepStack\" needs to be a non-empty array");
   }
+
 
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
@@ -693,10 +695,28 @@ bool ExecutionNode::walk(WalkerWorkerBase<ExecutionNode>& worker) {
     return true;
   }
 
-  // Now the children in their natural order:
-  for (auto const& it : _dependencies) {
-    if (it->walk(worker)) {
-      return true;
+  if (!_dependencies.empty()) {
+    // intentionally copy the dependencies from before you we iterate
+    // over them.
+    // we keep this copy to check that no worker function modifies the
+    // dependencies while we are working over them. this would be
+    // inherently unsafe, e.g. adding to _dependencies while walking 
+    // over them could lead to vector storage reallocation, and
+    // removing dependencies while walking over them can invalidate
+    // iterators.
+    ::arangodb::containers::SmallVector<ExecutionNode*>::allocator_type::arena_type arena;
+    ::arangodb::containers::SmallVector<ExecutionNode*> dependencies{arena};
+
+    // we normally should have 1, at most 2 dependencies here!
+    dependencies.assign(_dependencies.begin(), _dependencies.end());
+
+    // Now the children in their natural order:
+    for (auto const& it : dependencies) {
+      bool stopWalking = it->walk(worker);
+
+      if (stopWalking) {
+        return true;
+      }
     }
   }
 
@@ -851,7 +871,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     {
       VPackArrayBuilder guard(&nodes);
       for (auto const& oneRegisterID : _regsToClear) {
-        nodes.add(VPackValue(oneRegisterID));
+        TRI_ASSERT(oneRegisterID.isRegularRegister());
+        nodes.add(VPackValue(oneRegisterID.value()));
       }
     }
 
@@ -870,11 +891,11 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
     nodes.add(VPackValue("regsToKeepStack"));
     {
       VPackArrayBuilder guard(&nodes);
-      //TRI_ASSERT(!_regsToKeepStack.empty()); -- can be empty in 3.6
       for (auto const& stackEntry : getRegsToKeepStack()) {
         VPackArrayBuilder stackEntryGuard(&nodes);
         for (auto const& reg : stackEntry) {
-          nodes.add(VPackValue(reg));
+          TRI_ASSERT(reg.isRegularRegister());
+          nodes.add(VPackValue(reg.value()));
         }
       }
     }
@@ -900,7 +921,8 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
         for (auto const& stackEntry : unusedRegsStack) {
           VPackArrayBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
-            nodes.add(VPackValue(reg));
+            TRI_ASSERT(reg.isRegularRegister());
+            nodes.add(VPackValue(reg.value()));
           }
         }
       }
@@ -914,7 +936,7 @@ void ExecutionNode::toVelocyPackHelperGeneric(VPackBuilder& nodes, unsigned flag
           VPackObjectBuilder stackEntryGuard(&nodes);
           for (auto const& reg : stackEntry) {
             using std::to_string;
-            nodes.add(VPackValue(to_string(reg.first)));
+            nodes.add(VPackValue(to_string(reg.first.value())));
             reg.second->toVelocyPack(nodes);
           }
         }
@@ -1006,12 +1028,34 @@ void ExecutionNode::planRegisters(ExecutionNode* super, ExplainRegisterPlan expl
   auto walker = RegisterPlanWalker{v, explainRegisterPlan};
   walk(walker);
 
-  // Now handle the subqueries:
-  for (auto& s : v->subQueryNodes) {
+  if (v->subqueryNodes.empty() && super == nullptr) {
+    // shrink RegisterPlan by cutting off all unused rightmost registers
+    // from each depth. this is a completely optional performance
+    // optimization. turning it off should not affect correctness,
+    // only performance.
+    // note: we are intentionally not performing this optimization
+    // in case the query still contains old style subqueries. 
+    // in that case, the register planning optimization would be slightly
+    // more complex to perform. 99.99% of queries should not be affected
+    // by this optimization being turned off, because old-style subqueries
+    // are only around in case except someone intentionally turned off
+    // subquery optimizations. 
+    v->shrink(this);
+  }
+
+  // Now handle old-style subqueries:
+  for (auto& s : v->subqueryNodes) {
     auto sq = ExecutionNode::castTo<SubqueryNode*>(s);
     sq->getSubquery()->planRegisters(s, explainRegisterPlan);
+    auto& subqueryPlan = *sq->getSubquery()->getRegisterPlan();
+    // we only want to create a single const block for all queries, so we have to
+    // ensure that nrConstRegs in the RegisterPlan of the root node contains the
+    // sum of all const regs in all (sub)queries.
+    v->nrConstRegs = subqueryPlan.nrConstRegs;
+    propagateConstVariables(subqueryPlan, *v);
   }
-  walker.reset();
+
+  propagateConstVariablesToSubqueries(*v);
 }
 
 bool ExecutionNode::isInSplicedSubquery() const noexcept {
@@ -1121,15 +1165,15 @@ RegisterInfos ExecutionNode::createRegisterInfos(RegIdSet readableInputRegisters
   auto const nrOutRegs = getNrOutputRegisters();
   auto const nrInRegs = getNrInputRegisters();
 
-  auto const& regsToKeep = getRegsToKeepStack();
-  auto const& regsToClear = getRegsToClear();
+  auto regsToKeep = getRegsToKeepStack();
+  auto regsToClear = getRegsToClear();
 
   return RegisterInfos{std::move(readableInputRegisters),
                        std::move(writableOutputRegisters),
                        nrInRegs,
                        nrOutRegs,
-                       regsToClear,
-                       regsToKeep};
+                       std::move(regsToClear),
+                       std::move(regsToKeep)};
 }
 
 RegisterCount ExecutionNode::getNrInputRegisters() const {
@@ -1140,8 +1184,6 @@ RegisterCount ExecutionNode::getNrInputRegisters() const {
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
   if (_regsToKeepStack.empty()) {
-    // This is 3.6 compatibility code. It can be removed in 3.8.
-    // The function should then become const noexcept and should return a const& instead
     return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
                                          getVariablesSetHere());
   }
@@ -1165,6 +1207,36 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, ExecutionNodeId id)
     : _id(id), _depth(0), _varUsageValid(false), _isInSplicedSubquery(false), _plan(plan) {}
 
 ExecutionNodeId ExecutionNode::id() const { return _id; }
+
+void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  auto assertNotContained = [](RegisterId maxRegister, auto const& container) noexcept {
+    std::for_each(container.begin(), container.end(), [maxRegister](RegisterId regId) {
+      TRI_ASSERT(regId.value() <= maxRegister.value());
+    });
+  };
+  assertNotContained(maxRegister, _regsToClear);
+  // validate all levels of _regsToKeepStack
+  for (auto const& regsToKeep : _regsToKeepStack) {
+    assertNotContained(maxRegister, regsToKeep); 
+  }
+#endif
+  
+  auto removeRegisters = [maxRegister](auto& container) {
+    for (auto it = container.begin(); it != container.end(); /* no hoisting */) {
+      if ((*it) > maxRegister) {
+        it = container.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  };
+
+  auto it = _registerPlan->unusedRegsByNode.find(_id);
+  if (it != _registerPlan->unusedRegsByNode.end()) {
+    removeRegisters(it->second.back());
+  }
+}
 
 void ExecutionNode::swapFirstDependency(ExecutionNode* node) {
   TRI_ASSERT(hasDependency());
@@ -1348,7 +1420,7 @@ RegisterId ExecutionNode::variableToRegisterOptionalId(Variable const* var) cons
   if (var) {
     return variableToRegisterId(var);
   }
-  return RegisterPlan::MaxRegisterId;
+  return RegisterId{RegisterId::maxRegisterId};
 }
 
 bool ExecutionNode::isIncreaseDepth() const { return isIncreaseDepth(getType()); }
@@ -1411,10 +1483,11 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case SINGLETON:
     case LIMIT:
     case READALL:
+    case WINDOW:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.
-    case REMOTE:
+    case REMOTE: // simon: could probably return true
     case SCATTER:
     case GATHER:
     case ASYNC:
@@ -1815,6 +1888,15 @@ CalculationNode::CalculationNode(ExecutionPlan* plan, arangodb::velocypack::Slic
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
       _expression(new Expression(plan->getAst(), base)) {}
 
+CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
+    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
+  TRI_ASSERT(_expression != nullptr);
+  TRI_ASSERT(_outVariable != nullptr);
+}
+
+CalculationNode::~CalculationNode() = default;
+
 /// @brief toVelocyPack, for CalculationNode
 void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
                                          std::unordered_set<ExecutionNode const*>& seen) const {
@@ -1846,10 +1928,17 @@ void CalculationNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
             nodes.add("name", VPackValue(func->name));
             nodes.add("isDeterministic",
                       VPackValue(func->hasFlag(Function::Flags::Deterministic)));
-            nodes.add("canRunOnDBServer",
-                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServer)));
+            nodes.add("canAccessDocuments", 
+                      VPackValue(func->hasFlag(Function::Flags::CanReadDocuments)));
+            nodes.add("canRunOnDBServerCluster",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
+            nodes.add("canRunOnDBServerOneShard",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerOneShard)));
             nodes.add("cacheable", VPackValue(func->hasFlag(Function::Flags::Cacheable)));
-            nodes.add("usesV8", VPackValue(func->implementation == nullptr));
+            nodes.add("usesV8", VPackValue(func->hasV8Implementation()));
+            // deprecated
+            nodes.add("canRunOnDBServer",
+                      VPackValue(func->hasFlag(Function::Flags::CanRunOnDBServerCluster)));
             nodes.close();
           }
         } else if (node->type == NODE_TYPE_FCALL_USER) {
@@ -1882,6 +1971,7 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
   TRI_ASSERT(previousNode != nullptr);
 
   RegisterId outputRegister = variableToRegisterId(_outVariable);
+  TRI_ASSERT((_outVariable->type() == Variable::Type::Const) == outputRegister.isConstRegister());
 
   VarSet inVars;
   _expression->variables(inVars);
@@ -1909,10 +1999,16 @@ std::unique_ptr<ExecutionBlock> CalculationNode::createBlock(
 
   TRI_ASSERT(expression() != nullptr);
 
-
   auto registerInfos =
       createRegisterInfos(std::move(inputRegisters),
-                          RegIdSet{outputRegister});
+                          outputRegister.isRegularRegister() ? RegIdSet{outputRegister} : RegIdSet{});
+
+  if (_outVariable->type() == Variable::Type::Const) {
+    // we have a const variable, so we can simply use an IdExector to forward the rows.
+    auto executorInfos = IdExecutorInfos(false, outputRegister);
+    return std::make_unique<ExecutionBlockImpl<IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      &engine, this, std::move(registerInfos), std::move(executorInfos));
+  }
 
   auto executorInfos = CalculationExecutorInfos(
       outputRegister, engine.getQuery() /* used for v8 contexts and in expression */,
@@ -1953,15 +2049,6 @@ CostEstimate CalculationNode::estimateCost() const {
   estimate.estimatedCost += estimate.estimatedNrItems;
   return estimate;
 }
-
-CalculationNode::CalculationNode(ExecutionPlan* plan, ExecutionNodeId id,
-                                 std::unique_ptr<Expression> expr, Variable const* outVariable)
-    : ExecutionNode(plan, id), _outVariable(outVariable), _expression(std::move(expr)) {
-  TRI_ASSERT(_expression != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
-}
-
-CalculationNode::~CalculationNode() = default;
 
 ExecutionNode::NodeType CalculationNode::getType() const { return CALCULATION; }
 
@@ -2108,7 +2195,7 @@ std::unique_ptr<ExecutionBlock> SubqueryNode::createBlock(
 
   // The const_cast has been taken from previous implementation.
   auto executorInfos =
-      SubqueryExecutorInfos(*subquery, outReg, const_cast<SubqueryNode*>(this)->isConst());
+      SubqueryExecutorInfos(*subquery, engine.getQuery(), outReg, const_cast<SubqueryNode*>(this)->isConst());
   if (isModificationNode()) {
     return std::make_unique<ExecutionBlockImpl<SubqueryExecutor<true>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -2170,8 +2257,6 @@ struct SubqueryVarUsageFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::Unique> {
   VarSet _usedLater;
   VarSet _valid;
-
-  SubqueryVarUsageFinder() {}
 
   ~SubqueryVarUsageFinder() = default;
 
@@ -2295,7 +2380,6 @@ std::unique_ptr<ExecutionBlock> FilterNode::createBlock(
   RegisterId inputRegister = variableToRegisterId(_inVariable);
 
   auto registerInfos = createRegisterInfos(RegIdSet{inputRegister}, {});
-
   auto executorInfos = FilterExecutorInfos(inputRegister);
   return std::make_unique<ExecutionBlockImpl<FilterExecutor>>(&engine, this,
                                                               std::move(registerInfos),

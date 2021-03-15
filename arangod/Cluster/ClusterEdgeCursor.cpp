@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -83,7 +83,7 @@ void ClusterTraverserEdgeCursor::rearm(arangodb::velocypack::StringRef vertexId,
   TRI_ASSERT(trx != nullptr);
   TRI_ASSERT(_cache != nullptr);
 
-  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions(), vertexId, depth, _edgeList);
+  Result res = fetchEdgesFromEngines(*trx, *_cache, traverserOptions()->getExpressionCtx(), vertexId, depth, _edgeList);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -99,12 +99,10 @@ void ClusterShortestPathEdgeCursor::rearm(arangodb::velocypack::StringRef vertex
   _position = 0;
 
   auto trx = _opts->trx();
-  transaction::BuilderLeaser leased(trx);
   transaction::BuilderLeaser b(trx);
 
   b->add(VPackValuePair(vertexId.data(), vertexId.length(), VPackValueType::String));
-  Result res = fetchEdgesFromEngines(*trx, _cache->engines(), b->slice(), _backward, _cache->cache(),
-                                     _edgeList, _cache->datalake(), _cache->insertedDocuments());
+  Result res = fetchEdgesFromEngines(*trx, *_cache, b->slice(), _backward, _edgeList, _cache->insertedDocuments());
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
   }

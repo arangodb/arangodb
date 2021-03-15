@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -275,6 +275,9 @@ class UpdateReplaceNode : public ModificationNode {
       vars.emplace(_inKeyVariable);
     }
   }
+
+  /// @brief set the input key variable
+  void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
 
   /// @brief set the input document variable
   void setInDocVariable(Variable const* var) { _inDocVariable = var; }

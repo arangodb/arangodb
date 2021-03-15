@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,8 @@
 
 #include "ClusterRepairDistributeShardsLike.h"
 
-#include <Basics/StringUtils.h>
+#include "Basics/StringUtils.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -59,7 +60,8 @@ DBServers DistributeShardsLikeRepairer::readDatabases(const Slice& supervisionHe
 
   for (auto const& it : ObjectIterator(supervisionHealth)) {
     ServerID const& serverId = it.key.copyString();
-    if (serverId.substr(0, 5) == "PRMR-" && it.value.hasKey("Status") &&
+    if (ClusterHelpers::isDBServerName(serverId) && 
+        it.value.hasKey("Status") &&
         it.value.get("Status").copyString() == "GOOD") {
       dbServers.emplace_back(it.key.copyString());
     }

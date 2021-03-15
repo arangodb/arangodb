@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,9 +30,9 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
 #include "Aql/QueryWarnings.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "VocBase/voc-types.h"
 #include <velocypack/Builder.h>
@@ -63,17 +63,15 @@ class Ast;
 /// @brief an AQL query basic interface
 class QueryContext {
  private:
-
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
 
  public:
-  
   explicit QueryContext(TRI_vocbase_t& vocbase);
 
   virtual ~QueryContext();
 
-  ResourceMonitor& resourceMonitor() { return _resourceMonitor; }
+  arangodb::ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
   
   /// @brief get the vocbase
   inline TRI_vocbase_t& vocbase() const { return _vocbase; }
@@ -106,8 +104,6 @@ class QueryContext {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
       
- public:
-  
   virtual QueryOptions const& queryOptions() const = 0;
   
   /// @brief pass-thru a resolver object from the transaction context
@@ -125,21 +121,30 @@ class QueryContext {
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
-  
-public:
+
+  virtual double getLockTimeout() const noexcept = 0;
+  virtual void setLockTimeout(double timeout) = 0;
   
   virtual void enterV8Context();
   
   virtual void exitV8Context() {}
   
   virtual bool hasEnteredV8Context() const { return false; }
+  
+  // base overhead for each query. the number used here is somewhat arbitrary. 
+  // it is just that all the basics data structures of a query are not totally 
+  // free, and there is not other accounting for them. note: this value is
+  // counted up in the constructor and counted down in the destructor.
+  constexpr static std::size_t baseMemoryUsage = 8192;
 
  protected:
-  
-  const TRI_voc_tick_t _queryId;
-
   /// @brief current resources and limits used by query
-  ResourceMonitor _resourceMonitor;
+  arangodb::ResourceMonitor _resourceMonitor;
+
+  /// @brief registers/unregisters query base ovehead
+  arangodb::ResourceUsageScope _baseOverHeadTracker;
+  
+  TRI_voc_tick_t const _queryId;
   
   /// @brief thread-safe query warnings collector
   QueryWarnings _warnings;

@@ -71,7 +71,7 @@ class HashedCollectExecutorTest
     return empty;
   }
 
-  auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildRegisterInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
@@ -81,7 +81,7 @@ class HashedCollectExecutorTest
     auto readableInputRegisters = RegIdSet{};
     auto writeableOutputRegisters = RegIdSet{};
 
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
       registersToClear.emplace(i);
     }
@@ -109,24 +109,17 @@ class HashedCollectExecutorTest
                          registersToKeep};
   };
 
-  auto buildExecutorInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildExecutorInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> groupRegisters,
                           RegisterId collectRegister = RegisterPlan::MaxRegisterId,
                           std::vector<std::string> aggregateTypes = {},
                           std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters = {})
       -> HashedCollectExecutorInfos {
-    // It seems that count <=> collectRegister exists
-    bool count = false;
-    if (collectRegister != RegisterPlan::MaxRegisterId) {
-      count = true;
-    }
-
-    return HashedCollectExecutorInfos{std::move(groupRegisters),
-                                      collectRegister,
+    return HashedCollectExecutorInfos{std::move(groupRegisters), RegisterPlan::MaxRegisterId,
                                       std::move(aggregateTypes),
                                       std::move(aggregateRegisters),
                                       &VPackOptions::Defaults,
-                                      count};
+                                      monitor};
   };
 };
 
@@ -427,25 +420,6 @@ TEST_P(HashedCollectExecutorTest, collect_only_multiple_values) {
       .run();
 }
 
-// Collect with one group value and count
-TEST_P(HashedCollectExecutorTest, count) {
-  auto registerInfos = buildRegisterInfos(1, 3, {{1, 0}}, 2);
-  auto executorInfos = buildExecutorInfos(1, 3, {{1, 0}}, 2);
-  AqlCall call{};          // unlimited produce
-  ExecutionStats stats{};  // No stats here
-  makeExecutorTestHelper<1, 2>()
-      .addConsumer<HashedCollectExecutor>(std::move(registerInfos), std::move(executorInfos))
-      .setInputValue({{{1}}, {{1}}, {{2}}, {{1}}, {{6}}, {{2}}, {{R"("1")"}}})
-      .setInputSplitType(getSplit())
-      .setCall(call)
-      .expectOutput({1, 2}, {{1, 3}, {2, 2}, {6, 1}, {R"("1")", 1}})
-      .allowAnyOutputOrder(true)
-      .expectSkipped(0)
-      .expectedState(ExecutionState::DONE)
-      // .expectedStats(stats)
-      .run();
-}
-
 // Collect with multiple aggregators
 TEST_P(HashedCollectExecutorTest, many_aggregators) {
   auto registerInfos = buildRegisterInfos(2, 5, {{2, 0}}, RegisterPlan::MaxRegisterId,
@@ -545,7 +519,7 @@ struct AggregateInput {
 std::ostream& operator<<(std::ostream& out, AggregateInput const& agg) {
   out << agg.name;
   if (agg.inReg != RegisterPlan::MaxRegisterId) {
-    out << " reg: " << agg.inReg;
+    out << " reg: " << agg.inReg.value();
   }
   return out;
 }
@@ -565,7 +539,7 @@ class HashedCollectExecutorTestAggregate
     return info;
   }
 
-  auto buildRegisterInfos(RegisterId nrInputRegisters, RegisterId nrOutputRegisters,
+  auto buildRegisterInfos(RegisterCount nrInputRegisters, RegisterCount nrOutputRegisters,
                           std::vector<std::pair<RegisterId, RegisterId>> const& groupRegisters)
       -> RegisterInfos {
     RegIdSet registersToClear{};
@@ -573,7 +547,7 @@ class HashedCollectExecutorTestAggregate
     auto readableInputRegisters = RegIdSet{};
     auto writeableOutputRegisters = RegIdSet{};
 
-    for (RegisterId i = 0; i < nrInputRegisters; ++i) {
+    for (RegisterId::value_t i = 0; i < nrInputRegisters; ++i) {
       // All registers need to be invalidated!
       registersToClear.emplace(i);
     }
@@ -601,7 +575,6 @@ class HashedCollectExecutorTestAggregate
 
   auto buildExecutorInfos(std::vector<std::pair<RegisterId, RegisterId>> groupRegisters)
       -> HashedCollectExecutorInfos {
-    bool count = false;
     RegisterId collectRegister = RegisterPlan::MaxRegisterId;
 
     auto agg = getAggregator();
@@ -611,7 +584,7 @@ class HashedCollectExecutorTestAggregate
     auto infos = HashedCollectExecutorInfos(std::move(groupRegisters), collectRegister,
                                             std::move(aggregateTypes),
                                             std::move(aggregateRegisters),
-                                            &VPackOptions::Defaults, count);
+                                            &VPackOptions::Defaults, monitor);
     return infos;
   };
 };

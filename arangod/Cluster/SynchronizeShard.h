@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,9 +25,10 @@
 #ifndef ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
 #define ARANGODB_MAINTENANCE_SYNCHRONIZE_SHARD_H
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
 #include "Basics/ResultT.h"
+#include "Cluster/ActionBase.h"
+#include "Cluster/ActionDescription.h"
+#include "Replication/utilities.h"
 #include "VocBase/voc-types.h"
 
 #include <chrono>
@@ -52,6 +53,11 @@ class SynchronizeShard : public ActionBase {
 
   void setState(ActionState state) override final;
 
+  std::string const& clientInfoString() const;
+
+  arangodb::replutils::LeaderInfo const& leaderInfo() const;
+  void setLeaderInfo(arangodb::replutils::LeaderInfo const& leaderInfo);
+
  private:
   arangodb::Result getReadLock(network::ConnectionPool* pool,
                                std::string const& endpoint, std::string const& database,
@@ -71,12 +77,15 @@ class SynchronizeShard : public ActionBase {
 
   arangodb::Result catchupWithExclusiveLock(
       std::string const& ep, std::string const& database,
-      LogicalCollection const& collection, std::string const& clientId,
+      LogicalCollection& collection, std::string const& clientId,
       std::string const& shard, std::string const& leader, SyncerId syncerId,
       TRI_voc_tick_t lastLogTick, VPackBuilder& builder);
 
   /// @brief Short, informative description of the replication client, passed to the server
   std::string _clientInfoString;
+
+  /// @brief information about the leader, reused across multiple replication steps
+  arangodb::replutils::LeaderInfo _leaderInfo;
 };
 
 }  // namespace maintenance

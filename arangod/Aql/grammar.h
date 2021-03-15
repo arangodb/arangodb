@@ -50,6 +50,7 @@ extern int Aqldebug;
 # define YYTOKENTYPE
   enum yytokentype
   {
+<<<<<<< HEAD
     YYEMPTY = -2,
     T_END = 0,                     /* "end of query string"  */
     YYerror = 256,                 /* error  */
@@ -126,6 +127,83 @@ extern int Aqldebug;
     REFERENCE = 327,               /* REFERENCE  */
     INDEXED = 328,                 /* INDEXED  */
     EXPANSION = 329                /* EXPANSION  */
+=======
+    T_END = 0,
+    T_FOR = 258,
+    T_LET = 259,
+    T_FILTER = 260,
+    T_RETURN = 261,
+    T_COLLECT = 262,
+    T_SORT = 263,
+    T_LIMIT = 264,
+    T_WINDOW = 265,
+    T_ASC = 266,
+    T_DESC = 267,
+    T_IN = 268,
+    T_WITH = 269,
+    T_INTO = 270,
+    T_AGGREGATE = 271,
+    T_GRAPH = 272,
+    T_SHORTEST_PATH = 273,
+    T_K_SHORTEST_PATHS = 274,
+    T_K_PATHS = 275,
+    T_DISTINCT = 276,
+    T_REMOVE = 277,
+    T_INSERT = 278,
+    T_UPDATE = 279,
+    T_REPLACE = 280,
+    T_UPSERT = 281,
+    T_NULL = 282,
+    T_TRUE = 283,
+    T_FALSE = 284,
+    T_STRING = 285,
+    T_QUOTED_STRING = 286,
+    T_INTEGER = 287,
+    T_DOUBLE = 288,
+    T_PARAMETER = 289,
+    T_DATA_SOURCE_PARAMETER = 290,
+    T_ASSIGN = 291,
+    T_NOT = 292,
+    T_AND = 293,
+    T_OR = 294,
+    T_REGEX_MATCH = 295,
+    T_REGEX_NON_MATCH = 296,
+    T_EQ = 297,
+    T_NE = 298,
+    T_LT = 299,
+    T_GT = 300,
+    T_LE = 301,
+    T_GE = 302,
+    T_LIKE = 303,
+    T_PLUS = 304,
+    T_MINUS = 305,
+    T_TIMES = 306,
+    T_DIV = 307,
+    T_MOD = 308,
+    T_QUESTION = 309,
+    T_COLON = 310,
+    T_SCOPE = 311,
+    T_RANGE = 312,
+    T_COMMA = 313,
+    T_OPEN = 314,
+    T_CLOSE = 315,
+    T_OBJECT_OPEN = 316,
+    T_OBJECT_CLOSE = 317,
+    T_ARRAY_OPEN = 318,
+    T_ARRAY_CLOSE = 319,
+    T_OUTBOUND = 320,
+    T_INBOUND = 321,
+    T_ANY = 322,
+    T_ALL = 323,
+    T_NONE = 324,
+    UMINUS = 325,
+    UPLUS = 326,
+    UNEGATION = 327,
+    FUNCCALL = 328,
+    REFERENCE = 329,
+    INDEXED = 330,
+    EXPANSION = 331
+>>>>>>> 018cbb408d61b8051528fb5bce47c17a5a70c09e
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -134,7 +212,7 @@ extern int Aqldebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 36 "Aql/grammar.y"
+#line 37 "Aql/grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -144,7 +222,11 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
+<<<<<<< HEAD
 #line 148 "Aql/grammar.hpp"
+=======
+#line 145 "Aql/grammar.hpp"
+>>>>>>> 018cbb408d61b8051528fb5bce47c17a5a70c09e
 
 };
 typedef union YYSTYPE YYSTYPE;

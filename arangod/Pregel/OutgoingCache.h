@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,7 +92,7 @@ class OutCache {
     _sendCount = 0;
     _sendCountNextGSS = 0;
     _removeContainedMessages();
-  };
+  }
   virtual void appendMessage(PregelShard shard, velocypack::StringRef const& key, M const& data) = 0;
   virtual void flushMessages() = 0;
 };
@@ -100,7 +100,7 @@ class OutCache {
 template <typename M>
 class ArrayOutCache : public OutCache<M> {
   /// @brief two stage map: shard -> vertice -> message
-  std::unordered_map<PregelShard, std::unordered_map<velocypack::StringRef, std::vector<M>>> _shardMap;
+  std::unordered_map<PregelShard, std::unordered_map<std::string, std::vector<M>>> _shardMap;
 
   void _removeContainedMessages() override;
 

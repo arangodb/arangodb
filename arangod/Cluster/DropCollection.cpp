@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,7 @@
 #include "DropCollection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/VelocyPackHelper.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -75,7 +75,7 @@ bool DropCollection::first() {
   auto* vocbase = _feature.server().getFeature<DatabaseFeature>().lookupDatabase(database);
   if (vocbase != nullptr) {
     try {
-      DatabaseGuard guard(database);
+      DatabaseGuard guard(*vocbase);
       auto& vocbase = guard.database();
 
       std::shared_ptr<LogicalCollection> coll;
@@ -94,11 +94,22 @@ bool DropCollection::first() {
 
         return false;
       }
+    } catch (basics::Exception const& e) {
+      if (e.code() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+        // any error but database not found will be reported properly
+        std::stringstream error;
 
+        error << "action " << _description << " failed with exception " << e.what();
+        LOG_TOPIC("761d2", ERR, Logger::MAINTENANCE) << error.str();
+        _result.reset(e.code(), error.str());
+
+        return false;
+      }
+      // TRI_ERROR_ARANGO_DATABASE_NOT_FOUND will fallthrough here, intentionally
     } catch (std::exception const& e) {
       std::stringstream error;
 
-      error << " action " << _description << " failed with exception " << e.what();
+      error << "action " << _description << " failed with exception " << e.what();
       LOG_TOPIC("9dbd8", ERR, Logger::MAINTENANCE) << error.str();
       _result.reset(TRI_ERROR_INTERNAL, error.str());
 

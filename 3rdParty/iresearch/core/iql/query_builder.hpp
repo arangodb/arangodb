@@ -78,10 +78,6 @@ namespace iresearch {
     ////////////////////////////////////////////////////////////////////////////////
     class IRESEARCH_API proxy_filter: public proxy_filter_t<irs::filter::ptr> {
      public:
-      static constexpr string_ref type_name() noexcept {
-        return "irs::iql::proxy_filter";
-      }
-
       DECLARE_FACTORY();
 
       proxy_filter(): proxy_filter_t(irs::type<proxy_filter>::get()) {}

@@ -28,8 +28,8 @@
 
 #include "shared.hpp"
 
-NS_ROOT
-NS_BEGIN(irstd)
+namespace iresearch {
+namespace irstd {
 
 template<typename In, typename Out>
 struct adjust_const {
@@ -75,8 +75,8 @@ void swap_remove(Container& cont, Iterator it) {
   cont.pop_back();
 }
 
-NS_BEGIN(heap)
-NS_BEGIN(detail)
+namespace heap {
+namespace detail {
 
 template<typename RandomAccessIterator, typename Diff, typename Func >
 inline void _for_each_top(
@@ -110,7 +110,7 @@ inline void _for_each_if(
   }
 }
 
-NS_END // detail
+} // detail
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief calls func for each element in a heap equals to top
@@ -151,7 +151,7 @@ inline void for_each_top(
     func);
 }
 
-NS_END // heap
+} // heap
 
 /////////////////////////////////////////////////////////////////////////////
 /// @brief checks that all values in the specified range are equals 
@@ -270,7 +270,7 @@ input_stream_iterator<Stream> make_istream_iterator(Stream& strm) {
   return input_stream_iterator<Stream>(strm);
 }
 
-NS_BEGIN(detail)
+namespace detail {
 
 template<typename Builder, size_t Size>
 struct initializer {
@@ -309,7 +309,7 @@ struct initializer<Builder, 1> {
 template<typename Builder>
 struct initializer<Builder, 0>;
 
-NS_END // detail
+} // detail
 
 template<typename Builder, size_t Size>
 class static_lazy_array {
@@ -335,7 +335,7 @@ class static_lazy_array {
   detail::initializer<Builder, Size> init_;
 };
 
-NS_END // irstd
-NS_END // ROOT
+} // irstd
+} // ROOT
 
 #endif

@@ -27,7 +27,7 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 
 const internal = require("internal");
 const db = internal.db;
@@ -37,63 +37,72 @@ const ERRORS = arangodb.errors;
 // helper
 const isCluster = internal.isCluster();
 let sleepInCluster = () => {
-  if (isCluster){
+  if (isCluster) {
     internal.sleep(2);
   }
 };
 
-const goodDoc = { "zahlen" : [1, 2, 3, 4] };
-const badDoc = { "zahlen" : "1, 2, 3, 4" };
+const skipOptions = { "skipDocumentValidation": true };
 
 function ValidationBasicsSuite () {
-  const skipOptions = { skipDocumentValidation : true };
-
   const testCollectionName = "TestValidationCollection";
-  var testCollection;
-  var validatorJson;
+  let testCollection;
+  let validatorJson;
+
+  // Same attribute key, so that updating badDoc with goodDoc will succeed
+  const goodDoc = { "numArray": [1, 2, 3, 4] };
+  const badDoc = { "numArray": "1, 2, 3, 4" };
 
   return {
 
-    setUp : () => {
+    setUp: () => {
       try {
         db._drop(testCollectionName);
       } catch (ex) {}
       validatorJson = {
-        level : "strict",
-        rule: {
-          type: "object",
-          properties: {
-            zahlen : {
-              type : "array",
-              items : { type : "number", maximum : 6 }
+        "level": "strict",
+        "rule": {
+          "type": "object",
+          "properties": {
+            "numArray": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "maximum": 6
+              }
             },
-            name : {
-              type : "string",
-              minLength: 4,
-              maxLength: 10
+            "name": {
+              "type": "string",
+              "minLength": 4,
+              "maxLength": 10
             },
-            number : {
-              type : "number",
-              items : { minimum: 1000000 }
-            },
+            "number": {
+              "type": "number",
+              "items": {
+                "minimum": 1000000
+              }
+            }
           },
-          additionalProperties : false
+          "additionalProperties": false
         },
-        message : "Json-Schema validation failed",
+        "message": "Schema validation failed"
       };
-      testCollection = db._create(testCollectionName, { schema :  validatorJson, numberOfShards: 3 });
+      testCollection = db._create(testCollectionName, {
+        schema: validatorJson,
+        numberOfShards: 3
+      });
     },
 
-    tearDown : () => {
+    tearDown: () => {
       try {
         db._drop(testCollectionName);
       } catch (ex) {}
     },
 
     // properties ////////////////////////////////////////////////////////////////////////////////////////
-    testProperties : () => {
+    testProperties: () => {
       const v = validatorJson;
-      var props = testCollection.properties();
+      const props = testCollection.properties();
       assertNotUndefined(props);
       assertNotUndefined(props.schema);
       assertEqual(props.schema.rule, v.rule);
@@ -101,23 +110,23 @@ function ValidationBasicsSuite () {
       assertEqual(props.schema.level, v.level);
     },
 
-    testPropertiesUpdate : () => {
-      let v =  validatorJson;
+    testPropertiesUpdate: () => {
+      let v = validatorJson;
       v.level = "none";
 
-      testCollection.properties({"schema" : v});
+      testCollection.properties({ "schema": v });
 
-      var props = testCollection.properties();
+      const props = testCollection.properties();
       assertEqual(props.schema.rule, v.rule);
       assertEqual(props.schema.message, v.message);
       assertEqual(props.schema.level, v.level);
       assertNotUndefined(props);
     },
 
-    testPropertiesUpdateNoObject : () => {
-      const v =  "hund";
+    testPropertiesUpdateNoObject: () => {
+      const v = "hund";
       try {
-        testCollection.properties({"schema" : v});
+        testCollection.properties({ "schema": v });
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_BAD_PARAMETER.code, err.errorNum);
@@ -125,7 +134,14 @@ function ValidationBasicsSuite () {
     },
 
     // insert ////////////////////////////////////////////////////////////////////////////////////////////
-    testDocumentsShellInsert : () => {
+    testDocumentsShellInsertGood: () => {
+      testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
+      let doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
+    },
+
+    testDocumentsShellInsertBad: () => {
       try {
         testCollection.insert(badDoc);
         fail();
@@ -134,28 +150,49 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testDocumentsShellInsertSkip : () => {
+    testDocumentsShellInsertBadSkip: () => {
       testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      assertEqual(testCollection.count(), 1);
+      let doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
     },
 
-    testAQLInsert : () => {
+    testAQLInsertGood: () => {
+      db._query(`INSERT { "numArray": [1, 2, 3, 4] } INTO ${testCollectionName}`);
+      assertEqual(testCollection.count(), 1);
+      let doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
+    },
+
+    testAQLInsertBad: () => {
       try {
-        db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTo ${testCollectionName}`);
+        db._query(`INSERT { "numArray": "1, 2, 3, 4" } INTO ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
     },
 
-    testAQLInsertSkip : () => {
-      db._query(`INSERT {"zahlen" : "1, 2, 3, 4"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
-      assertEqual(testCollection.toArray().length, 1);
+    testAQLInsertBadSkip: () => {
+      db._query(`INSERT { "numArray": "1, 2, 3, 4" } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      assertEqual(testCollection.count(), 1);
+      let doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
     },
 
-    testDocumentsShellUpdate : () => {
+    // update ////////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellUpdateGood: () => {
       let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      assertEqual(testCollection.count(), 1);
+
+      testCollection.update(doc._key, goodDoc);
+      doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
+    },
+
+    testDocumentsShellUpdateBad: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
       try {
         testCollection.update(doc._key, badDoc);
@@ -165,80 +202,122 @@ function ValidationBasicsSuite () {
       }
     },
 
-    // update ////////////////////////////////////////////////////////////////////////////////////////////
-    testDocumentsShellUpdateSkip : () => {
-      let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+    testDocumentsShellUpdateBadSkip: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
       testCollection.update(doc._key, badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
     },
 
-    testAQLUpdate : () => {
+    testAQLUpdateGood: () => {
       let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`UPDATE "${doc._key}" WITH { "numArray": [1, 2, 3, 4] } IN ${testCollectionName}`);
+      doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
+    },
+
+    testAQLUpdateBad: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
       try {
-        db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName}`);
+        db._query(`UPDATE "${doc._key}" WITH { "numArray": "1, 2, 3, 4" } IN ${testCollectionName}`);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
     },
 
-    testAQLUpdateSkip : () => {
-      let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+    testAQLUpdateBadSkip: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
-      db._query(`UPDATE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
-      assertEqual(testCollection.toArray().length, 1);
+      db._query(`UPDATE "${doc._key}" WITH { "numArray": "1, 2, 3, 4" } IN ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
     },
 
     // replace ///////////////////////////////////////////////////////////////////////////////////////////
-    testDocumentsShellReplaceSkip : () => {
+    testDocumentsShellReplaceGood: () => {
       let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      assertEqual(testCollection.count(), 1);
 
-      testCollection.replace(doc._key, badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+      testCollection.replace(doc._key, goodDoc);
+      doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
     },
 
-    testAQLReplace : () => {
-      let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+    testDocumentsShellReplaceBad: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
       try {
-        db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName}`);
+        testCollection.replace(doc._key, badDoc);
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
     },
 
-    testAQLReplaceSkip : () => {
-      let doc = testCollection.insert(badDoc, skipOptions);
-      assertEqual(testCollection.toArray().length, 1);
+    testDocumentsShellReplaceBadSkip: () => {
+      let doc = testCollection.insert(goodDoc);
+      assertEqual(testCollection.count(), 1);
 
-      db._query(`REPLACE "${doc._key}" WITH {"zahlen" : "baz"} INTo ${testCollectionName} OPTIONS { "skipDocumentValidation" : true }`);
-      assertEqual(testCollection.toArray().length, 1);
+      testCollection.replace(doc._key, badDoc, skipOptions);
+      doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
+    },
+
+    testAQLReplaceGood: () => {
+      let doc = testCollection.insert(badDoc, skipOptions);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`REPLACE "${doc._key}" WITH { "numArray": [1, 2, 3, 4] } IN ${testCollectionName}`);
+      doc = testCollection.any();
+      assertTrue(Array.isArray(doc.numArray));
+    },
+
+    testAQLReplaceBad: () => {
+      let doc = testCollection.insert(badDoc, skipOptions);
+      assertEqual(testCollection.count(), 1);
+
+      try {
+        db._query(`REPLACE "${doc._key}" WITH { "numArray": "1, 2, 3, 4" } IN ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLReplaceBadSkip: () => {
+      let doc = testCollection.insert(goodDoc, skipOptions);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`REPLACE "${doc._key}" WITH { "numArray": "1, 2, 3, 4" } IN ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      doc = testCollection.any();
+      assertFalse(Array.isArray(doc.numArray));
     },
 
     // levels ////////////////////////////////////////////////////////////////////////////////////////////
-    testLevelNone : () => {
+    testLevelNone: () => {
       validatorJson.level = "none";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
       testCollection.insert(badDoc);
     },
 
-    testLevelNew : () => {
+    testLevelNew: () => {
       validatorJson.level = "new";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
       try {
         testCollection.insert(badDoc);
         fail();
@@ -249,13 +328,13 @@ function ValidationBasicsSuite () {
       testCollection.update(doc._key, badDoc);
     },
 
-    testLevelModerateInsert : () => {
+    testLevelModerateInsert: () => {
       validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      testCollection.insert(badDoc, skipOptions);
       try {
         testCollection.insert(badDoc);
         fail();
@@ -264,9 +343,9 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testLevelModerateModifyBadToGood : () => {
+    testLevelModerateModifyBadToGood: () => {
       validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -279,9 +358,9 @@ function ValidationBasicsSuite () {
       testCollection.replace(doc._key, goodDoc);
     },
 
-    testLevelModerateModifyBadWithBad : () => {
+    testLevelModerateModifyBadWithBad: () => {
       validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
@@ -295,21 +374,21 @@ function ValidationBasicsSuite () {
       testCollection.replace(doc._key, badDoc);
 
       doc = testCollection.insert(badDoc, skipOptions);
-      query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      query = `UPDATE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
       db._query(query);
 
       doc = testCollection.insert(badDoc, skipOptions);
-      query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+      query = `REPLACE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
       db._query(query);
     },
 
-    testLevelModerateUpdateGoodToBad : () => {
+    testLevelModerateUpdateGoodToBad: () => {
       validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(goodDoc);
+      let doc = testCollection.insert(goodDoc);
 
       try {
         testCollection.update(doc._key, badDoc);
@@ -319,7 +398,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `UPDATE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -327,13 +406,13 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testLevelModerateReplaceGoodToBad : () => {
+    testLevelModerateReplaceGoodToBad: () => {
       validatorJson.level = "moderate";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(goodDoc);
+      let doc = testCollection.insert(goodDoc);
       try {
         testCollection.replace(doc._key, badDoc);
         fail();
@@ -342,7 +421,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `REPLACE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -350,13 +429,13 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testLevelStict : () => {
+    testLevelStict: () => {
       validatorJson.level = "strict";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
       assertEqual(testCollection.properties().schema.level, validatorJson.level);
 
-      let  doc = testCollection.insert(badDoc, skipOptions);
+      let doc = testCollection.insert(badDoc, skipOptions);
 
       try {
         testCollection.insert(badDoc);
@@ -380,7 +459,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `REPLACE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `REPLACE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -388,7 +467,7 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        let query = `UPDATE "${doc._key}" WITH { "zahlen" : "sind auch nur numbers" } IN ${testCollectionName}`;
+        let query = `UPDATE "${doc._key}" WITH { "numArray": "numbers are just digits" } IN ${testCollectionName}`;
         db._query(query);
         fail();
       } catch (err) {
@@ -403,13 +482,13 @@ function ValidationBasicsSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
-      testCollection.properties({"schema" : { } });
+      testCollection.properties({ "schema": { } });
       sleepInCluster();
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
     },
-    
+
     testRemoveValidationWithNull: () => {
       try {
         testCollection.insert(badDoc);
@@ -417,20 +496,20 @@ function ValidationBasicsSuite () {
       } catch (err) {
         assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
       }
-      testCollection.properties({"schema" : null });
+      testCollection.properties({ "schema": null });
       sleepInCluster();
       assertEqual(testCollection.properties().schema, null);
       testCollection.insert(badDoc);
       assertEqual(1, testCollection.count());
     },
 
-    // json  ////////////////////////////////////////////////////////////////////////////////////////////
+    // json ////////////////////////////////////////////////////////////////////////////////////////////
     testJson: () => {
       validatorJson.level = "strict";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
 
-      let  doc = testCollection.insert(goodDoc, skipOptions);
+      testCollection.insert(goodDoc);
       try {
         testCollection.insert(badDoc);
         fail();
@@ -439,21 +518,21 @@ function ValidationBasicsSuite () {
       }
     },
 
-    testJsonRequire  : () => {
+    testJsonRequire: () => {
       let p = {
         ...validatorJson.rule,
-        required: [ "zahlen", "name" ]
+        required: [ "numArray", "name" ]
       };
       validatorJson.rule = p;
       validatorJson.level = "strict";
 
-      testCollection.properties({ "schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
 
       try {
-        //name missing
+        // name missing
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
+          "numArray": [1, 2, 3, 4]
         });
         fail();
       } catch (err) {
@@ -461,10 +540,10 @@ function ValidationBasicsSuite () {
       }
 
       try {
-        //name too short
+        // name too short
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
-          "name" : "ulf"
+          "numArray": [1, 2, 3, 4],
+          "name": "Ulf"
         });
         fail();
       } catch (err) {
@@ -474,16 +553,16 @@ function ValidationBasicsSuite () {
       {
         // good document
         testCollection.insert({
-          "zahlen" : [1,2,3,4,5],
-          "name" : "guterName"
+          "numArray": [1, 2, 3, 4],
+          "name": "good name"
         });
       }
 
     },
-    // AQL  ////////////////////////////////////////////////////////////////////////////////////////////
-    test_SCHEMA_GET: () => {
+    // AQL ////////////////////////////////////////////////////////////////////////////////////////////
+    testAQLSchemaGet: () => {
       validatorJson.level = "strict";
-      testCollection.properties({"schema" : validatorJson });
+      testCollection.properties({ "schema": validatorJson });
       sleepInCluster();
 
       // get regular schema
@@ -491,7 +570,7 @@ function ValidationBasicsSuite () {
       assertEqual(res[0], validatorJson);
     },
 
-    test_SCHEMA_GET_no_collection: () => {
+    testAQLSchemaGetNoCollection: () => {
       // schema on non existing collection
       try {
         db._query(`RETURN SCHEMA_GET("nonExistingTestCollection")`).toArray();
@@ -501,18 +580,18 @@ function ValidationBasicsSuite () {
       }
     },
 
-    test_SCHEMA_GET_null: () => {
+    testAQLSchemaGetNull: () => {
       // no validation available must return `null`
-      testCollection.properties({schema : {}});
+      testCollection.properties({ schema: {} });
       let res = db._query(`
         RETURN SCHEMA_GET("${testCollectionName}")
       `).toArray();
       assertEqual(res[0], null);
     },
 
-    test_SCHEMA_VALIDATE: () => {
+    testAqlSchemaValidate: () => {
       // unset schema
-      testCollection.properties({schema : {}});
+      testCollection.properties({ schema: {} });
       sleepInCluster();
 
       let res;
@@ -521,12 +600,12 @@ function ValidationBasicsSuite () {
         RETURN SCHEMA_VALIDATE(
           null,
           {
-            "rule" : {
-              "properties" : {
-                "foo" : { "type" : "string" }
+            "rule": {
+              "properties": {
+                "foo": { "type": "string" }
               }
             },
-            "message" : "validation - failed"
+            "message": "Schema validation failed"
           }
         )
       `).toArray();
@@ -537,28 +616,28 @@ function ValidationBasicsSuite () {
         RETURN SCHEMA_VALIDATE(
           "foo",
           {
-            "rule" : {
-              "properties" : {
-                "foo" : { "type" : "string" }
+            "rule": {
+              "properties": {
+                "foo": { "type": "string" }
               }
             },
-            "message" : "validation - failed"
+            "message": "Schema validation failed"
           }
         )
       `).toArray();
       assertEqual([ null ], res);
-      
+
       // doc is not an object
       res = db._query(`
         RETURN SCHEMA_VALIDATE(
           [],
           {
-            "rule" : {
-              "properties" : {
-                "foo" : { "type" : "string" }
+            "rule": {
+              "properties": {
+                "foo": { "type": "string" }
               }
             },
-            "message" : "validation - failed"
+            "message": "Schema validation failed"
           }
         )
       `).toArray();
@@ -567,28 +646,28 @@ function ValidationBasicsSuite () {
       // doc does not match schema
       res = db._query(`
         RETURN SCHEMA_VALIDATE(
-          { "foo" : 24 },
+          { "foo": 24 },
           {
-            "rule" : {
-              "properties" : {
-                "foo" : { "type" : "string" }
+            "rule": {
+              "properties": {
+                "foo": { "type": "string" }
               }
             },
-            "message" : "validation - failed"
+            "message": "Schema validation failed"
           }
         )
       `).toArray();
       assertEqual(res[0].valid, false);
-      assertEqual(res[0].errorMessage, "validation - failed");
+      assertEqual(res[0].errorMessage, "Schema validation failed");
 
       // doc matches schema
       res = db._query(`
         RETURN SCHEMA_VALIDATE(
-          { "foo" : "bar" },
+          { "foo": "bar" },
           {
-            "rule" : {
-              "properties" : {
-                "foo" : { "type" : "string" }
+            "rule": {
+              "properties": {
+                "foo": { "type": "string" }
               }
             }
           }
@@ -598,15 +677,15 @@ function ValidationBasicsSuite () {
       // no schema
       res = db._query(
         `RETURN SCHEMA_VALIDATE(
-          { "foo" : "bar" },
+          { "foo": "bar" },
           null
       )`).toArray();
       assertEqual(res[0].valid, true);
-      
+
       // empty schema object
       res = db._query(
         `RETURN SCHEMA_VALIDATE(
-          { "foo" : "bar" },
+          { "foo": "bar" },
           {}
       )`).toArray();
       assertEqual(res[0].valid, true);
@@ -615,19 +694,232 @@ function ValidationBasicsSuite () {
       try {
         db._query(
           `RETURN SCHEMA_VALIDATE(
-             {"foo" : "bar"},
+             {"foo": "bar"},
              [])
         `).toArray();
         fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
       }
-    },
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
   }; // return
 } // END - ValidationBasicsSuite
 
+function ValidationEdgeSuite () {
+  const testCollectionName = "TestValidationEdgeCollection";
+  let testCollection;
+  let validatorJson;
+
+  const blankEdge = {
+    "_from": "vert/A",
+    "_to": "vert/B"
+  };
+  const goodEdge = {
+    ...blankEdge,
+    "name": "Helge"
+  };
+  const badEdge = {
+    ...blankEdge,
+    "additional": true
+  };
+
+  return {
+
+    setUp: () => {
+      try {
+        db._drop(testCollectionName);
+      } catch (ex) {}
+      validatorJson = {
+        "level": "strict",
+        "rule": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "message": "Schema validation failed"
+      };
+      testCollection = db._createEdgeCollection(testCollectionName, {
+        schema: validatorJson,
+        numberOfShards: 3
+      });
+    },
+
+    tearDown: () => {
+      try {
+        db._drop(testCollectionName);
+      } catch (ex) {}
+    },
+
+    // insert ////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellInsertEdgeGood: () => {
+      testCollection.insert(goodEdge);
+      assertEqual(testCollection.count(), 1);
+    },
+
+    testDocumentsShellInsertEdgeBad: () => {
+      try {
+        testCollection.insert(badEdge);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testDocumentsShellInsertEdgeBadSkip: () => {
+      testCollection.insert(badEdge, skipOptions);
+      assertEqual(testCollection.count(), 1);
+    },
+
+    testAQLInsertEdgeGood: () => {
+      db._query(`INSERT { "_from": "vert/A", "_to": "vert/B", "name": "Helge" } INTO ${testCollectionName}`);
+      assertEqual(testCollection.count(), 1);
+    },
+
+    testAQLInsertEdgeBad: () => {
+      try {
+        db._query(`INSERT { "_from": "vert/A", "_to": "vert/B", "additional": true } INTO ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLInsertEdgeBadSkip: () => {
+      db._query(`INSERT { "_from": "vert/A", "_to": "vert/B", "additional": true } INTO ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      assertEqual(testCollection.count(), 1);
+    },
+
+    // update ////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellUpdateEdgeGood: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      testCollection.update(doc._key, goodEdge);
+      doc = testCollection.any();
+      assertNotUndefined(doc.name);
+    },
+
+    testDocumentsShellUpdateEdgeBad: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      try {
+        testCollection.update(doc._key, badEdge);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testDocumentsShellUpdateEdgeBadSkip: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      testCollection.update(doc._key, badEdge, skipOptions);
+      doc = testCollection.any();
+      assertNotUndefined(doc.additional);
+    },
+
+    testAQLUpdateEdgeGood: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`UPDATE { "_key": "${doc._key}", "name": "Helge" } IN ${testCollectionName}`);
+      doc = testCollection.any();
+      assertNotUndefined(doc.name);
+    },
+
+    testAQLUpdateEdgeBad: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      try {
+        db._query(`UPDATE { "_key": "${doc._key}", "additional": true } IN ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLUpdateEdgeBadSkip: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`UPDATE { "_key": "${doc._key}", "additional": true } IN ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      doc = testCollection.any();
+      assertNotUndefined(doc.additional);
+    },
+    // replace ////////////////////////////////////////////////////////////////////////////////////////
+    testDocumentsShellReplaceEdgeGood: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      testCollection.replace(doc._key, goodEdge);
+      doc = testCollection.any();
+      assertNotUndefined(doc.name);
+    },
+
+    testDocumentsShellReplaceEdgeBad: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      try {
+        testCollection.replace(doc._key, badEdge);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testDocumentsShellReplaceEdgeBadSkip: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      testCollection.replace(doc._key, badEdge, skipOptions);
+      doc = testCollection.any();
+      assertNotUndefined(doc.additional);
+    },
+
+    testAQLReplaceEdgeGood: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`REPLACE { "_key": "${doc._key}", "_from": "vert/A", "_to": "vert/B", "name": "Helge" } IN ${testCollectionName}`);
+      doc = testCollection.any();
+      assertNotUndefined(doc.name);
+    },
+
+    testAQLReplaceEdgeBad: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      try {
+        db._query(`REPLACE { "_key": "${doc._key}", "_from": "vert/A", "_to": "vert/B", "additional": true } IN ${testCollectionName}`);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_VALIDATION_FAILED.code, err.errorNum);
+      }
+    },
+
+    testAQLReplaceEdgeBadSkip: () => {
+      let doc = testCollection.insert(blankEdge);
+      assertEqual(testCollection.count(), 1);
+
+      db._query(`REPLACE { "_key": "${doc._key}", "_from": "vert/A", "_to": "vert/B", "additional": true } IN ${testCollectionName} OPTIONS { "skipDocumentValidation": true }`);
+      doc = testCollection.any();
+      assertNotUndefined(doc.additional);
+    }
+////////////////////////////////////////////////////////////////////////////////
+  }; // return
+} // END - ValidationEdgeSuite
+
 jsunity.run(ValidationBasicsSuite);
+jsunity.run(ValidationEdgeSuite);
 
 return jsunity.done();

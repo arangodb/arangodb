@@ -27,7 +27,7 @@
 #include "utils/misc.hpp"
 #include "utils/lz4compression.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 std::pair<doc_map, field_id> sorted_column::flush(
     columnstore_writer& writer,
@@ -210,4 +210,4 @@ field_id sorted_column::flush(
   return column.first;
 }
 
-NS_END
+}

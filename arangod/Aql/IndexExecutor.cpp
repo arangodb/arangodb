@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -356,7 +356,8 @@ IndexExecutor::CursorReader::CursorReader(transaction::Methods& trx,
                           : _cursor->hasCovering() &&  // if change see IndexNode::canApplyLateDocumentMaterializationRule()
                                     infos.getProjections().supportsCoveringIndex()
                                 ? Type::Covering
-                                : Type::Document) {
+                                : Type::Document),
+      _checkUniqueness(checkUniqueness) {
   switch (_type) {
     case Type::NoResult: {
       _documentNonProducer = checkUniqueness ? getNullCallback<true>(context)
@@ -389,6 +390,7 @@ IndexExecutor::CursorReader::CursorReader(CursorReader&& other) noexcept
       _cursor(std::move(other._cursor)),
       _context(other._context),
       _type(other._type),
+      _checkUniqueness(other._checkUniqueness),
       _documentNonProducer(std::move(other._documentNonProducer)),
       _documentProducer(std::move(other._documentProducer)),
       _documentSkipper(std::move(other._documentSkipper)) {}
@@ -442,13 +444,13 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
 
 size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   TRI_ASSERT(_type != Type::Count);
-  
+
   if (!hasMore()) {
     return 0;
   }
 
   uint64_t skipped = 0;
-  if (_infos.getFilter() != nullptr) {
+  if (_infos.getFilter() != nullptr || _checkUniqueness) {
     switch (_type) {
       case Type::Covering:
       case Type::LateMaterialized:
@@ -599,7 +601,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow& input) {
     AqlValue a = exp->execute(&ctx, mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AqlValueMaterializer materializer(&_trx);
+    AqlValueMaterializer materializer(&_trx.vpackOptions());
     VPackSlice slice = materializer.slice(a, false);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 

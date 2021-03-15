@@ -28,7 +28,7 @@
 #include "utils/frozen_attributes.hpp"
 #include "utils/numeric_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_token_stream
@@ -37,7 +37,7 @@ NS_ROOT
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API basic_token_stream : public token_stream {
  public:
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final;
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final;
 
  protected:
   term_attribute term_;
@@ -264,6 +264,6 @@ class IRESEARCH_API null_token_stream final
   bool in_use_{false};
 }; // null_token_stream
 
-NS_END
+}
 
 #endif

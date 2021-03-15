@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -125,7 +125,7 @@ class RestRepairHandler : public arangodb::RestBaseHandler {
 
   // @brief Adds the field "errorDetails" with a detailed error message to the
   // open object in builder.
-  void addErrorDetails(VPackBuilder& builder, int errorNumber);
+  void addErrorDetails(VPackBuilder& builder, ErrorCode errorNumber);
 
   // @brief Answers the question "Is every shard of collectionId replicated to
   // a number of DBServers equal to its replicationFactor?".

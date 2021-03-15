@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,13 +43,13 @@ CollectOptions::CollectOptions(VPackSlice const& slice)
 }
 
 /// @brief whether or not the method can be used
-bool CollectOptions::canUseMethod(CollectMethod method) const {
-  return (this->method == method || this->method == CollectMethod::UNDEFINED);
+bool CollectOptions::canUseMethod(CollectMethod m) const {
+  return (this->method == m || this->method == CollectMethod::UNDEFINED);
 }
 
 /// @brief whether or not the method should be used (i.e. is preferred)
-bool CollectOptions::shouldUseMethod(CollectMethod method) const {
-  return (this->method == method);
+bool CollectOptions::shouldUseMethod(CollectMethod m) const {
+  return (this->method == m);
 }
 
 /// @brief convert the options to VelocyPack

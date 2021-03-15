@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,8 +34,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-ActionFeature* ActionFeature::ACTION = nullptr;
-
 ActionFeature::ActionFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "Action"), _allowUseDatabase(false) {
   setOptional(true);
@@ -53,13 +51,11 @@ void ActionFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
 }
 
-void ActionFeature::start() {
-  ACTION = this;
-}
 
 void ActionFeature::unprepare() {
   TRI_CleanupActions();
-  ACTION = nullptr;
 }
+
+bool ActionFeature::allowUseDatabase() const { return _allowUseDatabase; }
 
 }  // namespace arangodb

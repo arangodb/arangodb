@@ -68,13 +68,13 @@ function ahuacatlProfilerTestSuite () {
     EnumerateListNode, EnumerateViewNode, FilterNode, GatherNode, IndexNode,
     InsertNode, LimitNode, NoResultsNode, RemoteNode, RemoveNode, ReplaceNode,
     ReturnNode, ScatterNode, ShortestPathNode, SingletonNode, SortNode,
-    SubqueryNode, TraversalNode, UpdateNode, UpsertNode } = profHelper;
+    TraversalNode, UpdateNode, UpsertNode } = profHelper;
 
   const { CalculationBlock, ConstrainedSortBlock, CountCollectBlock, DistinctCollectBlock,
     EnumerateCollectionBlock, EnumerateListBlock, FilterBlock,
     HashedCollectBlock, IndexBlock, LimitBlock, NoResultsBlock, RemoteBlock,
     ReturnBlock, ShortestPathBlock, SingletonBlock, SortBlock,
-    SortedCollectBlock, SortingGatherBlock, SubqueryBlock, TraversalBlock,
+    SortedCollectBlock, SortingGatherBlock, TraversalBlock,
     UnsortingGatherBlock, RemoveBlock, InsertBlock, UpdateBlock, ReplaceBlock,
     UpsertBlock, ScatterBlock, DistributeBlock, IResearchViewUnorderedBlock,
     IResearchViewBlock, IResearchViewOrderedBlock } = profHelper;
@@ -750,6 +750,32 @@ function ahuacatlProfilerTestSuite () {
       profHelper.runDefaultChecks({query, genNodeList});
     },
 
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test SortedCollectBlock
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testSortedCollectBlock4 : function () {
+      // example:
+      // for @rows = 5,  x is [1,2,0,1,2]
+      // for @rows = 12, x is [1,2,3,4,5,0,1,2,3,4,5,0]
+      const query = 'FOR i IN 1..@rows ' +
+        'COLLECT AGGREGATE y = MIN(i) OPTIONS {method: "sorted"} ' +
+        'RETURN y';
+      const genNodeList = (rows, batches) => {
+        const rowsAfterCollect = 1;
+        const batchesAfterCollect = 1;
+
+        return [
+          { type: SingletonBlock, calls: 1, items: 1 },
+          { type: CalculationBlock, calls: 1, items: 1 },
+          { type: EnumerateListBlock, calls: batches, items: rows },
+          { type: SortedCollectBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+          { type: ReturnBlock, calls: batchesAfterCollect, items: rowsAfterCollect },
+        ];
+      };
+      profHelper.runDefaultChecks({query, genNodeList});
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test LimitBlock + CountCollectBlock
 /// This is a regression test for ES-692.
@@ -892,7 +918,6 @@ function ahuacatlProfilerTestSuite () {
 // *SortBlock
 // *SortedCollectBlock
 // *SortingGatherBlock
-// SubqueryBlock
 // *TraversalBlock
 // *UnsortingGatherBlock
 //

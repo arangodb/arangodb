@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,115 +26,131 @@
 #include "Result.h"
 
 #include "Basics/StaticStrings.h"
-#include "Basics/error.h"
 #include "Basics/voc-errors.h"
+#include "debugging.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+using namespace arangodb::result;
 
-Result::Result() noexcept(noexcept(std::allocator<char>()))
-    : _errorNumber(TRI_ERROR_NO_ERROR) {}
+Result::Result(ErrorCode errorNumber)
+    : _error(errorNumber == TRI_ERROR_NO_ERROR ? nullptr : std::make_unique<Error>(errorNumber)) {
+}
 
-Result::Result(int errorNumber) noexcept(noexcept(std::allocator<char>()))
-    : _errorNumber(errorNumber) {}
+Result::Result(ErrorCode errorNumber, std::string const& errorMessage)
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
-Result::Result(int errorNumber, std::string const& errorMessage)
-    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+Result::Result(ErrorCode errorNumber, std::string&& errorMessage)
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, std::move(errorMessage))) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
-Result::Result(int errorNumber, std::string&& errorMessage) noexcept
-    : _errorNumber(errorNumber), _errorMessage(std::move(errorMessage)) {}
+Result::Result(ErrorCode errorNumber, std::string_view errorMessage)
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || errorMessage.empty());
+}
 
-Result::Result(int errorNumber, std::string_view const& errorMessage)
-    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
-
-Result::Result(int errorNumber, const char* errorMessage)
-    : _errorNumber(errorNumber), _errorMessage(errorMessage) {}
+Result::Result(ErrorCode errorNumber, const char* errorMessage)
+    : _error(errorNumber == TRI_ERROR_NO_ERROR
+                 ? nullptr
+                 : std::make_unique<Error>(errorNumber, errorMessage)) {
+  TRI_ASSERT(errorNumber != TRI_ERROR_NO_ERROR || 0 == strcmp("", errorMessage));
+}
 
 Result::Result(Result const& other)
-    : _errorNumber(other._errorNumber), _errorMessage(other._errorMessage) {}
+    : _error(other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error)) {}
 
-Result::Result(Result&& other) noexcept
-    : _errorNumber(other._errorNumber),
-      _errorMessage(std::move(other._errorMessage)) {}
-
-Result& Result::operator=(Result const& other) {
-  _errorNumber = other._errorNumber;
-  _errorMessage = other._errorMessage;
+auto Result::operator=(Result const& other) -> Result& {
+  _error = other._error == nullptr ? nullptr : std::make_unique<Error>(*other._error);
   return *this;
 }
 
-Result& Result::operator=(Result&& other) noexcept {
-  _errorNumber = other._errorNumber;
-  _errorMessage = std::move(other._errorMessage);
+auto Result::ok() const noexcept -> bool {
+  return errorNumber() == TRI_ERROR_NO_ERROR;
+}
+
+auto Result::fail() const noexcept -> bool { return !ok(); }
+
+auto Result::errorNumber() const noexcept -> ErrorCode {
+  if (_error == nullptr) {
+    return TRI_ERROR_NO_ERROR;
+  } else {
+    return _error->errorNumber();
+  }
+}
+
+auto Result::is(ErrorCode errorNumber) const noexcept -> bool {
+  return this->errorNumber() == errorNumber;
+}
+
+auto Result::isNot(ErrorCode errorNumber) const noexcept -> bool {
+  return !is(errorNumber);
+}
+
+auto Result::reset() noexcept -> Result& {
+  _error.reset();
   return *this;
 }
 
-bool Result::ok() const noexcept { return _errorNumber == TRI_ERROR_NO_ERROR; }
-
-bool Result::fail() const noexcept { return !ok(); }
-
-int Result::errorNumber() const noexcept { return _errorNumber; }
-
-bool Result::is(int errorNumber) const noexcept {
-  return _errorNumber == errorNumber;
+auto Result::reset(ErrorCode errorNumber) -> Result& {
+  return reset(errorNumber, std::string{});
 }
 
-bool Result::isNot(int errorNumber) const { return !is(errorNumber); }
+auto Result::reset(ErrorCode errorNumber, std::string_view errorMessage) -> Result& {
+  return reset(errorNumber, std::string{errorMessage});
+}
 
-Result& Result::reset() { return reset(TRI_ERROR_NO_ERROR); }
+auto Result::reset(ErrorCode errorNumber, const char* errorMessage) -> Result& {
+  return reset(errorNumber, std::string{errorMessage});
+}
 
-Result& Result::reset(int errorNumber) {
-  _errorNumber = errorNumber;
-
-  if (!_errorMessage.empty()) {
-    _errorMessage.clear();
+auto Result::reset(ErrorCode errorNumber, std::string&& errorMessage) -> Result& {
+  if (errorNumber == TRI_ERROR_NO_ERROR) {
+    // The error message will be ignored
+    TRI_ASSERT(errorMessage.empty());
+    _error = nullptr;
+  } else {
+    _error = std::make_unique<Error>(errorNumber, std::move(errorMessage));
   }
 
   return *this;
 }
 
-Result& Result::reset(int errorNumber, std::string const& errorMessage) {
-  _errorNumber = errorNumber;
-  _errorMessage = errorMessage;
-  return *this;
+auto Result::reset(Result const& other) -> Result& { return *this = other; }
+
+auto Result::reset(Result&& other) noexcept -> Result& {
+  return *this = std::move(other);
 }
 
-Result& Result::reset(int errorNumber, std::string&& errorMessage) noexcept {
-  _errorNumber = errorNumber;
-  _errorMessage = std::move(errorMessage);
-  return *this;
-}
-
-Result& Result::reset(Result const& other) {
-  _errorNumber = other._errorNumber;
-  _errorMessage = other._errorMessage;
-  return *this;
-}
-
-Result& Result::reset(Result&& other) noexcept {
-  _errorNumber = other._errorNumber;
-  _errorMessage = std::move(other._errorMessage);
-  return *this;
-}
-
-std::string Result::errorMessage() const& {
-  if (!_errorMessage.empty()) {
-    return _errorMessage;
+auto Result::errorMessage() const& noexcept -> std::string_view {
+  if (_error == nullptr) {
+    // Return a view of the empty string, not a nullptr!
+    return {""};
+  } else {
+    return _error->errorMessage();
   }
-  return TRI_errno_string(_errorNumber);
 }
 
-std::string Result::errorMessage() && {
-  if (!_errorMessage.empty()) {
-    return std::move(_errorMessage);
+auto Result::errorMessage() && noexcept -> std::string {
+  if (_error == nullptr) {
+    return {};
+  } else {
+    return std::move(*_error).errorMessage();
   }
-  return TRI_errno_string(_errorNumber);
 }
 
-std::ostream& operator<<(std::ostream& out, arangodb::Result const& result) {
+auto operator<<(std::ostream& out, arangodb::Result const& result) -> std::ostream& {
   VPackBuilder dump;
   {
     VPackObjectBuilder b(&dump);

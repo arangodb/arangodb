@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,10 +24,15 @@
 #ifndef ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H
 #define ARANGODB_BENCHMARK_BENCHMARK_OPERATION_H 1
 
-#include "Basics/Common.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 
+#include <map>
+#include <memory>
+
 namespace arangodb {
+
+class BenchFeature;
+
 namespace arangobench {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,7 +44,7 @@ struct BenchmarkOperation {
   /// @brief ctor, derived class can implemented something sensible
   //////////////////////////////////////////////////////////////////////////////
 
-  BenchmarkOperation() {}
+  explicit BenchmarkOperation(BenchFeature& arangobench) : _arangobench(arangobench) {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief dtor, derived class can implemented something sensible
@@ -76,7 +81,22 @@ struct BenchmarkOperation {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual char const* payload(size_t*, int const, size_t const, size_t const, bool*) = 0;
+  
+  using BenchmarkFactory = std::function<std::unique_ptr<BenchmarkOperation>(BenchFeature&)>;
+
+  /// @brief return the the map of all available benchmarks
+  static std::map<std::string, BenchmarkFactory>& allBenchmarks();
+  
+  /// @brief register a benchmark with the given name and factory function
+  static void registerBenchmark(std::string name, BenchmarkFactory factory);
+  
+  /// @brief return the benchmark for a name
+  static std::unique_ptr<BenchmarkOperation> createBenchmark(std::string const& name, BenchFeature& arangobench);
+  
+protected:
+  arangodb::BenchFeature& _arangobench;
 };
+
 }  // namespace arangobench
 }  // namespace arangodb
 

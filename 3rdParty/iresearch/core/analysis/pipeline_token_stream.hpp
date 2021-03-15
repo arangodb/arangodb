@@ -30,9 +30,13 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
+////////////////////////////////////////////////////////////////////////////////
+/// @class pipeline_token_stream
+/// @brief an analyser capable of chaining other analyzers
+////////////////////////////////////////////////////////////////////////////////
 class pipeline_token_stream final
   : public frozen_attributes<4, analyzer>, private util::noncopyable {
  public:
@@ -72,9 +76,9 @@ class pipeline_token_stream final
 
     uint32_t end() const noexcept {
       assert(offs);
-      return offs->end == data_size ?
-        data_end :
-        start() + offs->end - offs->start;
+      return offs->end == data_size
+        ? data_end
+        : start() + offs->end - offs->start;
     }
     const term_attribute* term;
     const increment* inc;
@@ -98,7 +102,7 @@ class pipeline_token_stream final
   increment inc_;
 };
 
-NS_END
-NS_END
+}
+}
 
 #endif // IRESEARCH_PIPELINE_TOKEN_STREAM_H

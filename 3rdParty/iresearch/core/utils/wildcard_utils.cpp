@@ -43,7 +43,7 @@
 
 #include "automaton_utils.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 WildcardType wildcard_type(const bytes_ref& expr) noexcept {
   if (expr.empty()) {
@@ -230,4 +230,4 @@ automaton from_wildcard(const bytes_ref& expr) {
   return dfa;
 }
 
-NS_END
+}

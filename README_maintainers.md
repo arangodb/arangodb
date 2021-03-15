@@ -76,6 +76,50 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding metrics
+
+As of 3.8 we have enforced documentation for metrics. This works as
+follows. Every metric which is generated has a name. The metric must be
+declared by using one of the macros
+
+```
+  DECLARE_COUNTER(name, helpstring);
+  DECLARE_GAUGE(name, type, helpstring);
+  DECLARE_HISTOGRAM(name, scaletype, helpstring);
+```
+
+in some `.cpp` file (please put only one on a line). Then, when the
+metric is actually requested in the source code, it gets a template
+added to the metrics feature with the `add` method and its name.
+Labels can be added with the `withLabel` method. In this way, the
+compiler ensures that the metric declaration is actually there if
+the metric is used.
+
+Then there is a helper script `utils/generateAllMetricsDocumentation.py`
+which needs `python3` with the `yaml` module. It will check and do the
+following things:
+
+ - every declared metric in some `.cpp` file in the source has a
+   corresponding documentation snippet in `Documentation/Metrics`
+   under the name of the metric with `.yaml` appended
+ - each such file is a YAML file of a certain format (see template
+   under `Documentation/Metrics/template.yaml`)
+ - many of the componentes are required, so please provide adequate
+   information about your metric
+ - the script also assembles all these YAML documentation snippets
+   into a single file under `Documentation/Metrics/allMetrics.yaml`,
+   the format is again a structured YAML file which can easily be
+   processed by the documentation tools.
+
+Please, if you have added or modified a metric, make sure to declare
+the metric as shown above and add a documentation YAML snippet in the
+correct format. Afterwards, run
+
+    utils/generateAllMetricsDocumentation.py
+
+and include `Documentation/allMetrics.yaml` in your PR.
+
+
 ---
 
 ## Building
@@ -258,6 +302,74 @@ hexadecimal value presented for each frame is the instruction pointer, and if de
 symbols are installed, there will be name information about the called procedures (in
 mangled format) plus the offsets into the procedures. If no debug symbols are
 installed, symbol names and offsets cannot be shown for the stack frames.
+
+### Memory profiling
+
+Starting in 3.6 we have support for heap profiling when using jemalloc on Linux.
+Here is how it is used:
+
+Use this `cmake` option in addition to the normal options:
+
+```
+-DUSE_JEMALLOC_PROF
+```
+
+when building. Make sure you are using the builtin `jemalloc`. You need
+debugging symbols to analyze the heap dumps later on, so compile with
+`-DCMAKE_BUILD_TYPE=Debug` or `RelWithDebInfo`. `Debug` is probably
+less confusing in the end. 
+
+Then set the environment variable for each instance you want to profile:
+
+```
+export MALLOC_CONF="prof:true"
+```
+
+When this is done, `jemalloc` internally does some profiling. You can
+then use this endpoint to get a heap dump:
+
+```
+curl "http://localhost:8529/_admin/status?memory=true" > heap.dump
+```
+
+You can analyze such a heap dump with the `jeprof` tool, either by
+inspecting a single dump like this:
+
+```
+jeprof build/bin/arangod heap.dump
+```
+
+or compare two dumps which were done on the same process to analyze
+the difference:
+
+```
+jeprof build/bin/arangod --base=heap.dump heap.dump2
+```
+
+So far, we have mostly used the `web` command to open a picture in a
+browser. It produces an `svg` file.
+
+The tool isn't perfect, but can often point towards the place which
+produces for example a memory leak or a lot of memory usage.
+
+This is known to work under Linux and the `jeprof` tool comes with the
+`libjemalloc-dev` package on Ubuntu.
+
+Using it with the integration tests is possible; snapshots will be taken before
+the first and after each subsequent testcase executed.
+
+The `shell-sleep-grey.js` testsuite can be used to suspend execution for a
+specified amount of time:
+
+    export SLEEP_FOR=$((5*60))
+    ./scripts/unittest shell_client \
+       --memprof true \
+       --test shell-sleep-grey.js \
+       --oneTestTimeout ((6*60)) \
+       --cleanup false
+    ...
+    ... Saved /tmp/arangosh_qFu12G/shell_client/single_2207100_0_.heap
+    ...
 
 ### Core Dumps
 
@@ -526,15 +638,26 @@ and use the commands above to obtain stacktraces.
 
 There are several major places where unittests live:
 
-| Path                         | Description
-|:-----------------------------|:-----------------------------
-| `tests/js/server/`           | JavaScript tests, runnable on the server
-| `tests/js/common/`           | JavaScript tests, runnable on the server & via arangosh
-| `tests/js/common/test-data/` | Mock data used for the JavaScript tests
-| `tests/js/client/`           | JavaScript tests, runnable via arangosh
-| `tests/rb/`                  | rspec tests (Ruby)
-| `tests/rb/HttpInterface/`    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
-| `tests/` (remaining)         | Google Test unittests
+| Path / File                                                  | Description
+|:-------------------------------------------------------------|:-----------------------------
+| `tests/js/server/`                                           | JavaScript tests, runnable on the server
+| `tests/js/common/`                                           | JavaScript tests, runnable on the server & via arangosh
+| `tests/js/common/test-data/`                                 | Mock data used for the JavaScript tests
+| `tests/js/client/`                                           | JavaScript tests, runnable via arangosh
+| `tests/rb/`                                                  | rspec tests (Ruby)
+| `tests/rb/HttpInterface/`                                    | rspec tests using the plain RESTful interface of ArangoDB. Include invalid HTTP requests and error handling checks for the server.
+| `tests/` (remaining)                                         | Google Test unittests
+| implementation specific files                                |
+| `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`
+| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.
+| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating
+| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes 
+| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.
+| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if somethings goes wrong, this contains the crash analysis tools
+| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched seperately to monitor the cluster instances and their resource usage
+| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each
+| `js/common/modules/jsunity[.js|/jsunity.js`                  | jsunity testing framework; invoked via jsunity.js next to the module
+| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb
 
 ### Filename conventions
 
@@ -578,6 +701,12 @@ Run specific gtest tests:
     ./scripts/unittest gtest --testCase "IResearchDocumentTest.*:*ReturnExecutor*"
     # equivalent to:
     ./build/bin/arangodbtests --gtest_filter="IResearchDocumentTest.*:*ReturnExecutor*"
+
+Controlling the place where the test-data is stored:
+
+    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
+
+(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
 
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
@@ -659,6 +788,14 @@ Testing a single rspec test:
 Running a test against a server you started (instead of letting the script start its own server):
 
     scripts/unittest http_server --test api-batch-spec.rb --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+
+Re-running previously failed tests:
+
+    scripts/unittest <args> --failed
+
+The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
+The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
+This failed filter should work for all jsunity, mocha and rspec tests.
 
 #### Running Foxx Tests with a Fake Foxx Repo
 
@@ -745,7 +882,11 @@ the tests expect to have at least 3 DB-Servers.
 
 Pre-requisites:
  - have a arangodb-java-driver checkout next to the ArangoDB source tree in the 'next' branch
- - have a maven binary in the path (mvn)
+ - have a maven binary in the path (mvn) configured to use JDK 11
+ 
+You can check if maven is correctly configured to use JDK 11 executing: `mvn -version`.
+In case you have multiple JVMs in your machine and JDK 11 is not the default one, you can set
+the environment variable `JAVA_HOME` to the root path of JDK 11.
 
 Once this is completed, you may run it like this:
 
@@ -755,9 +896,9 @@ Once this is completed, you may run it like this:
         --cluster true
 
 For possible `javaOptions` see
-[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/master/dev-README.md)
 in the java source, or the
-[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html)
 
 #### ArangoJS
 
@@ -834,13 +975,24 @@ Debugging rspec with gdb:
 
     server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
     - or -
-    server> ARANGO_SERVER="127.0.0.1:6666" rspec -Itests/rb/HttpInterface --format d --color tests/rb/HttpInterface/api-import-spec.rb
+    server> ARANGO_SERVER="127.0.0.1:6666" \
+        rspec -Itests/rb/HttpInterface --format d \
+              --color tests/rb/HttpInterface/api-import-spec.rb
 
-    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 \
+                                           --server.authentication false \
+                                           --log.level communication=trace \
+                                           ../arangodb-data-test
 
 Debugging a storage engine:
 
-    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    host> rm -fr ../arangodb-data-rocksdb/; \
+       gdb --args ./build/bin/arangod \
+           --console \
+           --foxx.queues false \
+           --server.statistics false \
+           --server.endpoint http+tcp://0.0.0.0:7777 \
+           ../arangodb-data-rocksdb
     (gdb) catch throw
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
@@ -897,6 +1049,69 @@ Currently available Analyzers are:
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
+  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
+    - `duration` - the time spent in the complete testfile
+    - `status` - sucess/fail
+    - `failed` - fail?
+    - `total` - the time spent in the testcase
+    - `totalSetUp` - the time spent in setup summarized
+    - `totalTearDown` - the time spent in teardown summarized
+    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
+    - `processStats.sum_servers.majorPageFaults` - 
+    - `processStats.sum_servers.userTime` - 
+    - `processStats.sum_servers.systemTime` - 
+    - `processStats.sum_servers.numberOfThreads` - 
+    - `processStats.sum_servers.residentSize` - 
+    - `processStats.sum_servers.residentSizePercent` - 
+    - `processStats.sum_servers.virtualSize` - 
+    - `processStats.sum_servers.rchar` - 
+    - `processStats.sum_servers.wchar` - 
+    - `processStats.sum_servers.syscr` - 
+    - `processStats.sum_servers.syscw` - 
+    - `processStats.sum_servers.read_bytes` - 
+    - `processStats.sum_servers.write_bytes` - 
+    - `processStats.sum_servers.cancelled_write_bytes` - 
+    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
+    - `processStats.sum_servers.sockstat_TCP_inuse` - 
+    - `processStats.sum_servers.sockstat_TCP_orphan` - 
+    - `processStats.sum_servers.sockstat_TCP_tw` - 
+    - `processStats.sum_servers.sockstat_TCP_alloc` - 
+    - `processStats.sum_servers.sockstat_TCP_mem` - 
+    - `processStats.sum_servers.sockstat_UDP_inuse` - 
+    - `processStats.sum_servers.sockstat_UDP_mem` - 
+    - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
+    - `processStats.sum_servers.sockstat_RAW_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_memory` -
+    
+    Process stats are kept by process.
+    So if your DB-Server had the PID `1721882`, you can dial its values by specifying
+    `processStats.1721882_dbserver.sockstat_TCP_tw`
+    into the generated table.
 
+i.e.
 
     ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json
+
+or:
+
+    ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
+       --readFile out/UNITTEST_RESULT.json \
+       --tableColumns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
+
+revalidating one testcase using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
+
+getting the PIDs of the server in the testrun using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
+    "1721674_agent": {
+    "1721675_agent": {
+    "1721676_agent": {
+    "1721882_dbserver": {
+    "1721883_dbserver": {
+    "1721884_dbserver": {
+    "1721885_coordinator": {

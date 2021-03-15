@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -45,7 +45,14 @@ Options::Options()
 #ifdef USE_ENTERPRISE
       skipInaccessibleCollections(false),
 #endif
-      waitForSync(false) {}
+      waitForSync(false),
+      isFollowerTransaction(false) {
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
+}
   
 Options Options::replicationDefaults() {
   Options options;
@@ -97,8 +104,17 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   if (value.isBool()) {
     waitForSync = value.getBool();
   }
+  value = slice.get("isFollowerTransaction");
+  if (value.isBool()) {
+    isFollowerTransaction = value.getBool();
+  }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
 }
 
 /// @brief add the options to an opened vpack builder
@@ -116,4 +132,20 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   builder.add("waitForSync", VPackValue(waitForSync));
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch intermediateCommitCount for testing
+/*static*/ void Options::adjustIntermediateCommitCount(Options& options) {
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    options.intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    options.intermediateCommitCount = 1000;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount10000") {
+    options.intermediateCommitCount = 10000;
+  }
+}
+#endif

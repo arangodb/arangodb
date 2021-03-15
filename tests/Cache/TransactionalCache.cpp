@@ -29,22 +29,27 @@
 #include <thread>
 #include <vector>
 
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Cache/Common.h"
 #include "Cache/Manager.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
 #include "Random/RandomGenerator.h"
 
+#include "Mocks/Servers.h"
 #include "MockScheduler.h"
 
 using namespace arangodb;
 using namespace arangodb::cache;
+using namespace arangodb::tests::mocks;
 
 // long-running
 
 TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024);
   auto cache1 = manager.createCache(CacheType::Transactional, false, 256 * 1024);
   auto cache2 = manager.createCache(CacheType::Transactional, false, 512 * 1024);
 
@@ -60,7 +65,9 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -111,7 +118,9 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
@@ -169,7 +178,9 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
 TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  Manager manager(postFn, 4 * cacheLimit);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 4 * cacheLimit);
   auto cache = manager.createCache(CacheType::Transactional, false, cacheLimit);
 
   Transaction* tx = manager.beginTransaction(false);
@@ -236,7 +247,9 @@ TEST(CacheTransactionalCacheTest, verify_cache_can_grow_correctly_when_it_runs_o
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   auto cache = manager.createCache(CacheType::Transactional);
   std::uint64_t minimumUsage = cache->usageLimit() * 2;
 
@@ -263,7 +276,9 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
     scheduler.post(fn);
     return true;
   };
-  Manager manager(postFn, 1024 * 1024 * 1024);
+  MockMetricsServer server;
+  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  Manager manager(sharedPRNG, postFn, 1024 * 1024 * 1024);
   std::size_t threadCount = 4;
   std::shared_ptr<Cache> cache = manager.createCache(CacheType::Transactional);
 

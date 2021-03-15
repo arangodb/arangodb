@@ -30,42 +30,63 @@
 #include "utils/type_limits.hpp"
 #include "utils/bitset.hpp"
 
-NS_ROOT
+namespace iresearch {
 
-class bitset_doc_iterator final
-  : public frozen_attributes<3, doc_iterator>,
+class bitset_doc_iterator
+  : public doc_iterator,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set)
-    : bitset_doc_iterator(set, order::prepared::unordered()) {
+  bitset_doc_iterator(
+      const bitset::word_t* begin,
+      const bitset::word_t* end) noexcept
+    : cost_(bitset::count(begin, end)),
+      doc_(cost_.estimate()
+        ? doc_limits::invalid()
+        : doc_limits::eof()),
+      begin_(begin),
+      end_(end) {
+    reset();
   }
 
-  bitset_doc_iterator(
-    const sub_reader& reader,
-    const byte_type* stats,
-    const bitset& set,
-    const order::prepared& order,
-    boost_t boost);
+  virtual bool next() noexcept override final;
+  virtual doc_id_t seek(doc_id_t target) noexcept override final;
+  virtual doc_id_t value() const noexcept override final { return doc_.value; }
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override;
 
-  virtual bool next() noexcept override;
-  virtual doc_id_t seek(doc_id_t target) noexcept override;
-  virtual doc_id_t value() const noexcept override { return doc_.value; }
+ protected:
+  explicit bitset_doc_iterator(cost::cost_t cost) noexcept
+    : cost_(cost),
+      doc_(doc_limits::invalid()),
+      begin_(nullptr),
+      end_(nullptr) {
+    reset();
+  }
+
+  virtual bool refill(const bitset::word_t** /*begin*/,
+                      const bitset::word_t** /*end*/) {
+    return false;
+  }
 
  private:
-  using word_t = bitset::word_t;
+  // assume begin_, end_ are set
+  void reset() noexcept {
+    next_ = begin_;
+    word_ = 0;
+    base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
+    assert(begin_ <= end_);
+  }
 
-  bitset_doc_iterator(const bitset& set, const order::prepared& ord);
+  using word_t = bitset::word_t;
 
   cost cost_;
   document doc_;
-  score score_;
   const word_t* begin_;
   const word_t* end_;
   const word_t* next_;
-  word_t word_{};
-  doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
+  word_t word_;
+  doc_id_t base_;
 }; // bitset_doc_iterator
 
-NS_END // ROOT
+} // ROOT
 
 #endif // IRESEARCH_BITSET_DOC_ITERATOR_H

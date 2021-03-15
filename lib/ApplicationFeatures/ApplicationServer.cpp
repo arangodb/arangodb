@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,12 +87,12 @@ bool ApplicationServer::isPrepared() {
          tmp == State::IN_STOP;
 }
 
-bool ApplicationServer::isStopping() {
+bool ApplicationServer::isStopping() const {
   auto tmp = state();
   return isStoppingState(tmp);
 }
 
-bool ApplicationServer::isStoppingState(State state) {
+bool ApplicationServer::isStoppingState(State state) const {
   return state == State::IN_SHUTDOWN ||
          state == State::IN_STOP ||
          state == State::IN_UNPREPARE ||
@@ -290,7 +290,7 @@ void ApplicationServer::apply(std::function<void(ApplicationFeature&)> callback,
 void ApplicationServer::collectOptions() {
   LOG_TOPIC("0eac7", TRACE, Logger::STARTUP) << "ApplicationServer::collectOptions";
 
-  _options->addSection(Section("", "Global configuration", "global options", false, false));
+  _options->addSection(Section("", "Global configuration", "", "global options", false, false));
 
   _options->addOption("--dump-dependencies", "dump dependency graph",
                       new BooleanParameter(&_dumpDependencies),
@@ -420,7 +420,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-      getFeature<ApplicationFeature>(other).startsAfter(std::type_index(typeid(feature)));
+      getFeature<ApplicationFeature>(other).startsAfter(feature.registration());
     }
   }
 
@@ -452,15 +452,15 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
   // first insert all features, even the inactive ones
   std::vector<std::reference_wrapper<ApplicationFeature>> features;
   for (auto& it : _features) {
-    auto const& us = *it.second;
+    auto& us = *it.second;
     auto insertPosition = features.end();
 
     for (size_t i = features.size(); i > 0; --i) {
       auto const& other = features[i - 1].get();
-      if (us.doesStartBefore(std::type_index(typeid(other)))) {
+      if (us.doesStartBefore(other.registration())) {
         // we start before the other feature. so move ourselves up
         insertPosition = features.begin() + (i - 1);
-      } else if (other.doesStartBefore(std::type_index(typeid(us)))) {
+      } else if (other.doesStartBefore(us.registration())) {
         // the other feature starts before us. so stop moving up
         break;
       } else {
@@ -470,7 +470,7 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
       }
     }
-    features.insert(insertPosition, *it.second);
+    features.insert(insertPosition, us);
   }
 
   LOG_TOPIC("0fafb", TRACE, Logger::STARTUP) << "ordered features:";

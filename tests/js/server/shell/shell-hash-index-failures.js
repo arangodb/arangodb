@@ -289,7 +289,7 @@ function HashIndexMultiBugsSuite() {
         "name" : "Et0/0.32", 
         "vrf" : "" 
       });
-      assertEqual(collection.truncate(), undefined);
+      assertEqual(collection.truncate({ compact: false }), undefined);
     }
   };
 }

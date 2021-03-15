@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -66,16 +66,19 @@ class Utils {
   static std::string const algorithmKey;
   static std::string const coordinatorIdKey;
   static std::string const collectionPlanIdMapKey;
+  static std::string const edgeCollectionRestrictionsKey;
   static std::string const vertexShardsKey;
   static std::string const edgeShardsKey;
   static std::string const globalShardListKey;
   static std::string const userParametersKey;
   static std::string const asyncModeKey;
-  static std::string const useMemoryMaps;
+  static std::string const useMemoryMapsKey;
   static std::string const parallelismKey;
+  static std::string const activateAllKey;
 
   /// Current global superstep
   static std::string const globalSuperstepKey;
+  static std::string const phaseFirstStepKey;
 
   /// Communicate number of loaded vertices to conductor
   static std::string const vertexCountKey;
@@ -102,6 +105,12 @@ class Utils {
   /// Holds aggregated values
   static std::string const aggregatorValuesKey;
 
+  /// Dict of messages sent from WorkerContext to MasterContext after every GSS
+  static std::string const workerToMasterMessagesKey;
+
+  /// Dict of messages sent from MasterContext to all WorkerContexts before every GSS
+  static std::string const masterToWorkerMessagesKey;
+
   /// Communicates the # of active vertices to the conductor
   static std::string const activeCountKey;
 
@@ -119,16 +128,17 @@ class Utils {
 
   static std::string const compensate;
   static std::string const rollback;
+  static std::string const reportsKey;
 
   // pass the db name and either "worker" or "conductor" as target.
   static std::string baseUrl(std::string const& target);
 
   static int64_t countDocuments(TRI_vocbase_t* vocbase, std::string const& collection);
 
-  static int resolveShard(ClusterInfo& ci, WorkerConfig const* config,
-                          std::string const& collectionName, std::string const& shardKey,
-                          arangodb::velocypack::StringRef vertexKey,
-                          std::string& responsibleShard);
+  static ErrorCode resolveShard(ClusterInfo& ci, WorkerConfig const* config,
+                                std::string const& collectionName, std::string const& shardKey,
+                                arangodb::velocypack::StringRef vertexKey,
+                                std::string& responsibleShard);
 };
 }  // namespace pregel
 }  // namespace arangodb

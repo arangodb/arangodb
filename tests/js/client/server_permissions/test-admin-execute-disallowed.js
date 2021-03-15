@@ -33,7 +33,8 @@ if (getOptions === true) {
     'javascript.allow-admin-execute': 'false',
   };
 }
-var jsunity = require('jsunity');
+
+const jsunity = require('jsunity');
 
 function testSuite() {
   const errors = require('@arangodb').errors;

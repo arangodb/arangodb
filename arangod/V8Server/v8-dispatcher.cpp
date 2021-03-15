@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
@@ -87,8 +89,17 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::Local<v8::Context> context = isolate->GetCurrentContext();
   v8::HandleScope scope(isolate);
-
+  
   TRI_GET_GLOBALS();
+  V8DealerFeature& v8Dealer = v8g->_server.getFeature<V8DealerFeature>();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+
+  bool allowTasks = v8Dealer.allowJavaScriptTasks() ||
+                    (v8security.isInternalContext(isolate) || v8security.isAdminScriptContext(isolate));
+  if (!allowTasks) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN, "JavaScript tasks are disabled");
+  }
+
   if (SchedulerFeature::SCHEDULER == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "no scheduler found");
   } else if (v8g->_server.isStopping()) {
@@ -203,7 +214,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      .FromMaybe(v8::Local<v8::Value>()));
   }
 
-  if (!Task::tryCompile(isolate, command)) {
+  if (!Task::tryCompile(v8g->_server, isolate, command)) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot compile command");
   }
 
@@ -220,7 +231,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   command = "(function (params) { " + command + " } )(params);";
 
-  int res;
+  ErrorCode res = TRI_ERROR_NO_ERROR;
   std::shared_ptr<Task> task =
       Task::createTask(id, name, v8g->_vocbase, command, isSystem, res);
 
@@ -272,7 +283,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "registerTask() needs db RW permissions");
   }
 
-  int res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
+  auto res = Task::unregisterTask(GetTaskId(isolate, args[0]), true);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }

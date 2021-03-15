@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +58,7 @@ int TRI_IntHex(char ch, int errorValue) {
 
 double TRI_DoubleString(char const* str) {
   char* endptr;
-  errno = TRI_ERROR_NO_ERROR;
+  errno = 0;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
   double result = strtod(str, &endptr);
 
@@ -89,7 +89,7 @@ int32_t TRI_Int32String(char const* str) {
   struct reent buffer;
 #endif
 
-  errno = TRI_ERROR_NO_ERROR;
+  errno = 0;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOL_R)
@@ -147,7 +147,7 @@ uint32_t TRI_UInt32String(char const* str) {
   struct reent buffer;
 #endif
 
-  errno = TRI_ERROR_NO_ERROR;
+  errno = 0;
   TRI_set_errno(TRI_ERROR_NO_ERROR);
 
 #if defined(TRI_HAVE_STRTOUL_R)

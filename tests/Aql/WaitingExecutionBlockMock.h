@@ -26,7 +26,6 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
@@ -36,7 +35,6 @@ namespace aql {
 class AqlItemBlock;
 class ExecutionEngine;
 class ExecutionNode;
-struct ResourceMonitor;
 class SkipResult;
 }  // namespace aql
 

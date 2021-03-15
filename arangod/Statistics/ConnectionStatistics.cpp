@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,7 @@ void ConnectionStatistics::initialize() {
 ConnectionStatistics::Item ConnectionStatistics::acquire() {
   ConnectionStatistics* statistics = nullptr;
 
-  if (StatisticsFeature::enabled() && _freeList.pop(statistics)) {
+  if (_freeList.pop(statistics)) {
     return Item{ statistics };
   }
 
@@ -72,11 +72,6 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() {
 }
 
 void ConnectionStatistics::getSnapshot(Snapshot& snapshot) {
-  if (!StatisticsFeature::enabled()) {
-    // all the below objects may be deleted if we don't have statistics enabled
-    return;
-  }
-
   snapshot.httpConnections = statistics::HttpConnections;
   snapshot.totalRequests = statistics::TotalRequests;
   snapshot.totalRequestsSuperuser = statistics::TotalRequestsSuperuser;

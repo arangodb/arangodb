@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -51,7 +51,6 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool waitForSync = false;
   bool waitForCollector = false;
-  double maxWaitTime = -1.0;
 
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
@@ -71,28 +70,18 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                      TRI_V8_ASCII_STRING(isolate, "waitForCollector")
                      ).FromMaybe(v8::Local<v8::Value>()));
       }
-      if (TRI_HasProperty(context, isolate, obj, "maxWaitTime")) {
-        maxWaitTime = TRI_ObjectToDouble(
-            isolate,
-            obj->Get(context,
-                     TRI_V8_ASCII_STRING(isolate, "maxWaitTime")
-                     ).FromMaybe(v8::Local<v8::Value>()));
-      }
     } else {
       waitForSync = TRI_ObjectToBoolean(isolate, args[0]);
 
       if (args.Length() > 1) {
         waitForCollector = TRI_ObjectToBoolean(isolate, args[1]);
-        if (args.Length() > 3) {  // ignore writeShutdownFile
-          maxWaitTime = TRI_ObjectToDouble(isolate, args[3]);
-        }
       }
     }
   }
 
   TRI_GET_GLOBALS();
   auto& feature = v8g->_server.getFeature<ClusterFeature>();
-  int res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector, maxWaitTime);
+  auto res = flushWalOnAllDBServers(feature, waitForSync, waitForCollector);
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -180,8 +169,10 @@ static void JS_EstimateCollectionSize(v8::FunctionCallbackInfo<v8::Value> const&
 static void JS_WaitForEstimatorSync(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  TRI_GET_GLOBALS();
 
-  EngineSelectorFeature::ENGINE->waitForEstimatorSync(std::chrono::seconds(10));
+  v8g->_server.getFeature<EngineSelectorFeature>().engine().waitForEstimatorSync(
+      std::chrono::seconds(10));
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

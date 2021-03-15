@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -252,7 +252,7 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -294,8 +294,8 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     }
 
     // add environment variables
-    for (auto it : additionalEnv) {
-      putenv(TRI_DuplicateString(it.c_str()));
+    for (auto const& it : additionalEnv) {
+      putenv(TRI_DuplicateString(it.c_str(), it.size()));
     }
 
     // execute worker
@@ -374,8 +374,8 @@ static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
     }                                             \
   } while (false);
 
-static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
-  int err;
+static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
+  auto err = TRI_ERROR_NO_ERROR;
 
   appendChar(buf, '"');
 
@@ -418,7 +418,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
+static ErrorCode wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
 
   while (*p != 0) {
@@ -459,9 +459,10 @@ static int wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
   buf += L'"';
   return TRI_ERROR_NO_ERROR;
 }
+
 static std::wstring makeWindowsArgs(ExternalProcess* external) {
   size_t i;
-  int err = TRI_ERROR_NO_ERROR;
+  auto err = TRI_ERROR_NO_ERROR;
   std::wstring res;
 
   if ((external->_executable.find('/') == std::string::npos) &&
@@ -547,7 +548,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
 }
 
 static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> additionalEnv) {
+                                 std::vector<std::string> const& additionalEnv) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -896,7 +897,7 @@ void TRI_SetProcessTitle(char const* title) {
 
 void TRI_CreateExternalProcess(char const* executable,
                                std::vector<std::string> const& arguments,
-                               std::vector<std::string> additionalEnv,
+                               std::vector<std::string> const& additionalEnv,
                                bool usePipes, ExternalId* pid) {
   size_t const n = arguments.size();
   // create the external structure
@@ -914,7 +915,7 @@ void TRI_CreateExternalProcess(char const* executable,
 
   memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
-  external->_arguments[0] = TRI_DuplicateString(executable);
+  external->_arguments[0] = TRI_DuplicateString(executable, strlen(executable));
   if (external->_arguments[0] == nullptr) {
     // OOM
     pid->_pid = TRI_INVALID_PROCESS_ID;
@@ -922,7 +923,7 @@ void TRI_CreateExternalProcess(char const* executable,
   }
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str());
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str(), arguments[i].size());
     if (external->_arguments[i + 1] == nullptr) {
       // OOM
       pid->_pid = TRI_INVALID_PROCESS_ID;

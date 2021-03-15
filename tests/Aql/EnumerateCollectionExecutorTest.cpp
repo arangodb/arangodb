@@ -42,9 +42,10 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -97,7 +98,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
 
   EnumerateCollectionExecutorTest()
       : AqlExecutorTestCase(),
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         ast(*fakedQuery.get()),
@@ -255,7 +256,8 @@ using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;
@@ -279,7 +281,7 @@ class EnumerateCollectionExecutorTestProduce
   EnumerateCollectionExecutorInfos executorInfos;
 
   EnumerateCollectionExecutorTestProduce()
-      : itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+      : itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         vocbase(_server->getSystemDatabase()),
         json(VPackParser::fromJson(R"({"name":"UnitTestCollection"})")),
         collection(vocbase.createCollection(json->slice())),
@@ -295,8 +297,8 @@ class EnumerateCollectionExecutorTestProduce
         executorInfos(1, *fakedQuery, &aqlCollection, &outVariable, varUsedLater, nullptr,
                       projections, random, count) {}
 
-  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterId nrInputRegister = 1,
-                         RegisterId nrOutputRegister = 1, RegIdFlatSet regToClear = {},
+  auto makeRegisterInfos(RegisterId outputRegister = 0, RegisterCount nrInputRegister = 1,
+                         RegisterCount nrOutputRegister = 1, RegIdFlatSet regToClear = {},
                          RegIdFlatSetStack regToKeep = {{}}) -> RegisterInfos {
     RegisterInfos registerInfos{{},
                                 RegIdSet{outputRegister},
@@ -307,7 +309,7 @@ class EnumerateCollectionExecutorTestProduce
     return registerInfos;
   }
 
-  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterId nrOutputRegister = 1)
+  auto makeExecutorInfos(RegisterId outputRegister = 0, RegisterCount nrOutputRegister = 1)
       -> EnumerateCollectionExecutorInfos {
     auto infos = EnumerateCollectionExecutorInfos{
         outputRegister, *fakedQuery,

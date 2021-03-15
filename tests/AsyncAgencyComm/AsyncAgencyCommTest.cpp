@@ -44,7 +44,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -91,7 +90,7 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
 
       response = std::make_unique<fuerte::Response>(std::move(header));
       response->setPayload(std::move(body), 0);
-    };
+    }
 
     void returnError(fuerte::Error err) {
       error = err;
@@ -175,16 +174,17 @@ struct AsyncAgencyCommTest
     : public ::testing::Test,
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS, arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server(false) {
-    server.addFeature<SchedulerFeature>(true);
+      server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }
 
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config;
+    network::ConnectionPool::Config config(server.getFeature<MetricsFeature>());
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "AsyncAgencyCommTest";
     return config;
   }
 

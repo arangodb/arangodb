@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,7 +68,7 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) {
       } else if (!success) {
         LOG_TOPIC("7cbce", DEBUG, Logger::CLUSTER)
             << "Got negative answer from follower, will retry later.";
-        // This reportFailed will reset _confirmed in Agent fot this follower
+        // This reportFailed will reset _confirmed in Agent for this follower
         _agent->reportFailed(_slaveID, _toLog, true);
       } else {
         Slice senderTimeStamp = body.get("senderTimeStamp");

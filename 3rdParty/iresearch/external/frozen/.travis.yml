@@ -1,0 +1,73 @@
+language: cpp
+
+matrix:
+    include:
+        - os: linux
+          addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - g++-6
+          env: CXX_COMPILER=g++-6 BUILD_TYPE=Debug COVERAGE=ON
+        - os: linux
+          addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - g++-6
+          env: CXX_COMPILER=g++-6 BUILD_TYPE=Debug COVERAGE=OFF
+        - os: linux
+          addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - g++-6
+          env: CXX_COMPILER=g++-6 BUILD_TYPE=Release COVERAGE=OFF
+        - os: linux
+          dist: xenial
+          addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - clang-5.0
+          env: CXX_COMPILER=clang++-5.0 BUILD_TYPE=Debug COVERAGE=OFF
+        - os: linux
+          dist: xenial
+          addons:
+            apt:
+              sources:
+                - ubuntu-toolchain-r-test
+              packages:
+                - clang-5.0
+          env: CXX_COMPILER=clang++-5.0 BUILD_TYPE=Release COVERAGE=OFF
+        - os: osx
+          osx_image: xcode8.3
+          env: CXX_COMPILER=clang++ BUILD_TYPE=Debug COVERAGE=OFF
+        - os: osx
+          osx_image: xcode8.3
+          env: CXX_COMPILER=clang++ BUILD_TYPE=Release COVERAGE=OFF
+
+script:
+  - mkdir build
+  - cd build
+  - >
+    cmake -DCMAKE_BUILD_TYPE=${BUILD_TYPE}             \
+          -Dfrozen.coverage=${COVERAGE}                \
+          -DCMAKE_CXX_COMPILER=${CXX_COMPILER}         \
+          -DCMAKE_VERBOSE_MAKEFILE=ON                  \
+          -DCTEST_DROP_SITE_CDASH=TRUE                 \
+          -DDROP_METHOD="http"                         \
+          -DDROP_SITE="my.cdash.org"                   \
+          -DDROP_LOCATION="/submit.php?project=frozen" \
+          -DBUILDNAME="$(uname -s)-${CXX_COMPILER}-${BUILD_TYPE}" ..
+  - ctest -VV -M Experimental -T Start \
+    && ctest -VV -M Experimental -T Build \
+    && ctest -VV -M Experimental -T Test
+  - if [[ "$COVERAGE" = "ON" ]]; then ctest -VV -M Experimental -T Coverage; fi
+  - ctest -VV -M Experimental -T Submit
+  
+

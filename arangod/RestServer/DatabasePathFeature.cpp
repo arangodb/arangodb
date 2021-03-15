@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/operating-system.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -51,7 +52,9 @@ DatabasePathFeature::DatabasePathFeature(application_features::ApplicationServer
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<TempFeature>();
 }
@@ -202,7 +205,7 @@ void DatabasePathFeature::start() {
     std::string systemErrorStr;
     long errorNo;
 
-    int res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
+    auto const res = TRI_CreateRecursiveDirectory(_directory.c_str(), errorNo, systemErrorStr);
 
     if (res == TRI_ERROR_NO_ERROR) {
       LOG_TOPIC("24783", INFO, arangodb::Logger::FIXME)

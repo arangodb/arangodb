@@ -28,8 +28,8 @@
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
 
-NS_ROOT
-NS_BEGIN(analysis)
+namespace iresearch {
+namespace analysis {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an analyzer capable of breaking up delimited text into tokens as per
@@ -58,7 +58,7 @@ class delimited_token_stream final
   bstring term_buf_; // buffer for the last evaluated term
 };
 
-NS_END // analysis
-NS_END // ROOT
+} // analysis
+} // ROOT
 
 #endif

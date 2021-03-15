@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,14 +53,22 @@ enum class ProfileLevel : uint8_t {
   TraceTwo = 4
 };
 
+enum class TraversalProfileLevel : uint8_t {
+  /// no profiling information
+  None = 0,
+  /// include traversal tracing
+  Basic = 1
+};
+
 struct QueryOptions {
-  explicit QueryOptions();
-  explicit QueryOptions(arangodb::velocypack::Slice const);
+  QueryOptions();
+  explicit QueryOptions(arangodb::velocypack::Slice);
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  void fromVelocyPack(arangodb::velocypack::Slice const slice);
-  void toVelocyPack(arangodb::velocypack::Builder&, bool disableOptimizerRules) const;
+  void fromVelocyPack(arangodb::velocypack::Slice slice);
+  void toVelocyPack(arangodb::velocypack::Builder& builder, bool disableOptimizerRules) const;
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
+  TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const { return traversalProfile; }
 
   size_t memoryLimit;
   size_t maxNumberOfPlans;
@@ -71,6 +79,7 @@ struct QueryOptions {
               // stick around for ever if client does not collect the data
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
+  TraversalProfileLevel traversalProfile;
   bool allPlans;
   bool verbosePlans;
   bool stream;
@@ -80,7 +89,7 @@ struct QueryOptions {
   bool fullCount;
   bool count;
   bool verboseErrors;
-  bool inspectSimplePlans;
+  bool skipAudit; // skips audit logging - used only internally
   ExplainRegisterPlan explainRegisters;
 
   /// @brief hack to be used only for /_api/export, contains the name of
@@ -105,6 +114,7 @@ struct QueryOptions {
   static double defaultMaxRuntime;
   static double defaultTtl;
   static bool defaultFailOnWarning;
+  static bool allowMemoryLimitOverride;
 };
 
 }  // namespace aql

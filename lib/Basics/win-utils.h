@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,7 +36,6 @@
 
 typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
-  TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;

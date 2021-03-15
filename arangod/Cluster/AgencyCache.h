@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,11 +25,12 @@
 #define ARANGOD_CLUSTER_AGENCY_CACHE 1
 
 #include "Agency/Store.h"
+#include "Basics/Result.h"
 #include "Basics/Thread.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterFeature.h"
 #include "Futures/Promise.h"
-#include "GeneralServer/RestHandler.h"
+#include "RestServer/Metrics.h"
 
 #include <map>
 #include <shared_mutex>
@@ -37,9 +38,7 @@
 namespace arangodb {
 
 class AgencyCache final : public arangodb::Thread {
-
-public:
-
+ public:
   typedef std::unordered_map<std::string, consensus::query_t> databases_t;
 
   struct change_set_t {
@@ -47,20 +46,18 @@ public:
     uint64_t version;        // Plan / Current version
     databases_t dbs; // touched databases
     consensus::query_t rest; // Plan / Current rest
-    change_set_t (consensus::index_t const& i, uint64_t const& v, databases_t const& d,
-                  consensus::query_t const& r) :
+    change_set_t(consensus::index_t const& i, uint64_t const& v, databases_t const& d,
+                 consensus::query_t const& r) :
       ind(i), version(v), dbs(d), rest(r) {}
-    change_set_t (consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
+    change_set_t(consensus::index_t&& i, uint64_t&& v, databases_t&& d, consensus::query_t&& r) :
       ind(std::move(i)), version(std::move(v)), dbs(std::move(d)), rest(std::move(r)) {}
   };
 
   /// @brief start off with our server
-  explicit AgencyCache(
-    application_features::ApplicationServer& server,
-    AgencyCallbackRegistry& callbackRegistry);
+  explicit AgencyCache(application_features::ApplicationServer& server,
+                       AgencyCallbackRegistry& callbackRegistry, ErrorCode shutdownCode);
 
-  /// @brief Clean up
-  virtual ~AgencyCache();
+  ~AgencyCache();
 
   // whether or not the thread is allowed to start during prepare
   bool isSystem() const override;
@@ -92,13 +89,13 @@ public:
   consensus::index_t index() const;
 
   /// @brief Register local callback
-  bool registerCallback(std::string const& key, uint64_t const& id);
+  Result registerCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Unregister local callback
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
   /// @brief Wait to be notified, when a Raft index has arrived.
-  futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
 
   /// @brief Cache has these path? AgencyCommHelper::path is prepended
   bool has(std::string const& path) const;
@@ -106,13 +103,17 @@ public:
   /// @brief Cache has these path? Paths are absolute
   std::vector<bool> has(std::vector<std::string> const& paths) const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests!
   ///        Do not use for production code under any circumstances
-  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction (
+  std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> applyTestTransaction(
     consensus::query_t const& trx);
+#endif
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   /// @brief Used exclusively in unit tests
   consensus::Store& store();
+#endif
 
   /**
    * @brief         Get a list of planned/current  changes and other
@@ -127,7 +128,15 @@ public:
   change_set_t changedSince(
     std::string const& section, consensus::index_t const& last) const;
   
-private:
+  /**
+   * @brief         Clean up planned/current changes up to including index
+   *
+   * @param section   "Plan" or "Current"
+   * @param doneIndex   Done index
+   */
+  void clearChanged(std::string const& section, consensus::index_t const& doneIndex);
+
+ private:
 
   /// @brief invoke all callbacks
   void invokeAllCallbacks() const;
@@ -160,6 +169,14 @@ private:
   /// @brief Local copy of the read DB from the agency
   arangodb::consensus::Store _readDB;
 
+  /// @brief shut down code for futures that are unresolved.
+  /// this should be TRI_ERROR_SHUTTING_DOWN normally, but can be overridden
+  /// during testing
+  ErrorCode const _shutdownCode;
+
+  /// @brief Make sure, that we have seen in the beginning a snapshot
+  std::atomic<bool> _initialized;
+
   /// @brief Agency callback registry
   AgencyCallbackRegistry& _callbackRegistry;
 
@@ -171,13 +188,15 @@ private:
   mutable std::mutex _waitLock;
   std::multimap<consensus::index_t, futures::Promise<arangodb::Result>> _waiting;
 
-  /// @ brief changes of index to plan and current 
+  /// @ brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;
   std::multimap<consensus::index_t, std::string> _currentChanges;
 
-  /// @brief snapshot note for client 
+  /// @brief snapshot note for client
   consensus::index_t _lastSnapshot;
   
+  /// @brief current number of entries in _callbacks
+  Gauge<uint64_t>& _callbacksCount;
 };
 
 } // namespace

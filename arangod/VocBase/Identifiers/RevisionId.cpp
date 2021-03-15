@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,8 @@ std::string RevisionId::toString() const {
 }
 
 /// encodes the uint64_t timestamp into the provided result buffer
-/// the buffer must be at least 11 chars long
+/// the buffer should be at least arangodb::basics::maxUInt64StringSize
+/// bytes long.
 /// the length of the encoded value and the start position into
 /// the result buffer are returned by the function
 std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
@@ -79,7 +80,8 @@ std::pair<size_t, size_t> RevisionId::toString(char* buffer) const {
 
 /// encodes the uint64_t timestamp into a temporary velocypack ValuePair,
 /// using the specific temporary result buffer
-/// the result buffer must be at least 11 chars long
+/// the result buffer should be at least
+/// arangodb::basics::maxUInt64StringSize bytes long
 arangodb::velocypack::ValuePair RevisionId::toValuePair(char* buffer) const {
   auto positions = toString(buffer);
   return arangodb::velocypack::ValuePair(&buffer[0] + positions.first, positions.second,

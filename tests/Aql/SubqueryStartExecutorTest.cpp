@@ -45,9 +45,9 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::aql;
 
 namespace {
-RegisterInfos MakeBaseInfos(RegisterId numRegs) {
+RegisterInfos MakeBaseInfos(RegisterCount numRegs) {
   RegIdSet prototype{};
-  for (RegisterId r = 0; r < numRegs; ++r) {
+  for (RegisterId::value_t r = 0; r < numRegs; ++r) {
     prototype.emplace(r);
   }
   return RegisterInfos({}, {}, numRegs, numRegs, {},
@@ -55,25 +55,13 @@ RegisterInfos MakeBaseInfos(RegisterId numRegs) {
 }
 }  // namespace
 
-// We need to be backwards compatible, with version 3.6
-// There we do not get a fullStack, but only a single entry.
-// We have a compatibility mode Stack for this version
-// These tests can be removed again in the branch for the version
-// after 3.7.*
-enum CompatibilityMode { VERSION36, VERSION37 };
-
 using SubqueryStartSplitType = ExecutorTestHelper<1, 1>::SplitType;
 
 class SubqueryStartExecutorTest
-    : public AqlExecutorTestCaseWithParam<std::tuple<CompatibilityMode, SubqueryStartSplitType>, false> {
+    : public AqlExecutorTestCaseWithParam<std::tuple<SubqueryStartSplitType>, false> {
  protected:
-  auto GetCompatMode() const -> CompatibilityMode {
-    auto const [mode, split] = GetParam();
-    return mode;
-  }
-
   auto GetSplit() const -> SubqueryStartSplitType {
-    auto const [mode, split] = GetParam();
+    auto const [split] = GetParam();
     return split;
   }
 
@@ -81,9 +69,6 @@ class SubqueryStartExecutorTest
     AqlCallList list = insideSubquery.getOffset() == 0 && !insideSubquery.needsFullCount()
                            ? AqlCallList{insideSubquery, insideSubquery}
                            : AqlCallList{insideSubquery};
-    if (GetCompatMode() == CompatibilityMode::VERSION36) {
-      return AqlCallStack{list, true};
-    }
     AqlCallStack stack(AqlCallList{fromSubqueryEnd});
     stack.pushCall(list);
     return stack;
@@ -98,9 +83,7 @@ const SubqueryStartSplitType splitStep = SubqueryStartSplitType{step};
 
 INSTANTIATE_TEST_CASE_P(
     SubqueryStartExecutorTest, SubqueryStartExecutorTest,
-    ::testing::Combine(::testing::Values(CompatibilityMode::VERSION36, CompatibilityMode::VERSION37),
-                       ::testing::Values(splitIntoBlocks<2, 3>,
-                                         splitIntoBlocks<3, 4>, splitStep<2>)));
+    ::testing::Values(splitIntoBlocks<2, 3>, splitIntoBlocks<3, 4>, splitStep<2>));
 
 TEST_P(SubqueryStartExecutorTest, check_properties) {
   EXPECT_TRUE(SubqueryStartExecutor::Properties::preservesOrder)
@@ -359,106 +342,82 @@ TEST_P(SubqueryStartExecutorTest, shadow_row_forwarding_many_inputs_not_enough_s
 }
 
 TEST_P(SubqueryStartExecutorTest, skip_in_outer_subquery) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::DONE)
-        .expectOutput({0}, {{R"("b")"}, {R"("b")"}}, {{1, 0}})
-        .expectSkipped(1, 0)
-        .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.6 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("b")"}, {R"("b")"}}, {{1, 0}})
+      .expectSkipped(1, 0)
+      .setCallStack(queryStack(AqlCall{1, false, AqlCall::Infinity{}}, AqlCall{}))
+      .setInputSplitType(GetSplit())
+      .run();
 }
 
 TEST_P(SubqueryStartExecutorTest, DISABLED_skip_only_in_outer_subquery) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::DONE)
-        .expectOutput({0}, {})
-        .expectSkipped(1, 0)
-        .setCallStack(queryStack(AqlCall{1, false}, AqlCall{}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.7 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {})
+      .expectSkipped(1, 0)
+      .setCallStack(queryStack(AqlCall{1, false}, AqlCall{}))
+      .setInputSplitType(GetSplit())
+      .run();
 }
 
 TEST_P(SubqueryStartExecutorTest, fullCount_in_outer_subquery) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::DONE)
-        .expectOutput({0}, {})
-        .expectSkipped(6, 0)
-        .setCallStack(queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}, AqlCall{}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.7 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {})
+      .expectSkipped(6, 0)
+      .setCallStack(queryStack(AqlCall{0, true, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+      .setInputSplitType(GetSplit())
+      .run();
 }
 
 TEST_P(SubqueryStartExecutorTest, fastForward_in_inner_subquery) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::DONE)
-        .expectOutput({0}, {{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}},
-                      {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}})
-        .expectSkipped(0, 0)
-        .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}},
-                                 AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.7 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}},
+                    {{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0}, {5, 0}})
+      .expectSkipped(0, 0)
+      .setCallStack(queryStack(AqlCall{0, false, AqlCall::Infinity{}},
+                               AqlCall{0, false, 0, AqlCall::LimitType::HARD}))
+      .setInputSplitType(GetSplit())
+      .run();
 }
 
 TEST_P(SubqueryStartExecutorTest, skip_out_skip_in) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::HASMORE)
-        .expectOutput({0}, {{R"("c")"}}, {{0, 0}})
-        .expectSkipped(2, 1)
-        .setCallStack(queryStack(AqlCall{2, false, AqlCall::Infinity{}},
-                                 AqlCall{10, false, AqlCall::Infinity{}}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.7 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::HASMORE)
+      .expectOutput({0}, {{R"("c")"}}, {{0, 0}})
+      .expectSkipped(2, 1)
+      .setCallStack(queryStack(AqlCall{2, false, AqlCall::Infinity{}},
+                               AqlCall{10, false, AqlCall::Infinity{}}))
+      .setInputSplitType(GetSplit())
+      .run();
 }
 
 TEST_P(SubqueryStartExecutorTest, fullbypass_in_outer_subquery) {
-  if (GetCompatMode() == CompatibilityMode::VERSION37) {
-    makeExecutorTestHelper<1, 1>()
-        .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
-        .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
-        .expectedStats(ExecutionStats{})
-        .expectedState(ExecutionState::DONE)
-        .expectOutput({0}, {})
-        .expectSkipped(0, 0)
-        .setCallStack(queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}, AqlCall{}))
-        .setInputSplitType(GetSplit())
-        .run();
-  } else {
-    // The feature is not available in 3.7 or earlier.
-  }
+  makeExecutorTestHelper<1, 1>()
+      .addConsumer<SubqueryStartExecutor>(MakeBaseInfos(1), MakeBaseInfos(1), ExecutionNode::SUBQUERY_START)
+      .setInputValue({{R"("a")"}, {R"("b")"}, {R"("c")"}, {R"("d")"}, {R"("e")"}, {R"("f")"}})
+      .expectedStats(ExecutionStats{})
+      .expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {})
+      .expectSkipped(0, 0)
+      .setCallStack(queryStack(AqlCall{0, false, 0, AqlCall::LimitType::HARD}, AqlCall{}))
+      .setInputSplitType(GetSplit())
+      .run();
 }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -86,16 +86,9 @@ void FlushFeature::registerFlushSubscription(const std::shared_ptr<FlushSubscrip
 
 arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t& minTick) {
   count = 0;
-  auto* engine = EngineSelectorFeature::ENGINE;
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
-  if (!engine) {
-    return Result(
-      TRI_ERROR_INTERNAL,
-      "failed to find a storage engine while releasing unused ticks"
-    );
-  }
-
-  minTick = engine->currentTick();
+  minTick = engine.currentTick();
 
   {
     std::lock_guard<std::mutex> lock(_flushSubscriptionsMutex);
@@ -115,7 +108,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
     }
   }
 
-  TRI_ASSERT(minTick <= engine->currentTick());
+  TRI_ASSERT(minTick <= engine.currentTick());
 
   TRI_IF_FAILURE("FlushCrashBeforeSyncingMinTick") {
     TRI_TerminateDebugging("crashing before syncing min tick");
@@ -129,7 +122,7 @@ arangodb::Result FlushFeature::releaseUnusedTicks(size_t& count, TRI_voc_tick_t&
     TRI_TerminateDebugging("crashing after syncing min tick");
   }
 
-  engine->releaseTick(minTick);
+  engine.releaseTick(minTick);
 
   TRI_IF_FAILURE("FlushCrashAfterReleasingMinTick") {
     TRI_TerminateDebugging("crashing after releasing min tick");
@@ -162,8 +155,8 @@ void FlushFeature::start() {
     WRITE_LOCKER(lock, _threadLock);
     _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
-  DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
-  dbFeature->registerPostRecoveryCallback([this]() -> Result {
+  DatabaseFeature& dbFeature = server().getFeature<DatabaseFeature>();
+  dbFeature.registerPostRecoveryCallback([this]() -> Result {
     READ_LOCKER(lock, _threadLock);
     if (!this->_flushThread->start()) {
       LOG_TOPIC("bdc3c", FATAL, Logger::FLUSH) << "unable to start FlushThread";

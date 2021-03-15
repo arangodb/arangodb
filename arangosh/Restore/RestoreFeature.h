@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,12 +25,16 @@
 #ifndef ARANGODB_RESTORE_RESTORE_FEATURE_H
 #define ARANGODB_RESTORE_RESTORE_FEATURE_H 1
 
+#include <shared_mutex>
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Utils/ClientManager.h"
 #include "Utils/ClientTaskQueue.h"
 #include "Utils/ManagedDirectory.h"
+#include "Utils/ProgressTracker.h"
 
 namespace arangodb {
 
@@ -90,9 +94,34 @@ class RestoreFeature final : public application_features::ApplicationFeature {
     bool importStructure{true};
     bool includeSystemCollections{false};
     bool overwrite{true};
+    bool useEnvelope{true};
+    bool continueRestore{false};
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    bool failOnUpdateContinueFile{false};
+#endif
     bool cleanupDuplicateAttributes{false};
     bool progress{true};
   };
+
+  enum CollectionState {
+    UNKNOWN = 0,
+    CREATED = 1,
+    RESTORING = 2,
+    RESTORED = 3,
+  };
+
+  struct CollectionStatus {
+    CollectionState state{UNKNOWN};
+    size_t bytes_acked{0};
+
+    CollectionStatus();
+    explicit CollectionStatus(CollectionState state, size_t bytes_acked = 0u);
+    explicit CollectionStatus(VPackSlice slice);
+
+    void toVelocyPack(VPackBuilder& builder) const;
+  };
+
+  using RestoreProgressTracker = ProgressTracker<CollectionStatus>;
 
   /// @brief Stores stats about the overall restore progress
   struct Stats {
@@ -107,18 +136,21 @@ class RestoreFeature final : public application_features::ApplicationFeature {
   struct JobData {
     ManagedDirectory& directory;
     RestoreFeature& feature;
+    RestoreProgressTracker& progressTracker;
     Options const& options;
     Stats& stats;
-
     VPackSlice collection;
+    bool useEnvelope;
 
-    JobData(ManagedDirectory&, RestoreFeature&, Options const&, Stats&, VPackSlice const&);
+    JobData(ManagedDirectory& directory, RestoreFeature& feature, RestoreProgressTracker& progressTracker,
+            Options const& options, Stats& stats, VPackSlice collection, bool useEnvelope);
   };
 
  private:
   ClientManager _clientManager;
   ClientTaskQueue<JobData> _clientTaskQueue;
   std::unique_ptr<ManagedDirectory> _directory;
+  std::unique_ptr<RestoreProgressTracker> _progressTracker;
   int& _exitCode;
   Options _options;
   Stats _stats;

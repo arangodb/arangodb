@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
 
 #include <utility>
 
@@ -55,12 +56,10 @@ FilterExecutor::~FilterExecutor() = default;
 auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& call)
     -> std::tuple<ExecutorState, Stats, size_t, AqlCall> {
   FilterStats stats{};
+  
   while (inputRange.hasDataRow() && call.needSkipMore()) {
     auto const [unused, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
-    if (!input) {
-      TRI_ASSERT(!inputRange.hasDataRow());
-      break;
-    }
+    TRI_ASSERT(input);
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       call.didSkip(1);
     } else {
@@ -69,8 +68,7 @@ auto FilterExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange, AqlCall& 
   }
 
   // Just fetch everything from above, allow overfetching
-  AqlCall upstreamCall{};
-  return {inputRange.upstreamState(), stats, call.getSkipCount(), upstreamCall};
+  return {inputRange.upstreamState(), stats, call.getSkipCount(), AqlCall{}};
 }
 
 auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlItemRow& output)
@@ -82,6 +80,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
 
   while (inputRange.hasDataRow() && !output.isFull()) {
     auto const& [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
+    TRI_ASSERT(input);
     TRI_ASSERT(input.isInitialized());
     if (input.getValue(_infos.getInputRegister()).toBoolean()) {
       output.copyRow(input);
@@ -92,8 +91,7 @@ auto FilterExecutor::produceRows(AqlItemBlockInputRange& inputRange, OutputAqlIt
   }
 
   // Just fetch everything from above, allow overfetching
-  AqlCall upstreamCall{};
-  return {inputRange.upstreamState(), stats, upstreamCall};
+  return {inputRange.upstreamState(), stats, AqlCall{}};
 }
 
 [[nodiscard]] auto FilterExecutor::expectedNumberOfRowsNew(AqlItemBlockInputRange const& input,

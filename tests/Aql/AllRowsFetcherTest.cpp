@@ -31,6 +31,8 @@
 #include "Aql/AllRowsFetcher.h"
 #include "Aql/AqlItemMatrix.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "FetcherTestHelper.h"
 
@@ -50,8 +52,9 @@ class AllRowsFetcherTest : public ::testing::Test {
   ExecutionState state;
   AqlItemMatrix const* matrix = nullptr;
   VPackBuilder input;
-  ResourceMonitor monitor;
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   RegIdSet inputRegisters{};
   DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> dependencyProxyMock{monitor, inputRegisters, 1};
 };

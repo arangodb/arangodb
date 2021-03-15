@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,7 +32,7 @@ namespace arangodb {
 namespace containers {
 
 template <class T, std::size_t BufSize = 64, std::size_t ElementAlignment = alignof(T)>
-using SmallVector = std::vector<T, short_alloc<T, BufSize, ElementAlignment>>;
+using SmallVector = std::vector<T, detail::short_alloc<T, BufSize, ElementAlignment>>;
 
 }  // namespace containers
 }  // namespace arangodb

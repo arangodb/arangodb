@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -115,9 +115,9 @@ struct SCCValue {
 
 template <typename T>
 struct SenderMessage {
-  SenderMessage() {}
-  SenderMessage(PregelID const& pid, T const& val)
-      : senderId(pid), value(val) {}
+  SenderMessage() = default;
+  SenderMessage(PregelID pid, T const& val)
+      : senderId(std::move(pid)), value(val) {}
 
   PregelID senderId;
   T value;

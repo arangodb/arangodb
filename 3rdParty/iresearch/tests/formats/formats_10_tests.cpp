@@ -31,7 +31,7 @@
 #include "formats_test_case_base.hpp"
 #include "formats/format_utils.hpp"
 
-NS_LOCAL
+namespace {
 
 using tests::format_test_case;
 
@@ -954,4 +954,4 @@ INSTANTIATE_TEST_CASE_P(
   tests::to_string
 );
 
-NS_END
+}

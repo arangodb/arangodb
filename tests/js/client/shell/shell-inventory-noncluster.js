@@ -145,10 +145,10 @@ function inventorySuite () {
 
       db._useDatabase("UnitTestsDumpSrc");
 
-      db._create("UnitTestsDumpEmpty", { waitForSync: true, indexBuckets: 256 });
+      db._create("UnitTestsDumpEmpty", { waitForSync: true });
       db._createEdgeCollection("UnitTestsDumpEdges");
 
-      let c = db._create("UnitTestsDumpIndexes", { indexBuckets: 32 });
+      let c = db._create("UnitTestsDumpIndexes");
       c.ensureUniqueConstraint("a_uc");
       c.ensureSkiplist("a_s1", "a_s2");
       c.ensureHashIndex("a_h1", "a_h2");
@@ -325,7 +325,7 @@ function inventorySuite () {
         assertEqual("UnitTestsDumpViewEmpty", view.name);
         assertEqual(2, view.cleanupIntervalStep);
         assertEqual(1000, view.commitIntervalMsec);
-        assertEqual(10000, view.consolidationIntervalMsec);
+        assertEqual(1000, view.consolidationIntervalMsec);
         assertEqual("tier", view.consolidationPolicy.type);
         assertEqual([], view.primarySort);
       } finally {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ namespace cache {
 /// pointers. Most querying and manipulation can be handled via the exposed
 /// methods. Bucket must be locked before doing anything else to ensure proper
 /// synchronization. Data entries are carefully laid out to ensure the structure
-/// fits in a single cacheline.
+/// fits in two cachelines.
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
   BucketState _state;

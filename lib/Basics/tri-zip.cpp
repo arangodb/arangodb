@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -76,9 +76,10 @@ static char const* translateError(int err) {
 /// @brief extracts the current file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
-                              char const* outPath, bool const skipPaths, bool const overwrite,
-                              char const* password, std::string& errorMessage) {
+static ErrorCode ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
+                                    char const* outPath, bool const skipPaths,
+                                    bool const overwrite, char const* password,
+                                    std::string& errorMessage) {
   char filenameInZip[256];
   char* filenameWithoutPath;
   char* p;
@@ -130,7 +131,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
   if (*filenameWithoutPath == '\0') {
     if (!skipPaths) {
       fullPath = basics::FileUtils::buildFilename(outPath, filenameInZip);
-      int res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateRecursiveDirectory(fullPath.c_str(), systemError, errorMessage);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -173,7 +174,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
 
       // create target directory recursively
       std::string tmp = basics::FileUtils::buildFilename(outPath, filenameInZip);
-      int res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateRecursiveDirectory(tmp.c_str(), systemError, errorMessage);
       
       // write back the original value
       // cppcheck-suppress *
@@ -190,7 +191,7 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
       // strip filename so we only have the directory name
       std::string dir =
           TRI_Dirname(basics::FileUtils::buildFilename(outPath, filenameInZip));
-      int res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
+      auto res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
@@ -247,12 +248,12 @@ static int ExtractCurrentFile(unzFile uf, void* buffer, size_t const bufferSize,
 /// @brief unzips a single file
 ////////////////////////////////////////////////////////////////////////////////
 
-static int UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
-                     char const* outPath, bool const skipPaths, bool const overwrite,
-                     char const* password, std::string& errorMessage) {
+static ErrorCode UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
+                           char const* outPath, bool const skipPaths, bool const overwrite,
+                           char const* password, std::string& errorMessage) {
   unz_global_info64 gi;
   uLong i;
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   int err;
 
   err = unzGetGlobalInfo64(uf, &gi);
@@ -288,8 +289,8 @@ static int UnzipFile(unzFile uf, void* buffer, size_t const bufferSize,
 /// @brief zips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ZipFile(char const* filename, char const* dir,
-                std::vector<std::string> const& files, char const* password) {
+ErrorCode TRI_ZipFile(char const* filename, char const* dir,
+                      std::vector<std::string> const& files, char const* password) {
   void* buffer;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -316,10 +317,10 @@ int TRI_ZipFile(char const* filename, char const* dir,
   if (zf == nullptr) {
     TRI_Free(buffer);
 
-    return ZIP_ERRNO;
+    return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
 
   size_t n = files.size();
   for (size_t i = 0; i < n; ++i) {
@@ -373,8 +374,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
       }
 
       if (sizeRead > 0) {
-        res = zipWriteInFileInZip(zf, buffer, sizeRead);
-        if (res != 0) {
+        if (0 != zipWriteInFileInZip(zf, buffer, sizeRead)) {
           break;
         }
       } else /* if (sizeRead <= 0) */ {
@@ -398,7 +398,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
   return res;
 }
 
-int TRI_Adler32(char const* filename, uint32_t& checksum) {
+ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum) {
   checksum = 0;
 
   if (!TRI_IsRegularFile(filename) && !TRI_IsSymbolicLink(filename)) {
@@ -457,8 +457,8 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 /// @brief unzips a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
-                  bool overwrite, char const* password, std::string& errorMessage) {
+ErrorCode TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
+                        bool overwrite, char const* password, std::string& errorMessage) {
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
 #endif
@@ -481,7 +481,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath, bool skipPaths,
     return TRI_ERROR_INTERNAL;
   }
 
-  int res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
+  auto res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite,
                       password, errorMessage);
 
   unzClose(uf);

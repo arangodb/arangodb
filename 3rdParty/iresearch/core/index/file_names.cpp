@@ -29,7 +29,7 @@
   #pragma warning (disable : 4996)
 #endif
 
-NS_ROOT
+namespace iresearch {
 
 std::string file_name(uint64_t gen) {
   char buf[22] = "_"; // can hold : -2^63 .. 2^64-1, plus '_' prefix, plus 0
@@ -81,7 +81,7 @@ std::string file_name(const string_ref& name, uint64_t gen, const string_ref& ex
   return out;
 }
 
-NS_END
+}
 
 #if defined(_MSC_VER)
   #pragma warning (default : 4996)

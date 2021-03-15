@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,6 +127,7 @@ void RestControlPregelHandler::startExecution() {
   // extract the collections
   std::vector<std::string> vertexCollections;
   std::vector<std::string> edgeCollections;
+  std::unordered_map<std::string, std::vector<std::string>> edgeCollectionRestrictions;
   auto vc = body.get("vertexCollections");
   auto ec = body.get("edgeCollections");
   if (vc.isArray() && ec.isArray()) {
@@ -152,26 +153,36 @@ void RestControlPregelHandler::startExecution() {
     }
     std::unique_ptr<graph::Graph> graph = std::move(graphRes.get());
 
-    auto gv = graph->vertexCollections();
-    for (auto& v : gv) {
+    auto const& gv = graph->vertexCollections();
+    for (auto const& v : gv) {
       vertexCollections.push_back(v);
     }
 
-    auto ge = graph->edgeCollections();
-    for (auto& e : ge) {
+    auto const& ge = graph->edgeCollections();
+    for (auto const& e : ge) {
       edgeCollections.push_back(e);
+    }
+
+    auto const& ed = graph->edgeDefinitions();
+    for (auto const& e : ed) {
+      auto const& from = e.second.getFrom();
+      // intentionally create map entry
+      for (auto const& f : from) {
+        auto& restrictions = edgeCollectionRestrictions[f];
+        restrictions.push_back(e.second.getName());
+      }
     }
   }
 
   auto res = pregel::PregelFeature::startExecution(_vocbase, algorithm, vertexCollections,
-                                                   edgeCollections, parameters);
+                                                   edgeCollections, edgeCollectionRestrictions, parameters);
   if (res.first.fail()) {
     generateError(res.first);
     return;
   }
 
   VPackBuilder builder;
-  builder.add(VPackValue(res.second));
+  builder.add(VPackValue(std::to_string(res.second)));
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 

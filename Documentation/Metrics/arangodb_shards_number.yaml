@@ -1,0 +1,13 @@
+name: arangodb_shards_number
+help: |
+  Number of shards on this machine.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of shards on this machine.

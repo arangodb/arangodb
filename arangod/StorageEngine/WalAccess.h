@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ namespace arangodb {
 struct WalAccessResult {
   WalAccessResult() : WalAccessResult(TRI_ERROR_NO_ERROR, false, 0, 0, 0) {}
 
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
+  WalAccessResult(ErrorCode code, bool ft, TRI_voc_tick_t included,
                   TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest)
       : _result(code),
         _fromTickIncluded(ft),
@@ -56,7 +56,7 @@ struct WalAccessResult {
   void lastScannedTick(TRI_voc_tick_t tick) { _lastScannedTick = tick; }
   TRI_voc_tick_t latestTick() const { return _latestTick; }
 
-  WalAccessResult& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+  WalAccessResult& reset(ErrorCode errorNumber, bool ft, TRI_voc_tick_t included,
                          TRI_voc_tick_t lastScannedTick, TRI_voc_tick_t latest) {
     _result.reset(errorNumber);
     _fromTickIncluded = ft;
@@ -69,8 +69,8 @@ struct WalAccessResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
   void reset(Result const& other) { _result.reset(); }
 
   // access methods
@@ -92,12 +92,12 @@ class WalAccess {
   WalAccess& operator=(WalAccess const&) = delete;
 
  protected:
-  WalAccess() {}
+  WalAccess() = default;
   virtual ~WalAccess() = default;
 
  public:
   struct Filter {
-    Filter() {}
+    Filter() = default;
 
     /// tick last scanned by the last iteration
     /// is used to find batches in rocksdb
@@ -156,8 +156,9 @@ class WalAccess {
 /// @brief helper class used to resolve vocbases
 ///        and collections from wal markers in an efficient way
 struct WalAccessContext {
-  WalAccessContext(WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
-      : _filter(filter), _callback(c), _responseSize(0) {}
+  WalAccessContext(application_features::ApplicationServer& server,
+                   WalAccess::Filter const& filter, WalAccess::MarkerCallback const& c)
+      : _server(server), _filter(filter), _callback(c), _responseSize(0) {}
 
   ~WalAccessContext() = default;
 
@@ -175,6 +176,9 @@ struct WalAccessContext {
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
 
   LogicalCollection* loadCollection(TRI_voc_tick_t dbid, DataSourceId cid);
+
+ private:
+  application_features::ApplicationServer& _server;
 
  public:
   /// @brief arbitrary collection filter (inclusive)

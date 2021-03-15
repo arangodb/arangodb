@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Cluster/ServerState.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Transaction/Status.h"
 
@@ -43,7 +44,22 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_V8; }
+  RequestLane lane() const override final {
+    if (ServerState::instance()->isDBServer()) {
+      bool isSyncReplication = false;
+      // We do not care for the real value, enough if it is there.
+      std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                    isSyncReplication);
+      if (isSyncReplication) {
+        return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+        // This leads to the high queue, we want replication requests (for
+        // commit or abort in the El Cheapo case) to be executed with a
+        // higher prio than leader requests, even if they are done from
+        // AQL.
+      }
+    }
+    return RequestLane::CLIENT_V8;
+  }
   RestStatus execute() override;
   void cancel() override final;
 
@@ -60,8 +76,6 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
 
   /// start a legacy JS transaction
   void executeJSTransaction();
-  /// return the currently used V8Context
-  void returnContext();
 };
 }  // namespace arangodb
 

@@ -27,7 +27,7 @@
 #include "utf8_utils.hpp"
 #include <vector>
 
-NS_ROOT
+namespace iresearch {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Evaluates ngram similarity between the specified strings based on
@@ -131,7 +131,7 @@ float_t ngram_similarity(const T* target, size_t target_size,
          float_t((!search_semantics) ? s_ngram_count : t_ngram_count);
 }
 
-NS_END
+}
 
 
 #endif // IRESEARCH_NGRAM_MATCH_UTILS_H

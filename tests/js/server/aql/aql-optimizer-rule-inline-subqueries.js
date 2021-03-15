@@ -37,7 +37,7 @@ var ruleName = "inline-subqueries";
 function optimizerRuleTestSuite () {
   // various choices to control the optimizer: 
   var paramNone = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] }, inspectSimplePlans: true };
+  var paramEnabled = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
   var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
@@ -54,8 +54,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramNone);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 
@@ -81,10 +81,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = AQL_EXPLAIN(query, { }, paramEnabled);
-        assertEqual([ ], result.plan.rules, query);
+        let result = AQL_EXPLAIN(query, { }, paramEnabled);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
         result = AQL_EXPLAIN(query, { }, paramNone);
-        assertEqual([ ], result.plan.rules, query);
+        assertEqual([], result.plan.rules.filter((r) => r !== "splice-subqueries"), query);
       });
     },
 

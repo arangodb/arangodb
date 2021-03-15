@@ -36,7 +36,6 @@
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
-#include "RestServer/FileDescriptorsFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 
@@ -91,11 +90,12 @@ struct NetworkMethodsTest
 
  private:
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config;
+    network::ConnectionPool::Config config(server.getFeature<MetricsFeature>());
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;
     config.verifyHosts = false;
+    config.name = "NetworkMethodsTest";
     return config;
   }
 
@@ -125,8 +125,8 @@ TEST_F(NetworkMethodsTest, simple_request) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_NE(res.response, nullptr);
-  ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }
 
 TEST_F(NetworkMethodsTest, request_failure) {
@@ -142,7 +142,7 @@ TEST_F(NetworkMethodsTest, request_failure) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionClosed);
-  ASSERT_EQ(res.response, nullptr);
+  ASSERT_FALSE(res.hasResponse());
 }
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
@@ -179,8 +179,8 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_error) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_NE(res.response, nullptr);
-  ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }
 
 TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
@@ -223,6 +223,6 @@ TEST_F(NetworkMethodsTest, request_with_retry_after_not_found_error) {
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
-  ASSERT_NE(res.response, nullptr);
-  ASSERT_EQ(res.response->statusCode(), fuerte::StatusAccepted);
+  ASSERT_TRUE(res.hasResponse());
+  ASSERT_EQ(res.statusCode(), fuerte::StatusAccepted);
 }

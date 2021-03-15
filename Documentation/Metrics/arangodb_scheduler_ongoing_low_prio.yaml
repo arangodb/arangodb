@@ -1,0 +1,13 @@
+name: arangodb_scheduler_ongoing_low_prio
+help: |
+  Total number of ongoing RestHandlers coming from the low prio queue.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of ongoing RestHandlers coming from the low prio queue.

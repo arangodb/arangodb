@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -87,7 +87,7 @@ class HttpResponse : public GeneralResponse {
     return _body->empty();
   }
 
-  int reservePayload(std::size_t size) override final { return _body->reserve(size); }
+  ErrorCode reservePayload(std::size_t size) override final { return _body->reserve(size); }
 
   arangodb::Endpoint::TransportType transportType() override final {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -100,7 +100,7 @@ class HttpResponse : public GeneralResponse {
   
  private:
   // the body must already be set. deflate is then run on the existing body
-  int deflate(size_t size = 16384) override {
+  ErrorCode deflate(size_t size = 16384) override {
     return _body->deflate(size);
   }
 

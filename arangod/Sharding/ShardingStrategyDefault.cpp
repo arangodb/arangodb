@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -127,7 +127,8 @@ VPackSlice buildTemporarySlice(VPackSlice const sub, Part const& part,
 
 template <bool returnNullSlice>
 uint64_t hashByAttributesImpl(VPackSlice slice, std::vector<std::string> const& attributes,
-                              bool docComplete, int& error, VPackStringRef const& key) {
+                              bool docComplete, ErrorCode& error,
+                              VPackStringRef const& key) {
   uint64_t hashval = TRI_FnvHashBlockInitial();
   error = TRI_ERROR_NO_ERROR;
   slice = slice.resolveExternal();
@@ -219,10 +220,9 @@ ShardingStrategyNone::ShardingStrategyNone() : ShardingStrategy() {
 }
 
 /// calling getResponsibleShard on this class will always throw an exception
-int ShardingStrategyNone::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                              bool docComplete, ShardID& shardID,
-                                              bool& usesDefaultShardKeys,
-                                              VPackStringRef const& key) {
+ErrorCode ShardingStrategyNone::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL, "unexpected invocation of ShardingStrategyNone");
 }
@@ -236,10 +236,9 @@ ShardingStrategyOnlyInEnterprise::ShardingStrategyOnlyInEnterprise(std::string c
 
 /// @brief will always throw an exception telling the user the selected sharding
 /// is only available in the Enterprise Edition
-int ShardingStrategyOnlyInEnterprise::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                          bool docComplete, ShardID& shardID,
-                                                          bool& usesDefaultShardKeys,
-                                                          VPackStringRef const& key) {
+ErrorCode ShardingStrategyOnlyInEnterprise::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ONLY_ENTERPRISE,
       std::string("sharding strategy '") + _name +
@@ -268,10 +267,9 @@ ShardingStrategyHashBase::ShardingStrategyHashBase(ShardingInfo* sharding)
   }
 }
 
-int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                                  bool docComplete, ShardID& shardID,
-                                                  bool& usesDefaultShardKeys,
-                                                  VPackStringRef const& key) {
+ErrorCode ShardingStrategyHashBase::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete, ShardID& shardID,
+    bool& usesDefaultShardKeys, arangodb::velocypack::StringRef const& key) {
   static constexpr char const* magicPhrase =
       "Foxx you have stolen the goose, give she back again!";
   static constexpr size_t magicLength = 52;
@@ -281,7 +279,7 @@ int ShardingStrategyHashBase::getResponsibleShard(arangodb::velocypack::Slice sl
 
   TRI_ASSERT(!_sharding->shardKeys().empty());
 
-  int res = TRI_ERROR_NO_ERROR;
+  auto res = TRI_ERROR_NO_ERROR;
   usesDefaultShardKeys = _usesDefaultShardKeys;
   // calls virtual "hashByAttributes" function
 
@@ -322,7 +320,7 @@ void ShardingStrategyHashBase::determineShards() {
 
 uint64_t ShardingStrategyHashBase::hashByAttributes(VPackSlice slice,
                                                     std::vector<std::string> const& attributes,
-                                                    bool docComplete, int& error,
+                                                    bool docComplete, ErrorCode& error,
                                                     VPackStringRef const& key) {
   return ::hashByAttributesImpl<false>(slice, attributes, docComplete, error, key);
 }
@@ -368,7 +366,7 @@ ShardingStrategyEnterpriseBase::ShardingStrategyEnterpriseBase(ShardingInfo* sha
 /// will affect the data distribution, which we want to avoid
 uint64_t ShardingStrategyEnterpriseBase::hashByAttributes(
     VPackSlice slice, std::vector<std::string> const& attributes,
-    bool docComplete, int& error, VPackStringRef const& key) {
+    bool docComplete, ErrorCode& error, VPackStringRef const& key) {
   return ::hashByAttributesImpl<true>(slice, attributes, docComplete, error, key);
 }
 

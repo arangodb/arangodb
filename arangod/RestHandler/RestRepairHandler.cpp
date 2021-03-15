@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -68,8 +68,7 @@ RestStatus RestRepairHandler::execute() {
       _pretendOnly = true;
       break;
     default:
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    (int)rest::ResponseCode::METHOD_NOT_ALLOWED);
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 
       return RestStatus::DONE;
   }
@@ -552,21 +551,21 @@ ResultT<std::string> RestRepairHandler::getDbAndCollectionName(VPackSlice const 
   return Result{TRI_ERROR_INTERNAL, "Collection not found"};
 }
 
-void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNumber) {
+void RestRepairHandler::addErrorDetails(VPackBuilder& builder, ErrorCode const errorNumber) {
   std::optional<const char*> errorDetails;
 
-  switch (errorNumber) {
-    case TRI_ERROR_CLUSTER_REPAIRS_FAILED:
+  switch (static_cast<int>(errorNumber)) {
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_FAILED):
       // General error
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_NOT_ENOUGH_HEALTHY):
       errorDetails =
           "Error while collecting repair actions. "
           "There are not enough healthy DBServers to complete the repair "
           "operations. Please try again after getting your unhealthy "
           "DBServer(s) up again.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_REPLICATION_FACTOR_VIOLATED):
       errorDetails =
           "Error while collecting repair actions. "
           "Somewhere the replicationFactor is violated, e.g. this collection "
@@ -574,14 +573,14 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
           "distributeShardsLike prototype. This has to be fixed before this "
           "collection can be repaired.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_NO_DBSERVERS):
       errorDetails =
           "Error while collecting repair actions. "
           "Some shard of this collection doesn't have any DBServers. This "
           "should not happen. "
           "Please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_LEADERS):
       errorDetails =
           "Error while collecting repair actions. "
           "Mismatching leaders of a shard and its distributeShardsLike "
@@ -590,7 +589,7 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
           "again. "
           "If that does not help, please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_FOLLOWERS):
       errorDetails =
           "Error while collecting repair actions. "
           "Mismatching followers of a shard and its distributeShardsLike "
@@ -599,7 +598,7 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
           "again. "
           "If that does not help, please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_INCONSISTENT_ATTRIBUTES):
       errorDetails =
           "Error while collecting repair actions. "
           "Unexpected state of distributeShardsLike or "
@@ -608,14 +607,14 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
           "again. "
           "If that does not help, please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_MISMATCHING_SHARDS):
       errorDetails =
           "Error while collecting repair actions. "
           "In this collection, some shard and its distributeShardsLike "
           "prototype have an unequal number of DBServers. This has to be fixed "
           "before this collection can be repaired.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_JOB_FAILED):
       errorDetails =
           "Error during repairs! "
           "Moving a shard failed. Did you do any changes to the affected "
@@ -623,13 +622,13 @@ void RestRepairHandler::addErrorDetails(VPackBuilder& builder, int const errorNu
           "to try this job again. "
           "If that does not help, please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_JOB_DISAPPEARED):
       errorDetails =
           "Error during repairs! "
           "A job to move a shard disappeared. This should not happen. "
           "Please report this error.";
       break;
-    case TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED:
+    case static_cast<int>(TRI_ERROR_CLUSTER_REPAIRS_OPERATION_FAILED):
       errorDetails =
           "Error during repairs! "
           "Executing an operation as an agency transaction failed. Did you do "

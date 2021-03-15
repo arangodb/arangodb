@@ -27,7 +27,7 @@
 #include "utils/string.hpp"
 #include "utils/attribute_store.hpp"
 
-NS_ROOT
+namespace iresearch {
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class fs_directory
@@ -80,6 +80,6 @@ class IRESEARCH_API fs_directory : public directory {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // fs_directory
 
-NS_END
+}
 
 #endif

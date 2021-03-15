@@ -28,6 +28,8 @@
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 
+#include "Mocks/Servers.h"
+
 using namespace arangodb;
 using namespace arangodb::network;
 
@@ -39,8 +41,20 @@ void doNothing(fuerte::Error, std::unique_ptr<fuerte::Request> req,
 };
 }
 
-TEST(NetworkConnectionPoolTest, acquire_endpoint) {
-  ConnectionPool::Config config;
+namespace arangodb {
+namespace tests {
+
+struct NetworkConnectionPoolTest
+    : public ::testing::Test {
+  NetworkConnectionPoolTest() : server(false) {
+    server.startFeatures();
+  }
+ protected:
+  tests::mocks::MockMetricsServer server;
+};
+
+TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -58,8 +72,8 @@ TEST(NetworkConnectionPoolTest, acquire_endpoint) {
   ASSERT_TRUE(res->payloadSize() > 0);
 }
 
-TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -85,8 +99,8 @@ TEST(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   ASSERT_EQ(pool.numOpenConnections(), 3);
 }
 
-TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 5; // extra small for testing
@@ -113,8 +127,8 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   ASSERT_EQ(pool.numOpenConnections(), 1); // keep one busy connection
 }
 
-TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -181,8 +195,8 @@ TEST(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -255,8 +269,8 @@ TEST(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_expiration) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_expiration) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -321,8 +335,8 @@ TEST(NetworkConnectionPoolTest, checking_expiration) {
   pool.drainConnections();
 }
 
-TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
-  ConnectionPool::Config config;
+TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
+  ConnectionPool::Config config(server.getFeature<MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10; // extra small for testing
@@ -437,4 +451,7 @@ TEST(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   ASSERT_EQ(pool.numOpenConnections(), 0);
   
   pool.drainConnections();
+}
+
+}
 }

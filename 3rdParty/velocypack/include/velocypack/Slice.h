@@ -1,9 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +20,6 @@
 ///
 /// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef VELOCYPACK_SLICE_H
@@ -31,9 +29,12 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <initializer_list>
 #include <iosfwd>
+#include <iterator>
 #include <algorithm>
 #include <functional>
+#include <tuple>
 #include <type_traits>
 
 #if __cplusplus >= 201703L
@@ -43,6 +44,7 @@
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
+#include "velocypack/HashedStringRef.h"
 #include "velocypack/Options.h"
 #include "velocypack/SliceStaticData.h"
 #include "velocypack/StringRef.h"
@@ -51,6 +53,10 @@
 
 namespace arangodb {
 namespace velocypack {
+struct Sink;
+
+template<typename, typename = void>
+struct Extractor;
 
 // This class provides read only access to a VPack value, it is
 // intentionally light-weight (only one pointer value), such that
@@ -74,7 +80,7 @@ class Slice {
   static constexpr uint64_t defaultSeed64 = 0xdeadbeef;
   static constexpr uint32_t defaultSeed32 = 0xdeadbeef;
   static constexpr uint64_t defaultSeed = defaultSeed64;
- 
+
   static uint8_t const noneSliceData[];
   static uint8_t const illegalSliceData[];
   static uint8_t const nullSliceData[];
@@ -93,18 +99,18 @@ class Slice {
   // creates a Slice from a pointer to a uint8_t array
   explicit constexpr Slice(uint8_t const* start) noexcept
       : _start(start) {}
-  
+
   // No destructor, does not take part in memory management
 
   // creates a slice of type None
   static constexpr Slice noneSlice() noexcept { return Slice(noneSliceData); }
-  
+
   // creates a slice of type Illegal
   static constexpr Slice illegalSlice() noexcept { return Slice(illegalSliceData); }
 
   // creates a slice of type Null
   static constexpr Slice nullSlice() noexcept { return Slice(nullSliceData); }
-  
+
   // creates a slice of type Boolean with the relevant value
   static constexpr Slice booleanSlice(bool value) noexcept { return value ? trueSlice() : falseSlice(); }
 
@@ -113,19 +119,19 @@ class Slice {
 
   // creates a slice of type Boolean with true value
   static constexpr Slice trueSlice() noexcept { return Slice(trueSliceData); }
-  
+
   // creates a slice of type Smallint(0)
   static constexpr Slice zeroSlice() noexcept { return Slice(zeroSliceData); }
-  
+
   // creates a slice of type String, empty
   static constexpr Slice emptyStringSlice() noexcept { return Slice(emptyStringSliceData); }
-  
+
   // creates a slice of type Array, empty
   static constexpr Slice emptyArraySlice() noexcept { return Slice(emptyArraySliceData); }
-  
+
   // creates a slice of type Object, empty
   static constexpr Slice emptyObjectSlice() noexcept { return Slice(emptyObjectSliceData); }
-  
+
   // creates a slice of type MinKey
   static constexpr Slice minKeySlice() noexcept { return Slice(minKeySliceData); }
 
@@ -293,7 +299,7 @@ class Slice {
 
   // check if slice is a None object
   constexpr bool isNone() const noexcept { return isType(ValueType::None); }
-  
+
   // check if slice is an Illegal object
   constexpr bool isIllegal() const noexcept { return isType(ValueType::Illegal); }
 
@@ -364,12 +370,12 @@ class Slice {
 
   // check if slice is any Number-type object
   constexpr bool isNumber() const noexcept { return isInteger() || isDouble(); }
- 
+
   // check if slice is convertible to a variable of a certain
-  // number type 
+  // number type
   template<typename T>
   bool isNumber() const noexcept {
-    try { 
+    try {
       if (std::is_integral<T>()) {
         if (std::is_signed<T>()) {
           // signed integral type
@@ -395,7 +401,7 @@ class Slice {
           return (v <= static_cast<uint64_t>((std::numeric_limits<T>::max)()));
         }
       }
-      
+
       // floating point type
       return isNumber();
     } catch (...) {
@@ -484,7 +490,7 @@ class Slice {
       ValueLength firstSubOffset = findDataOffset(h);
       Slice first(start() + firstSubOffset);
       ValueLength s = first.byteSize();
-      if (s == 0) {
+      if (VELOCYPACK_UNLIKELY(s == 0)) {
         throw Exception(Exception::InternalError, "Invalid data for Array");
       }
       return (end - firstSubOffset) / s;
@@ -494,7 +500,7 @@ class Slice {
 
     return readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
   }
-  
+
   // extract a key from an Object at the specified index
   // - 0x0a      : empty object
   // - 0x0b      : object with 1-byte index table entries, sorted by attribute
@@ -529,7 +535,7 @@ class Slice {
     Slice key = getNthKeyUntranslated(index);
     return Slice(key.start() + key.byteSize());
   }
-  
+
   // extract the nth value from an Object
   Slice getNthValue(ValueLength index) const {
     Slice key = getNthKeyUntranslated(index);
@@ -538,52 +544,82 @@ class Slice {
 
   // look for the specified attribute path inside an Object
   // returns a Slice(ValueType::None) if not found
-  template<typename T>
-  Slice get(std::vector<T> const& attributes, 
-            bool resolveExternals = false) const {
-    std::size_t const n = attributes.size();
-    if (n == 0) {
+  template<typename ForwardIterator>
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<ForwardIterator>::iterator_category>::value,
+      Slice>::type get(ForwardIterator begin, ForwardIterator end,
+                       bool resolveExternals = false) const {
+
+    if (VELOCYPACK_UNLIKELY(begin == end)) {
       throw Exception(Exception::InvalidAttributePath);
     }
-
     // use ourselves as the starting point
     Slice last(start());
     if (resolveExternals) {
       last = last.resolveExternal();
     }
-    for (std::size_t i = 0; i < attributes.size(); ++i) {
+    do {
       // fetch subattribute
-      last = last.get(attributes[i]);
-
-      // abort as early as possible
+      last = last.get(*begin);
       if (last.isExternal()) {
         last = last.resolveExternal();
       }
-
-      if (last.isNone() || (i + 1 < n && !last.isObject())) {
+      // abort as early as possible
+      if (last.isNone() || (++begin != end && !last.isObject())) {
         return Slice();
       }
-    }
-
+    } while (begin != end);
     return last;
   }
-  
+
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  template<typename T>
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value,
+      Slice>::type get(T const& attributes,
+                       bool resolveExternals = false) const {
+    // forward to the iterator-based lookup
+    return this->get(attributes.begin(), attributes.end(), resolveExternals);
+  }
+
+  // look for the specified attribute path inside an Object
+  // returns a Slice(ValueType::None) if not found
+  template<typename T>
+  Slice get(std::initializer_list<T> const& attributes,
+            bool resolveExternals = false) const {
+    // forward to the iterator-based lookup
+    return this->get(attributes.begin(), attributes.end(), resolveExternals);
+  }
+
   // look for the specified attribute inside an Object
   // returns a Slice(ValueType::None) if not found
   Slice get(StringRef const& attribute) const;
+
+  Slice get(std::string_view attribute) const {
+    return get(StringRef{attribute.data(), attribute.size()});
+  }
+
+  Slice get(HashedStringRef const& attribute) const {
+    return get(StringRef(attribute));
+  }
 
   Slice get(std::string const& attribute) const {
     return get(StringRef(attribute.data(), attribute.size()));
   }
 
   Slice get(char const* attribute) const {
-    return get(StringRef(attribute));
+#if __cplusplus >= 201703
+    return get(StringRef(attribute, std::char_traits<char>::length(attribute)));
+#else
+    return get(StringRef(attribute, strlen(attribute)));
+#endif
   }
 
   Slice get(char const* attribute, std::size_t length) const {
     return get(StringRef(attribute, length));
   }
-  
+
   Slice operator[](StringRef const& attribute) const {
     return get(attribute);
   }
@@ -591,27 +627,45 @@ class Slice {
   Slice operator[](std::string const& attribute) const {
     return get(attribute.data(), attribute.size());
   }
-  
+
+  // whether or not an Object has a specific sub-key
+  template<typename T>
+  typename std::enable_if<
+      std::is_base_of<std::forward_iterator_tag, typename std::iterator_traits<typename T::iterator>::iterator_category>::value,
+      bool>::type hasKey(T const& attributes) const {
+    return !this->get(attributes.begin(), attributes.end()).isNone();
+  }
+
+  // whether or not an Object has a specific key
+  template<typename T>
+  bool hasKey(std::initializer_list<T> const& attributes) const {
+    return !this->get(attributes.begin(), attributes.end()).isNone();
+  }
+
   // whether or not an Object has a specific key
   bool hasKey(StringRef const& attribute) const {
     return !get(attribute).isNone();
   }
 
+  // whether or not an Object has a specific key
+  bool hasKey(HashedStringRef const& attribute) const {
+    return hasKey(StringRef(attribute));
+  }
+
   bool hasKey(std::string const& attribute) const {
     return hasKey(StringRef(attribute));
   }
-  
+
   bool hasKey(char const* attribute) const {
-    return hasKey(StringRef(attribute));
-  }
-  
-  bool hasKey(char const* attribute, std::size_t length) const {
-    return hasKey(StringRef(attribute, length));
+#if __cplusplus >= 201703
+    return hasKey(StringRef(attribute, std::char_traits<char>::length(attribute)));
+#else
+    return hasKey(StringRef(attribute, std::strlen(attribute)));
+#endif
   }
 
-  // whether or not an Object has a specific sub-key
-  bool hasKey(std::vector<std::string> const& attributes) const {
-    return !get(attributes).isNone();
+  bool hasKey(char const* attribute, std::size_t length) const {
+    return hasKey(StringRef(attribute, length));
   }
 
   // return the pointer to the data for an External object
@@ -621,7 +675,7 @@ class Slice {
     }
     return extractPointer();
   }
-  
+
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External
   Slice resolveExternal() const {
@@ -630,7 +684,7 @@ class Slice {
     }
     return *this;
   }
- 
+
   // returns the Slice managed by an External or the Slice itself if it's not
   // an External, recursive version
   Slice resolveExternals() const {
@@ -642,18 +696,18 @@ class Slice {
   }
 
   // tests whether the Slice is an empty array
-  bool isEmptyArray() const { 
+  bool isEmptyArray() const {
     return isArray() && length() == 0;
   }
 
   // tests whether the Slice is an empty object
-  bool isEmptyObject() const { 
+  bool isEmptyObject() const {
     return isObject() && length() == 0;
   }
 
   // translates an integer key into a string
   Slice translate() const;
- 
+
   // return the value for an Int object
   int64_t getInt() const;
 
@@ -662,7 +716,7 @@ class Slice {
 
   // return the value for a SmallInt object
   int64_t getSmallInt() const;
-  
+
   template <typename T>
   T getNumber() const {
     if (std::is_integral<T>()) {
@@ -751,7 +805,7 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
-  
+
   char const* getStringUnchecked(ValueLength& length) const noexcept {
     uint8_t const h = head();
     if (h >= 0x40 && h <= 0xbe) {
@@ -800,7 +854,7 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
-  
+
   // return a copy of the value for a String object
   StringRef stringRef() const {
     uint8_t h = head();
@@ -901,24 +955,24 @@ class Slice {
     }
     return 9;
   }
-  
+
   // get the offset for the nth member from an Array type
   ValueLength getNthOffset(ValueLength index) const;
 
   Slice makeKey() const;
 
   int compareString(StringRef const& value) const;
-  
+
   inline int compareString(std::string const& value) const {
     return compareString(StringRef(value.data(), value.size()));
   }
-  
+
   int compareString(char const* value, std::size_t length) const {
     return compareString(StringRef(value, length));
   }
-  
+
   int compareStringUnchecked(StringRef const& value) const noexcept;
-  
+
   int compareStringUnchecked(std::string const& value) const noexcept {
     return compareStringUnchecked(StringRef(value.data(), value.size()));
   }
@@ -926,13 +980,13 @@ class Slice {
   int compareStringUnchecked(char const* value, std::size_t length) const noexcept {
     return compareStringUnchecked(StringRef(value, length));
   }
-  
+
   bool isEqualString(StringRef const& attribute) const;
 
   bool isEqualString(std::string const& attribute) const {
     return isEqualString(StringRef(attribute.data(), attribute.size()));
   }
-  
+
   bool isEqualStringUnchecked(StringRef const& attribute) const noexcept;
 
   bool isEqualStringUnchecked(std::string const& attribute) const noexcept {
@@ -960,13 +1014,13 @@ class Slice {
       return false;
     }
 
-    return (memcmp(start(), other.start(), checkOverflow(size)) == 0);
+    return (std::memcmp(start(), other.start(), checkOverflow(size)) == 0);
   }
- 
+
   static bool binaryEquals(uint8_t const* left, uint8_t const* right) {
     return Slice(left).binaryEquals(Slice(right));
   }
-  
+
   // these operators are now deleted because they didn't do what people expected
   // these operators checked for _binary_ equality of the velocypack slice with
   // another. however, for several values there are multiple possible representations,
@@ -978,9 +1032,11 @@ class Slice {
 
   std::string toHex() const;
   std::string toJson(Options const* options = &Options::Defaults) const;
+  std::string& toJson(std::string& out, Options const* options = &Options::Defaults) const;
+  void toJson(Sink* sink, Options const* options = &Options::Defaults) const;
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
-  
+
   int64_t getIntUnchecked() const noexcept;
 
   // return the value for a UInt object, without checks
@@ -1007,7 +1063,39 @@ class Slice {
     return valueStart() + 1 + mlenlen + 4;
   }
 
+  template<typename... Ts>
+  std::tuple<Ts...> unpackTuple() const {
+    if (!isArray()) {
+      throw Exception(Exception::InvalidValueType, "Expecting type Array");
+    }
+    auto offset = getNthOffset(0);
+    auto length = arrayLength();
+    if (length != sizeof...(Ts)) {
+      throw Exception(Exception::BadTupleSize);
+    }
+
+    return unpackTupleInternal(unpack_helper<Ts...>{}, offset);
+  }
+
+  template<typename T>
+  T extract() const {
+    return Extractor<T>::extract(*this);
+  }
+
  private:
+  template<typename...>
+  struct unpack_helper {};
+
+  template<typename T, typename... Ts>
+  std::tuple<T, Ts...> unpackTupleInternal(unpack_helper<T, Ts...>, std::size_t offset) const {
+    auto slice = Slice(this->_start + offset);
+    return std::tuple_cat(std::make_tuple(slice.extract<T>()), unpackTupleInternal(unpack_helper<Ts...>{}, offset + slice.byteSize()));
+  }
+
+  std::tuple<> unpackTupleInternal(unpack_helper<>, std::size_t) const {
+    return std::make_tuple<>();
+  }
+
   // get the type for the slice (including tags)
   static constexpr inline ValueType type(uint8_t h) {
     return SliceStaticData::TypeMap[h];
@@ -1051,7 +1139,7 @@ class Slice {
     ValueLength end = readIntegerNonEmpty<ValueLength>(start() + 1, offsetSize);
     return readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
   }
-  
+
   // return the number of members for an Object
   // must only be called for Slices that have been validated to be of type Object
   ValueLength objectLength() const {
@@ -1080,8 +1168,8 @@ class Slice {
     return readIntegerNonEmpty<ValueLength>(start() + end - offsetSize, offsetSize);
   }
 
-  // get the total byte size for a String slice, including the head byte
-  // not check is done if the type of the slice is actually String 
+  // get the total byte size for a String slice, including the head byte.
+  // no check is done if the type of the slice is actually String
   ValueLength stringSliceLength() const noexcept {
     // check if the type has a fixed length first
     auto const h = head();
@@ -1092,7 +1180,7 @@ class Slice {
     }
     return static_cast<ValueLength>(1 + h - 0x40);
   }
-  
+
   // translates an integer key into a string, without checks
   Slice translateUnchecked() const;
 
@@ -1113,7 +1201,7 @@ class Slice {
 
   // get the offset for the nth member from a compact Array or Object type
   ValueLength getNthOffsetFromCompact(ValueLength index) const;
-  
+
   // get the offset for the first member from a compact Array or Object type
   // it is only valid to call this method for compact Array or Object values with
   // at least one member!!
@@ -1143,7 +1231,7 @@ class Slice {
       char const* value;
       char binary[sizeof(char const*)];
     };
-    memcpy(&binary[0], start() + 1, sizeof(char const*));
+    std::memcpy(&binary[0], start() + 1, sizeof(char const*));
     return value;
   }
 
@@ -1184,7 +1272,7 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x01 && h <= 0x0e && h != 0x0a);
-        if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
+        if (VELOCYPACK_UNLIKELY(h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0]))) {
           throw Exception(Exception::InternalError, "invalid Array/Object type");
         }
         return readIntegerNonEmpty<ValueLength>(start + 1,
@@ -1194,7 +1282,7 @@ class Slice {
       case ValueType::String: {
         VELOCYPACK_ASSERT(h == 0xbf);
 
-        if (h < 0xbf) {
+        if (VELOCYPACK_UNLIKELY(h < 0xbf)) {
           // we cannot get here, because the FixedTypeLengths lookup
           // above will have kicked in already. however, the compiler
           // claims we'll be reading across the bounds of the input
@@ -1276,6 +1364,66 @@ class Slice {
 
 static_assert(!std::is_polymorphic<Slice>::value, "Slice must not be polymorphic");
 static_assert(!std::has_virtual_destructor<Slice>::value, "Slice must not have virtual dtor");
+
+template<typename T, typename>
+struct Extractor {
+  template<typename>
+  struct always_false : std::false_type {};
+  static_assert(always_false<T>::value, "There is no extractor for this type.");
+};
+
+
+template<>
+struct Extractor<Slice> {
+  static Slice extract(Slice slice) {
+    return slice;
+  }
+};
+
+template<>
+struct Extractor<std::string> {
+  static std::string extract(Slice slice) {
+    return slice.copyString();
+  }
+};
+
+template<>
+struct Extractor<StringRef> {
+  static StringRef extract(Slice slice) {
+    return slice.stringRef();
+  }
+};
+
+#if VELOCYPACK_HAS_STRING_VIEW
+template<>
+struct Extractor<std::string_view> {
+  static std::string_view extract(Slice slice) {
+    return slice.stringView();
+  }
+};
+#endif
+
+template<>
+struct Extractor<bool> {
+  static bool extract(Slice slice) {
+    return slice.getBool();
+  }
+};
+
+template<typename T>
+struct Extractor<T, typename std::enable_if<std::is_arithmetic<T>::value>::type> {
+  static T extract(Slice slice) {
+    return slice.template getNumericValue<T>();
+  }
+};
+
+template<typename... Ts>
+struct Extractor<std::tuple<Ts...>> {
+  static std::tuple<Ts...> extract(Slice slice) {
+    return slice.unpackTuple<Ts...>();
+  }
+};
+
 
 }  // namespace arangodb::velocypack
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -64,7 +64,7 @@ struct OperationResult final {
   // create result with details
   OperationResult(Result result, std::shared_ptr<VPackBuffer<uint8_t>> buffer,
                   OperationOptions options,
-                  std::unordered_map<int, size_t> countErrorCodes = std::unordered_map<int, size_t>())
+                  std::unordered_map<ErrorCode, size_t> countErrorCodes = {})
       : result(std::move(result)),
         buffer(std::move(buffer)),
         options(std::move(options)),
@@ -80,12 +80,12 @@ struct OperationResult final {
   // Result-like interface
   bool ok() const noexcept { return result.ok(); }
   bool fail() const noexcept { return result.fail(); }
-  int errorNumber() const noexcept { return result.errorNumber(); }
-  bool is(int errorNumber) const noexcept {
+  ErrorCode errorNumber() const noexcept { return result.errorNumber(); }
+  bool is(ErrorCode errorNumber) const noexcept {
     return result.errorNumber() == errorNumber;
   }
-  bool isNot(int errorNumber) const noexcept { return !is(errorNumber); }
-  std::string errorMessage() const { return result.errorMessage(); }
+  bool isNot(ErrorCode errorNumber) const noexcept { return !is(errorNumber); }
+  std::string_view errorMessage() const { return result.errorMessage(); }
 
   inline bool hasSlice() const { return buffer != nullptr; }
   inline VPackSlice slice() const {
@@ -107,7 +107,7 @@ struct OperationResult final {
   // Executive summary for baby operations: reports all errors that did occur
   // during these operations. Details are stored in the respective positions of
   // the failed documents.
-  std::unordered_map<int, size_t> countErrorCodes;
+  std::unordered_map<ErrorCode, size_t> countErrorCodes;
 };
 
 }  // namespace arangodb

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,6 @@ RestStatus RestPregelHandler::execute() {
     bool parseSuccess = true;
     VPackSlice body = parseVPackBody(parseSuccess);
     if (!parseSuccess || !body.isObject()) {
-      LOG_TOPIC("cec03", ERR, Logger::PREGEL) << "Bad request body\n";
       // error message generated in parseVPackBody
       return RestStatus::DONE;
     }
@@ -64,23 +63,10 @@ RestStatus RestPregelHandler::execute() {
     } else if (suffix[0] == Utils::conductorPrefix) {
       PregelFeature::handleConductorRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, response.slice());
-      /*
-       if (buffer.empty()) {
-         resetResponse(rest::ResponseCode::OK);
-       } else {
-         generateResult(rest::ResponseCode::OK, std::move(buffer));
-       }
-       */
     } else if (suffix[0] == Utils::workerPrefix) {
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
 
       generateResult(rest::ResponseCode::OK, response.slice());
-      /* if (buffer.empty()) {
-         resetResponse(rest::ResponseCode::OK);
-       } else {
-         generateResult(rest::ResponseCode::OK, std::move(buffer));
-       }
-       */
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_NOT_IMPLEMENTED,
                     "the prefix is incorrect");

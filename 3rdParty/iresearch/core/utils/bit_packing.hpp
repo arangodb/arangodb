@@ -31,8 +31,8 @@
 #include <limits>
 #include <iterator>
 
-NS_ROOT
-NS_BEGIN(packed)
+namespace iresearch {
+namespace packed {
 
 const uint32_t BLOCK_SIZE_32 = sizeof(uint32_t) * 8; // block size is tied to number of bits in value
 const uint32_t BLOCK_SIZE_64 = sizeof(uint64_t) * 8; // block size is tied to number of bits in value
@@ -264,7 +264,7 @@ class iterator {
 typedef iterator<uint32_t> iterator32;
 typedef iterator<uint64_t> iterator64;
 
-NS_END // packing
-NS_END // root
+} // packing
+} // root
 
 #endif

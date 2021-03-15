@@ -16,8 +16,8 @@ remove_definitions("-DUSE_ENTERPRISE=1")
 # do not compile with IPO (assuming gcc or clang) with this command:
 #   < compile_commands.json jq '.[] | select(.command | test("-flto") | not) | .file' -r
 if (${IPO_ENABLED})
-    message ("Disabling IPO for 3rdParty libraries")
-    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
+  message ("Disabling IPO for 3rdParty libraries")
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION False)
 endif ()
 
 ################################################################################
@@ -31,13 +31,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/zlib/zlib-1.2.11)
 ## SNAPPY
 ################################################################################
 
-set(SNAPPY_VERSION "1.1.7")
+set(SNAPPY_VERSION "1.1.8")
 set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
 set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}")
 set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 set(SNAPPY_LIB "snappy")
 set(SNAPPY_LIB "${SNAPPY_LIB}" PARENT_SCOPE)
+set(SNAPPY_BUILD_TESTS OFF CACHE BOOL "disable Snappy tests")
+set(SNAPPY_INSTALL OFF CACHE BOOL "disable Snappy installation")
 add_subdirectory(${SNAPPY_SOURCE_DIR} EXCLUDE_FROM_ALL)
 
 ################################################################################
@@ -69,7 +71,6 @@ endif ()
 ################################################################################
 
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
-
 
 set(V8_VERSION
   "7.9.317"
@@ -273,9 +274,7 @@ LIST(APPEND TZ_DATA_FILES
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/europe"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/NEWS"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/northamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/pacificnew"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/southamerica"
-  "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/systemv"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/version"
   "${CMAKE_CURRENT_SOURCE_DIR}/tzdata/windowsZones.xml")
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/TypedBuffer.h"
+#include "Pregel/Reports.h"
 #include "Utils/DatabaseGuard.h"
 
 #include <atomic>
@@ -46,6 +47,10 @@ namespace transaction {
 class Methods;
 }
 
+namespace traverser {
+class EdgeCollectionInfo;
+}
+
 namespace pregel {
 
 template <typename T>
@@ -53,7 +58,7 @@ struct TypedBuffer;
 class WorkerConfig;
 template <typename V, typename E>
 struct GraphFormat;
-  
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief carry graph data for a worker job. NOT THREAD SAFE ON DOCUMENT LOADS
 ////////////////////////////////////////////////////////////////////////////////
@@ -61,7 +66,6 @@ template <typename V, typename E>
 class GraphStore final {
  public:
   GraphStore(TRI_vocbase_t& vocbase, GraphFormat<V, E>* graphFormat);
-  ~GraphStore();
 
   uint64_t numberVertexSegments() const {
     return _vertices.size();
@@ -86,31 +90,36 @@ class GraphStore final {
   /// Write results to database
   void storeResults(WorkerConfig* config, std::function<void()>);
 
+  ReportManager *_reports;
  private:
-  
-  void _loadVertices(ShardID const& vertexShard,
-                     std::vector<ShardID> const& edgeShards);
-  void _loadEdges(transaction::Methods& trx, Vertex<V,E>& vertexEntry,
-                  ShardID const& edgeShard,
-                  std::string const& documentID,
-                  std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>&,
-                  std::vector<std::unique_ptr<TypedBuffer<char>>>&);
-  
-  void _storeVertices(std::vector<ShardID> const& globalShards,
-                      RangeIterator<Vertex<V,E>>& it);
-  
+  void loadVertices(ShardID const& vertexShard,
+                    std::vector<ShardID> const& edgeShards);
+  void loadEdges(transaction::Methods& trx, Vertex<V, E>& vertex,
+                 ShardID const& edgeShard,
+                 std::string const& documentID,
+                 std::vector<std::unique_ptr<TypedBuffer<Edge<E>>>>& edges,
+                 std::vector<std::unique_ptr<TypedBuffer<char>>>& edgeKeys,
+                 uint64_t numVertices, traverser::EdgeCollectionInfo& info);
+
+  void storeVertices(std::vector<ShardID> const& globalShards,
+                     RangeIterator<Vertex<V,E>>& it);
+
+  uint64_t determineVertexIdRangeStart(uint64_t numVertices);
+
   constexpr size_t vertexSegmentSize () const {
     return 64 * 1024 * 1024 / sizeof(Vertex<V,E>);
   }
+
   constexpr size_t edgeSegmentSize() const {
     return 64 * 1024 * 1024 / sizeof(Edge<E>);
   }
-  
- private:
 
+ private:
   DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
+
+  std::atomic<uint64_t> _vertexIdRangeStart;
 
   /// Holds vertex keys, data and pointers to edges
   std::mutex _bufferMutex;
@@ -122,12 +131,11 @@ class GraphStore final {
 
   // cache the amount of vertices
   std::set<ShardID> _loadedShards;
-  
+
   // actual count of loaded vertices / edges
   std::atomic<size_t> _localVertexCount;
   std::atomic<size_t> _localEdgeCount;
   std::atomic<uint32_t> _runningThreads;
-  bool _destroyed = false;
 };
 
 }  // namespace pregel

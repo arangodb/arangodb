@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,8 +48,16 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+struct ClusterFeatureScale {
+  static log_scale_t<uint64_t> scale() { return {2, 58, 120000, 10}; }
+};
+
+DECLARE_HISTOGRAM(arangodb_agencycomm_request_time_msec, ClusterFeatureScale, "Request time for Agency requests [ms]");
+
 ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
-  : ApplicationFeature(server, "Cluster") {
+  : ApplicationFeature(server, "Cluster"),
+    _agency_comm_request_time_ms(
+      server.getFeature<arangodb::MetricsFeature>().add(arangodb_agencycomm_request_time_msec{})) {
   setOptional(true);
   startsAfter<CommunicationFeaturePhase>();
   startsAfter<DatabaseFeaturePhase>();
@@ -57,6 +65,18 @@ ClusterFeature::ClusterFeature(application_features::ApplicationServer& server)
 
 ClusterFeature::~ClusterFeature() {
   if (_enableCluster) {
+    // force shutdown of Plan/Current syncers. under normal circumstances they
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    waitForSyncersToStop();
+
+    // force shutdown of AgencyCache. under normal circumstances the cache will
+    // have been shut down already when we get here, but there are rare cases in
+    // which ClusterFeature::stop() isn't called (e.g. during testing or if 
+    // something goes very wrong at startup)
+    shutdownAgencyCache();
+
     AgencyCommHelper::shutdown();
   }
 }
@@ -411,13 +431,12 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!_allocated) {
+  if (_agencyCache == nullptr || _clusterInfo == nullptr) {
     allocateMembers();
   }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
-    // nullptr happens only during shutdown
     if (af->isActive() && !af->hasUserdefinedJwt()) {
       LOG_TOPIC("6e615", FATAL, arangodb::Logger::CLUSTER)
           << "Cluster authentication enabled but JWT not set via command line. "
@@ -431,11 +450,11 @@ void ClusterFeature::prepare() {
   if (!_enableCluster) {
     reportRole(ServerState::instance()->getRole());
     return;
-  } else {
-    reportRole(_requestedRole);
-  }
+  } 
+    
+  reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config;
+  network::ConnectionPool::Config config(server().getFeature<MetricsFeature>());
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
@@ -471,7 +490,6 @@ void ClusterFeature::prepare() {
       << "structures " << (ok ? "are" : "failed to") << " initialize";
 
   if (!ok) {
-
     LOG_TOPIC("54560", FATAL, arangodb::Logger::CLUSTER)
         << "Could not connect to any agency endpoints ("
         << AsyncAgencyCommManager::INSTANCE->endpointsString() << ")";
@@ -504,6 +522,10 @@ void ClusterFeature::prepare() {
   }
 
 }
+
+DECLARE_COUNTER(arangodb_dropped_followers_total, "Number of drop-follower events");
+DECLARE_COUNTER(arangodb_refused_followers_total, "Number of refusal answers from a follower during synchronous replication");
+DECLARE_COUNTER(arangodb_sync_wrong_checksum_total, "Number of times a mismatching shard checksum was detected when syncing shards");
 
 // IMPORTANT: Please read the first comment block a couple of lines down, before
 // Adding code to this section.
@@ -572,9 +594,12 @@ void ClusterFeature::start() {
   std::string myId = ServerState::instance()->getId();
 
   if (role == ServerState::RoleEnum::ROLE_DBSERVER) {
-    _dropped_follower_counter = server().getFeature<arangodb::MetricsFeature>().counter(
-        StaticStrings::DroppedFollowerCount, 0,
-        "Number of drop-follower events");
+    _followersDroppedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_dropped_followers_total{});
+    _followersRefusedCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_refused_followers_total{});
+    _followersWrongChecksumCounter =
+      server().getFeature<arangodb::MetricsFeature>().add(arangodb_sync_wrong_checksum_total{});
   }
 
   LOG_TOPIC("b6826", INFO, arangodb::Logger::CLUSTER)
@@ -584,7 +609,7 @@ void ClusterFeature::start() {
       << ", server id: '" << myId << "', internal endpoint / address: " << _myEndpoint
       << "', advertised endpoint: " << _myAdvertisedEndpoint << ", role: " << role;
 
-  auto [acb,idx] = _agencyCache->read(
+  auto [acb, idx] = _agencyCache->read(
     std::vector<std::string>{AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
 
@@ -663,9 +688,9 @@ void ClusterFeature::stop() {
     // the cluster setup.
     ServerState::instance()->logoff(10.0);
   }
-
+  
   // Make sure ClusterInfo's syncer threads have stopped.
-  _clusterInfo->waitForSyncersToStop();
+  waitForSyncersToStop();
 
   AsyncAgencyCommManager::INSTANCE->setStopping(true);
   shutdownAgencyCache();
@@ -719,6 +744,16 @@ void ClusterFeature::shutdownHeartbeatThread() {
   }
 }
 
+/// @brief wait for the Plan and Current syncer to shut down
+/// note: this may be called multiple times during shutdown
+void ClusterFeature::waitForSyncersToStop() {
+  if (_clusterInfo != nullptr) {
+    _clusterInfo->waitForSyncersToStop();
+  }
+}
+
+/// @brief wait for the AgencyCache to shut down
+/// note: this may be called multiple times during shutdown
 void ClusterFeature::shutdownAgencyCache() {
   if (_agencyCache == nullptr) {
     return;
@@ -738,6 +773,7 @@ void ClusterFeature::shutdownAgencyCache() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
+  _agencyCache.reset();
 }
 
 void ClusterFeature::notify() {
@@ -769,16 +805,10 @@ AgencyCache& ClusterFeature::agencyCache() {
 
 
 void ClusterFeature::allocateMembers() {
-  try {
-    server().getFeature<arangodb::MetricsFeature>().histogram(
-      StaticStrings::AgencyCommRequestTimeMs, log_scale_t<uint64_t>(2, 58, 120000, 10),
-      "Request time for Agency requests");
-  } catch (...) {}
   _agencyCallbackRegistry.reset(new AgencyCallbackRegistry(server(), agencyCallbacksPath()));
-  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get());
+  _clusterInfo = std::make_unique<ClusterInfo>(server(), _agencyCallbackRegistry.get(), _syncerShutdownCode);
   _agencyCache =
-    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry);
-  _allocated = true;
+    std::make_unique<AgencyCache>(server(), *_agencyCallbackRegistry, _syncerShutdownCode);
 }
 
 void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, bool callNotify) {
@@ -799,13 +829,17 @@ void ClusterFeature::addDirty(std::unordered_set<std::string> const& databases, 
 void ClusterFeature::addDirty(std::unordered_map<std::string,std::shared_ptr<VPackBuilder>> const& databases) {
   if (databases.size() > 0) {
     MUTEX_LOCKER(guard, _dirtyLock);
+    bool addedAny = false;
     for (auto const& database : databases) {
       if (_dirtyDatabases.emplace(database.first).second) {
+        addedAny = true;
         LOG_TOPIC("35b77", DEBUG, Logger::MAINTENANCE)
           << "adding " << database << " to dirty databases";
       }
     }
-    notify();
+    if (addedAny) {
+      notify();
+    }
   }
 }
 
@@ -814,6 +848,7 @@ void ClusterFeature::addDirty(std::string const& database) {
   if (_dirtyDatabases.emplace(database).second) {
     LOG_TOPIC("357b9", DEBUG, Logger::MAINTENANCE) << "adding " << database << " to dirty databases";
   }
+  // This notify is needed even if no database is added
   notify();
 }
 

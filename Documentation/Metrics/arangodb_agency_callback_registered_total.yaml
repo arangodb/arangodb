@@ -1,0 +1,14 @@
+name: arangodb_agency_callback_registered_total
+help: |
+  Total number of agency callbacks ever registered.
+unit: number
+type: counter
+category: Agency
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  This metric reflects the total number of agency callbacks ever registered
+  over time.
