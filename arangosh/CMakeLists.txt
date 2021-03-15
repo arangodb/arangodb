@@ -9,6 +9,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 ################################################################################
 
 set(LIB_ARANGO_SHELL_COMMON_SOURCES
+  Import/AutoTuneThread.cpp
+  Import/ImportHelper.cpp
+  Import/SenderThread.cpp
   Utils/ClientManager.cpp
   Utils/ManagedDirectory.cpp
 )
@@ -298,10 +301,7 @@ endif ()
 
 
 set(LIB_ARANGO_IMPORT_SOURCES
-  Import/AutoTuneThread.cpp
   Import/ImportFeature.cpp
-  Import/ImportHelper.cpp
-  Import/SenderThread.cpp
 )
 
 add_library(arango_import

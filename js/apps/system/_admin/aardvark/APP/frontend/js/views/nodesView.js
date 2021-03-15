@@ -202,9 +202,10 @@
     },
 
     continueRender: function (nodes, scaling) {
-      var coords = [];
-      var dbs = [];
-      var scale = false;
+      let coords = [];
+      let dbs = [];
+      let agents = [];
+      let scale = false;
 
       _.each(nodes, function (node, name) {
         node.id = name;
@@ -212,6 +213,8 @@
           coords.push(node);
         } else if (node.Role === 'DBServer') {
           dbs.push(node);
+        } else if (node.Role === 'Agent') {
+          agents.push(node);
         }
       });
       coords = _.sortBy(coords, function (o) { return o.ShortName; });
@@ -225,11 +228,14 @@
         this.$el.html(this.template.render({
           coords: coords,
           dbs: dbs,
+          agents: agents,
           scaling: scale,
           scaleProperties: scaleProperties,
           plannedDBs: scaling.numberOfDBServers,
           plannedCoords: scaling.numberOfCoordinators
         }));
+
+        arangoHelper.createTooltips();
 
         if (!scale) {
           $('.title').css('position', 'relative');
@@ -343,12 +349,14 @@
       };
 
       var callbackFunction = function (nodes) {
-        var coordsErrors = 0;
-        var coords = 0;
-        var coordsPending = 0;
-        var dbs = 0;
-        var dbsErrors = 0;
-        var dbsPending = 0;
+        let coordsErrors = 0;
+        let coords = 0;
+        let coordsPending = 0;
+        let dbs = 0;
+        let dbsErrors = 0;
+        let dbsPending = 0;
+        let agents = 0;
+        let agentErrors = 0;
 
         _.each(nodes, function (node) {
           if (node.Role === 'Coordinator') {
@@ -362,6 +370,12 @@
               dbs++;
             } else {
               dbsErrors++;
+            }
+          } else if (node.Role === 'Agent') {
+            if (node.Status === 'GOOD') {
+              agents++;
+            } else {
+              agentErrors++;
             }
           }
         });
@@ -383,7 +397,9 @@
                 coordsErrors: coordsErrors,
                 dbsPending: dbsPending,
                 dbsOk: dbs,
-                dbsErrors: dbsErrors
+                dbsErrors: dbsErrors,
+                agentsOk: agents,
+                agentErrors: agentErrors
               });
             } else {
               renderFunc('#infoDBs', dbs, dbsPending, dbsErrors);

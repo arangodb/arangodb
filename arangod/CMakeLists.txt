@@ -192,6 +192,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/WeightedEnumerator.cpp
   Graph/Cursors/RefactoredSingleServerEdgeCursor.cpp
   Graph/Cache/RefactoredTraverserCache.cpp
+  Graph/Cache/RefactoredClusterTraverserCache.cpp
   Graph/Enumerators/TwoSidedEnumerator.cpp
   Graph/Helpers/TraceEntry.cpp
   Graph/Queues/QueueTracer.cpp
@@ -200,6 +201,7 @@ set(LIB_ARANGO_GRAPH_SOURCES
   Graph/PathManagement/PathStoreTracer.cpp
   Graph/PathManagement/PathValidator.cpp
   Graph/Options/TwoSidedEnumeratorOptions.cpp
+  Graph/Providers/ClusterProvider.cpp
   Graph/Providers/SingleServerProvider.cpp
   Graph/Providers/BaseProviderOptions.cpp
   Graph/Providers/ProviderTracer.cpp
@@ -832,9 +834,7 @@ add_library(arango_vocbase
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
-# TODO Currently, cannot be built shared because of a cycle with arangoserver
-#      which isn't trivial to resolve.
-add_library(arango_v8server STATIC
+add_library(arango_v8server
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
@@ -970,8 +970,10 @@ target_link_libraries(arango_indexes arango::validation)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+target_link_libraries(arango_iresearch iresearch-analyzer-ngram-static)
 
 target_link_libraries(arango_metrics arango)
+target_link_libraries(arango_metrics arango::validation)
 
 target_link_libraries(arango_network boost_boost)
 target_link_libraries(arango_network fuerte)
@@ -1022,7 +1024,6 @@ target_link_libraries(arango_v8server arango_v8)
 target_link_libraries(arango_v8server arango_v8_no_deadline)
 target_link_libraries(arango_v8server ${V8_LIBS} ${ICU_LIBS})
 target_link_libraries(arango_v8server arango_vocbase)
-target_link_libraries(arango_v8server arangoserver)
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)

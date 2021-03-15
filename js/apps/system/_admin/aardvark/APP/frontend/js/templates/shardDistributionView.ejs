@@ -1,0 +1,110 @@
+<div id="shardDistributionContent" class="innerContent shardDistributionContent">
+
+  <div class="pure-g cluster-values">
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterDatabases" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                    style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">databases</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterCollections" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                      style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">collections</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterShards" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                 style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">total shards</div>
+      </div>
+    </div>
+    
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterDBServers" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                    style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">db servers with shards</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterLeaders" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                  style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">leader shards</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterRealLeaders" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                      style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">shard group leader shards</div>
+      </div>
+    </div>
+
+    <div class="pure-u-1-2 pure-u-md-1-4">
+      <div class="valueWrapper">
+        <div id="clusterFollowers" class="value"><i class="fa fa-spin fa-circle-o-notch"
+                                                    style="color: rgba(0, 0, 0, 0.64);"></i></div>
+        <div class="graphLabel">follower shards</div>
+      </div>
+    </div>
+    
+  </div>
+
+  <div class="pure-g cluster-values">
+    <div class="pure-u-1-1">
+      <div class="header">Shard Distribution</div>
+    </div>
+
+    <div class="pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+      <div class="subHeader graphLabel">Total Shard Distribution</div>
+      <div id="totalDonut" class="svgWrapper">
+        <svg></svg>
+      </div>
+    </div>
+
+    <div class="pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+      <div class="subHeader graphLabel">Leader Shard Distribution</div>
+      <div id="leaderDonut" class="svgWrapper">
+        <svg></svg>
+      </div>
+    </div>
+
+    <div class="pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-3">
+      <div class="subHeader graphLabel">Follower Shard Distribution</div>
+      <div id="followerDonut" class="svgWrapper">
+        <svg></svg>
+      </div>
+    </div>
+
+    <div class="pure-u-1-1">
+      <table class="pure-table" id="shardDistributionTable">
+        <thead>
+        <tr>
+          <th>DB Server</th>
+          <th>Total (absolute)</th>
+          <th>Total (percent)</th>
+          <th>Leaders (absolute)</th>
+          <th>Leaders (percent)</th>
+          <th>Followers (absolute)</th>
+          <th>Followers (percent)</th>
+        </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+
+</div>

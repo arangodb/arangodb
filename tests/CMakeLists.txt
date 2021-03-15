@@ -65,6 +65,7 @@ set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/common.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
 )
@@ -187,6 +188,7 @@ set(ARANGODB_TESTS_BASICS_SOURCES
   Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
   Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
@@ -214,6 +216,7 @@ set(ARANGODB_TESTS_CACHE_SOURCES
 set(ARANGODB_TESTS_CLUSTER_SOURCES
   Cluster/AgencyPathsTest.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ClusterInfoTest.cpp
   Cluster/ClusterRepairsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/QueryAnalyzerRevisions-test.cpp)
@@ -226,36 +229,12 @@ set(ARANGODB_TESTS_GRAPH_SOURCES
   Graph/KPathFinderTest.cpp
   Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
+  Graph/MockGraph.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
   Graph/QueueTest.cpp
-  Graph/SingleServerProviderTest.cpp)
-set(ARANGODB_TESTS_IRESEARCH_SOURCES
-  ${ARANGODB_IRESEARCH_TESTS_SOURCES})
-set(ARANGODB_TESTS_ROCKSDB_SOURCES
-  RocksDBEngine/Endian.cpp
-  RocksDBEngine/KeyTest.cpp
-  RocksDBEngine/HotBackupTest.cpp
-  RocksDBEngine/EncryptionProviderTest.cpp
-  RocksDBEngine/IndexEstimatorTest.cpp
-  RocksDBEngine/ShaEventListener.cpp
-  RocksDBEngine/TransactionManagerTest.cpp)
-
-set(ARANGODB_TESTS_SOURCES
-  AsyncAgencyComm/AsyncAgencyCommTest.cpp
-  Auth/UserManagerTest.cpp
-  Containers/EnumerateTest.cpp
-  Containers/HashSetTest.cpp
-  Containers/MerkleTreeTest.cpp
-  Futures/Future-test.cpp
-  Futures/Promise-test.cpp
-  Futures/Try-test.cpp
-  Geo/GeoConstructorTest.cpp
-  Geo/GeoFunctionsTest.cpp
-  Geo/GeoJsonTest.cpp
-  Geo/NearUtilsTest.cpp
-  Geo/ShapeContainerTest.cpp
+  Graph/SingleServerProviderTest.cpp
   Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   Maintenance/MaintenanceFeatureTest.cpp
@@ -274,6 +253,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
+  RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
   Sharding/ShardDistributionReporterTest.cpp
   StorageEngine/PhysicalCollectionTest.cpp

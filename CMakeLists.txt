@@ -282,7 +282,10 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
-option(BUILD_SHARED_LIBS "build shared libraries" OFF)
+# Using BUILD_SHARED_LIBS as an option or cached variable does not work for some
+# reason.
+option(USE_SHARED_LIBRARIES OFF "build shared libraries")
+set(BUILD_SHARED_LIBS ${USE_SHARED_LIBRARIES})
 if (BUILD_SHARED_LIBS)
   if (STATIC_EXECUTABLES)
     # TODO I actually haven't tried what happens, I just don't think it makes sense.

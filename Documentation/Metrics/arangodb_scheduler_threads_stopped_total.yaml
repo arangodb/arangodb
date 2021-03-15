@@ -1,0 +1,13 @@
+name: arangodb_scheduler_threads_stopped_total
+help: |
+  Accumulated total number of scheduler threads stopped.
+unit: number
+type: counter
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Accumulated total number of scheduler threads stopped.

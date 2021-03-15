@@ -1,0 +1,11 @@
+name: arangodb_agency_write_hist
+help: |
+  Agency write time histogram.
+unit: ms
+type: histogram
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Agency write time histogram.
