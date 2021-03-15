@@ -63,7 +63,8 @@ class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
                                     aql::QueryContext* query,
-                                    arangodb::ResourceMonitor& resourceMonitor);
+                                    arangodb::ResourceMonitor& resourceMonitor,
+                                    arangodb::aql::TraversalStats& stats);
   ~RefactoredTraverserCache() = default;
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -78,28 +79,25 @@ class RefactoredTraverserCache {
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchEdgeAqlResult(aql::TraversalStats& stats,
-                                   graph::EdgeDocumentToken const&);
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
   ///        The document will be looked up in the StorageEngine
   //////////////////////////////////////////////////////////////////////////////
-  aql::AqlValue fetchVertexAqlResult(aql::TraversalStats& stats,
-                                     arangodb::velocypack::HashedStringRef idString);
+  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
   ///        into the given builder.
   //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(aql::TraversalStats& stats, graph::EdgeDocumentToken const& etkn,
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
                             velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(aql::TraversalStats& stats,
-                              arangodb::velocypack::HashedStringRef const& idString,
+  void insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
                               velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -115,8 +113,7 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendVertex(aql::TraversalStats& stats,
-                    arangodb::velocypack::HashedStringRef const& idString,
+  bool appendVertex(arangodb::velocypack::HashedStringRef const& idString,
                     ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -125,8 +122,7 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendEdge(aql::TraversalStats& stats,
-                  graph::EdgeDocumentToken const& etkn, ResultType& result);
+  bool appendEdge(graph::EdgeDocumentToken const& etkn, ResultType& result);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -150,6 +146,11 @@ class RefactoredTraverserCache {
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
+
+  arangodb::aql::TraversalStats& getStats();
+
+ private:
+  arangodb::aql::TraversalStats& _stats;
 };
 
 }  // namespace graph

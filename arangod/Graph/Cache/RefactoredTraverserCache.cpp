@@ -50,10 +50,12 @@ using namespace arangodb::graph;
 
 RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Methods* trx,
                                                    aql::QueryContext* query,
-                                                   arangodb::ResourceMonitor& resourceMonitor)
+                                                   arangodb::ResourceMonitor& resourceMonitor,
+                                                   arangodb::aql::TraversalStats& stats)
     : _query(query),
       _trx(trx),
-      _stringHeap(resourceMonitor, 4096) /* arbitrary block-size may be adjusted for performance */
+      _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
+      _stats{stats}
 {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
@@ -63,9 +65,12 @@ void RefactoredTraverserCache::clear() {
   _stringHeap.clear();
 }
 
+arangodb::aql::TraversalStats& RefactoredTraverserCache::getStats() {
+  return _stats;
+}
+
 template <typename ResultType>
-bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
-                                          EdgeDocumentToken const& idToken,
+bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                                           ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
@@ -100,8 +105,7 @@ bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
 }
 
 template <typename ResultType>
-bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
-                                            velocypack::HashedStringRef const& idHashed,
+bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& idHashed,
                                             ResultType& result) {
   velocypack::StringRef id{idHashed};
   size_t pos = id.find('/');
@@ -118,7 +122,7 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
     Result res = _trx->documentFastPathLocal(
         collectionName, id.substr(pos + 1),
         [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-          stats.addScannedIndex(1);
+          getStats().addScannedIndex(1);
           // copying...
           if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
             result = aql::AqlValue(doc);
@@ -160,35 +164,31 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
   return false;
 }
 
-void RefactoredTraverserCache::insertEdgeIntoResult(aql::TraversalStats& stats,
-                                                    EdgeDocumentToken const& idToken,
+void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  if (!appendEdge(stats, idToken, builder)) {
+  if (!appendEdge(idToken, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
-void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats,
-                                                      arangodb::velocypack::HashedStringRef const& idString,
+void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
                                                       VPackBuilder& builder) {
-  if (!appendVertex(stats, idString, builder)) {
+  if (!appendVertex(idString, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
-aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(aql::TraversalStats& stats,
-                                                           EdgeDocumentToken const& idToken) {
+aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
   aql::AqlValue val;
-  if (!appendEdge(stats, idToken, val)) {
+  if (!appendEdge(idToken, val)) {
     val = aql::AqlValue(aql::AqlValueHintNull{});
   }
   return val;
 }
 
-aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(
-    aql::TraversalStats& stats, arangodb::velocypack::HashedStringRef idString) {
+aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString) {
   aql::AqlValue val;
-  if (!appendVertex(stats, idString, val)) {
+  if (!appendVertex(idString, val)) {
     val = aql::AqlValue(aql::AqlValueHintNull{});
   }
   return val;
