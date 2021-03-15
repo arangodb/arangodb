@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow setting path to the timezone information via the `TZ_DATA` environment
+  variable, in the same fashion as the currently existing `ICU_DATA` environment
+  variable. The `TZ_DATA` variable is useful in environments` that start arangod
+  from some unusual locations, when it can't find its `tzdata` directory 
+  automatically.
+
 * Fix slower-than-necessary arangoimport behavior:
   arangoimport has a built-in rate limiter, which can be useful for importing
   data with a somewhat constant rate. However, it is enabled by default and
