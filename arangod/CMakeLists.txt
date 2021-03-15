@@ -833,9 +833,7 @@ add_library(arango_vocbase
   ${ADDITIONAL_LIB_ARANGO_VOCBASE_SOURCES}
 )
 
-# TODO Currently, cannot be built shared because of a cycle with arangoserver
-#      which isn't trivial to resolve.
-add_library(arango_v8server STATIC
+add_library(arango_v8server
   ${LIB_ARANGO_V8SERVER_SOURCES}
 )
 
@@ -1022,7 +1020,6 @@ target_link_libraries(arango_v8server arango_v8)
 target_link_libraries(arango_v8server arango_v8_no_deadline)
 target_link_libraries(arango_v8server ${V8_LIBS} ${ICU_LIBS})
 target_link_libraries(arango_v8server arango_vocbase)
-target_link_libraries(arango_v8server arangoserver)
 
 target_link_libraries(arango_vocbase arango_agency)
 target_link_libraries(arango_vocbase arango_cluster_methods)
