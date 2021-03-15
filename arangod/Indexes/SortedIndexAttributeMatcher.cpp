@@ -416,8 +416,14 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
       if (costs.coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
         // forward iteration does not have high costs
-        costs.estimatedCosts = 0.0;
         costs.supportsCondition = true;
+        if (sortCondition->isDescending()) {
+          // slightly penalize backward iteration
+          costs.estimatedCosts = itemsInIndex * 0.001;
+        } else {
+          // forward iteration is cheap
+          costs.estimatedCosts = 0.0;
+        }
       } else if (costs.coveredAttributes > 0) {
         costs.estimatedCosts = (itemsInIndex / costs.coveredAttributes) *
                                std::log2(double(itemsInIndex));
