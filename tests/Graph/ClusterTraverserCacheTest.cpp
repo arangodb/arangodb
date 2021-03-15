@@ -124,6 +124,12 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
     auto result = cache().getCachedVertex(vertexId);
     EXPECT_TRUE(result.isNull());
   }
+
+  void expectEdgeIsNotCached(VertexType const& edgeId) {
+    EXPECT_FALSE(cache().isEdgeCached(edgeId));
+    auto result = cache().getCachedEdge(edgeId);
+    EXPECT_TRUE(result.isNull());
+  }
 };
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
@@ -139,6 +145,27 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
   EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage()) << "Did not increase memory usage.";
   {
     auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, persist_a_single_edge) {
+  auto data = VPackParser::fromJson(R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectEdgeIsNotCached(id);
+  auto result = testee.persistEdgeData(doc);
+  EXPECT_TRUE(basics::VelocyPackHelper::equal(result.first, doc, true));
+  EXPECT_TRUE(result.second);
+
+
+  EXPECT_TRUE(testee.isEdgeCached(id));
+  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage()) << "Did not increase memory usage.";
+  {
+    auto result = testee.getCachedEdge(id);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
   }
@@ -181,6 +208,46 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_vertices) {
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
   }
 }
+
+/*
+TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_edges) {
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  auto data2 = VPackParser::fromJson(R"({"_key":"456", "value":456})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef key2{doc2.get("_key")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(key);
+  expectIsNotCached(key2);
+
+  testee.cacheVertex(key, doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
+
+  testee.cacheVertex(key2, doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did not increase memory usage.";
+
+  EXPECT_TRUE(testee.isVertexCached(key));
+  {
+    auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isVertexCached(key2));
+  {
+    auto result = testee.getCachedVertex(key2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
+  }
+}
+*/
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
