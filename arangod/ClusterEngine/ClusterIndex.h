@@ -108,6 +108,7 @@ class ClusterIndex : public Index {
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
+  bool _estimates;
   double _clusterSelectivity;
 
   // Only used in RocksDB edge index.
