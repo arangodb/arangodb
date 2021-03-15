@@ -1,0 +1,11 @@
+name: arangodb_replication_initial_sync_docs_requests_total
+help: |
+  Number of replication initial sync docs requests.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of replication initial sync docs requests.

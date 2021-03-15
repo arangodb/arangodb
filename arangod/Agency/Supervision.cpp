@@ -39,6 +39,7 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/HealthData.h"
@@ -48,6 +49,24 @@ using namespace arangodb::consensus;
 using namespace arangodb::application_features;
 using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
+
+struct RuntimeScale {
+  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+};
+struct WaitForReplicationScale {
+  static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
+};
+  
+DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
+                  "Accumulated Supervision Runtime [ms]");
+DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
+                  "Accumulated Supervision wait for replication time [ms]");
+DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
+                  "Counter for FailedServer jobs");
+DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_msec, RuntimeScale,
+                  "Agency Supervision runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_wait_for_replication_msec, WaitForReplicationScale,
+                  "Agency Supervision wait for replication time [ms]");
 
 struct HealthRecord {
   std::string shortName;
@@ -180,26 +199,21 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _selfShutdown(false),
       _upgraded(false),
       _nextServerCleanup(),
-      _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50, 8000, 10),
-          "Agency Supervision runtime histogram [ms]")),
+      _supervision_runtime_msec(
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_msec{})),
       _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().histogram(
-              StaticStrings::SupervisionRuntimeWaitForSyncMs,
-              log_scale_t<uint64_t>(2, 10, 2000, 10),
-              "Agency Supervision wait for replication time [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeMs, 0,
-              "Accumulated Supervision Runtime [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_msec_total{})),
       _supervision_accum_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
-              "Accumulated Supervision  wait for replication time  [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionFailedServerCount, 0,
-              "Counter for FailedServer jobs")) {}
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -479,9 +493,9 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
 void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                     HealthRecord& transisted, std::string const& serverID,
                     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-  if (serverID.compare(0, 4, "PRMR") == 0) {
+  if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
-  } else if (serverID.compare(0, 4, "CRDN") == 0) {
+  } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
@@ -527,8 +541,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       snapshot().hasAsNode(currentServersRegisteredPrefix).first;
   std::vector<std::string> todelete;
   for (auto const& machine : snapshot().hasAsChildren(healthPrefix).first) {
-    if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
-        (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
+    if ((type == "DBServers" && ClusterHelpers::isDBServerName(machine.first)) ||
+        (type == "Coordinators" && ClusterHelpers::isCoordinatorName(machine.first)) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {

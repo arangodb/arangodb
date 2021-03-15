@@ -40,6 +40,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -471,10 +472,10 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
   : irs::analysis::analyzer(irs::type<AqlAnalyzer>::get()),
     _options(options),
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
-    _itemBlockManager(_resourceMonitor, SerializationFormat::SHADOWROWS),
+    _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
             SerializationFormat::SHADOWROWS, nullptr) {
-  _resourceMonitor.setMemoryLimit(_options.memoryLimit);
+  _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
                  .ok());
@@ -508,16 +509,12 @@ bool AqlAnalyzer::next() {
         std::tie(_executionState, skip, _queryResults) = _engine.execute(aqlStack);
         TRI_ASSERT(skip.nothingSkipped());
         TRI_ASSERT(_executionState != ExecutionState::WAITING);
-      } catch (basics::Exception const& e) {
-        LOG_TOPIC("b0026", ERR, iresearch::TOPIC)
-            << "error executing calculation query: " << e.message()
-            << " AQL query: " << _options.queryString;
       } catch (std::exception const& e) {
-        LOG_TOPIC("c92eb", ERR, iresearch::TOPIC)
+        LOG_TOPIC("c92eb", WARN, iresearch::TOPIC)
             << "error executing calculation query: " << e.what()
             << " AQL query: " << _options.queryString;
       } catch (...) {
-        LOG_TOPIC("bf89b", ERR, iresearch::TOPIC)
+        LOG_TOPIC("bf89b", WARN, iresearch::TOPIC)
             << "error executing calculation query"
             << " AQL query: " << _options.queryString;
       }
@@ -572,16 +569,12 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     _resultRowIdx = 0;
     _nextIncVal = 1;  // first increment always 1 to move from -1 to 0
     return true;
-  } catch (basics::Exception const& e) {
-    LOG_TOPIC("8ee1a", ERR, iresearch::TOPIC)
-        << "error creating calculation query: " << e.message()
-        << " AQL query: " << _options.queryString;
   } catch (std::exception const& e) {
-    LOG_TOPIC("d2223", ERR, iresearch::TOPIC)
+    LOG_TOPIC("d2223", WARN, iresearch::TOPIC)
         << "error creating calculation query: " << e.what()
         << " AQL query: " << _options.queryString;
   } catch (...) {
-    LOG_TOPIC("5ad87", ERR, iresearch::TOPIC)
+    LOG_TOPIC("5ad87", WARN, iresearch::TOPIC)
         << "error creating calculation query"
         << " AQL query: " << _options.queryString;
   }

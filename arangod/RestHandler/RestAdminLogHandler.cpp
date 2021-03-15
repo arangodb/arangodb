@@ -128,7 +128,7 @@ void RestAdminLogHandler::clearLogs() {
 
 RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   bool foundServerIdParameter;
-  std::string serverId = _request->value("serverId", foundServerIdParameter);
+  std::string const& serverId = _request->value("serverId", foundServerIdParameter);
 
   if (ServerState::instance()->isCoordinator() && foundServerIdParameter) {
     if (serverId != ServerState::instance()->getId()) {
@@ -139,7 +139,6 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       for (auto const& srv : ci.getServers()) {
         // validate if server id exists
         if (srv.first == serverId) {
-          serverId = srv.first;
           found = true;
           break;
         }
@@ -147,7 +146,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
 
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied.'"));
+                      std::string("unknown serverId supplied."));
         return RestStatus::DONE;
       }
 

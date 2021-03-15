@@ -1,0 +1,11 @@
+name: arangodb_replication_dump_requests_total
+help: |
+  Number of replication dump requests.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of replication dump requests.

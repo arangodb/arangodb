@@ -1961,7 +1961,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
-                             traverser::TraverserOptions const* opts,
+                             arangodb::aql::FixedVarExpressionContext const& expressionContext,
                              arangodb::velocypack::StringRef vertexId,
                              size_t depth,
                              std::vector<VPackSlice>& result) {
@@ -1979,7 +1979,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   leased->add(VPackValue("variables"));
   {
     leased->openArray();
-    opts->serializeVariables(*(leased.get()));
+    expressionContext.serializeAllVariables(trx.vpackOptions(), *(leased.get()));
     leased->close();
   }
   leased->close();

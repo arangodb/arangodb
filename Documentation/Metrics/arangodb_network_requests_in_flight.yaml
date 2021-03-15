@@ -1,0 +1,13 @@
+name: arangodb_network_requests_in_flight
+help: |
+  Number of outgoing internal requests in flight.
+unit: number
+type: gauge
+category: Network
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of outgoing internal requests in flight.
