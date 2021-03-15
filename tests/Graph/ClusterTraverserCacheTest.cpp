@@ -209,45 +209,43 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_vertices) {
   }
 }
 
-/*
 TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_edges) {
-  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  auto data = VPackParser::fromJson(R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
   VPackSlice doc = data->slice();
-  HashedStringRef key{doc.get("_key")};
+  HashedStringRef id{doc.get("_id")};
 
-  auto data2 = VPackParser::fromJson(R"({"_key":"456", "value":456})");
+  auto data2 = VPackParser::fromJson(R"({"_id": "xyz/456", "_key": "456", "_from": "a/b", "_to": "b/a"})");
   VPackSlice doc2 = data2->slice();
-  HashedStringRef key2{doc2.get("_key")};
+  HashedStringRef id2{doc2.get("_id")};
   auto& testee = cache();
   auto resourceBefore = _monitor.currentMemoryUsage();
-  expectIsNotCached(key);
-  expectIsNotCached(key2);
+  expectIsNotCached(id);
+  expectIsNotCached(id2);
 
-  testee.cacheVertex(key, doc);
+  testee.cacheVertex(id, doc);
 
   auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
 
-  testee.cacheVertex(key2, doc2);
+  testee.cacheVertex(id2, doc2);
 
   auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
   EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did not increase memory usage.";
 
-  EXPECT_TRUE(testee.isVertexCached(key));
+  EXPECT_TRUE(testee.isVertexCached(id));
   {
-    auto result = testee.getCachedVertex(key);
+    auto result = testee.getCachedVertex(id);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
   }
 
-  EXPECT_TRUE(testee.isVertexCached(key2));
+  EXPECT_TRUE(testee.isVertexCached(id2));
   {
-    auto result = testee.getCachedVertex(key2);
+    auto result = testee.getCachedVertex(id2);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
   }
 }
-*/
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -291,6 +289,47 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   }
 }
 
+TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice) {
+  auto data = VPackParser::fromJson(R"({"_id": "xyz/123", "_key": "123", "_from": "a/c", "_to": "b/c"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+
+  // We simulate that we get the same Edge data from two sources.
+  // To make sure we keep the first copy, we try to insert different _from and _to values for the same _key
+  // This will not happen in production, just to varify results here.
+  auto data2 = VPackParser::fromJson(R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef id2{doc2.get("_id")};
+
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(id);
+  expectIsNotCached(id2);
+
+  testee.cacheVertex(id, doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
+
+  testee.cacheVertex(id2, doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did count the same vertex twice";
+
+  EXPECT_TRUE(testee.isVertexCached(id));
+  {
+    auto result = testee.getCachedVertex(id);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isVertexCached(id2));
+  {
+    auto result = testee.getCachedVertex(id2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+}
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice_after_clear) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
