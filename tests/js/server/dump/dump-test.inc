@@ -155,7 +155,6 @@
 
         assertEqual(args.manyIndexes, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
-
         assertEqual(100000, c.count());
 
         // test all documents
