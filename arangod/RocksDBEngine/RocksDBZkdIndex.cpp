@@ -457,13 +457,10 @@ arangodb::Result arangodb::RocksDBZkdIndexBase::remove(arangodb::transaction::Me
 }
 
 arangodb::RocksDBZkdIndexBase::RocksDBZkdIndexBase(arangodb::IndexId iid,
-                                           arangodb::LogicalCollection& coll,
-                                           const arangodb::velocypack::Slice& info)
+                                                   arangodb::LogicalCollection& coll,
+                                                   arangodb::velocypack::Slice const& info)
     : RocksDBIndex(iid, coll, info,
-                   /* TODO maybe we want to add a new column family? However, we can not use VPackIndexes because
-                    * they use the vpack comparator. For now use GeoIndex because it uses just the 8 byte prefix.
-                    */
-                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex),
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ZkdIndex),
                    false) {}
 
 void arangodb::RocksDBZkdIndexBase::toVelocyPack(
