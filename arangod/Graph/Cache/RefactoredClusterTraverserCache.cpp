@@ -85,7 +85,7 @@ auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) 
 auto RefactoredClusterTraverserCache::getCachedEdge(EdgeType const& edge) const
     -> VPackSlice {
   if (!isEdgeCached(edge)) {
-    return VPackSlice::noneSlice();
+    return VPackSlice::nullSlice();
   }
   return _edgeData.at(edge);
 }
