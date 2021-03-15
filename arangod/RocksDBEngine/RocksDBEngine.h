@@ -54,6 +54,7 @@ class PhysicalCollection;
 class RocksDBBackgroundErrorListener;
 class RocksDBBackgroundThread;
 class RocksDBKey;
+class RocksDBKeyBounds;
 class RocksDBLogValue;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
@@ -244,6 +245,9 @@ class RocksDBEngine final : public StorageEngine {
   /// @brief whether or not purging of WAL files is currently allowed
   RocksDBFilePurgeEnabler startPurging() noexcept;
 
+  void compactRange(RocksDBKeyBounds bounds);
+  void processCompactions();
+
   void createCollection(TRI_vocbase_t& vocbase,
                         LogicalCollection const& collection) override;
 
@@ -431,6 +435,8 @@ class RocksDBEngine final : public StorageEngine {
   uint64_t _intermediateCommitCount;  // limit of transaction count
                                       // for intermediate commit
 
+  uint64_t _maxParallelCompactions;
+
   // hook-ins for recovery process
   static std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
@@ -529,6 +535,13 @@ class RocksDBEngine final : public StorageEngine {
 
   /// @brief global health data, updated periodically
   HealthData _healthData;
+
+  // lock for _pendingCompactionsLock and _runningCompactions
+  arangodb::basics::ReadWriteLock _pendingCompactionsLock;
+  // bounds for compactions that we have to process
+  std::deque<RocksDBKeyBounds> _pendingCompactions;
+  // number of currently running compaction jobs
+  size_t _runningCompactions;
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
