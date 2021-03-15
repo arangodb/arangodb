@@ -496,10 +496,9 @@ function dumpTestSuite () {
       if (arango.getRole() === "COORDINATOR") {
         // Only executed in the cluster
         let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
-        assertTrue(next < 5000000);
-        print("Fuxx:", next);
+        assertTrue(next < 10000000);
         next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
-        assertTrue(next > 10000000);
+        assertTrue(next > 15000000);
       }
     }
 

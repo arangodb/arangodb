@@ -648,8 +648,10 @@ void ClusterFeature::start() {
   // If we are on a coordinator, we want to have a callback which is called
   // whenever a hotbackup restore is done:
   if (role == ServerState::ROLE_COORDINATOR) {
-    auto hotBackupRestoreDone = [](VPackSlice const& result) -> bool {
-      LOG_DEVEL << "Got a hotbackup restore!";
+    auto hotBackupRestoreDone = [this](VPackSlice const& result) -> bool {
+      LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
+        "event, getting new cluster-wide unique IDs...";
+      this->_clusterInfo->uniqid(1000000);
       return true;
     };
     _hotbackupRestoreCallback =
@@ -657,7 +659,9 @@ void ClusterFeature::start() {
         server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
     Result r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
     if (r.fail()) {
-      LOG_DEVEL << "Aaargh!";
+      LOG_TOPIC("82516", WARN, Logger::BACKUP)
+        << "Could not register hotbackup restore callback, this could lead "
+           "to problems after a restore!";
     }
   }
 }
@@ -682,7 +686,8 @@ void ClusterFeature::stop() {
   }
 
   if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
-    LOG_DEVEL << "Aaargh!";
+    LOG_TOPIC("84152", INFO, Logger::BACKUP) << "Strange, we could not "
+      "unregister the hotbackup restore callback.";
   }
 
   shutdownHeartbeatThread();

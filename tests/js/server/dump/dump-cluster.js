@@ -74,7 +74,6 @@ jsunity.run(function dump_cluster_testsuite() {
       "testTransactionCommit",
       "testTransactionUpdate",
       "testTransactionAbort",
-      "testLatestId"
     ].concat(enterpriseTests)
   );
 

@@ -155,6 +155,7 @@
 
         assertEqual(args.manyIndexes, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
+
         assertEqual(100000, c.count());
 
         // test all documents
@@ -1173,9 +1174,8 @@
       testLatestId : function() {
         if (arango.getRole() === "COORDINATOR") {
           // Only executed in the cluster
-          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
-          print("Foxy:", next);
-          assertTrue(next < 5000000);
+          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
+          assertTrue(next < 10000000);
         }
       },
       
