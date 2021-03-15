@@ -55,6 +55,7 @@ void RefactoredClusterTraverserCache::clear() {
   _stringHeap.clear();
   _persistedStrings.clear();
   _vertexData.clear();
+  _edgeData.clear();
 }
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
