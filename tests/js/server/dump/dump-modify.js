@@ -498,7 +498,7 @@ function dumpTestSuite () {
         let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
         assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
         next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
-        assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 150000000, not " + next);
+        assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
       }
     }
 
