@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expensions in the fields definition.
+
 * Allow setting path to the timezone information via the `TZ_DATA` environment
   variable, in the same fashion as the currently existing `ICU_DATA` environment
   variable. The `TZ_DATA` variable is useful in environments` that start arangod
