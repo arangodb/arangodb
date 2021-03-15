@@ -34,6 +34,12 @@
 namespace arangodb {
 namespace NumberUtils {
 
+template <typename T>
+constexpr bool isPowerOfTwo(T value) {
+  static_assert(std::is_integral_v<T>);
+  return (value & (value - 1)) == 0;
+}
+
 // low-level worker function to convert the string value between p
 // (inclusive) and e (exclusive) into a negative number value of type T,
 // without validation of the input string - use this only for trusted input!
