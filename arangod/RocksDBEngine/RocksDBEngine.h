@@ -373,6 +373,7 @@ class RocksDBEngine final : public StorageEngine {
 
  private:
   void shutdownRocksDBInstance() noexcept;
+  void waitForCompactionJobsToFinish();
   velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key,
                                                          ErrorCode& status);
   ErrorCode removeReplicationApplierConfiguration(RocksDBKey const& key);
