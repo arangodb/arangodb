@@ -493,13 +493,14 @@ function dumpTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testOffsetLatestId : function () {
-      // this should offset the unique id
-      const nextValue = global.ArangoAgency.uniqid(10000000);
-      assertEqual(finalOffset, 20000000);
-      global.ArangoAgency.uniqid(10000000);
-      global.ArangoAgency.uniqid(10000000);
-      const finalOffset = global.ArangoAgency.uniqid(10000000);
-      assertTrue(finalOffset > nextValue);
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed in the cluster
+        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
+        assertTrue(next < 5000000);
+        print("Fuxx:", next);
+        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
+        assertTrue(next > 10000000);
+      }
     }
 
 ////////////////////////////////////////////////////////////////////////////////

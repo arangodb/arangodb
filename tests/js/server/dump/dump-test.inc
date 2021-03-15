@@ -1171,8 +1171,12 @@
       },
 
       testLatestId : function() {
-        const nextValue = global.ArangoAgency.uniqid(10000000);
-        assertEqual(finalOffset, 20000000);
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed in the cluster
+          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(10000000)"));
+          print("Foxy:", next);
+          assertTrue(next < 5000000);
+        }
       },
       
     };
