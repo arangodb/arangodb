@@ -1178,7 +1178,6 @@
         if (arango.getRole() === "COORDINATOR") {
           // Only executed in the cluster
           let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
-          print("Foxy:", next);
           assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
         }
       },
