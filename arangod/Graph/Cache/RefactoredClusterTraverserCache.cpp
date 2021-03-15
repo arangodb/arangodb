@@ -115,5 +115,5 @@ auto RefactoredClusterTraverserCache::persistEdgeData(velocypack::Slice edgeSlic
   if (inserted) {
     _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
   }
-  return {it->second, inserted};
+  return std::make_pair(it->second, inserted);
 }
