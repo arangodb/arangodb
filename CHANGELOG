@@ -7,6 +7,9 @@ devel
   from some unusual locations, when it can't find its `tzdata` directory 
   automatically.
 
+* Fixed a bug in query cost estimation when a NoResults node occured in a spliced
+  subquery. This could lead to a server crash.
+
 * Fix slower-than-necessary arangoimport behavior:
   arangoimport has a built-in rate limiter, which can be useful for importing
   data with a somewhat constant rate. However, it is enabled by default and
