@@ -125,7 +125,21 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
     auto result = cache().getCachedVertex(vertexId);
     EXPECT_TRUE(result.isNull());
   }
+
+  void expectEdgeIsNotCached(VertexType const& edgeId) {
+    EXPECT_FALSE(cache().isEdgeCached(edgeId));
+    auto result = cache().getCachedEdge(edgeId);
+    EXPECT_TRUE(result.isNull());
+  }
 };
+
+TEST_F(RefactoredClusterTraverserCacheTest, gives_a_reference_to_a_datalake) {
+  auto& testee = cache();
+  auto& lake = testee.datalake();
+  // We only test that we can access a valid empty datalake after construction.
+  // Datalake needs it's own test;
+  EXPECT_EQ(lake.numEntries(), 0);
+}
 
 TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
@@ -141,6 +155,28 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
       << "Did not increase memory usage.";
   {
     auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, persist_a_single_edge) {
+  auto data = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectEdgeIsNotCached(id);
+  auto result = testee.persistEdgeData(doc);
+  EXPECT_TRUE(basics::VelocyPackHelper::equal(result.first, doc, true));
+  EXPECT_TRUE(result.second);
+
+  EXPECT_TRUE(testee.isEdgeCached(id));
+  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage())
+      << "Did not increase memory usage.";
+  {
+    auto result = testee.getCachedEdge(id);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
   }
@@ -186,6 +222,48 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_vertices) {
   }
 }
 
+TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_edges) {
+  auto data = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+
+  auto data2 = VPackParser::fromJson(
+      R"({"_id": "xyz/456", "_key": "456", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef id2{doc2.get("_id")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectEdgeIsNotCached(id);
+  expectEdgeIsNotCached(id2);
+
+  testee.persistEdgeData(doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
+      << "Did not increase memory usage.";
+
+  testee.persistEdgeData(doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert)
+      << "Did not increase memory usage.";
+
+  EXPECT_TRUE(testee.isEdgeCached(id));
+  {
+    auto result = testee.getCachedEdge(id);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isEdgeCached(id2));
+  {
+    auto result = testee.getCachedEdge(id2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
+  }
+}
+
 TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
   VPackSlice doc = data->slice();
@@ -225,6 +303,52 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   EXPECT_TRUE(testee.isVertexCached(key2));
   {
     auto result = testee.getCachedVertex(key2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice) {
+  auto data = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/c", "_to": "b/c"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+
+  // We simulate that we get the same Edge data from two sources.
+  // To make sure we keep the first copy, we try to insert different _from and _to values for the same _key
+  // This will not happen in production, just to varify results here.
+  auto data2 = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef id2{doc2.get("_id")};
+
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectEdgeIsNotCached(id);
+  expectEdgeIsNotCached(id2);
+
+  testee.persistEdgeData(doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
+      << "Did not increase memory usage.";
+
+  testee.persistEdgeData(doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
+      << "Did count the same vertex twice";
+
+  EXPECT_TRUE(testee.isEdgeCached(id));
+  {
+    auto result = testee.getCachedEdge(id);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isEdgeCached(id2));
+  {
+    auto result = testee.getCachedEdge(id2);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
   }
@@ -408,6 +532,55 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice_after_clea
   auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Persisting of the same key has different costs.";
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice_after_clear) {
+  auto data = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/c", "_to": "b/c"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+
+  // We simulate that we get the same Document data from two sources.
+  // To make sure we keep the first copy, we try to insert a different value for the same _key
+  // This will not happen in production, just to varify results here.
+  auto data2 = VPackParser::fromJson(
+      R"({"_id": "xyz/123", "_key": "123", "_from": "a/b", "_to": "b/a"})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef id2{doc2.get("_id")};
+
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectEdgeIsNotCached(id);
+  expectEdgeIsNotCached(id2);
+
+  testee.persistEdgeData(doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
+      << "Did not increase memory usage.";
+
+  testee.clear();
+
+  // Test everything is empty.
+  expectEdgeIsNotCached(id);
+  expectEdgeIsNotCached(id2);
+  EXPECT_EQ(resourceBefore, _monitor.currentMemoryUsage())
+      << "Did not reset resource monitor.";
+
+  testee.persistEdgeData(doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterSecondInsert)
+      << "Did not increase memory usage.";
+  EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
+      << "Did count different counts";
+
+  EXPECT_TRUE(testee.isEdgeCached(id2));
+  {
+    auto result = testee.getCachedEdge(id2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
+  }
 }
 
 }  // namespace cluster_traverser_cache_test
