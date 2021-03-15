@@ -57,6 +57,7 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _engineType(engineType),
       _indexType(itype),
       _info(info),
+      _estimates(true),
       _clusterSelectivity(/* default */ 0.1) {
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
@@ -78,6 +79,17 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = ::primaryIndexAttributes;
     }
+
+    // check for "estimates" attribute
+    if (_unique) {
+      _estimates = true;
+    } else if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
+               _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
+               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      if (VPackSlice s = info.get(StaticStrings::IndexEstimates); s.isBoolean()) {
+        _estimates = s.getBoolean();
+      }
+    }
   }
 }
 
@@ -97,6 +109,12 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
   Index::toVelocyPack(builder, flags);
   builder.add(StaticStrings::IndexUnique, VPackValue(_unique));
   builder.add(StaticStrings::IndexSparse, VPackValue(_sparse));
+    
+  if (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+    builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
+  }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
     if (!pair.key.isEqualString(StaticStrings::IndexId) &&
@@ -105,7 +123,8 @@ void ClusterIndex::toVelocyPack(VPackBuilder& builder,
         !pair.key.isEqualString(StaticStrings::IndexFields) &&
         !pair.key.isEqualString("selectivityEstimate") && !pair.key.isEqualString("figures") &&
         !pair.key.isEqualString(StaticStrings::IndexUnique) &&
-        !pair.key.isEqualString(StaticStrings::IndexSparse)) {
+        !pair.key.isEqualString(StaticStrings::IndexSparse) &&
+        !pair.key.isEqualString(StaticStrings::IndexEstimates)) {
       builder.add(pair.key);
       builder.add(pair.value);
     }
@@ -130,10 +149,11 @@ bool ClusterIndex::hasSelectivityEstimate() const {
   if (_engineType == ClusterEngineType::RocksDBEngine) {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+           (_estimates && 
+            (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+              _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -149,6 +169,9 @@ double ClusterIndex::selectivityEstimate(arangodb::velocypack::StringRef const&)
   TRI_ASSERT(hasSelectivityEstimate());
   if (_unique) {
     return 1.0;
+  }
+  if (!_estimates) {
+    return 0.0; 
   }
 
   // floating-point tolerance

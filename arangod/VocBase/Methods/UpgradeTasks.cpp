@@ -336,7 +336,7 @@ static Result createIndex(std::string const& name, Index::IndexType type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse, false /*estimates*/);
 }
 
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,
