@@ -54,16 +54,12 @@ class RefactoredClusterTraverserCache {
     return _datalake;
   }
 
-  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
-
-  auto isVertexCached(VertexType const& vertexKey) const -> bool;
-  auto isEdgeCached(EdgeType const& edge) const -> bool;
-
-
-  auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
-  auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
   auto persistString(arangodb::velocypack::HashedStringRef idString)
       -> arangodb::velocypack::HashedStringRef;
+
+  auto cacheVertex(VertexType const& vertexId, velocypack::Slice vertexSlice) -> void;
+  auto isVertexCached(VertexType const& vertexKey) const -> bool;
+  auto getCachedVertex(VertexType const& vertex) const -> velocypack::Slice;
 
 /**
  * @brief
@@ -72,6 +68,8 @@ class RefactoredClusterTraverserCache {
  * The second entry indicates if the caller need to retain the handed in slice buffer.
  */
   auto persistEdgeData(velocypack::Slice edgeSlice) -> std::pair<velocypack::Slice, bool>;
+  auto isEdgeCached(EdgeType const& edge) const -> bool;
+  auto getCachedEdge(EdgeType const& edge) const -> velocypack::Slice;
 
  private:
   arangodb::ResourceMonitor& _resourceMonitor;

@@ -224,6 +224,50 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   }
 }
 
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice_after_clear) {
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  // We simulate that we get the same Document data from two sources.
+  // To make sure we keep the first copy, we try to insert a different value for the same _key
+  // This will not happen in production, just to varify results here.
+  auto data2 = VPackParser::fromJson(R"({"_key":"123", "value":456})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef key2{doc2.get("_key")};
+
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(key);
+  expectIsNotCached(key2);
+
+  testee.cacheVertex(key, doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
+
+  testee.clear();
+
+  // Test everything is empty.
+  expectIsNotCached(key);
+  expectIsNotCached(key2);
+  EXPECT_EQ(resourceBefore, _monitor.currentMemoryUsage()) << "Did not reset resource monitor.";
+
+  testee.cacheVertex(key2, doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterSecondInsert) << "Did not increase memory usage.";
+  EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did count different counts";
+
+  EXPECT_TRUE(testee.isVertexCached(key2));
+  {
+    auto result = testee.getCachedVertex(key2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
+  }
+}
+
 }  // namespace cluster_traverser_cache_test
 }  // namespace tests
 }  // namespace arangodb
