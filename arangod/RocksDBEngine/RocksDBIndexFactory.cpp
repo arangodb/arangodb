@@ -295,13 +295,7 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
                      arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
 
-    if (auto isSparse = definition.get(StaticStrings::IndexSparse).isTrue(); isSparse) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_BAD_PARAMETER,
-          "zkd index does not support sparse property");
-    }
-
-    return IndexFactory::enhanceJsonIndexGeneric(definition, normalized, isCreation);
+    return IndexFactory::enhanceJsonIndexZkd(definition, normalized, isCreation);
   }
 };
 

@@ -41,7 +41,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     return {
         setUpAll: function () {
             col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y']});
+            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double'});
             // Insert 1001 points
             // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
             db._query(aql`

@@ -100,7 +100,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
     let testObject = {
         setUpAll: function () {
             col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'a.w']});
+            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'a.w'], fieldValueTypes: 'double'});
             db._query(aql`
                 FOR x IN 0..10
                 FOR y IN 0..10
