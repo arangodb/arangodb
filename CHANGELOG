@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expansions in the fields definition.
+  
 * Don't store selectivity estimate values for newly created system collections.
 
   Not storing the estimates has a benefit especially for the `_statistics`
