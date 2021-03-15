@@ -154,6 +154,8 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> buildCursor();
 
+  arangodb::aql::TraversalStats& getStats();
+
  private:
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
@@ -161,11 +163,11 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
 
+  arangodb::aql::TraversalStats _stats;
+
   RefactoredTraverserCache _cache;
 
   BaseProviderOptions _opts;
-
-  arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph
 }  // namespace arangodb

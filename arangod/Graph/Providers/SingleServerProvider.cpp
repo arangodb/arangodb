@@ -88,9 +88,9 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
                                            BaseProviderOptions opts,
                                            arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
-      _cache(_trx.get(), &queryContext, resourceMonitor),
-      _opts(std::move(opts)),
-      _stats{} {
+      _stats{},
+      _cache(_trx.get(), &queryContext, resourceMonitor, _stats),
+      _opts(std::move(opts)) {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
   _cursor = buildCursor();
 }
@@ -159,12 +159,12 @@ auto SingleServerProvider::expand(Step const& step, size_t previous,
 
 void SingleServerProvider::addVertexToBuilder(Step::Vertex const& vertex,
                                               arangodb::velocypack::Builder& builder) {
-  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder);
+  _cache.insertVertexIntoResult(vertex.getID(), builder);
 };
 
 void SingleServerProvider::insertEdgeIntoResult(EdgeDocumentToken edge,
                                                 arangodb::velocypack::Builder& builder) {
-  _cache.insertEdgeIntoResult(_stats, edge, builder);
+  _cache.insertEdgeIntoResult(edge, builder);
 }
 
 std::unique_ptr<RefactoredSingleServerEdgeCursor> SingleServerProvider::buildCursor() {
