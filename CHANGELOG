@@ -5,6 +5,100 @@ devel
   if it is in the backup. This helps with unique key generation after
   a hotbackup is restored to a young cluster.
 
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expansions in the fields definition.
+  
+* Don't store selectivity estimate values for newly created system collections.
+
+  Not storing the estimates has a benefit especially for the `_statistics`
+  system collections, which are written to periodically even on otherwise
+  idle servers. In this particular case, the actual statistics data was way
+  smaller than the writes caused by the index estimate values, causing a
+  disproportional overhead just for maintaining the selectivity estimates.
+  The change now turns off the selectivity estimates for indexes in all newly 
+  created system collections, and for new user-defined indexes of type
+  "persistent", "hash" or "skiplist", there is now an attribute "estimates"
+  which can be set to `false` to disable the selectivity estimates for the index.
+  The attribute is optional. Not setting it will lead to the index being
+  created with selectivity estimates, so this is a downwards-compatible change
+  for user-defined indexes.
+
+* Added startup option `--query.global-memory-limit` to set a limit on the
+  combined estimated memory usage of all AQL queries (in bytes). 
+  If this option has a value of `0`, then no memory limit is in place. 
+  This is also the default value and the same behavior as in previous versions
+  of ArangoDB. 
+  Setting the option to a value greater than zero will mean that the total memory
+  usage of all AQL queries will be limited approximately to the configured value. 
+  The limit is enforced by each server in a cluster independently, i.e. it can 
+  be set separately for coordinators, DB servers etc. The memory usage of a 
+  query that runs on multiple servers in parallel is not summed up, but tracked
+  seperately on each server.
+  If a memory allocation in a query would lead to the violation of the configured
+  global memory limit, then the query is aborted with error code 32 ("resource 
+  limit exceeded").
+  The global memory limit is approximate, in the same fashion as the per-query
+  limit provided by the option `--query.memory-limit` is. Some operations, 
+  namely calls to AQL functions and their intermediate results, are currently
+  not properly tracked.
+  If both `--query.global-memory-limit` and `--query.memory-limit` are set,
+  the former must be set at least as high as the latter.
+
+  To reduce the cost of globally tracking the memory usage of AQL queries, the
+  global memory usage counter is only updated in steps of 32 kb, making
+  this also the minimum granularity of the global memory usage figure.
+  In the same fashion, the granularity of the peak memory usage counter inside
+  each query was also adjusted to steps of 32 kb.
+
+* Added startup option `--query.memory-limit-override` to control whether
+  individual AQL queries can increase their memory limit via the `memoryLimit`
+  query option. This is the default, so a query that increases its memory limit
+  is allowed to use more memory.
+  The new option `--query.memory-limit-override` allows turning this behavior 
+  off, so that individual queries can only lower their maximum allowed memory
+  usage. 
+
+* Added metric `arangodb_aql_global_memory_usage` to expose the total amount
+  of memory (in steps of 32 kb) that is currently in use by all AQL queries.
+
+* Added metric `arangodb_aql_global_memory_limit` to expose the memory limit 
+  from startup option `--query.global-memory-limit`.
+
+* Allow setting path to the timezone information via the `TZ_DATA` environment
+  variable, in the same fashion as the currently existing `ICU_DATA` environment
+  variable. The `TZ_DATA` variable is useful in environments` that start arangod
+  from some unusual locations, when it can't find its `tzdata` directory 
+  automatically.
+
+* Fixed a bug in query cost estimation when a NoResults node occured in a spliced
+  subquery. This could lead to a server crash.
+
+* Fix slower-than-necessary arangoimport behavior:
+  arangoimport has a built-in rate limiter, which can be useful for importing
+  data with a somewhat constant rate. However, it is enabled by default and
+  limits imports to 1MB per second. These settings are not useful.
+
+  This change turns the rate limiting off by default, and sets the default
+  chunk size to 8MB (up from 1MB) as well. This means that arangoimport will
+  send larger batches to the server by default. The already existing `--batch-size`
+  option can be used to control the maximum size of each batch.
+
+  The new parameter `--auto-rate-limit` can now be used to toggle rate limiting.
+  It defaults to off, whereas previously rate limiting was enabled by default
+  unless `--batch-size` was specified when arangoimport was invoked.
+
+* The cluster dashboard charts in the web UI are now more readable during the
+  initialization phase. Additionally, the amount of agents are now displayed
+  there as well. An agent failure will also appear here in case it exists.
+
+* Added more useful information during the SmartGraph creation in the web UI
+  in case the current database is a OneShard database.
+
+* Add support for building with Zen 3 CPU when optimizing for the local
+  architecture.
+  
+* The web UI's node overview now displays also agent information (cluster only).
+
 * The statistics view in the web UI does now provide more system specific
   information in case the Metrics API is enabled. Different statistics may
   be visible depending on the operating system.
@@ -22,7 +116,7 @@ devel
 
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
 
-* Resonably harden MoveShard against VelopcyPack more.
+* Reasonably harden MoveShard against invalid VelocyPack input.
 
 * Removed older reference to VelocyPackDumper.
 
@@ -118,6 +212,10 @@ devel
   queries.
   This also adds the options `--custom-query` and `--custom-query-file` for
   arangobench.
+
+* Addition to the internal Refactoring of K_PATHS feature: K_PATHS queries are
+  now being executed on the new refactored graph engine in a clustered
+  environment. This change should not have any visible effect on users.
 
 * Reduce memory footprint of agency Store in Node class.
 

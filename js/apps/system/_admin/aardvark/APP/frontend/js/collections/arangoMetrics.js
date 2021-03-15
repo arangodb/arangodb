@@ -52,9 +52,9 @@
 
     url: function () {
       if (this.endpoint) {
-        return arangoHelper.databaseUrl('/_admin/metrics?serverId=' + encodeURIComponent(this.endpoint));
+        return arangoHelper.databaseUrl('/_admin/metrics/v2?serverId=' + encodeURIComponent(this.endpoint));
       }
-      return arangoHelper.databaseUrl('/_admin/metrics');
+      return arangoHelper.databaseUrl('/_admin/metrics/v2');
     }
 
   });

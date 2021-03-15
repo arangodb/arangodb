@@ -28,6 +28,7 @@
 #include "Logger/LogMacros.h"
 
 #include "Graph/PathManagement/PathStore.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Types/ValidationResult.h"
@@ -96,6 +97,8 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
   return _impl.visitReversePath(step, visitor);
 }
 
+/* SingleServerProvider Section */
+
 template class ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>;
 
 // Tracing
@@ -106,3 +109,16 @@ template void ::arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider:
 template void arangodb::graph::PathStoreTracer<PathStore<SingleServerProvider::Step>>::reverseBuildPath<ProviderTracer<SingleServerProvider>>(
     ProviderTracer<SingleServerProvider>::Step const& vertex,
     PathResult<ProviderTracer<SingleServerProvider>, ProviderTracer<SingleServerProvider>::Step>& path) const;
+
+/* ClusterProvider Section */
+
+template class ::arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>;
+
+// Tracing
+template void ::arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>::buildPath<ProviderTracer<ClusterProvider>>(
+    ProviderTracer<ClusterProvider>::Step const& vertex,
+    PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>& path) const;
+
+template void arangodb::graph::PathStoreTracer<PathStore<ClusterProvider::Step>>::reverseBuildPath<ProviderTracer<ClusterProvider>>(
+    ProviderTracer<ClusterProvider>::Step const& vertex,
+    PathResult<ProviderTracer<ClusterProvider>, ProviderTracer<ClusterProvider>::Step>& path) const;
