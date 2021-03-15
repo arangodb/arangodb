@@ -11,7 +11,7 @@ devel
   The change now turns off the selectivity estimates for indexes in all newly 
   created system collections, and for new user-defined indexes of type
   "persistent", "hash" or "skiplist", there is now an attribute "estimates"
-  which can be set to `true` to disable the selectivity estimates for the index.
+  which can be set to `false` to disable the selectivity estimates for the index.
   The attribute is optional. Not setting it will lead to the index being
   created with selectivity estimates, so this is a downwards-compatible change
   for user-defined indexes.
