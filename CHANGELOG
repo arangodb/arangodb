@@ -1,6 +1,15 @@
 devel
 -----
 
+* When dropping a collection or an index with a larger amount of documents, the
+  key range for the collection/index in RocksDB gets compacted. Previously, the
+  compaction was running in foreground and thus would block the deletion operations.
+  Now, the compaction is running in background, so that the deletion operations 
+  can return earlier. 
+  The maximum number of compaction jobs that are executed in background can be
+  configured using the new startup parameter `--rocksdb.max-parallel-compactions`, 
+  which defaults to 2.
+
 * The cluster dashboard charts in the web UI are now more readable during the
   initialization phase. Additionally, the amount of agents are now displayed
   there as well. An agent failure will also appear here in case it exists.
