@@ -517,6 +517,53 @@ function BaseTestConfig () {
         assertEqual(["uid"], index.fields);
       });
     },
+    
+    testSortedCollect: function() {
+      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
+
+      [
+        `FOR doc IN ${cn} COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual(["dt"], indexNode.projections);
+        assertTrue(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(["dt"], index.fields);
+        let collectNode = nodes.filter((n) => n.type === 'CollectNode')[0];
+        assertEqual("sorted", collectNode.collectOptions.method);
+      });
+    },
+    
+    testSortedCollectMultipleIndexes: function() {
+      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
+      db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+      [
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 COLLECT dt = doc.dt RETURN dt`,
+        `FOR doc IN ${cn} FILTER doc.uid == 1234 SORT doc.dt COLLECT dt = doc.dt RETURN dt`,
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual(["dt"], indexNode.projections);
+        assertTrue(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(["uid", "dt"], index.fields);
+        let collectNode = nodes.filter((n) => n.type === 'CollectNode')[0];
+        assertEqual("sorted", collectNode.collectOptions.method);
+      });
+    },
   };
 }
 
@@ -564,7 +611,7 @@ function aqlIndexChoiceLargeCollectionSuite () {
 
   let suite = {
     setUpAll: function() {
-      setupCollection(cn, 100000);
+      setupCollection(cn, 150000);
     },
   };
 
