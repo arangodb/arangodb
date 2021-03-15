@@ -1,6 +1,26 @@
 devel
 -----
 
+* Allow setting path to the timezone information via the `TZ_DATA` environment
+  variable, in the same fashion as the currently existing `ICU_DATA` environment
+  variable. The `TZ_DATA` variable is useful in environments` that start arangod
+  from some unusual locations, when it can't find its `tzdata` directory 
+  automatically.
+
+* Fix slower-than-necessary arangoimport behavior:
+  arangoimport has a built-in rate limiter, which can be useful for importing
+  data with a somewhat constant rate. However, it is enabled by default and
+  limits imports to 1MB per second. These settings are not useful.
+
+  This change turns the rate limiting off by default, and sets the default
+  chunk size to 8MB (up from 1MB) as well. This means that arangoimport will
+  send larger batches to the server by default. The already existing `--batch-size`
+  option can be used to control the maximum size of each batch.
+
+  The new parameter `--auto-rate-limit` can now be used to toggle rate limiting.
+  It defaults to off, whereas previously rate limiting was enabled by default
+  unless `--batch-size` was specified when arangoimport was invoked.
+
 * The cluster dashboard charts in the web UI are now more readable during the
   initialization phase. Additionally, the amount of agents are now displayed
   there as well. An agent failure will also appear here in case it exists.
