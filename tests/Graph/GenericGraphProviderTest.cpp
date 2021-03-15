@@ -58,8 +58,6 @@ class GraphProviderTest : public ::testing::Test {
   using Step = typename ProviderType::Step;
 
  protected:
-  arangodb::ResourceMonitor resourceMonitor{};
-
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
