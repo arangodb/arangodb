@@ -968,6 +968,7 @@ target_link_libraries(arango_indexes arango::validation)
 
 target_link_libraries(arango_iresearch arango_indexes)
 target_link_libraries(arango_iresearch arango_cluster_engine)
+target_link_libraries(arango_iresearch iresearch-analyzer-ngram-static)
 
 target_link_libraries(arango_metrics arango)
 
