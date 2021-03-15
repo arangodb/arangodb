@@ -219,29 +219,29 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_edges) {
   HashedStringRef id2{doc2.get("_id")};
   auto& testee = cache();
   auto resourceBefore = _monitor.currentMemoryUsage();
-  expectIsNotCached(id);
-  expectIsNotCached(id2);
+  expectEdgeIsNotCached(id);
+  expectEdgeIsNotCached(id2);
 
-  testee.cacheVertex(id, doc);
+  testee.persistEdgeData(doc);
 
   auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
 
-  testee.cacheVertex(id2, doc2);
+  testee.persistEdgeData(doc2);
 
   auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
   EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did not increase memory usage.";
 
-  EXPECT_TRUE(testee.isVertexCached(id));
+  EXPECT_TRUE(testee.isEdgeCached(id));
   {
-    auto result = testee.getCachedVertex(id);
+    auto result = testee.getCachedEdge(id);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
   }
 
-  EXPECT_TRUE(testee.isVertexCached(id2));
+  EXPECT_TRUE(testee.isEdgeCached(id2));
   {
-    auto result = testee.getCachedVertex(id2);
+    auto result = testee.getCachedEdge(id2);
     EXPECT_FALSE(result.isNull());
     EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
   }
