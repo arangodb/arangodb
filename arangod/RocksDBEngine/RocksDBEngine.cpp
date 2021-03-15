@@ -938,6 +938,25 @@ void RocksDBEngine::stop() {
     }
     _syncThread.reset();
   }
+ 
+  // wait for started compaction jobs to finish
+  bool compactionWarning = false;
+  while (true) {
+    {
+      READ_LOCKER(locker, _pendingCompactionsLock);
+      if (_runningCompactions == 0) {
+        break;
+      }
+    }
+      
+    if (!compactionWarning) {
+      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
+      compactionWarning = true;
+    }
+    // unfortunately there is not much we can do except waiting for
+    // RocksDB's compaction job(s) to finish.
+    std::this_thread::yield();
+  }
 }
 
 void RocksDBEngine::unprepare() {
@@ -1381,26 +1400,32 @@ void RocksDBEngine::processCompactions() {
           << "scheduling compaction for execution";
     
     bool queued = scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
-      LOG_TOPIC("9485b", TRACE, Logger::ENGINES) 
-            << "executing compaction for range " << bounds;
-    
-      double start = TRI_microtime();
-      try {
-        rocksdb::CompactRangeOptions opts;
-        rocksdb::Slice b = bounds.start(), e = bounds.end();
-        _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-      } catch (std::exception const& ex) {
-        LOG_TOPIC("a4c42", WARN, Logger::ENGINES) 
-              << "compaction for range " << bounds 
-              << " failed with error: " << ex.what();
-      } catch (...) {
-        // whatever happens, we need to count down _runningCompactions in all cases
+      if (server().isStopping()) {
+        LOG_TOPIC("3d619", TRACE, Logger::ENGINES) 
+              << "aborting pending compaction due to server shutdown";
+      } else {
+        LOG_TOPIC("9485b", TRACE, Logger::ENGINES) 
+              << "executing compaction for range " << bounds;
+      
+        double start = TRI_microtime();
+        try {
+          rocksdb::CompactRangeOptions opts;
+          rocksdb::Slice b = bounds.start(), e = bounds.end();
+          _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("a4c42", WARN, Logger::ENGINES) 
+                << "compaction for range " << bounds 
+                << " failed with error: " << ex.what();
+        } catch (...) {
+          // whatever happens, we need to count down _runningCompactions in all cases
+        }
+        
+        LOG_TOPIC("79591", TRACE, Logger::ENGINES) 
+              << "finished compaction for range " << bounds 
+              << ", took: " << Logger::FIXED(TRI_microtime() - start);
       }
       
-      LOG_TOPIC("79591", TRACE, Logger::ENGINES) 
-            << "finished compaction for range " << bounds 
-            << ", took: " << Logger::FIXED(TRI_microtime() - start);
-      
+      // always count down _runningCompactions!
       WRITE_LOCKER(locker, _pendingCompactionsLock);
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
