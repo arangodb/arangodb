@@ -343,7 +343,7 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
                                                                  opts->maxDepth};
 
-    if (ServerState::instance()->isSingleServer()) {
+    if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
       BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
