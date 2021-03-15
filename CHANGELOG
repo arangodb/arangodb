@@ -1,6 +1,9 @@
 v3.7.10 (XXXX-XX-XX)
 --------------------
 
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expansions in the fields definition.
+
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 
 * Follower DB servers will now respond with error code
