@@ -78,7 +78,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual([], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
@@ -99,7 +98,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["uid"], indexNode.projections);
         assertTrue(indexNode.indexCoversProjections);
@@ -121,13 +119,15 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual([], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
+        // the optimizer does not know about projections when selecting the index,
+        // so it always picks the "longer" of the 2 indexes here in case everything
+        // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
     },
@@ -143,13 +143,15 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["uid"], indexNode.projections);
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
+        // the optimizer does not know about projections when selecting the index,
+        // so it always picks the "longer" of the 2 indexes here in case everything
+        // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
       
@@ -160,13 +162,15 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt"], indexNode.projections);
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
+        // the optimizer does not know about projections when selecting the index,
+        // so it always picks the "longer" of the 2 indexes here in case everything
+        // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
       
@@ -177,13 +181,15 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt", "uid"], indexNode.projections.sort());
         assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
+        // the optimizer does not know about projections when selecting the index,
+        // so it always picks the "longer" of the 2 indexes here in case everything
+        // else is equal
         assertEqual(["uid", "dt"], index.fields);
       });
     },
@@ -199,7 +205,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual([], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
@@ -221,7 +226,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertTrue(["uid"], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
@@ -239,7 +243,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt"], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
@@ -262,7 +265,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual([], indexNode.projections);
         assertFalse(indexNode.indexCoversProjections);
@@ -285,7 +287,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["uid"], indexNode.projections);
         assertTrue(indexNode.indexCoversProjections);
@@ -303,7 +304,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt"], indexNode.projections);
         assertTrue(indexNode.indexCoversProjections);
@@ -318,7 +318,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt", "uid"], indexNode.projections.sort());
         assertTrue(indexNode.indexCoversProjections);
@@ -335,7 +334,6 @@ function BaseTestConfig () {
       ].forEach((q) => {
         let nodes = AQL_EXPLAIN(q).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
         assertEqual(["dt", "uid"], indexNode.projections.sort());
         assertTrue(indexNode.indexCoversProjections);
@@ -427,6 +425,24 @@ function BaseTestConfig () {
     testMultipleIndexesMultipleFiltersAndSort: function() {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
+
+      [
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual([], indexNode.projections);
+        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(["uid", "dt"], index.fields);
+      });
       
       [
         `FOR doc IN ${cn} FILTER doc.uid == 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`,
@@ -462,6 +478,43 @@ function BaseTestConfig () {
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
         assertEqual(["uid", "dt"], index.fields);
+      });
+    },
+    
+    testMultipleIndexesFiltersAndSort: function() {
+      db[cn].ensureIndex({ type: "persistent", fields: ["uid"] });
+      db[cn].ensureIndex({ type: "persistent", fields: ["dt"] });
+
+      [
+        `FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`,
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual([], indexNode.projections);
+        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(["dt"], index.fields);
+      });
+      
+      [
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`,
+        `FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`,
+      ].forEach((q) => {
+        let nodes = AQL_EXPLAIN(q).plan.nodes;
+        assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
+        assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+        let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
+        assertEqual([], indexNode.projections);
+        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(1, indexNode.indexes.length);
+        let index = indexNode.indexes[0];
+        assertEqual("persistent", index.type);
+        assertEqual(["uid"], index.fields);
       });
     },
   };
@@ -506,8 +559,22 @@ function aqlIndexChoiceMediumCollectionSuite () {
   return suite;
 }
 
+function aqlIndexChoiceLargeCollectionSuite () {
+  'use strict';
+
+  let suite = {
+    setUpAll: function() {
+      setupCollection(cn, 100000);
+    },
+  };
+
+  deriveTestSuite(BaseTestConfig(), suite, '_LargeCollectionSuite');
+  return suite;
+}
+
 jsunity.run(aqlIndexChoiceMiniCollectionSuite);
 jsunity.run(aqlIndexChoiceSmallCollectionSuite);
 jsunity.run(aqlIndexChoiceMediumCollectionSuite);
+jsunity.run(aqlIndexChoiceLargeCollectionSuite);
 
 return jsunity.done();
