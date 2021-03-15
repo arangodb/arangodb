@@ -31,6 +31,7 @@
 #include "Graph/Providers/TypeAliases.h"
 
 #include <map>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 struct ResourceMonitor;
