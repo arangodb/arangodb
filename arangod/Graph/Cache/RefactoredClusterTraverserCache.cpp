@@ -58,8 +58,11 @@ void RefactoredClusterTraverserCache::clear() {
 
 auto RefactoredClusterTraverserCache::cacheVertex(VertexType const& vertexId,
                                                   velocypack::Slice vertexSlice) -> void {
-  _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
-  _vertexData.try_emplace(vertexId, vertexSlice);
+  auto [it, inserted] = _vertexData.try_emplace(vertexId, vertexSlice);
+  if (inserted) {
+    // If we have added something into the cache, we need to account for it.
+    _resourceMonitor.increaseMemoryUsage(costPerVertexOrEdgeStringRefSlice);
+  }
 }
 
 auto RefactoredClusterTraverserCache::isVertexCached(VertexType const& vertexKey) const
@@ -73,7 +76,7 @@ auto RefactoredClusterTraverserCache::isEdgeCached(EdgeType const& edgeKey) cons
 
 auto RefactoredClusterTraverserCache::getCachedVertex(VertexType const& vertex) const -> VPackSlice {
   if (!isVertexCached(vertex)) {
-    return VPackSlice::noneSlice();
+    return VPackSlice::nullSlice();
   }
   return _vertexData.at(vertex);
 }

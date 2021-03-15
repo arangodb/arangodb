@@ -31,6 +31,7 @@
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/GraphTestTools.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
@@ -99,6 +100,128 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
   ASSERT_TRUE(all.size() == 1);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   ASSERT_TRUE(all[0].second == expectedMessage);
+}
+
+class RefactoredClusterTraverserCacheTest : public ::testing::Test {
+ protected:
+  arangodb::ResourceMonitor _monitor{};
+  std::unique_ptr<arangodb::graph::RefactoredClusterTraverserCache> _cache = std::make_unique<arangodb::graph::RefactoredClusterTraverserCache>(_monitor);
+
+  RefactoredClusterTraverserCacheTest() {}
+
+  ~RefactoredClusterTraverserCacheTest() = default;
+
+  arangodb::graph::RefactoredClusterTraverserCache& cache() { return *_cache; }
+
+  void TearDown() {
+    // After every test ensure that the ResourceMonitor is conting down to 0 again
+    _cache.reset();
+    EXPECT_EQ(_monitor.currentMemoryUsage(), 0) << "Resource Monitor is not reset to 0 after deletion of the cache.";
+  }
+
+  void expectIsNotCached(VertexType const& vertexId) {
+    EXPECT_FALSE(cache().isVertexCached(vertexId));
+    auto result = cache().getCachedVertex(vertexId);
+    EXPECT_TRUE(result.isNull());
+  }
+};
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(key);
+  testee.cacheVertex(key, doc);
+
+  EXPECT_TRUE(testee.isVertexCached(key));
+  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage()) << "Did not increase memory usage.";
+  {
+    auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_vertices) {
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  auto data2 = VPackParser::fromJson(R"({"_key":"456", "value":456})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef key2{doc2.get("_key")};
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(key);
+  expectIsNotCached(key2);
+
+  testee.cacheVertex(key, doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
+
+  testee.cacheVertex(key2, doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did not increase memory usage.";
+
+  EXPECT_TRUE(testee.isVertexCached(key));
+  {
+    auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isVertexCached(key2));
+  {
+    auto result = testee.getCachedVertex(key2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc2, true));
+  }
+}
+
+TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  // We simulate that we get the same Document data from two sources.
+  // To make sure we keep the first copy, we try to insert a different value for the same _key
+  // This will not happen in production, just to varify results here.
+  auto data2 = VPackParser::fromJson(R"({"_key":"123", "value":456})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef key2{doc2.get("_key")};
+
+  auto& testee = cache();
+  auto resourceBefore = _monitor.currentMemoryUsage();
+  expectIsNotCached(key);
+  expectIsNotCached(key2);
+
+  testee.cacheVertex(key, doc);
+
+  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  EXPECT_LT(resourceBefore, resourceAfterFirstInsert) << "Did not increase memory usage.";
+
+  testee.cacheVertex(key2, doc2);
+
+  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert) << "Did count the same vertex twice";
+
+  EXPECT_TRUE(testee.isVertexCached(key));
+  {
+    auto result = testee.getCachedVertex(key);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
+
+  EXPECT_TRUE(testee.isVertexCached(key2));
+  {
+    auto result = testee.getCachedVertex(key2);
+    EXPECT_FALSE(result.isNull());
+    EXPECT_TRUE(basics::VelocyPackHelper::equal(result, doc, true));
+  }
 }
 
 }  // namespace cluster_traverser_cache_test
