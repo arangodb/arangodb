@@ -26,37 +26,22 @@
 #define ARANGOD_GRAPH_REFACTORED_CLUSTER_TRAVERSER_CACHE_H 1
 
 #include "Aql/types.h"
+#include "Basics/StringHeap.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/Providers/TypeAliases.h"
-#include "Graph/TraverserCache.h"
-
-#include <velocypack/Buffer.h>
-#include <velocypack/StringRef.h>
 
 #include <map>
 
 namespace arangodb {
 struct ResourceMonitor;
 
-namespace aql {
-struct AqlValue;
-class QueryContext;
-}  // namespace aql
-
-namespace transaction {
-class Methods;
-}
-
 namespace velocypack {
-class Builder;
 class Slice;
 class HashedStringRef;
-class StringRef;
 }  // namespace velocypack
 
 namespace graph {
-struct BaseOptions;
 
 class RefactoredClusterTraverserCache {
  public:
