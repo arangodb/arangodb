@@ -25,6 +25,7 @@
 
 #include "Aql/Ast.h"
 #include "Aql/GraphNode.h"
+#include "Aql/ModificationNodes.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterTrxMethods.h"
 #include "Graph/BaseOptions.h"
