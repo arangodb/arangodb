@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed Github issue #13665: Improve index selection when there are multiple
+  candidate indexes.
+
 * When dropping a collection or an index with a larger amount of documents, the
   key range for the collection/index in RocksDB gets compacted. Previously, the
   compaction was running in foreground and thus would block the deletion operations.

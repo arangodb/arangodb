@@ -79,18 +79,6 @@ void IResearchLinkMock::toVelocyPack(
   builder.close();
 }
 
-bool IResearchLinkMock::isPersistent() const {
-  auto& engine =
-      Index::collection().vocbase().server().getFeature<EngineSelectorFeature>().engine();
-
-  if (engine.inRecovery()) {
-    return !IResearchLink::createdInRecovery();
-  }
-
-  return true;
-}
-
-
 std::function<void(irs::directory&)> IResearchLinkMock::InitCallback;
 }  // namespace iresearch
 }  // namespace arangodb
