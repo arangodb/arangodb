@@ -56,10 +56,13 @@ struct IndexAccessor {
 
 struct BaseProviderOptions {
  public:
-  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo);
+  BaseProviderOptions(aql::Variable const* tmpVar, std::vector<IndexAccessor> indexInfo,
+                      std::map<std::string, std::string> const& collectionToShardMap);
 
   aql::Variable const* tmpVar() const;
   std::vector<IndexAccessor> const& indexInformations() const;
+
+  std::map<std::string, std::string> const& collectionToShardMap() const;
 
  private:
   // The temporary Variable used in the Indexes
@@ -67,11 +70,15 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+
+  // CollectionName to ShardMap, used if the Traversal is pushed down to DBServer
+  std::map<std::string, std::string> const& _collectionToShardMap;
 };
 
 struct ClusterBaseProviderOptions {
  public:
-  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache, bool backward);
+  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
+                             bool backward);
 
   RefactoredClusterTraverserCache* getCache();
   bool isBackward();

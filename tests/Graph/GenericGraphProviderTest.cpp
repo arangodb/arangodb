@@ -68,6 +68,8 @@ class GraphProviderTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor resourceMonitor{global};
 
+  std::map<std::string, std::string> _emptyShardMap{};
+
   GraphProviderTest() {}
   ~GraphProviderTest() {}
 
@@ -103,7 +105,7 @@ class GraphProviderTest : public ::testing::Test {
       std::vector<IndexAccessor> usedIndexes{
           IndexAccessor{edgeIndexHandle, indexCondition, 0}};
 
-      BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
+      BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
       return SingleServerProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     if constexpr (std::is_same_v<ProviderType, ClusterProvider>) {

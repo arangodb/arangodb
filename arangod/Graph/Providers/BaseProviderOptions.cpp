@@ -27,8 +27,11 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 BaseProviderOptions::BaseProviderOptions(aql::Variable const* tmpVar,
-                                         std::vector<IndexAccessor> indexInfo)
-    : _temporaryVariable(tmpVar), _indexInformation(std::move(indexInfo)) {}
+                                         std::vector<IndexAccessor> indexInfo,
+                                         std::map<std::string, std::string> const& collectionToShardMap)
+    : _temporaryVariable(tmpVar),
+      _indexInformation(std::move(indexInfo)),
+      _collectionToShardMap(collectionToShardMap) {}
 
 aql::Variable const* BaseProviderOptions::tmpVar() const {
   return _temporaryVariable;
@@ -38,8 +41,12 @@ std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const
   return _indexInformation;
 }
 
-ClusterBaseProviderOptions::ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
-                                                       bool backward)
+std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
+  return _collectionToShardMap;
+}
+
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(
+    std::shared_ptr<RefactoredClusterTraverserCache> cache, bool backward)
     : _cache(std::move(cache)), _backward(backward) {}
 
 RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {

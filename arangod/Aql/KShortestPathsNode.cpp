@@ -346,8 +346,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes());
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(), opts->collectionToShard());
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes(),  opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
