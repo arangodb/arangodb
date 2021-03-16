@@ -41,9 +41,8 @@ Cancel a Pregel job to stop the execution or to free up the results if
 ~ var graph = examples.loadGraph("connectedComponentsGraph");
 
 ~ var url = "/_api/control_pregel";
-~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", store: false, params: { maxGSS: graph.components.count(), resultField: "component" } };
-~ var response = curlRequest("POST", url, body);
-~ var id = JSON.parse(response.body);
+~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", params: { maxGSS: graph.components.count(), store: false } };
+~ var id = internal.arango.POST(url, body);
 
   var url = "/_api/control_pregel/" + id;
   var response = logCurlRequest("DELETE", url);

@@ -77,21 +77,35 @@ Get the execution status of a Pregel job:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelStatusConnectedComponents}
 
-~ var examples = require("@arangodb/graph-examples/example-graph.js");
-~ var graph = examples.loadGraph("connectedComponentsGraph");
+var examples = require("@arangodb/graph-examples/example-graph.js");
+var graph = examples.loadGraph("connectedComponentsGraph");
 
-~ var url = "/_api/control_pregel";
-~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", params: { maxGSS: graph.components.count(), resultField: "component" } };
-~ var response = logCurlRequest("POST", url, body);
-~ var id = JSON.parse(response.body);
+var url = "/_api/control_pregel";
+var body = {
+  algorithm: "wcc",
+  graphName: "connectedComponentsGraph",
+  params: {
+    maxGSS: graph.components.count(),
+    resultField: "component"
+  }
+};
+var id = internal.arango.POST(url, body);
+var url = "/_api/control_pregel/" + id;
+while (true) {
+  var status = internal.arango.GET(url);
+  if (status.state == "done") {
+    break;
+  } else {
+    print(`Waiting for Pregel job ${id} to finish...`);
+    internal.sleep(0.5);
+  }
+}
 
-  var url = "/_api/control_pregel/" + id;
-  var response = logCurlRequest("GET", url);
+var response = logCurlRequest("GET", url);
+assert(response.code === 200);
 
-  assert(response.code === 200);
-
-  logJsonResponse(response);
-~ examples.dropGraph("connectedComponentsGraph");
+logJsonResponse(response);
+examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
 
