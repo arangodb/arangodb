@@ -55,12 +55,14 @@ RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Method
     : _query(query),
       _trx(trx),
       _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
-      _stats{stats}
+      _stats{stats},
+      _resourceMonitor(resourceMonitor)
 {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
 void RefactoredTraverserCache::clear() {
+  _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
   _stringHeap.clear();
 }
@@ -201,5 +203,6 @@ arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
   }
   auto res = _stringHeap.registerString(idString);
   _persistedStrings.emplace(res);
+  _resourceMonitor.increaseMemoryUsage(sizeof(res));
   return res;
 }

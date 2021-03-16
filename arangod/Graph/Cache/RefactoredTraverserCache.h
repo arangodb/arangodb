@@ -151,6 +151,7 @@ class RefactoredTraverserCache {
 
  private:
   arangodb::aql::TraversalStats& _stats;
+  arangodb::ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace graph

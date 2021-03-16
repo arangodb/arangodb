@@ -59,11 +59,13 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
+  arangodb::ResourceMonitor* _monitor;
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
+    _monitor = &query->resourceMonitor();
     traverserCache =
         std::make_unique<RefactoredTraverserCache>(trx.get(), query.get(),
                                                    query->resourceMonitor(), stats);
@@ -100,14 +102,28 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_avail
   gdb.addGraph(graph);
 
   std::shared_ptr<arangodb::LogicalCollection> col = gdb.vocbase.lookupCollection("e");
-  LocalDocumentId localDocumentId{1};
-  DataSourceId dataSourceId{col->id()};
+  LocalDocumentId localDocumentId{1}; // invalid
+  DataSourceId dataSourceId{col->id()}; // valid
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
   traverserCache->insertEdgeIntoResult(edt, builder);
   ASSERT_TRUE(builder.slice().isNull());
+}
+
+TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_string) {
+  auto memoryUsageBefore = _monitor->current();
+
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+  traverserCache->persistString(key);
+
+  EXPECT_LT(memoryUsageBefore, _monitor->current());
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageBefore, _monitor->current());
 }
 
 }  // namespace traverser_cache_test
