@@ -307,7 +307,7 @@ nodeTypes);
 
       // Check the rough outline first for a better overview in case of a failure
       // of the plan.
-      assertEqual(["SingletonNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "EnumerateListNode", "CalculationNode", "NoResultsNode", "SubqueryEndNode", "ReturnNode"],
+      assertEqual(["SingletonNode", "CalculationNode", "EnumerateListNode", "SubqueryStartNode", "CalculationNode", "EnumerateListNode", "CalculationNode", "NoResultsNode", "SubqueryEndNode", "ReturnNode"],
           nodeTypes);
 
       let node, prevNode;
@@ -334,37 +334,44 @@ nodeTypes);
       assertEqual("SubqueryStartNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
-      // EnumerateListNode
+      // CalculationNode
       prevNode = node;
       node = nodes[4];
+      assertEqual("CalculationNode", node.type);
+      assertEqual(3, node.estimatedNrItems);
+      assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
+      // EnumerateListNode
+      prevNode = node;
+      node = nodes[5];
       assertEqual("EnumerateListNode", node.type);
       assertEqual(15, node.estimatedNrItems);
       assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
       // CalculationNode
       prevNode = node;
-      node = nodes[5];
+      node = nodes[6];
       assertEqual("CalculationNode", node.type);
       assertEqual(15, node.estimatedNrItems);
       assertEqual(15 + prevNode.estimatedCost, node.estimatedCost);
-      // NoResultsNode
+      // NoResults
       prevNode = node;
-      node = nodes[6];
+      node = nodes[7];
       assertEqual("NoResultsNode", node.type);
       assertEqual(0, node.estimatedNrItems);
       assertEqual(0.5, node.estimatedCost);
       // SubqueryEndNode
       prevNode = node;
-      node = nodes[7];
+      node = nodes[8];
       assertEqual("SubqueryEndNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
       // ReturnNode
       prevNode = node;
-      node = nodes[7];
+      node = nodes[9];
       assertEqual("ReturnNode", node.type);
       assertEqual(3, node.estimatedNrItems);
       assertEqual(3 + prevNode.estimatedCost, node.estimatedCost);
     },
+
 
   };
 }
