@@ -1,0 +1,13 @@
+name: rocksdb_min_log_number_to_keep
+help: |
+  rocksdb_min_log_number_to_keep
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_min_log_number_to_keep

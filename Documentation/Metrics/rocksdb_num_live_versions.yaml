@@ -1,0 +1,13 @@
+name: rocksdb_num_live_versions
+help: |
+  rocksdb_num_live_versions
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_num_live_versions

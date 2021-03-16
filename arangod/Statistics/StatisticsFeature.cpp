@@ -586,6 +586,10 @@ void StatisticsFeature::appendHistogram(
       std::to_string(v) + '\n';
   }
   result += name + "_count " + std::to_string(sum) + '\n';
+  if (v2) {
+    double v = slc.get("sum").getNumber<double>();
+    result += name + "_sum " + std::to_string(v) + '\n';
+  }
 }
 
 std::string metricType(std::string const& type, bool v2) {

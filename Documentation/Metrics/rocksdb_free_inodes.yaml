@@ -1,0 +1,13 @@
+name: rocksdb_free_inodes
+help: |
+  rocksdb_free_inodes
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_free_inodes

@@ -1,0 +1,13 @@
+name: 
+help: |
+  
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  

@@ -1,0 +1,13 @@
+name: rocksdb_size_all_mem_tables
+help: |
+  rocksdb_size_all_mem_tables
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_size_all_mem_tables
