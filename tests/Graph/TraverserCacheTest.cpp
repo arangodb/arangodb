@@ -101,9 +101,10 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_avail
   graph::MockGraph graph{};
   gdb.addGraph(graph);
 
-  std::shared_ptr<arangodb::LogicalCollection> col = gdb.vocbase.lookupCollection("e");
-  LocalDocumentId localDocumentId{1}; // invalid
-  DataSourceId dataSourceId{col->id()}; // valid
+  std::shared_ptr<arangodb::LogicalCollection> col =
+      gdb.vocbase.lookupCollection("e");
+  LocalDocumentId localDocumentId{1};    // invalid
+  DataSourceId dataSourceId{col->id()};  // valid
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
   VPackBuilder builder;
 
@@ -143,6 +144,60 @@ TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_when_persisting_d
   // now clear the class, and check memory usage again
   traverserCache->clear();
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
+}
+
+TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+  graph::MockGraph graph{};
+  graph.addEdge(0, 1);
+  gdb.addGraph(graph);
+
+  auto data = VPackParser::fromJson(R"({"_key":"0", "_id": "v/0"})");
+  VPackSlice doc = data->slice();
+  HashedStringRef id{doc.get("_id")};
+  VPackBuilder builder;
+
+  traverserCache->insertVertexIntoResult(arangodb::velocypack::HashedStringRef(id), builder);
+  EXPECT_TRUE(builder.slice().get("_key").isString());
+  EXPECT_EQ(builder.slice().get("_key").toString(), "0");
+}
+
+TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
+  graph::MockGraph graph{};
+  graph.addEdge(0, 1);
+  gdb.addGraph(graph);
+
+  std::string edgeKey = "0-1"; // (EdgeKey format: <from>-<to>)
+
+  std::shared_ptr<arangodb::LogicalCollection> col =
+      gdb.vocbase.lookupCollection("e");
+
+  std::uint64_t fetchedDocumentId = 0;
+  bool called = false;
+  auto result =
+      col->getPhysical()->read(trx.get(), arangodb::velocypack::StringRef{edgeKey},
+                               [&fetchedDocumentId, &called, &edgeKey](LocalDocumentId const& ldid, VPackSlice edgeDocument) {
+                                 fetchedDocumentId = ldid.id();
+                                 called = true;
+                                 EXPECT_TRUE(edgeDocument.isObject());
+                                 EXPECT_TRUE(edgeDocument.get("_key").isString());
+                                 EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
+                                 return true;
+                               });
+  ASSERT_TRUE(called);
+  ASSERT_TRUE(result.ok());
+  ASSERT_NE(fetchedDocumentId, 0);
+
+  DataSourceId dataSourceId{col->id()};  // valid
+  LocalDocumentId localDocumentId{fetchedDocumentId}; // valid
+  EdgeDocumentToken edt{dataSourceId, localDocumentId};
+  VPackBuilder builder;
+
+  traverserCache->insertEdgeIntoResult(edt, builder);
+  EXPECT_TRUE(builder.slice().get("_key").isString());
+  EXPECT_EQ(builder.slice().get("_key").toString(), "0-1");
+  EXPECT_EQ(builder.slice().get("_from").toString(), "v/0");
+  EXPECT_EQ(builder.slice().get("_to").toString(), "v/1");
 }
 
 }  // namespace traverser_cache_test
