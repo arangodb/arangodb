@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix duplicate leaving of V8 contexts when returning streaming cursors.
+  The `exitContext` call done on query shutdown could previously try to exit
+  the V8 context multiple times, which would cause undefined behavior. Now
+  we are tracking if we already left the context to prevent duplicate invocation.
+
 * Log the actual signal instead of "control-c" and also include the process id
   of the process that sent the signal.
 
