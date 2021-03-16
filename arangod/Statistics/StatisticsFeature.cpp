@@ -78,35 +78,127 @@ std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FIL
 namespace arangodb {
 namespace statistics {
 
+std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
+std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
+std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
+std::initializer_list<double> const RequestTimeDistributionCuts{
+    0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
+
+struct BytesReceivedScale {
+  static fixed_scale_t<double> scale() { return { 250, 10000, BytesReceivedDistributionCuts }; }
+};
+
+struct BytesSentScale {
+  static fixed_scale_t<double> scale() { return { 250, 10000, BytesSentDistributionCuts }; }
+};
+
+struct ConnectionTimeScale {
+  static fixed_scale_t<double> scale() { return { 0.1, 60.0, ConnectionTimeDistributionCuts }; }
+};
+
+struct RequestTimeScale {
+  static fixed_scale_t<double> scale() { return { 0.01, 30.0, RequestTimeDistributionCuts }; }
+};
+
+
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_received,
+    BytesReceivedScale, "Bytes received for a request");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_bytes_sent,
+    BytesSentScale, "Bytes sent for a request");
+DECLARE_COUNTER(arangodb_process_statistics_minor_page_faults_total,
+    "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows");
+DECLARE_COUNTER(arangodb_process_statistics_major_page_faults_total,
+    "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk");
+DECLARE_GAUGE(arangodb_process_statistics_user_time,
+    double, "Amount of time that this process has been scheduled in user mode, measured in seconds");
+DECLARE_GAUGE(arangodb_process_statistics_system_time,
+    double, "Amount of time that this process has been scheduled in kernel mode, measured in seconds");
+DECLARE_GAUGE(arangodb_process_statistics_number_of_threads,
+    double, "Number of threads in the arangod process");
+DECLARE_GAUGE(arangodb_process_statistics_resident_set_size,
+    double, "The total size of the number of pages the process has in real memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The resident set size is reported in bytes");
+DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent,
+    double, "The relative size of the number of pages the process has in real memory compared to system memory. This is just the pages which count toward text, data, or stack space. This does not include pages which have not been demand-loaded in, or which are swapped out. The value is a ratio between 0.00 and 1.00");
+DECLARE_GAUGE(arangodb_process_statistics_virtual_memory_size,
+    double, "On Windows, this figure contains the total amount of memory that the memory manager has committed for the arangod process. On other systems, this figure contains The size of the virtual memory the process is using");
+DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections,
+    double, "The number of client connections that are currently open");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
+    ConnectionTimeScale, "Total connection time of a client");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
+    ConnectionTimeScale, "Total time needed to answer a request");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,
+    RequestTimeScale, "Request time needed to answer a request");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_queue_time,
+    RequestTimeScale, "Request time needed to answer a request");
+DECLARE_HISTOGRAM(arangodb_client_connection_statistics_io_time,
+    RequestTimeScale, "Request time needed to answer a request");
+DECLARE_COUNTER(arangodb_http_request_statistics_total_requests_total,
+    "Total number of HTTP requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_superuser_requests_total,
+    "Total number of HTTP requests executed by superuser/JWT");
+DECLARE_COUNTER(arangodb_http_request_statistics_user_requests_total,
+    "Total number of HTTP requests executed by clients");
+DECLARE_COUNTER(arangodb_http_request_statistics_async_requests_total,
+    "Number of asynchronously executed HTTP requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_delete_requests_total,
+    "Number of HTTP DELETE requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_get_requests_total,
+    "Number of HTTP GET requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_head_requests_total,
+    "Number of HTTP HEAD requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_options_requests_total,
+    "Number of HTTP OPTIONS requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_patch_requests_total,
+    "Number of HTTP PATCH requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_post_requests_total,
+    "Number of HTTP POST requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_http_put_requests_total,
+    "Number of HTTP PUT requests");
+DECLARE_COUNTER(arangodb_http_request_statistics_other_http_requests_total,
+    "Number of other HTTP requests");
+DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
+    "Number of seconds elapsed since server start");
+DECLARE_GAUGE(arangodb_server_statistics_physical_memory,
+    double, "Physical memory in bytes");
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cores,
+    double, "Number of CPU cores visible to the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_user_percent,
+    double, "Percentage of time that the system CPUs have spent in user mode");
+DECLARE_GAUGE(arangodb_server_statistics_system_percent,
+    double, "Percentage of time that the system CPUs have spent in kernel mode");
+DECLARE_GAUGE(arangodb_server_statistics_idle_percent,
+    double, "Percentage of time that the system CPUs have been idle");
+DECLARE_GAUGE(arangodb_server_statistics_iowait_percent,
+    double, "Percentage of time that the system CPUs have been waiting for I/O");
+DECLARE_GAUGE(arangodb_v8_context_alive,
+    double, "Number of V8 contexts currently alive");
+DECLARE_GAUGE(arangodb_v8_context_busy,
+    double, "Number of V8 contexts currently busy");
+DECLARE_GAUGE(arangodb_v8_context_dirty,
+    double, "Number of V8 contexts currently dirty");
+DECLARE_GAUGE(arangodb_v8_context_free,
+    double, "Number of V8 contexts currently free");
+DECLARE_GAUGE(arangodb_v8_context_max,
+    double, "Maximum number of concurrent V8 contexts");
+DECLARE_GAUGE(arangodb_v8_context_min,
+    double, "Minimum number of concurrent V8 contexts");
+
+
 // local_name: {"prometheus_name", "type", "help"}
 std::map<std::string, std::vector<std::string>> statStrings{
   {"bytesReceived",
    {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
-  {"bytesReceivedCount",
-   {"arangodb_client_connection_statistics_bytes_received_count", "gauge",
-    "Bytes received for a request"}},
-  {"bytesReceivedSum",
-   {"arangodb_client_connection_statistics_bytes_received_sum", "gauge",
-    "Bytes received for a request"}},
   {"bytesSent",
    {"arangodb_client_connection_statistics_bytes_sent", "histogram",
     "Bytes sent for a request"}},
-  {"bytesSentCount",
-   {"arangodb_client_connection_statistics_bytes_sent_count", "gauge",
-    "Bytes sent for a request"}},
-  {"bytesSentSum",
-   {"arangodb_client_connection_statistics_bytes_sent_sum", "gauge",
-    "Bytes sent for a request"}},
   {"minorPageFaults",
-   {"arangodb_process_statistics_minor_page_faults", "gauge",
+   {"arangodb_process_statistics_minor_page_faults", "gauge/counter",
     "The number of minor faults the process has made which have not required loading a memory page from disk. This figure is not reported on Windows"}},
   {"majorPageFaults",
    {"arangodb_process_statistics_major_page_faults", "gauge",
     "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk"}},
-  {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received", "histogram",
-    "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
     "Amount of time that this process has been scheduled in user mode, measured in seconds"}},
@@ -171,43 +263,43 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_io_time_sum", "gauge",
     "Request time needed to answer a request"}},
   {"httpReqsTotal",
-   {"arangodb_http_request_statistics_total_requests", "gauge",
+   {"arangodb_http_request_statistics_total_requests", "gauge/counter",
     "Total number of HTTP requests"}},
   {"httpReqsSuperuser",
-   {"arangodb_http_request_statistics_superuser_requests", "gauge",
+   {"arangodb_http_request_statistics_superuser_requests", "gauge/counter",
     "Total number of HTTP requests executed by superuser/JWT"}},
   {"httpReqsUser",
-   {"arangodb_http_request_statistics_user_requests", "gauge",
+   {"arangodb_http_request_statistics_user_requests", "gauge/counter",
     "Total number of HTTP requests executed by clients"}},
   {"httpReqsAsync",
-   {"arangodb_http_request_statistics_async_requests", "gauge",
+   {"arangodb_http_request_statistics_async_requests", "gauge/counter",
     "Number of asynchronously executed HTTP requests"}},
   {"httpReqsDelete",
-   {"arangodb_http_request_statistics_http_delete_requests", "gauge",
+   {"arangodb_http_request_statistics_http_delete_requests", "gauge/counter",
     "Number of HTTP DELETE requests"}},
   {"httpReqsGet",
-   {"arangodb_http_request_statistics_http_get_requests", "gauge",
+   {"arangodb_http_request_statistics_http_get_requests", "gauge/counter",
     "Number of HTTP GET requests"}},
   {"httpReqsHead",
-   {"arangodb_http_request_statistics_http_head_requests", "gauge",
+   {"arangodb_http_request_statistics_http_head_requests", "gauge/counter",
     "Number of HTTP HEAD requests"}},
   {"httpReqsOptions",
-   {"arangodb_http_request_statistics_http_options_requests", "gauge",
+   {"arangodb_http_request_statistics_http_options_requests", "gauge/counter",
     "Number of HTTP OPTIONS requests"}},
   {"httpReqsPatch",
-   {"arangodb_http_request_statistics_http_patch_requests", "gauge",
+   {"arangodb_http_request_statistics_http_patch_requests", "gauge/counter",
     "Number of HTTP PATCH requests"}},
   {"httpReqsPost",
-   {"arangodb_http_request_statistics_http_post_requests", "gauge",
+   {"arangodb_http_request_statistics_http_post_requests", "gauge/counter",
     "Number of HTTP POST requests"}},
   {"httpReqsPut",
-   {"arangodb_http_request_statistics_http_put_requests", "gauge",
+   {"arangodb_http_request_statistics_http_put_requests", "gauge/counter",
     "Number of HTTP PUT requests"}},
   {"httpReqsOther",
-   {"arangodb_http_request_statistics_other_http_requests", "gauge",
+   {"arangodb_http_request_statistics_other_http_requests", "gauge/counter",
     "Number of other HTTP requests"}},
   {"uptime",
-   {"arangodb_server_statistics_server_uptime", "gauge",
+   {"arangodb_server_statistics_server_uptime", "gauge/counter",
     "Number of seconds elapsed since server start"}},
   {"physicalSize",
    {"arangodb_server_statistics_physical_memory", "gauge",
@@ -246,12 +338,6 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_v8_context_min", "gauge",
     "Minimum number of concurrent V8 contexts"}},
 };
-
-std::initializer_list<double> const BytesReceivedDistributionCuts{250, 1000, 2000, 5000, 10000};
-std::initializer_list<double> const BytesSentDistributionCuts{250, 1000, 2000, 5000, 10000};
-std::initializer_list<double> const ConnectionTimeDistributionCuts{0.1, 1.0, 60.0};
-std::initializer_list<double> const RequestTimeDistributionCuts{
-    0.01, 0.05, 0.1, 0.2, 0.5, 1.0, 5.0, 15.0, 30.0};
 
 Counter AsyncRequests;
 Counter HttpConnections;
@@ -477,8 +563,6 @@ void StatisticsFeature::appendHistogram(
   std::string const& label, std::initializer_list<std::string> const& les,
   bool v2) {
 
-  auto const countLabel = label + "Count";
-  auto const countSum = label + "Sum";
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
@@ -504,13 +588,27 @@ void StatisticsFeature::appendHistogram(
   result += name + "_count " + std::to_string(sum) + '\n';
 }
 
-void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label) {
+std::string metricType(std::string const& type, bool v2) {
+  if (type.compare("counter") == 0 || type.compare("gauge") == 0 ||
+      type.compare("histogram") == 0) {
+    return type;
+  }
+  auto pos = type.find('/');
+  TRI_ASSERT(pos != std::string::npos);
+  return v2 ? type.substr(pos+1) : type.substr(0, pos);
+}
+
+void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label, bool v2) {
   auto const& stat = statStrings.at(label);
-  std::string const& name = stat.at(0);
+  std::string name = stat.at(0);
+  std::string type = metricType(stat[1], v2);
+  if (type == "counter") {  // Note that this only happens for v2==true
+    name += "_total";
+  }
 
   result +=
     "\n# HELP " + name + " " + stat[2] +
-    "\n# TYPE " + name + " " + stat[1] +
+    "\n# TYPE " + name + " " + metricType(stat[1], v2) +
     '\n' + name + " " + val + '\n';
 }
 
@@ -527,31 +625,31 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
       server().getFeature<MetricsFeature>().serverStatistics();
 
   // processStatistics()
-  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults");
-  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults");
+  appendMetric(result, std::to_string(info._minorPageFaults), "minorPageFaults", v2);
+  appendMetric(result, std::to_string(info._majorPageFaults), "majorPageFaults", v2);
   if (info._scClkTck != 0) {  // prevent division by zero
     appendMetric(
       result, std::to_string(
-        static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck)), "userTime");
+        static_cast<double>(info._userTime) / static_cast<double>(info._scClkTck)), "userTime", v2);
     appendMetric(
       result, std::to_string(
-        static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck)), "systemTime");
+        static_cast<double>(info._systemTime) / static_cast<double>(info._scClkTck)), "systemTime", v2);
   }
-  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads");
-  appendMetric(result, std::to_string(rss), "residentSize");
-  appendMetric(result, std::to_string(rssp), "residentSizePercent");
-  appendMetric(result, std::to_string(info._virtualSize), "virtualSize");
-  appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize");
-  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime");
-  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores");
+  appendMetric(result, std::to_string(info._numberThreads), "numberOfThreads", v2);
+  appendMetric(result, std::to_string(rss), "residentSize", v2);
+  appendMetric(result, std::to_string(rssp), "residentSizePercent", v2);
+  appendMetric(result, std::to_string(info._virtualSize), "virtualSize", v2);
+  appendMetric(result, std::to_string(PhysicalMemory::getValue()), "physicalSize", v2);
+  appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", v2);
+  appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores", v2);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
     auto snapshot = cpuUsage.snapshot();
-    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent");
-    appendMetric(result, std::to_string(snapshot.systemPercent()), "systemPercent");
-    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent");
-    appendMetric(result, std::to_string(snapshot.iowaitPercent()), "iowaitPercent");
+    appendMetric(result, std::to_string(snapshot.userPercent()), "userPercent", v2);
+    appendMetric(result, std::to_string(snapshot.systemPercent()), "systemPercent", v2);
+    appendMetric(result, std::to_string(snapshot.idlePercent()), "idlePercent", v2);
+    appendMetric(result, std::to_string(snapshot.iowaitPercent()), "iowaitPercent", v2);
   }
 
   if (isEnabled()) {
@@ -562,7 +660,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
     RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
 
     // _clientStatistics()
-    appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
+    appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections", v2);
     appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.totalTime, "totalTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
@@ -581,18 +679,18 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
 
     // _httpStatistics()
     using rest::RequestType;
-    appendMetric(result, std::to_string(connectionStats.asyncRequests.get()), "httpReqsAsync");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()), "httpReqsDelete");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::GET].get()), "httpReqsGet");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::HEAD].get()), "httpReqsHead");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()), "httpReqsOptions");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PATCH].get()), "httpReqsPatch");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::POST].get()), "httpReqsPost");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PUT].get()), "httpReqsPut");
-    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()), "httpReqsOther");
-    appendMetric(result, std::to_string(connectionStats.totalRequests.get()), "httpReqsTotal");
-    appendMetric(result, std::to_string(connectionStats.totalRequestsSuperuser.get()), "httpReqsSuperuser");
-    appendMetric(result, std::to_string(connectionStats.totalRequestsUser.get()), "httpReqsUser");
+    appendMetric(result, std::to_string(connectionStats.asyncRequests.get()), "httpReqsAsync", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::DELETE_REQ].get()), "httpReqsDelete", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::GET].get()), "httpReqsGet", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::HEAD].get()), "httpReqsHead", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::OPTIONS].get()), "httpReqsOptions", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PATCH].get()), "httpReqsPatch", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::POST].get()), "httpReqsPost", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::PUT].get()), "httpReqsPut", v2);
+    appendMetric(result, std::to_string(connectionStats.methodRequests[(int)RequestType::ILLEGAL].get()), "httpReqsOther", v2);
+    appendMetric(result, std::to_string(connectionStats.totalRequests.get()), "httpReqsTotal", v2);
+    appendMetric(result, std::to_string(connectionStats.totalRequestsSuperuser.get()), "httpReqsSuperuser", v2);
+    appendMetric(result, std::to_string(connectionStats.totalRequestsUser.get()), "httpReqsUser", v2);
   }
 
   V8DealerFeature::Statistics v8Counters{};
@@ -602,12 +700,12 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now, boo
       v8Counters = dealer.getCurrentContextNumbers();
     }
   }
-  appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable");
-  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy");
-  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty");
-  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree");
-  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin");
-  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax");
+  appendMetric(result, std::to_string(v8Counters.available), "v8ContextAvailable", v2);
+  appendMetric(result, std::to_string(v8Counters.busy), "v8ContextBusy", v2);
+  appendMetric(result, std::to_string(v8Counters.dirty), "v8ContextDirty", v2);
+  appendMetric(result, std::to_string(v8Counters.free), "v8ContextFree", v2);
+  appendMetric(result, std::to_string(v8Counters.min), "v8ContextMin", v2);
+  appendMetric(result, std::to_string(v8Counters.max), "v8ContextMax", v2);
   result += "\n";
 }
 
