@@ -2846,3 +2846,813 @@
   name: arangodb_v8_context_min
   type: gauge
   unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_actual_delayed_write_rate
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_actual_delayed_write_rate
+
+    '
+  name: rocksdb_actual_delayed_write_rate
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_background_errors
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_background_errors
+
+    '
+  name: rocksdb_background_errors
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_base_level
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_base_level
+
+    '
+  name: rocksdb_base_level
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_capacity
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_capacity
+
+    '
+  name: rocksdb_block_cache_capacity
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_pinned_usage
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_pinned_usage
+
+    '
+  name: rocksdb_block_cache_pinned_usage
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_usage
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_usage
+
+    '
+  name: rocksdb_block_cache_usage
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_allocated
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_allocated
+
+    '
+  name: rocksdb_cache_allocated
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_hit_rate_lifetime
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_hit_rate_lifetime
+
+    '
+  name: rocksdb_cache_hit_rate_lifetime
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_hit_rate_recent
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_hit_rate_recent
+
+    '
+  name: rocksdb_cache_hit_rate_recent
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_limit
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_limit
+
+    '
+  name: rocksdb_cache_limit
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compaction_pending
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compaction_pending
+
+    '
+  name: rocksdb_compaction_pending
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level0
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level0
+
+    '
+  name: rocksdb_compression_ratio_at_level0
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level1
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level1
+
+    '
+  name: rocksdb_compression_ratio_at_level1
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level2
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level2
+
+    '
+  name: rocksdb_compression_ratio_at_level2
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level3
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level3
+
+    '
+  name: rocksdb_compression_ratio_at_level3
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level4
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level4
+
+    '
+  name: rocksdb_compression_ratio_at_level4
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level5
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level5
+
+    '
+  name: rocksdb_compression_ratio_at_level5
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level6
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level6
+
+    '
+  name: rocksdb_compression_ratio_at_level6
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cur_size_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cur_size_active_mem_table
+
+    '
+  name: rocksdb_cur_size_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cur_size_all_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cur_size_all_mem_tables
+
+    '
+  name: rocksdb_cur_size_all_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_live_data_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_live_data_size
+
+    '
+  name: rocksdb_estimate_live_data_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_num_keys
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_num_keys
+
+    '
+  name: rocksdb_estimate_num_keys
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_pending_compaction_bytes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_pending_compaction_bytes
+
+    '
+  name: rocksdb_estimate_pending_compaction_bytes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_table_readers_mem
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_table_readers_mem
+
+    '
+  name: rocksdb_estimate_table_readers_mem
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_free_disk_space
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_free_disk_space
+
+    '
+  name: rocksdb_free_disk_space
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_free_inodes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_free_inodes
+
+    '
+  name: rocksdb_free_inodes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_is_file_deletions_enabled
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_is_file_deletions_enabled
+
+    '
+  name: rocksdb_is_file_deletions_enabled
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_is_write_stopped
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_is_write_stopped
+
+    '
+  name: rocksdb_is_write_stopped
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_live_sst_files_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_live_sst_files_size
+
+    '
+  name: rocksdb_live_sst_files_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_mem_table_flush_pending
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_mem_table_flush_pending
+
+    '
+  name: rocksdb_mem_table_flush_pending
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_min_log_number_to_keep
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_min_log_number_to_keep
+
+    '
+  name: rocksdb_min_log_number_to_keep
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_deletes_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_deletes_active_mem_table
+
+    '
+  name: rocksdb_num_deletes_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_deletes_imm_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_deletes_imm_mem_tables
+
+    '
+  name: rocksdb_num_deletes_imm_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_entries_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_entries_active_mem_table
+
+    '
+  name: rocksdb_num_entries_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_entries_imm_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_entries_imm_mem_tables
+
+    '
+  name: rocksdb_num_entries_imm_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level0
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level0
+
+    '
+  name: rocksdb_num_files_at_level0
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level1
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level1
+
+    '
+  name: rocksdb_num_files_at_level1
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level2
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level2
+
+    '
+  name: rocksdb_num_files_at_level2
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level3
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level3
+
+    '
+  name: rocksdb_num_files_at_level3
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level4
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level4
+
+    '
+  name: rocksdb_num_files_at_level4
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level5
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level5
+
+    '
+  name: rocksdb_num_files_at_level5
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level6
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level6
+
+    '
+  name: rocksdb_num_files_at_level6
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_immutable_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_immutable_mem_table
+
+    '
+  name: rocksdb_num_immutable_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_immutable_mem_table_flushed
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_immutable_mem_table_flushed
+
+    '
+  name: rocksdb_num_immutable_mem_table_flushed
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_live_versions
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_live_versions
+
+    '
+  name: rocksdb_num_live_versions
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_running_compactions
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_running_compactions
+
+    '
+  name: rocksdb_num_running_compactions
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_running_flushes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_running_flushes
+
+    '
+  name: rocksdb_num_running_flushes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_snapshots
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_snapshots
+
+    '
+  name: rocksdb_num_snapshots
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_oldest_snapshot_time
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_oldest_snapshot_time
+
+    '
+  name: rocksdb_oldest_snapshot_time
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_size_all_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_size_all_mem_tables
+
+    '
+  name: rocksdb_size_all_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_disk_space
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_disk_space
+
+    '
+  name: rocksdb_total_disk_space
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_inodes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_inodes
+
+    '
+  name: rocksdb_total_inodes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_sst_files_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_sst_files_size
+
+    '
+  name: rocksdb_total_sst_files_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdbengine_throttle_bps
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdbengine_throttle_bps
+
+    '
+  name: rocksdbengine_throttle_bps
+  type: gauge
+  unit: number
