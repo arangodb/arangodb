@@ -559,7 +559,6 @@ set(LIB_ARANGO_AGENCY_SOURCES
   Agency/ActiveFailoverJob.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
-  Agency/AgencyFeature.cpp
   Agency/AgencyPaths.cpp
   Agency/Agent.cpp
   Agency/AgentCallback.cpp
@@ -592,7 +591,6 @@ set(LIB_ARANGO_V8SERVER_SOURCES
   Transaction/V8Context.cpp
   V8Server/FoxxFeature.cpp
   V8Server/V8Context.cpp
-  V8Server/V8DealerFeature.cpp
   V8Server/v8-actions.cpp
   V8Server/v8-analyzers.cpp
   V8Server/v8-collection-util.cpp
@@ -625,6 +623,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Agency/AgencyFeature.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -788,6 +787,7 @@ set(LIB_ARANGOSERVER_SOURCES
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp
+  V8Server/V8DealerFeature.cpp
 )
 
 set(LIB_ARANGO_COMMON_REST_HANDLER_SOURCES
