@@ -460,6 +460,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${GCOV_LIBRARY}
   ${BFD_STATIC_LIBS}
+  boost_locale
   ${Lz4_STATIC_LIB}
   ${ICU_STATIC_LIBS}
   ${Unwind_STATIC_LIBS}
