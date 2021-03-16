@@ -31,6 +31,8 @@
 #include "../Mocks/Servers.h"
 
 #include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
@@ -64,7 +66,8 @@ class KPathFinderTest_Refactored
   MockGraph mockGraph;
   mocks::MockAqlServer _server{true};
   std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
-  arangodb::ResourceMonitor resourceMonitor{};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   KPathFinderTest_Refactored() {
     if (activateLogging) {

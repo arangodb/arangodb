@@ -26,6 +26,7 @@
 
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/AgencyCache.h"
 #include "Mocks/Servers.h"
 
 using namespace arangodb;
@@ -118,5 +119,16 @@ TEST_F(ClusterInfoTest, testServerAliasExists) {
     ASSERT_FALSE(ci.serverAliasExists("PRMR-012345-678"));
     ASSERT_FALSE(ci.serverAliasExists("PRMR-9999-666"));
   }
+}
+
+TEST_F(ClusterInfoTest, plan_will_provide_latest_id) {
+  auto &cache {server.getFeature<ClusterFeature>().agencyCache()};
+  auto [acb, index] {cache.read({AgencyCommHelper::path("Sync/LatestID")})};
+  auto expectedLatestId {acb->slice().at(0).get("arango").get("Sync").get("LatestID").getInt()};
+  auto& ci {server.getFeature<arangodb::ClusterFeature>().clusterInfo()};
+  auto builder {std::make_shared<VPackBuilder>()};
+  auto result {ci.agencyPlan(builder)};
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(), expectedLatestId);
 }
 

@@ -28,6 +28,8 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -45,7 +47,8 @@ namespace aql {
 
 class AqlShadowItemRowTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   void AssertResultRow(InputAqlItemRow const& input, VPackSlice result,

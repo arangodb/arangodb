@@ -26,6 +26,8 @@
 #include "./MockGraph.h"
 #include "./MockGraphProvider.h"
 
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Mocks/PreparedResponseConnectionPool.h"
 
 #include "Graph/Providers/ClusterProvider.h"
@@ -56,15 +58,15 @@ class GraphProviderTest : public ::testing::Test {
   using Step = typename ProviderType::Step;
 
  protected:
-  arangodb::ResourceMonitor resourceMonitor{};
-
   // Only used to mock a singleServer
   std::unique_ptr<GraphTestSetup> s{nullptr};
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<mocks::MockServer> server{nullptr};
   std::unique_ptr<arangodb::aql::Query> query{nullptr};
-
   std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{nullptr};
+
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}

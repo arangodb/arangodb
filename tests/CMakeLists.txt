@@ -177,6 +177,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
   Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
