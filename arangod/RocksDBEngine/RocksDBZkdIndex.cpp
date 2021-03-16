@@ -364,7 +364,10 @@ auto zkd::supportsFilterCondition(
   }
 
   // TODO -- actually return costs
-  return Index::FilterCosts::zeroCosts();
+  auto costs = Index::FilterCosts::defaultCosts(itemsInIndex / extractedBounds.size());
+  costs.coveredAttributes = extractedBounds.size();
+  costs.supportsCondition = true;
+  return costs;
 }
 
 auto zkd::specializeCondition(arangodb::Index const* index, arangodb::aql::AstNode* condition,

@@ -228,9 +228,10 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::FulltextIndex);
     case RocksDBEntryType::LegacyGeoIndexValue:
     case RocksDBEntryType::GeoIndexValue:
-    case RocksDBEntryType::ZkdIndexValue:
     case RocksDBEntryType::UniqueZkdIndexValue:
       return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::GeoIndex);
+    case RocksDBEntryType::ZkdIndexValue:
+      return RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::ZkdIndex);
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::CounterValue:
