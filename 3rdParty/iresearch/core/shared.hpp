@@ -24,6 +24,12 @@
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
 
+#ifdef __APPLE__
+#include <machine/endian.h>
+#elif __linux__
+#include <endian.h>
+#endif
+
 #include <cfloat>
 #include <cstdlib>
 #include <iostream>
@@ -287,6 +293,24 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Endianess
+////////////////////////////////////////////////////////////////////////////////
+
+#ifdef __APPLE__
+#if BYTE_ORDER == BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif _WIN32
+// always LE
+#elif __linux__
+#if __BYTE_ORDER == __BIG_ENDIAN
+#define IRESEARCH_BIG_ENDIAN
+#endif
+#elif !defined(_MSC_VER)
+#error "unsupported os or compiler"
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
 
 // likely/unlikely branch indicator
 // macro definitions similar to the ones at
@@ -308,7 +332,10 @@
 
 #define UNUSED(par) (void)(par)
 
-namespace iresearch { }
+namespace iresearch_absl { }
+namespace iresearch {
+namespace absl = ::iresearch_absl;
+}
 namespace irs = ::iresearch;
 
 #define STRINGIFY(x) #x

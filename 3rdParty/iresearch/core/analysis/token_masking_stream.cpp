@@ -28,26 +28,26 @@
 
 namespace {
 
-bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
-  static const uint8_t map[256] = {
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 0 - 15
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 16 - 31
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 32 - 47
-     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 16, 16, 16, 16, 16, 16, // ASCII 48 - 63
-    16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 64 - 79
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 80 - 95
-    16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 96 - 111
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 112 - 127
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 128 - 143
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 144 - 159
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 160 - 175
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 176 - 191
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 192 - 207
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 208 - 223
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 224 - 239
-    16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
-  };
+constexpr char HEX_DECODE_MAP[256] = {
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 0 - 15
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 16 - 31
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 32 - 47
+   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 16, 16, 16, 16, 16, 16, // ASCII 48 - 63
+  16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 64 - 79
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 80 - 95
+  16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 96 - 111
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 112 - 127
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 128 - 143
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 144 - 159
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 160 - 175
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 176 - 191
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 192 - 207
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 208 - 223
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 224 - 239
+  16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
+};
 
+bool hex_decode(std::string& buf, const irs::string_ref& value) {
   if (value.size() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
@@ -60,15 +60,10 @@ bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
   buf.reserve(buf.size() + value.size()/2);
 
   for (size_t i = 0, count = value.size(); i < count; i += 2) {
-    auto hi = map[size_t(value[i])];
-    auto lo = map[size_t(value[i + 1])];
+    auto hi = HEX_DECODE_MAP[size_t(value[i])];
+    auto lo = HEX_DECODE_MAP[size_t(value[i + 1])];
 
     if (hi >= 16 || lo >= 16) {
-      IR_FRMT_WARN(
-        "Invalid hex-encoded value while HEX decoding masked token: %s",
-        value.c_str()
-      );
-
       return false;
     }
 
@@ -79,7 +74,7 @@ bool hex_decode(irs::bstring& buf, const irs::string_ref& value) {
 }
 
 irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
-  std::unordered_set<irs::bstring> tokens;
+  irs::analysis::token_masking_stream::MaskSet tokens;
 
   for (size_t begin = 0, end = 0, length = mask.size();
        end < length;
@@ -91,11 +86,11 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
     }
 
     if (end > begin) {
-      irs::bstring token;
+      std::string token;
       irs::string_ref value(&mask[begin], end - begin);
 
       if (!hex_decode(token, value)) {
-        tokens.emplace(irs::ref_cast<irs::byte_type>(value)); // interpret verbatim
+        tokens.emplace(value); // interpret verbatim
       } else {
         tokens.emplace(std::move(token));
       }
@@ -107,11 +102,9 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
   );
 }
 
-irs::analysis::analyzer::ptr construct(
-    const rapidjson::Document::Array& mask
-) {
+irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
   size_t offset = 0;
-  std::unordered_set<irs::bstring> tokens;
+  irs::analysis::token_masking_stream::MaskSet tokens;
 
   for (auto itr = mask.Begin(), end = mask.End(); itr != end; ++itr, ++offset) {
     if (!itr->IsString()) {
@@ -123,11 +116,11 @@ irs::analysis::analyzer::ptr construct(
       return nullptr;
     }
 
-    irs::bstring token;
+    std::string token;
     irs::string_ref value(itr->GetString());
 
     if (!hex_decode(token, value)) {
-      tokens.emplace(irs::ref_cast<irs::byte_type>(value)); // interpret verbatim
+      tokens.emplace(value); // interpret verbatim
     } else {
       tokens.emplace(std::move(token));
     }
@@ -138,7 +131,7 @@ irs::analysis::analyzer::ptr construct(
   );
 }
 
-static const irs::string_ref MASK_PARAM_NAME = "mask";
+constexpr irs::string_ref MASK_PARAM_NAME = "mask";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -202,13 +195,8 @@ REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(std::unordered_set<irs::bstring>&& mask)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<token_masking_stream>::get()},
+token_masking_stream::token_masking_stream(token_masking_stream::MaskSet&& mask)
+  : analyzer{irs::type<token_masking_stream>::get()},
     mask_(std::move(mask)),
     term_eof_(true) {
 }
@@ -233,11 +221,15 @@ bool token_masking_stream::next() {
 }
 
 bool token_masking_stream::reset(const string_ref& data) {
-  offset_.start = 0;
-  offset_.end = data.size();
-  payload_.value = ref_cast<uint8_t>(data);
-  term_.value = irs::ref_cast<irs::byte_type>(data);
-  term_eof_ = mask_.find(term_.value) != mask_.end();
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = uint32_t(data.size());
+
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
+
+  auto& term = std::get<term_attribute>(attrs_);
+  term.value = irs::ref_cast<irs::byte_type>(data);
+  term_eof_ = mask_.contains(data);
 
   return true;
 }

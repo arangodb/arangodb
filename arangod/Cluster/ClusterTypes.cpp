@@ -102,7 +102,7 @@ Result QueryAnalyzerRevisions::fromVelocyPack(velocypack::Slice slice) {
 }
 
 AnalyzersRevision::Revision QueryAnalyzerRevisions::getVocbaseRevision(
-  DatabaseID const& vocbase) const noexcept {
+  std::string_view vocbase) const noexcept {
   return vocbase == StaticStrings::SystemDatabase ? systemDbRevision : currentDbRevision;
 }
 

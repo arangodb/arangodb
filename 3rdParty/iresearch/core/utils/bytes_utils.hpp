@@ -45,6 +45,11 @@ struct bytes_io<T, sizeof(uint8_t)> {
   }
 
   template<typename InputIterator>
+  static T vskip(InputIterator& in) {
+    ++in;
+  }
+
+  template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
     // read direct same as writen in vwrite(...)
     return read(in, typename std::iterator_traits<InputIterator>::iterator_category());
@@ -72,6 +77,11 @@ struct bytes_io<T, sizeof(uint16_t)> {
     out |= static_cast<T>(*in);       ++in;
 
     return out;
+  }
+
+  template<typename InputIterator>
+  static T vskip(InputIterator& in) {
+    std::advance(in, 2);
   }
 
   template<typename InputIterator>
@@ -120,22 +130,32 @@ struct bytes_io<T, sizeof(uint32_t)> {
       in = numeric_utils::hton32(in);
     }
 
-    *reinterpret_cast<T*>(out) = in;
+    std::memcpy(out, &in, sizeof(T));
     out += sizeof(T);
   }
 
   template<typename InputIterator>
+  static void vskip(InputIterator& in) {
+    T v = *in; ++in; if (!(v & 0x80)) return;
+      v = *in; ++in; if (!(v & 0x80)) return;
+      v = *in; ++in; if (!(v & 0x80)) return;
+      v = *in; ++in; if (!(v & 0x80)) return;
+               ++in;                  return;
+  }
+
+  template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
-    T out = *in; ++in; if (!(out & 0x80)) return out;
+    constexpr T MASK = 0x80;
+    T out = *in; ++in; if (!(out & MASK)) return out;
 
     T b;
-    out -= 0x80;
-    b = *in; ++in; out += b << 7; if (!(b & 0x80)) return out;
-    out -= 0x80 << 7;
-    b = *in; ++in; out += b << 14; if (!(b & 0x80)) return out;
-    out -= 0x80 << 14;
-    b = *in; ++in; out += b << 21; if (!(b & 0x80)) return out;
-    out -= 0x80 << 21;
+    out -= MASK;
+    b = *in; ++in; out += b << 7; if (!(b & MASK)) return out;
+    out -= MASK << 7;
+    b = *in; ++in; out += b << 14; if (!(b & MASK)) return out;
+    out -= MASK << 14;
+    b = *in; ++in; out += b << 21; if (!(b & MASK)) return out;
+    out -= MASK << 21;
     b = *in; ++in; out += b << 28;
     // last byte always has MSB == 0, so we don't need to check and subtract 0x80
 
@@ -153,7 +173,8 @@ struct bytes_io<T, sizeof(uint32_t)> {
   }
 
   static T read(byte_type*& in) {
-    auto value = *reinterpret_cast<T*>(in);
+    T value;
+    std::memcpy(&value, in, sizeof(T));
 
     if (!numeric_utils::is_big_endian()) {
       value = numeric_utils::ntoh32(value);
@@ -216,13 +237,28 @@ struct bytes_io<T, sizeof(uint64_t)> {
       in = numeric_utils::hton64(in);
     }
 
-    *reinterpret_cast<T*>(out) = in;
+    std::memcpy(out, &in, sizeof(T));
     out += sizeof(T);
   }
 
   template<typename InputIterator>
+  static void vskip(InputIterator& in) {
+    constexpr T MASK = 0x80;
+    T v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+      v = *in; ++in; if (!(v & MASK)) return;
+               ++in;                  return;
+  }
+
+  template<typename InputIterator>
   static T vread(InputIterator& in, std::input_iterator_tag) {
-    const T MASK = 0x80;
+    constexpr T MASK = 0x80;
     T out = *in; ++in; if (!(out & MASK)) return out;
 
     T b;
@@ -258,7 +294,8 @@ struct bytes_io<T, sizeof(uint64_t)> {
   }
 
   static T read(byte_type*& in) {
-    auto value = *reinterpret_cast<T*>(in);
+    T value;
+    std::memcpy(&value, in, sizeof(T));
 
     if (!numeric_utils::is_big_endian()) {
       value = numeric_utils::ntoh64(value);
@@ -295,6 +332,18 @@ struct bytes_io<T, sizeof(uint64_t)> {
 }; // bytes_io<T, sizeof(uint64_t)>
 
 // -----------------------------------------------------------------------------
+// --SECTION--                             exported functions for skipping bytes
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief will increment 'in' to position after the end of the next value
+////////////////////////////////////////////////////////////////////////////////
+template<typename T, typename Iterator>
+inline void vskip(Iterator& in) {
+  bytes_io<T, sizeof(T)>::vskip(in);
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                              exported functions for reading bytes
 // -----------------------------------------------------------------------------
 
@@ -304,7 +353,8 @@ struct bytes_io<T, sizeof(uint64_t)> {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Iterator>
 inline T read(Iterator& in) {
-  return bytes_io<T, sizeof(T)>::read(in, typename std::iterator_traits<Iterator>::iterator_category());
+  return bytes_io<T, sizeof(T)>::read(
+    in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,7 +364,8 @@ inline T read(Iterator& in) {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Iterator>
 inline T vread(Iterator& in) {
-  return bytes_io<T, sizeof(T)>::vread(in, typename std::iterator_traits<Iterator>::iterator_category());
+  return bytes_io<T, sizeof(T)>::vread(
+    in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +375,8 @@ inline T vread(Iterator& in) {
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T, typename Iterator>
 inline T zvread(Iterator& in) {
-  return bytes_io<T, sizeof(T)>::zvread(in, typename std::iterator_traits<Iterator>::iterator_category());
+  return bytes_io<T, sizeof(T)>::zvread(
+    in, typename std::iterator_traits<Iterator>::iterator_category());
 }
 
 // -----------------------------------------------------------------------------

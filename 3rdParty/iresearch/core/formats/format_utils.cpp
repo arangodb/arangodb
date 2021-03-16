@@ -35,8 +35,7 @@ void validate_footer(index_input& in) {
   if (remain != format_utils::FOOTER_LEN) {
     throw index_error(string_utils::to_string(
       "while validating footer, error: invalid position '%ld'",
-      remain
-    ));
+      remain));
   }
 
   const int32_t magic = in.read_int();
@@ -44,8 +43,7 @@ void validate_footer(index_input& in) {
   if (magic != format_utils::FOOTER_MAGIC) {
     throw index_error(string_utils::to_string(
       "while validating footer, error: invalid magic number '%d'",
-      magic
-    ));
+      magic));
   }
 
   const int32_t alg_id = in.read_int();
@@ -53,8 +51,7 @@ void validate_footer(index_input& in) {
   if (alg_id != 0) {
     throw index_error(string_utils::to_string(
       "while validating footer, error: invalid algorithm '%d'",
-      alg_id
-    ));
+      alg_id));
   }
 }
 
@@ -72,35 +69,53 @@ void write_footer(index_output& out) {
   out.write_long(out.checksum());
 }
 
+size_t header_length(const string_ref& format) noexcept {
+  return sizeof(int32_t)*2 +
+         bytes_io<uint64_t>::vsize(format.size()) +
+         format.size();
+}
+
 int32_t check_header(
     index_input& in, 
     const string_ref& req_format,
     int32_t min_ver, int32_t max_ver) {
+  const ptrdiff_t left = in.length() - in.file_pointer();
+
+  if (left < 0) {
+    throw illegal_state();
+  }
+
+  const size_t expected = header_length(req_format);
+
+  if (static_cast<size_t>(left) < expected) {
+    throw index_error(string_utils::to_string(
+      "while checking header, error: only '" IR_SIZE_T_SPECIFIER
+      "' bytes left out of '" IR_SIZE_T_SPECIFIER "'",
+      left, expected));
+  }
+
   const int32_t magic = in.read_int();
 
   if (FORMAT_MAGIC != magic) {
-    throw irs::index_error(string_utils::to_string(
+    throw index_error(string_utils::to_string(
       "while checking header, error: invalid magic '%d'",
-      magic
-    ));
+      magic));
   }
 
   const auto format = read_string<std::string>(in);
 
   if (compare(req_format, format) != 0) {
-    throw irs::index_error(string_utils::to_string(
+    throw index_error(string_utils::to_string(
       "while checking header, error: format mismatch '%s' != '%s'",
-      format.c_str(), req_format.c_str()
-    ));
+      format.c_str(), req_format.c_str()));
   }
 
   const int32_t ver = in.read_int();
 
   if (ver < min_ver || ver > max_ver) {
-    throw irs::index_error(string_utils::to_string(
+    throw index_error(string_utils::to_string(
       "while checking header, error: invalid version '%d'",
-      ver
-    ));
+      ver));
   }
 
   return ver;
@@ -108,6 +123,14 @@ int32_t check_header(
 
 int64_t checksum(const index_input& in) {
   auto* stream = &in;
+
+  const auto length = stream->length();
+
+  if (length < sizeof(uint64_t)) {
+    throw index_error(string_utils::to_string(
+      "failed to read checksum from a file of size " IR_SIZE_T_SPECIFIER,
+      length));
+  }
 
   index_input::ptr dup;
   if (0 != in.file_pointer()) {
@@ -124,7 +147,7 @@ int64_t checksum(const index_input& in) {
   }
 
   assert(0 == stream->file_pointer());
-  return stream->checksum(stream->length() - sizeof(uint64_t));
+  return stream->checksum(length - sizeof(uint64_t));
 }
 
 }

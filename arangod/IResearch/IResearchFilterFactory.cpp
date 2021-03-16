@@ -3468,7 +3468,7 @@ Result fromFuncNgramMatch(
     irs::term_attribute const* token = irs::get<irs::term_attribute>(*analyzer);
     TRI_ASSERT(token);
     while (analyzer->next()) {
-      opts->ngrams.push_back(token->value);
+      opts->ngrams.push_back(irs::bstring(token->value));
     }
   }
   return {};

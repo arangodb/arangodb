@@ -166,7 +166,7 @@ struct QueryAnalyzerRevisions {
   /// @brief Gets analyzers revision to be used with specified database
   /// @param vocbase database name
   /// @return analyzers revision
-  AnalyzersRevision::Revision getVocbaseRevision(DatabaseID const& vocbase) const noexcept;
+  AnalyzersRevision::Revision getVocbaseRevision(std::string_view vocbase) const noexcept;
 
   static QueryAnalyzerRevisions QUERY_LATEST;
 

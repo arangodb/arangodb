@@ -150,7 +150,7 @@ DEFINE_FACTORY_DEFAULT(by_range)
   }
 
   limited_sample_collector<term_frequency> collector(ord.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   // iterate over the segments

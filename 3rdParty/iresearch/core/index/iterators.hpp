@@ -27,7 +27,6 @@
 #include "utils/attributes.hpp"
 #include "utils/attribute_provider.hpp"
 #include "utils/iterator.hpp"
-#include "utils/integer.hpp"
 #include "utils/memory.hpp"
 
 namespace iresearch {

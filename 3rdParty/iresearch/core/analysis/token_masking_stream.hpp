@@ -24,9 +24,12 @@
 #ifndef IRESEARCH_TOKEN_MASKING_STREAM_H
 #define IRESEARCH_TOKEN_MASKING_STREAM_H
 
+#include <absl/container/flat_hash_set.h>
+
 #include "analyzers.hpp"
 #include "token_attributes.hpp"
 #include "utils/frozen_attributes.hpp"
+#include "utils/hash_utils.hpp"
 
 namespace iresearch {
 namespace analysis {
@@ -35,26 +38,34 @@ namespace analysis {
 /// @brief an analyzer capable of masking the input, treated as a single token,
 ///        if it is present in the configured list
 ////////////////////////////////////////////////////////////////////////////////
-class token_masking_stream
-  : public frozen_attributes<4, analyzer>,
-    util::noncopyable {
+class token_masking_stream final
+  : public analyzer,
+    private util::noncopyable {
  public:
+  using MaskSet  = absl::flat_hash_set<std::string>;
+
   static constexpr string_ref type_name() noexcept { return "mask"; }
 
   static void init(); // for trigering registration in a static build
   static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(std::unordered_set<irs::bstring>&& mask);
+  explicit token_masking_stream(MaskSet&& mask);
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
   virtual bool next() override;
   virtual bool reset(const string_ref& data) override;
 
-  private:
-   irs::increment inc_;
-   std::unordered_set<irs::bstring> mask_;
-   irs::offset offset_;
-   irs::payload payload_; // raw token value
-   irs::term_attribute term_; // token value with evaluated quotes
-   bool term_eof_;
+ private:
+  using attributes = std::tuple<
+    increment,
+    offset,
+    payload,         // raw token value
+    term_attribute>; // token value with evaluated quotes
+
+  MaskSet mask_;
+  attributes attrs_;
+  bool term_eof_;
 };
 
 } // analysis

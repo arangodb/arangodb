@@ -394,7 +394,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.explicit_stopwords = std::unordered_set<std::string>({ "a", "of", "and" });
+      options.explicit_stopwords = { "a", "of", "and" };
       options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);

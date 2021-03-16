@@ -23,8 +23,9 @@
 #ifndef IRESEARCH_QUERY_H
 #define IRESEARCH_QUERY_H
 
-#include <unordered_map>
 #include <functional>
+
+#include <absl/container/node_hash_map.h>
 
 #include "shared.hpp"
 #include "search/sort.hpp"
@@ -32,37 +33,6 @@
 #include "utils/hash_utils.hpp"
 
 namespace iresearch {
-
-template<typename State>
-class states_cache : private util::noncopyable {
- private:
-  using states_map = std::unordered_map<const sub_reader*, State>;
-
- public:
-  using state_type = State;
-
-  explicit states_cache(size_t size) {
-    states_.reserve(size);
-  }
-
-  states_cache(states_cache&&) = default;
-  states_cache& operator=(states_cache&&) = default;
-
-  State& insert(const sub_reader& rdr) {
-    return states_[&rdr];
-  }
-
-  const State* find(const sub_reader& rdr) const noexcept {
-    auto it = states_.find(&rdr);
-    return states_.end() == it ? nullptr : &(it->second);
-  }
-
-  bool empty() const noexcept { return states_.empty(); }
-
-private:
-  // FIXME use vector instead?
-  states_map states_;
-}; // states_cache
 
 struct index_reader;
 

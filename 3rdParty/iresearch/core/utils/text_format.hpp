@@ -51,6 +51,10 @@ struct text { };
 ////////////////////////////////////////////////////////////////////////////////
 struct xml { };
 
+#ifdef IRESEARCH_USE_VPACK_LIBRARY
+struct vpack { };
+#endif
+
 } // text_format
 } // ROOT
 

@@ -32,11 +32,12 @@
 
 #include "shared.hpp"
 
-#include "cpuinfo.hpp"
-
 #include <numeric>
 #include <cassert>
+#include <climits>
 #include <cmath>
+
+#include "cpuinfo.hpp"
 
 namespace iresearch {
 namespace math {

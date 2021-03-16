@@ -44,10 +44,10 @@ struct documents final : attribute {
   bitset value;
 }; // documents
 
-struct term_meta final : irs::term_meta {
-  term_meta(): e_skip_start(0) {} // GCC 4.9 does not initialize unions properly
+struct term_meta : irs::term_meta {
+  term_meta() noexcept : e_skip_start(0) {} // GCC 4.9 does not initialize unions properly
 
-  void clear() override {
+  void clear() noexcept {
     irs::term_meta::clear();
     doc_start = pos_start = pay_start = 0;
     pos_end = type_limits<type_t::address_t>::invalid();

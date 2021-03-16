@@ -77,6 +77,8 @@ struct IRESEARCH_API data_input {
 
   virtual size_t length() const = 0;
 
+  /// @return EOF mark
+  /// @note calling "read_byte()" on a stream in EOF state is undefined behavior
   virtual bool eof() const = 0;
 
   int16_t read_short() {
