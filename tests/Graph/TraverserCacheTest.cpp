@@ -72,7 +72,7 @@ class TraverserCacheTest : public ::testing::Test {
   ~TraverserCacheTest() = default;
 };
 
-TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached) {
+TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_available) {
   // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
   graph::MockGraph graph{};
   gdb.addGraph(graph);
@@ -89,9 +89,25 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_not_cached
   traverserCache->insertVertexIntoResult(arangodb::velocypack::HashedStringRef(id), builder);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
-  ASSERT_TRUE(all.size() == 1);
+  ASSERT_EQ(all.size(), 1);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   ASSERT_TRUE(all[0].second == expectedMessage);
+}
+
+TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_available) {
+  // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
+  graph::MockGraph graph{};
+  gdb.addGraph(graph);
+  
+  std::shared_ptr<arangodb::LogicalCollection> col = gdb.vocbase.lookupCollection("e");
+  LocalDocumentId localDocumentId{1};
+  DataSourceId dataSourceId{col->id()};
+  EdgeDocumentToken edt{dataSourceId, localDocumentId};
+  VPackBuilder builder;
+
+  // NOTE: we do not have the data, so we get null for any vertex
+  traverserCache->insertEdgeIntoResult(edt, builder);
+  ASSERT_TRUE(builder.slice().isNull());
 }
 
 }  // namespace traverser_cache_test

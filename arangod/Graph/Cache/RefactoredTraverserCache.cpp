@@ -99,7 +99,6 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
-    TRI_ASSERT(false);  // for maintainer mode
   }
   return res;
 }
