@@ -1,6 +1,9 @@
 devel
 -----
 
+* Log the actual signal instead of "control-c" and also include the process id
+  of the process that sent the signal.
+
 * Fixed Github issue #13665: Improve index selection when there are multiple
   candidate indexes.
 
@@ -118,7 +121,7 @@ devel
 * Added metrics documentation snippets and infrastructure for that.
 
 * Added a new cluster distribution view to the web UI. The view includes general
-  details about cluster-wide distrubution in general as well as more detailed 
+  details about cluster-wide distribution in general as well as more detailed 
   shard distribution specific information.
 
 * Follower primaries respond with
