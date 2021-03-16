@@ -126,6 +126,25 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_str
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
 }
 
+TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_when_persisting_duplicate_string) {
+  auto memoryUsageBefore = _monitor->current();
+
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+  traverserCache->persistString(key);
+  auto memoryUsageAfterFirstInsert = _monitor->current();
+  EXPECT_LT(memoryUsageBefore, memoryUsageAfterFirstInsert);
+  auto returned = traverserCache->persistString(key);
+  // not allowed to be increased here
+  EXPECT_EQ(memoryUsageAfterFirstInsert, _monitor->current());
+  EXPECT_TRUE(returned.equals(key));
+
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageBefore, _monitor->current());
+}
+
 }  // namespace traverser_cache_test
 }  // namespace tests
 }  // namespace arangodb
