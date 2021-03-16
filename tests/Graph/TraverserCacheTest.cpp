@@ -98,7 +98,7 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_avail
   // prepare graph data - in this case, no data (no vertices and no edges, but collections v and e)
   graph::MockGraph graph{};
   gdb.addGraph(graph);
-  
+
   std::shared_ptr<arangodb::LogicalCollection> col = gdb.vocbase.lookupCollection("e");
   LocalDocumentId localDocumentId{1};
   DataSourceId dataSourceId{col->id()};
