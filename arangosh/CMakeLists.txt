@@ -41,17 +41,15 @@ add_library(arango_shell
   ${LIB_ARANGO_SHELL_SOURCES}
 )
 
-target_link_libraries(arango_shell arango_shell_common
-# None of the following is currently needed, as arango_shell_common needs to pull in arangoserver.
-#  arango
-#  arango_v8
-#  arango_v8_deadline
-#  fuerte
-#  ${MSVC_LIBS}
-#  ${SYSTEM_LIBRARIES}
-#  boost_system
-#  boost_boost
-)
+target_link_libraries(arango_shell arango_shell_common)
+target_link_libraries(arango_shell arango)
+target_link_libraries(arango_shell arango_v8)
+target_link_libraries(arango_shell arango_v8_deadline)
+target_link_libraries(arango_shell fuerte)
+target_link_libraries(arango_shell ${MSVC_LIBS})
+target_link_libraries(arango_shell ${SYSTEM_LIBRARIES})
+target_link_libraries(arango_shell boost_system)
+target_link_libraries(arango_shell boost_boost)
 
 ################################################################################
 ## arangobench
