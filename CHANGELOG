@@ -4,6 +4,22 @@ devel
 * Fixed Github issue #13665: Improve index selection when there are multiple
   candidate indexes.
 
+* When dropping a collection or an index with a larger amount of documents, the
+  key range for the collection/index in RocksDB gets compacted. Previously, the
+  compaction was running in foreground and thus would block the deletion operations.
+  Now, the compaction is running in background, so that the deletion operations 
+  can return earlier. 
+  The maximum number of compaction jobs that are executed in background can be
+  configured using the new startup parameter `--rocksdb.max-parallel-compactions`, 
+  which defaults to 2.
+
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore
+  if it is in the backup. This helps with unique key generation after
+  a hotbackup is restored to a young cluster.
+
+* Fixed a bug in the index count optimization that doubled counted documents
+  when using array expansions in the fields definition.
+  
 * Don't store selectivity estimate values for newly created system collections.
 
   Not storing the estimates has a benefit especially for the `_statistics`
