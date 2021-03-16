@@ -114,7 +114,7 @@ ResultT<std::pair<std::string, size_t>> RefactoredTraverserCache::extractCollect
 
   std::string colName = idHashed.substr(0, pos).toString();
   if (_collectionToShardMap.empty()) {
-    TRI_ASSERT(ServerState::instance()->isDBServer());
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
     return std::make_pair(colName, pos);
   }
   auto it = _collectionToShardMap.find(colName);
