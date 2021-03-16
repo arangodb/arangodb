@@ -49,7 +49,8 @@ jsunity.run(function dump_single_testsuite() {
       "testKeygenAutoInc",
       "testTransactionCommit",
       "testTransactionUpdate",
-      "testTransactionAbort"
+      "testTransactionAbort",
+      "testLatestId"
     ];
   }
 

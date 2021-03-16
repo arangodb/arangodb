@@ -173,6 +173,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
