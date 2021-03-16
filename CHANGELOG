@@ -1,6 +1,8 @@
 devel
 -----
 
+* Rename "save" return attribute in AQL function `DATE_UTCTOLOCAL` to "dst".
+
 * Log the actual signal instead of "control-c" and also include the process id
   of the process that sent the signal.
 
