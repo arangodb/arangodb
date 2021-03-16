@@ -179,22 +179,6 @@ void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::Hash
   }
 }
 
-aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
-  aql::AqlValue val;
-  if (!appendEdge(idToken, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
-aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(arangodb::velocypack::HashedStringRef idString) {
-  aql::AqlValue val;
-  if (!appendVertex(idString, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
 arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
     arangodb::velocypack::HashedStringRef idString) {
   auto it = _persistedStrings.find(idString);
