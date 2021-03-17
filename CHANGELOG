@@ -1,6 +1,8 @@
 devel
 -----
 
+* Allow AQL variable names starting with an underscore, as stated in the docs.
+
 * Fix progress reporting for arangoimport with large files on Windows.
   Previously, progress was only reported for the first 2GB of data due to a
   int overflow.

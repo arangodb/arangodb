@@ -35,24 +35,40 @@ var getParseResults = helper.getParseResults;
 var assertParseError = helper.assertParseError;
 
 function ahuacatlParseTestSuite () {
-  var errors = internal.errors;
+  const errors = internal.errors;
 
   function getCollections (result) {
-    var collections = result.collections;
+    let collections = result.collections;
 
     assertTrue(result.parsed);
-   
     collections.sort();
     return collections;
   }
 
   function getParameters (result) {
-    var parameters = result.parameters;
+    let parameters = result.parameters;
 
     assertTrue(result.parsed);
-   
     parameters.sort();
     return parameters;
+  }
+
+  function getVariables (result) {
+    let vars = [];
+
+    let recurse = (nodes) => {
+      nodes.forEach((node) => {
+        if (node.type === 'variable') {
+          vars.push(node.name);
+        }
+        if (node.hasOwnProperty('subNodes')) {
+          recurse(node.subNodes);
+        }
+      });
+    };
+
+    recurse(result.ast);
+    return vars;
   }
 
   return {
@@ -104,6 +120,26 @@ function ahuacatlParseTestSuite () {
       assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ' foo "); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 `foo "); 
       assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN 1 ´foo "); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test variable names
+////////////////////////////////////////////////////////////////////////////////
+
+    testVariableNames : function () {
+      assertEqual([ "foo" ], getVariables(getParseResults("let foo = 1 return foo")));
+      assertEqual([ "foo", "bar" ], getVariables(getParseResults("let foo = 1, bar = 2 return foo")));
+      assertEqual([ "_abc" ], getVariables(getParseResults("let _abc = 1 return _abc")));
+      assertEqual([ "$knurps" ], getVariables(getParseResults("let $knurps = 1 return $knurps")));
+      
+      assertEqual([ "FOO" ], getVariables(getParseResults("let FOO = 1 return FOO")));
+      assertEqual([ "FOO", "BAR" ], getVariables(getParseResults("let FOO = 1, BAR = 2 return FOO")));
+      assertEqual([ "_ABC" ], getVariables(getParseResults("let _ABC = 1 return _ABC")));
+      assertEqual([ "$KNURPS" ], getVariables(getParseResults("let $KNURPS = 1 return $KNURPS")));
+      
+      assertEqual([ "foo", "FOO", "Foo", "fOO" ], getVariables(getParseResults("let foo = 1, FOO = 2, Foo = 3, fOO = 4 return FOO")));
+      
+      assertEqual([ "_foo_foo_", "bar___bar", "baz_" ], getVariables(getParseResults("let _foo_foo_ = 1, bar___bar = 2, baz_ = 3 return _foo_foo_")));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
