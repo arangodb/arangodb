@@ -32,17 +32,24 @@ is found or the execution number is invalid.
 
 @EXAMPLES
 
-Cancel a Pregel job to stop the execution or to free up the results if
-`"store": false` is used:
+Cancel a Pregel job to stop the execution or to free up the results if it was
+started with `"store": false` and is in the done state:
 
 @EXAMPLE_ARANGOSH_RUN{RestPregelCancelConnectedComponents}
 
-~ var examples = require("@arangodb/graph-examples/example-graph.js");
-~ var graph = examples.loadGraph("connectedComponentsGraph");
+  var examples = require("@arangodb/graph-examples/example-graph.js");
+  var graph = examples.loadGraph("connectedComponentsGraph");
 
-~ var url = "/_api/control_pregel";
-~ var body = { algorithm: "wcc", graphName: "connectedComponentsGraph", params: { maxGSS: graph.components.count(), store: false } };
-~ var id = internal.arango.POST(url, body);
+  var url = "/_api/control_pregel";
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      store: false
+    }
+  };
+  var id = internal.arango.POST(url, body);
 
   var url = "/_api/control_pregel/" + id;
   var response = logCurlRequest("DELETE", url);

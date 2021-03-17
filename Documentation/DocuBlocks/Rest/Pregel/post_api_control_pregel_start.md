@@ -77,19 +77,29 @@ the results in the vertices as attribute `component`:
   var graph = examples.loadGraph("connectedComponentsGraph");
 
   var url = "/_api/control_pregel";
-| var body = {
-|   algorithm: "wcc",
-|   graphName: "connectedComponentsGraph",
-|   params: {
-|     maxGSS: graph.components.count(),
-|     resultField: "component",
-|   }
+  var body = {
+    algorithm: "wcc",
+    graphName: "connectedComponentsGraph",
+    params: {
+      maxGSS: graph.components.count(),
+      resultField: "component",
+    }
   }
   var response = logCurlRequest("POST", url, body);
 
   assert(response.code === 200);
 
   logJsonResponse(response);
+
+  while (true) {
+    var status = internal.arango.GET(url);
+    if (status.state == "done") {
+      break;
+    } else {
+      print(`Waiting for Pregel job ${id} (${status.state})...`);
+      internal.sleep(0.5);
+    }
+  }
 ~ examples.dropGraph("connectedComponentsGraph");
 
 @END_EXAMPLE_ARANGOSH_RUN
