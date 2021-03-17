@@ -1,6 +1,10 @@
 devel
 -----
 
+* Backport a bugfix from upstream RocksDB for opening encrypted files with
+  small sizes. Without the bugfix, the server may run into assertion failures
+  during recovery.
+
 * Fix progress reporting for arangoimport with large files on Windows.
   Previously, progress was only reported for the first 2GB of data due to a
   int overflow.
