@@ -25,18 +25,14 @@
 
 #include "fakeit.hpp"
 
-#include "Aql/AqlValue.h"
 #include "Aql/Query.h"
-#include "Aql/QueryWarnings.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredTraverserCache.h"
-//#include "Graph/ClusterTraverserCache.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
 
 #include <Aql/TraversalStats.h>
-#include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -122,6 +118,67 @@ TEST_F(TraverserCacheTest, it_should_increase_memory_usage_when_persisting_a_str
   traverserCache->persistString(key);
 
   EXPECT_LT(memoryUsageBefore, _monitor->current());
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageBefore, _monitor->current());
+}
+
+TEST_F(TraverserCacheTest, it_should_not_increase_memory_usage_twice_when_persisting_two_equal_strings) {
+  auto memoryUsageStart = _monitor->current();
+
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  traverserCache->persistString(key);
+  EXPECT_LT(memoryUsageStart, _monitor->current());
+  auto memoryUsageAfterFirstInsert = _monitor->current();
+  traverserCache->persistString(key);
+  EXPECT_EQ(memoryUsageAfterFirstInsert, _monitor->current());
+
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageStart, _monitor->current());
+}
+
+TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting_two_strings) {
+  auto memoryUsageStart = _monitor->current();
+
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+  auto data2 = VPackParser::fromJson(R"({"_key":"456", "value":456})");
+  VPackSlice doc2 = data2->slice();
+  HashedStringRef key2{doc2.get("_key")};
+
+  traverserCache->persistString(key);
+  EXPECT_LT(memoryUsageStart, _monitor->current());
+  auto memoryUsageAfterFirstInsert = _monitor->current();
+  traverserCache->persistString(key2);
+  EXPECT_LT(memoryUsageAfterFirstInsert, _monitor->current());
+
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageStart, _monitor->current());
+}
+
+TEST_F(TraverserCacheTest, it_should_increase_memory_usage_twice_when_persisting_a_string_clear_persist_again) {
+  auto memoryUsageBefore = _monitor->current();
+
+  auto data = VPackParser::fromJson(R"({"_key":"123", "value":123})");
+  VPackSlice doc = data->slice();
+  HashedStringRef key{doc.get("_key")};
+
+  traverserCache->persistString(key);
+  EXPECT_LT(memoryUsageBefore, _monitor->current());
+
+  // now clear the class, and check memory usage again
+  traverserCache->clear();
+  EXPECT_EQ(memoryUsageBefore, _monitor->current());
+
+  traverserCache->persistString(key);
+  EXPECT_LT(memoryUsageBefore, _monitor->current());
+
   // now clear the class, and check memory usage again
   traverserCache->clear();
   EXPECT_EQ(memoryUsageBefore, _monitor->current());
