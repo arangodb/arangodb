@@ -411,8 +411,8 @@ class IResearchAnalyzerFeature final
   Result emplaceAnalyzer( // emplace
     EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
     iresearch::IResearchAnalyzerFeature::Analyzers& analyzers, // analyzers
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
+    irs::string_ref const name, // analyzer name
+    irs::string_ref const type, // analyzer type
     VPackSlice const properties, // analyzer properties
     irs::flags const& features, // analyzer features
     AnalyzersRevision::Revision revision); // analyzer revision

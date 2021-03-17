@@ -262,13 +262,13 @@ struct Analyzer {
   irs::flags features;
 
   Analyzer() = default;
-  Analyzer(irs::string_ref const& t, irs::string_ref const& p,
+  Analyzer(irs::string_ref const t, irs::string_ref const p,
            irs::flags const& f = irs::flags::empty_instance())
       : type(t), features(f) {
     if (p.null()) {
       properties = VPackSlice::nullSlice();
     } else {
-      propBuilder = VPackParser::fromJson(p);
+      propBuilder = VPackParser::fromJson(p.c_str(), p.size());
       properties = propBuilder->slice();
     }
   }
@@ -1922,7 +1922,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
         EXPECT_TRUE(irs::analysis::analyzers::normalize(
             expectedProperties, analyzer->type(), irs::type<irs::text_format::vpack>::get(),
             arangodb::iresearch::ref<char>(
-                VPackParser::fromJson(itr->second.second)->slice()),
+                VPackParser::fromJson(itr->second.second.c_str(),
+                                      itr->second.second.size())->slice()),
             false));
 
         EXPECT_EQUAL_SLICES(arangodb::iresearch::slice(expectedProperties),
@@ -2743,7 +2744,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false);
     EXPECT_TRUE(entry.isString());
-    std::string value = arangodb::iresearch::getStringRef(entry.slice());
+    irs::string_ref value = arangodb::iresearch::getStringRef(entry.slice());
     EXPECT_EQ(data, value);
   }
 
@@ -3064,7 +3065,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         auto textTokens = nested.at(0);
         EXPECT_TRUE(textTokens.isArray());
         EXPECT_EQ(1, textTokens.length());
-        std::string value = arangodb::iresearch::getStringRef(textTokens.at(0));
+        irs::string_ref value = arangodb::iresearch::getStringRef(textTokens.at(0));
         EXPECT_STREQ("test", value.c_str());
       }
       {
@@ -3142,7 +3143,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_EQ(1, entry.length());
       auto textSlice = entry.at(0);
       EXPECT_TRUE(textSlice.isString());
-      std::string value = arangodb::iresearch::getStringRef(textSlice);
+      irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
       EXPECT_STREQ("jump", value.c_str());
     }
     {
@@ -3156,7 +3157,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        std::string value = arangodb::iresearch::getStringRef(textSlice);
+        irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
         EXPECT_STREQ("quick", value.c_str());
       }
       {
@@ -3165,7 +3166,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        std::string value = arangodb::iresearch::getStringRef(textSlice);
+        irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
         EXPECT_STREQ("dog", value.c_str());
       }
     }

@@ -217,8 +217,8 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
     return false;
   }
 
-  if (!slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) ||
-      !slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
+  if (!slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME.c_str()) ||
+      !slice.get(PRESERVE_ORIGINAL_PARAM_NAME.c_str()).isBool()) {
     LOG_TOPIC("e95d3", WARN, arangodb::iresearch::TOPIC)
       << "Failed to read '" << PRESERVE_ORIGINAL_PARAM_NAME
       << "' attribute as boolean while constructing "
@@ -1047,7 +1047,7 @@ bool analyzerInUse(arangodb::application_features::ApplicationServer& server,
 
   if (server.hasFeature<arangodb::DatabaseFeature>()) {
     vocbase = server.getFeature<arangodb::DatabaseFeature>()
-                    .lookupDatabase(dbName);
+                    .lookupDatabase(static_cast<std::string>(dbName)); // FIXME: remove cast after C++20
 
     if (checkDatabase(vocbase)) {
       return true;
@@ -1074,7 +1074,7 @@ arangodb::AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransac
   if (arangodb::ServerState::instance()->isCoordinator() && !vocbase.empty()) {
     TRI_ASSERT(server.hasFeature<arangodb::ClusterFeature>());
     auto& engine = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
-    return std::make_unique<arangodb::AnalyzerModificationTransaction>(vocbase, &engine, false);
+    return std::make_unique<arangodb::AnalyzerModificationTransaction>(static_cast<std::string>(vocbase), &engine, false);
   }
   return nullptr;
 }
@@ -1390,9 +1390,9 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
                                                         auth::Level const& level) {
   TRI_ASSERT(!vocbaseName.empty());
   auto& ctx = arangodb::ExecContext::current();
-
-  return ctx.canUseDatabase(vocbaseName, level) &&  // can use vocbase
-         ctx.canUseCollection(vocbaseName, arangodb::StaticStrings::AnalyzersCollection,
+  auto const nameStr = static_cast<std::string>(vocbaseName);
+  return ctx.canUseDatabase(nameStr, level) &&  // can use vocbase
+         ctx.canUseCollection(nameStr, arangodb::StaticStrings::AnalyzersCollection,
                               level);  // can use analyzers
 }
 
@@ -1418,10 +1418,10 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
   }
 
   auto split = splitAnalyzerName(name);
-
+  auto const vocbaseName = static_cast<std::string>(split.first);
   return split.first.null() // static analyzer (always allowed)
-    || (ctx.canUseDatabase(split.first, level) // can use vocbase
-        && ctx.canUseCollection(split.first, arangodb::StaticStrings::AnalyzersCollection, level)); // can use analyzers
+    || (ctx.canUseDatabase(vocbaseName, level) // can use vocbase
+        && ctx.canUseCollection(vocbaseName, arangodb::StaticStrings::AnalyzersCollection, level)); // can use analyzers
 }
 
 
@@ -1507,8 +1507,8 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(application_features::Applica
 Result IResearchAnalyzerFeature::emplaceAnalyzer( // emplace
     EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
     Analyzers& analyzers,
-    irs::string_ref const& name,
-    irs::string_ref const& type,
+    irs::string_ref const name,
+    irs::string_ref const type,
     VPackSlice const properties,
     irs::flags const& features,
     AnalyzersRevision::Revision revision) {
@@ -1708,7 +1708,7 @@ Result IResearchAnalyzerFeature::emplace(
         if (res.fail()) {
           return res;
         }
-        auto cached = _lastLoad.find(split.first);
+        auto cached = _lastLoad.find(static_cast<std::string>(split.first)); // FIXME: remove cast after C++20 
         TRI_ASSERT(cached != _lastLoad.end());
         if (ADB_LIKELY(cached != _lastLoad.end())) {
           cached->second = transaction->buildingRevision(); // as we already "updated cache" to this revision
@@ -1993,7 +1993,7 @@ AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           }
           {
             READ_LOCKER(lock, _mutex);
-            auto itr = _lastLoad.find(name.first);
+            auto itr = _lastLoad.find(static_cast<std::string>(name.first)); // FIXME: after C++20 remove cast and use heterogeneous lookup
             if (itr != _lastLoad.end() && itr->second >= revision) {
               break; // expected or later revision is loaded
             }
@@ -2187,7 +2187,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(irs::string_ref cons
 
     auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto* vocbase = dbFeature.lookupDatabase(static_cast<std::string>(database)); // FIXME: after C++20 remove cast and use heterogeneous lookup
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {}; // database might not have come up yet
@@ -2299,7 +2299,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         auto name = irs::make_hashed_ref(irs::string_ref(vocbase.name()),
                                          std::hash<irs::string_ref>());
         auto result = loadAnalyzers(name);
-        auto itr = _lastLoad.find(name);
+        auto itr = _lastLoad.find(static_cast<std::string>(name)); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
         if (itr != _lastLoad.end()) {
           seen.insert(name);
@@ -2337,7 +2337,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
       for (auto itr = _analyzers.begin(), end = _analyzers.end(); itr != end;) {
         auto split = splitAnalyzerName(itr->first);
         // ignore static analyzers
-        auto unseenItr = split.first.null() ? unseen.end() : unseen.find(split.first);
+        auto unseenItr = split.first.null() ? unseen.end() : unseen.find(static_cast<std::string>(split.first)); // FIXME: remove cast at C++20
 
         if (unseenItr != unseen.end()) {
           itr = _analyzers.erase(itr);
@@ -2356,9 +2356,9 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     auto databaseKey = // database key used in '_lastLoad'
       irs::make_hashed_ref(database, std::hash<irs::string_ref>());
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto itr = _lastLoad.find(databaseKey); // find last update timestamp
+    auto itr = _lastLoad.find(static_cast<std::string>(databaseKey)); // find last update timestamp FIXME: after C++20 remove cast and use heterogeneous lookup
 
-    auto* vocbase = dbFeature.lookupDatabase(database);
+    auto* vocbase = dbFeature.lookupDatabase(static_cast<std::string>(database)); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
     if (!vocbase) {
       if (engine.inRecovery()) {
@@ -2479,7 +2479,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         if (itr != _lastLoad.end()) {
           cleanupAnalyzers(database);
         }
-        _lastLoad[databaseKey] = loadingRevision;
+        _lastLoad[static_cast<std::string>(databaseKey)] = loadingRevision; // FIXME: remove cast at C++20
         return {}; // no collection means nothing to load
       }
       return res;
@@ -2529,7 +2529,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         };
       }
     }
-    _lastLoad[databaseKey] = loadingRevision;
+    _lastLoad[static_cast<std::string>(databaseKey)] = loadingRevision; // FIXME: remove cast at C++20
     _analyzers = std::move(analyzers); // update mappings
   } catch (basics::Exception const& e) {
     return {e.code(),
@@ -2597,14 +2597,14 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
   auto& staticAnalyzers = getStaticAnalyzers();
 
   if (staticAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>())) != staticAnalyzers.end()) {
-    return name; // special case for singleton static analyzers
+    return static_cast<std::string>(name); // special case for singleton static analyzers
   }
 
   auto split = splitAnalyzerName(name);
 
   if (expandVocbasePrefix) {
     if (split.first.null()) {
-      return normalizedAnalyzerName(activeVocbase, split.second);
+      return normalizedAnalyzerName(static_cast<std::string>(activeVocbase), split.second);
     }
 
     if (split.first.empty()) {
@@ -2618,7 +2618,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     if (arangodb::StaticStrings::SystemDatabase == activeVocbase ||
         split.first.null() ||
         (split.first == activeVocbase)) { // active vocbase
-      return split.second;
+      return static_cast<std::string>(split.second);
     }
 
     if (split.first.empty() || split.first == arangodb::StaticStrings::SystemDatabase) { // system vocbase
@@ -2626,14 +2626,14 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     }
   }
 
-  return name; // name prefixed with vocbase (or NIL)
+  return static_cast<std::string>(name); // name prefixed with vocbase (or NIL)
 }
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(const irs::string_ref& vocbaseName,
                                                                      bool forceLoadPlan /* = false */) const {
   TRI_vocbase_t* vocbase{ nullptr };
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? irs::string_ref(arangodb::StaticStrings::SystemDatabase) : vocbaseName);
+  vocbase = dbFeature.useDatabase(vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase : static_cast<std::string>(vocbaseName));
   if (vocbase) {
     return getAnalyzersRevision(*vocbase, forceLoadPlan);
   }
@@ -2668,7 +2668,7 @@ void IResearchAnalyzerFeature::prepare() {
 
 Result IResearchAnalyzerFeature::removeFromCollection(irs::string_ref const& name, irs::string_ref const& vocbase) {
   auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto* voc = dbFeature.useDatabase(vocbase);
+  auto* voc = dbFeature.useDatabase(static_cast<std::string>(vocbase)); // FIXME: after C++20 remove cast and use heterogeneous lookup
   if (!voc) {
     return {
       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -2833,7 +2833,7 @@ Result IResearchAnalyzerFeature::remove(
     } else {
       auto& dbFeature = server().getFeature<DatabaseFeature>();
 
-      auto* vocbase = dbFeature.useDatabase(split.first);
+      auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(split.first)); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       if (!vocbase) {
         return {
@@ -2885,7 +2885,7 @@ Result IResearchAnalyzerFeature::remove(
 
       // this is ok. As if we got  there removal is committed into agency
       _analyzers.erase(itr);
-      auto cached = _lastLoad.find(split.first);
+      auto cached = _lastLoad.find(static_cast<std::string>(split.first)); // FIXME: remove cast after C++20
       TRI_ASSERT(cached != _lastLoad.end());
       if (ADB_LIKELY(cached != _lastLoad.end())) {
         // we are hodling writelock so nobody should be able reload analyzers and update cache.
@@ -2992,7 +2992,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(AnalyzerPool& pool) {
     }
 
     auto split = splitAnalyzerName(pool.name());
-    auto* vocbase = dbFeature.useDatabase(split.first);
+    auto* vocbase = dbFeature.useDatabase(static_cast<std::string>(split.first)); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
     if (!vocbase) {
       return { TRI_ERROR_INTERNAL,
@@ -3147,8 +3147,8 @@ void IResearchAnalyzerFeature::cleanupAnalyzers(irs::string_ref const& database)
 void IResearchAnalyzerFeature::invalidate(const TRI_vocbase_t& vocbase) {
   WRITE_LOCKER(lock, _mutex);
   auto database = irs::string_ref(vocbase.name());
-  auto itr = _lastLoad.find(
-      irs::make_hashed_ref(database, std::hash<irs::string_ref>()));
+  auto itr = _lastLoad.find(static_cast<std::string>( // FIXME: after C++20 remove cast and use heterogeneous lookup
+      irs::make_hashed_ref(database, std::hash<irs::string_ref>()))); 
   if (itr != _lastLoad.end()) {
     cleanupAnalyzers(database);
     _lastLoad.erase(itr);

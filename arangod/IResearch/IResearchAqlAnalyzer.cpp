@@ -447,7 +447,7 @@ namespace iresearch {
 
 /*static*/ bool AqlAnalyzer::normalize_json(const irs::string_ref& args,
                                                     std::string& out) {
-  auto src = VPackParser::fromJson(args);
+  auto src = VPackParser::fromJson(args.c_str(), args.size());
   VPackBuilder builder;
   if (normalize_slice(src->slice(), builder)) {
     out = builder.toString();
@@ -463,7 +463,7 @@ namespace iresearch {
 
 
 /*static*/ irs::analysis::analyzer::ptr AqlAnalyzer::make_json(irs::string_ref const& args) {
-  auto builder = VPackParser::fromJson(args);
+  auto builder = VPackParser::fromJson(args.c_str(), args.size());
   return make_slice(builder->slice());
 }
 

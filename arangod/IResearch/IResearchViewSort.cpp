@@ -48,7 +48,7 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = arangodb::iresearch::getStringRef(slice);
+    std::string value = static_cast<std::string>(arangodb::iresearch::getStringRef(slice));
     arangodb::basics::StringUtils::tolowerInPlace(value);
 
     if (value == "asc") {

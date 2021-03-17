@@ -542,7 +542,7 @@ std::string mangleNumeric(std::string name) {
   return name;
 }
 
-std::string mangleString(std::string name, std::string suffix) {
+std::string mangleString(std::string name, std::string_view suffix) {
   arangodb::iresearch::kludge::mangleAnalyzer(name);
   name += suffix;
   return name;
