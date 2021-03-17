@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow process-specific logfile names.
+
+  This change allows replacing '$PID' with the current process id in the 
+  `--log.output` and `--audit.output` startup parameters.
+  This way it is easier to write process-specific logfiles.
+
 * Fix progress reporting for arangoimport with large files on Windows.
   Previously, progress was only reported for the first 2GB of data due to a
   int overflow.
