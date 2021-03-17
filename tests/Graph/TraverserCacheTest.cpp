@@ -62,9 +62,10 @@ class TraverserCacheTest : public ::testing::Test {
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
+    std::map<std::string, std::string> collectionToShardMap{}; // can be empty, only used in standalone mode
     traverserCache =
         std::make_unique<RefactoredTraverserCache>(trx.get(), query.get(),
-                                                   query->resourceMonitor(), stats);
+                                                   query->resourceMonitor(), stats, collectionToShardMap);
   }
 
   ~TraverserCacheTest() = default;
