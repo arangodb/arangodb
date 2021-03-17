@@ -65,6 +65,39 @@ zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
   return result;
 }
 
+namespace {
+
+uint64_t space_out_2(uint32_t v) {
+    uint64_t x = v;
+    x = (x | (x << 8)) & 0x00FF00FFul;
+    x = (x | (x << 4)) & 0x0F0F0F0Ful;
+    x = (x | (x << 2)) & 0x33333333ul;
+    x = (x | (x << 1)) & 0x55555555ul;
+
+    return x;
+}
+
+uint64_t space_out_3(uint16_t v) {
+    uint64_t x = v;
+    x = (x | (x << 16)) & 0x00FF0000FF0000FFul;
+    x = (x | (x << 8)) & 0x000000F00F00F00Ful;
+    x = (x | (x << 4)) & 0x30C30C30C30C30C3ul;
+    x = (x | (x << 2)) & 0x0249249249249249ul;
+
+    return x;
+}
+
+uint64_t space_out_4(uint16_t v) {
+    uint64_t x = v;
+    x = (x | (x << 24)) & 0x000000FF000000FFul;
+    x = (x | (x << 12)) & 0x000F000F000F000Ful;
+    x = (x | (x << 6)) & 0x0303030303030303ul;
+    x = (x | (x << 3)) & 0x1111111111111111ul;
+
+    return x;
+}
+}
+
 
 zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
   return byte_string{ reinterpret_cast<const std::byte*>(str), len};
@@ -230,6 +263,9 @@ auto zkd::transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<
   return result;
 }
 
+
+constexpr std::size_t max_dimensions = 64;
+
 auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string_view max, std::size_t dimensions)
 -> std::vector<CompareResult> {
   if (dimensions == 0) {
@@ -240,6 +276,12 @@ auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string
   }
   std::vector<CompareResult> result;
   result.resize(dimensions);
+  zkd::compareWithBoxInto(cur, min, max, dimensions, result);
+  return result;
+}
+
+void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_string_view max,
+                    std::size_t dimensions, std::vector<CompareResult>& result) {
 
   std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
 
@@ -247,10 +289,8 @@ auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string
   BitReader min_reader(min);
   BitReader max_reader(max);
 
-  auto isLargerThanMin = std::vector<bool>{};
-  auto isLowerThanMax = std::vector<bool>{};
-  isLargerThanMin.resize(dimensions);
-  isLowerThanMax.resize(dimensions);
+  bool isLargerThanMin[max_dimensions] = {};
+  bool isLowerThanMax[max_dimensions] = {};
 
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     unsigned step = i / dimensions;
@@ -285,12 +325,10 @@ auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string
     }
   }
 
-  return result;
 }
 
 auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view max, std::size_t dimensions)
 -> bool {
-  constexpr std::size_t max_dimensions = 64;
 
   if (dimensions == 0 && dimensions <= max_dimensions) {
     auto msg = std::string{"dimensions argument to "};
@@ -298,8 +336,6 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
     msg += " must be greater than zero.";
     throw std::invalid_argument{msg};
   }
-  std::vector<CompareResult> result;
-  result.resize(dimensions);
 
   std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
 
