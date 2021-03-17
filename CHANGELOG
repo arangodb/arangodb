@@ -1,6 +1,13 @@
 devel
 -----
 
+* Make ReplicationFeature formally depend on ServerIdFeature, because the
+  former relies on the server id being already loaded by the latter.
+  If this dependency is not established properly, it is undefined if the
+  ReplicationFeature starts earlier than the ServerIdFeature, which can lead
+  to the ReplicationFeature not sending its server id properly to the leader
+  when doing replication between two single servers.
+
 * Fix progress reporting for arangoimport with large files on Windows.
   Previously, progress was only reported for the first 2GB of data due to a
   int overflow.
