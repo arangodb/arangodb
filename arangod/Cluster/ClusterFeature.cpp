@@ -565,9 +565,11 @@ void ClusterFeature::start() {
   // whenever a hotbackup restore is done:
   if (role == ServerState::ROLE_COORDINATOR) {
     auto hotBackupRestoreDone = [this](VPackSlice const& result) -> bool {
-      LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
-        "event, getting new cluster-wide unique IDs...";
-      this->_clusterInfo->uniqid(1000000);
+      if (!server().isStopping()) {
+        LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
+          "event, getting new cluster-wide unique IDs...";
+        this->_clusterInfo->uniqid(1000000);
+      }
       return true;
     };
     _hotbackupRestoreCallback =
@@ -585,10 +587,12 @@ void ClusterFeature::start() {
 void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
 
 void ClusterFeature::stop() {
-  if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
+  #ifdef USE_ENTERPRISE
+  if (_hotbackupRestoreCallback != nullptr && !_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
     LOG_TOPIC("84152", INFO, Logger::BACKUP) << "Strange, we could not "
       "unregister the hotbackup restore callback.";
   }
+  #endif
 
   shutdownHeartbeatThread();
   ClusterComm::instance()->stopBackgroundThreads();
