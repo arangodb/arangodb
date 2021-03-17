@@ -143,7 +143,7 @@ class ManagedDirectory {
      * @brief Count of bytes read from regular or gzip file, not amount returned by read
      */
 
-    std::size_t offset() const;
+    std::int64_t offset() const;
 
     /**
      * @brief skips `count` bytes of uncompressed data.

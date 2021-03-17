@@ -654,10 +654,10 @@ Result const& ManagedDirectory::File::close() {
 }
 
 
-std::size_t ManagedDirectory::File::offset() const {
+std::int64_t ManagedDirectory::File::offset() const {
   MUTEX_LOCKER(lock, _mutex);
 
-  std::size_t fileBytesRead = -1;
+  std::int64_t fileBytesRead = -1;
 
   if (isGzip()) {
     fileBytesRead = gzoffset(_gzFile);
