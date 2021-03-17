@@ -71,7 +71,7 @@ using namespace arangodb::statistics;
 
 namespace {
 std::string const stats15Query = "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections LET clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent) RETURN {clientConnections15M: clientConnections15M || 0}";
-  
+
 std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, physicalMemory: s.server.physicalMemory, residentSizeCurrent: s.system.residentSize, clientConnectionsCurrent: s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: s.client.bytesReceivedPerSecond, http: { optionsPerSecond: s.http.requestsOptionsPerSecond, putsPerSecond: s.http.requestsPutPerSecond, headsPerSecond: s.http.requestsHeadPerSecond, postsPerSecond: s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: s.http.requestsOptionsPerSecond, patchesPerSecond: s.http.requestsPatchPerSecond } }";
 } // namespace
 
@@ -81,7 +81,7 @@ namespace statistics {
 // local_name: {"prometheus_name", "type", "help"}
 std::map<std::string, std::vector<std::string>> statStrings{
   {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket", "gauge",
+   {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
   {"bytesReceivedCount",
    {"arangodb_client_connection_statistics_bytes_received_count", "gauge",
@@ -90,7 +90,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_bytes_received_sum", "gauge",
     "Bytes received for a request"}},
   {"bytesSent",
-   {"arangodb_client_connection_statistics_bytes_sent_bucket", "gauge",
+   {"arangodb_client_connection_statistics_bytes_sent", "histogram",
     "Bytes sent for a request"}},
   {"bytesSentCount",
    {"arangodb_client_connection_statistics_bytes_sent_count", "gauge",
@@ -105,7 +105,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_process_statistics_major_page_faults", "gauge",
     "On Windows, this figure contains the total number of page faults. On other system, this figure contains the number of major faults the process has made which have required loading a memory page from disk"}},
   {"bytesReceived",
-   {"arangodb_client_connection_statistics_bytes_received_bucket", "gauge",
+   {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
   {"userTime",
    {"arangodb_process_statistics_user_time", "gauge",
@@ -126,7 +126,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_client_connections", "gauge",
     "The number of client connections that are currently open"}},
   {"connectionTime",
-   {"arangodb_client_connection_statistics_connection_time_bucket", "gauge",
+   {"arangodb_client_connection_statistics_connection_time", "histogram",
     "Total connection time of a client"}},
   {"connectionTimeCount",
    {"arangodb_client_connection_statistics_connection_time_count", "gauge",
@@ -135,7 +135,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_connection_time_sum", "gauge",
     "Total connection time of a client"}},
   {"totalTime",
-   {"arangodb_client_connection_statistics_total_time_bucket", "gauge",
+   {"arangodb_client_connection_statistics_total_time", "histogram",
     "Total time needed to answer a request"}},
   {"totalTimeCount",
    {"arangodb_client_connection_statistics_total_time_count", "gauge",
@@ -144,7 +144,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_total_time_sum", "gauge",
     "Total time needed to answer a request"}},
   {"requestTime",
-   {"arangodb_client_connection_statistics_request_time_bucket", "gauge",
+   {"arangodb_client_connection_statistics_request_time", "histogram",
     "Request time needed to answer a request"}},
   {"requestTimeCount",
    {"arangodb_client_connection_statistics_request_time_count", "gauge",
@@ -153,7 +153,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_request_time_sum", "gauge",
     "Request time needed to answer a request"}},
   {"queueTime",
-   {"arangodb_client_connection_statistics_queue_time_bucket", "gauge",
+   {"arangodb_client_connection_statistics_queue_time", "histogram",
     "Request time needed to answer a request"}},
   {"queueTimeCount",
    {"arangodb_client_connection_statistics_queue_time_count", "gauge",
@@ -162,7 +162,7 @@ std::map<std::string, std::vector<std::string>> statStrings{
    {"arangodb_client_connection_statistics_queue_time_sum", "gauge",
     "Request time needed to answer a request"}},
   {"ioTime",
-   {"arangodb_client_connection_statistics_io_time_bucket", "gauge",
+   {"arangodb_client_connection_statistics_io_time", "histogram",
     "Request time needed to answer a request"}},
   {"ioTimeCount",
    {"arangodb_client_connection_statistics_io_time_count", "gauge",
@@ -280,7 +280,7 @@ RequestFigures UserRequestFigures;
 
 class StatisticsThread final : public Thread {
  public:
-  explicit StatisticsThread(ApplicationServer& server) 
+  explicit StatisticsThread(ApplicationServer& server)
     : Thread(server, "Statistics") {}
   ~StatisticsThread() { shutdown(); }
 
@@ -412,7 +412,7 @@ void StatisticsFeature::start() {
   // force history disable on Agents
   if (arangodb::ServerState::instance()->isAgent() && !_statisticsHistoryTouched) {
     _statisticsHistory = false;
-  } 
+  }
 
   if (ServerState::instance()->isDBServer()) {
     // the StatisticsWorker runs queries against the _statistics
@@ -474,41 +474,47 @@ VPackBuilder StatisticsFeature::fillDistribution(statistics::Distribution const&
 
 void StatisticsFeature::appendHistogram(
   std::string& result, statistics::Distribution const& dist,
-  std::string const& label, std::initializer_list<std::string> const& les) {
+  std::string const& label, std::initializer_list<std::string> const& les,
+  bool v2) {
 
   auto const countLabel = label + "Count";
   auto const countSum = label + "Sum";
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
-  
-  auto const& stat = statStrings.at(label); 
+
+  auto const& stat = statStrings.at(label);
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] + 
-    "\n#HELP " + name + " " + stat[2] + '\n';
+    "\n# HELP " + name + " " + stat[2] +
+    "\n# TYPE " + name + " " + stat[1] + '\n';
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
+  uint64_t sum = 0;
   for (auto const& le : les) {
+    uint64_t v = counts.at(i++).getNumber<uint64_t>();
+    sum += v;
+    v = v2 ? sum : v;
     result +=
-      name + "{le=\"" + le + "\"}"  + " " +
-      std::to_string(counts.at(i++).getNumber<uint64_t>()) + '\n';
+      name + "_bucket{le=\"" + le + "\"}"  + " " +
+      std::to_string(v) + '\n';
   }
+  result += name + "_count " + std::to_string(sum) + '\n';
 }
 
 void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label) {
-  auto const& stat = statStrings.at(label); 
+  auto const& stat = statStrings.at(label);
   std::string const& name = stat.at(0);
 
   result +=
-    "\n#TYPE " + name + " " + stat[1] +
-    "\n#HELP " + name + " " + stat[2] + 
+    "\n# HELP " + name + " " + stat[2] +
+    "\n# TYPE " + name + " " + stat[1] +
     '\n' + name + " " + val + '\n';
 }
 
-void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
+void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
   ProcessInfo info = TRI_ProcessInfoSelf();
   uint64_t rss = static_cast<uint64_t>(info._residentSize);
   double rssp = 0;
@@ -554,24 +560,24 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 
     RequestStatistics::Snapshot requestStats;
     RequestStatistics::getSnapshot(requestStats, stats::RequestStatisticsSource::ALL);
-    
+
     // _clientStatistics()
     appendMetric(result, std::to_string(connectionStats.httpConnections.get()), "clientHttpConnections");
-    appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"});
+    appendHistogram(result, connectionStats.connectionTime, "connectionTime", {"0.01", "1.0", "60.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.totalTime, "totalTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.requestTime, "requestTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.queueTime, "queueTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
+                   "30.0", "+Inf"}, v2);
   appendHistogram(result, requestStats.ioTime, "ioTime",
                   {"0.01", "0.05", "0.1", "0.2", "0.5", "1.0", "5.0", "15.0",
-                   "30.0", "+Inf"});
-    appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"});
-    appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"});
+                   "30.0", "+Inf"}, v2);
+    appendHistogram(result, requestStats.bytesSent, "bytesSent", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
+    appendHistogram(result, requestStats.bytesReceived, "bytesReceived", {"250", "1000", "2000", "5000", "10000", "+Inf"}, v2);
 
     // _httpStatistics()
     using rest::RequestType;
@@ -606,7 +612,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double const& now) {
 }
 
 Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
-                                                     double start, 
+                                                     double start,
                                                      arangodb::velocypack::Builder& result) const {
   if (!ServerState::instance()->isCoordinator()) {
     return {TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR};
@@ -624,7 +630,7 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
   ExecContextSuperuserScope exscope;
 
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-    
+
   // build bind variables for query
   auto bindVars = std::make_shared<VPackBuilder>();
 
@@ -650,10 +656,10 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
                                arangodb::aql::QueryString(stats15Query),
                                bindVars);
-  
+
     query.queryOptions().cache = false;
     query.queryOptions().skipAudit = true;
-  
+
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {
@@ -662,16 +668,16 @@ Result StatisticsFeature::getClusterSystemStatistics(TRI_vocbase_t& vocbase,
 
     result.add("stats15", queryResult.data->slice());
   }
-  
+
   {
     buildBindVars(StaticStrings::StatisticsCollection);
     arangodb::aql::Query query(transaction::StandaloneContext::Create(*sysVocbase),
                                arangodb::aql::QueryString(statsSamplesQuery),
                                bindVars);
-  
+
     query.queryOptions().cache = false;
     query.queryOptions().skipAudit = true;
-  
+
     aql::QueryResult queryResult = query.executeSync();
 
     if (queryResult.result.fail()) {

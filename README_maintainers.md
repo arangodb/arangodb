@@ -76,6 +76,50 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding metrics
+
+As of 3.8 we have enforced documentation for metrics. This works as
+follows. Every metric which is generated has a name. The metric must be
+declared by using one of the macros
+
+```
+  DECLARE_COUNTER(name, helpstring);
+  DECLARE_GAUGE(name, type, helpstring);
+  DECLARE_HISTOGRAM(name, scaletype, helpstring);
+```
+
+in some `.cpp` file (please put only one on a line). Then, when the
+metric is actually requested in the source code, it gets a template
+added to the metrics feature with the `add` method and its name.
+Labels can be added with the `withLabel` method. In this way, the
+compiler ensures that the metric declaration is actually there if
+the metric is used.
+
+Then there is a helper script `utils/generateAllMetricsDocumentation.py`
+which needs `python3` with the `yaml` module. It will check and do the
+following things:
+
+ - every declared metric in some `.cpp` file in the source has a
+   corresponding documentation snippet in `Documentation/Metrics`
+   under the name of the metric with `.yaml` appended
+ - each such file is a YAML file of a certain format (see template
+   under `Documentation/Metrics/template.yaml`)
+ - many of the componentes are required, so please provide adequate
+   information about your metric
+ - the script also assembles all these YAML documentation snippets
+   into a single file under `Documentation/Metrics/allMetrics.yaml`,
+   the format is again a structured YAML file which can easily be
+   processed by the documentation tools.
+
+Please, if you have added or modified a metric, make sure to declare
+the metric as shown above and add a documentation YAML snippet in the
+correct format. Afterwards, run
+
+    utils/generateAllMetricsDocumentation.py
+
+and include `Documentation/allMetrics.yaml` in your PR.
+
+
 ---
 
 ## Building

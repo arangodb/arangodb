@@ -61,6 +61,7 @@ void CostEstimate::saveEstimatedNrItems() {
 }
 
 void CostEstimate::restoreEstimatedNrItems() {
+  TRI_ASSERT(!_outerSubqueryEstimatedNrItems.empty());
   estimatedNrItems = _outerSubqueryEstimatedNrItems.top();
   _outerSubqueryEstimatedNrItems.pop();
 }

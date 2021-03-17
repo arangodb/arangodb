@@ -1,0 +1,13 @@
+name: arangodb_shards_leader_number
+help: |
+  Number of leader shards on this machine.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Number of leader shards on this machine.

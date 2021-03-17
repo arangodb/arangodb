@@ -97,7 +97,6 @@ struct TestIndex : public arangodb::Index {
   bool canBeDropped() const override { return false; }
   bool hasSelectivityEstimate() const override { return false; }
   bool isHidden() const override { return false; }
-  bool isPersistent() const override { return false; }
   bool isSorted() const override { return false; }
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* /* trx */, arangodb::aql::AstNode const* /* node */,
@@ -1301,8 +1300,6 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
         "\", \"isSystem\": true, \"shards\": { }, \"type\": 2 }");  // 'id' and 'shards' required for coordinator tests
     auto collectionId = std::to_string(42);
 
-    //    ClusterCommMock clusterComm(server.server());
-    //    auto scopedClusterComm = ClusterCommMock::setInstance(clusterComm);
     auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
 
     std::shared_ptr<arangodb::LogicalCollection> logicalCollection;

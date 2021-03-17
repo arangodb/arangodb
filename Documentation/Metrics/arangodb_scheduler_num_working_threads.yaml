@@ -1,0 +1,13 @@
+name: arangodb_scheduler_num_working_threads
+help: |
+  Current number of working threads.
+unit: number
+type: gauge
+category: Scheduler
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Current number of working threads.

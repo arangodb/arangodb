@@ -451,13 +451,22 @@
 
     buildClusterSubNav: function (activeKey, disabled) {
       let enableMaintenanceMode = false;
+      let enableDistribution = false;
+
       if (frontendConfig.showMaintenanceStatus && frontendConfig.db === '_system') {
         enableMaintenanceMode = true;
+      }
+      if (frontendConfig.db === '_system') {
+        enableDistribution = true;
       }
 
       var menus = {
         Dashboard: {
           route: '#cluster'
+        },
+        Distribution: {
+          route: '#distribution',
+          disabled: !enableDistribution
         },
         Maintenance: {
           route: '#maintenance',
@@ -1020,9 +1029,10 @@
       var dlType;
       if (type === 'csv') {
         dlType = 'text/csv; charset=utf-8';
-      }
-      if (type === 'json') {
+      } else if (type === 'json') {
         dlType = 'application/json; charset=utf-8';
+      } else if (type === 'text') {
+        dlType = 'text/plain; charset=utf8';
       }
 
       if (dlType) {
@@ -1163,6 +1173,43 @@
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
         }
       });
+    },
+
+    renderStatisticsBoxValue: function (id, value, error, warning) {
+      if (typeof value === 'number') {
+        $(id).html(value);
+      } else if ($.isArray(value)) {
+        var a = value[0];
+        var b = value[1];
+
+        var percent = 1 / (b / a) * 100;
+        if (percent > 90) {
+          error = true;
+        } else if (percent > 70 && percent < 90) {
+          warning = true;
+        }
+        if (isNaN(percent)) {
+          $(id).html('n/a');
+        } else {
+          $(id).html(percent.toFixed(1) + ' %');
+        }
+      } else if (typeof value === 'string') {
+        $(id).html(value);
+      }
+
+      if (error) {
+        $(id).addClass('negative');
+        $(id).removeClass('warning');
+        $(id).removeClass('positive');
+      } else if (warning) {
+        $(id).addClass('warning');
+        $(id).removeClass('positive');
+        $(id).removeClass('negative');
+      } else {
+        $(id).addClass('positive');
+        $(id).removeClass('negative');
+        $(id).removeClass('warning');
+      }
     },
 
     getFoxxFlags: function () {

@@ -1,0 +1,11 @@
+name: arangodb_replication_dump_request_time_total
+help: |
+  Accumulated wait time for replication requests.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Accumulated wait time for replication requests.

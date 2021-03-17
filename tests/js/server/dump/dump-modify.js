@@ -489,6 +489,28 @@ function dumpTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test latestId
+////////////////////////////////////////////////////////////////////////////////
+
+    testLatestId : function () {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed in the cluster
+        // The following increases /arango/Sync/LatestID in the agency
+        // by 100.000.000 and thus consumes so many cluster wide unique
+        // ids. This is checked below.
+        // Then, after a hotbackup restore, we check in the file
+        // `tests/js/server/dump/dump-cluster.js` (by means of including
+        // `tests/js/server/dump/dump-test.js`) that the lower number
+        // has been stored in the hotbackup and restored in the restore
+        // process.
+        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
+        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring
 ////////////////////////////////////////////////////////////////////////////////
 /* not yet implemented

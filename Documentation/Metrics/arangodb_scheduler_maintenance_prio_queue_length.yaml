@@ -1,0 +1,13 @@
+name: arangodb_scheduler_maintenance_prio_queue_length
+help: |
+  Current queue length of the maintenance priority queue in the scheduler.
+unit: number
+type: gauge
+category: Scheduler
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Current queue length of the maintenance priority queue in the scheduler.

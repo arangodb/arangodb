@@ -136,6 +136,7 @@ add_library(arango STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -159,7 +160,6 @@ add_library(arango STATIC
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
-  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp

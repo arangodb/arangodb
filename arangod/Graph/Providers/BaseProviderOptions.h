@@ -24,6 +24,9 @@
 #ifndef ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H
 #define ARANGOD_GRAPH_PROVIDER_BASEPROVIDEROPTIONS_H 1
 
+#include "Aql/FixedVarExpressionContext.h"
+#include "Cluster/ClusterInfo.h"
+#include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
 
 #include <optional>
@@ -64,6 +67,26 @@ struct BaseProviderOptions {
   // One entry per collection, ShardTranslation needs
   // to be done by Provider
   std::vector<IndexAccessor> _indexInformation;
+};
+
+struct ClusterBaseProviderOptions {
+ public:
+  ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
+                             std::unordered_map<ServerID, aql::EngineId> const* engines,
+                             bool backward);
+
+  RefactoredClusterTraverserCache* getCache();
+
+  bool isBackward() const;
+
+  [[nodiscard]] std::unordered_map<ServerID, aql::EngineId> const* engines() const;
+
+ private:
+  std::shared_ptr<RefactoredClusterTraverserCache> _cache;
+
+  std::unordered_map<ServerID, aql::EngineId> const* _engines;
+
+  bool _backward;
 };
 
 }  // namespace graph

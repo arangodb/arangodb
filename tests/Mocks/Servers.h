@@ -195,9 +195,16 @@ class MockClusterServer : public MockServer,
   virtual void dropDatabase(std::string const& name) = 0;
   void startFeatures() override;
 
+  // Create a clusterWide Collection.
+  // This does NOT create Shards.
+  std::shared_ptr<LogicalCollection> createCollection(
+      std::string const& dbName, std::string collectionName,
+      std::vector<std::pair<std::string, std::string>> shardNameToServerNamePairs,
+      TRI_col_type_e type);
+
   // You can only create specialized types
  protected:
-  MockClusterServer();
+  MockClusterServer(bool useAgencyMockConnection);
   ~MockClusterServer();
 
  protected:
@@ -212,29 +219,37 @@ class MockClusterServer : public MockServer,
   void agencyCreateCollections(std::string const& name);
 
   void agencyDropDatabase(std::string const& name);
-
+protected:
+  std::unique_ptr<arangodb::network::ConnectionPool> _pool;
  private:
+  bool _useAgencyMockPool;
   arangodb::ServerState::RoleEnum _oldRole;
-  std::unique_ptr<AsyncAgencyStorePoolMock> _pool;
-  int _dummy{};
+  int _dummy;
 };
 
 class MockDBServer : public MockClusterServer {
  public:
-  MockDBServer(bool startFeatures = true);
+  MockDBServer(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockDBServer();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  void createShard(std::string const& dbName, std::string shardName,
+                   LogicalCollection& clusterCollection);
 };
 
 class MockCoordinator : public MockClusterServer {
  public:
-  MockCoordinator(bool startFeatures = true);
+  MockCoordinator(bool startFeatures = true, bool useAgencyMockConnection = true);
   ~MockCoordinator();
 
   TRI_vocbase_t* createDatabase(std::string const& name) override;
   void dropDatabase(std::string const& name) override;
+
+  std::pair<std::string, std::string> registerFakedDBServer(std::string const& serverName);
+
+  arangodb::network::ConnectionPool* getPool();
 };
 
 }  // namespace mocks

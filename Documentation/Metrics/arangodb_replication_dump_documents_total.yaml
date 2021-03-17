@@ -1,0 +1,11 @@
+name: arangodb_replication_dump_documents_total
+help: |
+  Number of documents received in replication dump requests.
+unit: number
+type: counter
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of documents received in replication dump requests.
