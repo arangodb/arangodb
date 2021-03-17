@@ -294,9 +294,10 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
   bool isLargerThanMin[max_dimensions] = {};
   bool isLowerThanMax[max_dimensions] = {};
 
+  unsigned step = 0;
+  unsigned dim = 0;
+
   for (std::size_t i = 0; i < 8 * max_size; i++) {
-    unsigned step = i / dimensions;
-    unsigned dim = i % dimensions;
 
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
     auto min_bit = min_reader.next().value_or(Bit::ZERO);
@@ -324,6 +325,12 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
         isLowerThanMax[dim] = true;
         result[dim].saveMax = step;
       }
+    }
+
+    dim += 1;
+    if (dim >= dimensions) {
+      dim = 0;
+      step += 1;
     }
   }
 
