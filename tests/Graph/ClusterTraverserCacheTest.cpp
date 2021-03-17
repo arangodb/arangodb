@@ -34,6 +34,7 @@
 #include "Graph/GraphTestTools.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
+#include "Basics/GlobalResourceMonitor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -103,7 +104,8 @@ TEST_F(ClusterTraverserCacheTest, it_should_insert_a_null_vpack_if_vertex_not_ca
 
 class RefactoredClusterTraverserCacheTest : public ::testing::Test {
  protected:
-  arangodb::ResourceMonitor _monitor{};
+  arangodb::GlobalResourceMonitor _globalMonitor{};
+  arangodb::ResourceMonitor _monitor{_globalMonitor};
   std::unique_ptr<arangodb::graph::RefactoredClusterTraverserCache> _cache =
       std::make_unique<arangodb::graph::RefactoredClusterTraverserCache>(_monitor);
 
@@ -116,7 +118,7 @@ class RefactoredClusterTraverserCacheTest : public ::testing::Test {
   void TearDown() {
     // After every test ensure that the ResourceMonitor is conting down to 0 again
     _cache.reset();
-    EXPECT_EQ(_monitor.currentMemoryUsage(), 0)
+    EXPECT_EQ(_monitor.current(), 0)
         << "Resource Monitor is not reset to 0 after deletion of the cache.";
   }
 
@@ -146,12 +148,12 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_a_single_vertex) {
   VPackSlice doc = data->slice();
   HashedStringRef key{doc.get("_key")};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectIsNotCached(key);
   testee.cacheVertex(key, doc);
 
   EXPECT_TRUE(testee.isVertexCached(key));
-  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_LT(resourceBefore, _monitor.current())
       << "Did not increase memory usage.";
   {
     auto result = testee.getCachedVertex(key);
@@ -166,14 +168,14 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_a_single_edge) {
   VPackSlice doc = data->slice();
   HashedStringRef id{doc.get("_id")};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectEdgeIsNotCached(id);
   auto result = testee.persistEdgeData(doc);
   EXPECT_TRUE(basics::VelocyPackHelper::equal(result.first, doc, true));
   EXPECT_TRUE(result.second);
 
   EXPECT_TRUE(testee.isEdgeCached(id));
-  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_LT(resourceBefore, _monitor.current())
       << "Did not increase memory usage.";
   {
     auto result = testee.getCachedEdge(id);
@@ -191,19 +193,19 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_vertices) {
   VPackSlice doc2 = data2->slice();
   HashedStringRef key2{doc2.get("_key")};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectIsNotCached(key);
   expectIsNotCached(key2);
 
   testee.cacheVertex(key, doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
   testee.cacheVertex(key2, doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Did not increase memory usage.";
 
@@ -233,19 +235,19 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_multiple_edges) {
   VPackSlice doc2 = data2->slice();
   HashedStringRef id2{doc2.get("_id")};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectEdgeIsNotCached(id);
   expectEdgeIsNotCached(id2);
 
   testee.persistEdgeData(doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
   testee.persistEdgeData(doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Did not increase memory usage.";
 
@@ -277,19 +279,19 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice) {
   HashedStringRef key2{doc2.get("_key")};
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectIsNotCached(key);
   expectIsNotCached(key2);
 
   testee.cacheVertex(key, doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
   testee.cacheVertex(key2, doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Did count the same vertex twice";
 
@@ -323,19 +325,19 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice) {
   HashedStringRef id2{doc2.get("_id")};
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectEdgeIsNotCached(id);
   expectEdgeIsNotCached(id2);
 
   testee.persistEdgeData(doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
   testee.persistEdgeData(doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Did count the same vertex twice";
 
@@ -367,13 +369,13 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice_after_clear)
   HashedStringRef key2{doc2.get("_key")};
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectIsNotCached(key);
   expectIsNotCached(key2);
 
   testee.cacheVertex(key, doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
@@ -382,12 +384,12 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_vertex_twice_after_clear)
   // Test everything is empty.
   expectIsNotCached(key);
   expectIsNotCached(key2);
-  EXPECT_EQ(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_EQ(resourceBefore, _monitor.current())
       << "Did not reset resource monitor.";
 
   testee.cacheVertex(key2, doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterSecondInsert)
       << "Did not increase memory usage.";
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
@@ -406,14 +408,14 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_single_string) {
   VPackSlice doc = data->slice();
   HashedStringRef key{doc};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
 
   auto persisted = testee.persistString(key);
   EXPECT_TRUE(key.equals(persisted));
   EXPECT_NE(key.begin(), persisted.begin())
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
-  EXPECT_LT(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_LT(resourceBefore, _monitor.current())
       << "Did not increase memory usage.";
 }
 
@@ -426,7 +428,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_multiple_strings) {
   VPackSlice doc2 = data2->slice();
   HashedStringRef key2{doc2};
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
 
   auto persisted = testee.persistString(key);
   EXPECT_TRUE(key.equals(persisted));
@@ -434,7 +436,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_multiple_strings) {
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
@@ -444,7 +446,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_multiple_strings) {
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_LT(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Did not increase memory usage.";
   EXPECT_NE(persisted.begin(), persisted2.begin())
@@ -466,7 +468,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice) {
   }
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
 
   auto persisted = testee.persistString(key);
   EXPECT_TRUE(key.equals(persisted));
@@ -474,7 +476,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice) {
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
@@ -486,7 +488,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice) {
   EXPECT_EQ(persisted.begin(), persisted2.begin())
       << "We should only cache the same value once.";
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "We counted the same string ref multiple times.";
 }
@@ -506,7 +508,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice_after_clea
   }
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
 
   auto persisted = testee.persistString(key);
   EXPECT_TRUE(key.equals(persisted));
@@ -514,13 +516,13 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice_after_clea
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
   testee.clear();
 
-  EXPECT_EQ(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_EQ(resourceBefore, _monitor.current())
       << "Did not reset resource monitor.";
 
   auto persisted2 = testee.persistString(key2);
@@ -529,7 +531,7 @@ TEST_F(RefactoredClusterTraverserCacheTest, persist_same_string_twice_after_clea
       << "We do not have different char pointer. The persisted one needs to be "
          "internally managed";
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
       << "Persisting of the same key has different costs.";
 }
@@ -549,13 +551,13 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice_after_clear) {
   HashedStringRef id2{doc2.get("_id")};
 
   auto& testee = cache();
-  auto resourceBefore = _monitor.currentMemoryUsage();
+  auto resourceBefore = _monitor.current();
   expectEdgeIsNotCached(id);
   expectEdgeIsNotCached(id2);
 
   testee.persistEdgeData(doc);
 
-  auto resourceAfterFirstInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterFirstInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterFirstInsert)
       << "Did not increase memory usage.";
 
@@ -564,12 +566,12 @@ TEST_F(RefactoredClusterTraverserCacheTest, cache_same_edge_twice_after_clear) {
   // Test everything is empty.
   expectEdgeIsNotCached(id);
   expectEdgeIsNotCached(id2);
-  EXPECT_EQ(resourceBefore, _monitor.currentMemoryUsage())
+  EXPECT_EQ(resourceBefore, _monitor.current())
       << "Did not reset resource monitor.";
 
   testee.persistEdgeData(doc2);
 
-  auto resourceAfterSecondInsert = _monitor.currentMemoryUsage();
+  auto resourceAfterSecondInsert = _monitor.current();
   EXPECT_LT(resourceBefore, resourceAfterSecondInsert)
       << "Did not increase memory usage.";
   EXPECT_EQ(resourceAfterFirstInsert, resourceAfterSecondInsert)
