@@ -125,7 +125,7 @@ auto ClusterProvider::startVertex(VertexType vertex) -> Step {
 
 void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEnds,
                                                std::vector<Step*>& result) {
-  auto const* engines = _opts.getCache()->engines();
+  auto const* engines = _opts.engines();
   // slow path, sharding not deducable from _id
   transaction::BuilderLeaser leased(trx());
   leased->openObject();
@@ -230,7 +230,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
 }
 
 Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
-  auto const* engines = _opts.getCache()->engines();
+  auto const* engines = _opts.engines();
   // TODO Assert that the vertex is not in _vertexConnections after no-loose-end handling todo is done.
   transaction::BuilderLeaser leased(trx());
   leased->openObject(true);
@@ -329,7 +329,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
   if (looseEnds.size() > 0) {
     result.reserve(looseEnds.size());
     fetchVerticesFromEngines(looseEnds, result);
-    _stats.addHttpRequests(_opts.getCache()->engines()->size() * looseEnds.size());
+    _stats.addHttpRequests(_opts.engines()->size() * looseEnds.size());
 
     for (auto const& step : result) {
       if (_vertexConnectedEdges.find(step->getVertex().getID()) ==
@@ -337,7 +337,7 @@ auto ClusterProvider::fetch(std::vector<Step*> const& looseEnds)
         auto res = fetchEdgesFromEngines(step->getVertex().getID());
         // TODO: check stats (also take a look of vertex stats)
         // add http stats
-        _stats.addHttpRequests(_opts.getCache()->engines()->size());
+        _stats.addHttpRequests(_opts.engines()->size());
 
         if (res.fail()) {
           THROW_ARANGO_EXCEPTION(res);

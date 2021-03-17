@@ -38,13 +38,22 @@ std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const
   return _indexInformation;
 }
 
-ClusterBaseProviderOptions::ClusterBaseProviderOptions(std::shared_ptr<RefactoredClusterTraverserCache> cache,
-                                                       bool backward)
-    : _cache(std::move(cache)), _backward(backward) {}
+ClusterBaseProviderOptions::ClusterBaseProviderOptions(
+    std::shared_ptr<RefactoredClusterTraverserCache> cache,
+    std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
+    : _cache(std::move(cache)), _engines(engines), _backward(backward) {
+  TRI_ASSERT(_cache != nullptr);
+  TRI_ASSERT(_engines != nullptr);
+}
 
 RefactoredClusterTraverserCache* ClusterBaseProviderOptions::getCache() {
   TRI_ASSERT(_cache != nullptr);
   return _cache.get();
 }
 
-bool ClusterBaseProviderOptions::isBackward() { return _backward; }
+bool ClusterBaseProviderOptions::isBackward() const { return _backward; }
+
+std::unordered_map<ServerID, aql::EngineId> const* ClusterBaseProviderOptions::engines() const {
+  TRI_ASSERT(_engines != nullptr);
+  return _engines;
+}
