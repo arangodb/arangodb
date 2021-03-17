@@ -151,8 +151,6 @@ class RocksDBIndex : public Index {
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>);
   virtual void recalculateEstimates();
 
-  bool isPersistent() const override final { return true; }
-
  protected:
   RocksDBIndex(IndexId id, LogicalCollection& collection, std::string const& name,
                std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,

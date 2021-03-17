@@ -67,7 +67,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
  
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override final;
+  void compact() override final;
   
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);

@@ -242,13 +242,14 @@ class Query : public QueryContext {
   aql::ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
   
   void finishDBServerParts(int errorCode);
-
+  
  protected:
   
   AqlItemBlockManager _itemBlockManager;
   
   /// @brief the actual query string
   QueryString _queryString;
+
   /// collect execution stats, contains aliases
   aql::ExecutionStats _execStats;
 

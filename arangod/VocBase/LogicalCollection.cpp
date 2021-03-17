@@ -1101,7 +1101,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 }
 
 /// @brief compact-data operation
-Result LogicalCollection::compact() { return getPhysical()->compact(); }
+void LogicalCollection::compact() { getPhysical()->compact(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection

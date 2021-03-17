@@ -330,13 +330,8 @@ size_t RocksDBIndex::memory() const {
 void RocksDBIndex::compact() {
   auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-  rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid)) {
-    RocksDBKeyBounds bounds = this->getBounds();
-    TRI_ASSERT(_cf == bounds.columnFamily());
-    rocksdb::Slice b = bounds.start(), e = bounds.end();
-    db->CompactRange(opts, _cf, &b, &e);
+    engine.compactRange(getBounds());
   }
 }
 

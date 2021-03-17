@@ -172,8 +172,6 @@ class EdgeIndexMock final : public arangodb::Index {
 
   char const* typeName() const override { return "edge"; }
 
-  bool isPersistent() const override { return false; }
-
   bool canBeDropped() const override { return false; }
 
   bool isHidden() const override { return false; }
@@ -721,8 +719,6 @@ class HashIndexMock final : public arangodb::Index {
   IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
 
   char const* typeName() const override { return "hash"; }
-
-  bool isPersistent() const override { return false; }
 
   bool canBeDropped() const override { return false; }
 
@@ -1321,10 +1317,6 @@ arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods
                                                   arangodb::OperationOptions& options) {
   before();
   _documents.clear();
-  return arangodb::Result();
-}
-
-arangodb::Result PhysicalCollectionMock::compact() {
   return arangodb::Result();
 }
 

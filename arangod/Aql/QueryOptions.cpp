@@ -40,7 +40,8 @@ size_t QueryOptions::defaultMemoryLimit = 0;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128;
 double QueryOptions::defaultMaxRuntime = 0.0;
 double QueryOptions::defaultTtl;
-bool QueryOptions::defaultFailOnWarning;
+bool QueryOptions::defaultFailOnWarning = false;
+bool QueryOptions::allowMemoryLimitOverride = true;
 
 QueryOptions::QueryOptions()
     : memoryLimit(0),
@@ -97,12 +98,20 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   }
 
   VPackSlice value;
-
+    
+  // use global memory limit value first
+  if (QueryOptions::defaultMemoryLimit > 0) {
+    memoryLimit = QueryOptions::defaultMemoryLimit;
+  }
+  
   // numeric options
   value = slice.get("memoryLimit");
   if (value.isNumber()) {
     size_t v = value.getNumber<size_t>();
-    if (v > 0) {
+    if (v > 0 && 
+        (allowMemoryLimitOverride || v < memoryLimit)) {
+      // only allow increasing the memory limit if the respective startup option
+      // is set. and if it is set, only allow decreasing the memory limit
       memoryLimit = v;
     }
   }

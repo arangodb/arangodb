@@ -28,6 +28,8 @@
 #include "Aql/IResearchViewExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
@@ -512,7 +514,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   size_t skippedLocal = 0;
   arangodb::aql::AqlCall call{};
@@ -581,7 +584,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExactEmpt
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);
@@ -651,7 +655,8 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
   std::vector<arangodb::aql::ExecutionBlock*> emptyExecutors;
   arangodb::aql::DependencyProxy<arangodb::aql::BlockPassthrough::Disable> dummyProxy(emptyExecutors, 0);
   arangodb::aql::SingleRowFetcher<arangodb::aql::BlockPassthrough::Disable> fetcher(dummyProxy);
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   arangodb::aql::AqlItemBlockManager itemBlockManager{monitor, arangodb::aql::SerializationFormat::SHADOWROWS};
   arangodb::aql::SharedAqlItemBlockPtr inputBlock = itemBlockManager.requestBlock(1, 1);
   arangodb::aql::IResearchViewMergeExecutor<false, arangodb::iresearch::MaterializeType::NotMaterialize> mergeExecutor(fetcher, executorInfos);

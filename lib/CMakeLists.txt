@@ -136,6 +136,7 @@ add_library(arango STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp

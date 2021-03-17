@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -135,7 +136,7 @@ Result ClusterCollection::updateProperties(VPackSlice const& slice, bool doSync)
   TRI_ASSERT(_info.slice().isObject());
   TRI_ASSERT(_info.isClosed());
 
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto& idx : _indexes) {
     static_cast<ClusterIndex*>(idx.get())->updateProperties(_info.slice());
   }
@@ -181,7 +182,7 @@ void ClusterCollection::figuresSpecific(bool /*details*/, arangodb::velocypack::
 
 /// @brief closes an open collection
 ErrorCode ClusterCollection::close() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -189,14 +190,14 @@ ErrorCode ClusterCollection::close() {
 }
 
 void ClusterCollection::load() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->load();
   }
 }
 
 void ClusterCollection::unload() {
-  READ_LOCKER(guard, _indexesLock);
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it : _indexes) {
     it->unload();
   }
@@ -214,7 +215,7 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
 size_t ClusterCollection::memory() const { return 0; }
 
 void ClusterCollection::prepareIndexes(arangodb::velocypack::Slice indexesSlice) {
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   TRI_ASSERT(indexesSlice.isArray());
 
   StorageEngine& engine =
@@ -261,7 +262,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(arangodb::velocypack::Slic
   WRITE_LOCKER(guard, _exclusiveLock);
   std::shared_ptr<Index> idx;
 
-  WRITE_LOCKER(guard2, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   idx = lookupIndex(info);
   if (idx) {
     created = false;
@@ -291,7 +292,7 @@ Result ClusterCollection::dropIndex(IndexId iid) {
     return {};
   }
 
-  WRITE_LOCKER(guard, _indexesLock);
+  RECURSIVE_WRITE_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (auto it  : _indexes) {
     if (iid == it->id()) {
       _indexes.erase(it);
@@ -317,11 +318,6 @@ std::unique_ptr<IndexIterator> ClusterCollection::getAnyIterator(transaction::Me
 
 Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptions& /*options*/) {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-/// @brief compact-data operation
-Result ClusterCollection::compact() {
-  return {};
 }
 
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
