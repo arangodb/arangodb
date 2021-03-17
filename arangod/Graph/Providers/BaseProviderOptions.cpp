@@ -41,6 +41,10 @@ std::vector<IndexAccessor> const& BaseProviderOptions::indexInformations() const
   return _indexInformation;
 }
 
+std::map<std::string, std::string> const& BaseProviderOptions::collectionToShardMap() const {
+  return _collectionToShardMap;
+}
+
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward)
