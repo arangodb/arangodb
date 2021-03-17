@@ -10,6 +10,10 @@ devel
   it is reported by the agency, and all open transactions from that coordinator
   will be auto-aborted on DB servers.
 
+* Fix progress reporting for arangoimport with large files on Windows.
+  Previously, progress was only reported for the first 2GB of data due to a
+  int overflow.
+
 * Log the actual signal instead of "control-c" and also include the process id
   of the process that sent the signal.
 
