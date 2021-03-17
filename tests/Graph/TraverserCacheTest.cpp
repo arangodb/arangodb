@@ -108,7 +108,7 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_avail
   EdgeDocumentToken edt{dataSourceId, localDocumentId};
   VPackBuilder builder;
 
-  // NOTE: we do not have the data, so we get null for any vertex
+  // NOTE: we do not have the data, so we get null for any edge
   traverserCache->insertEdgeIntoResult(edt, builder);
   ASSERT_TRUE(builder.slice().isNull());
 }
