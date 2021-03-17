@@ -346,8 +346,11 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
     if (!ServerState::instance()->isCoordinator()) {
       // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
       // be changed in the future) create BaseProviderOptions
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(), opts->collectionToShard());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes(),  opts->collectionToShard());
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(),
+                                                 opts->collectionToShard());
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
+                                                  buildReverseUsedIndexes(),
+                                                  opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
@@ -384,11 +387,10 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
     } else {
-      auto cache =
-          std::make_shared<RefactoredClusterTraverserCache>(engines(),
-                                                            opts->query().resourceMonitor());
-      ClusterBaseProviderOptions forwardProviderOptions(cache, false);
-      ClusterBaseProviderOptions backwardProviderOptions(cache, true);
+      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false);
+      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true);
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {

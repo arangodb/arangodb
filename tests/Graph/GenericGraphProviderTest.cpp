@@ -190,9 +190,9 @@ class GraphProviderTest : public ::testing::Test {
       clusterEngines->emplace("PRMR_0001", engineId);
 
       auto clusterCache =
-          std::make_shared<RefactoredClusterTraverserCache>(clusterEngines.get(), resourceMonitor);
+          std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
-      ClusterBaseProviderOptions opts(clusterCache, false);
+      ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false);
       return ClusterProvider(*query.get(), std::move(opts), resourceMonitor);
     }
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
