@@ -26,10 +26,15 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <algorithm>
 
@@ -320,6 +325,25 @@ void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
       std::unordered_map<CallbackId, DescriptedCallback>{ { getNextCallbackId(), std::move(callback) } }
   )});
+}
+    
+void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootId.value()));
+  builder.close();
+}
+
+RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Slice slice) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice serverIdSlice = slice.get(StaticStrings::AttrCoordinatorId);
+  VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
+
+  if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
+  }
+  
+  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
 }
 
 CallbackGuard::CallbackGuard() : _callback(nullptr) {}

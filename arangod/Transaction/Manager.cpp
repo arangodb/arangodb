@@ -147,7 +147,9 @@ uint64_t Manager::getActiveTransactionCount() {
   return idleTTLDBServer;
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st)
+Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, 
+                                std::shared_ptr<TransactionState> st,
+                                arangodb::cluster::CallbackGuard rGuard)
     : type(t),
       intermediateCommits(false),
       wasExpired(false),
@@ -155,6 +157,7 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, std::shared_ptr<Transact
       timeToLive(ttl),
       expiryTime(TRI_microtime() + Manager::ttlForType(t)),
       state(std::move(st)),
+      rGuard(std::move(rGuard)),
       user(::currentUser()),
       db(state ? state->vocbase().name() : ""),
       rwlock() {}
@@ -195,6 +198,89 @@ Manager::ManagedTrx::~ManagedTrx() {
 
 using namespace arangodb;
 
+namespace {
+
+bool extractCollections(VPackSlice collections, std::vector<std::string>& reads,
+                        std::vector<std::string>& writes,
+                        std::vector<std::string>& exclusives) {
+  auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
+    if (slice.isNone()) {  // ignore nonexistent keys
+      return true;
+    } else if (slice.isString()) {
+      cols.emplace_back(slice.copyString());
+      return true;
+    }
+
+    if (slice.isArray()) {
+      for (VPackSlice val : VPackArrayIterator(slice)) {
+        if (!val.isString() || val.getStringLength() == 0) {
+          return false;
+        }
+        cols.emplace_back(val.copyString());
+      }
+      return true;
+    }
+    return false;
+  };
+  return fillColls(collections.get("read"), reads) &&
+         fillColls(collections.get("write"), writes) &&
+         fillColls(collections.get("exclusive"), exclusives);
+}
+
+Result buildOptions(VPackSlice trxOpts, 
+                    transaction::Options& options,
+                    std::vector<std::string>& reads,
+                    std::vector<std::string>& writes,
+                    std::vector<std::string>& exclusives) {
+  Result res;
+  // parse the collections to register
+  if (!trxOpts.isObject()) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
+  }
+
+  VPackSlice trxCollections = trxOpts.get("collections");
+  if (!trxCollections.isObject()) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
+  }
+
+  // extract the properties from the object
+  options.fromVelocyPack(trxOpts);
+  if (options.lockTimeout < 0.0) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "<lockTimeout> needs to be positive");
+  }
+  
+  bool isValid = extractCollections(trxCollections, reads, writes, exclusives);
+
+  if (!isValid) {
+    return res.reset(TRI_ERROR_BAD_PARAMETER,
+                     "invalid 'collections' attribute");
+  }
+  return res;
+}
+
+}  // namespace
+
+arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(TransactionState const& state) {
+  arangodb::cluster::CallbackGuard rGuard;
+  
+  if (ServerState::instance()->isDBServer()) {
+    auto const& origin = state.options().origin;
+    if (!origin.serverId().empty()) {
+      auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
+      auto& clusterInfo = clusterFeature.clusterInfo();
+      rGuard = clusterInfo.rebootTracker().callMeOnChange(
+          cluster::RebootTracker::PeerState(origin.serverId(), origin.rebootId()),
+          [this, tid = state.id()]() {
+            // abort the transaction once the coordinator goes away
+            abortManagedTrx(tid, std::string());
+          },
+          "Transaction aborted since coordinator rebooted or failed.");
+    }
+  }
+  return rGuard;
+}
+
 /// @brief register a transaction shard
 /// @brief tid global transaction shard
 /// @param cid the optional transaction ID (use 0 for a single shard trx)
@@ -202,9 +288,11 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
+  
   TRI_ASSERT(state != nullptr);
-  auto const tid = state->id();
+  arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
+  
+  TransactionId const tid = state->id();
   size_t const bucket = getBucket(tid);
   {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -212,7 +300,7 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
     auto& buck = _transactions[bucket];
 
     double ttl = Manager::ttlForType(MetaType::StandaloneAQL);
-    auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state);
+    auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state, std::move(rGuard));
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_INTERNAL,
@@ -247,85 +335,30 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   buck._managed.erase(it);  // unlocking not necessary
 }
 
-namespace {
-bool ExtractCollections(VPackSlice collections, std::vector<std::string>& reads,
-                        std::vector<std::string>& writes,
-                        std::vector<std::string>& exclusives) {
-  auto fillColls = [](VPackSlice const& slice, std::vector<std::string>& cols) {
-    if (slice.isNone()) {  // ignore nonexistent keys
-      return true;
-    } else if (slice.isString()) {
-      cols.emplace_back(slice.copyString());
-      return true;
-    }
-
-    if (slice.isArray()) {
-      for (VPackSlice val : VPackArrayIterator(slice)) {
-        if (!val.isString() || val.getStringLength() == 0) {
-          return false;
-        }
-        cols.emplace_back(val.copyString());
-      }
-      return true;
-    }
-    return false;
-  };
-  return fillColls(collections.get("read"), reads) &&
-         fillColls(collections.get("write"), writes) &&
-         fillColls(collections.get("exclusive"), exclusives);
-}
-}  // namespace
-
 ResultT<TransactionId> Manager::createManagedTrx(TRI_vocbase_t& vocbase, VPackSlice trxOpts) {
-  Result res;
-  // parse the collections to register
-  if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
-  }
-
-  // extract the properties from the object
   transaction::Options options;
-  options.fromVelocyPack(trxOpts);
-  if (options.lockTimeout < 0.0) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "<lockTimeout> needs to be positive");
-  }
-
   std::vector<std::string> reads, writes, exclusives;
-  bool isValid = ExtractCollections(trxOpts.get("collections"), reads, writes, exclusives);
 
-  if (!isValid) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "invalid 'collections' attribute");
+  Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
+  if (res.fail()) {
+    return res;
   }
+
   return createManagedTrx(vocbase, reads, writes, exclusives, std::move(options));
 }
 
 Result Manager::ensureManagedTrx(TRI_vocbase_t& vocbase, TransactionId tid,
                                  VPackSlice trxOpts, bool isFollowerTransaction) {
-  Result res;
-  // parse the collections to register
-  if (!trxOpts.isObject() || !trxOpts.get("collections").isObject()) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER, "missing 'collections'");
+  transaction::Options options;
+  std::vector<std::string> reads, writes, exclusives;
+
+  Result res = buildOptions(trxOpts, options, reads, writes, exclusives);
+  if (res.fail()) {
+    return res;
   }
 
-  // extract the properties from the object
-  transaction::Options options;
-  options.fromVelocyPack(trxOpts);
-  if (options.lockTimeout < 0.0) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "<lockTimeout> needs to be positive");
-  }
   if (isFollowerTransaction) {
     options.isFollowerTransaction = true;
-  }
-
-  std::vector<std::string> reads, writes, exclusives;
-  bool isValid = ExtractCollections(trxOpts.get("collections"), reads, writes, exclusives);
-
-  if (!isValid) {
-    return res.reset(TRI_ERROR_BAD_PARAMETER,
-                     "invalid 'collections' attribute");
   }
 
   return ensureManagedTrx(vocbase, tid, reads, writes, exclusives, std::move(options));
@@ -345,7 +378,7 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
-  Result res{};
+  Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
@@ -1312,12 +1345,15 @@ bool Manager::storeManagedState(TransactionId const& tid,
     ttl = Manager::ttlForType(MetaType::Managed);
   }
 
+  TRI_ASSERT(state != nullptr);
+  arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
+
   // add transaction to bucket
   size_t const bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
-                                                       ttl, std::move(state));
+  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl,
+                                                       std::move(state), std::move(rGuard));
   return it.second;
 }
 

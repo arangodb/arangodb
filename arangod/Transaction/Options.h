@@ -27,6 +27,7 @@
 #include <cstdint>
 
 #include "Basics/Common.h"
+#include "Cluster/RebootTracker.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -74,6 +75,16 @@ struct Options {
 #endif
   bool waitForSync;
   bool isFollowerTransaction;
+
+  /// @brief originating server of this transaction. will be populated
+  /// only in the cluster, and with a coordinator id/coordinator reboot id
+  /// then. coordinators fill this in when they start a transaction, and
+  /// the info is send with the transaction begin requests to DB servers,
+  /// which will also store the coordinator's id. this is so they can
+  /// abort the transaction should the coordinator die or be rebooted.
+  ///. the server id and reboot id are intentionally empty in single server
+  /// case.
+  arangodb::cluster::RebootTracker::PeerState origin;
 };
 
 }  // namespace transaction

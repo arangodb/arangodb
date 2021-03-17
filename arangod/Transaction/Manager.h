@@ -29,6 +29,7 @@
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
+#include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
 #include "VocBase/AccessMode.h"
@@ -57,7 +58,7 @@ struct Options;
 /// @brief Tracks TransasctionState instances
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double idleTTL = 10.0;                          // 10 seconds
+  static constexpr double idleTTL = 30.0;                          // 30 seconds
   static constexpr double idleTTLDBServer = 3 * 60.0;              //  3 minutes
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
@@ -69,7 +70,9 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st);
+    ManagedTrx(MetaType type, double ttl, 
+               std::shared_ptr<TransactionState> state, 
+               arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
 
     bool hasPerformedIntermediateCommits() const noexcept;
@@ -91,6 +94,7 @@ class Manager final {
     double const timeToLive;
     double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
+    arangodb::cluster::CallbackGuard rGuard;
     std::string user;                         /// user owning the transaction
     std::string db;  /// database in which the transaction operates
     /// cheap usage lock for _state
@@ -116,6 +120,8 @@ class Manager final {
   void disallowInserts() {
     _disallowInserts.store(true, std::memory_order_release);
   }
+
+  arangodb::cluster::CallbackGuard buildCallbackGuard(TransactionState const& state);
 
   /// @brief register a AQL transaction
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);
