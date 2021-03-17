@@ -65,7 +65,7 @@ class RefactoredTraverserCache {
                                     aql::QueryContext* query,
                                     arangodb::ResourceMonitor& resourceMonitor,
                                     arangodb::aql::TraversalStats& stats);
-  ~RefactoredTraverserCache() = default;
+  ~RefactoredTraverserCache();
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
   RefactoredTraverserCache(RefactoredTraverserCache&&) = default;

@@ -61,6 +61,10 @@ RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Method
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
+RefactoredTraverserCache::~RefactoredTraverserCache() {
+  clear();
+}
+
 void RefactoredTraverserCache::clear() {
   _resourceMonitor.decreaseMemoryUsage(_persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
