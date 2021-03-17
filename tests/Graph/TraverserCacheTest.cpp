@@ -90,6 +90,11 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
   ASSERT_EQ(all.size(), 1);
   ASSERT_TRUE(all[0].first == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   ASSERT_TRUE(all[0].second == expectedMessage);
+
+  // check stats
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 0);
 }
 
 TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_edge_is_not_available) {
@@ -217,6 +222,11 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   traverserCache->insertVertexIntoResult(arangodb::velocypack::HashedStringRef(id), builder);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
+
+  // check stats
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 1);
 }
 
 TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
@@ -255,6 +265,11 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   EXPECT_EQ(builder.slice().get("_key").toString(), "0-1");
   EXPECT_EQ(builder.slice().get("_from").toString(), "v/0");
   EXPECT_EQ(builder.slice().get("_to").toString(), "v/1");
+
+  // check stats
+  EXPECT_EQ(stats.getHttpRequests(), 0);
+  EXPECT_EQ(stats.getFiltered(), 0);
+  EXPECT_EQ(stats.getScannedIndex(), 0); // <- see note in method: appendEdge
 }
 
 }  // namespace traverser_cache_test
