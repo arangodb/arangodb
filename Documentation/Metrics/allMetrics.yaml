@@ -391,6 +391,38 @@
   unit: number
 - category: AQL
   complexity: simple
+  description: 'Total memory limit for all AQL queries combined.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total memory limit for all AQL queries combined.
+
+    '
+  name: arangodb_aql_global_memory_limit
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Total memory usage of all AQL queries executing; granularity: 32768
+    bytes steps.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total memory usage of all AQL queries executing; granularity: 32768 bytes
+    steps.
+
+    '
+  name: arangodb_aql_global_memory_usage
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
   description: 'Execution time histogram for all AQL queries.
 
     '
