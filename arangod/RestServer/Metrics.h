@@ -462,7 +462,8 @@ template<typename Scale> class Histogram : public Metric {
     }
     value_type tmp = _s.load(std::memory_order_relaxed);
     do {
-    } while (!_s.compare_exchange_weak(tmp, tmp + n * t,
+    } while (!_s.compare_exchange_weak(tmp,
+                                       tmp + static_cast<value_type>(n) * t,
                                        std::memory_order_relaxed,
                                        std::memory_order_relaxed));
 
