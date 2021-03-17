@@ -356,6 +356,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
   bool isLowerThanMax[max_dimensions] = {};
 
   unsigned dim = 0;
+  unsigned finished_dims = 2 * dimensions;
   for (std::size_t i = 0; i < 8 * max_size; i++) {
 
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
@@ -367,6 +368,9 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
         return false;
       } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
         isLargerThanMin[dim] = true;
+        if (--finished_dims == 0) {
+          break;
+        }
       }
     }
 
@@ -375,6 +379,9 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
         return false;
       } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
         isLowerThanMax[dim] = true;
+        if (--finished_dims == 0) {
+          break;
+        }
       }
     }
 
