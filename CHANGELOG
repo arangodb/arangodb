@@ -6,6 +6,10 @@ devel
   coordinator, and should translate into 2 shards each on DB servers. But there
   shouldn't be shards named `_statistics*` on DB servers.
 
+* Fix progress reporting for arangoimport with large files on Windows.
+  Previously, progress was only reported for the first 2GB of data due to a
+  int overflow.
+
 * Log the actual signal instead of "control-c" and also include the process id
   of the process that sent the signal.
 
