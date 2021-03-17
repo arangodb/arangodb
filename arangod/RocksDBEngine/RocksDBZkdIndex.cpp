@@ -76,6 +76,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _iter = mthds->NewIterator(options, index->columnFamily());
     TRI_ASSERT(_iter != nullptr);
     _iter->SeekToFirst();
+    _compareResult.resize(_dim);
   }
 
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }

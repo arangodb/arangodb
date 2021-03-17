@@ -283,6 +283,7 @@ auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string
 void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_string_view max,
                     std::size_t dimensions, std::vector<CompareResult>& result) {
 
+  TRI_ASSERT(result.size() == dimensions);
   std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
 
   BitReader cur_reader(cur);
