@@ -104,13 +104,13 @@ auto PathValidator<PathStore, vertexUniqueness>::validatePath(
 
   // For NONE: ignoreOtherValidator return TAKE
   return ValidationResult{ValidationResult::Type::TAKE};
-};
+}
 
 template <class PathStore, VertexUniquenessLevel vertexUniqueness>
 auto PathValidator<PathStore, vertexUniqueness>::exposeUniqueVertices() const
     -> ::arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>, std::equal_to<VertexRef>> const& {
   return _uniqueVertices;
-};
+}
 
 namespace arangodb {
 namespace graph {

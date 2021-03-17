@@ -32,6 +32,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/Metrics.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -39,7 +40,6 @@
 #include "StorageEngine/StorageEngineFeature.h"
 
 #include <chrono>
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -436,6 +436,10 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
 
   // minimize reallocs
   result.reserve(32768);
+
+  // QueryRegistryFeature
+  auto& q = server().getFeature<QueryRegistryFeature>();
+  q.updateMetrics();
   {
     bool changed = false;
     

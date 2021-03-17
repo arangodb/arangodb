@@ -28,7 +28,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
@@ -89,8 +88,6 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature, ActionDescription const& d
 EnsureIndex::~EnsureIndex() = default;
 
 bool EnsureIndex::first() {
-  arangodb::Result res;
-
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
