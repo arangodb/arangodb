@@ -1880,16 +1880,18 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
              responses[i].get().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
+          LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
+              << "truncateLocal: dropping follower " << (*followers)[i]
+              << " for shard" << collection->vocbase().name() << "/" << collectionName
+              << ": " << responses[i].get().combinedResult().errorMessage();
           res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropped follower " << (*followers)[i]
-                << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collectionName << ": " << res.errorMessage();
+                << " for shard " << collection->vocbase().name() << "/" << collection->name()
+                << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }
