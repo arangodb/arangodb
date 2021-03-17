@@ -4501,17 +4501,9 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 }
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
-  AgencyCommResult dump = _agency.getValues("Plan");
-
-  if (!dump.successful()) {
-    LOG_TOPIC("ce937", ERR, Logger::CLUSTER)
-        << "failed to acquire agency dump: " << dump.errorMessage();
-    return Result(dump.errorCode(), dump.errorMessage());
-  }
-
-  body->add(dump.slice());
-  
-  dump = _agency.getValues("Sync/LatestID");
+  AgencyReadTransaction trx(std::vector<std::string>(
+      {AgencyCommManager::path("Plan"), AgencyCommManager::path("Sync/LatestID")}));
+  AgencyCommResult dump = _agency.sendTransactionWithFailover(trx, 60.0);
 
   if (!dump.successful()) {
     LOG_TOPIC("ce937", ERR, Logger::CLUSTER)

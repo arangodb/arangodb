@@ -573,8 +573,8 @@ void ClusterFeature::start() {
     _hotbackupRestoreCallback =
       std::make_shared<AgencyCallback>(
         server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
-    Result r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
-    if (r.fail()) {
+    auto r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback);
+    if (!r) {
       LOG_TOPIC("82516", WARN, Logger::BACKUP)
         << "Could not register hotbackup restore callback, this could lead "
            "to problems after a restore!";
