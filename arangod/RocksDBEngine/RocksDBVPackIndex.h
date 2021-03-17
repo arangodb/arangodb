@@ -192,6 +192,9 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @brief whether or not partial indexing is allowed
   bool _allowPartialIndex;
 
+  /// @brief whether or not we want to have estimates
+  bool _estimates;
+
   /// @brief A fixed size library to estimate the selectivity of the index.
   /// On insertion of a document we have to insert it into the estimator,
   /// On removal we have to remove it in the estimator as well.

@@ -387,9 +387,9 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
               &engine, this, std::move(registerInfos), std::move(executorInfos));
         }
       } else {
-        auto cache = std::make_shared<RefactoredClusterTraverserCache>(engines(), opts->query().resourceMonitor());
-        ClusterBaseProviderOptions forwardProviderOptions(cache, false);
-        ClusterBaseProviderOptions backwardProviderOptions(cache, true);
+        auto cache = std::make_shared<RefactoredClusterTraverserCache>(opts->query().resourceMonitor());
+        ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false);
+        ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true);
 
         if (opts->query().queryOptions().getTraversalProfileLevel() ==
             TraversalProfileLevel::None) {
