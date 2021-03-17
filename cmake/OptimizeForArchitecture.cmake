@@ -359,7 +359,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       list(APPEND _available_vector_units_list "sse4a")
    elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
       list(APPEND _march_flag_list "znver3")
-      list(APPEND _available_vector_units_list "bmi" "bmi2" "fma" "fma4" "avx" "avx2" "sse" "sse2" "sse3" "sse4a" "ssse3" "sse4.1" "sse4.2")
+      list(APPEND _available_vector_units_list "bmi" "bmi2" "fma" "avx" "avx2" "sse" "sse2" "sse3" "sse4a" "ssse3" "sse4.1" "sse4.2")
    elseif(TARGET_ARCHITECTURE STREQUAL "piledriver")
       list(APPEND _march_flag_list "bdver2")
       list(APPEND _march_flag_list "bdver1")
