@@ -1,0 +1,13 @@
+name: rocksdb_block_cache_usage
+help: |
+  rocksdb_block_cache_usage
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_block_cache_usage
