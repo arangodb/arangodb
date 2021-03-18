@@ -10,6 +10,20 @@ devel
   it is reported by the agency, and all open transactions from that coordinator
   will be auto-aborted on DB servers.
 
+* Backport a bugfix from upstream RocksDB for opening encrypted files with
+  small sizes. Without the bugfix, the server may run into assertion failures
+  during recovery.
+
+* Fix duplicate leaving of V8 contexts when returning streaming cursors.
+  The `exitContext` call done on query shutdown could previously try to exit
+  the V8 context multiple times, which would cause undefined behavior. Now
+  we are tracking if we already left the context to prevent duplicate invocation.
+
+* In a cluster, do not create the collections `_statistics`, `_statistics15` and 
+  `statisticsRaw` on DB servers. These collections should only be created by the
+  coordinator, and should translate into 2 shards each on DB servers. But there
+  shouldn't be shards named `_statistics*` on DB servers.
+
 * Fixed two bogus messages about hotbackup restore:
   - Coordinators unconditionally logged the message "Got a hotbackup restore
     event, getting new cluster-wide unique IDs..." on shutdown. This was not
@@ -37,7 +51,7 @@ devel
   some spurious errors after a hotbackup restore.
 
 * Fix progress reporting for arangoimport with large files on Windows.
-  Previously, progress was only reported for the first 2GB of data due to a
+  Previously, progress was only reported for the first 2GB of data due to an
   int overflow.
 
 * Log the actual signal instead of "control-c" and also include the process id

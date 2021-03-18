@@ -102,6 +102,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _resultCode(std::nullopt),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _registeredInV8Context(false),
       _queryKilled(false),
       _queryHashCalculated(false) {
 
@@ -1007,10 +1008,9 @@ void Query::enterV8Context() {
       registerCtx();
     }
     TRI_ASSERT(_v8Context != nullptr);
-  } else {
-    if (!_embeddedQuery) {  // may happen for stream trx
-      registerCtx();
-    }
+  } else if (!_embeddedQuery && !_registeredInV8Context) {  // may happen for stream trx
+    registerCtx();
+    _registeredInV8Context = true;
   }
 }
 
@@ -1037,8 +1037,10 @@ void Query::exitV8Context() {
       server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
-  } else if (!_embeddedQuery) {
+  } else if (!_embeddedQuery && _registeredInV8Context) {
+    // prevent duplicate deregistration
     unregister();
+    _registeredInV8Context = false;
   }
 }
 
