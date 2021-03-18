@@ -39,11 +39,6 @@ class ExecContext;
 enum class IndexOperationMode : uint8_t { normal, internal, rollback };
 
 // a struct for keeping document modification operations in transactions
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif
-
 struct OperationOptions {
 
   /// @brief behavior when inserting a document by _key using INSERT with overwrite
@@ -140,12 +135,8 @@ struct OperationOptions {
   ExecContext const& context() const;
 
  private:
-  ExecContext const* _context;
+  ExecContext const* _context{};
 };
-
-#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
-#pragma GCC diagnostic pop
-#endif
 
 }  // namespace arangodb
 
