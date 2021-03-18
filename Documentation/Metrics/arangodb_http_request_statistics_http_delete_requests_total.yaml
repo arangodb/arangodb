@@ -1,0 +1,14 @@
+name: arangodb_http_request_statistics_http_delete_requests_total
+help: |
+  Number of HTTP DELETE requests
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of HTTP DELETE requests.
