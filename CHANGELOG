@@ -1,6 +1,14 @@
 devel
 -----
 
+* Remove some leftover replication tailing clients from internal bookkeeping
+  once they are finished with getting a shard in sync. Previously, such 
+  replication clients could have been left in the internal bookkeeping until
+  they were removed by the automatic garbage collection after 2 hours. While
+  the client entries were still in the bookkeeping tables, they could prevent
+  archived RocksDB WAL files from being dropped, leading to leader DB servers
+  keeping more WAL files around than necessary.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the 
