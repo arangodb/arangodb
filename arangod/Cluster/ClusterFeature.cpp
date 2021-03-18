@@ -692,7 +692,7 @@ void ClusterFeature::stop() {
 #ifdef USE_ENTERPRISE
   if (_hotbackupRestoreCallback != nullptr) {
     if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
-      LOG_TOPIC("84152", INFO, Logger::BACKUP) << "Strange, we could not "
+      LOG_TOPIC("84152", DEBUG, Logger::BACKUP) << "Strange, we could not "
         "unregister the hotbackup restore callback.";
     }
   }
