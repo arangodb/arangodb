@@ -151,7 +151,7 @@ function runArangodRecovery (params) {
 
     argv = toArgv(Object.assign(params.args, additionalParams));
   } else {
-    additionalParams['javascript.script-parameter'] = 'recory';
+    additionalParams['javascript.script-parameter'] = 'recovery';
     argv = toArgv(Object.assign(params.args, additionalParams));
     
     if (params.options.rr) {
