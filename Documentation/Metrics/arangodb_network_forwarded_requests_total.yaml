@@ -1,0 +1,11 @@
+name: arangodb_network_forwarded_requests_total
+help: |
+  Number of requests forwarded to another coordinator.
+unit: number
+type: counter
+category: Network
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Number of requests forwarded to another coordinator.

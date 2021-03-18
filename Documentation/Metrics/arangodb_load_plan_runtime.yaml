@@ -1,0 +1,12 @@
+name: arangodb_load_plan_runtime
+help: |
+  `Plan` loading runtimes.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Histogram of `Plan` loading runtimes.

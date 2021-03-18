@@ -1,0 +1,11 @@
+name: arangodb_agency_client_lookup_table_size
+help: |
+  Current number of entries in agency client id lookup table.
+unit: number
+type: gauge
+category: Agency
+complexity: advanced
+exposedBy:
+  - agent
+description: |
+  Current number of entries in agency client id lookup table.

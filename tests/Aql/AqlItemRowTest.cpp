@@ -30,7 +30,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
-
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Builder.h>
@@ -46,7 +47,8 @@ namespace aql {
 
 class AqlItemRowsTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 
@@ -309,7 +311,8 @@ static_assert(GTEST_HAS_TYPED_TEST, "We need typed tests for the following:");
 template <class RowType>
 class AqlItemRowsCommonEqTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };
@@ -403,7 +406,8 @@ TYPED_TEST(AqlItemRowsCommonEqTest, row_equivalence) {
 
 class AqlShadowRowsEqTest : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   velocypack::Options const* const options{&velocypack::Options::Defaults};
 };

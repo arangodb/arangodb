@@ -1,0 +1,13 @@
+name: arangodb_scheduler_jobs_dequeued
+help: |
+  Total number of jobs dequeued.
+unit: number
+type: gauge
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of jobs dequeued.

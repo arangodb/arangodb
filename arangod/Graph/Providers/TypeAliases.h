@@ -25,14 +25,12 @@
 #ifndef ARANGOD_GRAPH_PROVIDERS_TYPE_ALIASES_H
 #define ARANGOD_GRAPH_PROVIDERS_TYPE_ALIASES_H 1
 
-namespace arangodb {
-namespace velocypack {
-class HashedStringRef;
-}
+#include <velocypack/HashedStringRef.h>
 
+namespace arangodb {
 namespace graph {
 using VertexType = arangodb::velocypack::HashedStringRef;
-
+using EdgeType = arangodb::velocypack::HashedStringRef;
 }
 }  // namespace arangodb
 

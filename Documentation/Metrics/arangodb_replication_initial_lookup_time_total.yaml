@@ -1,0 +1,11 @@
+name: arangodb_replication_initial_lookup_time_total
+help: |
+  Accumulated time needed for replication initial sync key lookups.
+unit: ms
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Accumulated time needed for replication initial sync key lookups.

@@ -1,0 +1,11 @@
+name: arangodb_maintenance_agency_sync_runtime_msec
+help: |
+  Total time spent on agency sync.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Histogram for total time spent on agency sync.

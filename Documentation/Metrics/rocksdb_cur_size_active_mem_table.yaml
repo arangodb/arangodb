@@ -1,0 +1,13 @@
+name: rocksdb_cur_size_active_mem_table
+help: |
+  rocksdb_cur_size_active_mem_table
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_cur_size_active_mem_table

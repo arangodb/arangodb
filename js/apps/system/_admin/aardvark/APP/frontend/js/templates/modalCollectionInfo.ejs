@@ -107,7 +107,7 @@ if (!figuresData.figures) {
           <th class="tooltipInfoTh">
             <div>
                 <span class="modalTooltips arangoicon icon_arangodb_info"
-                      title="The approximate size of all documents in this collection. This is an estimate only and not accurate.">
+                      title="The approximate cumulative size of all documents in this collection (on the leader). This is an estimate provided by the storage engine and may not accurate.">
                 </span>
             </div>
           </th>
@@ -136,7 +136,7 @@ if (!figuresData.figures) {
               <th class="tooltipInfoTh">
                 <div>
                   <span class="modalTooltips arangoicon icon_arangodb_info"
-                        title="The approximate size of all indexes in this collection. This is an estimate only and not accurate.">
+                        title="The approximate cumulative size of all indexes entries in this collection (on the leader). This is an estimate provided by the storage engine and may not accurate.">
                   </span>
                 </div>
               </th>
@@ -295,13 +295,26 @@ if (!figuresData.figures) {
                   <span><%= count %>
                 </td>
                 <td>
-                  <span><%= figuresData.shards[shardName][0] %></span>
+                  <%
+                    let leaderName = figuresData.shards[shardName][0];
+                    try {
+                      leaderName = window.arangoHelper.getDatabaseShortName(leaderName);
+                    } catch (ignore) {
+                    }
+                  %>
+                  <span><%= leaderName %></span>
                 </td>
                 <td>
                   <ul>
-                    <% figuresData.shards[shardName].splice(1, figuresData.shards[shardName].length).forEach(follower => { %>
+                    <% figuresData.shards[shardName].splice(1, figuresData.shards[shardName].length).forEach(follower => {
+                      let followerName = follower;
+                      try {
+                        followerName = window.arangoHelper.getDatabaseShortName(followerName);
+                      } catch (ignore) {
+                      }
+                    %>
                       <li>
-                        <span><%=follower%></span>
+                        <span><%= followerName %></span>
                       </li>
                     <% }); %>
 

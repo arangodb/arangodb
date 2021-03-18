@@ -89,6 +89,7 @@ router.get('/config.js', function (req, res) {
       isCluster: cluster.isCluster(),
       engine: db._engine().name,
       statisticsEnabled: internal.enabledStatistics(),
+      metricsEnabled: internal.enabledMetrics(),
       statisticsInAllDatabases: internal.enabledStatisticsInAllDatabases(),
       foxxStoreEnabled: !internal.isFoxxStoreDisabled(),
       foxxApiEnabled: !internal.isFoxxApiDisabled(),
@@ -96,7 +97,8 @@ router.get('/config.js', function (req, res) {
       maxReplicationFactor: internal.maxReplicationFactor,
       defaultReplicationFactor: internal.defaultReplicationFactor,
       maxNumberOfShards: internal.maxNumberOfShards,
-      forceOneShard: internal.forceOneShard 
+      forceOneShard: internal.forceOneShard,
+      showMaintenanceStatus: true
     })}`
   );
 })
