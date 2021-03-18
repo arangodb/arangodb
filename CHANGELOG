@@ -4,6 +4,8 @@ devel
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
   unique contraint violations, due to double inserts of the same document.
 
+* Rename "save" return attribute in AQL function `DATE_UTCTOLOCAL` to "dst".
+
 * Make ReplicationFeature formally depend on ServerIdFeature, because the
   former relies on the server id being already loaded by the latter.
   If this dependency is not established properly, it is undefined if the
