@@ -4,6 +4,10 @@ devel
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
   unique contraint violations, due to double inserts of the same document.
 
+* Retry a cluster internal network request if the connection comes from the
+  pool and turns out to be stale (connection immediately closed). This fixes
+  some spurious errors after a hotbackup restore.
+
 * Fix progress reporting for arangoimport with large files on Windows.
   Previously, progress was only reported for the first 2GB of data due to a
   int overflow.
