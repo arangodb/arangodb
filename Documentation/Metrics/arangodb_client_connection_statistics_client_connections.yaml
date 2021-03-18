@@ -1,0 +1,14 @@
+name: arangodb_client_connection_statistics_client_connections
+help: |
+  The number of client connections that are currently open
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The number of client connections that are currently open.

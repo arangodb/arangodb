@@ -1,0 +1,13 @@
+name: rocksdb_is_write_stopped
+help: |
+  rocksdb_is_write_stopped
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_is_write_stopped

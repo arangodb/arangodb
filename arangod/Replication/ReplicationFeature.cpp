@@ -39,6 +39,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -97,6 +98,7 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
