@@ -93,7 +93,8 @@ Get the execution status of a Pregel job:
   var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);
-    if (status.state == "done") {
+    if (["done", "canceled", "fatal error"].includes(status.state)) {
+      assert(status.state == "done");
       break;
     } else {
       print(`Waiting for Pregel job ${id} (${status.state})...`);

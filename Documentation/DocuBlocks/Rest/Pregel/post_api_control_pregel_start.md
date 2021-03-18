@@ -91,9 +91,12 @@ the results in the vertices as attribute `component`:
 
   logJsonResponse(response);
 
+  var id = JSON.parse(response.body);
+  var url = "/_api/control_pregel/" + id;
   while (true) {
     var status = internal.arango.GET(url);
-    if (status.state == "done") {
+    if (["done", "canceled", "fatal error"].includes(status.state)) {
+      assert(status.state == "done");
       break;
     } else {
       print(`Waiting for Pregel job ${id} (${status.state})...`);
