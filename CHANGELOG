@@ -1,6 +1,9 @@
 devel
 -----
 
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
 * Backport a bugfix from upstream RocksDB for opening encrypted files with
   small sizes. Without the bugfix, the server may run into assertion failures
   during recovery.
