@@ -4,6 +4,10 @@ devel
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
   unique contraint violations, due to double inserts of the same document.
 
+* Backport a bugfix from upstream RocksDB for opening encrypted files with
+  small sizes. Without the bugfix, the server may run into assertion failures
+  during recovery.
+
 * Fix duplicate leaving of V8 contexts when returning streaming cursors.
   The `exitContext` call done on query shutdown could previously try to exit
   the V8 context multiple times, which would cause undefined behavior. Now
