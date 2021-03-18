@@ -61,7 +61,8 @@ jsunity.run(function dump_cluster_testsuite() {
       "testAqlGraphQueryAny",
       "testSmartGraphSharding",
       "testViewOnSmartEdgeCollection",
-      "testSmartGraphAttribute"
+      "testSmartGraphAttribute",
+      "testLatestId"
     ];
   }
   deriveTestSuite(

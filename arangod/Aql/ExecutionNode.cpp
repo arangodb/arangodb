@@ -2558,7 +2558,10 @@ std::unique_ptr<ExecutionBlock> NoResultsNode::createBlock(
 
 /// @brief estimateCost, the cost of a NoResults is nearly 0
 CostEstimate NoResultsNode::estimateCost() const {
-  CostEstimate estimate = CostEstimate::empty();
+  // we have trigger cost estimation for parent nodes because this node could be
+  // spliced into a subquery.
+  CostEstimate estimate = _dependencies.at(0)->getCost();
+  estimate.estimatedNrItems = 0;
   estimate.estimatedCost = 0.5;  // just to make it non-zero
   return estimate;
 }
