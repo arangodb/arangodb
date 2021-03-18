@@ -32,7 +32,7 @@ if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
     'log.role': 'false',
-    'log.output': 'file://' + fs.getTempFile(),
+    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }

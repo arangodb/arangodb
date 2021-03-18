@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global getOptions, assertTrue, arango, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -30,9 +30,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.use-json-format': 'true',
-    'log.max-entry-length': '16384',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
+    'log.output': 'file://' + fs.getTempFile() + '.testi.$PID',
     'log.foreground-tty': 'false',
   };
 }
@@ -46,49 +44,15 @@ function LoggerSuite() {
     
     testLogEntries: function() {
       let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-require('console').log("testmann: " + Array(32768).join("x")); 
-require('console').log("testmann: done"); 
 return require('internal').options()["log.output"];
 `);
 
       assertTrue(Array.isArray(res));
       assertTrue(res.length > 0);
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === 3) {
-          break;
-        }
-
-        require("internal").sleep(0.5);
-      }
-      assertEqual(3, filtered.length);
-          
-      assertTrue(filtered[0].match(/testmann: start/));
-      assertTrue(filtered[1].match(/testmann: xxxxxxxx/));
-      assertTrue(filtered[2].match(/testmann: done/));
-
-      let valid = 0;
-      filtered.forEach((line) => {
-        JSON.parse(line);
-        valid++;
-      });
-      assertEqual(3, valid);
-
-      // + 10 here, because JSON truncation is approximate
-      assertTrue(filtered[1].length <= 16384 + 10, filtered[1].length);
+      let logfile = res[0].replace(/^file:\/\//, '');
+      // logfile name must end with dot and then process id
+      assertMatch(/\.testi\.[0-9]+$/, logfile);
     },
 
   };
