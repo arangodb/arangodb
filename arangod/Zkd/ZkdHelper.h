@@ -120,21 +120,25 @@ class BitWriter {
 struct RandomBitReader {
   explicit RandomBitReader(byte_string_view ref);
 
-  auto getBit(std::size_t index) -> Bit;
+  [[nodiscard]] auto getBit(std::size_t index) const -> Bit;
+
+  [[nodiscard]] auto bits() const -> std::size_t;
 
  private:
-  byte_string_view ref;
+  byte_string_view _ref;
 };
 
 struct RandomBitManipulator {
   explicit RandomBitManipulator(byte_string& ref);
 
-  auto getBit(std::size_t index) -> Bit;
+  [[nodiscard]] auto getBit(std::size_t index) const -> Bit;
 
   auto setBit(std::size_t index, Bit value) -> void;
 
+  [[nodiscard]] auto bits() const -> std::size_t;
+
  private:
-  byte_string& ref;
+  byte_string& _ref;
 };
 
 template <typename T>
