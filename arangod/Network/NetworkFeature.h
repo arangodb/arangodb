@@ -43,7 +43,7 @@ class NetworkFeature final : public application_features::ApplicationFeature {
  public:
   using RequestCallback =
       std::function<void(fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                         std::unique_ptr<fuerte::Response> res)>;
+                         std::unique_ptr<fuerte::Response> res, bool isFromPool)>;
 
   explicit NetworkFeature(application_features::ApplicationServer& server);
   explicit NetworkFeature(application_features::ApplicationServer& server,
