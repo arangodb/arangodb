@@ -51,6 +51,8 @@ class SingleServerProviderTest : public ::testing::Test {
   arangodb::GlobalResourceMonitor _global{};
   arangodb::ResourceMonitor _resourceMonitor{_global};
 
+  std::map<std::string, std::string> _emptyShardMap{};
+
   SingleServerProviderTest() {}
   ~SingleServerProviderTest() {}
 
@@ -70,7 +72,7 @@ class SingleServerProviderTest : public ::testing::Test {
 
     std::vector<IndexAccessor> usedIndexes{IndexAccessor{edgeIndexHandle, indexCondition, 0}};
 
-    BaseProviderOptions opts(tmpVar, std::move(usedIndexes));
+    BaseProviderOptions opts(tmpVar, std::move(usedIndexes), _emptyShardMap);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 };

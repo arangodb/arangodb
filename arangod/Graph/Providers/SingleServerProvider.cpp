@@ -88,7 +88,7 @@ SingleServerProvider::SingleServerProvider(arangodb::aql::QueryContext& queryCon
                                            BaseProviderOptions opts,
                                            arangodb::ResourceMonitor& resourceMonitor)
     : _trx(std::make_unique<arangodb::transaction::Methods>(queryContext.newTrxContext())),
-      _cache(_trx.get(), &queryContext, resourceMonitor),
+      _cache(_trx.get(), &queryContext, resourceMonitor, opts.collectionToShardMap()),
       _opts(std::move(opts)),
       _stats{} {
   // activateCache(false); // TODO CHECK RefactoredTraverserCache (will be discussed in the future, need to do benchmarks if affordable)
