@@ -816,7 +816,7 @@ function dumpTestEnterpriseSuite () {
 /// @brief test whether hotbackup restore restores the uniqid
 ////////////////////////////////////////////////////////////////////////////////
     testLatestId : function() {
-      if (arango.getRole() === "COORDINATOR") {
+      if (db._connection.getRole() === "COORDINATOR") {
         // Only executed in the cluster
         // After the hotbackup was taken, we have consumed 100.000.000
         // cluster wide unique ids. Here, we check that after the
