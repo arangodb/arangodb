@@ -22,75 +22,146 @@
 
 #include "gtest/gtest.h"
 
-#include "GraphTestTools.h"
+#include "./MockGraph.h"
+#include "./MockGraphProvider.h"
 
+// Used for StringUtils size_t variant
+#include "Basics/operating-system.h"
+
+#include "../Mocks/Servers.h"
+
+#include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Graph/KPathFinder.h"
-#include "Graph/ShortestPathOptions.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Options/TwoSidedEnumeratorOptions.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/Queues/FifoQueue.h"
+
+// Needed in case of enabled tracing
+#include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/Queues/QueueTracer.h"
+#include "Graph/algorithm-aliases.h"
 
 #include <velocypack/HashedStringRef.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+using namespace arangodb;
+using namespace arangodb::graph;
 using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
 namespace graph {
 
-class KPathFinderTest : public ::testing::Test {
+class KPathFinderTest
+    : public ::testing::TestWithParam<MockGraphProvider::LooseEndBehaviour> {
+  using KPathFinder = KPathEnumerator<MockGraphProvider>;
+  // using KPathFinder = TracedKPathEnumerator<MockGraphProvider>;
+
  protected:
-  GraphTestSetup s;
-  MockGraphDatabase gdb;
+  bool activateLogging{false};
+  MockGraph mockGraph;
+  mocks::MockAqlServer _server{true};
+  std::unique_ptr<arangodb::aql::Query> _query{_server.createFakeQuery()};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
-  std::unique_ptr<arangodb::aql::Query> query;
-  std::unique_ptr<arangodb::graph::ShortestPathOptions> _spo;
-  std::unique_ptr<KPathFinder> _finder;
+  KPathFinderTest() {
+    if (activateLogging) {
+      Logger::GRAPHS.setLogLevel(LogLevel::TRACE);
+    }
 
-  KPathFinderTest() : gdb(s.server, "testVocbase") {
-    gdb.addVertexCollection("v", 100);
-    gdb.addEdgeCollection("e", "v",
-                          {/* a chain 1->2->3->4 */
-                           {1, 2},
-                           {2, 3},
-                           {3, 4},
-                           /* a diamond 5->6|7|8->9 */
-                           {5, 6},
-                           {5, 7},
-                           {5, 8},
-                           {6, 9},
-                           {7, 9},
-                           {8, 9},
-                           /* many path lengths */
-                           {10, 11},
-                           {10, 12},
-                           {12, 11},
-                           {12, 13},
-                           {13, 11},
-                           {13, 14},
-                           {14, 11},
-                           /* loop path */
-                           {20, 21},
-                           {21, 20},
-                           {21, 21},
-                           {21, 22},
-                           /* triangle loop */
-                           {30, 31},
-                           {31, 32},
-                           {32, 33},
-                           {33, 31},
-                           {32, 34}});
+    /* a chain 1->2->3->4 */
+    mockGraph.addEdge(1, 2);
+    mockGraph.addEdge(2, 3);
+    mockGraph.addEdge(3, 4);
 
-    query = gdb.getQuery("RETURN 1", std::vector<std::string>{"v", "e"});
+    /* a diamond 5->6|7|8->9 */
+    mockGraph.addEdge(5, 6);
+    mockGraph.addEdge(5, 7);
+    mockGraph.addEdge(5, 8);
+    mockGraph.addEdge(6, 9);
+    mockGraph.addEdge(7, 9);
+    mockGraph.addEdge(8, 9);
+
+    /* many path lengths */
+    mockGraph.addEdge(10, 11);
+    mockGraph.addEdge(10, 12);
+    mockGraph.addEdge(12, 11);
+    mockGraph.addEdge(12, 13);
+    mockGraph.addEdge(13, 11);
+    mockGraph.addEdge(13, 14);
+    mockGraph.addEdge(14, 11);
+
+    /* loop path */
+    mockGraph.addEdge(20, 21);
+    mockGraph.addEdge(21, 20);
+    mockGraph.addEdge(21, 21);
+    mockGraph.addEdge(21, 22);
+
+    /* triangle loop */
+    mockGraph.addEdge(30, 31);
+    mockGraph.addEdge(31, 32);
+    mockGraph.addEdge(32, 33);
+    mockGraph.addEdge(33, 31);
+    mockGraph.addEdge(32, 34);
+
+    /* many neighbors at source (35 -> 40) */
+    /* neighbors at start loop back to start */
+    mockGraph.addEdge(35, 36);
+    mockGraph.addEdge(36, 37);
+    mockGraph.addEdge(37, 38);
+    mockGraph.addEdge(38, 39);
+    mockGraph.addEdge(39, 40);
+    mockGraph.addEdge(35, 41);
+    mockGraph.addEdge(35, 42);
+    mockGraph.addEdge(35, 43);
+    mockGraph.addEdge(35, 44);
+    mockGraph.addEdge(35, 45);
+    mockGraph.addEdge(35, 46);
+    mockGraph.addEdge(35, 47);
+    mockGraph.addEdge(41, 35);
+    mockGraph.addEdge(42, 35);
+    mockGraph.addEdge(43, 35);
+    mockGraph.addEdge(44, 35);
+    mockGraph.addEdge(45, 35);
+    mockGraph.addEdge(46, 35);
+    mockGraph.addEdge(47, 35);
+
+    /* many neighbors at target (48 -> 53) */
+    /* neighbors at target loop back to target */
+    mockGraph.addEdge(48, 49);
+    mockGraph.addEdge(49, 50);
+    mockGraph.addEdge(50, 51);
+    mockGraph.addEdge(51, 52);
+    mockGraph.addEdge(52, 53);
+    mockGraph.addEdge(54, 53);
+    mockGraph.addEdge(55, 53);
+    mockGraph.addEdge(56, 53);
+    mockGraph.addEdge(57, 53);
+    mockGraph.addEdge(58, 53);
+    mockGraph.addEdge(59, 53);
+    mockGraph.addEdge(53, 52);
+    mockGraph.addEdge(53, 54);
+    mockGraph.addEdge(53, 55);
+    mockGraph.addEdge(53, 56);
+    mockGraph.addEdge(53, 57);
+    mockGraph.addEdge(53, 58);
+    mockGraph.addEdge(53, 59);
   }
 
-  auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder& {
-    _spo = gdb.getShortestPathOptions(query.get());
-    _spo->minDepth = minDepth;
-    _spo->maxDepth = maxDepth;
-    _finder = std::make_unique<KPathFinder>(*_spo);
-    return *_finder;
+  auto looseEndBehaviour() const -> MockGraphProvider::LooseEndBehaviour {
+    return GetParam();
+  }
+
+  auto pathFinder(size_t minDepth, size_t maxDepth) -> KPathFinder {
+    arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth};
+    return KPathFinder{MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), false),
+                       MockGraphProvider(mockGraph, *_query.get(), looseEndBehaviour(), true),
+                       std::move(options), resourceMonitor};
   }
 
   auto vId(size_t nr) -> std::string {
@@ -166,12 +237,16 @@ class KPathFinderTest : public ::testing::Test {
   }
 };
 
-TEST_F(KPathFinderTest, no_path_exists) {
+INSTANTIATE_TEST_CASE_P(KPathFinderTestRunner, KPathFinderTest,
+                        ::testing::Values(MockGraphProvider::LooseEndBehaviour::NEVER,
+                                          MockGraphProvider::LooseEndBehaviour::ALWAYS));
+
+TEST_P(KPathFinderTest, no_path_exists) {
   VPackBuilder result;
   // No path between those
   auto source = vId(91);
   auto target = vId(99);
-  auto& finder = pathFinder(1,1);
+  auto finder = pathFinder(1, 1);
   finder.reset(toHashedStringRef(source), toHashedStringRef(target));
 
   EXPECT_FALSE(finder.isDone());
@@ -191,12 +266,16 @@ TEST_F(KPathFinderTest, no_path_exists) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    EXPECT_EQ(stats.getScannedIndex(), 0);
+  }
 }
 
-TEST_F(KPathFinderTest, path_depth_0) {
+TEST_P(KPathFinderTest, path_depth_0) {
   VPackBuilder result;
   // Search 0 depth
-  auto& finder = pathFinder(0, 0);
+  auto finder = pathFinder(0, 0);
 
   // Source and target identical
   auto source = vId(91);
@@ -223,13 +302,26 @@ TEST_F(KPathFinderTest, path_depth_0) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup the vertex
+    EXPECT_EQ(stats.getScannedIndex(), 1);
+  }
+
+  {
+    // Make sure stats are stolen and resettet
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup the vertex
+    EXPECT_EQ(stats.getScannedIndex(), 0);
+  }
 }
 
-TEST_F(KPathFinderTest, path_depth_1) {
+TEST_P(KPathFinderTest, path_depth_1) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 1);
+  auto finder = pathFinder(1, 1);
 
-  // Source and target are direkt neighbors, there is only one path between them
+  // Source and target are direct neighbors, there is only one path between them
   auto source = vId(1);
   auto target = vId(2);
 
@@ -254,11 +346,17 @@ TEST_F(KPathFinderTest, path_depth_1) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup both vertices, and the edge
+    EXPECT_EQ(stats.getScannedIndex(), 3);
+  }
 }
 
-TEST_F(KPathFinderTest, path_depth_2) {
+TEST_P(KPathFinderTest, path_depth_2) {
   VPackBuilder result;
-  auto& finder = pathFinder(2, 2);
+  auto finder = pathFinder(2, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(1);
@@ -285,12 +383,17 @@ TEST_F(KPathFinderTest, path_depth_2) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup 3 vertices + 2 edges
+    EXPECT_EQ(stats.getScannedIndex(), 5);
+  }
 }
 
-TEST_F(KPathFinderTest, path_depth_3) {
+TEST_P(KPathFinderTest, path_depth_3) {
   VPackBuilder result;
   // Search 0 depth
-  auto& finder = pathFinder(3, 3);
+  auto finder = pathFinder(3, 3);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(1);
@@ -317,12 +420,18 @@ TEST_F(KPathFinderTest, path_depth_3) {
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have to lookup 4 vertices + 3 edges
+    EXPECT_EQ(stats.getScannedIndex(), 7);
+  }
 }
 
-TEST_F(KPathFinderTest, path_diamond) {
+TEST_P(KPathFinderTest, path_diamond) {
   VPackBuilder result;
   // Search 0 depth
-auto& finder = pathFinder(2, 2);
+  auto finder = pathFinder(2, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(5);
@@ -364,11 +473,17 @@ auto& finder = pathFinder(2, 2);
     EXPECT_TRUE(result.isEmpty());
     EXPECT_TRUE(finder.isDone());
   }
+  {
+    aql::TraversalStats stats = finder.stealStats();
+    // We have 3 paths.
+    // Each path has 3 vertices + 2 edges to lookup
+    EXPECT_EQ(stats.getScannedIndex(), 15);
+  }
 }
 
-TEST_F(KPathFinderTest, path_depth_1_to_2) {
+TEST_P(KPathFinderTest, path_depth_1_to_2) {
   VPackBuilder result;
-auto& finder = pathFinder(1, 2);
+  auto finder = pathFinder(1, 2);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(10);
@@ -407,9 +522,9 @@ auto& finder = pathFinder(1, 2);
   }
 }
 
-TEST_F(KPathFinderTest, path_depth_2_to_3) {
+TEST_P(KPathFinderTest, path_depth_2_to_3) {
   VPackBuilder result;
-  auto& finder = pathFinder(2, 3);
+  auto finder = pathFinder(2, 3);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(10);
@@ -448,10 +563,48 @@ TEST_F(KPathFinderTest, path_depth_2_to_3) {
   }
 }
 
-
-TEST_F(KPathFinderTest, path_loop) {
+TEST_P(KPathFinderTest, path_depth_2_to_3_skip) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 10);
+  auto finder = pathFinder(2, 3);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(10);
+  auto target = vId(11);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    // Skip one path.
+    // We still have another one
+    result.clear();
+    auto skipped = finder.skipPath();
+    EXPECT_TRUE(skipped);
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 3);
+    pathEquals(result.slice(), {10, 12, 13, 11});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+TEST_P(KPathFinderTest, path_loop) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(20);
@@ -480,9 +633,9 @@ TEST_F(KPathFinderTest, path_loop) {
   }
 }
 
-TEST_F(KPathFinderTest, triangle_loop) {
+TEST_P(KPathFinderTest, triangle_loop) {
   VPackBuilder result;
-  auto& finder = pathFinder(1, 10);
+  auto finder = pathFinder(1, 10);
 
   // Source and target are direkt neighbors, there is only one path between them
   auto source = vId(30);
@@ -497,6 +650,93 @@ TEST_F(KPathFinderTest, triangle_loop) {
     EXPECT_TRUE(hasPath);
     pathStructureValid(result.slice(), 3);
     pathEquals(result.slice(), {30, 31, 32, 34});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(KPathFinderTest, triangle_loop_skip) {
+  auto finder = pathFinder(1, 10);
+
+  // Source and target are direkt neighbors, there is only one path between them
+  auto source = vId(30);
+  auto target = vId(34);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    auto skippedPath = finder.skipPath();
+    EXPECT_TRUE(skippedPath);
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    // Try to skip again to make sure we are not looping here
+    auto skippedPath = finder.skipPath();
+    EXPECT_FALSE(skippedPath);
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(KPathFinderTest, many_neighbours_source) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // source has a lot of neighbors, it is better to start at target
+  auto source = vId(35);
+  auto target = vId(40);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 5);
+    pathEquals(result.slice(), {35, 36, 37, 38, 39, 40});
+
+    EXPECT_FALSE(finder.isDone());
+  }
+
+  {
+    result.clear();
+    // Try again to make sure we stay at non-existing
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_FALSE(hasPath);
+    EXPECT_TRUE(result.isEmpty());
+    EXPECT_TRUE(finder.isDone());
+  }
+}
+
+TEST_P(KPathFinderTest, many_neighbours_target) {
+  VPackBuilder result;
+  auto finder = pathFinder(1, 10);
+
+  // target has a lot of neighbors, it is better to start at source
+  auto source = vId(48);
+  auto target = vId(53);
+
+  finder.reset(toHashedStringRef(source), toHashedStringRef(target));
+
+  EXPECT_FALSE(finder.isDone());
+  {
+    result.clear();
+    auto hasPath = finder.getNextPath(result);
+    EXPECT_TRUE(hasPath);
+    pathStructureValid(result.slice(), 5);
+    pathEquals(result.slice(), {48, 49, 50, 51, 52, 53});
 
     EXPECT_FALSE(finder.isDone());
   }
