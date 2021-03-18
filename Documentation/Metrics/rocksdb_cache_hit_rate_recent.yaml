@@ -1,0 +1,13 @@
+name: rocksdb_cache_hit_rate_recent
+help: |
+  rocksdb_cache_hit_rate_recent
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_cache_hit_rate_recent

@@ -1,0 +1,13 @@
+name: rocksdb_compression_ratio_at_level6
+help: |
+  rocksdb_compression_ratio_at_level6
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_compression_ratio_at_level6

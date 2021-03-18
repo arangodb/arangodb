@@ -31,7 +31,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/KPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
@@ -367,8 +366,7 @@ auto KShortestPathsExecutor<FinderType>::getVertexId(InputVertex const& vertex,
 
 template <class FinderType>
 [[nodiscard]] auto KShortestPathsExecutor<FinderType>::stats() -> Stats {
-  if constexpr (std::is_same_v<FinderType, arangodb::graph::KShortestPathsFinder> ||
-                std::is_same_v<FinderType, arangodb::graph::KPathFinder>) {
+  if constexpr (std::is_same_v<FinderType, arangodb::graph::KShortestPathsFinder>) {
     // No Stats available on original variant
     return TraversalStats{};
   } else {
@@ -377,7 +375,6 @@ template <class FinderType>
 }
 
 template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KShortestPathsFinder>;
-template class ::arangodb::aql::KShortestPathsExecutorInfos<arangodb::graph::KPathFinder>;
 
 /* SingleServerProvider Section */
 
@@ -398,4 +395,3 @@ template class ::arangodb::aql::KShortestPathsExecutor<TracedKPathEnumerator<Clu
 /* Fallback Section - Can be removed completely after refactor is done */
 
 template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KShortestPathsFinder>;
-template class ::arangodb::aql::KShortestPathsExecutor<arangodb::graph::KPathFinder>;

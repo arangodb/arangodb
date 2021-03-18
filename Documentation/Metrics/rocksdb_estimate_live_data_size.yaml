@@ -1,0 +1,13 @@
+name: rocksdb_estimate_live_data_size
+help: |
+  rocksdb_estimate_live_data_size
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_estimate_live_data_size

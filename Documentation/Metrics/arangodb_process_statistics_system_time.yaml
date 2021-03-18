@@ -1,0 +1,15 @@
+name: arangodb_process_statistics_system_time
+help: |
+  Process system time.
+unit: s
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Amount of time that this process has been scheduled in kernel mode,
+  measured in seconds.
