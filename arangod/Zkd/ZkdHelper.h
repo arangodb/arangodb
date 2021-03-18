@@ -13,22 +13,7 @@ namespace arangodb::zkd {
 inline static std::byte operator"" _b(unsigned long long b) {
   return std::byte{(unsigned char)b};
 }
-/*
-struct byte_string : public std::basic_string<std::byte> {
-  using std::basic_string<std::byte>::basic_string;
-  using std::basic_string<std::byte>::operator=;
 
-  //byte_string(std::basic_string<std::byte> str) : std::basic_string<std::byte>(std::move(str)) {}
-
-  template<typename T>
-  auto operator+(T&& other) -> byte_string {
-    return byte_string(static_cast<std::basic_string<std::byte>&>(*this) + std::forward<T>(other));
-  }
-
-  auto as_string_view() const -> std::string_view {
-    return std::string_view(reinterpret_cast<const char *>(data()), size());
-  }
-};*/
 using byte_string = std::basic_string<std::byte>;
 using byte_string_view = std::basic_string_view<std::byte>;
 
@@ -38,7 +23,7 @@ byte_string operator"" _bss(const char* str, std::size_t len);
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
 auto transpose(byte_string_view bs, std::size_t dimensions) -> std::vector<byte_string>;
 
-struct CompareResult {
+struct alignas(32) CompareResult {
   static constexpr auto max = std::numeric_limits<std::size_t>::max();
 
   signed flag = 0;

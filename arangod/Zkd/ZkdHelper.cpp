@@ -1,7 +1,9 @@
 #include "ZkdHelper.h"
 
-#include <Basics/debugging.h>
-#include <Containers/SmallVector.h>
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
+#include "Containers/SmallVector.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -113,7 +115,7 @@ auto zkd::ByteReader::next() -> std::optional<std::byte> {
 
 void zkd::BitWriter::append(Bit bit) {
   if (bit == Bit::ONE) {
-    _value |= std::byte{1} << (7u - _nibble);
+    _value |= std::byte{1} << (7U - _nibble);
   }
   _nibble += 1;
   if (_nibble == 8) {
@@ -263,9 +265,13 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
   BitReader cur_reader(cur);
   BitReader min_reader(min);
   BitReader max_reader(max);
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
-  isLargerLowerThanMinMax.resize(dimensions);
+
+  auto const isLargerThanMin = [&result](auto const dim) {
+    return result[dim].saveMin != CompareResult::max;
+  };
+  auto const isLowerThanMax = [&result](auto const dim) {
+    return result[dim].saveMax != CompareResult::max;
+  };
 
   unsigned step = 0;
   unsigned dim = 0;
@@ -279,22 +285,20 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
     auto max_bit = max_reader.next().value_or(Bit::ZERO);
 
     if (result[dim].flag == 0) {
-      if (!isLargerLowerThanMinMax[dim].first) {
+      if (!isLargerThanMin(dim)) {
         if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
           result[dim].outStep = step;
           result[dim].flag = -1;
         } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
-          isLargerLowerThanMinMax[dim].first = true;
           result[dim].saveMin = step;
         }
       }
 
-      if (!isLargerLowerThanMinMax[dim].second) {
+      if (!isLowerThanMax(dim)) {
         if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
           result[dim].outStep = step;
           result[dim].flag = 1;
         } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
-          isLargerLowerThanMinMax[dim].second = true;
           result[dim].saveMax = step;
         }
       }
