@@ -43,14 +43,14 @@ class ReadAllExecutionBlockTest : public AqlExecutorTestCase<false> {
     }
 
     if (index + 1 >= rowsPerLevel.size()) {
-      for (int64_t i = 0; i < rowsPerLevel.at(index); ++i) {
+      for (int i = 0; i < rowsPerLevel.at(index); ++i) {
         output.emplace_back(RowBuilder<1>{i});
       }
     } else {
       // Avoid integer underflow, we want value 0 on second to last entry, 1 to third to last and so on.
       TRI_ASSERT(rowsPerLevel.size() >= 2 + index);
       auto subqueryDepth = rowsPerLevel.size() - 2 - index;
-      for (int64_t i = 0; i < rowsPerLevel.at(index); ++i) {
+      for (int i = 0; i < rowsPerLevel.at(index); ++i) {
         internalExpectedOutput(rowsPerLevel, index + 1, output, shadowRows);
         shadowRows.emplace_back(output.size(), subqueryDepth);
         output.emplace_back(RowBuilder<1>{i});
@@ -130,7 +130,7 @@ class ReadAllExecutionBlockTest : public AqlExecutorTestCase<false> {
   }
 
   /**
-   * @brief Generates information to create a LambdaSkipExecutor ass consumer in the testFramwork
+   * @brief Generates information to create a LambdaSkipExecutor as consumer in the testFramwork
    *
    * @param numDataRows The number of values it producing for every input row. Resets to 0 if a new subquery is started
    * @param nestingLevel The nesting level of this Executor, 1 == mainQuery, 2 == topLevel subquery. (used for register plan only)
