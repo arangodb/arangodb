@@ -1,6 +1,14 @@
 devel
 -----
 
+* Fixed two bogus messages about hotbackup restore:
+  - Coordinators unconditionally logged the message "Got a hotbackup restore
+    event, getting new cluster-wide unique IDs..." on shutdown. This was not
+    necessarily related to a hotbackup restore.
+  - DB servers unconditionally logged the message "Strange, we could not 
+    unregister the hotbackup restore callback." on shutdown, although this was
+    meaningless.
+
 * Rename "save" return attribute in AQL function `DATE_UTCTOLOCAL` to "dst".
 
 * Make ReplicationFeature formally depend on ServerIdFeature, because the
