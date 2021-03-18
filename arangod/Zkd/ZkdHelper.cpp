@@ -422,9 +422,6 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
   auto resultManipulator = RandomBitManipulator{result};
   auto minReader = RandomBitReader{min};
 
-  auto min_trans = transpose(min, dims);
-  auto next_v = transpose(result, dims);
-
   // Calculate the next bit position in dimension `dim` (regarding dims)
   // after `bitPos`
   auto const nextGreaterBitInDim = [dims](std::size_t const bitPos, std::size_t const dim) {
