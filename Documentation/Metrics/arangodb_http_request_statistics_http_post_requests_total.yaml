@@ -1,0 +1,14 @@
+name: arangodb_http_request_statistics_http_post_requests_total
+help: |
+  Number of HTTP POST requests
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of HTTP POST requests.

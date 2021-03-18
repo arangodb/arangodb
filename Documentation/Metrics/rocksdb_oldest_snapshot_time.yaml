@@ -1,0 +1,13 @@
+name: rocksdb_oldest_snapshot_time
+help: |
+  rocksdb_oldest_snapshot_time
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_oldest_snapshot_time

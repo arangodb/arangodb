@@ -418,7 +418,8 @@ template<typename Scale> class Histogram : public Metric {
     : Metric(name, help, labels), _c(Metrics::hist_type(scale.n())), _scale(std::move(scale)),
       _lowr(std::numeric_limits<value_type>::max()),
       _highr(std::numeric_limits<value_type>::min()),
-      _n(_scale.n() - 1) {}
+      _n(_scale.n() - 1),
+      _sum(0) {}
 
   Histogram(Scale const& scale, std::string const& name, std::string const& help,
             std::string const& labels = std::string())
@@ -459,6 +460,13 @@ template<typename Scale> class Histogram : public Metric {
     } else {
       _c[pos(t)] += n;
     }
+    value_type tmp = _sum.load(std::memory_order_relaxed);
+    do {
+    } while (!_sum.compare_exchange_weak(tmp,
+                                       tmp + static_cast<value_type>(n) * t,
+                                       std::memory_order_relaxed,
+                                       std::memory_order_relaxed));
+
     records(t);
   }
 
@@ -515,6 +523,13 @@ template<typename Scale> class Histogram : public Metric {
       result += "{" + ls + "}";
     }
     result += " " + std::to_string(sum) + "\n";
+    if (alternativeName.empty()) {  // This is version 2 of the API
+      result += theName + "_sum";
+      if (!ls.empty()) {
+        result += "{" + ls + "}";
+      }
+      result += " " + std::to_string(_sum.load(std::memory_order_relaxed)) + "\n";
+    }
   }
 
   std::ostream& print(std::ostream& o) const {
@@ -527,7 +542,7 @@ template<typename Scale> class Histogram : public Metric {
   Scale _scale;
   value_type _lowr, _highr;
   size_t _n;
-
+  std::atomic<value_type> _sum;
 };
 
 std::ostream& operator<< (std::ostream&, Metrics::counter_type const&);

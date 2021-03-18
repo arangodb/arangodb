@@ -26,11 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/HashedStringRef.h>
 
+#include <map>
 #include <unordered_set>
 
 namespace arangodb {
@@ -63,7 +65,8 @@ class RefactoredTraverserCache {
  public:
   explicit RefactoredTraverserCache(arangodb::transaction::Methods* trx,
                                     aql::QueryContext* query,
-                                    arangodb::ResourceMonitor& resourceMonitor);
+                                    arangodb::ResourceMonitor& resourceMonitor,
+                                    std::map<std::string, std::string> const& collectionToShardMap);
   ~RefactoredTraverserCache() = default;
 
   RefactoredTraverserCache(RefactoredTraverserCache const&) = delete;
@@ -128,6 +131,14 @@ class RefactoredTraverserCache {
   bool appendEdge(aql::TraversalStats& stats,
                   graph::EdgeDocumentToken const& etkn, ResultType& result);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Helper Method to extract collection Name from given VertexIdentifier
+  ///        Will translate to ShardName in case of Satellite Graphs
+  //////////////////////////////////////////////////////////////////////////////
+
+  ResultT<std::pair<std::string, size_t>> extractCollectionName(
+      velocypack::HashedStringRef const& idHashed) const;
+
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
@@ -150,6 +161,8 @@ class RefactoredTraverserCache {
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
+
+  std::map<std::string, std::string> const& _collectionToShardMap;
 };
 
 }  // namespace graph
