@@ -88,12 +88,12 @@ function statisticsCollectionsSuite() {
         let shards = result.json.result;
         assertTrue(Array.isArray(shards));
         // verify that there are no shards named _statistics, _statistics15, _statisticsRaw
-        collections.forEach((s) => {
+        collections.forEach((collectionName) => {
           let shardNames = shards.map((s) => s.name);
           shardNames.forEach((s) => {
             assertMatch(/^s[0-9]+$/, s);
           });
-          assertEqual(-1, shardNames.indexOf(s));
+          assertEqual(-1, shardNames.indexOf(collectionName));
         });
       });
     },
