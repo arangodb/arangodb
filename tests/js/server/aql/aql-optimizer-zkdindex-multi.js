@@ -144,9 +144,10 @@ function optimizerRuleZkd2dIndexTestSuite() {
                         }
                         const executeRes = AQL_EXECUTE(query);
                         const res = executeRes.json;
-                        res.sort();
                         const expected = productSet(x, y, z, w);
-                        assertEqual(res, expected.sort());
+                        res.sort();
+                        expected.sort();
+                        assertEqual(expected, res, JSON.stringify({query}));
                     };
                 }
             }
