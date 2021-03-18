@@ -1,4 +1,4 @@
-v3.7.10 (XXXX-XX-XX)
+v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Make ReplicationFeature formally depend on ServerIdFeature, because the
@@ -7,6 +7,10 @@ v3.7.10 (XXXX-XX-XX)
   ReplicationFeature starts earlier than the ServerIdFeature, which can lead
   to the ReplicationFeature not sending its server id properly to the leader
   when doing replication between two single servers.
+
+
+v3.7.10 (XXXX-XX-XX)
+--------------------
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 
