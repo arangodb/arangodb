@@ -258,7 +258,7 @@ void ClusterProvider::destroyEngines() {
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
       // CL_COMM_SENT
-      LOG_TOPIC("d31a4", ERR, arangodb::Logger::GRAPHS)
+      LOG_TOPIC("d31a5", ERR, arangodb::Logger::GRAPHS)
       << "Could not destroy all traversal engines: "
       << TRI_errno_string(network::fuerteToArangoErrorCode(res));
     }
