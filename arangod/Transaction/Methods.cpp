@@ -1882,7 +1882,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
           auto const& followerInfo = collection->followers();
           LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
               << "truncateLocal: dropping follower " << (*followers)[i]
-              << " for shard" << collection->vocbase().name() << "/" << collectionName
+              << " for shard " << collection->vocbase().name() << "/" << collectionName
               << ": " << responses[i].get().combinedResult().errorMessage();
           res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
