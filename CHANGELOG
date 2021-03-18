@@ -2,9 +2,8 @@ v3.6.13 (XXXX-XX-XX)
 --------------------
 
 * Follower primaries respond with
-  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
-  to any read request. Fixes a wrongly responded 404 from chaos
-  tests.
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION to any read request. Fixes
+  a wrongly responded 404 from chaos tests.
 
 * Fixed a bug in the web interface that displayed the error "Not authorized to
   execute this request" when trying to create an index in the web interface in a
