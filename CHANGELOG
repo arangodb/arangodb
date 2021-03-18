@@ -4,6 +4,11 @@ devel
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
   unique contraint violations, due to double inserts of the same document.
 
+* Fix potentially undefined behavior when creating a CalculationTransactionContext
+  for an arangosearch analyzer. An uninitialized struct member was passed as an
+  argument to its base class. This potentially had no observable effects, but
+  should be fixed.
+
 * Retry a cluster internal network request if the connection comes from the
   pool and turns out to be stale (connection immediately closed). This fixes
   some spurious errors after a hotbackup restore.
