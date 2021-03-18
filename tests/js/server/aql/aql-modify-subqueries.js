@@ -1814,10 +1814,9 @@ function ahuacatlGeneratedSuite() {
         LIMIT 8,3
         RETURN {fv0: UNSET_RECURSIVE(fv0,"_rev", "_id", "_key"), sq1: UNSET_RECURSIVE(sq1,"_rev", "_id", 
         "_key"), sq3: UNSET_RECURSIVE(sq3,"_rev", "_id", "_key")}`;
-      const resSplice = db._query(q, {}, activateSplice);
-      const resNoSplice = db._query(q, {}, deactivateSplice);
-      assertEqual(resSplice.getExtra().stats.writesExecuted, resNoSplice.getExtra().stats.writesExecuted);
-      assertEqual(resSplice.toArray().length, resNoSplice.toArray().length);
+      const res = db._query(q);
+      assertEqual(100, res.getExtra().stats.writesExecuted);
+      assertEqual(2, res.toArray().length);
     },
 
     testSubquerySkipReporting: function () {
