@@ -574,8 +574,8 @@ void ClusterFeature::start() {
     };
     _hotbackupRestoreCallback =
       std::make_shared<AgencyCallback>(
-        server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
-    auto r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback);
+        comm, "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
+    bool r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback);
     if (!r) {
       LOG_TOPIC("82516", WARN, Logger::BACKUP)
         << "Could not register hotbackup restore callback, this could lead "
@@ -588,7 +588,7 @@ void ClusterFeature::beginShutdown() { ClusterComm::instance()->disable(); }
 
 void ClusterFeature::stop() {
   #ifdef USE_ENTERPRISE
-  if (_hotbackupRestoreCallback != nullptr && !_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
+  if (ServerState::instance()->getRole() == ServerState::ROLE_COORDINATOR && _hotbackupRestoreCallback != nullptr && !_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
     LOG_TOPIC("84152", INFO, Logger::BACKUP) << "Strange, we could not "
       "unregister the hotbackup restore callback.";
   }
