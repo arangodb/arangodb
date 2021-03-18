@@ -4,6 +4,11 @@ devel
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
   unique contraint violations, due to double inserts of the same document.
 
+* In a cluster, do not create the collections `_statistics`, `_statistics15` and 
+  `statisticsRaw` on DB servers. These collections should only be created by the
+  coordinator, and should translate into 2 shards each on DB servers. But there
+  shouldn't be shards named `_statistics*` on DB servers.
+
 * Fixed two bogus messages about hotbackup restore:
   - Coordinators unconditionally logged the message "Got a hotbackup restore
     event, getting new cluster-wide unique IDs..." on shutdown. This was not
