@@ -1,0 +1,13 @@
+name: rocksdb_actual_delayed_write_rate
+help: |
+  rocksdb_actual_delayed_write_rate
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_actual_delayed_write_rate

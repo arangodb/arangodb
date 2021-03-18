@@ -142,12 +142,12 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
   return false;
 }
 
-/// @brief Dummmy transaction state which does nothing but provides valid
+/// @brief Dummy transaction state which does nothing but provides valid
 /// statuses to keep ASSERT happy
 class CalculationTransactionState final : public arangodb::TransactionState {
  public:
   explicit CalculationTransactionState(TRI_vocbase_t& vocbase)
-      : TransactionState(vocbase, arangodb::TransactionId(0), _options) {
+      : TransactionState(vocbase, arangodb::TransactionId(0), arangodb::transaction::Options()) {
     updateStatus(arangodb::transaction::Status::RUNNING);  // always running to make ASSERTS happy
   }
 
@@ -177,9 +177,6 @@ class CalculationTransactionState final : public arangodb::TransactionState {
 
   /// @brief number of commits, including intermediate commits
   uint64_t numCommits() const override { return 0; }
-
- private:
-  arangodb::transaction::Options _options;
 };
 
 /// @brief Dummy transaction context which just gives dummy state

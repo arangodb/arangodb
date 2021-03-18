@@ -1,0 +1,13 @@
+name: rocksdb_num_snapshots
+help: |
+  rocksdb_num_snapshots
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_num_snapshots

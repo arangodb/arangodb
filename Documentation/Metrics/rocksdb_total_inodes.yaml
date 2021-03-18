@@ -1,0 +1,13 @@
+name: rocksdb_total_inodes
+help: |
+  rocksdb_total_inodes
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_total_inodes
