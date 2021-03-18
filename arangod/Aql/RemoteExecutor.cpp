@@ -511,7 +511,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(fuerte::RestVerb typ
       << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
       << req->header.path << "'";
 
-  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint);
+  bool isFromPool;
+  network::ConnectionPtr conn = pool->leaseConnection(spec.endpoint, isFromPool);
 
   _requestInFlight = true;
   auto ticket = generateRequestTicket();
