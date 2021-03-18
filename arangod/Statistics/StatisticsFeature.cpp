@@ -130,9 +130,9 @@ DECLARE_HISTOGRAM(arangodb_client_connection_statistics_total_time,
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_request_time,
     RequestTimeScale, "Request time needed to answer a request");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_queue_time,
-    RequestTimeScale, "Request time needed to answer a request");
+    RequestTimeScale, "Queue time needed to answer a request");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_io_time,
-    RequestTimeScale, "Request time needed to answer a request");
+    RequestTimeScale, "IO time needed to answer a request");
 DECLARE_COUNTER(arangodb_http_request_statistics_total_requests_total,
     "Total number of HTTP requests");
 DECLARE_COUNTER(arangodb_http_request_statistics_superuser_requests_total,
@@ -258,10 +258,10 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Request time needed to answer a request"}},
   {"ioTimeCount",
    {"arangodb_client_connection_statistics_io_time_count", "gauge",
-    "Request time needed to answer a request"}},
+    "Queue time needed to answer a request"}},
   {"ioTimeSum",
    {"arangodb_client_connection_statistics_io_time_sum", "gauge",
-    "Request time needed to answer a request"}},
+    "IO time needed to answer a request"}},
   {"httpReqsTotal",
    {"arangodb_http_request_statistics_total_requests", "gauge/counter",
     "Total number of HTTP requests"}},
@@ -592,28 +592,30 @@ void StatisticsFeature::appendHistogram(
   }
 }
 
-std::string metricType(std::string const& type, bool v2) {
-  if (type.compare("counter") == 0 || type.compare("gauge") == 0 ||
-      type.compare("histogram") == 0) {
+std::string_view metricType(std::string const& type, bool v2) {
+  auto pos = type.find('/');
+  if (pos == std::string::npos) {
     return type;
   }
-  auto pos = type.find('/');
-  TRI_ASSERT(pos != std::string::npos);
-  return v2 ? type.substr(pos+1) : type.substr(0, pos);
+  return v2 ? std::string_view(type.c_str() + pos + 1,
+                               type.size() - pos - 1) :
+              std::string_view(type.c_str(), pos);
 }
 
 void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label, bool v2) {
   auto const& stat = statStrings.at(label);
   std::string name = stat.at(0);
-  std::string type = metricType(stat[1], v2);
+  std::string_view type = metricType(stat[1], v2);
   if (type == "counter") {  // Note that this only happens for v2==true
+    TRI_ASSERT(v2);
     name += "_total";
   }
 
   result +=
     "\n# HELP " + name + " " + stat[2] +
-    "\n# TYPE " + name + " " + metricType(stat[1], v2) +
-    '\n' + name + " " + val + '\n';
+    "\n# TYPE " + name + " ";
+  result.append(type.data(), type.size());
+  result += '\n' + name + " " + val + '\n';
 }
 
 void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
