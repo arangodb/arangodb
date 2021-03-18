@@ -9,6 +9,8 @@ devel
     unregister the hotbackup restore callback." on shutdown, although this was
     meaningless.
 
+* Rename "save" return attribute in AQL function `DATE_UTCTOLOCAL` to "dst".
+
 * Make ReplicationFeature formally depend on ServerIdFeature, because the
   former relies on the server id being already loaded by the latter.
   If this dependency is not established properly, it is undefined if the
