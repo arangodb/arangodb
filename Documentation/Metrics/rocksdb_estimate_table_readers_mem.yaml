@@ -1,0 +1,13 @@
+name: rocksdb_estimate_table_readers_mem
+help: |
+  rocksdb_estimate_table_readers_mem
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_estimate_table_readers_mem

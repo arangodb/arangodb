@@ -1,0 +1,14 @@
+name: arangodb_http_request_statistics_user_requests_total
+help: |
+  Total number of HTTP requests executed by user clients
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of HTTP requests executed by user clients.

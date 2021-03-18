@@ -1,0 +1,13 @@
+name: rocksdb_mem_table_flush_pending
+help: |
+  rocksdb_mem_table_flush_pending
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_mem_table_flush_pending

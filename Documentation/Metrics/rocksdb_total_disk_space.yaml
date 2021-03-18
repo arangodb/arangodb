@@ -1,0 +1,13 @@
+name: rocksdb_total_disk_space
+help: |
+  rocksdb_total_disk_space
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_total_disk_space
