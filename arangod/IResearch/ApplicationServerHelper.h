@@ -45,8 +45,8 @@ arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& fu
                                            std::string const& name);
 
 // FIXME: remove this overload after C++20 and use heterogenious lookup in functions Feature
-arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
-                                           std::string_view  name) {
+inline arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                                  std::string_view  name) {
   return getFunction(functions, static_cast<std::string>(name));
 }
 

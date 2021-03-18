@@ -415,7 +415,7 @@ bool assertRules(TRI_vocbase_t& vocbase, std::string const& queryString,
     arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
     for (auto const& rule : rules) {
-      auto const strRule = arangodb::iresearch::getStringRef(rule);
+      auto const strRule = rule.copyString();
       expectedRules.erase(strRule);
     }
   }
