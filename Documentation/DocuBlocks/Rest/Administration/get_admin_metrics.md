@@ -8,7 +8,7 @@
 
 @RESTQUERYPARAM{serverId,string,optional}
 Returns metrics of the specified server. If no serverId is given, the asked 
-server will reply. This parameter is only meaningful on coordinators.
+server will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns the instance's current metrics in Prometheus format. The

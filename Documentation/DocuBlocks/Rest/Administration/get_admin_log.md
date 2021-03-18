@@ -40,7 +40,7 @@ imposes a chronological order. The default value is *asc*.
 @RESTQUERYPARAM{serverId,string,optional}
 Returns all log entries of the specified server. All other query parameters 
 remain valid. If no serverId is given, the asked server
-will reply. This parameter is only meaningful on coordinators.
+will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
@@ -109,7 +109,7 @@ imposes a chronological order. The default value is *asc*.
 @RESTQUERYPARAM{serverId,string,optional}
 Returns all log entries of the specified server. All other query parameters 
 remain valid. If no serverId is given, the asked server
-will reply. This parameter is only meaningful on coordinators.
+will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
