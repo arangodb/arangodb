@@ -1,0 +1,14 @@
+name: arangodb_server_statistics_user_percent
+help: |
+  Percentage of time that the system CPUs have spent in user mode
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Percentage of time that the system CPUs have spent in user mode.

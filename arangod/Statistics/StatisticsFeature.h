@@ -109,7 +109,8 @@ class StatisticsFeature final : public application_features::ApplicationFeature 
     std::string const& label, std::initializer_list<std::string> const& les,
     bool v2);
   static void appendMetric(
-    std::string& result, std::string const& val, std::string const& label);
+    std::string& result, std::string const& val, std::string const& label,
+    bool v2);
 
   Result getClusterSystemStatistics(TRI_vocbase_t& vocbase,
                                     double start, 

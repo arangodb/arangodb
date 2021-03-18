@@ -3892,7 +3892,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
     builder->add("end", aqlEnd.slice());  
-    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("dst", VPackValue(info.save.count() != 0));
     builder->add("offset", VPackValue(info.offset.count()));
     builder->close();
     builder->close();
@@ -3964,7 +3964,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
     builder->add("end", aqlEnd.slice());
-    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("dst", VPackValue(info.save.count() != 0));
     builder->add("offset", VPackValue(info.offset.count()));
     builder->close();
     builder->close();

@@ -391,6 +391,38 @@
   unit: number
 - category: AQL
   complexity: simple
+  description: 'Total memory limit for all AQL queries combined.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total memory limit for all AQL queries combined.
+
+    '
+  name: arangodb_aql_global_memory_limit
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
+  description: 'Total memory usage of all AQL queries executing; granularity: 32768
+    bytes steps.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total memory usage of all AQL queries executing; granularity: 32768 bytes
+    steps.
+
+    '
+  name: arangodb_aql_global_memory_usage
+  type: gauge
+  unit: number
+- category: AQL
+  complexity: simple
   description: 'Execution time histogram for all AQL queries.
 
     '
@@ -449,6 +481,134 @@
   name: arangodb_aql_total_query_time_msec_total
   type: histogram
   unit: ms
+- category: Statistics
+  complexity: simple
+  description: 'Bytes received for a request.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Bytes received for a request
+
+    '
+  name: arangodb_client_connection_statistics_bytes_received
+  type: histogram
+  unit: bytes
+- category: Statistics
+  complexity: simple
+  description: 'Bytes sent for a request.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Bytes sent for a request
+
+    '
+  name: arangodb_client_connection_statistics_bytes_sent
+  type: histogram
+  unit: bytes
+- category: Statistics
+  complexity: simple
+  description: 'The number of client connections that are currently open.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'The number of client connections that are currently open
+
+    '
+  name: arangodb_client_connection_statistics_client_connections
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: advanced
+  description: 'Total connection time of a client.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total connection time of a client
+
+    '
+  name: arangodb_client_connection_statistics_connection_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'I/O time needed to answer a request.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'I/O time needed to answer a request
+
+    '
+  name: arangodb_client_connection_statistics_io_time
+  type: histogram
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Queueing time needed for requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Queueing time needed for requests
+
+    '
+  name: arangodb_client_connection_statistics_queue_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Request time needed to answer a request.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Request time needed to answer a request
+
+    '
+  name: arangodb_client_connection_statistics_request_time
+  type: histogram
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Total time needed to answer a request.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total time needed to answer a request
+
+    '
+  name: arangodb_client_connection_statistics_total_time
+  type: histogram
+  unit: s
 - category: AQL
   complexity: medium
   description: 'Total amount of collection lock acquisition time.
@@ -851,6 +1011,198 @@
   type: histogram
   unit: ms
 - category: Statistics
+  complexity: simple
+  description: 'Number of asynchronously executed HTTP requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of asynchronously executed HTTP requests
+
+    '
+  name: arangodb_http_request_statistics_async_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP DELETE requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP DELETE requests
+
+    '
+  name: arangodb_http_request_statistics_http_delete_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP GET requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP GET requests
+
+    '
+  name: arangodb_http_request_statistics_http_get_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP HEAD requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP HEAD requests
+
+    '
+  name: arangodb_http_request_statistics_http_head_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP OPTIONS requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP OPTIONS requests
+
+    '
+  name: arangodb_http_request_statistics_http_options_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP PATCH requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP PATCH requests
+
+    '
+  name: arangodb_http_request_statistics_http_patch_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP POST requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP POST requests
+
+    '
+  name: arangodb_http_request_statistics_http_post_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of HTTP PUT requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of HTTP PUT requests
+
+    '
+  name: arangodb_http_request_statistics_http_put_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of other HTTP requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of other HTTP requests
+
+    '
+  name: arangodb_http_request_statistics_other_http_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total number of HTTP requests executed by superuser/JWT.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of HTTP requests executed by superuser/JWT
+
+    '
+  name: arangodb_http_request_statistics_superuser_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total number of HTTP requests.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of HTTP requests
+
+    '
+  name: arangodb_http_request_statistics_total_requests_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Total number of HTTP requests executed by user clients.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of HTTP requests executed by user clients
+
+    '
+  name: arangodb_http_request_statistics_user_requests_total
+  type: counter
+  unit: number
+- category: Statistics
   complexity: medium
   description: 'Number of intermediate commits performed in transactions.
 
@@ -1162,6 +1514,164 @@
   name: arangodb_network_requests_in_flight
   type: gauge
   unit: number
+- category: Statistics
+  complexity: simple
+  description: 'On Windows, this figure contains the total number of page faults.
+
+    On other system, this figure contains the number of major faults the
+
+    process has made which have required loading a memory page from disk.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of major page faults.
+
+    '
+  name: arangodb_process_statistics_major_page_faults_total
+  type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'The number of minor faults the process has made which have not required
+
+    loading a memory page from disk. This figure is not reported on Windows.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of minor faults the process.
+
+    '
+  name: arangodb_process_statistics_minor_page_faults_total
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of threads in the arangod process.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of threads in the arangod process
+
+    '
+  name: arangodb_process_statistics_number_of_threads
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'The total size of the number of pages the process has in real memory.
+
+    This is just the pages which count toward text, data, or stack space.
+
+    This does not include pages which have not been demand-loaded in, or
+
+    which are swapped out. The resident set size is reported in bytes.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Resident set size
+
+    '
+  name: arangodb_process_statistics_resident_set_size
+  type: gauge
+  unit: bytes
+- category: Statistics
+  complexity: simple
+  description: 'The relative size of the number of pages the process has in real
+
+    memory compared to system memory. This is just the pages which count
+
+    toward text, data, or stack space. This does not include pages which
+
+    have not been demand-loaded in, or which are swapped out. The value is a
+
+    ratio between 0.00 and 1.00.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Resident set size as fraction of system memory
+
+    '
+  name: arangodb_process_statistics_resident_set_size_percent
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Amount of time that this process has been scheduled in kernel mode,
+
+    measured in seconds.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Process system time.
+
+    '
+  name: arangodb_process_statistics_system_time
+  type: gauge
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Amount of time that this process has been scheduled in user mode,
+
+    measured in seconds.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Process user time
+
+    '
+  name: arangodb_process_statistics_user_time
+  type: gauge
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'On Windows, this figure contains the total amount of memory that the
+
+    memory manager has committed for the arangod process. On other systems,
+
+    this figure contains The size of the virtual memory the process is
+
+    using.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Virtual memory size
+
+    '
+  name: arangodb_process_statistics_virtual_memory_size
+  type: gauge
+  unit: bytes
 - category: Replication
   complexity: advanced
   description: 'Number of refusal answers from a follower during synchronous replication.
@@ -1821,9 +2331,124 @@
   name: arangodb_scheduler_threads_stopped_total
   type: counter
   unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of CPU cores visible to the arangod process.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of CPU cores visible to the arangod process
+
+    '
+  name: arangodb_server_statistics_cpu_cores
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Percentage of time that the system CPUs have been idle.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Percentage of time that the system CPUs have been idle
+
+    '
+  name: arangodb_server_statistics_idle_percent
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Percentage of time that the system CPUs have been waiting for I/O.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Percentage of time that the system CPUs have been waiting for I/O
+
+    '
+  name: arangodb_server_statistics_iowait_percent
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Physical memory in bytes.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Physical memory in bytes
+
+    '
+  name: arangodb_server_statistics_physical_memory
+  type: gauge
+  unit: bytes
+- category: Statistics
+  complexity: simple
+  description: 'Number of seconds elapsed since server start.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of seconds elapsed since server start
+
+    '
+  name: arangodb_server_statistics_server_uptime_total
+  type: counter
+  unit: s
+- category: Statistics
+  complexity: simple
+  description: 'Percentage of time that the system CPUs have spent in kernel mode.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Percentage of time that the system CPUs have spent in kernel mode
+
+    '
+  name: arangodb_server_statistics_system_percent
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Percentage of time that the system CPUs have spent in user mode.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Percentage of time that the system CPUs have spent in user mode
+
+    '
+  name: arangodb_server_statistics_user_percent
+  type: gauge
+  unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of leader shards on this machine.
+  description: 'Number of leader shards on this machine. Every shard has a leader
+    and
+
+    potentially multiple followers.
 
     '
   exposedBy:
@@ -1834,11 +2459,41 @@
 
     '
   name: arangodb_shards_leader_number
+  troubleshoot: 'Since the leaders perform all the read and write operations and
+
+    the followers only replicate the writes, one should usually have a
+
+    relatively even distribution of leader shards across dbservers. An
+
+    exception can be one-shard deployments, in which every collection has
+
+    a single shard and all shards in a database must have the same leader.
+
+    If you have few databases in a one-shard deployment, then an uneven
+
+    distribution of leader shards is natural.
+
+
+    You can either move shards manually, use the "Rebalance shards" button
+
+    in the UI, or use the cluster maintenance tools in [this repository]
+
+    (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+
+    and `execute-move-plan` specifically). In the latter case, contact
+
+    ArangoDB customer support.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of shards not replicated at all.
+  description: 'Number of shards not replicated at all. This is counted for all shards
+
+    for which this server is currently the leader. The number is increased
+
+    by one for every shards for which no follower is in sync.
 
     '
   exposedBy:
@@ -1849,11 +2504,35 @@
 
     '
   name: arangodb_shards_not_replicated
+  troubleshoot: 'Needless to say, such a situation is very bad for resilience, since
+    it
+
+    indicates a single point of failure. So, if this number is larger than 0,
+
+    then some action is indicated. During an upgrade or when some dbserver
+
+    was restarted, it can happen that shard followers are out of sync.
+
+    Normally, shards should get in sync on their own, so observation
+
+    and waiting is a good measure at first. However, if the situation
+
+    persists, something is wrong, potentially some constant server crash
+
+    (maybe out of memory crashes?) or another situation preventing
+
+    shards to get in sync. Contact ArangoDB customer support in this case.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of shards on this machine.
+  description: 'Number of shards on this machine. Every shard has a leader and
+
+    potentially multiple followers. This metric counts both leader and
+
+    follower shards.
 
     '
   exposedBy:
@@ -1864,11 +2543,33 @@
 
     '
   name: arangodb_shards_number
+  troubleshoot: 'Since both leader and follower shards use memory and disk space,
+
+    the total number of shards should be approximately balanced
+
+    evenly across the dbservers. To achieve this, you can either
+
+    move shards manually, use the "Rebalance shards" button in the
+
+    UI, or use the cluster maintenance tools in [this repository]
+
+    (https://github.com/arangodb/cluster-maintenance) (`create-move-plan`
+
+    and `execute-move-plan` specifically). In the latter case, contact
+
+    ArangoDB customer support.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: simple
-  description: 'Number of leader shards not fully replicated.
+  description: 'Number of leader shards not fully replicated. This is counted for
+    all
+
+    shards for which this server is currently the leader. The number is
+
+    increased by one for every shards for which not all followers are in sync.
 
     '
   exposedBy:
@@ -1879,12 +2580,42 @@
 
     '
   name: arangodb_shards_out_of_sync
+  troubleshoot: 'Needless to say, such a situation is not good resilience, since we
+
+    do not have as many copies of the data as the `replicationFactor`
+
+    prescribes. If this metrics has a value larger than 0, then some
+
+    action is indicated. During an upgrade or when some dbserver was
+
+    restarted, it can happen that shard followers are out of sync.
+
+    Normally, shards should get in sync on their own, so observation
+
+    and waiting is a good measure at first. However, if the situation
+
+    persists, something is wrong, potentially some constant server crash
+
+    (maybe out of memory crashes?) or another situation preventing shards
+
+    to get in sync. Contact ArangoDB customer support in this case.
+
+    '
   type: gauge
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of times a mismatching shard checksum was detected when syncing
-    shards.
+  description: 'Number of times a mismatching shard checksum was detected when
+
+    syncing shards. This is a very special metric which is rarely used.
+
+    When followers of shards get in sync with their leaders, just when
+
+    everything is completed a final checksum is taken as an additional
+
+    precaution. If this checksum differs between leader an follower, the
+
+    resync process starts from scratch.
 
     '
   exposedBy:
@@ -1895,6 +2626,13 @@
 
     '
   name: arangodb_sync_wrong_checksum_total
+  troubleshoot: 'Normally, this number will always be 0. If it is not, then usually
+
+    something is wrong, please contact ArangoDB customer support in this
+
+    case.
+
+    '
   type: counter
   unit: number
 - category: Transactions
@@ -1957,6 +2695,38 @@
   name: arangodb_transactions_started_total
   type: counter
   unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of V8 contexts currently alive.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of V8 contexts currently alive
+
+    '
+  name: arangodb_v8_context_alive
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of V8 contexts currently busy.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of V8 contexts currently busy
+
+    '
+  name: arangodb_v8_context_busy
+  type: gauge
+  unit: number
 - category: V8
   complexity: simple
   description: 'Total number of V8 contexts ever created.
@@ -1998,6 +2768,22 @@
     '
   name: arangodb_v8_context_destroyed_total
   type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of V8 contexts currently dirty.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of V8 contexts currently dirty
+
+    '
+  name: arangodb_v8_context_dirty
+  type: gauge
   unit: number
 - category: V8
   complexity: simple
@@ -2043,4 +2829,862 @@
     '
   name: arangodb_v8_context_exited_total
   type: counter
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Number of V8 contexts currently free.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of V8 contexts currently free
+
+    '
+  name: arangodb_v8_context_free
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Maximum number of concurrent V8 contexts.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Maximum number of concurrent V8 contexts
+
+    '
+  name: arangodb_v8_context_max
+  type: gauge
+  unit: number
+- category: Statistics
+  complexity: simple
+  description: 'Minimum number of concurrent V8 contexts.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Minimum number of concurrent V8 contexts
+
+    '
+  name: arangodb_v8_context_min
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_actual_delayed_write_rate
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_actual_delayed_write_rate
+
+    '
+  name: rocksdb_actual_delayed_write_rate
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_background_errors
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_background_errors
+
+    '
+  name: rocksdb_background_errors
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_base_level
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_base_level
+
+    '
+  name: rocksdb_base_level
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_capacity
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_capacity
+
+    '
+  name: rocksdb_block_cache_capacity
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_pinned_usage
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_pinned_usage
+
+    '
+  name: rocksdb_block_cache_pinned_usage
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_block_cache_usage
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_block_cache_usage
+
+    '
+  name: rocksdb_block_cache_usage
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_allocated
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_allocated
+
+    '
+  name: rocksdb_cache_allocated
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_hit_rate_lifetime
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_hit_rate_lifetime
+
+    '
+  name: rocksdb_cache_hit_rate_lifetime
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_hit_rate_recent
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_hit_rate_recent
+
+    '
+  name: rocksdb_cache_hit_rate_recent
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cache_limit
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cache_limit
+
+    '
+  name: rocksdb_cache_limit
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compaction_pending
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compaction_pending
+
+    '
+  name: rocksdb_compaction_pending
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level0
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level0
+
+    '
+  name: rocksdb_compression_ratio_at_level0
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level1
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level1
+
+    '
+  name: rocksdb_compression_ratio_at_level1
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level2
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level2
+
+    '
+  name: rocksdb_compression_ratio_at_level2
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level3
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level3
+
+    '
+  name: rocksdb_compression_ratio_at_level3
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level4
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level4
+
+    '
+  name: rocksdb_compression_ratio_at_level4
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level5
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level5
+
+    '
+  name: rocksdb_compression_ratio_at_level5
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_compression_ratio_at_level6
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_compression_ratio_at_level6
+
+    '
+  name: rocksdb_compression_ratio_at_level6
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cur_size_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cur_size_active_mem_table
+
+    '
+  name: rocksdb_cur_size_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_cur_size_all_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_cur_size_all_mem_tables
+
+    '
+  name: rocksdb_cur_size_all_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_live_data_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_live_data_size
+
+    '
+  name: rocksdb_estimate_live_data_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_num_keys
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_num_keys
+
+    '
+  name: rocksdb_estimate_num_keys
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_pending_compaction_bytes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_pending_compaction_bytes
+
+    '
+  name: rocksdb_estimate_pending_compaction_bytes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_estimate_table_readers_mem
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_estimate_table_readers_mem
+
+    '
+  name: rocksdb_estimate_table_readers_mem
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_free_disk_space
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_free_disk_space
+
+    '
+  name: rocksdb_free_disk_space
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_free_inodes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_free_inodes
+
+    '
+  name: rocksdb_free_inodes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_is_file_deletions_enabled
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_is_file_deletions_enabled
+
+    '
+  name: rocksdb_is_file_deletions_enabled
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_is_write_stopped
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_is_write_stopped
+
+    '
+  name: rocksdb_is_write_stopped
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_live_sst_files_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_live_sst_files_size
+
+    '
+  name: rocksdb_live_sst_files_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_mem_table_flush_pending
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_mem_table_flush_pending
+
+    '
+  name: rocksdb_mem_table_flush_pending
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_min_log_number_to_keep
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_min_log_number_to_keep
+
+    '
+  name: rocksdb_min_log_number_to_keep
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_deletes_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_deletes_active_mem_table
+
+    '
+  name: rocksdb_num_deletes_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_deletes_imm_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_deletes_imm_mem_tables
+
+    '
+  name: rocksdb_num_deletes_imm_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_entries_active_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_entries_active_mem_table
+
+    '
+  name: rocksdb_num_entries_active_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_entries_imm_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_entries_imm_mem_tables
+
+    '
+  name: rocksdb_num_entries_imm_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level0
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level0
+
+    '
+  name: rocksdb_num_files_at_level0
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level1
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level1
+
+    '
+  name: rocksdb_num_files_at_level1
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level2
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level2
+
+    '
+  name: rocksdb_num_files_at_level2
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level3
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level3
+
+    '
+  name: rocksdb_num_files_at_level3
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level4
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level4
+
+    '
+  name: rocksdb_num_files_at_level4
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level5
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level5
+
+    '
+  name: rocksdb_num_files_at_level5
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_files_at_level6
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_files_at_level6
+
+    '
+  name: rocksdb_num_files_at_level6
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_immutable_mem_table
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_immutable_mem_table
+
+    '
+  name: rocksdb_num_immutable_mem_table
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_immutable_mem_table_flushed
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_immutable_mem_table_flushed
+
+    '
+  name: rocksdb_num_immutable_mem_table_flushed
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_live_versions
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_live_versions
+
+    '
+  name: rocksdb_num_live_versions
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_running_compactions
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_running_compactions
+
+    '
+  name: rocksdb_num_running_compactions
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_running_flushes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_running_flushes
+
+    '
+  name: rocksdb_num_running_flushes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_num_snapshots
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_num_snapshots
+
+    '
+  name: rocksdb_num_snapshots
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_oldest_snapshot_time
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_oldest_snapshot_time
+
+    '
+  name: rocksdb_oldest_snapshot_time
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_size_all_mem_tables
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_size_all_mem_tables
+
+    '
+  name: rocksdb_size_all_mem_tables
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_disk_space
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_disk_space
+
+    '
+  name: rocksdb_total_disk_space
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_inodes
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_inodes
+
+    '
+  name: rocksdb_total_inodes
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdb_total_sst_files_size
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdb_total_sst_files_size
+
+    '
+  name: rocksdb_total_sst_files_size
+  type: gauge
+  unit: number
+- category: RocksDB
+  complexity: advanced
+  description: 'rocksdbengine_throttle_bps
+
+    '
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'rocksdbengine_throttle_bps
+
+    '
+  name: rocksdbengine_throttle_bps
+  type: gauge
   unit: number
