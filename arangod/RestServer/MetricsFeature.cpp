@@ -72,9 +72,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_dropped_followers_total", "arangodb_dropped_followers_count");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls rocksdb_write_stalls");
+      "arangodb_rocksdb_write_stalls_total", "rocksdb_write_stalls");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops rocksdb_write_stops");
+      "arangodb_rocksdb_write_stops_total", "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_shards_leader_number", "arangodb_shards_leader_count");
     nameVersionTable.try_emplace(
@@ -175,12 +175,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_aql_total_query_time_msec_total",
       "arangodb_aql_total_query_time_msec");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls_total",
-      "rocksdb_write_stalls");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops_total",
-      "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_collection_lock_acquisition_micros_total",
       "arangodb_collection_lock_acquisition_micros");
