@@ -1159,6 +1159,7 @@ if (USE_ENTERPRISE)
     ${LIB_EE_ENCRYPTION_SOURCES}
     )
   target_link_libraries(arangoee_encryption velocypack)
+  target_link_libraries(arangoee_encryption boost_system)
   target_link_libraries(arangoserver arangoee_encryption)
 
   include_enterprise(arangoee_encryption)

@@ -432,7 +432,6 @@ add_executable(${BIN_ARANGOSH}
 target_include_directories(${BIN_ARANGOSH} PRIVATE ${PROJECT_SOURCE_DIR}/arangosh)
 
 target_link_libraries(${BIN_ARANGOSH}
-  arango_v8_deadline
   arango_v8
   arango
   ${LINENOISE_LIBS}

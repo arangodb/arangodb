@@ -365,6 +365,8 @@ target_link_libraries(arango_v8
   boost_boost
   )
 
+target_link_libraries(arango_v8 arango_v8_deadline)
+
 # Enterprise
 if (USE_ENTERPRISE)
   target_compile_definitions(arango_v8 PUBLIC "-DUSE_ENTERPRISE=1")
