@@ -1,10 +1,16 @@
 v3.6.13 (XXXX-XX-XX)
 --------------------
 
-* Put Sync/LatestID into hotbackup and restore it on hotbackup restore
-  if it is in the backup. This helps with unique key generation after
-  a hotbackup is restored to a young cluster.
-  
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore if it is
+  in the backup. This helps with unique key generation after a hotbackup is
+  restored to a young cluster.
+
+* Reasonably harden MoveShard against unexpected VelocyPack input.
+
+* Follower primaries respond with
+  TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION to any read request. Fixes
+  a wrongly responded 404 from chaos tests.
+
 * Updated arangosync to 1.2.3.
 
 * Fixed a bug in the web interface that displayed the error "Not authorized to

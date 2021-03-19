@@ -534,8 +534,8 @@ bool memory_directory::rename(
     }
 
     files_.erase(dst); // emplace() will not overwrite as per spec
-    files_.emplace(dst, std::move(it->second));
-    files_.erase(it);
+    auto m = files_.extract(it);
+    files_.emplace(dst, std::move(m.mapped()));
 
     return true;
   } catch (...) {
