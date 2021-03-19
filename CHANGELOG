@@ -907,6 +907,9 @@ devel
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
+
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 
 * Added AQL timezone functions `DATE_TIMEZONE` and `DATE_TIMEZONES`.
