@@ -38,10 +38,10 @@ set(IResearch_INCLUDE_DIR
   ""
 )
 
-if (TARGET velocypack)
+
 #for some reason TARGET_PROPERTY generator expression does not work for this target
 get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
-endif()
+
 
 if (MSVC)
   add_definitions(/W4)
@@ -378,16 +378,11 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
 )
-
-if (USE_SEGMENTATION_ANALYZER)
-  add_dependencies(${IResearch_TARGET_NAME}-static
-    ${IResearch_TARGET_NAME}-analyzer-segmentation-static
-  )
-endif()
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PRIVATE ${CMAKE_CURRENT_BINARY_DIR}
@@ -401,13 +396,13 @@ target_include_directories(${IResearch_TARGET_NAME}-static
   PRIVATE $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-ofst,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
-if (TARGET velocypack)
 target_include_directories(${IResearch_TARGET_NAME}-static
   PUBLIC ${VPACK_INCLUDE_PATH}
 )
+
 add_dependencies(${IResearch_TARGET_NAME}-static velocypack)
 target_link_libraries(${IResearch_TARGET_NAME}-static velocypack)
-endif()
+
 
 # setup MSVC specific compiler flags
 if(MSVC)
@@ -471,6 +466,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
   ${IResearch_TARGET_NAME}-analyzer-mask-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
+  ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
@@ -485,20 +481,13 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${ABSL_LIBRARY_STATIC}
 )
 
-if (USE_SEGMENTATION_ANALYZER)
-  target_link_libraries(${IResearch_TARGET_NAME}-static
-    ${IResearch_TARGET_NAME}-analyzer-segmentation-static
-  )
-endif()
 
-if (TARGET velocypack)
-get_target_property(VPACK_INCLUDE_PATH velocypack INTERFACE_INCLUDE_DIRECTORIES)
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PUBLIC ${VPACK_INCLUDE_PATH}
 )
 add_dependencies(${IResearch_TARGET_NAME}-shared velocypack)
 target_link_libraries(${IResearch_TARGET_NAME}-shared velocypack)
-endif()
+
 
 if (CLANG_TIDY_EXE)
   set_target_properties(
@@ -524,24 +513,19 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-tfidf-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-scorer-bm25-static>"
   "$<TARGET_FILE:${SIMD_LIBRARY_STATIC}>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>"
+  "$<TARGET_FILE:velocypack>"
 )
 
-if (USE_SEGMENTATION_ANALYZER)
-  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>")
-  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:${IResearch_TARGET_NAME}-unicorn>")
-  if (TARGET zlibstatic)
-    set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
-  else()
-    set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
-  endif()
-endif()
-
-if (TARGET velocypack)
-  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:velocypack>")
+if (TARGET zlibstatic)
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES} "$<TARGET_FILE:zlibstatic>")
+else()
+  set(IRESEARCH_STATIC_DEPENDENCIES ${IRESEARCH_STATIC_DEPENDENCIES}  ${ZLIB_STATIC_LIBRARIES})
 endif()
 
 if (MSVC)
@@ -1042,7 +1026,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-static
 )
-if(USE_SEGMENTATION_ANALYZER)
+
 ################################################################################
 ### analysis plugin : text segmentation
 ################################################################################
@@ -1066,12 +1050,12 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IR
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
 
-if (TARGET velocypack)
+
 add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
 add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
-endif()
+
 
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
@@ -1108,7 +1092,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-static
 )
-endif()
+
 ################################################################################
 ### format plugin: format-1_0
 ################################################################################

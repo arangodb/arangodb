@@ -137,9 +137,11 @@ set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
 
 add_subdirectory(absl)
 
-if (USE_SEGMENTATION_ANALYZER)
-  add_subdirectory(unicorn)
-endif()
+################################################################################
+### unicorn library
+################################################################################
+
+add_subdirectory(unicorn)
 
 ################################################################################
 ### velocypack library

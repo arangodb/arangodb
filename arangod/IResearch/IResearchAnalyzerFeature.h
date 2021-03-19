@@ -54,7 +54,7 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
-#include "IResearch/IResearchVPackFormat.h"
+//#include "IResearch/IResearchVPackFormat.h"
 #include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t; // forward declaration

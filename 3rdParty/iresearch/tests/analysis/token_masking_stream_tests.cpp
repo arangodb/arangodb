@@ -24,31 +24,17 @@
 #include "gtest/gtest.h"
 #include "analysis/token_masking_stream.hpp"
 
-namespace {
-
-class token_masking_stream_tests: public ::testing::Test {
-  virtual void SetUp() {
-    // Code here will be called immediately after the constructor (right before each test).
-  }
-
-  virtual void TearDown() {
-    // Code here will be called immediately after each test (right before the destructor).
-  }
-};
-
-} // namespace {
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
 
 #ifndef IRESEARCH_DLL
 
-TEST_F(token_masking_stream_tests, consts) {
+TEST(token_masking_stream_tests, consts) {
   static_assert("mask" == irs::type<irs::analysis::token_masking_stream>::name());
 }
 
-TEST_F(token_masking_stream_tests, test_masking) {
+TEST(token_masking_stream_tests, test_masking) {
   // test mask nothing
   {
     irs::string_ref data0("abc");
@@ -104,7 +90,7 @@ TEST_F(token_masking_stream_tests, test_masking) {
 
 #endif // IRESEARCH_DLL
 
-TEST_F(token_masking_stream_tests, test_load) {
+TEST(token_masking_stream_tests, test_load) {
   // load jSON array (mask string)
   {
     irs::string_ref data0("abc");
@@ -231,6 +217,31 @@ TEST_F(token_masking_stream_tests, test_load) {
   }
 }
 
+TEST(token_masking_stream_tests, normalize_invalid) {
+  std::string actual;
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), "1"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), "\"abc\""));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
+}
+
+TEST(token_masking_stream_tests, normalize_valid_array) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), "[\"QWRT\", \"qwrt\"]"));
+  ASSERT_EQ(actual, "{\n  \"mask\" : [\"QWRT\", \"qwrt\"]\n}");
+}
+
+TEST(token_masking_stream_tests, normalize_valid_object) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
+    irs::type<irs::text_format::json>::get(), "{\"mask\":[\"QWRT\", \"qwrt\"]}"));
+  ASSERT_EQ(actual, "{\n  \"mask\" : [\"QWRT\", \"qwrt\"]\n}");
+}
 // commented out due to lack
 //TEST_F(token_masking_stream_tests, test_make_config_json) {
 //

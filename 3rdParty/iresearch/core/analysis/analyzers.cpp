@@ -32,6 +32,7 @@
   #include "text_token_stream.hpp"
   #include "token_masking_stream.hpp"
   #include "pipeline_token_stream.hpp"
+  #include "segmentation_token_stream.hpp"
 #endif
 
 #include "analysis/analyzers.hpp"
@@ -209,6 +210,7 @@ namespace analysis {
     irs::analysis::text_token_stream::init();
     irs::analysis::token_masking_stream::init();
     irs::analysis::pipeline_token_stream::init();
+    irs::analysis::segmentation_token_stream::init();
   #endif
 }
 

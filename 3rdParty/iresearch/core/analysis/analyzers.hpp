@@ -67,10 +67,7 @@ class IRESEARCH_API analyzer_registrar {
 #define REGISTER_ANALYZER_TEXT(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::text, factory, normalizer)
 #define REGISTER_ANALYZER_XML(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::xml, factory, normalizer)
 #define REGISTER_ANALYZER_TYPED(analyzer_name, args_format) REGISTER_ANALYZER(analyzer_name, args_format, analyzer_name::make)
-
-#ifdef IRESEARCH_USE_VPACK_LIBRARY
 #define REGISTER_ANALYZER_VPACK(analyzer_name, factory, normalizer) REGISTER_ANALYZER(analyzer_name, ::iresearch::text_format::vpack, factory, normalizer)
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods

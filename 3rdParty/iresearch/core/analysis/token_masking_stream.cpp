@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cctype> // for std::isspace(...)
-#include <rapidjson/rapidjson/document.h> // for rapidjson::Document
+#include "velocypack/Slice.h"
+#include "velocypack/Builder.h"
+#include "velocypack/Parser.h"
+#include "velocypack/Iterator.h"
 
 #include "token_masking_stream.hpp"
 
@@ -32,7 +35,7 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 0 - 15
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 16 - 31
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 32 - 47
-   0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 16, 16, 16, 16, 16, 16, // ASCII 48 - 63
+  00,  1,  2,  3,  4,  5,  6,  7,  8,  9, 16, 16, 16, 16, 16, 16, // ASCII 48 - 63
   16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 64 - 79
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 80 - 95
   16, 10, 11, 12, 13, 14, 15, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 96 - 111
@@ -47,19 +50,18 @@ constexpr char HEX_DECODE_MAP[256] = {
   16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, // ASCII 240 - 255
 };
 
-bool hex_decode(std::string& buf, const irs::string_ref& value) {
-  if (value.size() & 1) {
+bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
+  if (value.length() & 1) {
     IR_FRMT_WARN(
       "Invalid size for hex-encoded value while HEX decoding masked token: %s",
-      value.c_str()
-    );
+      value.data());
 
     return false;
   }
 
-  buf.reserve(buf.size() + value.size()/2);
+  buf.reserve(buf.size() + value.length()/2);
 
-  for (size_t i = 0, count = value.size(); i < count; i += 2) {
+  for (size_t i = 0, count = value.length(); i < count; i += 2) {
     auto hi = HEX_DECODE_MAP[size_t(value[i])];
     auto lo = HEX_DECODE_MAP[size_t(value[i + 1])];
 
@@ -87,10 +89,10 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
 
     if (end > begin) {
       std::string token;
-      irs::string_ref value(&mask[begin], end - begin);
+      arangodb::velocypack::StringRef value(&mask[begin], end - begin);
 
       if (!hex_decode(token, value)) {
-        tokens.emplace(value); // interpret verbatim
+        tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
       } else {
         tokens.emplace(std::move(token));
       }
@@ -98,37 +100,34 @@ irs::analysis::analyzer::ptr construct(const irs::string_ref& mask) {
   }
 
   return irs::memory::make_shared<irs::analysis::token_masking_stream>(
-    std::move(tokens)
-  );
+    std::move(tokens));
 }
 
-irs::analysis::analyzer::ptr construct(const rapidjson::Document::Array& mask) {
+irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator& mask) {
   size_t offset = 0;
   irs::analysis::token_masking_stream::MaskSet tokens;
 
-  for (auto itr = mask.Begin(), end = mask.End(); itr != end; ++itr, ++offset) {
-    if (!itr->IsString()) {
+  for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
+    if (!(*itr).isString()) {
       IR_FRMT_WARN(
         "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER "' while constructing token_masking_stream from jSON arguments",
-        offset
-      );
+        offset);
 
       return nullptr;
     }
 
     std::string token;
-    irs::string_ref value(itr->GetString());
+    auto value = (*itr).stringRef();
 
     if (!hex_decode(token, value)) {
-      tokens.emplace(value); // interpret verbatim
+      tokens.emplace(std::string(value.data(), value.length())); // interpret verbatim
     } else {
       tokens.emplace(std::move(token));
     }
   }
 
   return irs::memory::make_shared<irs::analysis::token_masking_stream>(
-    std::move(tokens)
-  );
+    std::move(tokens));
 }
 
 constexpr irs::string_ref MASK_PARAM_NAME = "mask";
@@ -138,37 +137,46 @@ constexpr irs::string_ref MASK_PARAM_NAME = "mask";
 ///        "mask"(string-list): the HEX encoded token values to mask <required>
 ///        if HEX conversion fails for any token then it is matched verbatim
 ////////////////////////////////////////////////////////////////////////////////
-irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
-  rapidjson::Document json;
-
-  if (json.Parse(args.c_str(), args.size()).HasParseError()) {
-    IR_FRMT_ERROR(
-      "Invalid jSON arguments passed while constructing token_masking_stream, arguments: %s",
-      args.c_str()
-    );
-
-    return nullptr;
-  }
-
-  switch (json.GetType()) {
-   case rapidjson::kArrayType:
-    return construct(json.GetArray());
-   case rapidjson::kObjectType:
-    if (json.HasMember(MASK_PARAM_NAME.c_str()) && json[MASK_PARAM_NAME.c_str()].IsArray()) {
-      return construct(json[MASK_PARAM_NAME.c_str()].GetArray());
+irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
+  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  switch (slice.type()) {
+    case arangodb::velocypack::ValueType::Array:
+      return construct(arangodb::velocypack::ArrayIterator(slice));
+    case arangodb::velocypack::ValueType::Object:
+    {
+      auto maskSlice = slice.get(MASK_PARAM_NAME.c_str());
+      if (maskSlice.isArray()) {
+        return construct(arangodb::velocypack::ArrayIterator(maskSlice));
+      }
     }
-   default: {}
+    [[fallthrough]];
+    default: {
+      IR_FRMT_ERROR(
+        "Invalid vpack while constructing token_masking_stream from jSON arguments: %s. Array or Object was expected. Got %s",
+        slice.toString().c_str(), slice.typeName());
+    }
   }
-
-  IR_FRMT_ERROR(
-    "Invalid '%s' while constructing token_masking_stream from jSON arguments: %s",
-    MASK_PARAM_NAME.c_str(),
-    args.c_str()
-  );
-
   return nullptr;
 }
 
+
+irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while constructing token_masking_stream ");
+      return nullptr;
+    }
+    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
+  } catch(const arangodb::velocypack::Exception& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while constructing token_masking_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while constructing token_masking_stream from json: %s",
+                  args.c_str());
+  }
+  return nullptr;
+}
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is whitespace delimited HEX encoded list of tokens to mask
 ///        if HEX conversion fails for any token then it is matched verbatim
@@ -178,19 +186,72 @@ irs::analysis::analyzer::ptr make_text(const irs::string_ref& args) {
 }
 
 bool normalize_text_config(const irs::string_ref&, std::string&) {
+  // FIXME: implement me
   return false;
 }
 
-bool normalize_json_config(const irs::string_ref&, std::string&) {
+
+bool normalize_vpack_config(const irs::string_ref& args, std::string& definition) {
+  arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(args.c_str()));
+  switch (slice.type()) {
+    case arangodb::velocypack::ValueType::Array:
+    { // always normalize to object for consistency reasons
+      arangodb::velocypack::Builder builder;
+      builder.openObject();
+      builder.add(MASK_PARAM_NAME.c_str(), slice);
+      builder.close();
+      definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+      return true;
+    }
+    case arangodb::velocypack::ValueType::Object:
+    {
+      auto maskSlice = slice.get(MASK_PARAM_NAME.c_str());
+      if (maskSlice.isArray()) {
+        arangodb::velocypack::Builder builder;
+        builder.openObject();
+        builder.add(MASK_PARAM_NAME.c_str(), maskSlice);
+        builder.close();
+        definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
+        return true;
+      }
+    }
+    [[fallthrough]];
+    default: {
+      IR_FRMT_ERROR(
+        "Invalid vpack while normalizing token_masking_stream from jSON arguments: %s. Array or Object was expected. Got %s",
+        slice.toString().c_str(), slice.typeName());
+    }
+  }
+}
+
+bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
+  try {
+    if (args.null()) {
+      IR_FRMT_ERROR("Null arguments while normalizing token_masking_stream");
+      return nullptr;
+    }
+    auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
+    std::string vpack_container;
+    if (normalize_vpack_config(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()), vpack_container)) {
+      arangodb::velocypack::Slice slice(reinterpret_cast<uint8_t const*>(vpack_container.c_str()));
+      definition = slice.toString();
+      return true;
+    }
+  } catch(const arangodb::velocypack::Exception& ex) {
+    IR_FRMT_ERROR("Caught error '%s' while normalizing token_masking_stream from json: %s",
+                  ex.what(), args.c_str());
+  } catch (...) {
+    IR_FRMT_ERROR("Caught error while normalizing token_masking_stream from json: %s",
+                  args.c_str());
+  }
   return false;
 }
 
-
-
+REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
 REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json, normalize_json_config);
 REGISTER_ANALYZER_TEXT(irs::analysis::token_masking_stream, make_text, normalize_text_config);
 
-}
+} // namespace
 
 namespace iresearch {
 namespace analysis {
@@ -202,6 +263,7 @@ token_masking_stream::token_masking_stream(token_masking_stream::MaskSet&& mask)
 }
 
 /*static*/ void token_masking_stream::init() {
+  REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
   REGISTER_ANALYZER_JSON(token_masking_stream, make_json, normalize_json_config);  // match registration above
   REGISTER_ANALYZER_TEXT(token_masking_stream, make_text, normalize_text_config); // match registration above
 }
@@ -234,5 +296,5 @@ bool token_masking_stream::reset(const string_ref& data) {
   return true;
 }
 
-} // analysis
-} // ROOT
+} // namespace analysis
+} // namespace iresearch

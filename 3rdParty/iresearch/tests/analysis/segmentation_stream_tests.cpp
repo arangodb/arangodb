@@ -254,7 +254,6 @@ TEST(segmentation_token_stream_test, chinese_glyphs_test) {
   testFunc(data, &stream);
 }
 
-#ifdef IRESEARCH_USE_VPACK_LIBRARY
 TEST(segmentation_token_stream_test, make_empty_object) {
   auto stream = irs::analysis::analyzers::get(
       "segmentation",
@@ -391,19 +390,16 @@ TEST(segmentation_token_stream_test, make_uppercase_invalid_number_break) {
 }
 
 TEST(segmentation_token_stream_test, make_invalid_json) {
-  auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "NOT a JSON");
-  ASSERT_FALSE(stream);
-}
-
-TEST(segmentation_token_stream_test, make_not_object_json) {
-  auto stream = irs::analysis::analyzers::get(
-      "segmentation",
-      irs::type<irs::text_format::json>::get(),
-      "'string'");
-  ASSERT_FALSE(stream);
+  // load jSON invalid
+  {
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "\"abc\""));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"break\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":1, \"break\":\"all\"}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("segmentation", irs::type<irs::text_format::json>::get(), "{\"case\":\"none\", \"break\":1}"));
+  }
 }
 
 TEST(segmentation_token_stream_test, normalize_empty_object) {
@@ -416,4 +412,40 @@ TEST(segmentation_token_stream_test, normalize_empty_object) {
   ASSERT_EQ(actual, "{\n  \"break\" : \"alpha\",\n  \"case\" : \"lower\"\n}");
 }
 
-#endif
+TEST(segmentation_token_stream_test, normalize_all_none_values) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual,
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"break\":\"all\", \"case\":\"none\"}"));
+  ASSERT_EQ(actual, "{\n  \"break\" : \"all\",\n  \"case\" : \"none\"\n}");
+}
+
+TEST(segmentation_token_stream_test, normalize_graph_upper_values) {
+  std::string actual;
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(
+      actual,
+      "segmentation",
+      irs::type<irs::text_format::json>::get(),
+      "{\"break\":\"graphic\", \"case\":\"upper\"}"));
+  ASSERT_EQ(actual, "{\n  \"break\" : \"graphic\",\n  \"case\" : \"upper\"\n}");
+}
+
+TEST(segmentation_token_stream_test, normalize_invalid) {
+  std::string actual;
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "1"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "\"abc\""));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "{\"break\":1}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "{\"case\":1, \"break\":\"all\"}"));
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "segmentation",
+    irs::type<irs::text_format::json>::get(), "{\"case\":\"none\", \"break\":1}"));
+}
