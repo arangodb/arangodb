@@ -4,8 +4,9 @@ help: |
 unit: ms
 type: histogram
 category: Maintenance
-complexity: medium
+complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Histogram for total time spent on agency sync.
+  Histogram for total time spent on agency sync. This includes phase one and
+  phase two.

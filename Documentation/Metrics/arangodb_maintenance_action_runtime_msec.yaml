@@ -4,7 +4,7 @@ help: |
 unit: ms
 type: histogram
 category: Maintenance
-complexity: medium
+complexity: advanced
 exposedBy:
   - dbserver
 description: |

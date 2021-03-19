@@ -4,7 +4,7 @@ help: |
 unit: number
 type: counter
 category: Maintenance
-complexity: medium
+complexity: simple
 exposedBy:
   - dbserver
 description: |

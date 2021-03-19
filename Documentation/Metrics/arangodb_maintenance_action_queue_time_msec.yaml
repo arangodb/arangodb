@@ -4,8 +4,8 @@ help: |
 unit: ms
 type: histogram
 category: Maintenance
-complexity: medium
+complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Time spent in the queue before execution for maintenance actions.
+  Histogram of time spent in the queue before execution for maintenance actions.

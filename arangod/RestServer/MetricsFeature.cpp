@@ -376,6 +376,14 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "rocksdb_engine_throttle_bps",
       "rocksdbengine_throttle_bps");
+
+    v2suppressions = {
+        "arangodb_maintenance_phase1_accum_runtime_msec_total",
+        "arangodb_maintenance_phase2_accum_runtime_msec_total",
+        "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_queue_time_msec_total",
+    };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
@@ -495,6 +503,8 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
           }
         }
         alternativeName = name;
+      } else if(auto iter = v2suppressions.find(name); iter != v2suppressions.end()) {
+        continue;
       }
       if (lastType != name) {
         result += "# HELP " + name + " " + i.second->help() + "\n";

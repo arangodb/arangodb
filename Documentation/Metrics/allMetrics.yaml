@@ -1272,46 +1272,20 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action queue time for Maintenance.
+  complexity: simple
+  description: 'Counter of actions that are done and have been removed from the registry.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated action queue time for Maintenance.
+  help: 'Counter of actions that are done and have been removed from the registry.
 
     '
-  name: arangodb_maintenance_action_accum_queue_time_msec_total
+  name: arangodb_maintenance_action_done_total
   type: counter
   unit: ms
 - category: Maintenance
   complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of action queue time for Maintenance.
-
-    '
-  name: arangodb_maintenance_action_done_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
   description: 'Counter of actions that have been discarded because of a duplicate.
 
     '
@@ -1324,7 +1298,7 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
+  complexity: simple
   description: 'Failure counter for the maintenance actions.
 
     '
@@ -1337,8 +1311,9 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Time spent in the queue before execution for maintenance actions.
+  complexity: advanced
+  description: 'Histogram of time spent in the queue before execution for maintenance
+    actions.
 
     '
   exposedBy:
@@ -1350,7 +1325,7 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
+  complexity: simple
   description: 'Counter of actions that have been registered in the action registry.
 
     '
@@ -1363,7 +1338,7 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
+  complexity: advanced
   description: 'Histogram of time spent execution maintenance actions.
 
     '
@@ -1376,24 +1351,11 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of agency sync phase. This includes phase one
-    and
+  complexity: simple
+  description: 'Histogram for total time spent on agency sync. This includes phase
+    one and
 
     phase two.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of agency sync phase.
-
-    '
-  name: arangodb_maintenance_agency_sync_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram for total time spent on agency sync.
 
     '
   exposedBy:
@@ -1405,20 +1367,7 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase one in maintenance.
-
-    '
-  name: arangodb_maintenance_phase1_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
+  complexity: advanced
   description: 'Maintenance Phase 1 runtime histogram.
 
     '
@@ -1431,20 +1380,7 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase two of maintenance.
-
-    '
-  name: arangodb_maintenance_phase2_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
+  complexity: advanced
   description: 'Maintenance Phase 2 runtime histogram.
 
     '

@@ -1,11 +1,11 @@
-name: arangodb_maintenance_action_done_msec_total
+name: arangodb_maintenance_action_done_total
 help: |
-  Accumulated number of action queue time for Maintenance.
+  Counter of actions that are done and have been removed from the registry.
 unit: ms
 type: counter
 category: Maintenance
-complexity: advanced
+complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Accumulated action runtime for Maintenance.
+  Counter of actions that are done and have been removed from the registry.
