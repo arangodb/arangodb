@@ -85,7 +85,7 @@ TEST_F(TraverserCacheTest, it_should_return_a_null_aqlvalue_if_vertex_is_not_ava
   VPackBuilder builder;
 
   // NOTE: we do not have the data, so we get null for any vertex
-  traverserCache->insertVertexIntoResult(arangodb::velocypack::HashedStringRef(id), builder);
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id), builder);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1);
@@ -220,7 +220,7 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   HashedStringRef id{doc.get("_id")};
   VPackBuilder builder;
 
-  traverserCache->insertVertexIntoResult(arangodb::velocypack::HashedStringRef(id), builder);
+  traverserCache->insertVertexIntoResult(stats, arangodb::velocypack::HashedStringRef(id), builder);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
