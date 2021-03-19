@@ -378,6 +378,10 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
       "rocksdbengine_throttle_bps");
 
     v2suppressions = {
+      // Note that if we ever need to suppress a metric which is
+      // coming from the statistics feature further code is needed
+      // there. This list is only considered for the normally registered
+      // metrics in the MetricsFeature.
         "arangodb_maintenance_phase1_accum_runtime_msec_total",
         "arangodb_maintenance_phase2_accum_runtime_msec_total",
         "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
@@ -478,6 +482,9 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     std::string lastType{};
     for (auto const& i : _registry) {
       std::string name = i.second->name();
+      if (v2 && v2suppressions.find(name) != v2suppressions.end()) {
+        continue;
+      }
       std::string alternativeName;
       if (!v2) {
         // In v1 we do a nameing conversion. Note that we set 
