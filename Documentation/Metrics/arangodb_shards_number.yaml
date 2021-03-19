@@ -6,9 +6,7 @@ type: gauge
 category: Replication
 complexity: simple
 exposedBy:
-  - coordinator
   - dbserver
-  - agent
 description: |
   Number of shards on this machine. Every shard has a leader and
   potentially multiple followers. This metric counts both leader and
