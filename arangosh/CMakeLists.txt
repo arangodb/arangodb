@@ -20,11 +20,9 @@ add_library(arango_shell_common
   ${LIB_ARANGO_SHELL_COMMON_SOURCES}
 )
 
-# TODO ManagedDirectory needs some symbols, e.g. EncryptionFeature, directly
-#      from arangoserver.
-#      It might be a good idea to see if we can move those into a smaller
-#      library to link here.
-target_link_libraries(arango_shell_common arangoserver)
+if (USE_ENTERPRISE)
+  target_link_libraries(arango_shell_common arangoee_encryption)
+endif ()
 
 set(LIB_ARANGO_SHELL_SOURCES
   FeaturePhases/BasicFeaturePhaseClient.cpp
@@ -44,7 +42,6 @@ add_library(arango_shell
 target_link_libraries(arango_shell arango_shell_common)
 target_link_libraries(arango_shell arango)
 target_link_libraries(arango_shell arango_v8)
-target_link_libraries(arango_shell arango_v8_deadline)
 target_link_libraries(arango_shell fuerte)
 target_link_libraries(arango_shell ${MSVC_LIBS})
 target_link_libraries(arango_shell ${SYSTEM_LIBRARIES})

@@ -4,6 +4,18 @@ include_directories(.)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
+function (include_enterprise TARGET)
+  target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+endfunction ()
+
+function (warnings_as_errors TARGET)
+  if (MSVC)
+    target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  else ()
+    target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
+  endif ()
+endfunction()
+
 ################################################################################
 ## BISON/FLEX
 ################################################################################
@@ -1135,16 +1147,25 @@ foreach(TARGET
   arangod
   arangoserver
 )
-  target_include_directories(${TARGET} PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
+  include_enterprise(${TARGET})
 
   if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      target_compile_options(${TARGET} PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-    else ()
-      target_compile_options(${TARGET} PRIVATE -Werror -Wno-error=deprecated-declarations)
-    endif ()
+    warnings_as_errors(${TARGET})
   endif ()
 endforeach()
+
+if (USE_ENTERPRISE)
+  add_library(arangoee_encryption
+    ${LIB_EE_ENCRYPTION_SOURCES}
+    )
+  target_link_libraries(arangoee_encryption velocypack)
+  target_link_libraries(arangoserver arangoee_encryption)
+
+  include_enterprise(arangoee_encryption)
+  if (USE_FAIL_ON_WARNINGS)
+    warnings_as_errors(arangoee_encryption)
+  endif ()
+endif ()
 
 ################################################################################
 ## arango-secure-installation
