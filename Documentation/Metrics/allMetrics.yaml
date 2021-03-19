@@ -2536,9 +2536,7 @@
 
     '
   exposedBy:
-  - coordinator
   - dbserver
-  - agent
   help: 'Number of shards on this machine.
 
     '
