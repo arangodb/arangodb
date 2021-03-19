@@ -20,6 +20,7 @@ add_library(arango_shell_common
   ${LIB_ARANGO_SHELL_COMMON_SOURCES}
 )
 
+target_link_libraries(arango_shell_common fuerte)
 if (USE_ENTERPRISE)
   target_link_libraries(arango_shell_common arangoee_encryption)
 endif ()
@@ -42,7 +43,6 @@ add_library(arango_shell
 target_link_libraries(arango_shell arango_shell_common)
 target_link_libraries(arango_shell arango)
 target_link_libraries(arango_shell arango_v8)
-target_link_libraries(arango_shell fuerte)
 target_link_libraries(arango_shell ${MSVC_LIBS})
 target_link_libraries(arango_shell ${SYSTEM_LIBRARIES})
 target_link_libraries(arango_shell boost_system)
