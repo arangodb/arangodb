@@ -487,9 +487,6 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     std::string lastType{};
     for (auto const& i : _registry) {
       std::string name = i.second->name();
-      if (v2 && v2suppressions.find(name) != v2suppressions.end()) {
-        continue;
-      }
       std::string alternativeName;
       if (!v2) {
         // In v1 we do a nameing conversion. Note that we set 
