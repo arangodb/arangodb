@@ -232,7 +232,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
                 std::is_same_v<TypeParam, MockGraphProvider>) {
     EXPECT_EQ(stats.getHttpRequests(), 0);
   } else if (std::is_same_v<TypeParam, ClusterProvider>) {
-    EXPECT_EQ(stats.getHttpRequests(), 1);
+    EXPECT_EQ(stats.getHttpRequests(), 2);
   }
 
   // We have no edges, so nothing scanned in the Index.
@@ -276,7 +276,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
-      EXPECT_EQ(stats.getHttpRequests(), 1);
+      EXPECT_EQ(stats.getHttpRequests(), 2);
     }
     // We have 1 edge, this shall be counted
     EXPECT_EQ(stats.getScannedIndex(), 1);
@@ -339,7 +339,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
                   std::is_same_v<TypeParam, MockGraphProvider>) {
       EXPECT_EQ(stats.getHttpRequests(), 0);
     } else if (std::is_same_v<TypeParam, ClusterProvider>) {
-      EXPECT_EQ(stats.getHttpRequests(), 1);
+      EXPECT_EQ(stats.getHttpRequests(), 2);
     }
     // We have 3 edges, this shall be counted
     EXPECT_EQ(stats.getScannedIndex(), 3);
