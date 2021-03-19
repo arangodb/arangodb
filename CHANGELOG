@@ -5,7 +5,7 @@ v3.7.11 (XXXX-XX-XX)
   candidate indexes.
 
 
-v3.7.10 (XXXX-XX-XX)
+v3.7.10 (2021-03-14)
 --------------------
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
@@ -16,6 +16,8 @@ v3.7.10 (XXXX-XX-XX)
   e.g. during chaos tests.
   
 * Fixed Github issue #13632: Query Fails on Upsert with Replace_nth.
+
+* Updated arangosync to 1.2.3.
 
 * Backported AQL sort performance improvements from devel.
   This change can improve the performance of local sorts operations, e.g.
