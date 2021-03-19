@@ -88,14 +88,14 @@ function replicationClientsSuite() {
         let shardLeader = shardServers[0];
 
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 120));
+        assertEqual([], getClients(findServer(shardLeader).url, 300));
 
         // add a follower
         c.properties({ replicationFactor: 2 });
        
         // wait until follower is ready
         let iterations = 0;
-        while (++iterations < 120) {
+        while (++iterations < 150) {
           shards = c.shards(true);
           if (shards[shardName].length === 2) {
             break;
@@ -107,9 +107,9 @@ function replicationClientsSuite() {
         assertNotEqual(shardLeader, shardFollower);
         
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 120));
+        assertEqual([], getClients(findServer(shardLeader).url, 300));
         // follower should have 0 clients registered
-        assertEqual([], getClients(findServer(shardFollower).url, 120));
+        assertEqual([], getClients(findServer(shardFollower).url, 300));
       } finally {
         db._drop(cn);
       }
@@ -137,9 +137,9 @@ function replicationClientsSuite() {
         assertNotEqual(shardLeader, shardFollower);
         
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 120));
+        assertEqual([], getClients(findServer(shardLeader).url, 300));
         // follower should have 0 clients registered
-        assertEqual([], getClients(findServer(shardFollower).url, 120));
+        assertEqual([], getClients(findServer(shardFollower).url, 300));
       } finally {
         db._drop(cn);
       }
@@ -154,7 +154,7 @@ function replicationClientsSuite() {
         docs.push({ _key: "test" + i, value: i });
       }
       try {
-        // set up 5 databases with 10 collections each
+        // set up 5 databases with 5 collections each
         for (let i = 0; i < 5; ++i) {
           db._useDatabase("_system");
           db._createDatabase(cn + i);
@@ -168,7 +168,7 @@ function replicationClientsSuite() {
         // now add followers for all collections!
         for (let i = 0; i < 5; ++i) {
           db._useDatabase(cn + i);
-          for (let j = 0; j < 10; ++j) {
+          for (let j = 0; j < 5; ++j) {
             db._collection(cn + j).properties({ replicationFactor: 1 + (i % dbservers.length) });
           }
         }
@@ -176,7 +176,7 @@ function replicationClientsSuite() {
         // wait until they all have all their replicas in place
         for (let i = 0; i < 5; ++i) {
           db._useDatabase(cn + i);
-          for (let j = 0; j < 10; ++j) {
+          for (let j = 0; j < 5; ++j) {
             let c = db._collection(cn + j);
             let shards = c.shards(true);
             assertEqual(i + 1, Object.keys(shards).length);
@@ -184,7 +184,7 @@ function replicationClientsSuite() {
             let totalFollowerShards;
             let expectedFollowerShards;
             let iterations = 0;
-            while (++iterations < 120) {
+            while (++iterations < 150) {
               totalFollowerShards = 0;
               expectedFollowerShards = 0;
               shards = c.shards(true);
@@ -204,7 +204,7 @@ function replicationClientsSuite() {
         // no server should have any clients registered, in none of the dbs
         dbservers.forEach((dbs) => {
           for (let i = 0; i < 5; ++i) {
-            assertEqual([], getClients(dbs.url + "/_db/" + cn + i, 120));
+            assertEqual([], getClients(dbs.url + "/_db/" + cn + i, 300));
           }
         });
 
