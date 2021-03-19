@@ -88,7 +88,8 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
+  void insertVertexIntoResult(aql::TraversalStats& stats,
+                              arangodb::velocypack::HashedStringRef const& idString,
                               velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -104,7 +105,8 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   template <typename ResultType>
-  bool appendVertex(arangodb::velocypack::HashedStringRef const& idString,
+  bool appendVertex(aql::TraversalStats& stats,
+                    arangodb::velocypack::HashedStringRef const& idString,
                     ResultType& result);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -146,11 +148,8 @@ class RefactoredTraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
 
-  arangodb::aql::TraversalStats& getStats();
-
  private:
   std::map<std::string, std::string> const& _collectionToShardMap;
-  arangodb::aql::TraversalStats& _stats;
   arangodb::ResourceMonitor& _resourceMonitor;
 
 };

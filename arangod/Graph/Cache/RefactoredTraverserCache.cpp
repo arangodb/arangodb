@@ -56,7 +56,6 @@ RefactoredTraverserCache::RefactoredTraverserCache(
       _trx(trx),
       _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
       _collectionToShardMap(collectionToShardMap),
-      _stats{stats},
       _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
@@ -68,10 +67,6 @@ void RefactoredTraverserCache::clear() {
       _persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
   _stringHeap.clear();
-}
-
-arangodb::aql::TraversalStats& RefactoredTraverserCache::getStats() {
-  return _stats;
 }
 
 template <typename ResultType>
@@ -137,7 +132,8 @@ ResultT<std::pair<std::string, size_t>> RefactoredTraverserCache::extractCollect
 }
 
 template <typename ResultType>
-bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& id,
+bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
+                                            velocypack::HashedStringRef const& id,
                                             ResultType& result) {
   auto collectionNameResult = extractCollectionName(id);
   if (collectionNameResult.fail()) {
@@ -148,7 +144,7 @@ bool RefactoredTraverserCache::appendVertex(velocypack::HashedStringRef const& i
       collectionNameResult.get().first,
       id.substr(collectionNameResult.get().second + 1).stringRef(),
       [&](LocalDocumentId const&, VPackSlice doc) -> bool {
-        getStats().addScannedIndex(1);
+        stats.addScannedIndex(1);
         // copying...
         if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
           result = aql::AqlValue(doc);
@@ -180,9 +176,10 @@ void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idT
   }
 }
 
-void RefactoredTraverserCache::insertVertexIntoResult(arangodb::velocypack::HashedStringRef const& idString,
+void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats,
+                                                      arangodb::velocypack::HashedStringRef const& idString,
                                                       VPackBuilder& builder) {
-  if (!appendVertex(idString, builder)) {
+  if (!appendVertex(stats, idString, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
