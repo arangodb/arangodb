@@ -65,45 +65,16 @@ DECLARE_COUNTER(arangodb_maintenance_action_failure_total, "Failure counter for 
 // FAKE DECLARATIONS - remove when v1 is removed
 ////////////////////////////////////////////////////////////////////////////////
 
-struct arangodb_maintenance_phase1_accum_runtime_msec_total
-    : arangodb::metrics::CounterBuilder<arangodb_maintenance_phase1_accum_runtime_msec_total> {
-  arangodb_maintenance_phase1_accum_runtime_msec_total() {
-    _name = "arangodb_maintenance_phase1_accum_runtime_msec_total";
-    _help = "Accumulated runtime of phase one [ms]";
-  }
-};
-
-struct arangodb_maintenance_phase2_accum_runtime_msec_total
-    : arangodb::metrics::CounterBuilder<arangodb_maintenance_phase2_accum_runtime_msec_total> {
-  arangodb_maintenance_phase2_accum_runtime_msec_total() {
-    _name = "arangodb_maintenance_phase2_accum_runtime_msec_total";
-    _help = "Accumulated runtime of phase two [ms]";
-  }
-};
-
-struct arangodb_maintenance_agency_sync_accum_runtime_msec_total
-    : arangodb::metrics::CounterBuilder<arangodb_maintenance_agency_sync_accum_runtime_msec_total> {
-  arangodb_maintenance_agency_sync_accum_runtime_msec_total() {
-    _name = "arangodb_maintenance_agency_sync_accum_runtime_msec_total";
-    _help = "Accumulated runtime of agency sync phase [ms]";
-  }
-};
-
-struct arangodb_maintenance_action_accum_runtime_msec_total
-    : arangodb::metrics::CounterBuilder<arangodb_maintenance_action_accum_runtime_msec_total> {
-  arangodb_maintenance_action_accum_runtime_msec_total() {
-    _name = "arangodb_maintenance_action_accum_runtime_msec_total";
-    _help = "Accumulated action runtime";
-  }
-};
-
-struct arangodb_maintenance_action_accum_queue_time_msec_total
-    : arangodb::metrics::CounterBuilder<arangodb_maintenance_action_accum_queue_time_msec_total> {
-  arangodb_maintenance_action_accum_queue_time_msec_total() {
-    _name = "arangodb_maintenance_action_accum_queue_time_msec_total";
-    _help = "Accumulated action queue time";
-  }
-};
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase1_accum_runtime_msec_total,
+    "Accumulated runtime of phase one [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_phase2_accum_runtime_msec_total,
+    "Accumulated runtime of phase two [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_agency_sync_accum_runtime_msec_total,
+    "Accumulated runtime of agency sync phase [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_runtime_msec_total,
+    "Accumulated action runtime");
+DECLARE_LEGACY_COUNTER(arangodb_maintenance_action_accum_queue_time_msec_total,
+    "Accumulated action queue time");
 
 struct MaintenanceScale {
   static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }

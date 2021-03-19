@@ -194,32 +194,6 @@
   type: counter
   unit: number
 - category: Agency
-  complexity: simple
-  description: 'Accumulated supervision runtime.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision runtime.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Agency
-  complexity: medium
-  description: 'Accumulated supervision wait for replication time.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision wait for replication time.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total
-  type: counter
-  unit: ms
-- category: Agency
   complexity: medium
   description: 'Counter for FailedServer jobs.
 
@@ -451,21 +425,6 @@
   name: arangodb_aql_slow_query_time
   type: histogram
   unit: s
-- category: AQL
-  complexity: simple
-  description: 'Number of slow AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query_total
-  type: counter
-  unit: number
 - category: AQL
   complexity: simple
   description: 'Total execution time of all AQL queries.
@@ -1217,20 +1176,6 @@
   unit: number
 - category: Maintenance
   complexity: medium
-  description: 'Accumulated runtime of `Current` loading.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Current` loading.
-
-    '
-  name: arangodb_load_current_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
   description: 'Histogram of `Current` loading runtimes.
 
     '
@@ -1242,20 +1187,6 @@
     '
   name: arangodb_load_current_runtime
   type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of `Plan` loading
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Plan` loading
-
-    '
-  name: arangodb_load_plan_accum_runtime_msec_total
-  type: counter
   unit: ms
 - category: Maintenance
   complexity: medium

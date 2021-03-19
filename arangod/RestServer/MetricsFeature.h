@@ -47,6 +47,13 @@
     x() { _name = #x; _help = help; } \
     }
 
+// The following is only needed in 3.8 for the case of duplicate
+// metrics which will be removed in a future version:
+#define DECLARE_LEGACY_COUNTER(x, help)                \
+  struct x : arangodb::metrics::CounterBuilder<x> { \
+    x() { _name = #x; _help = help; } \
+    }
+
 namespace arangodb {
 struct metrics_key;
 }

@@ -387,6 +387,11 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
         "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
         "arangodb_maintenance_action_accum_runtime_msec_total",
         "arangodb_maintenance_action_accum_queue_time_msec_total",
+        "arangodb_agency_supervision_accum_runtime_msec_total",
+        "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total",
+        "arangodb_load_current_accum_runtime_msec_total",
+        "arangodb_load_plan_accum_runtime_msec_total",
+        "arangodb_aql_slow_query_total",
     };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
