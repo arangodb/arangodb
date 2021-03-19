@@ -497,12 +497,12 @@ _Enterprise Edition only_
 ### xxHash
 
 * Name: xxHash
-* Version: 0.7.3 (unreleased)
-* Date: 2019-10-28 12:52:58Z
+* Version: 0.8.0 (unreleased)
+* Date: 2021-03-17 16:51:40 2021Z
 * GitHub: https://github.com/Cyan4973/xxHash/
 * License: https://raw.githubusercontent.com/Cyan4973/xxHash/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
+* License Name: BSD 2-clause license
+* License Id: BSD-2-Clause
 
 ### zlib
 
