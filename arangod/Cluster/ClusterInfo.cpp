@@ -4501,7 +4501,9 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 }
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
-  AgencyCommResult dump = _agency.getValues("Plan");
+  AgencyReadTransaction trx(std::vector<std::string>(
+      {AgencyCommManager::path("Plan"), AgencyCommManager::path("Sync/LatestID")}));
+  AgencyCommResult dump = _agency.sendTransactionWithFailover(trx, 60.0);
 
   if (!dump.successful()) {
     LOG_TOPIC("ce937", ERR, Logger::CLUSTER)
@@ -4526,8 +4528,14 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
                       plan.get(
                           std::vector<std::string>{"arango", "Plan", "Views"})),
       AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
-      AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
+      AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP),
+      {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
+  VPackSlice latestIdSlice = plan.get(std::vector<const char*>{"arango", "Sync", "LatestID"});
+  if (!latestIdSlice.isNone()) {
+    planTransaction.operations.push_back(
+      {"Sync/LatestID", AgencyValueOperationType::SET, latestIdSlice});
+  }
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
     arangodb::Result result(TRI_ERROR_HOT_BACKUP_INTERNAL,
