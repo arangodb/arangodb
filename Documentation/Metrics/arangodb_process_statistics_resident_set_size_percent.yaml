@@ -1,0 +1,18 @@
+name: arangodb_process_statistics_resident_set_size_percent
+help: |
+  Resident set size as fraction of system memory
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  The relative size of the number of pages the process has in real
+  memory compared to system memory. This is just the pages which count
+  toward text, data, or stack space. This does not include pages which
+  have not been demand-loaded in, or which are swapped out. The value is a
+  ratio between 0.00 and 1.00.

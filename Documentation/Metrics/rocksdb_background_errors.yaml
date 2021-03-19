@@ -1,0 +1,13 @@
+name: rocksdb_background_errors
+help: |
+  rocksdb_background_errors
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_background_errors

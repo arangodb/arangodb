@@ -191,6 +191,8 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   if (!trx.addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
+      
+  _query->exitV8Context();
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -217,6 +219,12 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
     << "executing query " << _id << ": '"
     << _query->queryString().extract(1024) << "'";
+  
+  auto guard = scopeGuard([&] {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  });
 
   try {
     ExecutionState state = prepareDump();
@@ -260,6 +268,12 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   ss->resetWakeupHandler();
+  
+  auto guard = scopeGuard([&] {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  });
 
   try {
     aql::ExecutionEngine* engine = _query->rootEngine();
@@ -431,12 +445,6 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   ExecutionState state = ExecutionState::HASMORE;
-  auto guard = scopeGuard([&] {
-    if (_query) {
-      _query->exitV8Context();
-    }
-  });
-  
   bool const silent = _query->queryOptions().silent;
   
   while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {

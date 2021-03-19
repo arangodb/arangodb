@@ -1,0 +1,13 @@
+name: rocksdbengine_throttle_bps
+help: |
+  rocksdbengine_throttle_bps
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdbengine_throttle_bps

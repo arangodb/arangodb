@@ -1,0 +1,13 @@
+name: rocksdb_estimate_pending_compaction_bytes
+help: |
+  rocksdb_estimate_pending_compaction_bytes
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_estimate_pending_compaction_bytes
