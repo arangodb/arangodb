@@ -1273,7 +1273,15 @@
   unit: ms
 - category: Maintenance
   complexity: simple
-  description: 'Counter of actions that are done and have been removed from the registry.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are done and have been removed.
 
     '
   exposedBy:
@@ -1283,10 +1291,20 @@
     '
   name: arangodb_maintenance_action_done_total
   type: counter
-  unit: ms
+  unit: number
 - category: Maintenance
   complexity: advanced
-  description: 'Counter of actions that have been discarded because of a duplicate.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that have been created but found to
+
+    be a duplicate of a already queued action.
 
     '
   exposedBy:
@@ -1299,7 +1317,17 @@
   unit: number
 - category: Maintenance
   complexity: simple
-  description: 'Failure counter for the maintenance actions.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    Those action can fail for different reasons. This metric counts the failed
+
+    actions and can thus provide hints to investigate a malfunction.
 
     '
   exposedBy:
@@ -1312,8 +1340,15 @@
   unit: number
 - category: Maintenance
   complexity: advanced
-  description: 'Histogram of time spent in the queue before execution for maintenance
-    actions.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend waiting in the queue in a histogram.
 
     '
   exposedBy:
@@ -1326,7 +1361,15 @@
   unit: ms
 - category: Maintenance
   complexity: simple
-  description: 'Counter of actions that have been registered in the action registry.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are queued or active.
 
     '
   exposedBy:
@@ -1339,7 +1382,15 @@
   unit: number
 - category: Maintenance
   complexity: advanced
-  description: 'Histogram of time spent execution maintenance actions.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend executing in a histogram.
 
     '
   exposedBy:
@@ -1352,10 +1403,23 @@
   unit: ms
 - category: Maintenance
   complexity: simple
-  description: 'Histogram for total time spent on agency sync. This includes phase
-    one and
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    phase two.
+    to the desired state. To identify the target state differences in the meta
+
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of individual agency syncs in a histogram.
+
+    During DDL operations the runtime can increase but should generally be below
+
+    1s.
 
     '
   exposedBy:
@@ -1368,7 +1432,21 @@
   unit: ms
 - category: Maintenance
   complexity: advanced
-  description: 'Maintenance Phase 1 runtime histogram.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. To identify the target state differences in the meta
+
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase1 of an agency sync. Phase1 calculates
+
+    the difference between the local and the target state.
 
     '
   exposedBy:
@@ -1381,7 +1459,21 @@
   unit: ms
 - category: Maintenance
   complexity: advanced
-  description: 'Maintenance Phase 2 runtime histogram.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. To identify the target state differences in the meta
+
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase2 of an agency sync. Phase2 calculates
+
+    what actions to execute given the difference of the local and target state.
 
     '
   exposedBy:
