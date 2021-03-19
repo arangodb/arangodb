@@ -609,107 +609,160 @@
   name: arangodb_client_connection_statistics_total_time
   type: histogram
   unit: s
-- category: AQL
+- category: Transactions
   complexity: medium
-  description: 'Total amount of collection lock acquisition time.
-
-    '
+  description: "Total amount of time it took to acquire collection/shard locks for\nwrite
+    operations, summed up for all collections/shards. Will not be increased \nfor
+    any read operations.\nThe value is measured in microseconds.\n"
   exposedBy:
-  - coordinator
   - dbserver
   - agent
+  - single
   help: 'Total amount of collection lock acquisition time.
 
     '
   name: arangodb_collection_lock_acquisition_micros_total
+  troubleshoot: "In case this value is considered too high, check if there are AQL
+    queries\nor transactions that use exclusive locks on collections, and try to reduce
+    them. \nOperations using exclusive locks may lock out other queries/transactions
+    temporarily, \nwhich will lead to an increase in lock acquisition time.\n"
   type: counter
   unit: us
-- category: AQL
+- category: RocksDB
   complexity: medium
-  description: 'Collection lock acquisition time histogram.
+  description: 'Histogram of the collection/shard lock acquistion times. Locks will
+    be acquired for
+
+    all write operations, but not for read operations.
+
+    The values here are measured in seconds.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
   - agent
+  - single
   help: 'Collection lock acquisition time histogram.
 
     '
   name: arangodb_collection_lock_acquisition_time
+  troubleshoot: "In case these values are considered too high, check if there are
+    AQL queries\nor transactions that use exclusive locks on collections, and try
+    to reduce them. \nOperations using exclusive locks may lock out other queries/transactions
+    temporarily, \nwhich will lead to an increase in lock acquisition times.\n"
   type: histogram
   unit: s
-- category: AQL
+- category: Transaction
   complexity: advanced
   description: 'Number of transactions using sequential locking of collections to
     avoid deadlocking.
 
+    By default, a coordinator will try to lock all shards of a collection in parallel.
+
+    This approach is normally fast but can cause deadlocks with other transactions
+    that
+
+    lock the same shards in a different order. In case such a deadlock is detected,
+    the
+
+    coordinator will abort the lock round and start a new one that locks all shards
+    in
+
+    sequential order. This will avoid deadlocks, but has a higher setup overhead.
+
     '
   exposedBy:
   - coordinator
-  - dbserver
-  - agent
   help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
 
     '
   name: arangodb_collection_lock_sequential_mode_total
+  troubleshoot: "In case this value is increasing, check if there are AQL queries
+    or transactions that \nuse exclusive locks on collections, and try to reduce them.
+    \nOperations using exclusive locks may lock out other queries/transactions temporarily,
+    \nwhich will lead can lead to (temporary) deadlocks in case the queries/transactions\nare
+    run on multiple shards on different servers.\n"
   type: counter
   unit: number
-- category: AQL
+- category: Transaction
   complexity: medium
   description: 'Number of timeouts when trying to acquire collection exclusive locks.
 
+    This counter will be increased whenever an exclusive collection lock
+
+    cannot be acquired within the configured lock timeout.
+
     '
   exposedBy:
-  - coordinator
   - dbserver
   - agent
+  - single
   help: 'Number of timeouts when trying to acquire collection exclusive locks.
 
     '
   name: arangodb_collection_lock_timeouts_exclusive_total
+  troubleshoot: "In case this value is considered too high, check if there are AQL
+    queries\nor transactions that use exclusive locks on collections, and try to reduce
+    them. \nOperations using exclusive locks may lock out other queries/transactions
+    temporarily, \nwhich can lead to other operations running into timeouts waiting
+    for the same locks.\n"
   type: counter
   unit: number
-- category: AQL
+- category: Transaction
   complexity: medium
-  description: 'Number of timeouts when trying to acquire collection write locks.
-
-    '
+  description: "Number of timeouts when trying to acquire collection write locks.\nThis
+    counter will be increased whenever a collection write lock\ncannot be acquired
+    within the configured lock timeout. \nThis can only happen if writes on a collection
+    are locked out by\nother operations on the collection that use an exclusive lock.
+    Writes\nare not locked out by other, non-exclusively locked writes.\n"
   exposedBy:
-  - coordinator
   - dbserver
   - agent
+  - single
   help: 'Number of timeouts when trying to acquire collection write locks.
 
     '
   name: arangodb_collection_lock_timeouts_write_total
+  troubleshoot: "In case this value is considered too high, check if there are AQL
+    queries\nor transactions that use exclusive locks on collections, and try to reduce
+    them. \nOperations using exclusive locks may lock out other queries/transactions
+    temporarily, \nwhich can lead to other operations running into timeouts waiting
+    for the same locks.\n"
   type: counter
   unit: number
-- category: Statistics
+- category: Transactions
   complexity: simple
-  description: 'Total time spent in collection truncate operations.
+  description: 'Total time spent in collection truncate operations, including both
+
+    user-initiated truncate operations and truncate operations
+
+    executed by the synchronous replication on followers.
+
+    Note that this metric is only present when the command
+
+    line option `--server.export-read-write-metrics` is set to `true`.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
+  - agent
+  - single
   help: 'Total time spent in collection truncate operations.
 
     '
   name: arangodb_collection_truncate_time
   type: histogram
   unit: s
-- category: Statistics
+- category: Replication
   complexity: medium
   description: 'Total number of collection truncate operations by synchronous
 
-    replication. Note that this metric is only present when the command
+    replication on followers. Note that this metric is only present when the command
 
     line option `--server.export-read-write-metrics` is set to `true`.
 
     '
   exposedBy:
-  - coordinator
   - dbserver
   help: 'Total number of collection truncate operations by synchronous replication.
 
@@ -717,9 +770,9 @@
   name: arangodb_collection_truncates_replication_total
   type: counter
   unit: number
-- category: Statistics
+- category: Transactions
   complexity: simple
-  description: 'Total number of collection truncate operations (excl. synchronous
+  description: 'Total number of collection truncate operations on leaders (excl. synchronous
 
     replication). Note that this metric is only present when the command
 
@@ -727,8 +780,9 @@
 
     '
   exposedBy:
+  - agent
   - dbserver
-  - coordinator
+  - single
   help: 'Total number of collection truncate operations (excl. synchronous replication).
 
     '
@@ -832,9 +886,13 @@
   name: arangodb_connection_leases_successful_total
   type: counter
   unit: number
-- category: Statistics
+- category: Transactions
   complexity: simple
-  description: 'Accumulated total time spent in document insert operations. This metric
+  description: 'Total time spent in document insert operations, including both
+
+    user-initiated insert operations and insert operations executed by
+
+    the synchronous replication on followers. This metric
 
     is only present if the option `--server.export-read-write-metrics` is set
 
@@ -842,50 +900,18 @@
 
     '
   exposedBy:
+  - agent
   - dbserver
+  - single
   help: 'Total time spent in document insert operations.
 
     '
   name: arangodb_document_insert_time
   type: histogram
   unit: s
-- category: Statistics
+- category: Transactions
   complexity: simple
-  description: 'Accumulated total time spent in document read operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document read operations.
-
-    '
-  name: arangodb_document_read_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document remove operations. This metric
-
-    is only present if the option `--server.export-read-write-metrics` is set
-
-    to `true`.
-
-    '
-  exposedBy:
-  - dbserver
-  help: 'Total time spent in document remove operations.
-
-    '
-  name: arangodb_document_remove_time
-  type: histogram
-  unit: s
-- category: Statistics
-  complexity: simple
-  description: 'Accumulated total time spent in document replace operations. This
+  description: 'Total time spent in document read-by-primary-key operations. This
     metric
 
     is only present if the option `--server.export-read-write-metrics` is set
@@ -895,15 +921,21 @@
     '
   exposedBy:
   - dbserver
-  help: 'Total time spent in document replace operations.
+  - single
+  - agent
+  help: 'Total time spent in document read-by-primary-key operations.
 
     '
-  name: arangodb_document_replace_time
+  name: arangodb_document_read_time
   type: histogram
   unit: s
-- category: Statistics
+- category: Transactions
   complexity: simple
-  description: 'Accumulated total time spent in document update operations. This metric
+  description: 'Total time spent in document replace operations, including both
+
+    user-initiated replace operations and replace operations executed by
+
+    the synchronous replication on followers. This metric
 
     is only present if the option `--server.export-read-write-metrics` is set
 
@@ -911,22 +943,68 @@
 
     '
   exposedBy:
+  - agent
   - dbserver
+  - single
+  help: 'Total time spent in document remove operations.
+
+    '
+  name: arangodb_document_remove_time
+  type: histogram
+  unit: s
+- category: Transactions
+  complexity: simple
+  description: 'Total time spent in document replace operations, including both
+
+    user-initiated replace operations and replace operations executed by
+
+    the synchronous replication on followers. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - agent
+  - dbserver
+  - single
+  help: 'Total time spent in document replace operations.
+
+    '
+  name: arangodb_document_replace_time
+  type: histogram
+  unit: s
+- category: Transactions
+  complexity: simple
+  description: 'Total time spent in document update operations, including both
+
+    user-initiated update operations and update operations executed by
+
+    the synchronous replication on followers. This metric
+
+    is only present if the option `--server.export-read-write-metrics` is set
+
+    to `true`.
+
+    '
+  exposedBy:
+  - agent
+  - dbserver
+  - single
   help: 'Total time spent in document update operations.
 
     '
   name: arangodb_document_update_time
   type: histogram
   unit: s
-- category: Statistics
+- category: Replication
   complexity: medium
-  description: 'Total number of document write operations by synchronous replication.
-
-    This metric is only present if the option
-
-    `--server.export-read-write-metrics` is set to `true`.
-
-    '
+  description: "Total number of document write operations by synchronous replication.\nThis
+    metric is only present if the option\n`--server.export-read-write-metrics` is
+    set to `true`.\nTotal number of document write operations (insert, update, replace,
+    remove)\nexecuted by the synchronous replication on followers.\nThis metric is
+    only present if the option `--server.export-read-write-metrics` \nis set to `true`.\n"
   exposedBy:
   - dbserver
   help: 'Total number of document write operations by synchronous replication.
@@ -935,17 +1013,16 @@
   name: arangodb_document_writes_replication_total
   type: counter
   unit: number
-- category: Statistics
+- category: Transactions
   complexity: medium
-  description: 'Total number of document write operations (excl. synchronous replication).
-
-    This metric is only present if the option
-
-    `--server.export-read-write-metrics` is set to `true`.
-
-    '
+  description: "Total number of document write operations (insert, update, replace,
+    remove) on\nleaders, excluding writes by the synchronous replication on followers.\nThis
+    metric is only present if the option `--server.export-read-write-metrics` \nis
+    set to `true`.\n"
   exposedBy:
+  - agent
   - dbserver
+  - single
   help: 'Total number of document write operations (excl. synchronous replication).
 
     '
