@@ -1,0 +1,13 @@
+name: rocksdb_num_deletes_active_mem_table
+help: |
+  rocksdb_num_deletes_active_mem_table
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_num_deletes_active_mem_table

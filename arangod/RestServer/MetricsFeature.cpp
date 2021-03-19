@@ -72,9 +72,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_dropped_followers_total", "arangodb_dropped_followers_count");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls rocksdb_write_stalls");
+      "arangodb_rocksdb_write_stalls_total", "rocksdb_write_stalls");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops rocksdb_write_stops");
+      "arangodb_rocksdb_write_stops_total", "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_shards_leader_number", "arangodb_shards_leader_count");
     nameVersionTable.try_emplace(
@@ -175,12 +175,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_aql_total_query_time_msec_total",
       "arangodb_aql_total_query_time_msec");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls_total",
-      "rocksdb_write_stalls");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops_total",
-      "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_collection_lock_acquisition_micros_total",
       "arangodb_collection_lock_acquisition_micros");
@@ -325,6 +319,57 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_scheduler_threads_stopped_total",
       "arangodb_scheduler_threads_stopped");
+    // For the sake of completeness, we add the renamings from v1 to v2 from the
+    // statistics feature:
+    nameVersionTable.try_emplace(
+      "arangodb_process_statistics_minor_page_faults_total",
+      "arangodb_process_statistics_minor_page_faults");
+    nameVersionTable.try_emplace(
+      "arangodb_process_statistics_major_page_faults_total",
+      "arangodb_process_statistics_major_page_faults");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_total_requests_total",
+      "arangodb_http_request_statistics_total_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_superuser_requests_total",
+      "arangodb_http_request_statistics_superuser_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_user_requests_total",
+      "arangodb_http_request_statistics_user_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_async_requests_total",
+      "arangodb_http_request_statistics_async_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_delete_requests_total",
+      "arangodb_http_request_statistics_http_delete_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_get_requests_total",
+      "arangodb_http_request_statistics_http_get_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_head_requests_total",
+      "arangodb_http_request_statistics_http_head_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_options_requests_total",
+      "arangodb_http_request_statistics_http_options_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_patch_requests_total",
+      "arangodb_http_request_statistics_http_patch_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_post_requests_total",
+      "arangodb_http_request_statistics_http_post_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_http_put_requests_total",
+      "arangodb_http_request_statistics_http_put_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_http_request_statistics_other_http_requests_total",
+      "arangodb_http_request_statistics_other_http_requests");
+    nameVersionTable.try_emplace(
+      "arangodb_server_statistics_server_uptime_total",
+      "arangodb_server_statistics_server_uptime");
+    // And one for rocksdb:
+    nameVersionTable.try_emplace(
+      "rocksdb_engine_throttle_bps",
+      "rocksdbengine_throttle_bps");
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
@@ -464,7 +509,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
   auto& es = server().getFeature<EngineSelectorFeature>().engine();
   std::string const& engineName = es.typeName();
   if (engineName == RocksDBEngine::EngineName) {
-    es.getStatistics(result);
+    es.getStatistics(result, v2);
   }
 }
 

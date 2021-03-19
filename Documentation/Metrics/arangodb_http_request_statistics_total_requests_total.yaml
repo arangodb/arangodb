@@ -1,0 +1,14 @@
+name: arangodb_http_request_statistics_total_requests_total
+help: |
+  Total number of HTTP requests
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of HTTP requests.
