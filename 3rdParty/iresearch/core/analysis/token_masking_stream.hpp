@@ -42,14 +42,13 @@ class token_masking_stream final
   : public analyzer,
     private util::noncopyable {
  public:
-  using MaskSet  = absl::flat_hash_set<std::string>;
+  using mask_set  = absl::flat_hash_set<std::string>;
 
   static constexpr string_ref type_name() noexcept { return "mask"; }
 
   static void init(); // for trigering registration in a static build
-  static ptr make(const string_ref& mask);
 
-  explicit token_masking_stream(MaskSet&& mask);
+  explicit token_masking_stream(mask_set&& mask);
   virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return irs::get_mutable(attrs_, type);
   }
@@ -60,10 +59,9 @@ class token_masking_stream final
   using attributes = std::tuple<
     increment,
     offset,
-    payload,         // raw token value
     term_attribute>; // token value with evaluated quotes
 
-  MaskSet mask_;
+  mask_set mask_;
   attributes attrs_;
   bool term_eof_;
 };

@@ -127,7 +127,7 @@ struct text_token_stream::state_t {
 } // ROOT
 
 namespace {
-namespace absl = ::iresearch_absl;
+using namespace irs;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

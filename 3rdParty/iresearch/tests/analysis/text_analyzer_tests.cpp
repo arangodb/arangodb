@@ -1057,12 +1057,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
   ASSERT_EQ("ru", actual);
 }
 
-TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
-  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::csv>::get(), config));
-}
-
 TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {
   std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[ \"ag\",\
       \"of\", \"plc\", \"the\", \"inc\", \"co\", \"ltd\"], \"accent\":true}";

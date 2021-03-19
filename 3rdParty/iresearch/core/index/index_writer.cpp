@@ -43,7 +43,8 @@
 #include <sstream>
 
 namespace {
-namespace absl = ::iresearch_absl;
+using namespace irs;
+
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 

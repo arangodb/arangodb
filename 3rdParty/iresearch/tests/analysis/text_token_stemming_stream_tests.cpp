@@ -203,9 +203,3 @@ TEST_F(text_token_stemming_stream_tests, test_make_config_text) {
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
 }
-
-TEST_F(text_token_stemming_stream_tests, test_make_config_invalid_format) {
-  std::string config = "ru_RU.utfF-8";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stem", irs::type<irs::text_format::csv>::get(), config));
-}

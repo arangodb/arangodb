@@ -31,7 +31,7 @@
 #include "singleton.hpp"
 
 namespace {
-namespace absl = ::iresearch_absl;
+using namespace irs;
 
 class timer_states: public irs::singleton<timer_states> {
  public:

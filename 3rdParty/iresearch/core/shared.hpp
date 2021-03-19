@@ -334,7 +334,11 @@
 
 namespace iresearch_absl { }
 namespace iresearch {
-namespace absl = ::iresearch_absl;
+// we are using custom absl namespace (and also prefixed macros names)
+// as absl does not support side-by-side compiling in single project
+// with another target also using another version of absl. So with this custom
+// namespace/macros we have isolated our absl copy.
+namespace absl = ::iresearch_absl; 
 }
 namespace irs = ::iresearch;
 

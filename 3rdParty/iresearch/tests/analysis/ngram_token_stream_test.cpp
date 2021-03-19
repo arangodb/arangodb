@@ -1204,7 +1204,6 @@ TEST(ngram_token_stream_test, test_make_config_invalid_format) {
   std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::text>::get(), config));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::csv>::get(), config));
 }
 
 

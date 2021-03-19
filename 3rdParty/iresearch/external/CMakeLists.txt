@@ -147,13 +147,13 @@ add_subdirectory(unicorn)
 ### velocypack library
 ################################################################################
 if (NOT TARGET velocypack)
-if ("${VPACK_ROOT}" STREQUAL "")
-  set(VPACK_ROOT "$ENV{VPACK_ROOT}")
-endif()
+  if ("${VPACK_ROOT}" STREQUAL "")
+    set(VPACK_ROOT "$ENV{VPACK_ROOT}")
+  endif()
 
-if (NOT ("${VPACK_ROOT}" STREQUAL ""))
-  add_subdirectory(${VPACK_ROOT}
-                   ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
-                   EXCLUDE_FROM_ALL)
-endif()
+  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
+    add_subdirectory(${VPACK_ROOT}
+                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                    EXCLUDE_FROM_ALL)
+  endif()
 endif()

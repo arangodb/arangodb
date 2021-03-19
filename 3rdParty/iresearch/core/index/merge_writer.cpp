@@ -45,7 +45,8 @@
 #include <boost/iterator/filter_iterator.hpp>
 
 namespace {
-namespace absl = ::iresearch_absl;
+using namespace irs;
+
 const irs::column_info NORM_COLUMN{
   irs::type<irs::compression::lz4>::get(),
   irs::compression::options(),

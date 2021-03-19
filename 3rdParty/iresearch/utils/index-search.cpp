@@ -442,10 +442,8 @@ int search(
   irs::default_pdp(2, false); irs::default_pdp(2, true);
 
   static const std::map<std::string, irs::type_info> text_formats = {
-    { "csv", irs::type<irs::text_format::csv>::get() },
     { "json", irs::type<irs::text_format::json>::get() },
     { "text", irs::type<irs::text_format::text>::get() },
-    { "xml", irs::type<irs::text_format::xml>::get() },
   };
   auto arg_format_itr = text_formats.find(scorer_arg_format);
 
