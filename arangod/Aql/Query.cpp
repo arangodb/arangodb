@@ -1336,12 +1336,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     return ExecutionState::WAITING;
   }
   
-  TRI_ASSERT (exp == ShutdownState::None);
-  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
-                                              std::memory_order_relaxed)) {
-    return ExecutionState::WAITING; // someone else got here
-  }
-  
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
   // simon: do not unregister _queryProfile here, since kill() will be called
@@ -1372,6 +1366,12 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+  TRI_ASSERT (exp == ShutdownState::None);
+  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
+                                              std::memory_order_relaxed)) {
+    return ExecutionState::WAITING; // someone else got here
+  }
+  
   if (_serverQueryIds.empty()) {
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
