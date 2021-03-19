@@ -3,6 +3,8 @@ v3.6.13 (XXXX-XX-XX)
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 
+* Updated arangosync to 1.2.3.
+
 * Fixed a bug in the web interface that displayed the error "Not authorized to
   execute this request" when trying to create an index in the web interface in a
   database other than `_system` with a user that does not have any access
