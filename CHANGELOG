@@ -1,6 +1,9 @@
 devel
 -----
 
+* Removed old metrics in new v2 metric api. Those metric endpoints were
+  identical to the sum value of histograms.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the 
