@@ -296,8 +296,14 @@ for c in categoryNames:
               met = metrics[name]
               if complexities.index(met["complexity"]) <= complexitylimit:
                 panel = makePanel(posx, posy, met)
-                if met["type"] == "counter" or \
-                   met["type"] == "gauge":
+                if met["type"] == "counter":
+                    panel["type"] = "graph"
+                    panel["targets"] = [ { "expr": "rate(" + met["name"] + \
+                                                   "[1m])", \
+                         "legendFormat": "{{instance}}:{{shortname}}" } ]
+                    posx, posy = incxy(posx, posy)
+                    panels.append(panel)
+                elif met["type"] == "gauge":
                     panel["type"] = "graph"
                     panel["targets"] = [ { "expr": met["name"], \
                          "legendFormat": "{{instance}}:{{shortname}}" } ]
@@ -318,7 +324,7 @@ for c in categoryNames:
                     panel["type"] = "graph"
                     panel["targets"] = [ \
                         { "expr": "rate(" + met["name"] + "_count[60s])", \
-                          "legendFormat": "{{instance}}:{{shortname}" } ]
+                          "legendFormat": "{{instance}}:{{shortname}}" } ]
                     posx, posy = incxy(posx, posy)
                     panels.append(panel)
                     panel = makePanel(posx, posy, met)
@@ -327,7 +333,7 @@ for c in categoryNames:
                     panel["targets"] = [ \
                         { "expr": "rate(" + met["name"] + "_sum[60s])" + \
                                   " / rate(" + met["name"] + "_count[60s])", \
-                          "legendFormat": "{{instance}}:{{shortname}" } ]
+                          "legendFormat": "{{instance}}:{{shortname}}" } ]
                     posx, posy = incxy(posx, posy)
                     panels.append(panel)
                 else:
