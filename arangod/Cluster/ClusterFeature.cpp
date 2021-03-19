@@ -637,9 +637,34 @@ void ClusterFeature::start() {
 
   AsyncAgencyCommManager::INSTANCE->setSkipScheduler(false);
   ServerState::instance()->setState(ServerState::STATE_SERVING);
+
+  // If we are on a coordinator, we want to have a callback which is called
+  // whenever a hotbackup restore is done:
+  if (role == ServerState::ROLE_COORDINATOR) {
+    auto hotBackupRestoreDone = [this](VPackSlice const& result) -> bool {
+      LOG_TOPIC("12636", INFO, Logger::BACKUP) << "Got a hotbackup restore "
+        "event, getting new cluster-wide unique IDs...";
+      this->_clusterInfo->uniqid(1000000);
+      return true;
+    };
+    _hotbackupRestoreCallback =
+      std::make_shared<AgencyCallback>(
+        server(), "Sync/HotBackupRestoreDone", hotBackupRestoreDone, true, false);
+    bool r =_agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback, true);
+    if (!r) {
+      LOG_TOPIC("82516", WARN, Logger::BACKUP)
+        << "Could not register hotbackup restore callback, this could lead "
+           "to problems after a restore!";
+    }
+  }
 }
 
 void ClusterFeature::beginShutdown() {
+  if (!_agencyCallbackRegistry->unregisterCallback(_hotbackupRestoreCallback)) {
+    LOG_TOPIC("84152", INFO, Logger::BACKUP) << "Strange, we could not "
+      "unregister the hotbackup restore callback.";
+  }
+
   if (_enableCluster) {
     _clusterInfo->shutdownSyncers();
   }

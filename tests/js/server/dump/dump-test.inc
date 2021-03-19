@@ -1174,7 +1174,20 @@
         assertTrue(doc._key.startsWith("cheese:"));
       },
 
-
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test whether hotbackup restore restores the uniqid
+      ////////////////////////////////////////////////////////////////////////////////
+      testLatestId : function() {
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed in the cluster
+          // After the hotbackup was taken, we have consumed 100.000.000
+          // cluster wide unique ids. Here, we check that after the
+          // hotbackup restore the number in /arango/Sync/LatestID
+          // in the agency is lower again.
+          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
+          assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
+        }
+      },
       
     };
   };

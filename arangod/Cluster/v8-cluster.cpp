@@ -548,7 +548,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     count = TRI_ObjectToUInt64(isolate, args[0], true);
   }
 
-  if (count < 1 || count > 10000000) {
+  if (count < 1 || count > 100000000) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
