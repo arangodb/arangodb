@@ -1,8 +1,12 @@
-v3.7.10 (XXXX-XX-XX)
+v3.7.11 (XXXX-XX-XX)
 --------------------
 
 * Fixed a bug in the index count optimization that doubled counted documents
   when using array expansions in the fields definition.
+
+
+v3.7.10 (XXXX-XX-XX)
+--------------------
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 
