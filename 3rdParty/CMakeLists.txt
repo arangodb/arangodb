@@ -114,7 +114,7 @@ set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
 set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
 
-add_subdirectory(velocypack)
+add_subdirectory(velocypack EXCLUDE_FROM_ALL)
 
 ################################################################################
 ## IResearch
@@ -147,7 +147,6 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-set(USE_SEGMENTATION_ANALYZER ON CACHE BOOL "Use IResearch segmentation analyzer" FORCE)
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
