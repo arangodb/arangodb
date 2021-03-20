@@ -6823,7 +6823,6 @@ TEST_F(IResearchFilterFunctionTest, ngramMatch) {
     auto* opts = filter.mutable_options();
     opts->threshold = 0.5;
     opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
-    opts->ngrams.push_back({static_cast<irs::byte_type>('f')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});
     opts->ngrams.push_back({static_cast<irs::byte_type>('o')});

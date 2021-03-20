@@ -2743,7 +2743,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
     bool mustDestroy;
     auto entry = result->at(0, mustDestroy, false);
     EXPECT_TRUE(entry.isString());
-    irs::string_ref value = arangodb::iresearch::getStringRef(entry.slice());
+    auto value = entry.slice().copyString();
     EXPECT_EQ(data, value);
   }
 
@@ -3064,7 +3064,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         auto textTokens = nested.at(0);
         EXPECT_TRUE(textTokens.isArray());
         EXPECT_EQ(1, textTokens.length());
-        irs::string_ref value = arangodb::iresearch::getStringRef(textTokens.at(0));
+        auto value = textTokens.at(0).copyString();
         EXPECT_STREQ("test", value.c_str());
       }
       {
@@ -3142,8 +3142,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
       EXPECT_EQ(1, entry.length());
       auto textSlice = entry.at(0);
       EXPECT_TRUE(textSlice.isString());
-      irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
-      EXPECT_STREQ("jump", value.c_str());
+      auto value = textSlice.copyString();
+      EXPECT_EQ("jump", value);
     }
     {
       bool mustDestroy;
@@ -3156,8 +3156,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
-        EXPECT_STREQ("quick", value.c_str());
+        auto value = textSlice.copyString();
+        EXPECT_EQ("quick", value);
       }
       {
         auto subArray = entry.at(1);
@@ -3165,8 +3165,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
         EXPECT_EQ(1, subArray.length());
         auto textSlice = subArray.at(0);
         EXPECT_TRUE(textSlice.isString());
-        irs::string_ref value = arangodb::iresearch::getStringRef(textSlice);
-        EXPECT_STREQ("dog", value.c_str());
+        auto value = textSlice.copyString();
+        EXPECT_EQ("dog", value);
       }
     }
   }

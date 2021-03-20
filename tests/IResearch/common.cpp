@@ -59,6 +59,7 @@
 #include "search/range_filter.hpp"
 #include "search/scorers.hpp"
 #include "search/term_filter.hpp"
+#include "search/ngram_similarity_filter.hpp"
 #include "utils/string.hpp"
 #include "utils/utf8_path.hpp"
 
@@ -130,6 +131,15 @@ namespace iresearch {
     return os;
   }
 
+  std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
+    os << "NGRAM_SIMILARITY[";
+    for (auto ngram : filter.options().ngrams) {
+      os << ngram.c_str();
+    }
+    os << "," << filter.options().threshold << "]";
+    return os;
+  }
+
   std::ostream& operator<<(std::ostream& os, filter const& filter) {
     const auto& type = filter.type();
     if (type == irs::type<And>::id()) {
@@ -142,6 +152,8 @@ namespace iresearch {
       return os << static_cast<by_term const&>(filter);
     } else if (type == irs::type<by_range>::id()) {
       return os << static_cast<by_range const&>(filter);
+    } else if (type == irs::type<by_ngram_similarity>::id()) {
+      return os << static_cast<by_ngram_similarity const&>(filter);
     } else {
       return os << "[Unknown filter]";
     }
