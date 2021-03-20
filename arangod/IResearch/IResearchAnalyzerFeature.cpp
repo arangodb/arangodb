@@ -175,12 +175,12 @@ REGISTER_ANALYZER_VPACK(irs::analysis::delimited_token_stream,
                         delimiter_vpack_builder, delimiter_vpack_normalizer);
 }  // namespace delimiter_vpack
 namespace ngram_vpack {
-const irs::string_ref MIN_PARAM_NAME = "min";
-const irs::string_ref MAX_PARAM_NAME = "max";
-const irs::string_ref PRESERVE_ORIGINAL_PARAM_NAME = "preserveOriginal";
-const irs::string_ref STREAM_TYPE_PARAM_NAME       = "streamType";
-const irs::string_ref START_MARKER_PARAM_NAME      = "startMarker";
-const irs::string_ref END_MARKER_PARAM_NAME        = "endMarker";
+constexpr velocypack::StringRef MIN_PARAM_NAME {"min" };
+constexpr velocypack::StringRef MAX_PARAM_NAME {"max" };
+constexpr velocypack::StringRef PRESERVE_ORIGINAL_PARAM_NAME {"preserveOriginal"};
+constexpr velocypack::StringRef STREAM_TYPE_PARAM_NAME {"streamType"};
+constexpr velocypack::StringRef START_MARKER_PARAM_NAME {"startMarker"};
+constexpr velocypack::StringRef END_MARKER_PARAM_NAME {"endMarker"};
 
 const std::map<irs::string_ref, irs::analysis::ngram_token_stream_base::InputType> STREAM_TYPE_CONVERT_MAP = {
   { "binary", irs::analysis::ngram_token_stream_base::InputType::Binary },
@@ -199,7 +199,10 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
 
   uint64_t min = 0, max = 0;
   bool seen = false;
-  if (!arangodb::iresearch::getNumber(min, slice, MIN_PARAM_NAME, seen, min) || !seen) {
+  if (!arangodb::iresearch::getNumber(min, slice,
+                                      std::string_view(MIN_PARAM_NAME.data(),
+                                                       MIN_PARAM_NAME.length()),
+                                      seen, min) || !seen) {
     LOG_TOPIC("7b706", WARN, arangodb::iresearch::TOPIC)
       << "Failed to read '" << MIN_PARAM_NAME
       << "' attribute as number while constructing "
@@ -208,7 +211,10 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
     return false;
   }
 
-  if (!arangodb::iresearch::getNumber(max, slice, MAX_PARAM_NAME, seen, max) || !seen) {
+  if (!arangodb::iresearch::getNumber(max, slice,
+                                      std::string_view(MAX_PARAM_NAME.data(),
+                                                       MAX_PARAM_NAME.length()),
+                                      seen, max) || !seen) {
     LOG_TOPIC("eae46", WARN, arangodb::iresearch::TOPIC)
       << "Failed to read '" << MAX_PARAM_NAME
       << "' attribute as number while constructing "
@@ -217,8 +223,8 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
     return false;
   }
 
-  if (!slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME.c_str()) ||
-      !slice.get(PRESERVE_ORIGINAL_PARAM_NAME.c_str()).isBool()) {
+  if (!slice.hasKey(PRESERVE_ORIGINAL_PARAM_NAME) ||
+      !slice.get(PRESERVE_ORIGINAL_PARAM_NAME).isBool()) {
     LOG_TOPIC("e95d3", WARN, arangodb::iresearch::TOPIC)
       << "Failed to read '" << PRESERVE_ORIGINAL_PARAM_NAME
       << "' attribute as boolean while constructing "
@@ -227,8 +233,8 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
     return false;
   }
 
-  if (slice.hasKey(START_MARKER_PARAM_NAME.c_str())) {
-    auto start_marker_json = slice.get(START_MARKER_PARAM_NAME.c_str());
+  if (slice.hasKey(START_MARKER_PARAM_NAME)) {
+    auto start_marker_json = slice.get(START_MARKER_PARAM_NAME);
     if (start_marker_json.isString()) {
       options.start_marker = irs::ref_cast<irs::byte_type>(
         arangodb::iresearch::getStringRef(start_marker_json));
@@ -237,13 +243,13 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
           "ngram_token_stream from jSON arguments: %s",
-          START_MARKER_PARAM_NAME.c_str(), argString.c_str());
+          START_MARKER_PARAM_NAME.data(), argString.c_str());
       return false;
     }
   }
 
-  if (slice.hasKey(END_MARKER_PARAM_NAME.c_str())) {
-    auto end_marker_json = slice.get(END_MARKER_PARAM_NAME.c_str());
+  if (slice.hasKey(END_MARKER_PARAM_NAME)) {
+    auto end_marker_json = slice.get(END_MARKER_PARAM_NAME);
     if (end_marker_json.isString()) {
       options.end_marker = irs::ref_cast<irs::byte_type>(
         arangodb::iresearch::getStringRef(end_marker_json));
@@ -252,20 +258,20 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
       IR_FRMT_ERROR(
           "Failed to read '%s' attribute as string while constructing "
           "ngram_token_stream from jSON arguments: %s",
-          END_MARKER_PARAM_NAME.c_str(), argString.c_str());
+          END_MARKER_PARAM_NAME.data(), argString.c_str());
       return false;
     }
   }
 
-  if (slice.hasKey(STREAM_TYPE_PARAM_NAME.c_str())) {
-      auto stream_type_json = slice.get(STREAM_TYPE_PARAM_NAME.c_str());
+  if (slice.hasKey(STREAM_TYPE_PARAM_NAME)) {
+      auto stream_type_json = slice.get(STREAM_TYPE_PARAM_NAME);
 
       if (!stream_type_json.isString()) {
         std::string argString = slice.toJson();
         IR_FRMT_WARN(
             "Non-string value in '%s' while constructing ngram_token_stream "
             "from jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
+            STREAM_TYPE_PARAM_NAME.data(), argString.c_str());
         return false;
       }
       auto itr = STREAM_TYPE_CONVERT_MAP.find(arangodb::iresearch::getStringRef(stream_type_json));
@@ -274,7 +280,7 @@ bool parse_ngram_vpack_config(const irs::string_ref& args, irs::analysis::ngram_
         IR_FRMT_WARN(
             "Invalid value in '%s' while constructing ngram_token_stream from "
             "jSON arguments: %s",
-            STREAM_TYPE_PARAM_NAME.c_str(), argString.c_str());
+            STREAM_TYPE_PARAM_NAME.data(), argString.c_str());
         return false;
       }
       options.stream_bytes_type = itr->second;
@@ -312,13 +318,13 @@ bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) {
     VPackBuilder vpack;
     {
       VPackObjectBuilder scope(&vpack);
-      vpack.add(MIN_PARAM_NAME.c_str(), MIN_PARAM_NAME.size(), VPackValue(tmp.min_gram));
-      vpack.add(MAX_PARAM_NAME.c_str(), MAX_PARAM_NAME.size(), VPackValue(tmp.max_gram));
-      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME.c_str(), PRESERVE_ORIGINAL_PARAM_NAME.size(),
+      vpack.add(MIN_PARAM_NAME, VPackValue(tmp.min_gram));
+      vpack.add(MAX_PARAM_NAME, VPackValue(tmp.max_gram));
+      vpack.add(PRESERVE_ORIGINAL_PARAM_NAME,
                 VPackValue(tmp.preserve_original));
-      vpack.add(START_MARKER_PARAM_NAME.c_str(), START_MARKER_PARAM_NAME.size(),
+      vpack.add(START_MARKER_PARAM_NAME,
                 arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.start_marker)));
-      vpack.add(END_MARKER_PARAM_NAME.c_str(), END_MARKER_PARAM_NAME.size(),
+      vpack.add(END_MARKER_PARAM_NAME,
                 arangodb::iresearch::toValuePair(irs::ref_cast<char>(tmp.end_marker)));
 
       auto stream_type_value = std::find_if(STREAM_TYPE_CONVERT_MAP.begin(), STREAM_TYPE_CONVERT_MAP.end(),
@@ -327,12 +333,12 @@ bool ngram_vpack_normalizer(const irs::string_ref& args, std::string& out) {
         });
 
       if (stream_type_value != STREAM_TYPE_CONVERT_MAP.end()) {
-        vpack.add(STREAM_TYPE_PARAM_NAME.c_str(), STREAM_TYPE_PARAM_NAME.size(),
+        vpack.add(STREAM_TYPE_PARAM_NAME,
                   VPackValue(stream_type_value->first.c_str()));
       } else {
         IR_FRMT_ERROR(
           "Invalid %s value in ngram analyzer options: %d",
-          STREAM_TYPE_PARAM_NAME.c_str(),
+          STREAM_TYPE_PARAM_NAME.data(),
           static_cast<int>(tmp.stream_bytes_type));
         return false;
       }

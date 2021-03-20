@@ -1768,13 +1768,13 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.push_back(static_cast<irs::bstring>(token->value));
+    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.push_back(static_cast<irs::bstring>(token->value));
+    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
