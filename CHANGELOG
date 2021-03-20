@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed a bug in query cost estimation when a NoResults node occured in a
+  spliced subquery. This could lead to a server crash.
+
 * Fixed a bug in the index count optimization that doubled counted documents
   when using array expansions in the fields definition.
 
