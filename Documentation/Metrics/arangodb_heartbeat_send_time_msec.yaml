@@ -1,0 +1,13 @@
+name: arangodb_heartbeat_send_time_msec
+help: |
+  Time required to send a heartbeat.
+unit: ms
+type: histogram
+category: Health
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Histogram of times required to send heartbeats. For every heartbeat
+  sent the time is measured and an event is put into the histogram.

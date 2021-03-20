@@ -1,0 +1,13 @@
+name: rocksdb_num_running_flushes
+help: |
+  rocksdb_num_running_flushes
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_num_running_flushes

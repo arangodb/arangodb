@@ -1,0 +1,13 @@
+name: arangodb_v8_context_enter_failures_total
+help: |
+  Total number of V8 context enter failures.
+unit: number
+type: counter
+category: V8
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of V8 context enter failures.

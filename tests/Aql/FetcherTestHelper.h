@@ -31,6 +31,8 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <Containers/HashSet.h>
 
@@ -98,7 +100,8 @@ class PatternTestWrapper {
   }
 
  private:
-  ResourceMonitor _monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   RegIdSet inputRegisters;
   DependencyProxyMock<::arangodb::aql::BlockPassthrough::Disable> _dependencyProxyMock{_monitor, inputRegisters, 1};
   AqlItemBlockManager _itemBlockManager{&_monitor, SerializationFormat::SHADOWROWS};

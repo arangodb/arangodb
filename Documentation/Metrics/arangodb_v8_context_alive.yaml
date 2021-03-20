@@ -1,0 +1,14 @@
+name: arangodb_v8_context_alive
+help: |
+  Number of V8 contexts currently alive
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of V8 contexts currently alive.

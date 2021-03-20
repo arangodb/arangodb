@@ -44,6 +44,7 @@
 #include "Aql/Projections.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Sharding/ShardingFeature.h"
@@ -255,7 +256,8 @@ using EnumerateCollectionInputParam = std::tuple<EnumerateCollectionSplitType>;
 class EnumerateCollectionExecutorTestProduce
     : public AqlExecutorTestCaseWithParam<EnumerateCollectionInputParam> {
  protected:
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   TRI_vocbase_t& vocbase;

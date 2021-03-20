@@ -97,7 +97,6 @@ struct TestIndex : public arangodb::Index {
   bool canBeDropped() const override { return false; }
   bool hasSelectivityEstimate() const override { return false; }
   bool isHidden() const override { return false; }
-  bool isPersistent() const override { return false; }
   bool isSorted() const override { return false; }
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
       arangodb::transaction::Methods* /* trx */, arangodb::aql::AstNode const* /* node */,
