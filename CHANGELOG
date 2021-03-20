@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix error message in case of index unique constraint violations. They were
+  lacking the actual error message (i.e. "unique constraint violated") and
+  only showed the index details. The issue was introduced only in devel in Feb.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the 
