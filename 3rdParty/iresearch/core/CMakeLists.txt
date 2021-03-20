@@ -382,6 +382,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static
+  velocypack
 )
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
@@ -399,10 +400,6 @@ target_include_directories(${IResearch_TARGET_NAME}-static
 target_include_directories(${IResearch_TARGET_NAME}-static
   PUBLIC ${VPACK_INCLUDE_PATH}
 )
-
-add_dependencies(${IResearch_TARGET_NAME}-static velocypack)
-target_link_libraries(${IResearch_TARGET_NAME}-static velocypack)
-
 
 # setup MSVC specific compiler flags
 if(MSVC)
@@ -456,6 +453,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-shared
   ${SIMD_LIBRARY_SHARED}
   ${ATOMIC_LIBRARY}
   ${ABSL_LIBRARY_STATIC}
+  velocypack
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-static
@@ -479,14 +477,13 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${MSVC_ONLY_LIBRARIES}
   ${SIMD_LIBRARY_STATIC}
   ${ABSL_LIBRARY_STATIC}
+  velocypack
 )
 
 
 target_include_directories(${IResearch_TARGET_NAME}-shared
   PUBLIC ${VPACK_INCLUDE_PATH}
 )
-add_dependencies(${IResearch_TARGET_NAME}-shared velocypack)
-target_link_libraries(${IResearch_TARGET_NAME}-shared velocypack)
 
 
 if (CLANG_TIDY_EXE)
@@ -1049,14 +1046,6 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static ${IR
 
 
 set_ipo(${IResearch_TARGET_NAME}-analyzer-segmentation-static)
-
-
-add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
-add_dependencies(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-shared velocypack)
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-segmentation-static velocypack)
-
-
 
 set_target_properties(${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   PROPERTIES

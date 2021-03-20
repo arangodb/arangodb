@@ -893,7 +893,7 @@ namespace RS::Unicorn {
         Utf8Iterator convert_str_to_int(T& t, const Utf8Iterator& start, uint32_t flags, int base) {
             static const Ustring dec_chars = "+-0123456789";
             static const Ustring hex_chars = "+-0123456789ABCDEFabcdef";
-            const Ustring& src(start.source());
+            Uview src(start.source());
             size_t offset = start.offset();
             if (offset >= src.size()) {
                 if (flags & Utf::throws)
@@ -1031,7 +1031,7 @@ namespace RS::Unicorn {
     Utf8Iterator str_to_float(T& t, const Utf8Iterator& start, uint32_t flags = 0) {
         using traits = UnicornDetail::FloatConversionTraits<T>;
         static constexpr T max_value = std::numeric_limits<T>::max();
-        const Ustring& src(start.source());
+        Uview src(start.source());
         size_t offset = start.offset();
         if (offset >= src.size()) {
             if (flags & Utf::throws)
