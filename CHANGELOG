@@ -1,5 +1,6 @@
 devel
 -----
+* Added new ArangoSearch analyzer type "mask"
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and
