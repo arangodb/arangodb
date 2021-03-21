@@ -1712,20 +1712,7 @@ again:
       } else {
         req->header.contentType(fu::ContentType::Custom);
       }
-
     } else if (boost::iequals(StaticStrings::Accept, pair.first)) {
-      if (pair.second == StaticStrings::MimeTypeVPack) {
-        req->header.acceptType(fu::ContentType::VPack);
-      } else if ((pair.second.length() >= StaticStrings::MimeTypeJsonNoEncoding.length()) &&
-               (memcmp(pair.second.c_str(),
-                       StaticStrings::MimeTypeJsonNoEncoding.c_str(),
-                       StaticStrings::MimeTypeJsonNoEncoding.length()) == 0)) {
-        // ignore encoding etc.
-        req->header.acceptType(fu::ContentType::Json);
-      } else {
-        req->header.acceptType(fu::ContentType::Custom);
-      }
-
       req->header.acceptType(fu::ContentType::Custom);
     }
     req->header.addMeta(pair.first, pair.second);

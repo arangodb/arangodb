@@ -235,7 +235,7 @@ TEST_F(IResearchQueryAggregateTest, test) {
 
         for (; name.valid(); name.next()) {
           auto const actualName = arangodb::iresearch::getStringRef(name.value());
-          auto expectedName = expectedNames.find(actualName);
+          auto expectedName = expectedNames.find(static_cast<std::string>(actualName)); // FIXME: remove cast after C++20
           ASSERT_NE(expectedName, expectedNames.end());
           expectedNames.erase(expectedName);
         }

@@ -26,41 +26,6 @@
 #include "search/limited_sample_collector.hpp"
 #include "utils/fstext/fst_table_matcher.hpp"
 
-namespace {
-
-using namespace irs;
-
-// table contains indexes of states in
-// utf8_transitions_builder::rho_states_ table
-const automaton::Arc::Label UTF8_RHO_STATE_TABLE[] {
-  // 1 byte sequence (0-127)
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  // invalid sequence (128-191)
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-  // 2 bytes sequence (192-223)
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-  // 3 bytes sequence (224-239)
-  2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-  // 4 bytes sequence (240-255)
-  3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-};
-
-// 0 is reserved for Epsilon transition
-constexpr automaton::Arc::Label MIN = 1;
-
-}
-
 namespace iresearch {
 
 void utf8_emplace_arc(
@@ -78,65 +43,69 @@ void utf8_emplace_arc(
   }
 
   // reserve enough arcs and states (stated ids are sequential)
-  a.ReserveArcs(from, 256);
+  a.ReserveArcs(from, 6);
   const auto id = a.NumStates();
   a.AddStates(3 + label.size() - 1);
 
   const automaton::StateId rho_states[] { rho_state, id, id + 1, id + 2 };
 
-  const automaton::Arc::Label lead = label.front();
-  automaton::Arc::Label min = MIN;
+  auto add_arcs = [&a](
+      uint32_t min,
+      uint32_t max,
+      uint32_t label,
+      automaton::StateId from,
+      automaton::StateId to,
+      automaton::StateId rho) mutable {
+    if (label < min || label > max) {
+      a.EmplaceArc(from, range_label{min, max}, rho);
+      return;
+    }
 
-  for (; min < lead; ++min) {
-    a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
-  }
+    if (min < label) {
+      a.EmplaceArc(from, range_label{min, label - 1}, rho);
+    }
+    a.EmplaceArc(from, range_label{label, label}, to);
+    if (++label < max) {
+      a.EmplaceArc(from, range_label{label, max}, rho);
+    }
+  };
+
+  const auto s0 = id + 3;
+  const uint32_t lead = label.front();
+  add_arcs(0, 127, lead, from, to, rho_states[0]);
+  add_arcs(192, 223, lead, from, s0, rho_states[1]);
+  add_arcs(224, 239, lead, from, s0, rho_states[2]);
+  add_arcs(240, 255, lead, from, s0, rho_states[3]);
 
   switch (label.size()) {
     case 1: {
-      a.EmplaceArc(from, lead, to);
       break;
     }
     case 2: {
-      const auto s0 = id + 3;
-      a.EmplaceArc(from, lead, s0);
-      a.EmplaceArc(s0, label[1], to);
-      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[0]);
+      add_arcs(128, 191, label[1], s0, to, rho_states[0]);
       break;
     }
     case 3: {
-      const auto s0 = id + 3;
       const auto s1 = id + 4;
-      a.EmplaceArc(from, lead, s0);
-      a.EmplaceArc(s0, label[1], s1);
-      a.EmplaceArc(s1, label[2], to);
-      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[1]);
-      a.EmplaceArc(s1, fst::fsa::kRho, rho_states[0]);
+      add_arcs(128, 191, label[1], s0, s1, rho_states[1]);
+      add_arcs(128, 191, label[2], s1, to, rho_states[0]);
       break;
     }
     case 4: {
-      const auto s0 = id + 3;
       const auto s1 = id + 4;
       const auto s2 = id + 5;
-      a.EmplaceArc(from, lead, s0);
-      a.EmplaceArc(s0, label[1], s1);
-      a.EmplaceArc(s1, label[2], s2);
-      a.EmplaceArc(s2, label[3], to);
-      a.EmplaceArc(s0, fst::fsa::kRho, rho_states[2]);
-      a.EmplaceArc(s1, fst::fsa::kRho, rho_states[1]);
-      a.EmplaceArc(s2, fst::fsa::kRho, rho_states[0]);
+      add_arcs(128, 191, label[1], s0, s1, rho_states[2]);
+      add_arcs(128, 191, label[2], s1, s2, rho_states[1]);
+      add_arcs(128, 191, label[3], s2, to, rho_states[0]);
       break;
     }
   }
 
-  for (++min; min < 256; ++min) {
-    a.EmplaceArc(from, min, rho_states[UTF8_RHO_STATE_TABLE[min]]);
-  }
-
   // connect intermediate states of default multi-byte UTF8 sequence
-
-  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
-  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
-  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
+  constexpr range_label RHO_LABEL{128, 191};
+  a.EmplaceArc(rho_states[1], RHO_LABEL, rho_states[0]);
+  a.EmplaceArc(rho_states[2], RHO_LABEL, rho_states[1]);
+  a.EmplaceArc(rho_states[3], RHO_LABEL, rho_states[2]);
 }
 
 void utf8_emplace_arc(
@@ -146,21 +115,21 @@ void utf8_emplace_arc(
     automaton::StateId to) {
   switch (label.size()) {
     case 1: {
-      a.EmplaceArc(from, label[0], to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), to);
       return;
     }
     case 2: {
       const auto s0 = a.AddState();
-      a.EmplaceArc(from, label[0], s0);
-      a.EmplaceArc(s0, label[1], to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), to);
       return;
     }
     case 3: {
       const auto s0 = a.AddState();
       const auto s1 = a.AddState();
-      a.EmplaceArc(from, label[0], s0);
-      a.EmplaceArc(s0, label[1], s1);
-      a.EmplaceArc(s1, label[2], to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), s1);
+      a.EmplaceArc(s1, range_label::fromRange(label[2]), to);
       return;
     }
     case 4: {
@@ -168,54 +137,16 @@ void utf8_emplace_arc(
       const auto s1 = s0 + 1;
       const auto s2 = s0 + 2;
       a.AddStates(3);
-      a.EmplaceArc(from, label[0], s0);
-      a.EmplaceArc(s0, label[1], s1);
-      a.EmplaceArc(s1, label[2], s2);
-      a.EmplaceArc(s2, label[3], to);
+      a.EmplaceArc(from, range_label::fromRange(label[0]), s0);
+      a.EmplaceArc(s0, range_label::fromRange(label[1]), s1);
+      a.EmplaceArc(s1, range_label::fromRange(label[2]), s2);
+      a.EmplaceArc(s2, range_label::fromRange(label[3]), to);
       return;
     }
   }
 }
 
-void utf8_emplace_arc_range(
-    automaton& a,
-    automaton::StateId from,
-    const bytes_ref& label,
-    automaton::StateId to) {
-  switch (label.size()) {
-    case 1: {
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), to);
-      return;
-    }
-    case 2: {
-      const auto s0 = a.AddState();
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), to);
-      return;
-    }
-    case 3: {
-      const auto s0 = a.AddState();
-      const auto s1 = a.AddState();
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), to);
-      return;
-    }
-    case 4: {
-      const auto s0 = a.NumStates();
-      const auto s1 = s0 + 1;
-      const auto s2 = s0 + 2;
-      a.AddStates(3);
-      a.EmplaceArc(from, fst::fsa::EncodeRange(label[0]), s0);
-      a.EmplaceArc(s0, fst::fsa::EncodeRange(label[1]), s1);
-      a.EmplaceArc(s1, fst::fsa::EncodeRange(label[2]), s2);
-      a.EmplaceArc(s2, fst::fsa::EncodeRange(label[3]), to);
-      return;
-    }
-  }
-}
-
-void utf8_emplace_rho_arc_range(
+void utf8_emplace_rho_arc(
     automaton& a,
     automaton::StateId from,
     automaton::StateId to) {
@@ -223,18 +154,20 @@ void utf8_emplace_rho_arc_range(
   a.AddStates(3);
 
   // add rho transitions
-  a.EmplaceArc(from, fst::fsa::EncodeRange(0, 127), to);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(192, 223), id);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(224, 239), id + 1);
-  a.EmplaceArc(from, fst::fsa::EncodeRange(240, 255), id + 2);
+  a.ReserveArcs(from, 4);
+  a.EmplaceArc(from, range_label{0, 127}, to);
+  a.EmplaceArc(from, range_label{192, 223}, id);
+  a.EmplaceArc(from, range_label{224, 239}, id + 1);
+  a.EmplaceArc(from, range_label{240, 255}, id + 2);
 
   // connect intermediate states of default multi-byte UTF8 sequence
-  const auto label = fst::fsa::EncodeRange(128, 191);
+  constexpr auto label = range_label{128, 191};
   a.EmplaceArc(id, label, to);
   a.EmplaceArc(id + 1, label, id);
   a.EmplaceArc(id + 2, label, id + 1);
 }
 
+/*
 automaton::StateId utf8_expand_labels(automaton& a) {
 #ifdef IRESEARCH_DEBUG
   // ensure resulting automaton is sorted and deterministic
@@ -313,79 +246,50 @@ automaton::StateId utf8_expand_labels(automaton& a) {
           utf8_emplace_arc(a, s, rho_state, bytes_ref(utf8_arc.first), utf8_arc.second);
         } break;
         default: {
-          builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
+          //FIXME
+          //builder.insert(a, s, rho_state, utf8_arcs.begin(), utf8_arcs.end());
         } break;
       }
     }
   }
 
 #ifdef IRESEARCH_DEBUG
-  // Ensure automaton is defined over the alphabet of
-  // { [0..255], fst::fsa::kRho }
+  // Ensure automaton is defined over the alphabet of ranges
+  // [0..127], [128..191], [192..223], [224..239], [240..255]
   for (auto s = 0, nstates = a.NumStates(); s < nstates ; ++s) {
     a.InitArcIterator(s, &arcs);
     auto* begin = arcs.arcs;
     auto* end = begin + arcs.narcs;
     for (; begin != end; ++begin) {
-      assert(begin->ilabel == fst::fsa::kRho ||
-               (begin->ilabel >= std::numeric_limits<byte_type>::min() &&
-                begin->ilabel <= std::numeric_limits<byte_type>::max()));
+      assert((begin->ilabel >= range_label(std::numeric_limits<byte_type>::min()) &&
+              begin->ilabel <= range_label(std::numeric_limits<byte_type>::max())));
     }
   }
 #endif
 
   return fst::kNoStateId;
 }
+*/
 
-void utf8_emplace_rho_arc(
-    automaton& a,
-    automaton::StateId from,
-    automaton::StateId to) {
-  const auto id = a.NumStates(); // stated ids are sequential
-  a.AddStates(3);
-  const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
+void utf8_transitions_builder::minimize(automaton& a, size_t prefix) {
+  assert(prefix > 0);
 
-  // reserve enough space for arcs
-  a.ReserveArcs(from, 255);
+  for (size_t i = last_.size(); i >= prefix; --i) {
+    state& s = states_[i];
+    state& p = states_[i - 1];
+    assert(!p.arcs.empty());
 
-  // add rho transitions
+    if (s.id == fst::kNoStateId) {
+      // here we deal with rho transition only for
+      // intermediate states, i.e. char range is [128;191]
+      const size_t rho_idx = last_.size() - i - 1;
+      assert(rho_idx >= 0 && rho_idx < IRESEARCH_COUNTOF(rho_states_));
+      s.add_rho_arc(128, 192, rho_states_[rho_idx]);
+    }
 
-  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
-    a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
-  }
+    p.arcs.back().id = states_map_.insert(s, a); // finalize state
 
-  // connect intermediate states of default multi-byte UTF8 sequence
-  a.EmplaceArc(rho_states[1], fst::fsa::kRho, rho_states[0]);
-  a.EmplaceArc(rho_states[2], fst::fsa::kRho, rho_states[1]);
-  a.EmplaceArc(rho_states[3], fst::fsa::kRho, rho_states[2]);
-}
-
-void utf8_emplace_rho_arc_expand(
-    automaton& a,
-    automaton::StateId from,
-    automaton::StateId to) {
-  const auto id = a.NumStates(); // stated ids are sequential
-  a.AddStates(3);
-  const automaton::StateId rho_states[] { to, id, id + 1, id + 2 };
-
-  // reserve enough space for arcs
-  a.ReserveArcs(from, 255);
-  a.ReserveArcs(rho_states[1], 64);
-  a.ReserveArcs(rho_states[2], 64);
-  a.ReserveArcs(rho_states[3], 64);
-
-  // add rho transitions
-
-  for (automaton::Arc::Label label = MIN; label < 256; ++label) {
-    a.EmplaceArc(from, label, rho_states[UTF8_RHO_STATE_TABLE[label]]);
-  }
-
-  // connect intermediate states of default multi-byte UTF8 sequence
-
-  for (automaton::Arc::Label label = 128; label < 192; ++label) {
-    a.EmplaceArc(rho_states[1], label, rho_states[0]);
-    a.EmplaceArc(rho_states[2], label, rho_states[1]);
-    a.EmplaceArc(rho_states[3], label, rho_states[2]);
+    s.clear();
   }
 }
 
@@ -396,15 +300,22 @@ void utf8_transitions_builder::insert(
     const automaton::StateId to) {
   assert(label && size < 5);
 
-  add_states(size); // ensure we have enough states
   const size_t prefix = 1 + common_prefix_length(last_.c_str(), last_.size(), label, size);
   minimize(a, prefix); // minimize suffix
 
   // add current word suffix
   for (size_t i = prefix; i <= size; ++i) {
+    const auto ch = label[i - 1];
     auto& p = states_[i - 1];
-    p.arcs.emplace_back(label[i - 1], &states_[i]);
-    p.rho_id = rho_states_[size - i];
+    assert(i == 1 || p.id == fst::kNoStateId); // root state is already a part of automaton
+
+    if (p.id == fst::kNoStateId) {
+      // here we deal with rho transition only for
+      // intermediate states, i.e. char range is [128;191]
+      p.add_rho_arc(128, ch, rho_states_[size - i]);
+    }
+
+    p.arcs.emplace_back(range_label::fromRange(ch), &states_[i]);
   }
 
   const bool is_final = last_.size() != size || prefix != (size + 1);
@@ -419,22 +330,20 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   auto ensure_empty = make_finally([this]() {
     // ensure everything is cleaned up
     assert(std::all_of(
-      states_.begin(), states_.end(), [](const state& s) noexcept {
-        return s.arcs.empty() &&
-          s.id == fst::kNoStateId &&
-          s.rho_id == fst::kNoStateId;
+      std::begin(states_), std::end(states_), [](const state& s) noexcept {
+        return s.arcs.empty() && s.id == fst::kNoStateId;
     }));
   });
 #endif
 
-  auto& root = states_.front();
+  auto& root = states_[0];
   minimize(a, 1);
 
   if (fst::kNoStateId == rho_states_[0]) {
     // no default state: just add transitions from the
     // root node to its successors
     for (const auto& arc : root.arcs) {
-      a.EmplaceArc(from, arc.label, arc.id);
+      a.EmplaceArc(from, arc.ilabel, arc.id);
     }
 
     root.clear();
@@ -446,42 +355,47 @@ void utf8_transitions_builder::finish(automaton& a, automaton::StateId from) {
   // transitions from root to properly handle multi-byte sequences
   // and preserve correctness of arcs order
 
-  auto add_rho_arc = [&a, from, this](automaton::Arc::Label label) {
-    const auto rho_state_idx = UTF8_RHO_STATE_TABLE[label];
-    a.EmplaceArc(from, label, rho_states_[rho_state_idx]);
-  };
+  // reserve some memory to store all outbound transitions
+  a.ReserveArcs(from, root.arcs.size());
 
-  // reserve enough memory to store all outbound transitions
+  auto add_arcs = [&a, from, arc = root.arcs.begin(), end = root.arcs.end()](
+      uint32_t min, uint32_t max,
+      automaton::StateId rho_state) mutable {
+    assert(min < max);
 
-  a.ReserveArcs(from, 255);
+    for (; arc != end && arc->max <= max; ++arc) {
+      // ensure arcs are sorted
+      assert(min <= arc->min);
+      // ensure every arc denotes a single char, otherwise
+      // we have to use "arc->min" below which is a bit more
+      // expensive to access
+      assert(arc->min == arc->max);
 
-  automaton::Arc::Label min = MIN;
+      if (min < arc->max) {
+        a.EmplaceArc(from, range_label{min, arc->max - 1}, rho_state);
+      }
 
-  for (const auto& arc : root.arcs) {
-    assert(arc.label < 256);
-    assert(min <= arc.label); // ensure arcs are sorted
-
-    for (; min < arc.label; ++min) {
-      add_rho_arc(min);
+      a.EmplaceArc(from, arc->ilabel, arc->id);
+      min = arc->max + 1;
     }
 
-    assert(min == arc.label);
-    a.EmplaceArc(from, min++, arc.id);
-  }
+    if (min < max) {
+      a.EmplaceArc(from, range_label{min, max}, rho_state);
+    }
+  };
+
+  add_arcs(0, 127, rho_states_[0]);
+  add_arcs(192, 223, rho_states_[1]);
+  add_arcs(224, 239, rho_states_[2]);
+  add_arcs(240, 255, rho_states_[3]);
 
   root.clear();
 
-  // add remaining rho transitions
-
-  for (; min < 256; ++min) {
-    add_rho_arc(min);
-  }
-
   // connect intermediate states of default multi-byte UTF8 sequence
-
-  a.EmplaceArc(rho_states_[1], fst::fsa::kRho, rho_states_[0]);
-  a.EmplaceArc(rho_states_[2], fst::fsa::kRho, rho_states_[1]);
-  a.EmplaceArc(rho_states_[3], fst::fsa::kRho, rho_states_[2]);
+  constexpr auto label = range_label{128, 191};
+  a.EmplaceArc(rho_states_[1], label, rho_states_[0]);
+  a.EmplaceArc(rho_states_[2], label, rho_states_[1]);
+  a.EmplaceArc(rho_states_[3], label, rho_states_[2]);
 }
 
 filter::prepared::ptr prepare_automaton_filter(
@@ -502,7 +416,7 @@ filter::prepared::ptr prepare_automaton_filter(
   }
 
   limited_sample_collector<term_frequency> collector(order.empty() ? 0 : scored_terms_limit); // object for collecting order stats
-  multiterm_query::states_t states(index.size());
+  multiterm_query::states_t states(index);
   multiterm_visitor<multiterm_query::states_t> mtv(collector, states);
 
   for (const auto& segment : index) {

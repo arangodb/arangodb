@@ -1,5 +1,6 @@
 devel
 -----
+* Added new ArangoSearch analyzer type "mask"
 
 
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
