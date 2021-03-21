@@ -159,7 +159,7 @@ class ClusterProvider {
   // fetch edges and store in cache
   auto fetchEdgesFromEngines(VertexType const& vertexId) -> Result;
 
-  void destroyEngines(){};
+  void destroyEngines();
 
   [[nodiscard]] transaction::Methods* trx();
 
