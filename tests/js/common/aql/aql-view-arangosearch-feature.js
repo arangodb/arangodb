@@ -1721,12 +1721,12 @@ function iResearchFeatureAqlTestSuite () {
       }
     },
     
-    testCustomMaskAnalyzer : function() {
-      let analyzerName = "maskUnderTest";
+    testCustomStopwordsAnalyzer : function() {
+      let analyzerName = "stopwordsUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"mask",
-                        {mask:["QWE", "qwe", "qqq"]}, ["position", "frequency"]);
+        analyzers.save(analyzerName,"stopwords",
+                        {stopwords:["QWE", "qwe", "qqq"]}, ["position", "frequency"]);
         try {
           let result = db._query(
             "RETURN TOKENS(['QWE', 'qqq', 'aaa', 'qWe'], '" + analyzerName + "' )",

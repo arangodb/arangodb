@@ -99,12 +99,14 @@ struct char_traits<::iresearch::byte_type> {
 
   static constexpr bool lt(char_type lhs, char_type rhs) noexcept { return lhs < rhs; }
 
-  static char_type* move(char_type* dst, const char_type* src, size_t count) noexcept {
+  static char_type* move(
+      char_type* dst,
+      const char_type* src,
+      size_t count) noexcept IRESEARCH_ATTRIBUTE_NONNULL() {
     if (0 == count) {
       return dst;
     }
 
-    assert(dst && src);
     return reinterpret_cast<char_type*>(std::memmove(dst, src, count));
   }
 

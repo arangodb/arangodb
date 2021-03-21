@@ -2746,7 +2746,7 @@ ColumnProperty write_compact(
   const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
-    assert(compressed.size() <= std::numeric_limits<int32_t>::max());
+    assert(compressed.size() <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressed.c_str()), compressed.size());
@@ -2754,7 +2754,7 @@ ColumnProperty write_compact(
     out.write_bytes(compressed.c_str(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
   } else {
-    assert(data.size() <= std::numeric_limits<int32_t>::max());
+    assert(data.size() <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(data.c_str()), data.size());

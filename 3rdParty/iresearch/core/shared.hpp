@@ -261,10 +261,25 @@
   #error "compiler is not supported"
 #endif
 
+// IRESEARCH_COMPILER_HAS_FEATURE
 #ifndef __has_feature
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
 #else
   #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
+#endif
+
+// IRESEARCH_HAS_ATTRIBUTE
+#ifndef __has_attribute
+#define IRESEARCH_HAS_ATTRIBUTE(x) 0
+#else
+#define IRESEARCH_HAS_ATTRIBUTE(x) __has_attribute(x)
+#endif
+
+// IRESEARCH_ATTRIBUTE_NONNULL
+#if IRESEARCH_HAS_ATTRIBUTE(nonnull) || (defined(__GNUC__) && !defined(__clang__))
+#define IRESEARCH_ATTRIBUTE_NONNULL(arg_index) __attribute__((nonnull(arg_index)))
+#else
+#define IRESEARCH_ATTRIBUTE_NONNULL(...)
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////

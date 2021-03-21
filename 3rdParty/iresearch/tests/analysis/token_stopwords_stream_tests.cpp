@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-#include "analysis/token_masking_stream.hpp"
+#include "analysis/token_stopwords_stream.hpp"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -30,18 +30,18 @@
 
 #ifndef IRESEARCH_DLL
 
-TEST(token_masking_stream_tests, consts) {
-  static_assert("mask" == irs::type<irs::analysis::token_masking_stream>::name());
+TEST(token_stopwords_stream_tests, consts) {
+  static_assert("stopwords" == irs::type<irs::analysis::token_stopwords_stream>::name());
 }
 
-TEST(token_masking_stream_tests, test_masking) {
+TEST(token_stopwords_stream_tests, test_masking) {
   // test mask nothing
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
-    irs::analysis::token_masking_stream::mask_set mask;
-    irs::analysis::token_masking_stream stream(std::move(mask));
-    ASSERT_EQ(irs::type<irs::analysis::token_masking_stream>::id(), stream.type());
+    irs::analysis::token_stopwords_stream::stopwords_set mask;
+    irs::analysis::token_stopwords_stream stream(std::move(mask));
+    ASSERT_EQ(irs::type<irs::analysis::token_stopwords_stream>::id(), stream.type());
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* term = irs::get<irs::term_attribute>(stream);
@@ -65,8 +65,8 @@ TEST(token_masking_stream_tests, test_masking) {
   {
     irs::string_ref data0("abc");
     irs::string_ref data1("ghi");
-    irs::analysis::token_masking_stream::mask_set mask = {"abc"};
-    irs::analysis::token_masking_stream stream(std::move(mask));
+    irs::analysis::token_stopwords_stream::stopwords_set mask = {"abc"};
+    irs::analysis::token_stopwords_stream stream(std::move(mask));
 
     auto* offset = irs::get<irs::offset>(stream);
     auto* term = irs::get<irs::term_attribute>(stream);
@@ -85,7 +85,7 @@ TEST(token_masking_stream_tests, test_masking) {
 
 #endif // IRESEARCH_DLL
 
-TEST(token_masking_stream_tests, test_load) {
+TEST(token_stopwords_stream_tests, test_load) {
   // load jSON array (mask string)
   {
     irs::string_ref data0("abc");
@@ -106,10 +106,10 @@ TEST(token_masking_stream_tests, test_load) {
       ASSERT_EQ("ghi", irs::ref_cast<char>(term->value));
       ASSERT_FALSE(stream->next());
     };
-    auto stream = irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    auto stream = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
     testFunc(data0, data1, stream);
 
-    auto streamFromJsonObjest = irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
     testFunc(data0, data1, streamFromJsonObjest);
 
   }
@@ -136,47 +136,47 @@ TEST(token_masking_stream_tests, test_load) {
       ASSERT_FALSE(stream->next());
     };
 
-    auto stream = irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
+    auto stream = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "[ \"abc\", \"646566\", \"6D6e6F\" ]");
     testFunc(data0, data1, stream);
 
 
-    auto streamFromJsonObjest = irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "{\"mask\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
+    auto streamFromJsonObjest = irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":[ \"abc\", \"646566\", \"6D6e6F\" ]}");
     testFunc(data0, data1, streamFromJsonObjest);
 
   }
 
   // load jSON invalid
   {
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "1"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "\"abc\""));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "{}"));
-    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("mask", irs::type<irs::text_format::json>::get(), "{\"mask\":1}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "1"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "\"abc\""));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{}"));
+    ASSERT_EQ(nullptr, irs::analysis::analyzers::get("stopwords", irs::type<irs::text_format::json>::get(), "{\"stopwords\":1}"));
   }
 }
 
-TEST(token_masking_stream_tests, normalize_invalid) {
+TEST(token_stopwords_stream_tests, normalize_invalid) {
   std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stopwords",
     irs::type<irs::text_format::json>::get(), irs::string_ref::NIL));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stopwords",
     irs::type<irs::text_format::json>::get(), "1"));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stopwords",
     irs::type<irs::text_format::json>::get(), "\"abc\""));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "mask",
+  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "stopwords",
     irs::type<irs::text_format::json>::get(), "{\"case\":1}"));
 }
 
-TEST(token_masking_stream_tests, normalize_valid_array) {
+TEST(token_stopwords_stream_tests, normalize_valid_array) {
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stopwords",
     irs::type<irs::text_format::json>::get(), "[\"QWRT\", \"qwrt\"]"));
-  ASSERT_EQ(actual, "{\n  \"mask\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
+  ASSERT_EQ(actual, "{\n  \"stopwords\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
 }
 
-TEST(token_masking_stream_tests, normalize_valid_object) {
+TEST(token_stopwords_stream_tests, normalize_valid_object) {
   std::string actual;
-  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "mask",
-    irs::type<irs::text_format::json>::get(), "{\"mask\":[\"QWRT\", \"qwrt\"]}"));
-  ASSERT_EQ(actual, "{\n  \"mask\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
+  ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "stopwords",
+    irs::type<irs::text_format::json>::get(), "{\"stopwords\":[\"QWRT\", \"qwrt\"]}"));
+  ASSERT_EQ(actual, "{\n  \"stopwords\" : [\n    \"QWRT\",\n    \"qwrt\"\n  ]\n}");
 }

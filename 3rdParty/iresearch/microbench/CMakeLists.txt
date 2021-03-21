@@ -16,7 +16,7 @@ add_dependencies(${IResearchBenchmark_TARGET_NAME}
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-format-1_0-static
   ${IResearch_TARGET_NAME}-scorer-tfidf-static
   ${IResearch_TARGET_NAME}-scorer-bm25-static

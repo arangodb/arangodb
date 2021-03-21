@@ -34,7 +34,7 @@ set(IReSearch_tests_sources
   ./analysis/segmentation_stream_tests.cpp
   ./analysis/text_token_normalizing_stream_tests.cpp
   ./analysis/text_token_stemming_stream_tests.cpp
-  ./analysis/token_masking_stream_tests.cpp
+  ./analysis/token_stopwords_stream_tests.cpp
   ./analysis/token_attributes_test.cpp
   ./analysis/token_stream_tests.cpp
   ./formats/formats_tests.cpp
@@ -178,7 +178,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
   ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
   ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
@@ -192,7 +192,7 @@ add_dependencies(${IResearchTests_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
@@ -238,7 +238,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-analyzer-norm-shared
   ${IResearch_TARGET_NAME}-analyzer-stem-shared
-  ${IResearch_TARGET_NAME}-analyzer-mask-shared
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-shared
   ${IResearch_TARGET_NAME}-analyzer-pipeline-shared
   ${IResearch_TARGET_NAME}-analyzer-segmentation-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared

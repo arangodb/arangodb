@@ -413,7 +413,7 @@ bool text_token_normalizing_stream::reset(const irs::string_ref& data) {
     data_utf8_ref = data_utf8;
   }
 
-  if (data_utf8_ref.size() > std::numeric_limits<int32_t>::max()) {
+  if (data_utf8_ref.size() > static_cast<uint32_t>(std::numeric_limits<int32_t>::max())) {
     return false; // ICU UnicodeString signatures can handle at most INT32_MAX
   }
 

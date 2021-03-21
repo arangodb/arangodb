@@ -376,7 +376,7 @@ add_dependencies(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
@@ -462,7 +462,7 @@ target_link_libraries(${IResearch_TARGET_NAME}-static
   ${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-analyzer-norm-static
   ${IResearch_TARGET_NAME}-analyzer-stem-static
-  ${IResearch_TARGET_NAME}-analyzer-mask-static
+  ${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-analyzer-pipeline-static
   ${IResearch_TARGET_NAME}-analyzer-segmentation-static
   ${IResearch_TARGET_NAME}-format-1_0-static
@@ -508,7 +508,7 @@ set(IRESEARCH_STATIC_DEPENDENCIES
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-norm-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stem-static>"
-  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-mask-static>"
+  "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-stopwords-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-pipeline-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-segmentation-static>"
   "$<TARGET_FILE:${IResearch_TARGET_NAME}-format-1_0-static>"
@@ -871,64 +871,48 @@ target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stem-static
 )
 
 ################################################################################
-### analysis plugin : token masking
+### analysis plugin : token stopwords
 ################################################################################
 
-add_library(${IResearch_TARGET_NAME}-analyzer-mask-shared
+add_library(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
   SHARED
-  ./analysis/token_masking_stream.cpp
-  ./analysis/token_masking_stream.hpp
+  ./analysis/token_stopwords_stream.cpp
+  ./analysis/token_stopwords_stream.hpp
 )
 
-set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stopwords-shared)
 
-add_library(${IResearch_TARGET_NAME}-analyzer-mask-static
+add_library(${IResearch_TARGET_NAME}-analyzer-stopwords-static
   STATIC
-  ./analysis/token_masking_stream.cpp
+  ./analysis/token_stopwords_stream.cpp
 )
 
-set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static)
+set_ipo(${IResearch_TARGET_NAME}-analyzer-stopwords-static)
 
-# setup CRT
-if(MSVC)
-  add_library(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt
-    SHARED
-    ./analysis/token_masking_stream.cpp
-  )
 
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-shared-scrt)
-
-  add_library(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt
-    STATIC
-    ./analysis/token_masking_stream.cpp
-  )
-
-  set_ipo(${IResearch_TARGET_NAME}-analyzer-mask-static-scrt)
-endif()
-
-set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-shared
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-mask
+  OUTPUT_NAME analyzer-stopwords
   DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
   CXX_VISIBILITY_PRESET hidden
 )
 
-set_target_properties(${IResearch_TARGET_NAME}-analyzer-mask-static
+set_target_properties(${IResearch_TARGET_NAME}-analyzer-stopwords-static
   PROPERTIES
   PREFIX lib
   IMPORT_PREFIX lib
-  OUTPUT_NAME analyzer-mask-s
+  OUTPUT_NAME analyzer-stopwords-s
   COMPILE_DEFINITIONS "$<$<CONFIG:Coverage>:IRESEARCH_DEBUG>;$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
 )
 
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-shared
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stopwords-shared
   ${IResearch_TARGET_NAME}-shared
 )
 
-target_link_libraries(${IResearch_TARGET_NAME}-analyzer-mask-static
+target_link_libraries(${IResearch_TARGET_NAME}-analyzer-stopwords-static
   ${IResearch_TARGET_NAME}-static
 )
 

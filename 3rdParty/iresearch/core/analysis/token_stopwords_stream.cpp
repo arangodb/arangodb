@@ -27,7 +27,7 @@
 #include "velocypack/Parser.h"
 #include "velocypack/Iterator.h"
 
-#include "token_masking_stream.hpp"
+#include "token_stopwords_stream.hpp"
 
 namespace {
 
@@ -77,12 +77,12 @@ bool hex_decode(std::string& buf, arangodb::velocypack::StringRef value) {
 
 irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator& mask) {
   size_t offset = 0;
-  irs::analysis::token_masking_stream::mask_set tokens;
+  irs::analysis::token_stopwords_stream::stopwords_set tokens;
 
   for (auto itr = mask.begin(), end = mask.end(); itr != end; ++itr, ++offset) {
     if (!(*itr).isString()) {
       IR_FRMT_WARN(
-        "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER "' while constructing token_masking_stream from jSON arguments",
+        "Non-string value in 'mask' at offset '" IR_SIZE_T_SPECIFIER "' while constructing token_stopwords_stream from jSON arguments",
         offset);
 
       return nullptr;
@@ -98,11 +98,11 @@ irs::analysis::analyzer::ptr construct(const arangodb::velocypack::ArrayIterator
     }
   }
 
-  return irs::memory::make_shared<irs::analysis::token_masking_stream>(
+  return irs::memory::make_shared<irs::analysis::token_stopwords_stream>(
     std::move(tokens));
 }
 
-constexpr irs::string_ref MASK_PARAM_NAME = "mask";
+constexpr irs::string_ref STOPWORDS_PARAM_NAME = "stopwords";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief args is a jSON encoded object with the following attributes:
@@ -116,7 +116,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
       return construct(arangodb::velocypack::ArrayIterator(slice));
     case arangodb::velocypack::ValueType::Object:
     {
-      auto maskSlice = slice.get(MASK_PARAM_NAME.c_str());
+      auto maskSlice = slice.get(STOPWORDS_PARAM_NAME.c_str());
       if (maskSlice.isArray()) {
         return construct(arangodb::velocypack::ArrayIterator(maskSlice));
       }
@@ -124,7 +124,7 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
     [[fallthrough]];
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while constructing token_masking_stream from jSON arguments: %s. Array or Object was expected. Got %s",
+        "Invalid vpack while constructing token_stopwords_stream from jSON arguments: %s. Array or Object was expected. Got %s",
         slice.toString().c_str(), slice.typeName());
     }
   }
@@ -135,16 +135,16 @@ irs::analysis::analyzer::ptr make_vpack(const irs::string_ref& args) {
 irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while constructing token_masking_stream ");
+      IR_FRMT_ERROR("Null arguments while constructing token_stopwords_stream ");
       return nullptr;
     }
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
     return make_vpack(irs::string_ref(reinterpret_cast<const char*>(vpack->data()), vpack->size()));
   } catch(const arangodb::velocypack::Exception& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while constructing token_masking_stream from json: %s",
+    IR_FRMT_ERROR("Caught error '%s' while constructing token_stopwords_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while constructing token_masking_stream from json: %s",
+    IR_FRMT_ERROR("Caught error while constructing token_stopwords_stream from json: %s",
                   args.c_str());
   }
   return nullptr;
@@ -157,18 +157,18 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     { // always normalize to object for consistency reasons
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      builder.add(MASK_PARAM_NAME.c_str(), slice);
+      builder.add(STOPWORDS_PARAM_NAME.c_str(), slice);
       builder.close();
       definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
       return true;
     }
     case arangodb::velocypack::ValueType::Object:
     {
-      auto maskSlice = slice.get(MASK_PARAM_NAME.c_str());
+      auto maskSlice = slice.get(STOPWORDS_PARAM_NAME.c_str());
       if (maskSlice.isArray()) {
         arangodb::velocypack::Builder builder;
         builder.openObject();
-        builder.add(MASK_PARAM_NAME.c_str(), maskSlice);
+        builder.add(STOPWORDS_PARAM_NAME.c_str(), maskSlice);
         builder.close();
         definition.assign(builder.slice().startAs<char>(), builder.slice().byteSize());
         return true;
@@ -177,7 +177,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
     [[fallthrough]];
     default: {
       IR_FRMT_ERROR(
-        "Invalid vpack while normalizing token_masking_stream from jSON arguments: %s. Array or Object was expected. Got %s",
+        "Invalid vpack while normalizing token_stopwords_stream from jSON arguments: %s. Array or Object was expected. Got %s",
         slice.toString().c_str(), slice.typeName());
     }
   }
@@ -187,7 +187,7 @@ bool normalize_vpack_config(const irs::string_ref& args, std::string& definition
 bool normalize_json_config(const irs::string_ref& args, std::string& definition) {
   try {
     if (args.null()) {
-      IR_FRMT_ERROR("Null arguments while normalizing token_masking_stream");
+      IR_FRMT_ERROR("Null arguments while normalizing token_stopwords_stream");
       return false;
     }
     auto vpack = arangodb::velocypack::Parser::fromJson(args.c_str());
@@ -198,36 +198,36 @@ bool normalize_json_config(const irs::string_ref& args, std::string& definition)
       return true;
     }
   } catch(const arangodb::velocypack::Exception& ex) {
-    IR_FRMT_ERROR("Caught error '%s' while normalizing token_masking_stream from json: %s",
+    IR_FRMT_ERROR("Caught error '%s' while normalizing token_stopwords_stream from json: %s",
                   ex.what(), args.c_str());
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while normalizing token_masking_stream from json: %s",
+    IR_FRMT_ERROR("Caught error while normalizing token_stopwords_stream from json: %s",
                   args.c_str());
   }
   return false;
 }
 
-REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
-REGISTER_ANALYZER_JSON(irs::analysis::token_masking_stream, make_json, normalize_json_config);
+REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack, normalize_vpack_config);
+REGISTER_ANALYZER_JSON(irs::analysis::token_stopwords_stream, make_json, normalize_json_config);
 
 } // namespace
 
 namespace iresearch {
 namespace analysis {
 
-token_masking_stream::token_masking_stream(token_masking_stream::mask_set&& mask)
-  : analyzer{irs::type<token_masking_stream>::get()},
-    mask_(std::move(mask)),
+token_stopwords_stream::token_stopwords_stream(token_stopwords_stream::stopwords_set&& stopwords)
+  : analyzer{irs::type<token_stopwords_stream>::get()},
+    stopwords_(std::move(stopwords)),
     term_eof_(true) {
 }
 
-/*static*/ void token_masking_stream::init() {
-  REGISTER_ANALYZER_VPACK(irs::analysis::token_masking_stream, make_vpack, normalize_vpack_config);
-  REGISTER_ANALYZER_JSON(token_masking_stream, make_json, normalize_json_config);  // match registration above
+/*static*/ void token_stopwords_stream::init() {
+  REGISTER_ANALYZER_VPACK(irs::analysis::token_stopwords_stream, make_vpack, normalize_vpack_config);
+  REGISTER_ANALYZER_JSON(token_stopwords_stream, make_json, normalize_json_config);  // match registration above
 }
 
 
-bool token_masking_stream::next() {
+bool token_stopwords_stream::next() {
   if (term_eof_) {
     return false;
   }
@@ -237,13 +237,13 @@ bool token_masking_stream::next() {
   return true;
 }
 
-bool token_masking_stream::reset(const string_ref& data) {
+bool token_stopwords_stream::reset(const string_ref& data) {
   auto& offset = std::get<irs::offset>(attrs_);
   offset.start = 0;
   offset.end = uint32_t(data.size());
   auto& term = std::get<term_attribute>(attrs_);
   term.value = irs::ref_cast<irs::byte_type>(data);
-  term_eof_ = mask_.contains(data);
+  term_eof_ = stopwords_.contains(data);
 
   return true;
 }
