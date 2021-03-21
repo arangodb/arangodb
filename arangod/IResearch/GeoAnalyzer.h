@@ -25,9 +25,9 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER 1
 
 #include <s2/s2region_term_indexer.h>
-
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+
 #include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 

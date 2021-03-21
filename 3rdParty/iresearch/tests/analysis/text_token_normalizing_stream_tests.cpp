@@ -358,12 +358,6 @@ TEST_F(text_token_normalizing_stream_tests, test_make_config_text) {
   ASSERT_EQ("ru", actual);
 }
 
-TEST_F(text_token_normalizing_stream_tests, test_make_config_invalid_format) {
-  std::string config = "ru_RU.UTF-8";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "norm", irs::type<irs::text_format::csv>::get(), config));
-}
-
 TEST_F(text_token_normalizing_stream_tests, test_invalid_locale) {
   auto stream = irs::analysis::analyzers::get(
       "norm", irs::type<irs::text_format::json>::get(), "{\"locale\":\"invalid12345.UTF-8\"}");
