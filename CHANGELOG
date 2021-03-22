@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
 
 
 v3.7.10 (2021-03-14)
