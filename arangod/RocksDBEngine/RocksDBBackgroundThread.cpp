@@ -109,7 +109,10 @@ void RocksDBBackgroundThread::run() {
         // and then prune them when they expired
         _engine.pruneWalFiles();
       }
-        
+
+      if (!isStopping()) {
+        _engine.processCompactions();
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC("8236f", WARN, Logger::ENGINES)
           << "caught exception in rocksdb background thread: " << ex.what();

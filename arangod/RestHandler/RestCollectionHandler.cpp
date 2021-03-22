@@ -428,16 +428,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "compact") {
-    res = coll->compact();
+    coll->compact();
 
-    if (res.ok()) {
-      collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
-                               /*showCount*/ CountType::None);
-      return standardResponse();
-    }
-    generateError(res);
-    return RestStatus::DONE;
+    collectionRepresentation(name, /*showProperties*/ false,
+                             /*showFigures*/ FiguresType::None,
+                             /*showCount*/ CountType::None);
+    return standardResponse();
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);

@@ -83,6 +83,7 @@
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
@@ -193,6 +194,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(transaction::Options::defaultIntermediateCommitSize),
       _intermediateCommitCount(transaction::Options::defaultIntermediateCommitCount),
+      _maxParallelCompactions(2),
       _pruneWaitTime(10.0),
       _pruneWaitTimeInitial(180.0),
       _maxWalArchiveSizeLimit(0),
@@ -207,7 +209,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer& server)
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
-      _useEdgeCache(true) {
+      _useEdgeCache(true),
+      _runningCompactions(0) {
 
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
@@ -291,6 +294,11 @@ void RocksDBEngine::collectOptions(std::shared_ptr<options::ProgramOptions> opti
                      "when this number of "
                      "operations is reached in a transaction",
                      new UInt64Parameter(&_intermediateCommitCount));
+  
+  options->addOption("--rocksdb.max-parallel-compactions",
+                     "maximum number of parallel compactions jobs",
+                     new UInt64Parameter(&_maxParallelCompactions))
+                     .setIntroducedIn(30800);
 
   options->addOption("--rocksdb.sync-interval",
                      "interval for automatic, non-requested disk syncs (in "
@@ -912,10 +920,13 @@ void RocksDBEngine::stop() {
     }
     _syncThread.reset();
   }
+ 
+  waitForCompactionJobsToFinish();
 }
 
 void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
+  waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
 }
 
@@ -1290,6 +1301,98 @@ RecoveryState RocksDBEngine::recoveryState() noexcept {
 // current recovery tick
 TRI_voc_tick_t RocksDBEngine::recoveryTick() noexcept {
   return TRI_voc_tick_t(server().getFeature<RocksDBRecoveryManager>().recoveryTick());
+}
+
+void RocksDBEngine::compactRange(RocksDBKeyBounds bounds) {
+  {
+    WRITE_LOCKER(locker, _pendingCompactionsLock);
+    _pendingCompactions.push_back(std::move(bounds));
+  }
+
+  // directly kick off compactions if there is enough processing
+  // capacity
+  processCompactions();
+}
+
+void RocksDBEngine::processCompactions() {
+  Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
+  if (scheduler == nullptr) {
+    return;
+  }
+
+  uint64_t maxIterations = _maxParallelCompactions;
+  uint64_t iterations = 0;
+  while (++iterations <= maxIterations) {
+    if (server().isStopping()) {
+      // don't fire off more compactions while we are shutting down
+      return;
+    }
+
+    RocksDBKeyBounds bounds = RocksDBKeyBounds::Empty();
+    {
+      WRITE_LOCKER(locker, _pendingCompactionsLock);
+      if (_pendingCompactions.empty() || 
+          _runningCompactions >= _maxParallelCompactions) {
+        // nothing to do, or too much to do
+        LOG_TOPIC("d5108", TRACE, Logger::ENGINES) 
+            << "checking compactions. pending: " << _pendingCompactions.size() 
+            << ", running: " << _runningCompactions; 
+        return;
+      }
+      // found something to do, now steal the item from the queue
+      bounds = std::move(_pendingCompactions.front());
+      _pendingCompactions.pop_front();
+      // set it to running already, so that concurrent callers of this method
+      // will not kick off additional jobs
+      ++_runningCompactions;
+    }
+    
+    LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES) 
+          << "scheduling compaction for execution";
+    
+    bool queued = scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
+      if (server().isStopping()) {
+        LOG_TOPIC("3d619", TRACE, Logger::ENGINES) 
+              << "aborting pending compaction due to server shutdown";
+      } else {
+        LOG_TOPIC("9485b", TRACE, Logger::ENGINES) 
+              << "executing compaction for range " << bounds;
+      
+        double start = TRI_microtime();
+        try {
+          rocksdb::CompactRangeOptions opts;
+          rocksdb::Slice b = bounds.start(), e = bounds.end();
+          rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
+          db->CompactRange(opts, bounds.columnFamily(), &b, &e);
+        } catch (std::exception const& ex) {
+          LOG_TOPIC("a4c42", WARN, Logger::ENGINES) 
+                << "compaction for range " << bounds 
+                << " failed with error: " << ex.what();
+        } catch (...) {
+          // whatever happens, we need to count down _runningCompactions in all cases
+        }
+      
+        LOG_TOPIC("79591", TRACE, Logger::ENGINES) 
+              << "finished compaction for range " << bounds 
+              << ", took: " << Logger::FIXED(TRI_microtime() - start);
+      }
+      
+      // always count down _runningCompactions!
+      WRITE_LOCKER(locker, _pendingCompactionsLock);
+      TRI_ASSERT(_runningCompactions > 0);
+      --_runningCompactions;
+    });
+
+    if (ADB_UNLIKELY(!queued)) {
+      // in the very unlikely case that queuing the operation in the scheduler has failed,
+      // we will simply put it back onto our own queue
+      WRITE_LOCKER(locker, _pendingCompactionsLock);
+
+      TRI_ASSERT(_runningCompactions > 0);
+      --_runningCompactions;
+      _pendingCompactions.push_front(std::move(bounds));
+    }
+  }
 }
 
 void RocksDBEngine::createCollection(TRI_vocbase_t& vocbase,
@@ -2511,6 +2614,28 @@ void RocksDBEngine::releaseTick(TRI_voc_tick_t tick) {
   if (tick > _releasedTick) {
     _releasedTick = tick;
   }
+}
+
+void RocksDBEngine::waitForCompactionJobsToFinish() {
+  // wait for started compaction jobs to finish
+  int iterations = 0;
+
+  do {
+    {
+      READ_LOCKER(locker, _pendingCompactionsLock);
+      if (_runningCompactions == 0) {
+        return;
+      }
+    }
+      
+    // print this only every few seconds
+    if (iterations++ % 200 == 0) {
+      LOG_TOPIC("9cbfd", INFO, Logger::ENGINES) << "waiting for compaction jobs to finish...";
+    }
+    // unfortunately there is not much we can do except waiting for
+    // RocksDB's compaction job(s) to finish.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  } while (true);
 }
 
 }  // namespace arangodb

@@ -3,9 +3,37 @@ v3.7.11 (XXXX-XX-XX)
 
 * Allow process-specific logfile names.
 
-  This change allows replacing '$PID' with the current process id in the 
+  This change allows replacing '$PID' with the current process id in the
   `--log.output` and `--audit.output` startup parameters.
   This way it is easier to write process-specific logfiles.
+
+* Backport a bugfix from upstream RocksDB for opening encrypted files with small
+  sizes. Without the bugfix, the server may run into assertion failures during
+  recovery.
+
+* When dropping a collection or an index with a larger amount of documents, the
+  key range for the collection/index in RocksDB gets compacted. Previously, the
+  compaction was running in foreground and thus would block the deletion
+  operations.
+  Now, the compaction is running in background, so that the deletion operations
+  can return earlier.
+  The maximum number of compaction jobs that are executed in background can be
+  configured using the new startup parameter
+  `--rocksdb.max-parallel-compactions`, which defaults to 2.
+
+* Fix slower-than-necessary arangoimport behavior:
+  arangoimport has a built-in rate limiter, which can be useful for importing
+  data with a somewhat constant rate. However, it is enabled by default and
+  limits imports to 1MB per second. These settings are not useful.
+
+  This change turns the rate limiting off by default, and sets the default chunk
+  size to 8MB (up from 1MB) as well. This means that arangoimport will send
+  larger batches to the server by default. The already existing `--batch-size`
+  option can be used to control the maximum size of each batch.
+
+  The new parameter `--auto-rate-limit` can now be used to toggle rate limiting.
+  It defaults to off, whereas previously rate limiting was enabled by default
+  unless `--batch-size` was specified when arangoimport was invoked.
 
 * Fixed a bug in query cost estimation when a NoResults node occured in a
   spliced subquery. This could lead to a server crash.

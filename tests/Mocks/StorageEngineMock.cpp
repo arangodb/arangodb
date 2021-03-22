@@ -1313,10 +1313,6 @@ arangodb::Result PhysicalCollectionMock::truncate(arangodb::transaction::Methods
   return arangodb::Result();
 }
 
-arangodb::Result PhysicalCollectionMock::compact() {
-  return arangodb::Result();
-}
-
 arangodb::Result PhysicalCollectionMock::updateInternal(
     arangodb::transaction::Methods* trx, arangodb::velocypack::Slice newSlice,
     arangodb::ManagedDocumentResult& result, arangodb::OperationOptions& options,
