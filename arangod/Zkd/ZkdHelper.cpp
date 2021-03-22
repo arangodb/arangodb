@@ -255,50 +255,48 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
   BitReader cur_reader(cur);
   BitReader min_reader(min);
   BitReader max_reader(max);
-
   ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
+  isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned step = 0;
   unsigned dim = 0;
 
   for (std::size_t i = 0; i < 8 * max_size; i++) {
+    TRI_ASSERT(step == i / dimensions);
+    TRI_ASSERT(dim == i % dimensions);
 
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
     auto min_bit = min_reader.next().value_or(Bit::ZERO);
     auto max_bit = max_reader.next().value_or(Bit::ZERO);
 
-    if (result[dim].flag != 0) {
-      continue;
-    }
+    if (result[dim].flag == 0) {
+      if (!isLargerLowerThanMinMax[dim].first) {
+        if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
+          result[dim].outStep = step;
+          result[dim].flag = -1;
+        } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
+          isLargerLowerThanMinMax[dim].first = true;
+          result[dim].saveMin = step;
+        }
+      }
 
-    if (!isLargerLowerThanMinMax[dim].first) {
-      if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
-        result[dim].outStep = step;
-        result[dim].flag = -1;
-      } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
-        isLargerLowerThanMinMax[dim].first = true;
-        result[dim].saveMin = step;
+      if (!isLargerLowerThanMinMax[dim].second) {
+        if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
+          result[dim].outStep = step;
+          result[dim].flag = 1;
+        } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
+          isLargerLowerThanMinMax[dim].second = true;
+          result[dim].saveMax = step;
+        }
       }
     }
-
-    if (!isLargerLowerThanMinMax[dim].second) {
-      if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
-        result[dim].outStep = step;
-        result[dim].flag = 1;
-      } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
-        isLargerLowerThanMinMax[dim].second = true;
-        result[dim].saveMax = step;
-      }
-    }
-
     dim += 1;
     if (dim >= dimensions) {
       dim = 0;
       step += 1;
     }
   }
-
 }
 
 auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view max, std::size_t dimensions)
@@ -319,6 +317,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
 
   ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
   ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
+  isLargerLowerThanMinMax.resize(dimensions);
 
   unsigned dim = 0;
   unsigned finished_dims = 2 * dimensions;
