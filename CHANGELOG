@@ -6,6 +6,9 @@ devel
   lacking the actual error message (i.e. "unique constraint violated") and
   only showed the index details. The issue was introduced only in devel in Feb.
 
+* Removed old metrics in new v2 metric api. Those metric endpoints were
+  identical to the sum value of histograms.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the 
