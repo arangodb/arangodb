@@ -1,6 +1,10 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Backport a bugfix from upstream RocksDB for opening encrypted files with small
+  sizes. Without the bugfix, the server may run into assertion failures during
+  recovery.
+
 * When dropping a collection or an index with a larger amount of documents, the
   key range for the collection/index in RocksDB gets compacted. Previously, the
   compaction was running in foreground and thus would block the deletion
