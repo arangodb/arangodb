@@ -98,3 +98,37 @@ TEST(ComparingServerListsTest,
 
   ASSERT_FALSE(ClusterHelpers::compareServerLists(a, b));
 }
+
+TEST(ClusterHelpersTest, isCoordinatorNameTest) {
+  ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-"));
+  ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-1234"));
+  ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-123400000000000000"));
+  ASSERT_TRUE(ClusterHelpers::isCoordinatorName("CRDN-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("crdn"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CrDN"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CrDN1"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CRDN1"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("CRDN6666666666"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("AGNT-1234"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("PRMR-988855"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName("PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName(""));
+  ASSERT_FALSE(ClusterHelpers::isCoordinatorName(" "));
+}
+
+TEST(ClusterHelpersTest, isDBServerNameTest) {
+  ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-"));
+  ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-1234"));
+  ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-123400000000000000"));
+  ASSERT_TRUE(ClusterHelpers::isDBServerName("PRMR-3c7af843-80dc-4892-a38c-ac7f24ea7ebd"));
+
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("prmr"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("PrMr"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("PRMR0"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("PRMR1"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("AGNT-1234"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName("CRDN-988855"));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName(""));
+  ASSERT_FALSE(ClusterHelpers::isDBServerName(" "));
+}

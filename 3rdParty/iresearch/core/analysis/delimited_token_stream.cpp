@@ -95,7 +95,7 @@ size_t find_delimiter(const irs::bytes_ref& data, const irs::bytes_ref& delim) {
   return data.size();
 }
 
-static const irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
+constexpr irs::string_ref DELIMITER_PARAM_NAME = "delimiter";
 
 bool parse_json_config(const irs::string_ref& args, std::string& delimiter) {
   rapidjson::Document json;
@@ -202,12 +202,7 @@ namespace iresearch {
 namespace analysis {
 
 delimited_token_stream::delimited_token_stream(const string_ref& delimiter)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<delimited_token_stream>::get()},
+  : analyzer(irs::type<delimited_token_stream>::get()),
     delim_(ref_cast<byte_type>(delimiter)) {
   if (!delim_.null()) {
     delim_buf_ = delim_; // keep a local copy of the delimiter
@@ -229,20 +224,25 @@ bool delimited_token_stream::next() {
     return false;
   }
 
+  auto& offset = std::get<irs::offset>(attrs_);
+
   auto size = find_delimiter(data_, delim_);
   auto next = std::max(size_t(1), size + delim_.size());
-  auto start = offset_.end + uint32_t(delim_.size()); // value is allowed to overflow, will only produce invalid result
+  auto start = offset.end + uint32_t(delim_.size()); // value is allowed to overflow, will only produce invalid result
   auto end = start + size;
 
-  if (irs::integer_traits<uint32_t>::const_max < end) {
+  if (std::numeric_limits<uint32_t>::max() < end) {
     return false; // cannot fit the next token into offset calculation
   }
 
-  offset_.start = start;
-  offset_.end = uint32_t(end);
-  payload_.value = bytes_ref(data_.c_str(), size);
-  term_.value =  delim_.null() ? payload_.value
-                               : eval_term(term_buf_, payload_.value);
+  auto& payload = std::get<irs::payload>(attrs_);
+  auto& term = std::get<term_attribute>(attrs_);
+
+  offset.start = start;
+  offset.end = uint32_t(end);
+  payload.value = bytes_ref(data_.c_str(), size);
+  term.value =  delim_.null() ? payload.value
+                              : eval_term(term_buf_, payload.value);
   data_ = size >= data_.size() ? bytes_ref::NIL
                                : bytes_ref(data_.c_str() + next, data_.size() - next);
 
@@ -251,8 +251,10 @@ bool delimited_token_stream::next() {
 
 bool delimited_token_stream::reset(const string_ref& data) {
   data_ = ref_cast<byte_type>(data);
-  offset_.start = 0;
-  offset_.end = 0 - uint32_t(delim_.size()); // counterpart to computation in next() above
+
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = 0 - uint32_t(delim_.size()); // counterpart to computation in next() above
 
   return true;
 }

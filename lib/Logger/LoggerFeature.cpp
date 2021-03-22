@@ -42,6 +42,7 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/error.h"
@@ -114,8 +115,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--log.output,-o",
-      "log destination(s), e.g. file:///path/to/file (Linux, macOS) "
-      "or file://C:\\path\\to\\file (Windows)",
+      "log destination(s), e.g. "
+#ifdef _WIN32
+      "file://C:\\path\\to\\file"
+#else
+      "file:///path/to/file"
+#endif
+      " (any '$PID' will be replaced with the process id)",
       new VectorParameter<StringParameter>(&_output));
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
@@ -124,7 +130,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--log.max-entry-length", "maximum length of a log entry (in bytes)",
                   new UInt32Parameter(&_maxEntryLength))
-      .setIntroducedIn(30800).setIntroducedIn(30709);
+      .setIntroducedIn(30709);
 
   options
       ->addOption("--log.use-local-time", "use local timezone instead of UTC",
@@ -154,8 +160,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       ->addOption("--log.file-mode",
                   "mode to use for new log file, umask will be applied as well",
                   new StringParameter(&_fileMode))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
@@ -178,8 +183,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
           "--log.file-group",
           "group to use for new log file, user must be a member of this group",
           new StringParameter(&_fileGroup))
-      .setIntroducedIn(30405)
-      .setIntroducedIn(30500);
+      .setIntroducedIn(30405);
 #endif
 
   options->addOption("--log.prefix", "prefix log message with this string",
@@ -201,10 +205,15 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       new BooleanParameter(&_shortenFilenames),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden));
   
+  options->addOption("--log.hostname",
+                     "hostname to use in log message (empty for none, use 'auto' to automatically figure out hostname)",
+                     new StringParameter(&_hostname))
+                     .setIntroducedIn(30800);
+  
   options->addOption("--log.process", "show process identifier (pid) in log message",
                      new BooleanParameter(&_processId),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
-                     .setIntroducedIn(30701);
+                     .setIntroducedIn(30800);
 
   options->addOption("--log.thread", "show thread identifier in log message",
                      new BooleanParameter(&_threadId),
@@ -360,6 +369,11 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LogAppenderFile::setFileGroup(gidNumber);
   }
 #endif
+
+  // replace $PID with current process id in filenames
+  for (auto& output : _output) {
+    output = StringUtils::replace(output, "$PID", std::to_string(Thread::currentProcessId()));
+  }
 }
 
 void LoggerFeature::prepare() {
@@ -385,6 +399,7 @@ void LoggerFeature::prepare() {
   Logger::setShowThreadIdentifier(_threadId);
   Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
+  Logger::setHostname(_hostname);
   Logger::setKeepLogrotate(_keepLogRotate);
   Logger::setLogRequestParameters(_logRequestParameters);
   Logger::setUseJson(_useJson);

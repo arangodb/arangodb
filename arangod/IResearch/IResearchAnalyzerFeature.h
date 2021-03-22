@@ -54,7 +54,6 @@
 #include "Basics/Result.h"
 #include "Basics/Identifier.h" // this include only need to make clang see << operator for Identifier
 #include "Cluster/ClusterTypes.h"
-#include "IResearch/IResearchVPackFormat.h"
 #include "Scheduler/SchedulerFeature.h"
 
 struct TRI_vocbase_t; // forward declaration
@@ -411,8 +410,8 @@ class IResearchAnalyzerFeature final
   Result emplaceAnalyzer( // emplace
     EmplaceAnalyzerResult& result, // emplacement result on success (out-param)
     iresearch::IResearchAnalyzerFeature::Analyzers& analyzers, // analyzers
-    irs::string_ref const& name, // analyzer name
-    irs::string_ref const& type, // analyzer type
+    irs::string_ref const name, // analyzer name
+    irs::string_ref const type, // analyzer type
     VPackSlice const properties, // analyzer properties
     irs::flags const& features, // analyzer features
     AnalyzersRevision::Revision revision); // analyzer revision

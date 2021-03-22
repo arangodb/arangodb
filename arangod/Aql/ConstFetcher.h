@@ -74,11 +74,7 @@ class ConstFetcher {
 
   void injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped);
 
-  void setDistributeId(std::string const&) {
-    // This is not implemented for this fetcher
-    TRI_ASSERT(false);
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
+  void setDistributeId(std::string const&);
 
  private:
   /**

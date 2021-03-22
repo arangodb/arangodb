@@ -164,7 +164,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
-futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
+futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
   
@@ -206,7 +206,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
           << " this: " << (uintptr_t)this;
 
      _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-     _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+     _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
      _execStats.setExecutionTime(elapsedSince(_startTime));
     _shutdownState.store(ShutdownState::Done);
      

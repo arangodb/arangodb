@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 #define IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 
+#include <absl/container/flat_hash_map.h>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/collectors.hpp"
@@ -109,7 +111,6 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       pop();
 
       auto& min_state = scored_states_[min_state_idx];
-      auto state_term_it = min_state.state->reader->iterator(); // FIXME cache iterator???
 
       assert(min_state.cookie);
       // state will not be scored
@@ -143,7 +144,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     // stats for a specific term
-    std::unordered_map<hashed_bytes_ref, stats_state> term_stats;
+    absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;

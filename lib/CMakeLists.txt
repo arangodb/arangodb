@@ -43,35 +43,6 @@ set(LIB_ARANGO_DATE
 )
 add_definitions("-DHAS_REMOTE_API=0")
 
-set(LIB_ARANGO_VPACK
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/AttributeTranslator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Builder.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Collection.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Compare.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Dumper.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Exception.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HashedStringRef.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/HexDump.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Iterator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Options.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Parser.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Serializable.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SharedSlice.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Slice.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/SliceStaticData.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/StringRef.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Utf8Helper.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Value.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/ValueType.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Validator.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/Version.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-functions.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/asm-utf8check.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/fpconv.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/string-functions.cpp
-  ${PROJECT_SOURCE_DIR}/3rdParty/velocypack/src/velocypack-common.cpp
-  ${PROJECT_SOURCE_DIR}/lib/Basics/xxhash.cpp
-  )
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=${ARCHITECTURE_OPTIMIZATIONS}")
 
@@ -99,7 +70,6 @@ add_library(arango STATIC
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}
-  ${LIB_ARANGO_VPACK}
   ${LIB_CLOCK_GETTIME}
   ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeature.cpp
@@ -136,6 +106,7 @@ add_library(arango STATIC
   Basics/Exceptions.cpp
   Basics/FileUtils.cpp
   Basics/FunctionUtils.cpp
+  Basics/GlobalResourceMonitor.cpp
   Basics/HybridLogicalClock.cpp
   Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
@@ -159,7 +130,6 @@ add_library(arango STATIC
   Basics/StringUtils.cpp
   Basics/Thread.cpp
   Basics/Utf8Helper.cpp
-  Basics/VelocyPackDumper.cpp
   Basics/VelocyPackHelper.cpp
   Basics/application-exit.cpp
   Basics/CleanupFunctions.cpp
@@ -244,6 +214,7 @@ target_link_libraries(arango
   s2
   boost_system
   boost_boost
+  velocypack
   ${V8_LIBS}
   ${SYSTEM_LIBRARIES}
 )

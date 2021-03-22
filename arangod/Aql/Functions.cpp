@@ -1768,13 +1768,13 @@ AqlValue Functions::NgramMatch(ExpressionContext* ctx, AstNode const&,
   std::vector<irs::bstring> attrNgrams;
   analyzerImpl->reset(attributeValue);
   while (analyzerImpl->next()) {
-    attrNgrams.push_back(token->value);
+    attrNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   std::vector<irs::bstring> targetNgrams;
   analyzerImpl->reset(targetValue);
   while (analyzerImpl->next()) {
-    targetNgrams.push_back(token->value);
+    targetNgrams.emplace_back(token->value.c_str(), token->value.size());
   }
 
   // consider only non empty ngrams sets. As no ngrams emitted - means no data in index = no match
@@ -3892,7 +3892,7 @@ AqlValue Functions::DateUtcToLocal(ExpressionContext* expressionContext, AstNode
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
     builder->add("end", aqlEnd.slice());  
-    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("dst", VPackValue(info.save.count() != 0));
     builder->add("offset", VPackValue(info.offset.count()));
     builder->close();
     builder->close();
@@ -3964,7 +3964,7 @@ AqlValue Functions::DateLocalToUtc(ExpressionContext* expressionContext, AstNode
     builder->add("name", VPackValue(info.abbrev));
     builder->add("begin", aqlBegin.slice());
     builder->add("end", aqlEnd.slice());
-    builder->add("save", VPackValue(info.save.count() != 0));
+    builder->add("dst", VPackValue(info.save.count() != 0));
     builder->add("offset", VPackValue(info.offset.count()));
     builder->close();
     builder->close();
@@ -7798,9 +7798,10 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
     THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
   }
 
-  AqlValueMaterializer materializer(vopts);
-  VPackSlice arraySlice = materializer.slice(baseArray, false);
-  VPackSlice replaceValue = materializer.slice(newValue, false);
+  AqlValueMaterializer materializer1(vopts);
+  VPackSlice arraySlice = materializer1.slice(baseArray, false);
+  AqlValueMaterializer materializer2(vopts);
+  VPackSlice replaceValue = materializer2.slice(newValue, false);
 
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
@@ -7817,6 +7818,7 @@ AqlValue Functions::ReplaceNth(ExpressionContext* expressionContext,
 
   uint64_t pos = length;
   if (replaceOffset >= length) {
+    AqlValueMaterializer materializer(vopts);
     VPackSlice paddVpValue = materializer.slice(paddValue, false);
     while (pos < replaceOffset) {
       builder->add(paddVpValue);

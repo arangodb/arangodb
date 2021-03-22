@@ -172,7 +172,7 @@ TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() { TRI_Free(_str); }
 /// @brief create a JavaScript error object
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
+static void CreateErrorObject(v8::Isolate* isolate, ErrorCode errorNumber,
                               std::string_view message) noexcept {
   try {
     TRI_GET_GLOBALS();
@@ -204,8 +204,10 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
     }
 
     auto context = TRI_IGETC;
-    errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                     v8::Number::New(isolate, errorNumber)).FromMaybe(false);
+    errorObject
+        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
+              v8::Number::New(isolate, int(errorNumber)))
+        .FromMaybe(false);
     errorObject->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
 
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
@@ -2570,7 +2572,7 @@ static void JS_CopyRecursive(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string systemErrorStr;
   long errorNo;
-  int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
+  auto res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     std::string errMsg = "cannot copy file [" + source + "] to [" +
@@ -4943,7 +4945,9 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
       args.Holder()->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
 
   self->Set(context, ErrorKey, v8::True(isolate)).FromMaybe(false);
-  self->Set(context, ErrorNumKey, v8::Integer::New(isolate, TRI_ERROR_FAILED)).FromMaybe(false);
+  self->Set(context, ErrorNumKey,
+            v8::Integer::New(isolate, static_cast<int>(TRI_ERROR_FAILED)))
+      .FromMaybe(false);
 
   if (0 < args.Length() && args[0]->IsObject()) {
     TRI_GET_GLOBAL_STRING(CodeKey);
@@ -5001,7 +5005,7 @@ static void JS_IsIP(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (TRI_InetPton4(*address, nullptr) == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN(v8::Number::New(isolate, 4));
-  } else if (TRI_InetPton6(*address, nullptr) == 0) {
+  } else if (TRI_InetPton6(*address, nullptr) == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN(v8::Number::New(isolate, 6));
   } else {
     TRI_V8_RETURN(v8::Number::New(isolate, 0));
@@ -5514,7 +5518,7 @@ static void JS_ErrorNumberToHttpCode(v8::FunctionCallbackInfo<v8::Value> const& 
   }
 
   auto num = TRI_ObjectToInt64(isolate, args[0]);
-  auto code = arangodb::GeneralResponse::responseCode(static_cast<int>(num));
+  auto code = arangodb::GeneralResponse::responseCode(ErrorCode{static_cast<int>(num)});
 
   using Type = typename std::underlying_type<arangodb::rest::ResponseCode>::type;
   TRI_V8_RETURN_INTEGER(static_cast<Type>(code));

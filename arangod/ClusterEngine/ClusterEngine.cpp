@@ -150,7 +150,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
   Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -186,11 +186,11 @@ ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                               int& status) {
+                                                               ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
+VPackBuilder ClusterEngine::getReplicationApplierConfiguration(ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -203,8 +203,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::CreateDatab
 }
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                             int& status) {
-  // error lol
+                                                             ErrorCode& status) {
   status = TRI_ERROR_INTERNAL;
   auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   status = TRI_ERROR_NO_ERROR;

@@ -214,12 +214,12 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_EQ(1U, meta._fields.size());
 
   for (auto& field : meta._fields) {
-    EXPECT_EQ(1U, expectedFields.erase(field.key()));
+    EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
     EXPECT_EQ(1U, field.value()->_fields.size());
 
     for (auto& fieldOverride : field.value()->_fields) {
       auto& actual = *(fieldOverride.value());
-      EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.key()));
+      EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       if ("xyz" == fieldOverride.key()) {
         EXPECT_TRUE(actual._fields.empty());
@@ -336,12 +336,12 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_EQ(3U, meta._fields.size());
 
     for (auto& field : meta._fields) {
-      EXPECT_EQ(1U, expectedFields.erase(field.key()));
+      EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       for (auto& fieldOverride : field.value()->_fields) {
         auto& actual = *(fieldOverride.value());
 
-        EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.key()));
+        EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
         if ("default" == fieldOverride.key()) {
           EXPECT_TRUE(actual._fields.empty());
@@ -478,12 +478,12 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
     EXPECT_EQ(3U, meta._fields.size());
 
     for (auto& field : meta._fields) {
-      EXPECT_EQ(1U, expectedFields.erase(field.key()));
+      EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       for (auto& fieldOverride : field.value()->_fields) {
         auto& actual = *(fieldOverride.value());
 
-        EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.key()));
+        EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
         if ("default" == fieldOverride.key()) {
           EXPECT_TRUE(actual._fields.empty());

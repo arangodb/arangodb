@@ -616,7 +616,8 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * -> queryid.
  */
 std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased::cleanupEngines(
-    int errorCode, std::string const& dbname, aql::ServerQueryIdList& serverQueryIds) const {
+    ErrorCode errorCode, std::string const& dbname,
+    aql::ServerQueryIdList& serverQueryIds) const {
   std::vector<arangodb::network::FutureRes> requests;
   NetworkFeature const& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -631,7 +632,7 @@ std::vector<arangodb::network::FutureRes> EngineInfoContainerDBServerServerBased
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
   builder.openObject();
-  builder.add("code", VPackValue(std::to_string(errorCode)));
+  builder.add("code", VPackValue(to_string(errorCode)));
   builder.close();
   requests.reserve(serverQueryIds.size());
   for (auto const& [server, queryId] : serverQueryIds) {

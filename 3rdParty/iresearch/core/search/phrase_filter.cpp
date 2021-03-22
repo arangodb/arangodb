@@ -26,6 +26,7 @@
 #include "search/collectors.hpp"
 #include "search/filter_visitor.hpp"
 #include "search/phrase_iterator.hpp"
+#include "search/states_cache.hpp"
 
 namespace {
 
@@ -530,7 +531,7 @@ filter::prepared::ptr by_phrase::fixed_prepare_collect(
   term_collectors term_stats(ord, phrase_size);
 
   // per segment phrase states
-  fixed_phrase_query::states_t phrase_states(index.size());
+  fixed_phrase_query::states_t phrase_states(index);
 
   // per segment phrase terms
   phrase_state<fixed_phrase_state::term_state> phrase_terms;
@@ -627,7 +628,7 @@ filter::prepared::ptr by_phrase::variadic_prepare_collect(
   }
 
   // per segment phrase states
-  variadic_phrase_query::states_t phrase_states(index.size());
+  variadic_phrase_query::states_t phrase_states(index);
 
   // per segment phrase terms
   std::vector<size_t> num_terms(phrase_size); // number of terms per part

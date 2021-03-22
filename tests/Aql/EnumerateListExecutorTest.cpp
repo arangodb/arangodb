@@ -37,6 +37,7 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Stats.h"
 #include "AqlItemBlockHelper.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Context.h"
@@ -59,7 +60,8 @@ class EnumerateListExecutorTest : public ::testing::Test {
   NoStats stats;
   AqlCall call;
 
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   EnumerateListExecutorTest()
       : itemBlockManager(monitor, SerializationFormat::SHADOWROWS) {}
@@ -201,8 +203,8 @@ TEST_P(EnumerateListExecutorTestProduce, invalid_value_1) {
         .expectedState(ExecutionState::DONE)
         .run();
     FAIL();
-  } catch (const arangodb::basics::Exception& e) {
-    ASSERT_EQ(e.code(), 1563);
+  } catch (arangodb::basics::Exception const& e) {
+    ASSERT_EQ(e.code(), TRI_ERROR_QUERY_ARRAY_EXPECTED);
   }
 }
 

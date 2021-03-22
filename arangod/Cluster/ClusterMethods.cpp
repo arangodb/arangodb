@@ -261,7 +261,7 @@ const char* notFoundSlice =
 ///        well
 ////////////////////////////////////////////////////////////////////////////////
 void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder& resultBody,
-                           std::unordered_map<int, size_t>& errorCounter,
+                           std::unordered_map<::ErrorCode, size_t>& errorCounter,
                            VPackValueLength const expectedResults) {
   // errorCounter is not allowed to contain any NOT_FOUND entry.
   TRI_ASSERT(errorCounter.find(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ==
@@ -276,10 +276,10 @@ void mergeResultsAllShards(std::vector<VPackSlice> const& results, VPackBuilder&
       TRI_ASSERT(oneRes.isArray());
       oneRes = oneRes.at(currentIndex);
 
-      int errorNum = TRI_ERROR_NO_ERROR;
+      auto errorNum = TRI_ERROR_NO_ERROR;
       VPackSlice errorNumSlice = oneRes.get(StaticStrings::ErrorNum);
       if (errorNumSlice.isNumber()) {
-        errorNum = errorNumSlice.getNumber<int>();
+        errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
       }
       if ((errorNum != TRI_ERROR_NO_ERROR && errorNum != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) ||
           oneRes.hasKey(StaticStrings::KeyString)) {
@@ -307,7 +307,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
                                              std::vector<Try<network::Response>> const& results) {
   std::map<ShardID, VPackSlice> resultMap;
   std::map<ShardID, int> shardError;
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
 
   fuerte::StatusCode code = fuerte::StatusInternalError;
   // If none of the shards responded we return a SERVER_ERROR;
@@ -316,7 +316,7 @@ OperationResult handleCRUDShardResponsesFast(F&& func, CT const& opCtx,
     network::Response const& res = tryRes.get();  // throws exceptions upwards
     ShardID sId = res.destinationShard();
 
-    int commError = network::fuerteToArangoErrorCode(res);
+    auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       shardError.try_emplace(sId, commError);
     } else {
@@ -417,7 +417,7 @@ OperationResult handleCRUDShardResponsesSlow(F&& func, size_t expectedLen, Opera
   std::vector<VPackSlice> allResults;
   allResults.reserve(responses.size());
 
-  std::unordered_map<int, size_t> errorCounter;
+  std::unordered_map<::ErrorCode, size_t> errorCounter;
   // If no server responds we return 500
   for (Try<network::Response> const& tryRes : responses) {
     network::Response const& res = tryRes.get();
@@ -547,7 +547,7 @@ struct CreateOperationCtx {
 
     // Now find the responsible shard:
     bool usesDefaultShardingAttributes;
-    int error = TRI_ERROR_NO_ERROR;
+    auto error = TRI_ERROR_NO_ERROR;
     if (userSpecifiedKey) {
       error = collinfo.getResponsibleShard(value, /*docComplete*/true, shardID,
                                            usesDefaultShardingAttributes);
@@ -1551,14 +1551,14 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
@@ -1781,14 +1781,14 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      int res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    int res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
@@ -1961,7 +1961,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
 Result fetchEdgesFromEngines(transaction::Methods& trx,
                              graph::ClusterTraverserCache& travCache,
-                             traverser::TraverserOptions const* opts,
+                             arangodb::aql::FixedVarExpressionContext const& expressionContext,
                              arangodb::velocypack::StringRef vertexId,
                              size_t depth,
                              std::vector<VPackSlice>& result) {
@@ -1979,7 +1979,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   leased->add(VPackValue("variables"));
   {
     leased->openArray();
-    opts->serializeVariables(*(leased.get()));
+    expressionContext.serializeAllVariables(trx.vpackOptions(), *(leased.get()));
     leased->close();
   }
   leased->close();

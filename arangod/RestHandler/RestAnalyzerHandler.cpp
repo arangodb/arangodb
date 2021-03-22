@@ -120,7 +120,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
   if (properties.isString()) { // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
-    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref.c_str(), string_ref.size());
     properties = propertiesFromStringBuilder->slice();
   }
   

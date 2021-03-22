@@ -35,6 +35,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -121,11 +122,7 @@ template <class QueueType, class PathStoreType, class ProviderType, class PathVa
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::Ball::fetchResults(
     ResultList& results) -> void {
   std::vector<Step*> looseEnds{};
-#if 0
-// Please keep this for now.
-// This code needs to be activated and properly implemented as soon
-// as we have a Cluster Prodiver in plave, that can produce non-processable
-// steps
+
   if (_direction == Direction::FORWARD) {
     for (auto& [step, unused] : results) {
       if (!step.isProcessable()) {
@@ -139,16 +136,19 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       }
     }
   }
+
   if (!looseEnds.empty()) {
-    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
-    LOG_FIXME_DEVEL << "needs to be implemented: " << preparedEnds;
-    // TODO: we need to ensure that we now have all vertices fetched - (future - not yet implemented and not relevant yet)
-    // or that we need to refetch at some later point.
+    futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+    futureEnds.get();
+    // Notes for the future:
+    // Vertices are now fetched. Thnink about other less-blocking and batch-wise
+    // fetching (e.g. re-fetch at some later point).
+    // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in fetch as fetched.
+    // This works, but we might create a batch limit here in the future.
+    // Also discuss: Do we want (re-)fetch logic here?
     // TODO: maybe we can combine this with prefetching of paths
   }
-#endif
 }
 
 template <class QueueType, class PathStoreType, class ProviderType, class PathValidator>
@@ -160,14 +160,14 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   if (!_queue.hasProcessableElement()) {
     std::vector<Step*> looseEnds = _queue.getLooseEnds();
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
+
     // Will throw all network errors here
-    /*
     auto&& preparedEnds = futureEnds.get();
-    LOG_FIXME_DEVEL << "needs to be implemented: " << preparedEnds;
-    */
-    // TODO we somehow need to handover those looseends to - (future - not yet implemented and not relevant yet)
-    // the queue again, in order to remove them from the loosend list.
+
+    TRI_ASSERT(preparedEnds.size() != 0);
+    TRI_ASSERT(_queue.hasProcessableElement());
   }
+
   auto step = _queue.pop();
   auto previous = _interior.append(step);
   _provider.expand(step, previous, [&](Step n) -> void {
@@ -175,7 +175,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
     // Check if other Ball knows this Vertex.
     // Include it in results.
-
     if ((getDepth() + other.getDepth() >= _minDepth) && !res.isFiltered()) {
       // One side of the path is checked, the other side is unclear:
       // We need to combine the test of both sides.
@@ -184,7 +183,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // TODO: Check if the GLOBAL holds true for weightedEdges
       other.matchResultsInShell(n, results, _validator);
     }
-
     if (!res.isPruned()) {
       // Add the step to our shell
       _shell.emplace(std::move(n));
@@ -425,6 +423,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
   return stats;
 }
 
+/* SingleServerProvider Section */
+
 template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::FifoQueue<::arangodb::graph::SingleServerProvider::Step>,
     ::arangodb::graph::PathStore<SingleServerProvider::Step>, SingleServerProvider,
@@ -435,3 +435,16 @@ template class ::arangodb::graph::TwoSidedEnumerator<
     ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>,
     ::arangodb::graph::ProviderTracer<SingleServerProvider>,
     ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<SingleServerProvider::Step>>, VertexUniquenessLevel::PATH>>;
+
+/* ClusterProvider Section */
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>,
+    ::arangodb::graph::PathStore<ClusterProvider::Step>, ClusterProvider,
+    ::arangodb::graph::PathValidator<PathStore<ClusterProvider::Step>, VertexUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::TwoSidedEnumerator<
+    ::arangodb::graph::QueueTracer<::arangodb::graph::FifoQueue<::arangodb::graph::ClusterProvider::Step>>,
+    ::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>,
+    ::arangodb::graph::ProviderTracer<ClusterProvider>,
+    ::arangodb::graph::PathValidator<::arangodb::graph::PathStoreTracer<::arangodb::graph::PathStore<ClusterProvider::Step>>, VertexUniquenessLevel::PATH>>;
