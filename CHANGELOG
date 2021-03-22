@@ -1,5 +1,8 @@
 devel
 -----
+
+* Switched to GCC 10 as the default compiler.
+
 * Added new ArangoSearch analyzer type "mask"
 
 * Fix error message in case of index unique constraint violations. They were
