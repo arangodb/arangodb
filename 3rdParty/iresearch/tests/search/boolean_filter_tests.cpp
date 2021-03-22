@@ -21,7 +21,10 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <functional>
+
 #include "tests_shared.hpp"
+#include "filter_test_case_base.hpp"
 #include "search/all_filter.hpp"
 #include "search/all_iterator.hpp"
 #include "search/boolean_filter.hpp"
@@ -31,13 +34,10 @@
 #include "search/exclusion.hpp"
 #include "search/bm25.hpp"
 #include "search/tfidf.hpp"
-#include "filter_test_case_base.hpp"
 #include "index/iterators.hpp"
-#include "formats/formats.hpp"
+#include "formats/empty_term_reader.hpp"
 #include "search/term_filter.hpp"
 #include "search/term_query.hpp"
-
-#include <functional>
 
 namespace {
 
@@ -144,7 +144,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       last_(last),
       stats_(stats),
       doc_(irs::doc_limits::invalid()) {
-    est_.value(std::distance(first_, last_));
+    est_.reset(std::distance(first_, last_));
     attrs_[irs::type<irs::cost>::id()] = &est_;
     attrs_[irs::type<irs::document>::id()] = &doc_;
 
@@ -154,7 +154,7 @@ class basic_doc_iterator: public irs::doc_iterator, irs::score_ctx {
       scorers_ = irs::order::prepared::scorers(
         ord,
         irs::sub_reader::empty(),
-        empty_term_reader::instance(),
+        irs::empty_term_reader{0},
         stats_,
         score_.realloc(ord),
         *this,
@@ -602,7 +602,7 @@ TEST(boolean_query_boost, hierarchy) {
   }
 }
 
-TEST(boolean_query_boost, and) {
+TEST(boolean_query_boost, and_filter) {
   // empty boolean unboosted query
   {
     irs::And root;
@@ -883,7 +883,7 @@ TEST(boolean_query_boost, and) {
   }
 }
 
-TEST(boolean_query_boost, or) {
+TEST(boolean_query_boost, or_filter) {
   // single unboosted query
   {
     const irs::boost_t value = 5;
@@ -1260,7 +1260,7 @@ DEFINE_FACTORY_DEFAULT(unestimated)
 struct estimated: public irs::filter {
   struct doc_iterator : irs::doc_iterator {
     doc_iterator(irs::cost::cost_t est, bool* evaluated) {
-      cost.rule([est, evaluated]() {
+      cost.reset([est, evaluated]() {
         *evaluated = true;
         return est;
       });
@@ -1327,7 +1327,7 @@ DEFINE_FACTORY_DEFAULT(estimated)
 
 } // detail
 
-TEST( boolean_query_estimation, or ) {
+TEST( boolean_query_estimation, or_filter) {
   // estimated subqueries
   {
     irs::Or root;
@@ -1472,7 +1472,7 @@ TEST( boolean_query_estimation, or ) {
   }
 }
 
-TEST( boolean_query_estimation, and ) {
+TEST( boolean_query_estimation, and_filter) {
   // estimated subqueries
   {
     irs::And root;
@@ -10925,7 +10925,7 @@ TEST(min_match_disjunction_test, next) {
     }
 
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11086,7 +11086,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{};
       std::vector<irs::doc_id_t> result;
       {
@@ -11246,7 +11246,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> expected{ 1, 5 };
       std::vector<irs::doc_id_t> result;
       {
@@ -11402,7 +11402,7 @@ TEST(min_match_disjunction_test, next) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<irs::doc_id_t> result;
       {
         disjunction it(
@@ -11471,7 +11471,7 @@ TEST(min_match_disjunction_test, next) {
         std::vector<irs::doc_id_t> result;
         {
           disjunction it(
-              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+              detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
           );
           auto* doc = irs::get<irs::document>(it);
           ASSERT_TRUE(bool(doc));
@@ -11597,7 +11597,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
           {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
           {1, 1},
@@ -11727,7 +11727,7 @@ TEST(min_match_disjunction_test, seek) {
 
     // equals to conjunction
     {
-      const size_t min_match_count = irs::integer_traits<size_t>::const_max;
+      const size_t min_match_count = std::numeric_limits<size_t>::max();
       std::vector<detail::seek_doc> expected{
         {irs::doc_limits::invalid(), irs::doc_limits::invalid()},
         {1, irs::doc_limits::eof()},
@@ -11783,7 +11783,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11849,7 +11849,7 @@ TEST(min_match_disjunction_test, seek) {
 
     {
       disjunction it(
-          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+          detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
       );
       auto* doc = irs::get<irs::document>(it);
       ASSERT_TRUE(bool(doc));
@@ -11964,7 +11964,7 @@ TEST(min_match_disjunction_test, seek) {
 
       {
         disjunction it(
-            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), irs::integer_traits<size_t>::const_max
+            detail::execute_all<irs::min_match_disjunction<irs::doc_iterator::ptr>::cost_iterator_adapter>(docs), std::numeric_limits<size_t>::max()
         );
         auto* doc = irs::get<irs::document>(it);
         ASSERT_TRUE(bool(doc));

@@ -35,18 +35,20 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 
 namespace {
 void throwArrayExpectedException(AqlValue const& value) {
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_QUERY_ARRAY_EXPECTED,
-      std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-          std::string(
-              " as operand to FOR loop; you provided a value of type '") +
-          value.getTypeString() + std::string("'"));
+      StringUtils::concatT(
+          "collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+          " as operand to FOR loop; you provided a value of type '",
+          value.getTypeString(), "'"));
 }
 }  // namespace
 

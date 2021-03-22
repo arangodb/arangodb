@@ -41,7 +41,6 @@ class ArangoGlobalContext {
  public:
   std::string binaryName() const { return _binaryName; }
   std::string runRoot() const { return _runRoot; }
-  void createMiniDumpFilename();
   void normalizePath(std::vector<std::string>& path, char const* whichPath, bool fatal);
   void normalizePath(std::string& path, char const* whichPath, bool fatal);
   std::string const& getBinaryPath() const { return _binaryPath; }

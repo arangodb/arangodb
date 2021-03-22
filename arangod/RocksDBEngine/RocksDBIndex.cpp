@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
+#include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -253,6 +254,32 @@ void RocksDBIndex::afterTruncate(TRI_voc_tick_t, arangodb::transaction::Methods*
     TRI_ASSERT(_cache.get() != nullptr);
   }
 }  
+  
+/// performs a preflight check for an insert operation, not carrying out any
+/// modifications to the index.
+/// the default implementation does nothing. indexes can override this and
+/// perform useful checks (uniqueness checks etc.) here
+Result RocksDBIndex::checkInsert(transaction::Methods& /*trx*/, 
+                                 RocksDBMethods* /*methods*/,
+                                 LocalDocumentId const& /*documentId*/,
+                                 arangodb::velocypack::Slice /*doc*/,
+                                 OperationOptions const& /*options*/) {
+  // default implementation does nothing - derived indexes can override this!
+  return {};
+}
+
+/// performs a preflight check for an update/replace operation, not carrying out any
+/// modifications to the index.
+/// the default implementation does nothing. indexes can override this and
+/// perform useful checks (uniqueness checks etc.) here
+Result RocksDBIndex::checkReplace(transaction::Methods& /*trx*/, 
+                                  RocksDBMethods* /*methods*/,
+                                  LocalDocumentId const& /*documentId*/,
+                                  arangodb::velocypack::Slice /*doc*/,
+                                  OperationOptions const& /*options*/) {
+  // default implementation does nothing - derived indexes can override this!
+  return {};
+}
 
 Result RocksDBIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                             LocalDocumentId const& oldDocumentId,
@@ -296,13 +323,8 @@ size_t RocksDBIndex::memory() const {
 void RocksDBIndex::compact() {
   auto& selector = _collection.vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
-  rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid)) {
-    RocksDBKeyBounds bounds = this->getBounds();
-    TRI_ASSERT(_cf == bounds.columnFamily());
-    rocksdb::Slice b = bounds.start(), e = bounds.end();
-    db->CompactRange(opts, _cf, &b, &e);
+    engine.compactRange(getBounds());
   }
 }
 
@@ -322,6 +344,15 @@ void RocksDBIndex::invalidateCacheEntry(char const* data, std::size_t len) {
     }
   }
 }
+  
+/// @brief get index estimator, optional
+RocksDBCuckooIndexEstimatorType* RocksDBIndex::estimator() { 
+  return nullptr; 
+}
+
+void RocksDBIndex::setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) {}
+
+void RocksDBIndex::recalculateEstimates() {}
 
 RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type, uint64_t objectId, bool unique) {
   switch (type) {

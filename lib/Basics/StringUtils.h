@@ -46,6 +46,8 @@
 namespace arangodb {
 namespace basics {
 
+static constexpr size_t maxUInt64StringSize = 21;
+
 /// @brief collection of string utility functions
 ///
 /// This namespace holds function used for string manipulation.
@@ -385,6 +387,7 @@ static bool toNumber(std::string const& key, T& val) noexcept {
 /// @brief converts to base64
 std::string encodeBase64(char const* value, size_t length);
 std::string encodeBase64(std::string const&);
+std::string encodeBase64(std::string_view);
 
 /// @brief converts from base64
 std::string decodeBase64(std::string const&);

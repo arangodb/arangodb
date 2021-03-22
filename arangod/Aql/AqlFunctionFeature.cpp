@@ -235,7 +235,7 @@ void AqlFunctionFeature::addNumericFunctions() {
   add({"RADIANS", ".", flags, &Functions::Radians});
   add({"DEGREES", ".", flags, &Functions::Degrees});
   add({"PI", "", flags, &Functions::Pi});
-  
+
   add({"BIT_AND", ".|.", flags, &Functions::BitAnd});
   add({"BIT_OR", ".|.", flags, &Functions::BitOr});
   add({"BIT_XOR", ".|.", flags, &Functions::BitXOr});
@@ -474,6 +474,17 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
   add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable), &Functions::NotImplemented});
+
+  add({"MAKE_DISTRIBUTE_INPUT", ".,.",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeInput});
+  add({"MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION", ".,.,.",
+       Function::makeFlags(FF::Internal), &Functions::MakeDistributeInputWithKeyCreation});
+  add({"MAKE_DISTRIBUTE_GRAPH_INPUT", ".",
+       Function::makeFlags(FF::Deterministic, FF::Cacheable, FF::Internal,
+                           FF::CanRunOnDBServerCluster, FF::CanRunOnDBServerOneShard),
+       &Functions::MakeDistributeGraphInput});
   
   // this is an internal function that is only here for testing. it cannot
   // be invoked by end users, because refering to internal functions from user

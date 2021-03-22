@@ -46,7 +46,7 @@ the collection. This index also defines which attribute holds the
 coordinates for the document.  If you have more than one geo-spatial index,
 you can use the *geo* field to select a particular index.
 
-Returns a cursor containing the result, see [HTTP Cursor](../AqlQueryCursor/README.md) for details.
+Returns a cursor containing the result.
 
 @RESTRETURNCODES
 

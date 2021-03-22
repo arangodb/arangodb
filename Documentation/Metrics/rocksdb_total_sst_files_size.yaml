@@ -1,0 +1,13 @@
+name: rocksdb_total_sst_files_size
+help: |
+  rocksdb_total_sst_files_size
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_total_sst_files_size

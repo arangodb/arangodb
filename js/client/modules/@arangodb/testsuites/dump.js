@@ -32,6 +32,7 @@ const functionsDocumentation = {
   'dump_mixed_cluster_single': 'dump tests - dump cluster restore single',
   'dump_mixed_single_cluster': 'dump tests - dump single restore cluster',
   'dump_authentication': 'dump tests with authentication',
+  'dump_jwt': 'dump tests with JWT',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
   'dump_multiple': 'restore multiple DBs at once',
@@ -51,6 +52,7 @@ const _ = require('lodash');
 const hb = require("@arangodb/hotbackup");
 const sleep = require("internal").sleep;
 const db = require("internal").db;
+const platform = require("internal").platform;
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -62,11 +64,21 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
+let timeoutFactor = 1;
+if (global.ARANGODB_CLIENT_VERSION(true).asan === 'true' ||
+    global.ARANGODB_CLIENT_VERSION(true).tsan === 'true' ||
+    (platform.substr(0, 3) === 'win')) {
+  timeoutFactor = 8;
+} else if (process.env.hasOwnProperty('GCOV_PREFIX')) {
+    timeoutFactor = 16;
+}
+
 const testPaths = {
   'dump': [tu.pathForTesting('server/dump')],
   'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
   'dump_mixed_single_cluster': [tu.pathForTesting('server/dump')],
   'dump_authentication': [tu.pathForTesting('server/dump')],
+  'dump_jwt': [tu.pathForTesting('server/dump')],
   'dump_encrypted': [tu.pathForTesting('server/dump')],
   'dump_maskings': [tu.pathForTesting('server/dump')],
   'dump_multiple': [tu.pathForTesting('server/dump')],
@@ -110,6 +122,16 @@ class DumpRestoreHelper {
     if (this.dumpOptions.encrypted) {
       this.dumpConfig.activateEncryption();
     }
+    if (this.dumpOptions.jwtSecret) {
+      let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
+      }
+      pu.cleanupDBDirectoriesAppend(keyDir);
+      let keyFile = fs.join(keyDir, 'secret-for-dump');
+      fs.write(keyFile, this.dumpOptions.jwtSecret);
+      this.dumpConfig.setJwtFile(keyFile);
+    }
 
     if (!this.restoreConfig) {
       this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
@@ -118,6 +140,7 @@ class DumpRestoreHelper {
     } else {
       this.restoreConfig.setEndpoint(this.instanceInfo.endpoint);
     }
+    
     if (!this.restoreOldConfig) {
       this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceInfo);
       this.restoreOldConfig.setInputDirectory('dump', true);
@@ -125,6 +148,17 @@ class DumpRestoreHelper {
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
     } else {
       this.restoreOldConfig.setEndpoint(this.instanceInfo.endpoint);
+    }
+    if (this.restoreOptions.jwtSecret) {
+      let keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
+      if (!fs.exists(keyDir)) {  // needed on win32
+        fs.makeDirectory(keyDir);
+      }
+      pu.cleanupDBDirectoriesAppend(keyDir);
+      let keyFile = fs.join(fs.getTempPath(), 'secret-for-restore');
+      fs.write(keyFile, this.restoreOptions.jwtSecret);
+      this.restoreConfig.setJwtFile(keyFile);
+      this.restoreOldConfig.setJwtFile(keyFile);
     }
     this.setOptions();
     this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceInfo.rootDir, this.firstRunOptions.coreCheck);
@@ -308,6 +342,7 @@ class DumpRestoreHelper {
       this.results.restore = this.arangorestore();
       if (this.results.restore.exitCode === 38) {
         print("Failure point has terminated the application, restarting");
+        sleep(2 * timeoutFactor);
         this.restoreConfig.enableContinue();
       }
     } while(this.results.restore.exitCode === 38);
@@ -485,13 +520,13 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
   print(CYAN + which + ' tests...' + RESET);
 
   const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart);
-  if (! helper.startFirstInstance()) {
+  if (!helper.startFirstInstance()) {
     return helper.extractResults();
   }
 
   const setupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpSetup));
   const cleanupFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCleanup));
-  const checkDumpFiles = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles));
+  const checkDumpFiles = tstFiles.checkDumpFiles ? tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckDumpFiles)) : undefined;
   const testFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpAgain));
   const tearDownFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpTearDown));
 
@@ -499,7 +534,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('_system', true) ||
         !helper.dumpFrom('UnitTestsDumpSrc', true) ||
-        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
+        (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restartInstance() ||
         !helper.restoreTo('UnitTestsDumpDst', { separate: true, fromDir: 'UnitTestsDumpSrc'}) ||
@@ -512,7 +547,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
   else {
     if (!helper.runSetupSuite(setupFile) ||
         !helper.dumpFrom('UnitTestsDumpSrc') ||
-        !helper.runCheckDumpFilesSuite(checkDumpFiles) ||
+        (checkDumpFiles && !helper.runCheckDumpFilesSuite(checkDumpFiles)) ||
         !helper.runCleanupSuite(cleanupFile) ||
         !helper.restartInstance() ||
         !helper.restoreTo('UnitTestsDumpDst') ||
@@ -707,6 +742,42 @@ function dumpAuthentication (options) {
   return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
 }
 
+function dumpJwt (options) {
+  const clientAuth = {
+    'server.authentication': 'true'
+  };
+
+  const serverAuthInfo = {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann'
+  };
+
+  let dumpAuthOpts = {
+    jwtSecret: 'haxxmann',
+    // intentionally no username/password
+  };
+
+  let restoreAuthOpts = {
+    jwtSecret: 'haxxmann',
+    // intentionally no username/password
+  };
+
+  _.defaults(dumpAuthOpts, options);
+  _.defaults(restoreAuthOpts, options);
+
+  let tstFiles = {
+    dumpSetup: 'dump-authentication-setup.js',
+    dumpCleanup: 'cleanup-alter-user.js',
+    dumpAgain: 'dump-authentication.js',
+    dumpTearDown: 'dump-teardown.js',
+  };
+
+  options.multipleDumps = true;
+  options['server.jwt-secret'] = 'haxxmann';
+
+  return dump_backend(options, serverAuthInfo, clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){});
+}
+
 function dumpEncrypted (options) {
   // test is only meaningful in the Enterprise Edition
   let skip = true;
@@ -828,7 +899,7 @@ function hotBackup (options) {
   }
 
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){});
-  if (! helper.startFirstInstance()) {
+  if (!helper.startFirstInstance()) {
     return helper.extractResults();
   }
 
@@ -893,6 +964,9 @@ exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTest
 
   testFns['dump_authentication'] = dumpAuthentication;
   defaultFns.push('dump_authentication');
+  
+  testFns['dump_jwt'] = dumpJwt;
+  defaultFns.push('dump_jwt');
 
   testFns['dump_encrypted'] = dumpEncrypted;
   defaultFns.push('dump_encrypted');

@@ -168,7 +168,7 @@ class LogicalCollection : public LogicalDataSource {
   size_t numberOfShards() const;
   size_t replicationFactor() const;
   size_t writeConcern() const;
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   std::vector<std::string> const& avoidServers() const;
   bool isSatellite() const;
   bool usesDefaultShardKeys() const;
@@ -180,13 +180,14 @@ class LogicalCollection : public LogicalDataSource {
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   // query shard for a given document
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete, std::string& shardID);
-  int getResponsibleShard(std::string_view key, std::string& shardID);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
+                                bool docComplete, std::string& shardID);
+  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          std::string& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const& key =
-                          arangodb::velocypack::StringRef());
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                std::string& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key =
+                                    arangodb::velocypack::StringRef());
 
   /// @briefs creates a new document key, the input slice is ignored here
   /// this method is overriden in derived classes
@@ -249,7 +250,7 @@ class LogicalCollection : public LogicalDataSource {
                                                    OperationOptions const& options) const;
 
   /// @brief closes an open collection
-  int close();
+  ErrorCode close();
 
   // SECTION: Indexes
 
@@ -273,7 +274,7 @@ class LogicalCollection : public LogicalDataSource {
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
-  Result compact();
+  void compact();
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);

@@ -80,7 +80,7 @@ class ConnectionPool final {
   /// @brief request a connection for a specific endpoint
   /// note: it is the callers responsibility to ensure the endpoint
   /// is always the same, we do not do any post-processing
-  ConnectionPtr leaseConnection(std::string const& endpoint);
+  ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
   /// @brief event loop service to create a connection seperately
   /// user is responsible for correctly shutting it down
@@ -127,7 +127,7 @@ class ConnectionPool final {
   };
 
   TEST_VIRTUAL std::shared_ptr<fuerte::Connection> createConnection(fuerte::ConnectionBuilder&);
-  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket);
+  ConnectionPtr selectConnection(std::string const& endpoint, Bucket& bucket, bool& isFromPool);
   
  private:
   Config const _config;

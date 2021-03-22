@@ -339,7 +339,7 @@ size_t LogicalCollection::writeConcern() const {
   return _sharding->writeConcern();
 }
 
-std::string LogicalCollection::distributeShardsLike() const {
+std::string const& LogicalCollection::distributeShardsLike() const {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->distributeShardsLike();
 }
@@ -380,22 +380,22 @@ void LogicalCollection::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _sharding->setShardMap(map);
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(slice, docComplete, shardID, usesDefaultShardKeys);
 }
 
-int LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
+ErrorCode LogicalCollection::getResponsibleShard(std::string_view key, std::string& shardID) {
   bool usesDefaultShardKeys;
   return getResponsibleShard(VPackSlice::emptyObjectSlice(), false, shardID, usesDefaultShardKeys,
                              VPackStringRef(key.data(), key.size()));
 }
 
-int LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                           bool docComplete, std::string& shardID,
-                                           bool& usesDefaultShardKeys,
-                                           VPackStringRef const& key) {
+ErrorCode LogicalCollection::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                                 bool docComplete, std::string& shardID,
+                                                 bool& usesDefaultShardKeys,
+                                                 VPackStringRef const& key) {
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->getResponsibleShard(slice, docComplete, shardID,
                                         usesDefaultShardKeys, key);
@@ -623,7 +623,7 @@ Result LogicalCollection::rename(std::string&& newName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int LogicalCollection::close() {
+ErrorCode LogicalCollection::close() {
   // This was unload() in 3.0
   return getPhysical()->close();
 }
@@ -1101,7 +1101,7 @@ Result LogicalCollection::truncate(transaction::Methods& trx, OperationOptions& 
 }
 
 /// @brief compact-data operation
-Result LogicalCollection::compact() { return getPhysical()->compact(); }
+void LogicalCollection::compact() { getPhysical()->compact(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inserts a document or edge into the collection

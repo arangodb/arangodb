@@ -39,6 +39,7 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/MetricsFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/StorageEngineFeature.h"
 #include "VocBase/vocbase.h"
@@ -58,7 +59,7 @@ std::string fixEndpointProto(std::string const& endpoint) {
   return endpoint;
 }
 
-void writeError(int code, arangodb::GeneralResponse* response) {
+void writeError(ErrorCode code, arangodb::GeneralResponse* response) {
   response->setResponseCode(arangodb::GeneralResponse::responseCode(code));
 
   VPackBuffer<uint8_t> buffer;
@@ -75,6 +76,8 @@ void writeError(int code, arangodb::GeneralResponse* response) {
 } // namespace
 
 
+DECLARE_COUNTER(arangodb_replication_cluster_inventory_requests_total, "Number of cluster replication inventory requests received");
+
 namespace arangodb {
 
 ReplicationFeature::ReplicationFeature(ApplicationServer& server)
@@ -88,13 +91,14 @@ ReplicationFeature::ReplicationFeature(ApplicationServer& server)
       _syncByRevision(true),
       _parallelTailingInvocations(0),
       _maxParallelTailingInvocations(0),
+      _quickKeysLimit(1000000),
       _inventoryRequests(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_replication_cluster_inventory_requests", 0, "Number of cluster replication inventory requests received")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_replication_cluster_inventory_requests_total{})) {
   setOptional(true);
   startsAfter<BasicFeaturePhaseServer>();
 
   startsAfter<DatabaseFeature>();
+  startsAfter<ServerIdFeature>();
   startsAfter<StorageEngineFeature>();
   startsAfter<SystemDatabaseFeature>();
 }
@@ -136,6 +140,12 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                      "Default timeout value for replication requests (in seconds)",
                      new DoubleParameter(&_requestTimeout))
                      .setIntroducedIn(30409).setIntroducedIn(30504);
+
+  options->addOption("--replication.quick-keys-limit",
+                     "Limit at which 'quick' calls to the replication keys API return only the document count for second run",
+                     new UInt64Parameter(&_quickKeysLimit),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Hidden))
+                     .setIntroducedIn(30709);
 
   options
       ->addOption(

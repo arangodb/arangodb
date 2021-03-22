@@ -68,7 +68,7 @@ class PhysicalCollection {
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
 
-  virtual int close() = 0;
+  virtual ErrorCode close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
 
@@ -159,7 +159,7 @@ class PhysicalCollection {
   virtual Result truncate(transaction::Methods& trx, OperationOptions& options) = 0;
 
   /// @brief compact-data operation
-  virtual Result compact() = 0;
+  virtual void compact() {}
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -260,6 +260,7 @@ class PhysicalCollection {
   bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
+  mutable std::atomic<std::thread::id> _indexesLockWriteOwner;  // current thread owning '_indexesLock'
   IndexContainerType _indexes;
 };
 

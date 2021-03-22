@@ -204,7 +204,6 @@ function createPaddedKeyGen() {
   let d = c.save({});
   c.save({}); // create another one inbetween...
   c.remove(d);
-  process.env['paddedLastValue'] = c.properties().keyOptions.lastValue;
 }
 
 function createUUIDKeyGen() {

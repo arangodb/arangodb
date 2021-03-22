@@ -1,0 +1,13 @@
+name: arangodb_aql_global_memory_usage
+help: |
+  Total memory usage of all AQL queries executing; granularity: 32768 bytes steps.
+unit: number
+type: gauge
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total memory usage of all AQL queries executing; granularity: 32768 bytes steps.

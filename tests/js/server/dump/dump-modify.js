@@ -307,7 +307,6 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertEqual("padded", p.keyOptions.type);
       assertFalse(p.keyOptions.allowUserKeys);
-      assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
 
       assertEqual(1, c.getIndexes().length); // just primary index
       assertEqual("primary", c.getIndexes()[0].type);
@@ -328,11 +327,6 @@ function dumpTestSuite () {
       }
       doc = c.save({});
       assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-
-      // remember this value, since its restored to later on:
-      process.env['lastPaddedLastValue'] = process.env['paddedLastValue'];
-      // set our modified value:
-      process.env['paddedLastValue'] = c.properties().keyOptions.lastValue;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,6 +487,28 @@ function dumpTestSuite () {
       res = db._query("FOR doc IN " + c.name() + " FILTER doc.value >= 10000 RETURN doc").toArray();
       assertEqual(0, res.length);
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test latestId
+////////////////////////////////////////////////////////////////////////////////
+
+    testLatestId : function () {
+      if (arango.getRole() === "COORDINATOR") {
+        // Only executed in the cluster
+        // The following increases /arango/Sync/LatestID in the agency
+        // by 100.000.000 and thus consumes so many cluster wide unique
+        // ids. This is checked below.
+        // Then, after a hotbackup restore, we check in the file
+        // `tests/js/server/dump/dump-cluster.js` (by means of including
+        // `tests/js/server/dump/dump-test.js`) that the lower number
+        // has been stored in the hotbackup and restored in the restore
+        // process.
+        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
+        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
+      }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test view restoring

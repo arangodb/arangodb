@@ -1,0 +1,14 @@
+name: arangodb_client_connection_statistics_io_time
+help: |
+  I/O time needed to answer a request
+unit: number
+type: histogram
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  I/O time needed to answer a request.

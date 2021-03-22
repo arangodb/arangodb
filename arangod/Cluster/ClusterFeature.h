@@ -131,8 +131,10 @@ class ClusterFeature : public application_features::ApplicationFeature {
   void waitForSyncersToStop();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setSyncerShutdownCode(int code) { _syncerShutdownCode = code; }
+  void setSyncerShutdownCode(ErrorCode code) { _syncerShutdownCode = code; }
 #endif
+
+  Histogram<log_scale_t<uint64_t>>& agency_comm_request_time_ms() { return _agency_comm_request_time_ms; }
 
  protected:
   void startHeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
@@ -153,7 +155,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::uint32_t _minReplicationFactor = 1;     // minimum replication factor (0 = unrestricted)
   std::uint32_t _maxReplicationFactor = 10;    // maximum replication factor (0 = unrestricted)
   std::uint32_t _maxNumberOfShards = 1000;     // maximum number of shards (0 = unrestricted)
-  int _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
+  ErrorCode _syncerShutdownCode = TRI_ERROR_SHUTTING_DOWN;
   bool _createWaitsForSyncReplication = true;
   bool _forceOneShard = false;
   bool _unregisterOnShutdown = false;
@@ -166,10 +168,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
   uint64_t _heartbeatInterval = 0;
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
+  Histogram<log_scale_t<uint64_t>>& _agency_comm_request_time_ms;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
   std::optional<std::reference_wrapper<Counter>> _followersDroppedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersRefusedCounter;
   std::optional<std::reference_wrapper<Counter>> _followersWrongChecksumCounter;
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
 
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;

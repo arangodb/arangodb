@@ -249,7 +249,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
                                      std::move(payload), options, std::move(headers));
   auto cb = [this, serverId, useVst,
              self = shared_from_this()](network::Response&& response) -> Result {
-    int res = network::fuerteToArangoErrorCode(response);
+    auto res = network::fuerteToArangoErrorCode(response);
     if (res != TRI_ERROR_NO_ERROR) {
       generateError(res);
       return Result(res);
@@ -517,7 +517,7 @@ void RestHandler::executeEngine(bool isContinue) {
   _state = HandlerState::FAILED;
 }
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber,
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber,
                                 std::string_view const errorMessage) {
   resetResponse(code);
 
@@ -563,13 +563,13 @@ void RestHandler::compressResponse() {
 /// @brief generates an error
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestHandler::generateError(rest::ResponseCode code, int errorNumber) {
-  char const* message = TRI_errno_string(errorNumber);
+void RestHandler::generateError(rest::ResponseCode code, ErrorCode errorNumber) {
+  auto const message = TRI_errno_string(errorNumber);
 
-  if (message != nullptr) {
-    generateError(code, errorNumber, std::string_view(message));
+  if (message.data() != nullptr) {
+    generateError(code, errorNumber, message);
   } else {
-    generateError(code, errorNumber, std::string_view("unknown error"));
+    generateError(code, errorNumber, "unknown error");
   }
 }
 

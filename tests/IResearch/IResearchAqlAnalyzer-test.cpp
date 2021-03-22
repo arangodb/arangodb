@@ -55,7 +55,7 @@ void assert_analyzer(irs::analysis::analyzer* analyzer, const std::string& data,
   auto* inc = irs::get<irs::increment>(*analyzer);
   ASSERT_TRUE(inc);
   ASSERT_TRUE(analyzer->reset(data));
-  uint32_t pos{irs::integer_traits<uint32_t>::const_max};
+  uint32_t pos{std::numeric_limits<uint32_t>::max()};
   auto expected_token = expected_tokens.begin();
   while (analyzer->next()) {
     auto term_value =
@@ -252,17 +252,34 @@ TEST_F(IResearchAqlAnalyzerTest, test_create_valid) {
     ASSERT_NE(nullptr, ptr);
     assert_analyzer(ptr.get(), "a", {{"", 0}, {"", 0}, {"a", 0}, {"b", 0}});
   }
-
-  // check memoryLimit kills query
+  
+  // check memoryLimit does not kill query
   {
     auto ptr =
         irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
                                       irs::type<irs::text_format::vpack>::get(),
-                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN @param\", \"memoryLimit\":1}")
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(FOR i IN 1..100 RETURN @param)\", \"memoryLimit\":1048576}")
                                                                          ->slice()),
                                       false);
     ASSERT_NE(nullptr, ptr);
-    ASSERT_FALSE(ptr->reset("AAAAAAAAA"));
+    ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
+    ASSERT_TRUE(ptr->next());
+  }
+  
+  
+  // check memoryLimit kills query
+  {
+    // note: setting a memoryLimit value of 1 is effectively a memoryLimit of 64kb,
+    // because the memory usage tracking granularity is 64kb
+    auto ptr =
+        irs::analysis::analyzers::get(AQL_ANALYZER_NAME,
+                                      irs::type<irs::text_format::vpack>::get(),
+                                      arangodb::iresearch::ref<char>(VPackParser::fromJson("{\"queryString\": \"RETURN CONCAT(FOR i IN 1..10000 RETURN NOOPT(@param))\", \"memoryLimit\":1}")
+                                                                         ->slice()),
+                                      false);
+    ASSERT_NE(nullptr, ptr);
+    ASSERT_TRUE(ptr->reset("AAAAAAAAA"));
+    ASSERT_FALSE(ptr->next());
   }
 
 }

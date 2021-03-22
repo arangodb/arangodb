@@ -409,7 +409,6 @@
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
         assertEqual("padded", p.keyOptions.type);
-        assertEqual(process.env['paddedLastValue'], p.keyOptions.lastValue);
         assertFalse(p.keyOptions.allowUserKeys);
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
@@ -443,9 +442,6 @@
           // Backup and restore case:
           doc = c.save({});
           assertTrue(doc._key > lastKey, doc._key + ">" + lastKey);
-
-          // reset the value to before the one expected to be restored:
-          process.env['paddedLastValue'] = process.env['lastPaddedLastValue'];
         }
       },
 
@@ -1174,7 +1170,20 @@
         assertTrue(doc._key.startsWith("cheese:"));
       },
 
-
+      ////////////////////////////////////////////////////////////////////////////////
+      /// @brief test whether hotbackup restore restores the uniqid
+      ////////////////////////////////////////////////////////////////////////////////
+      testLatestId : function() {
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed in the cluster
+          // After the hotbackup was taken, we have consumed 100.000.000
+          // cluster wide unique ids. Here, we check that after the
+          // hotbackup restore the number in /arango/Sync/LatestID
+          // in the agency is lower again.
+          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
+          assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
+        }
+      },
       
     };
   };

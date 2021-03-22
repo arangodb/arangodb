@@ -1,0 +1,13 @@
+name: rocksdb_cache_limit
+help: |
+  rocksdb_cache_limit
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_cache_limit

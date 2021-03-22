@@ -76,6 +76,50 @@ compiler is for C/C++. You can invoke it like this:
 
     bin/arangosh --jslint js/client/modules/@arangodb/testing.js
 
+### Adding metrics
+
+As of 3.8 we have enforced documentation for metrics. This works as
+follows. Every metric which is generated has a name. The metric must be
+declared by using one of the macros
+
+```
+  DECLARE_COUNTER(name, helpstring);
+  DECLARE_GAUGE(name, type, helpstring);
+  DECLARE_HISTOGRAM(name, scaletype, helpstring);
+```
+
+in some `.cpp` file (please put only one on a line). Then, when the
+metric is actually requested in the source code, it gets a template
+added to the metrics feature with the `add` method and its name.
+Labels can be added with the `withLabel` method. In this way, the
+compiler ensures that the metric declaration is actually there if
+the metric is used.
+
+Then there is a helper script `utils/generateAllMetricsDocumentation.py`
+which needs `python3` with the `yaml` module. It will check and do the
+following things:
+
+ - every declared metric in some `.cpp` file in the source has a
+   corresponding documentation snippet in `Documentation/Metrics`
+   under the name of the metric with `.yaml` appended
+ - each such file is a YAML file of a certain format (see template
+   under `Documentation/Metrics/template.yaml`)
+ - many of the componentes are required, so please provide adequate
+   information about your metric
+ - the script also assembles all these YAML documentation snippets
+   into a single file under `Documentation/Metrics/allMetrics.yaml`,
+   the format is again a structured YAML file which can easily be
+   processed by the documentation tools.
+
+Please, if you have added or modified a metric, make sure to declare
+the metric as shown above and add a documentation YAML snippet in the
+correct format. Afterwards, run
+
+    utils/generateAllMetricsDocumentation.py
+
+and include `Documentation/allMetrics.yaml` in your PR.
+
+
 ---
 
 ## Building
@@ -852,9 +896,9 @@ Once this is completed, you may run it like this:
         --cluster true
 
 For possible `javaOptions` see
-[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/next/arangodb-java-driver/dev-README.md)
+[arangodb-java-driver/dev-README.md#test-provided-deployment](https://github.com/arangodb/arangodb-java-driver/blob/master/dev-README.md)
 in the java source, or the
-[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html]
+[surefire documentation](https://maven.apache.org/surefire/maven-surefire-plugin/examples/single-test.html)
 
 #### ArangoJS
 
@@ -931,13 +975,24 @@ Debugging rspec with gdb:
 
     server> ./scripts/unittest http_server --test api-import-spec.rb --server tcp://127.0.0.1:7777
     - or -
-    server> ARANGO_SERVER="127.0.0.1:6666" rspec -Itests/rb/HttpInterface --format d --color tests/rb/HttpInterface/api-import-spec.rb
+    server> ARANGO_SERVER="127.0.0.1:6666" \
+        rspec -Itests/rb/HttpInterface --format d \
+              --color tests/rb/HttpInterface/api-import-spec.rb
 
-    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 --server.authentication false --log.level communication=trace ../arangodb-data-test-mmfiles
+    client> gdb --args ./build/bin/arangod --server.endpoint http+tcp://127.0.0.1:6666 \
+                                           --server.authentication false \
+                                           --log.level communication=trace \
+                                           ../arangodb-data-test
 
 Debugging a storage engine:
 
-    host> rm -fr ../arangodb-data-rocksdb/; gdb --args ./build/bin/arangod --console --server.storage-engine rocksdb --foxx.queues false --server.statistics false --server.endpoint http+tcp://0.0.0.0:7777 ../arangodb-data-rocksdb
+    host> rm -fr ../arangodb-data-rocksdb/; \
+       gdb --args ./build/bin/arangod \
+           --console \
+           --foxx.queues false \
+           --server.statistics false \
+           --server.endpoint http+tcp://0.0.0.0:7777 \
+           ../arangodb-data-rocksdb
     (gdb) catch throw
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
@@ -994,6 +1049,69 @@ Currently available Analyzers are:
   - locateShortServerLife - whether the servers lifetime for the tests isn't at least 10 times as long as startup/shutdown
   - locateLongSetupTeardown - locate tests that may use a lot of time in setup/teardown
   - yaml - dumps the json file as a yaml file
+  - unitTestTabularPrintResults - prints a table, add one (or more) of the following columns to print by adding it to `--tableColumns`:
+    - `duration` - the time spent in the complete testfile
+    - `status` - sucess/fail
+    - `failed` - fail?
+    - `total` - the time spent in the testcase
+    - `totalSetUp` - the time spent in setup summarized
+    - `totalTearDown` - the time spent in teardown summarized
+    - `processStats.sum_servers.minorPageFaults` - Delta run values from `/proc/<pid>/io` summarized over all instances
+    - `processStats.sum_servers.majorPageFaults` - 
+    - `processStats.sum_servers.userTime` - 
+    - `processStats.sum_servers.systemTime` - 
+    - `processStats.sum_servers.numberOfThreads` - 
+    - `processStats.sum_servers.residentSize` - 
+    - `processStats.sum_servers.residentSizePercent` - 
+    - `processStats.sum_servers.virtualSize` - 
+    - `processStats.sum_servers.rchar` - 
+    - `processStats.sum_servers.wchar` - 
+    - `processStats.sum_servers.syscr` - 
+    - `processStats.sum_servers.syscw` - 
+    - `processStats.sum_servers.read_bytes` - 
+    - `processStats.sum_servers.write_bytes` - 
+    - `processStats.sum_servers.cancelled_write_bytes` - 
+    - `processStats.sum_servers.sockstat_sockets_used` - Absolute values from `/proc/<pid>/net/sockstat` summarized over all instances
+    - `processStats.sum_servers.sockstat_TCP_inuse` - 
+    - `processStats.sum_servers.sockstat_TCP_orphan` - 
+    - `processStats.sum_servers.sockstat_TCP_tw` - 
+    - `processStats.sum_servers.sockstat_TCP_alloc` - 
+    - `processStats.sum_servers.sockstat_TCP_mem` - 
+    - `processStats.sum_servers.sockstat_UDP_inuse` - 
+    - `processStats.sum_servers.sockstat_UDP_mem` - 
+    - `processStats.sum_servers.sockstat_UDPLITE_inuse` - 
+    - `processStats.sum_servers.sockstat_RAW_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_inuse` - 
+    - `processStats.sum_servers.sockstat_FRAG_memory` -
+    
+    Process stats are kept by process.
+    So if your DB-Server had the PID `1721882`, you can dial its values by specifying
+    `processStats.1721882_dbserver.sockstat_TCP_tw`
+    into the generated table.
 
+i.e.
 
     ./scripts/examine_results.js -- 'yaml,locateLongRunning' --readFile out/UNITTEST_RESULT.json
+
+or:
+
+    ./scripts/examine_results.js -- 'unitTestTabularPrintResults' \
+       --readFile out/UNITTEST_RESULT.json \
+       --tableColumns 'duration,processStats.sum_servers.sockstat_TCP_orphan,processStats.sum_servers.sockstat_TCP_tw
+
+revalidating one testcase using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep sockstat_TCP_tw
+
+getting the PIDs of the server in the testrun using jq:
+
+    jq '.shell_client."enterprise/tests/js/common/shell/smart-graph-enterprise-cluster.js"' < \
+      out/UNITTEST_RESULT.json |grep '"[0-9]*_[agent|dbserver|coordinator]'
+    "1721674_agent": {
+    "1721675_agent": {
+    "1721676_agent": {
+    "1721882_dbserver": {
+    "1721883_dbserver": {
+    "1721884_dbserver": {
+    "1721885_coordinator": {

@@ -1,0 +1,15 @@
+name: arangodb_process_statistics_user_time
+help: |
+  Process user time
+unit: s
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Amount of time that this process has been scheduled in user mode,
+  measured in seconds.

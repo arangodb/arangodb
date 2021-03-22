@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Containers/SmallVector.h"
 
 #include <memory>
@@ -155,6 +156,8 @@ class ExecutionEngine {
   /// makes it return value directly and not copy it to output register.
   /// Also sets root execution block as engine root
   void setupEngineRoot(ExecutionBlock& planRoot);
+  
+  static void initializeConstValueBlock(ExecutionPlan& plan, AqlItemBlockManager& mgr);
   
   const EngineId _engineId;
   

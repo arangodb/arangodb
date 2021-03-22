@@ -81,7 +81,7 @@ class ClusterCollection final : public PhysicalCollection {
   futures::Future<OperationResult> figures(bool details, OperationOptions const& options) override;
 
   /// @brief closes an open collection
-  int close() override;
+  ErrorCode close() override;
   void load() override;
   void unload() override;
 
@@ -114,9 +114,6 @@ class ClusterCollection final : public PhysicalCollection {
 
   Result truncate(transaction::Methods& trx, OperationOptions& options) override;
   
-  /// @brief compact-data operation
-  Result compact() override;
-
   void deferDropCollection(std::function<bool(LogicalCollection&)> const& callback) override;
 
   Result lookupKey(transaction::Methods* trx, velocypack::StringRef key,

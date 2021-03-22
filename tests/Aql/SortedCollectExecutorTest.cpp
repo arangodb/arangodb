@@ -56,7 +56,8 @@ namespace arangodb::tests::aql {
 class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -138,7 +139,8 @@ TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
 class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
  protected:
   ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -148,7 +150,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
 
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -382,7 +384,8 @@ TEST_F(SortedCollectExecutorTestRowsUpstream, producer_4) {
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
@@ -394,7 +397,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 
   auto readableInputRegisters = RegIdSet{0};
   auto writeableOutputRegisters = RegIdSet{1, 2};
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -471,7 +474,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCount, test) {
 }
 
 TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   mocks::MockAqlServer server{};
@@ -486,7 +490,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
   auto writeableOutputRegisters = RegIdSet{1, 2};
 
-  RegisterId nrOutputRegister = 3;
+  RegisterCount nrOutputRegister = 3;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   aggregateRegisters.emplace_back(std::make_pair<RegisterId, RegisterId>(2, 0));
@@ -582,8 +586,8 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
 
 class SortedCollectExecutorTestSkip : public ::testing::Test {
  protected:
-  // ExecutionState state;
-  arangodb::ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
 
   mocks::MockAqlServer server;
@@ -592,7 +596,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
   RegisterId collectRegister;
 
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;
@@ -924,7 +928,7 @@ class SortedCollectExecutorTestSplit
   std::vector<std::pair<RegisterId, RegisterId>> groupRegisters;
 
   RegisterId collectRegister;
-  RegisterId nrOutputRegister;
+  RegisterCount nrOutputRegister;
 
   std::vector<std::pair<RegisterId, RegisterId>> aggregateRegisters;
   std::vector<std::string> aggregateTypes;

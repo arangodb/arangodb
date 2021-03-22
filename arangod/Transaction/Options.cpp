@@ -46,7 +46,13 @@ Options::Options()
       skipInaccessibleCollections(false),
 #endif
       waitForSync(false),
-      isFollowerTransaction(false) {}
+      isFollowerTransaction(false) {
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
+}
   
 Options Options::replicationDefaults() {
   Options options;
@@ -104,6 +110,11 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
   }
   // we are intentionally *not* reading allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
+  
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // patch intermediateCommitCount for testing
+  adjustIntermediateCommitCount(*this);
+#endif
 }
 
 /// @brief add the options to an opened vpack builder
@@ -123,3 +134,18 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   // this is an internal option only used in replication
   builder.add("isFollowerTransaction", VPackValue(isFollowerTransaction));
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+/// @brief patch intermediateCommitCount for testing
+/*static*/ void Options::adjustIntermediateCommitCount(Options& options) {
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount100") {
+    options.intermediateCommitCount = 100;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount1000") {
+    options.intermediateCommitCount = 1000;
+  }
+  TRI_IF_FAILURE("TransactionState::intermediateCommitCount10000") {
+    options.intermediateCommitCount = 10000;
+  }
+}
+#endif

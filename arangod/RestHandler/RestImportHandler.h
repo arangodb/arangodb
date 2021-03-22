@@ -89,10 +89,11 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// @brief process a single VelocyPack document
   //////////////////////////////////////////////////////////////////////////////
 
-  int handleSingleDocument(SingleCollectionTransaction& trx, VPackBuilder& lineBuilder,
-                           RestImportResult& result, arangodb::velocypack::Builder& babies,
-                           arangodb::velocypack::Slice slice,
-                           bool isEdgeCollection, size_t);
+  ErrorCode handleSingleDocument(SingleCollectionTransaction& trx,
+                                 VPackBuilder& tempBuilder, RestImportResult& result,
+                                 arangodb::velocypack::Builder& babies,
+                                 arangodb::velocypack::Slice slice,
+                                 bool isEdgeCollection, size_t i);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates documents by JSON objects

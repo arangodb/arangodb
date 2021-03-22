@@ -24,6 +24,7 @@
 #include "FileDescriptorsFeature.h"
 
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "Basics/exitcodes.h"
 #include "Basics/application-exit.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -35,6 +36,8 @@
 #include <sys/resource.h>
 #endif
 
+#include <cstdlib>
+#include <cstring>
 #include <string>
 #include <sstream>
 
@@ -47,7 +50,6 @@ namespace arangodb {
 
 struct FileDescriptors {
   static constexpr rlim_t requiredMinimum = 1024;
-  static constexpr rlim_t recommendedMinimum = 65536;
 
   rlim_t hard;
   rlim_t soft;
@@ -59,7 +61,7 @@ struct FileDescriptors {
     if (res != 0) {
       LOG_TOPIC("17d7b", FATAL, arangodb::Logger::SYSCALL)
           << "cannot get the file descriptors limit value: " << strerror(errno);
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
 
     return {rlim.rlim_max, rlim.rlim_cur};
@@ -71,6 +73,26 @@ struct FileDescriptors {
     rlim.rlim_cur = soft;
 
     return setrlimit(RLIMIT_NOFILE, &rlim);
+  }
+
+  static rlim_t recommendedMinimum() {
+    // check if we are running under Valgrind...
+    char const* v = getenv("LD_PRELOAD");
+    if (v != nullptr &&
+        (strstr(v, "/valgrind/") != nullptr || strstr(v, "/vgpreload") != nullptr)) {
+      // valgrind will somehow reset the ulimit values to some very low values.
+      return requiredMinimum;
+    }
+
+#ifdef __APPLE__
+    // some MacOS versions disallow raising file descriptor limits higher than this 🙄
+    return 8192;
+#else
+    // on Linux, we will also use 8192 for now. this should be low enough so that it
+    // doesn't cause too much trouble when upgrading. however, this is not a high 
+    // enough value to operate with larger amounts of data! it is a MINIMUM!
+    return 8192;
+#endif
   }
 
   static bool isUnlimited(rlim_t value) {
@@ -88,7 +110,7 @@ struct FileDescriptors {
 
 FileDescriptorsFeature::FileDescriptorsFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "FileDescriptors"), 
-      _descriptorsMinimum(FileDescriptors::recommendedMinimum) {
+      _descriptorsMinimum(FileDescriptors::recommendedMinimum()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
 }
@@ -135,63 +157,71 @@ void FileDescriptorsFeature::start() {
     s << "file-descriptors (nofiles) soft limit is too low, currently "
       << FileDescriptors::stringify(current.soft) 
       << ". please raise to at least " << required 
-      << " (e.g. ulimit -n " << required << ") or" 
-      << " adjust the value of --servers.descriptors-minimum";
+      << " (e.g. via ulimit -n " << required << ") or" 
+      << " adjust the value of the startup option --servers.descriptors-minimum";
     if (_descriptorsMinimum == 0) {
       LOG_TOPIC("a33ba", WARN, arangodb::Logger::SYSCALL) << s.str();
     } else {
       LOG_TOPIC("8c771", FATAL, arangodb::Logger::SYSCALL) << s.str();
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_RESOURCES_TOO_LOW);
     }
   }
 }
 
 void FileDescriptorsFeature::adjustFileDescriptors() {
-  FileDescriptors current = FileDescriptors::load();
+  auto doAdjust = [](rlim_t recommended) {
+    FileDescriptors current = FileDescriptors::load();
 
-  LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
-      << "file-descriptors (nofiles) hard limit is "
-      << FileDescriptors::stringify(current.hard) 
-      << ", soft limit is "
-      << FileDescriptors::stringify(current.soft);
+    LOG_TOPIC("6762c", DEBUG, arangodb::Logger::SYSCALL)
+        << "file-descriptors (nofiles) hard limit is "
+        << FileDescriptors::stringify(current.hard) 
+        << ", soft limit is "
+        << FileDescriptors::stringify(current.soft);
 
-  rlim_t recommended = std::max<rlim_t>(
+    if (recommended > 0) {
+      if (current.hard < recommended) {
+        LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
+          << "hard limit " << current.hard << " is too small, trying to raise";
+
+        FileDescriptors copy = current;
+        copy.hard = recommended;
+        if (copy.store() == 0) {
+          // value adjusted successfully
+          current.hard = recommended;
+        }
+      } else {
+        TRI_ASSERT(current.hard >= recommended);
+        recommended = current.hard;
+      }
+    
+      if (current.soft < recommended) {
+        LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
+          << "soft limit " << current.soft << " is too small, trying to raise";
+
+        FileDescriptors copy = current;
+        copy.soft = recommended;
+        if (copy.store() != 0) {
+          LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
+            << "cannot raise the file descriptors limit to " << recommended << ": "
+            << strerror(errno);
+        }
+      }
+    }
+  };
+
+  // first try to raise file descriptors to at least the recommended minimum value.
+  // as the recommended minimum value is pretty low, there is a high chance that this
+  // actually succeeds and does not violate any hard limits
+  doAdjust(std::max<rlim_t>(
     static_cast<rlim_t>(_descriptorsMinimum),
-    FileDescriptors::recommendedMinimum
-  );
+    FileDescriptors::recommendedMinimum()
+  ));
 
-  if (recommended > 0) {
-    if (current.hard < recommended) {
-      LOG_TOPIC("0835c", DEBUG, arangodb::Logger::SYSCALL)
-        << "hard limit " << current.hard << " is too small, trying to raise";
-
-      FileDescriptors copy = current;
-      copy.hard = recommended;
-      if (copy.store() == TRI_ERROR_NO_ERROR) {
-        // value adjusted successfully
-        current.hard = recommended;
-      }
-    } else {
-      TRI_ASSERT(current.hard >= recommended);
-      recommended = current.hard;
-    }
-  
-    if (current.soft < recommended) {
-      LOG_TOPIC("2940e", DEBUG, arangodb::Logger::SYSCALL)
-        << "soft limit " << current.soft << " is too small, trying to raise";
-
-      FileDescriptors copy = current;
-      copy.soft = recommended;
-      int res = copy.store();
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("ba733", WARN, arangodb::Logger::SYSCALL)
-          << "cannot raise the file descriptors limit to " << recommended << ": "
-          << strerror(errno);
-      }
-    }
-  }
+  // still, we are not satisfied and will now try to raise the file descriptors limit
+  // even further. if that fails, then it is at least likely that the small raise in
+  // step 1 has worked.
+  doAdjust(65535);
 }
-
 
 }  // namespace arangodb
 

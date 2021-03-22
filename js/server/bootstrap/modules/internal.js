@@ -275,6 +275,20 @@
     exports.enabledStatistics = global.SYS_ENABLED_STATISTICS;
     delete global.SYS_ENABLED_STATISTICS;
   }
+  
+  if (global.SYS_ENABLED_STATISTICS_ALL_DATABASES) {
+    exports.enabledStatisticsInAllDatabases = global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+    delete global.SYS_ENABLED_STATISTICS_ALL_DATABASES;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief whether or not Metrics are enabled
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_ENABLED_METRICS) {
+    exports.enabledMetrics = global.SYS_ENABLED_METRICS;
+    delete global.SYS_ENABLED_METRICS;
+  }
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief clientStatistics

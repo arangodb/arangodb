@@ -14,45 +14,6 @@ target_include_directories(
 )
 
 ################################################################################
-### MurMurHash library
-################################################################################
-
-set(MurMurHash_sources
-  ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.cpp ${CMAKE_CURRENT_SOURCE_DIR}/MurmurHash/MurmurHash3.h
-)
-
-add_library(
-  ${IResearch_TARGET_NAME}-murmurhash
-  OBJECT
-  ${MurMurHash_sources}
-)
-
-set_ipo(${IResearch_TARGET_NAME}-murmurhash)
-
-
-target_compile_features(
-  ${IResearch_TARGET_NAME}-murmurhash
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
-
-if (NOT MSVC)
-  target_compile_options(
-    ${IResearch_TARGET_NAME}-murmurhash
-    PRIVATE "-Wno-all"
-    PRIVATE "-fPIC"
-  )
-endif()
-
-target_include_directories(
-  ${IResearch_TARGET_NAME}-murmurhash
-  SYSTEM
-  PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/murmurhash
-)
-
-################################################################################
 ### OpenFST + Kaldi library
 ################################################################################
 
@@ -85,21 +46,14 @@ add_library(
 
 set_ipo(${IResearch_TARGET_NAME}-ofst)
 
-
 target_compile_definitions(
   ${IResearch_TARGET_NAME}-ofst
   PUBLIC "FST_NO_DYNAMIC_LINKING"
 )
 
-target_compile_features(
-  ${IResearch_TARGET_NAME}-ofst
-  PRIVATE
-  cxx_final
-  cxx_variadic_templates
-)
-
 # disable warnings for 3rd-party libs for a cleaner build
 if (MSVC)
+  add_definitions(-D_SILENCE_ALL_CXX17_DEPRECATION_WARNINGS)
   target_compile_options(
     ${IResearch_TARGET_NAME}-ofst
     # MSVC2015-2017 require "/bigobj" to compile debug build
@@ -176,3 +130,30 @@ target_include_directories(
 ################################################################################
 
 set(FROZEN_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/frozen/include PARENT_SCOPE)
+
+################################################################################
+### absl library
+################################################################################
+
+add_subdirectory(absl)
+
+################################################################################
+### unicorn library
+################################################################################
+
+add_subdirectory(unicorn)
+
+################################################################################
+### velocypack library
+################################################################################
+if (NOT TARGET velocypack)
+  if ("${VPACK_ROOT}" STREQUAL "")
+    set(VPACK_ROOT "$ENV{VPACK_ROOT}")
+  endif()
+
+  if (NOT ("${VPACK_ROOT}" STREQUAL ""))
+    add_subdirectory(${VPACK_ROOT}
+                    ${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/iresearch-velocypack.dir
+                    EXCLUDE_FROM_ALL)
+  endif()
+endif()

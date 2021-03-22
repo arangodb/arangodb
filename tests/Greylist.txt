@@ -56,3 +56,26 @@ or PRs.
 #
 # IResearchLinkTest.test_flush_marker - unreliable on windows under high load
 
+======================================================================
+
+tests/js/client/shell/shell-custom-pregel--timecritical.js 
+
+     - fix community cluster issues in test:  "testVertexDegrees" failed: ArangoError: Edge collection needs to be sharded by shardKeyAttribute parameter ('vertex'), or use SmartGraphs. The current shardKey is: '_key'
+     - check whether the algorithms should double as examples then:
+       - move the directory to common
+       - add a way to aardvark to invoke it similar to the graph examples
+     - split the testuite into one for each target
+     - transparently make each testcase *one* test method that delivers a
+       result
+     - insulate tests that can share setup/teardown as setUpAll/TearDownAll
+       into an own testsuite
+     - fix remaining TODO statements in the testcases
+     - check whether asan/coverage tests will make tests exceed the 15
+       minutes threshhold, if - relax test by datasize for these
+
++let timeout = 60;
++if (global.ARANGODB_CLIENT_VERSION(true).asan  ||
++    global.ARANGODB_CLIENT_VERSION(true).tsan  ||
++    process.env.hasOwnProperty('GCOV_PREFIX')) {
++  timeout *= 10;
++}

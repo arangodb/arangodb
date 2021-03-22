@@ -109,6 +109,13 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
+DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
+DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
+DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
+DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
+DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
+DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
+
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
@@ -128,18 +135,17 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
       _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_creation_time_msec", 0, "Total time for creating V8 contexts [ms]")),
-      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_created", 0, "V8 contexts created")),
-      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_destroyed", 0, "V8 contexts destroyed")),
-      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_entered", 0, "V8 context enter events")),
-      _contextsExited(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_exited", 0, "V8 context exit events")),
-      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_enter_failures", 0, "V8 context enter failures")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
+      _contextsCreated(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
+      _contextsDestroyed(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
+      _contextsEntered(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
+      _contextsExited(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
+      _contextsEnterFailures(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -444,7 +450,7 @@ void V8DealerFeature::start() {
         std::string systemErrorStr;
         long errorNo;
 
-        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)
@@ -581,14 +587,16 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8) << "Copying JS installation files from '"
-                                 << _startupDirectory << "' to '" << copyJSPath << "'";
-    int res = TRI_ERROR_NO_ERROR;
+    LOG_TOPIC("dd1c0", DEBUG, Logger::V8)
+        << "Copying JS installation files from '" << _startupDirectory
+        << "' to '" << copyJSPath << "'";
+    auto res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("1a20d", FATAL, Logger::V8) << "Error cleaning JS installation path '"
-                                     << copyJSPath << "': " << TRI_errno_string(res);
+        LOG_TOPIC("1a20d", FATAL, Logger::V8)
+            << "Error cleaning JS installation path '" << copyJSPath
+            << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }

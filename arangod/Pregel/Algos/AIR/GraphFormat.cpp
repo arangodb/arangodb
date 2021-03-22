@@ -176,7 +176,8 @@ greenspun::EvalResult GraphFormat::buildVertexDocumentWithResult(
       VPackBuilder tmpBuilder;
       auto res = Evaluate(m, _dataAccess.writeVertex->slice(), tmpBuilder);
       if (res.fail()) {
-        THROW_ARANGO_EXCEPTION(res);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_AIR_EXECUTION_ERROR,
+                                       res.error().toString());
       }
 
       if (tmpBuilder.slice().isObject()) {

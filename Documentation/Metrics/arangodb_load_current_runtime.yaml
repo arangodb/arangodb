@@ -1,0 +1,12 @@
+name: arangodb_load_current_runtime
+help: |
+  `Current` loading runtimes.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: medium
+exposedBy:
+  - coordinator
+  - dbserver
+description: |
+  Histogram of `Current` loading runtimes.

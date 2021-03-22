@@ -388,14 +388,14 @@ bool ImportHelper::importJson(std::string const& collectionName,
   // progress display control variables
   double nextProgress = ProgressStep;
 
-  static int const BUFFER_SIZE = 32768;
+  constexpr int BUFFER_SIZE = 1048576;
   _rowOffset = 0;
   _rowsRead = 0;
 
   while (!_hasError) {
     // reserve enough room to read more data
     if (_outputBuffer.reserve(BUFFER_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
-      _errorMessages.push_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+      _errorMessages.emplace_back(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
 
       return false;
     }
@@ -431,12 +431,14 @@ bool ImportHelper::importJson(std::string const& collectionName,
 
     reportProgress(totalLength, fd->offset(), nextProgress);
 
-    if (_outputBuffer.length() > _maxUploadSize) {
+    uint64_t maxUploadSize = getMaxUploadSize();
+
+    if (_outputBuffer.length() > maxUploadSize) {
       if (isObject) {
         _errorMessages.push_back(
             "import file is too big. please increase the value of --batch-size "
             "(currently " +
-            StringUtils::itoa(_maxUploadSize) + ")");
+            StringUtils::itoa(maxUploadSize) + ")");
         return false;
       }
 
@@ -714,7 +716,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
     ++_stats._numberErrors;
   }
 
-  if (_outputBuffer.length() > _maxUploadSize) {
+  if (_outputBuffer.length() > getMaxUploadSize()) {
     sendCsvBuffer();
     _outputBuffer.appendText(_firstLine);
   }
@@ -909,7 +911,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   if (t != nullptr) {
     _tempBuffer.reset();
     _tempBuffer.appendText(str, len);
-    t->sendData(url, &_tempBuffer, _rowOffset +1, _rowsRead);
+    t->sendData(url, &_tempBuffer, _rowOffset + 1, _rowsRead);
     addPeriodByteCount(len + url.length());
   }
 }
@@ -919,7 +921,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 SenderThread* ImportHelper::findIdleSender() {
   if (_autoUploadSize) {
     _autoTuneThread->paceSends();
-  }  // if
+  } 
 
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {

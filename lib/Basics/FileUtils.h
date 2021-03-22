@@ -71,12 +71,13 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync = 
 void spit(std::string const& filename, std::string const& content, bool sync = false);
 void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
 
-// returns true if a file could be removed
-bool remove(std::string const& fileName, int* errorNumber = nullptr);
+// if a file could be removed returns TRI_ERROR_NO_ERROR.
+// otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
+[[nodiscard]] ErrorCode remove(std::string const& fileName);
 
 // creates a new directory
-bool createDirectory(std::string const& name, int* errorNumber = nullptr);
-bool createDirectory(std::string const& name, int mask, int* errorNumber = nullptr);
+bool createDirectory(std::string const& name, ErrorCode* errorNumber = nullptr);
+bool createDirectory(std::string const& name, int mask, ErrorCode* errorNumber = nullptr);
 
 /// @brief copies directories / files recursive
 /// will not copy files/directories for which the filter function

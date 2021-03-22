@@ -32,7 +32,6 @@ TEST(StoreTest, store_preconditions) {
   using namespace arangodb::consensus;
 
   Node node("node");
-  Node::Children& children = node.children();
   VPackBuilder foo, baz, pi;
   foo.add(VPackValue("bar"));
   baz.add(VPackValue(13));
@@ -44,12 +43,12 @@ TEST(StoreTest, store_preconditions) {
   *bazNode = baz.slice();
   *piNode = pi.slice();
 
-  children.insert(std::make_pair("foo", fooNode));
-  children.insert(std::make_pair("baz", bazNode));
-  children.insert(std::make_pair("pi", piNode));
-  children.insert(std::make_pair("foo1", fooNode));
-  children.insert(std::make_pair("baz1", bazNode));
-  children.insert(std::make_pair("pi1", piNode));
+  node.addChild("foo", fooNode);
+  node.addChild("baz", bazNode);
+  node.addChild("pi", piNode);
+  node.addChild("foo1", fooNode);
+  node.addChild("baz1", bazNode);
+  node.addChild("pi1", piNode);
 
   VPackOptions opts;
   opts.buildUnindexedObjects = true;

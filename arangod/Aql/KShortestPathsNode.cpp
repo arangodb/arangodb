@@ -36,12 +36,12 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/KPathFinder.h"
 #include "Graph/KShortestPathsFinder.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
@@ -265,7 +265,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode c
 }
 
 void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inStartVariable == nullptr);
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
@@ -341,14 +340,17 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    if (opts->refactor()) {
-      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to be
-      // changed in the future) create BaseProviderOptions
-      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes());
-      BaseProviderOptions backwardProviderOptions(opts->tmpVar(), buildReverseUsedIndexes());
+    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
+                                                                 opts->maxDepth};
 
-      arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
-                                                                   opts->maxDepth};
+    if (!ServerState::instance()->isCoordinator()) {
+      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
+      // be changed in the future) create BaseProviderOptions
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(),
+                                                 opts->collectionToShard());
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
+                                                  buildReverseUsedIndexes(),
+                                                  opts->collectionToShard());
 
       if (opts->query().queryOptions().getTraversalProfileLevel() ==
           TraversalProfileLevel::None) {
@@ -368,8 +370,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
         return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       } else {
+        // TODO: implement better initialization with less duplicate code
         using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
-        // TODO: below copy paste from above. clean this up later.
         auto kPathUnique = std::make_unique<TracedKPathRefactored>(
             ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
                                                  opts->query().resourceMonitor()},
@@ -385,13 +387,45 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
             &engine, this, std::move(registerInfos), std::move(executorInfos));
       }
     } else {
-      auto finder = std::make_unique<graph::KPathFinder>(*opts);
-      auto executorInfos =
-          KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
-                                      std::move(finder), std::move(sourceInput),
-                                      std::move(targetInput));
-      return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
-          &engine, this, std::move(registerInfos), std::move(executorInfos));
+      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false);
+      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true);
+
+      if (opts->query().queryOptions().getTraversalProfileLevel() ==
+          TraversalProfileLevel::None) {
+        using KPathRefactoredCluster = KPathEnumerator<ClusterProvider>;
+
+        auto kPathUnique = std::make_unique<KPathRefactoredCluster>(
+            ClusterProvider{opts->query(), forwardProviderOptions,
+                            opts->query().resourceMonitor()},
+            ClusterProvider{opts->query(), backwardProviderOptions,
+                            opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      } else {
+        using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
+
+        auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
+            ProviderTracer<ClusterProvider>{opts->query(), forwardProviderOptions,
+                                            opts->query().resourceMonitor()},
+            ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
+                                            opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredClusterTracer>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      }
     }
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
@@ -445,47 +479,45 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes() const {
   std::vector<IndexAccessor> indexAccessors{};
 
-  if (_options->refactor()) {
-    size_t numEdgeColls = _edgeColls.size();
-    bool onlyEdgeIndexes = true;
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = true;
 
-    for (size_t i = 0; i < numEdgeColls; ++i) {
-      auto dir = _directions[i];
-      switch (dir) {
-        case TRI_EDGE_IN: {
-          std::shared_ptr<Index> indexToUse{nullptr};
-          aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(
-              *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
-              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-          if (!res) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "expected edge index not found");
-          }
-
-          indexAccessors.emplace_back(indexToUse,
-                                      _toCondition->clone(options()->query().ast()), 0);
-          break;
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
         }
-        case TRI_EDGE_OUT: {
-          std::shared_ptr<Index> indexToUse{nullptr};
-          aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(
-              *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
-              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-          if (!res) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "expected edge index not found");
-          }
 
-          indexAccessors.emplace_back(indexToUse,
-                                      _fromCondition->clone(options()->query().ast()), 0);
-          break;
-        }
-        case TRI_EDGE_ANY:
-          TRI_ASSERT(false);
-          break;
+        indexAccessors.emplace_back(indexToUse,
+                                    _toCondition->clone(options()->query().ast()), 0);
+        break;
       }
+      case TRI_EDGE_OUT: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _fromCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
     }
   }
   return indexAccessors;
@@ -494,51 +526,45 @@ std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes
 std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsedIndexes() const {
   std::vector<IndexAccessor> indexAccessors{};
 
-  if (_options->refactor()) {
-    // TODO: remove / cleanup later
-    // Compute Indexes for KPathFinder Refactored Version
-    // NOTE this is hardcoded for edge indexes for now.
-    // We need to use bestIndexHandle here!
-    size_t numEdgeColls = _edgeColls.size();
-    bool onlyEdgeIndexes = true;
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = true;
 
-    for (size_t i = 0; i < numEdgeColls; ++i) {
-      auto dir = _directions[i];
-      switch (dir) {
-        case TRI_EDGE_IN: {
-          std::shared_ptr<Index> indexToUse{nullptr};
-          aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(
-              *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
-              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-          if (!res) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "expected edge index not found");
-          }
-
-          indexAccessors.emplace_back(indexToUse,
-                                      _fromCondition->clone(options()->query().ast()), 0);
-          break;
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
         }
-        case TRI_EDGE_OUT: {
-          std::shared_ptr<Index> indexToUse{nullptr};
-          aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
-          bool res = aql::utils::getBestIndexHandleForFilterCondition(
-              *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
-              aql::IndexHint(), indexToUse, onlyEdgeIndexes);
-          if (!res) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "expected edge index not found");
-          }
 
-          indexAccessors.emplace_back(indexToUse,
-                                      _toCondition->clone(options()->query().ast()), 0);
-          break;
-        }
-        case TRI_EDGE_ANY:
-          TRI_ASSERT(false);
-          break;
+        indexAccessors.emplace_back(indexToUse,
+                                    _fromCondition->clone(options()->query().ast()), 0);
+        break;
       }
+      case TRI_EDGE_OUT: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _toCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
     }
   }
   return indexAccessors;
@@ -580,7 +606,9 @@ void KShortestPathsNode::prepareOptions() {
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
   if (ServerState::instance()->isCoordinator()) {
-    _options->activateCache(false, engines());
+    if (!opts->refactor()) {
+      _options->activateCache(false, engines());
+    }
   } else {
     _options->activateCache(false, nullptr);
   }

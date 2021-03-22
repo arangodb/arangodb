@@ -363,7 +363,7 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout, bool 
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
                     std::string(" - ") + pErr;
 
-    TRI_set_errno(errno);
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
   return false;
@@ -381,8 +381,8 @@ bool GeneralClientConnection::checkSocket() {
 
   int res = TRI_getsockopt(_socket, SOL_SOCKET, SO_ERROR, (void*)&so_error, &len);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(errno);
+  if (res != 0) {
+    TRI_set_errno(TRI_ERROR_SYS_ERROR);
     disconnect();
     return false;
   }
@@ -391,7 +391,8 @@ bool GeneralClientConnection::checkSocket() {
     return true;
   }
 
-  TRI_set_errno(so_error);
+  errno = so_error;
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
   disconnect();
 
   return false;

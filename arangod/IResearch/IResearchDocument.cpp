@@ -37,7 +37,6 @@
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 
@@ -519,8 +518,8 @@ setAnalyzers:
       _nameBuffer.resize(level.nameLength);
 
       // check if we're in object scope
-      if (auto const parent = _stack.end() - 2;
-          parent >= _stack.begin() && parent->it.value().value.isObject()) {
+      if (auto const parent = _stack.data() + _stack.size() - 2;
+          parent >= _stack.data() && parent->it.value().value.isObject()) {
         _nameBuffer += NESTING_LEVEL_DELIMITER;
       }
 

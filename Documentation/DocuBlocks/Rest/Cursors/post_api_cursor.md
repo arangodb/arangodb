@@ -217,8 +217,7 @@ the server error number
 a descriptive error message<br>
 If the query specification is complete, the server will process the query. If an
 error occurs during query processing, the server will respond with *HTTP 400*.
-Again, the body of the response will contain details about the error.<br>
-A [list of query errors can be found here](../../Manual/Appendix/ErrorCodes.html).
+Again, the body of the response will contain details about the error.
 
 @RESTRETURNCODE{404}
 The server will respond with *HTTP 404* in case a non-existing collection is

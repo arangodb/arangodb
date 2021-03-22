@@ -52,7 +52,7 @@ class ClusterQuery final : public arangodb::aql::Query {
                            arangodb::velocypack::Builder& answer,
                            arangodb::QueryAnalyzerRevisions const& analyzersRevision);
   
-  arangodb::futures::Future<Result> finalizeClusterQuery(int errorCode);
+  arangodb::futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
   /// @brief first one should be the local one

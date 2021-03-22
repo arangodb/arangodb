@@ -206,6 +206,33 @@ static void JS_EnabledStatistics(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_EnabledStatisticsAllDatabases(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<StatisticsFeature>().isEnabled();
+  bool allDatabases = v8g->_server.getFeature<StatisticsFeature>().allDatabases();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled && allDatabases);
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not server-side metrics are enabled
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_EnabledMetrics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  bool enabled = v8g->_server.getFeature<MetricsFeature>().exportAPI();
+  v8::Handle<v8::Value> result = v8::Boolean::New(isolate, enabled);
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the current request and connection statistics
 ////////////////////////////////////////////////////////////////////////////////
@@ -312,6 +339,14 @@ void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context> context)
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_ENABLED_STATISTICS"),
                                JS_EnabledStatistics);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_ENABLED_STATISTICS_ALL_DATABASES"),
+                               JS_EnabledStatisticsAllDatabases);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate,
+                                                   "SYS_ENABLED_METRICS"),
+                               JS_EnabledMetrics);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
                                                    "SYS_CLIENT_STATISTICS"),

@@ -57,12 +57,14 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
-   
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
+                                      ErrorCode code, char const* details) {
   std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg.c_str());
 }
@@ -1122,6 +1124,14 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+    return createNodeValueNull();
+  }
+
+  if (value == -0.0) {
+    // unify -0.0 and +0.0 
+    value = 0.0;
+  }
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
@@ -1682,8 +1692,6 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// @brief injects bind parameters into the AST
 void Ast::injectBindParameters(BindParameters& parameters,
                                arangodb::CollectionNameResolver const& resolver) {
-  auto& p = parameters.get();
-
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -1696,17 +1704,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
-        auto const& it = p.find(param);
-
-        if (it == p.end()) {
+        VPackSlice value = parameters.markUsed(param);
+        if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
-
-        // mark the bind parameter as being used
-        (*it).second.second = true;
-
-        auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
@@ -1881,12 +1883,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
     }
   }
 
-  for (auto it = p.begin(); it != p.end(); ++it) {
-    if (!(*it).second.second) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    (*it).first.c_str());
+  // visit all bind parameters to ensure that they are all marked as used
+  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
+    if (!used) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
     }
-  }
+  });
 }
 
 /// @brief replace an attribute access with just the variable
@@ -2998,30 +3000,33 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
     return const_cast<AstNode*>(converted);
-  } else {
-    // - number
-    if (converted->value.type == VALUE_TYPE_INT) {
-      // int64
-      return createNodeValueInt(-converted->getIntValue());
-    } else {
-      // double
-      double const value = -converted->getDoubleValue();
-
-      if (value != value ||  // intentional
-          value == HUGE_VAL || value == -HUGE_VAL) {
-        // IEEE754 NaN values have an interesting property that we can
-        // exploit...
-        // if the architecture does not use IEEE754 values then this shouldn't
-        // do
-        // any harm either
-        return const_cast<AstNode*>(&_specialNodes.ZeroNode);
-      }
-
-      return createNodeValueDouble(value);
-    }
+  }
+  
+  // - number
+  if (converted->value.type == VALUE_TYPE_INT) {
+    // int64
+    return createNodeValueInt(-converted->getIntValue());
   }
 
-  TRI_ASSERT(false);
+  // double
+  double value = -converted->getDoubleValue();
+
+  if (value != value ||  // intentional
+      value == HUGE_VAL || value == -HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can
+    // exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't
+    // do
+    // any harm either
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
+  }
+
+  if (value == -0.0) {
+    // unify +0.0 and -0.0
+    value = 0.0;
+  }
+
+  return createNodeValueDouble(value);
 }
 
 /// @brief optimizes the unary operator NOT
@@ -3572,7 +3577,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
   }
 
   // constant propagation
-  if (variable->constValue() == nullptr) {
+  if (variable->getConstAstNode() == nullptr) {
     return node;
   }
 
@@ -3583,7 +3588,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
     return node;
   }
 
-  return static_cast<AstNode*>(variable->constValue());
+  return variable->getConstAstNode();
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
@@ -3636,7 +3641,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
     // e.g.
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
     // 2 LET c = 4
-    v->constValue(static_cast<void*>(expression));
+    v->setConstAstNode(expression);
   }
 
   return node;
@@ -3685,10 +3690,10 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-            std::string(" as operand to FOR loop; you specified type '") +
-            expression->getValueTypeString() + std::string("' with content '") +
-            expression->toString() + std::string("'"));
+        StringUtils::concatT("collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                             " as operand to FOR loop; you specified type '",
+                             expression->getValueTypeString(),
+                             "' with content '", expression->toString(), "'"));
   }
 
   // no real optimizations will be done here

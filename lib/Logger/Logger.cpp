@@ -39,6 +39,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
+#include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
@@ -78,6 +79,37 @@ class DefaultLogGroup final : public LogGroup {
 DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
+  
+LogMessage::LogMessage(char const* function, char const* file, int line,
+                       LogLevel level, size_t topicId, std::string&& message, 
+                       uint32_t offset, bool shrunk) noexcept
+    : _function(function),
+      _file(file),
+      _line(line),
+      _level(level),
+      _topicId(topicId),
+      _message(std::move(message)),
+      _offset(offset),
+      _shrunk(shrunk) {}
+  
+void LogMessage::shrink(std::size_t maxLength) {
+  // no need to shrink an already shrunk message
+  if (!_shrunk && _message.size() > maxLength) {
+    _message.resize(maxLength);
+
+    // normally, offset should be around 20 to 30 bytes,
+    // whereas the minimum for maxLength should be around 256 bytes.
+    TRI_ASSERT(maxLength > _offset);
+    if (_offset > _message.size()) {
+      // we need to make sure that the offset is not outside of the message
+      // after shrinking
+      _offset = static_cast<uint32_t>(_message.size());
+    }
+    _message.append("...", 3);
+    _shrunk = true;
+  }
+}
+
 
 Mutex Logger::_initializeMutex;
 
@@ -100,7 +132,8 @@ bool Logger::_showRole(false);
 bool Logger::_useJson(false);
 char Logger::_role('\0');
 TRI_pid_t Logger::_cachedPid(0);
-std::string Logger::_outputPrefix("");
+std::string Logger::_outputPrefix;
+std::string Logger::_hostname;
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
 
@@ -179,6 +212,20 @@ void Logger::setOutputPrefix(std::string const& prefix) {
   }
 
   _outputPrefix = prefix;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setHostname(std::string const& hostname) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL, "cannot change settings once logging is active");
+  }
+
+  if (hostname == "auto") {
+    _hostname = utilities::hostname();
+  } else {
+    _hostname = hostname;
+  }
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -360,7 +407,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
   std::string out;
   out.reserve(256 + message.size());
 
-  size_t offset = 0;
+  uint32_t offset = 0;
+  bool shrunk = false;
 
   if (Logger::_useJson) {
     // construct JSON output
@@ -397,7 +445,7 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // tid
     if (_showThreadIdentifier) {
       out.append(",\"tid\":");
-      StringUtils::itoa(uint64_t(Thread::currentThreadNumber), out);
+      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
     }
 
     // thread name
@@ -466,14 +514,48 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
       dumper.appendString(logid, strlen(logid));
     }
 
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(",\"hostname\":");
+      dumper.appendString(_hostname.data(), _hostname.size());
+    }
+
     // the message itself
     {
       out.append(",\"message\":");
-      dumper.appendString(message.c_str(), message.size());
+  
+      // the log message can be really large, and it can lead to 
+      // truncation of the log message further down the road.
+      // however, as we are supposed to produce valid JSON log
+      // entries even with the truncation in place, we need to make
+      // sure that the dynamic text part is truncated and not the
+      // entries JSON thing
+      size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
+      // cut of prologue, the quotes ('"' --- ' '") and the final '}'
+      if (maxMessageLength >= out.size() + 3) {
+        maxMessageLength -= out.size() + 3;
+      }
+      if (maxMessageLength > message.size()) {
+        maxMessageLength = message.size();
+      }
+      dumper.appendString(message.c_str(), maxMessageLength);
+  
+      // this tells the logger to not shrink our (potentially already
+      // shrunk) message once more - if it would shrink the message again,
+      // it may produce invalid JSON
+      shrunk = true;
     }
 
     out.push_back('}');
+
+    TRI_ASSERT(offset == 0);
   } else {
+    // hostname
+    if (!_hostname.empty()) {
+      out.append(_hostname);
+      out.push_back(' ');
+    }
+
     // human readable format
     LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
     out.push_back(' ');
@@ -548,7 +630,8 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     // the offset is used by the in-memory logger, and it cuts off everything from the start
     // of the concatenated log string until the offset. only what's after the offset gets
     // displayed in the web UI
-    offset = out.size();
+    TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
+    offset = static_cast<uint32_t>(out.size());
 
     if (::arangodb::Logger::getShowIds()) {
       out.push_back('[');
@@ -566,7 +649,9 @@ void Logger::log(char const* logid, char const* function, char const* file, int 
     out.append(message);
   }
 
-  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset);
+  TRI_ASSERT(offset == 0 || !_useJson);
+
+  auto msg = std::make_unique<LogMessage>(function, file, line, level, topicId, std::move(out), offset, shrunk);
 
   append(defaultLogGroup(), msg, false, [level, topicId](std::unique_ptr<LogMessage>& msg) -> void {
     LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1),
@@ -581,7 +666,10 @@ void Logger::append(LogGroup& group,
                     std::unique_ptr<LogMessage>& msg,
                     bool forceDirect,
                     std::function<void(std::unique_ptr<LogMessage>&)> const& inactive) {
-  msg->shrink(group.maxLogEntryLength());
+  // check if we need to shrink the message here
+  if (!msg->shrunk()) {
+    msg->shrink(group.maxLogEntryLength());
+  }
 
   // first log to all "global" appenders, which are the in-memory ring buffer logger plus
   // some Windows-specifc appenders for the debug output window and the Windows event log.

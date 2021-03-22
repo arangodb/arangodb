@@ -678,6 +678,17 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out, AstNode const* ex
 
   // generate a temporary calculation node
   auto expr = std::make_unique<Expression>(_ast, node);
+
+  if (node->isConstant()) {
+    AqlFunctionsInternalCache cache;
+    FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(), _ast->query(), cache);
+    // We need to create a new AqlValue that copies the data here, otherwise
+    // the data might be owned by the expression which might be destroyed too
+    // soon, leaving us with an AqlValue with a dangling pointer!
+    bool mustDestroy;  // can be ignored here; the variable takes ownership of the value.
+    out->setConstantValue(AqlValue(expr->execute(&exprContext, mustDestroy).slice()));
+  }
+
   CalculationNode* en = new CalculationNode(this, nextId(), std::move(expr), out);
 
   registerNode(reinterpret_cast<ExecutionNode*>(en));
@@ -1285,9 +1296,9 @@ ExecutionNode* ExecutionPlan::fromNodeKShortestPaths(ExecutionNode* previous,
   AstNode const* target = parseTraversalVertexNode(previous, node->getMember(3));
   AstNode const* graph = node->getMember(4);
 
-  // Refactored variant shall be default on SingleServer on KPaths
-  bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths &&
-                           ServerState::instance()->isSingleServer();
+  // Refactored variant shall be default on SingleServer and Cluster on KPaths
+  // After the whole refactoring is done, this can be removed.
+  bool defaultToRefactor = type == arangodb::graph::ShortestPathType::Type::KPaths;
 
   auto options = createShortestPathOptions(getAst(), direction, node->getMember(5), defaultToRefactor);
 

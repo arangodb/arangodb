@@ -1,0 +1,13 @@
+name: arangodb_network_request_duration_as_percentage_of_timeout
+help: |
+  Internal request round-trip time as a percentage of timeout.
+unit: percentage
+type: gauge
+category: Network
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Internal request round-trip time as a percentage of timeout.

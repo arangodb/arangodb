@@ -71,7 +71,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   PhysicalCollectionMock(arangodb::LogicalCollection& collection,
                          arangodb::velocypack::Slice const& info);
   virtual PhysicalCollection* clone(arangodb::LogicalCollection& collection) const override;
-  virtual int close() override;
+  virtual ErrorCode close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(arangodb::velocypack::Slice const& info,
                                                        bool restore, bool& created) override;
   virtual void deferDropCollection(std::function<bool(arangodb::LogicalCollection&)> const& callback) override;
@@ -117,7 +117,7 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::RevisionId revision(arangodb::transaction::Methods* trx) const override;
   virtual arangodb::Result truncate(arangodb::transaction::Methods& trx,
                                     arangodb::OperationOptions& options) override;
-  virtual arangodb::Result compact() override;
+  virtual void compact() override {}
   virtual arangodb::Result update(arangodb::transaction::Methods* trx,
                                   arangodb::velocypack::Slice newSlice,
                                   arangodb::ManagedDocumentResult& result,
@@ -196,7 +196,7 @@ class StorageEngineMock : public arangodb::StorageEngine {
                                       arangodb::LogicalView const& view, bool doSync) override;
   virtual void createCollection(TRI_vocbase_t& vocbase, arangodb::LogicalCollection const& collection) override;
   virtual std::unique_ptr<TRI_vocbase_t> createDatabase(arangodb::CreateDatabaseInfo&&,
-                                                        int& status) override;
+                                                        ErrorCode& status) override;
   virtual arangodb::Result createLoggerState(TRI_vocbase_t*, VPackBuilder&) override;
   virtual std::unique_ptr<arangodb::PhysicalCollection> createPhysicalCollection(
       arangodb::LogicalCollection& collection, arangodb::velocypack::Slice const& info) override;
@@ -226,15 +226,14 @@ class StorageEngineMock : public arangodb::StorageEngine {
   virtual void getCollectionInfo(TRI_vocbase_t& vocbase, arangodb::DataSourceId cid,
                                  arangodb::velocypack::Builder& result,
                                  bool includeIndexes, TRI_voc_tick_t maxTick) override;
-  virtual int getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+  virtual ErrorCode getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
                                        arangodb::velocypack::Builder& result,
                                        bool wasCleanShutdown, bool isUpgrade) override;
   virtual void getDatabases(arangodb::velocypack::Builder& result) override;
   virtual void cleanupReplicationContexts() override;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                                           int& result) override;
-  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int& result) override;
-  virtual int getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t& vocbase, ErrorCode& result) override;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(ErrorCode& result) override;
+  virtual ErrorCode getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) override;
   virtual arangodb::Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                           arangodb::LogicalCollection& col,
                                           std::string const& keysId) override;
@@ -251,15 +250,15 @@ class StorageEngineMock : public arangodb::StorageEngine {
   using StorageEngine::registerView;
   virtual TRI_voc_tick_t releasedTick() const override;
   virtual void releaseTick(TRI_voc_tick_t) override;
-  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
-  virtual int removeReplicationApplierConfiguration() override;
+  virtual ErrorCode removeReplicationApplierConfiguration(TRI_vocbase_t& vocbase) override;
+  virtual ErrorCode removeReplicationApplierConfiguration() override;
   virtual arangodb::Result renameCollection(TRI_vocbase_t& vocbase,
                                             arangodb::LogicalCollection const& collection,
                                             std::string const& oldName) override;
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
+  virtual ErrorCode saveReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
                                                   arangodb::velocypack::Slice slice,
                                                   bool doSync) override;
-  virtual int saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
+  virtual ErrorCode saveReplicationApplierConfiguration(arangodb::velocypack::Slice, bool) override;
   virtual std::string versionFilename(TRI_voc_tick_t) const override;
   virtual void waitForEstimatorSync(std::chrono::milliseconds maxWaitTime) override;
   virtual arangodb::WalAccess const* walAccess() const override;

@@ -73,7 +73,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -84,7 +84,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
     application_features::ApplicationServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {

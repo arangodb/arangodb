@@ -60,7 +60,13 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _registeredTransaction(false) {}
+      _registeredTransaction(false) {
+
+  // patch intermediateCommitCount for testing
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  transaction::Options::adjustIntermediateCommitCount(_options);
+#endif
+}
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
@@ -125,7 +131,7 @@ TransactionState::Cookie::ptr TransactionState::cookie(void const* key,
 /// @brief add a collection to a transaction
 Result TransactionState::addCollection(DataSourceId cid, std::string const& cname,
                                        AccessMode::Type accessType, bool lockUsage) {
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(ARANGODB_ENABLE_FAILURE_TESTS)
   TRI_IF_FAILURE(("WaitOnLock::" + cname).c_str()) {
     auto& raceController = basics::DebugRaceController::sharedInstance();
     if (!raceController.didTrigger()) {

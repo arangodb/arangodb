@@ -181,12 +181,7 @@ namespace iresearch {
 namespace analysis {
 
 text_token_stemming_stream::text_token_stemming_stream(const std::locale& locale)
-  : attributes{{
-      { irs::type<increment>::id(), &inc_       },
-      { irs::type<offset>::id(), &offset_       },
-      { irs::type<payload>::id(), &payload_     },
-      { irs::type<term_attribute>::id(), &term_ }},
-      irs::type<text_token_stemming_stream>::get()},
+  : analyzer{irs::type<text_token_stemming_stream>::get()},
     locale_(locale),
     term_eof_(true) {
 }
@@ -222,7 +217,9 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     );
   }
 
-  term_.value = irs::bytes_ref::NIL; // reset
+  auto& term = std::get<term_attribute>(attrs_);
+
+  term.value = irs::bytes_ref::NIL; // reset
   term_buf_.clear();
   term_eof_ = true;
 
@@ -243,20 +240,22 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
     term_buf_ref = term_buf_;
   }
 
-  offset_.start = 0;
-  offset_.end = data.size();
-  payload_.value = ref_cast<uint8_t>(data);
+  auto& offset = std::get<irs::offset>(attrs_);
+  offset.start = 0;
+  offset.end = static_cast<uint32_t>(data.size());
+
+  std::get<payload>(attrs_).value = ref_cast<uint8_t>(data);
   term_eof_ = false;
 
   // ...........................................................................
   // find the token stem
   // ...........................................................................
   if (stemmer_) {
-    if (term_buf_ref.size() > irs::integer_traits<int>::const_max) {
+    if (term_buf_ref.size() > std::numeric_limits<int>::max()) {
       IR_FRMT_WARN(
         "Token size greater than the supported maximum size '%d', truncating token: %s",
-        irs::integer_traits<int>::const_max, data.c_str());
-      term_buf_ref = {term_buf_ref, irs::integer_traits<int>::const_max };
+        std::numeric_limits<int>::max(), data.c_str());
+      term_buf_ref = {term_buf_ref, std::numeric_limits<int>::max() };
     }
 
     static_assert(sizeof(sb_symbol) == sizeof(char), "sizeof(sb_symbol) != sizeof(char)");
@@ -266,7 +265,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
 
     if (value) {
       static_assert(sizeof(irs::byte_type) == sizeof(sb_symbol), "sizeof(irs::byte_type) != sizeof(sb_symbol)");
-      term_.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
+      term.value = irs::bytes_ref(reinterpret_cast<const irs::byte_type*>(value),
                                    sb_stemmer_length(stemmer_.get()));
 
       return true;
@@ -277,7 +276,7 @@ bool text_token_stemming_stream::reset(const irs::string_ref& data) {
   // use the value of the unstemmed token
   // ...........................................................................
   static_assert(sizeof(irs::byte_type) == sizeof(char), "sizeof(irs::byte_type) != sizeof(char)");
-  term_.value = irs::ref_cast<irs::byte_type>(term_buf_);
+  term.value = irs::ref_cast<irs::byte_type>(term_buf_);
 
   return true;
 }

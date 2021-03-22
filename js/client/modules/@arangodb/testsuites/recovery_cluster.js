@@ -170,7 +170,7 @@ function runArangodRecovery (params) {
     params.args = args;
       
   } else {
-    additionalTestParams['javascript.script-parameter'] = 'recory';
+    additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
 
   if (params.setup) {

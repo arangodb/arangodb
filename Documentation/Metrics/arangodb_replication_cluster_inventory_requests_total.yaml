@@ -1,0 +1,11 @@
+name: arangodb_replication_cluster_inventory_requests_total
+help: |
+  Number of cluster replication inventory requests received.
+unit: number
+type: counter
+category: Replication
+complexity: medium
+exposedBy:
+  - coordinator
+description: |
+  Number of cluster replication inventory requests received.
