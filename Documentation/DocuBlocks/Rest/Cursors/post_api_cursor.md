@@ -23,10 +23,13 @@ not set, a server-controlled default value will be used. A *batchSize* value of
 *0* is disallowed.
 
 @RESTBODYPARAM{ttl,integer,optional,int64}
-The time-to-live for the cursor (in seconds). The cursor will be
-removed on the server automatically after the specified amount of time. This
-is useful to ensure garbage collection of cursors that are not fully fetched
-by clients. If not set, a server-defined value will be used (default: 30 seconds).
+The time-to-live for the cursor (in seconds). If the result set is small enough
+(less than or equal to `batchSize`) then results are returned right away.
+Otherwise they are stored in memory and will be accessible via the cursor with
+respect to the `ttl`. The cursor will be removed on the server automatically
+after the specified amount of time. This is useful to ensure garbage collection
+of cursors that are not fully fetched by clients. If not set, a server-defined
+value will be used (default: 30 seconds).
 
 @RESTBODYPARAM{cache,boolean,optional,}
 flag to determine whether the AQL query results cache
@@ -81,33 +84,32 @@ executed as long as necessary to produce up to `batchSize` results. These
 results are returned immediately and the query is suspended until the client
 asks for the next batch (if there are more results). Depending on the query
 this can mean that the first results will be available much faster and that
-the server only needs to store a part of the result in memory at any one time.
-On the other hand, the query will hold resources until it ends (such as RocksDB
-snapshots, which prevents compaction to some degree). Writes will be in memory
-until the query is committed. If existing documents are modified, then write
-locks are held on these documents and other queries trying to modify the same
-documents will fail because of this conflict. A streaming query may fail late
-because of a conflict or for other reasons after some batches were already
-returned successfully, possibly rendering the results up to that point
-meaningless.<br>
-Note that the query options `cache`, `count` and `fullCount` are
-not supported for streaming queries. Query statistics, profiling
-data and warnings are delivered as part of the last batch.<br>
+less memory is needed because the server only needs to store a subset of
+results at a time. Read-only queries can benefit the most, unless `SORT`
+without index or `COLLECT` are involved that make it necessary to process all
+documents before a partial result can be returned. It is advisable to only use
+this option for queries without exclusive locks.
+
+Remarks:
+- The query will hold resources until it ends (such as RocksDB snapshots, which
+  prevents compaction to some degree). Writes will be in memory until the query
+  is committed.
+- If existing documents are modified, then write locks are held on these
+  documents and other queries trying to modify the same documents will fail
+  because of this conflict.
+- A streaming query may fail late because of a conflict or for other reasons
+  after some batches were already returned successfully, possibly rendering the
+  results up to that point meaningless.
+- The query options `cache`, `count` and `fullCount` are not supported for
+  streaming queries.
+- Query statistics, profiling data and warnings are delivered as part of the
+  last batch.
+
 If the `stream` option is *false* (default), then the complete result of the
 query is calculated before any of it is returned to the client. The server
 stores the full result in memory (on the contacted Coordinator if in a cluster).
 All other resources are freed immediately (locks, RocksDB snapshots). The query
 will fail before it returns results in case of a conflict.
-
-
-
-If the result set is small enough then results are returned
-right away, but otherwise they are stored in memory on the arangod instance and will
-be accessible via the cursor API (with respect to the `ttl`).
-
-It is advisable to only use this option for queries without exclusive locks.
-
-true: suspends execution of query whenever a batch of results is ready and delivers that. Faster first response for some queries, but not if SORTing everything. Read-only queries benefit unless they gather everything in memory anyways due to SORT or COLLECT. 
 
 @RESTSTRUCT{optimizer,post_api_cursor_opts,object,optional,post_api_cursor_opts_optimizer}
 Options related to the query optimizer.
