@@ -311,11 +311,6 @@ Result ClusterCollection::truncate(transaction::Methods& /*trx*/, OperationOptio
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief compact-data operation
-Result ClusterCollection::compact() {
-  return {};
-}
-
 Result ClusterCollection::lookupKey(transaction::Methods* /*trx*/, VPackStringRef /*key*/,
                                     std::pair<LocalDocumentId, TRI_voc_rid_t>& /*result*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
