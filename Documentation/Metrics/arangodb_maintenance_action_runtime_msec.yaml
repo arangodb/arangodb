@@ -1,0 +1,11 @@
+name: arangodb_maintenance_action_runtime_msec
+help: |
+  Time spent executing a maintenance action.
+unit: ms
+type: histogram
+category: Maintenance
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Histogram of time spent execution maintenance actions.

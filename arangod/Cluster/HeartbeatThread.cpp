@@ -188,6 +188,12 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
+struct HeartbeatScale {
+  static log_scale_t<uint64_t> scale() { return {2, 4, 8000, 10}; }
+};
+DECLARE_COUNTER(arangodb_heartbeat_failures_total, "Counting failed heartbeat transmissions");
+DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale, "Time required to send heartbeat [ms]");
+
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
@@ -215,12 +221,10 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _updateCounter(0),
       _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
-      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
-          "Time required to send heartbeat [ms]")),
-      _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
-          StaticStrings::HeartbeatFailureCounter, 0,
-          "Counting failed heartbeat transmissions")) {}
+      _heartbeat_send_time_ms(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
+      _heartbeat_failure_counter(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread

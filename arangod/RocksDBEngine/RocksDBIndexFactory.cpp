@@ -258,6 +258,10 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
       normalized.add("objectId",
                      arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
+    if (isCreation) { 
+      bool est = basics::VelocyPackHelper::getBooleanValue(definition, StaticStrings::IndexEstimates, true);
+      normalized.add(StaticStrings::IndexEstimates, arangodb::velocypack::Value(est));
+    }
 
     return IndexFactory::enhanceJsonIndexGeneric(definition, normalized, isCreation);
   }
@@ -326,6 +330,8 @@ struct TtlIndexFactory : public DefaultIndexFactory {
       normalized.add("objectId",
                      arangodb::velocypack::Value(std::to_string(TRI_NewTickServer())));
     }
+    // a TTL index never uses index estimates
+    normalized.add(StaticStrings::IndexEstimates, arangodb::velocypack::Value(false));
 
     return IndexFactory::enhanceJsonIndexTtl(definition, normalized, isCreation);
   }

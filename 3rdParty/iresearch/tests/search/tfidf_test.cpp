@@ -207,7 +207,7 @@ TEST_P(tfidf_test, test_phrase) {
 
     class string_field : public templates::string_field {
      public:
-      string_field(const irs::string_ref& name, const irs::string_ref& value)
+      string_field(const std::string& name, const irs::string_ref& value)
         : templates::string_field(name, value) {
       }
 
@@ -226,7 +226,7 @@ TEST_P(tfidf_test, test_phrase) {
 
       // not analyzed field
       doc.insert(std::make_shared<string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }

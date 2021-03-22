@@ -1,0 +1,14 @@
+name: arangodb_http_request_statistics_async_requests_total
+help: |
+  Number of asynchronously executed HTTP requests
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of asynchronously executed HTTP requests.

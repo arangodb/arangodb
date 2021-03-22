@@ -1,0 +1,13 @@
+name: arangodb_aql_all_query_total
+help: |
+  Total number of AQL queries finished.
+unit: number
+type: counter
+category: AQL
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+description: |
+  Total number of AQL queries finished.

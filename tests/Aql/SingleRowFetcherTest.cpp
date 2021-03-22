@@ -36,6 +36,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 
@@ -59,7 +60,8 @@ namespace aql {
 
 class SingleRowFetcherTestPassBlocks : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =
@@ -116,7 +118,8 @@ class SingleRowFetcherTestPassBlocks : public ::testing::Test {
 
 class SingleRowFetcherTestDoNotPassBlocks : public ::testing::Test {
  protected:
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   ExecutionState state;
   static constexpr ::arangodb::aql::BlockPassthrough passBlocksThrough =

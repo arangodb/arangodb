@@ -1,0 +1,11 @@
+name: arangodb_intermediate_commits_total
+help: |
+  Number of intermediate commits performed in transactions.
+unit: number
+type: counter
+category: Statistics
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  Number of intermediate commits performed in transactions.

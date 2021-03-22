@@ -26,7 +26,6 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_COLUMN_FAMILY_MANAGER_H 1
 
 #include "RocksDBEngine/RocksDBCommon.h"
-
 #include <rocksdb/db.h>
 
 namespace arangodb {

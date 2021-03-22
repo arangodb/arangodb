@@ -1369,7 +1369,7 @@ Result IResearchLink::initDataStore(
       if (name.null()) {
         return { primarySortCompression(), {}, encrypt };
       }
-      auto compress = comprMap.find(name);
+      auto compress = comprMap.find(static_cast<std::string>(name)); // FIXME: remove cast after C++20
       if (compress != comprMap.end()) {
         // do not waste resources to encrypt primary key column
         return { compress->second(), {}, encrypt && (DocumentPrimaryKey::PK() != name) };

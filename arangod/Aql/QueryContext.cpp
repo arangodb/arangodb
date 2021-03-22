@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -51,7 +52,8 @@ using namespace arangodb::aql;
 
 /// @brief creates a query
 QueryContext::QueryContext(TRI_vocbase_t& vocbase)
-    : _resourceMonitor(),
+    : _resourceMonitor(GlobalResourceMonitor::instance()),
+      _baseOverHeadTracker(_resourceMonitor, baseMemoryUsage),
       _queryId(TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),

@@ -124,7 +124,7 @@ class Index {
     
     static FilterCosts zeroCosts();
 
-    static FilterCosts defaultCosts(size_t itemsInIndex);
+    static FilterCosts defaultCosts(size_t itemsInIndex, size_t numLookups = 1);
   };
   
   /// @brief: helper struct returned by index methods that determine the costs
@@ -141,7 +141,7 @@ class Index {
     
     static SortCosts zeroCosts(size_t coveredAttributes);
     
-    static SortCosts defaultCosts(size_t itemsInIndex, bool isPersistent);
+    static SortCosts defaultCosts(size_t itemsInIndex);
   };
 
  public:
@@ -291,10 +291,6 @@ class Index {
   static bool Compare(StorageEngine&, velocypack::Slice const& lhs,
                       velocypack::Slice const& rhs,
                       std::string const& dbname);
-
-  /// @brief whether or not the index is persistent (storage on durable media)
-  /// or not (RAM only)
-  virtual bool isPersistent() const = 0;
 
   virtual bool canBeDropped() const = 0;
 

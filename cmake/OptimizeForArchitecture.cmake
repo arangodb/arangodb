@@ -177,7 +177,9 @@ macro(AutodetectHostArchitecture)
          endif(_cpu_model GREATER 2)
       endif(_cpu_family EQUAL 6)
    elseif(_vendor_id STREQUAL "AuthenticAMD")
-      if(_cpu_family EQUAL 23)
+      if(_cpu_family EQUAL 25)
+         set(TARGET_ARCHITECTURE "zen3")
+      elseif(_cpu_family EQUAL 23)
          set(TARGET_ARCHITECTURE "zen")
       elseif(_cpu_family EQUAL 22) # 16h
          set(TARGET_ARCHITECTURE "AMD 16h")
@@ -210,7 +212,7 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
 \"haswell\", \"broadwell\", \"skylake\", \"skylake-xeon\", \"kaby-lake\", \"cannonlake\", \"silvermont\", \
 \"goldmont\", \"knl\" (Knights Landing), \"atom\", \"k8\", \"k8-sse3\", \"barcelona\", \
 \"istanbul\", \"magny-cours\", \"bulldozer\", \"interlagos\", \"piledriver\", \
-\"AMD 14h\", \"AMD 16h\", \"zen\".")
+\"AMD 14h\", \"AMD 16h\", \"zen\", \"zen3\".")
    set(_force)
    if(NOT _last_target_arch STREQUAL "${TARGET_ARCHITECTURE}")
       message(STATUS "target changed from \"${_last_target_arch}\" to \"${TARGET_ARCHITECTURE}\"")
@@ -355,6 +357,9 @@ Other supported values are: \"none\", \"generic\", \"core\", \"merom\" (65nm Cor
       list(APPEND _march_flag_list "znver1")
       _skylake()
       list(APPEND _available_vector_units_list "sse4a")
+   elseif(TARGET_ARCHITECTURE STREQUAL "zen3")
+      list(APPEND _march_flag_list "znver3")
+      list(APPEND _available_vector_units_list "bmi" "bmi2" "fma" "avx" "avx2" "sse" "sse2" "sse3" "sse4a" "ssse3" "sse4.1" "sse4.2")
    elseif(TARGET_ARCHITECTURE STREQUAL "piledriver")
       list(APPEND _march_flag_list "bdver2")
       list(APPEND _march_flag_list "bdver1")

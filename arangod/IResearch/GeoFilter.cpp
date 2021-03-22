@@ -352,7 +352,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
 
   std::pair<GeoStates, irs::bstring> res(
     std::piecewise_construct,
-    std::forward_as_tuple(index.size()),
+    std::forward_as_tuple(index),
     std::forward_as_tuple(order.stats_size(), 0));
 
   auto const size = sortedTerms.size();

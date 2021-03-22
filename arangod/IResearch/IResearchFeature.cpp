@@ -592,7 +592,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       return true;
     }
 
-    std::string upperName = name;
+    auto upperName = static_cast<std::string>(name);
 
     // AQL function external names are always in upper case
     std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);

@@ -59,6 +59,7 @@ endif ()
 set(ARANGODB_TESTS_COMMON_SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/IResearchLinkMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/LogLevels.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/PreparedResponseConnectionPool.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/StorageEngineMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Servers.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Basics/icu-helper.cpp
@@ -176,6 +177,7 @@ set(ARANGODB_TESTS_SOURCES
   Basics/FixedSizeAllocatorTest.cpp
   Basics/InifileParserTest.cpp
   Basics/LoggerTest.cpp
+  Basics/MemoryUsageTest.cpp
   Basics/NumberUtilsTest.cpp
   Basics/ParametersTest.cpp
   Basics/RandomTest.cpp
@@ -222,14 +224,14 @@ set(ARANGODB_TESTS_SOURCES
   Graph/GraphMockProviderInstances.cpp
   Graph/GraphTestTools.cpp
   Graph/KPathFinderTest.cpp
-  Graph/KPathFinderTest_Refactored.cpp
   Graph/KShortestPathsFinder.cpp
-  Greenspun/PrimitivesTest.cpp
+  Graph/MockGraph.cpp
   Graph/MockGraphProvider.cpp
   Graph/PathStoreTest.cpp
   Graph/PathValidatorTest.cpp
   Graph/QueueTest.cpp
   Graph/SingleServerProviderTest.cpp
+  Greenspun/PrimitivesTest.cpp
   HotBackup/HotBackupCoordinatorTest.cpp
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   Maintenance/MaintenanceFeatureTest.cpp
@@ -248,6 +250,7 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestDocumentHandler-test.cpp
   RestHandler/RestUsersHandler-test.cpp
   RestHandler/RestViewHandler-test.cpp
+  RestHandler/VstResponse-test.cpp
   RestServer/FlushFeature-test.cpp
   RocksDBEngine/Endian.cpp
   RocksDBEngine/KeyTest.cpp

@@ -84,8 +84,7 @@ posting& term::add(irs::doc_id_t id) {
 bool term::operator<( const term& rhs ) const {
   return irs::memcmp_less(
     value.c_str(), value.size(),
-    rhs.value.c_str(), rhs.value.size()
-  );
+    rhs.value.c_str(), rhs.value.size());
 }
 
 field::field(
@@ -448,7 +447,7 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
     pos_(*this, features) {
   next_ = data_.postings.begin();
 
-  cost_.value(data_.postings.size());
+  cost_.reset(data_.postings.size());
   attrs_[irs::type<irs::cost>::id()] = &cost_;
 
   attrs_[irs::type<irs::document>::id()] = &doc_;
@@ -464,6 +463,14 @@ doc_iterator::doc_iterator(const irs::flags& features, const tests::term& data)
 }
 
 class term_iterator final : public irs::seek_term_iterator {
+ private:
+  struct term_cookie : seek_cookie {
+    explicit term_cookie(irs::bytes_ref term) noexcept
+      : term(term) { }
+
+    irs::bytes_ref term;
+  };
+
  public:
   explicit term_iterator(const tests::field& data) noexcept
     : data_(data) {
@@ -517,7 +524,7 @@ class term_iterator final : public irs::seek_term_iterator {
     if (it->value == value) {
       prev_ = it;
       next_ = ++it;
-    value_ = prev_->value;
+      value_ = prev_->value;
       return irs::SeekResult::FOUND;
     }
 
@@ -532,13 +539,14 @@ class term_iterator final : public irs::seek_term_iterator {
   }
 
   virtual bool seek(
-      const irs::bytes_ref& term,
+      const irs::bytes_ref& /*term*/,
       const irs::seek_term_iterator::seek_cookie& cookie) override {
-    return false;
+    auto& state = dynamic_cast<const term_cookie&>(cookie);
+    return seek(state.term);
   }
 
   virtual irs::seek_term_iterator::seek_cookie::ptr cookie() const override {
-    return nullptr;
+    return irs::memory::make_unique<term_cookie>(value_);
   }
 
  private:
@@ -556,9 +564,36 @@ irs::seek_term_iterator::ptr term_reader::iterator(irs::automaton_table_matcher&
   return irs::memory::make_managed<irs::automaton_term_iterator>(matcher.GetFst(), iterator());
 }
 
+size_t term_reader::bit_union(
+    const cookie_provider& provider,
+    size_t* bitset) const {
+  constexpr auto BITS{irs::bits_required<uint64_t>()};
+
+  auto term = this->iterator();
+  const auto& no_features = irs::flags::empty_instance();
+
+  size_t count{0};
+  while (auto* cookie = provider()) {
+    term->seek(irs::bytes_ref::NIL, *cookie);
+
+    auto docs = term->postings(no_features);
+
+    if (docs) {
+      auto* doc = irs::get<irs::document>(*docs);
+
+      while (docs->next()) {
+        const irs::doc_id_t value = doc->value;
+        irs::set_bit(bitset[value / BITS], value % BITS);
+        ++count;
+      }
+    }
+  }
+
+  return count;
+}
+
 field_reader::field_reader(const index_segment& data)
   : data_(data) {
-
   readers_.reserve(data.fields().size());
 
   for (const auto& pair : data_.fields()) {
@@ -571,8 +606,9 @@ field_reader::field_reader(field_reader&& other) noexcept
 }
 
 void field_reader::prepare(
-    const irs::directory& dir, const irs::segment_meta& meta, const irs::document_mask& mask
-) {
+    const irs::directory&,
+    const irs::segment_meta&,
+    const irs::document_mask&) {
 }
 
 irs::field_iterator::ptr field_reader::iterator() const {
@@ -640,7 +676,7 @@ irs::document_mask_writer::ptr format::get_document_mask_writer() const {
   return irs::memory::make_managed<tests::document_mask_writer>(data_);
 }
 
-irs::field_writer::ptr format::get_field_writer(bool volatile_attributes) const {
+irs::field_writer::ptr format::get_field_writer(bool /*volatile_attributes*/) const {
   return irs::memory::make_unique<tests::field_writer>(data_);
 }
 
