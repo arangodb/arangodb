@@ -240,6 +240,9 @@ add_library(arango
   ${ADDITIONAL_LIB_ARANGO_SOURCES}
 )
 
+# Make sure the libraries ${V8_LIBS} are actually built before arango
+add_dependencies(arango v8_build)
+
 target_link_libraries(arango
   s2
   boost_system
