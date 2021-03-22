@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -191,12 +191,12 @@ Index::FilterCosts Index::FilterCosts::zeroCosts() {
   return costs;
 }
     
-Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex) {
+Index::FilterCosts Index::FilterCosts::defaultCosts(size_t itemsInIndex, size_t numLookups) {
   Index::FilterCosts costs;
   costs.supportsCondition = false;
   costs.coveredAttributes = 0;
-  costs.estimatedItems = itemsInIndex;
-  costs.estimatedCosts = static_cast<double>(itemsInIndex);
+  costs.estimatedItems = itemsInIndex * numLookups;
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems);
   return costs;
 }
 
@@ -208,16 +208,13 @@ Index::SortCosts Index::SortCosts::zeroCosts(size_t coveredAttributes) {
   return costs;
 }
     
-Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex, bool isPersistent) {
+Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
   Index::SortCosts costs;
   TRI_ASSERT(!costs.supportsCondition);
   costs.coveredAttributes = 0;
-  costs.estimatedCosts = itemsInIndex > 0 ? (itemsInIndex * std::log2(static_cast<double>(itemsInIndex))) : 0.0;
-  if (isPersistent) {
-    // slightly penalize this type of index against other indexes which
-    // are in memory
-    costs.estimatedCosts *= 1.05;
-  }
+  costs.estimatedCosts = 
+      100.0 + /*for sort setup*/
+      1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) * std::log2(static_cast<double>(itemsInIndex))) : 0.0);
   return costs;
 }
 
@@ -681,7 +678,7 @@ Index::SortCosts Index::supportsSortCondition(arangodb::aql::SortCondition const
                                               arangodb::aql::Variable const* /* node */, 
                                               size_t itemsInIndex) const {
   // by default no sort conditions are supported
-  return Index::SortCosts::defaultCosts(itemsInIndex, this->isPersistent());
+  return Index::SortCosts::defaultCosts(itemsInIndex);
 }
   
 arangodb::aql::AstNode* Index::specializeCondition(arangodb::aql::AstNode* /* node */,
@@ -1015,7 +1012,11 @@ void Index::warmup(arangodb::transaction::Methods*, std::shared_ptr<basics::Loca
 
 /// @brief generate error message
 /// @param key the conflicting key
-Result& Index::addErrorMsg(Result& r, std::string const& key) {
+Result& Index::addErrorMsg(Result& r, std::string const& key) const {
+  return r.withError([this, &key](result::Error& err) { addErrorMsg(err, key); });
+}
+
+void Index::addErrorMsg(result::Error& r, std::string const& key) const {
   // now provide more context based on index
   r.appendErrorMessage(" - in index ");
   r.appendErrorMessage(name());
@@ -1040,7 +1041,6 @@ Result& Index::addErrorMsg(Result& r, std::string const& key) {
     r.appendErrorMessage("; conflicting key: ");
     r.appendErrorMessage(key);
   }
-  return r;
 }
 
 double Index::getTimestamp(arangodb::velocypack::Slice const& doc,

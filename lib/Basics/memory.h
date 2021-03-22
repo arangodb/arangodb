@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,8 +32,5 @@ void* TRI_Reallocate(void*, size_t);
 
 /// @brief basic memory management for deallocate
 void TRI_Free(void*);
-
-/// @brief securely zero memory
-void TRI_ZeroMemory(void* m, size_t size);
 
 #endif

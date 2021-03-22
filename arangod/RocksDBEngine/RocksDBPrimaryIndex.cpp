@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,6 +33,7 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -293,7 +294,8 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
         _cmp(index->comparator()),
         _mustSeek(true),
         _bounds(std::move(bounds)) {
-    TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
+    TRI_ASSERT(index->columnFamily() ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
     RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
     rocksdb::ReadOptions options = mthds->iteratorReadOptions();
@@ -458,13 +460,15 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(arangodb::LogicalCollection& collection
           IndexId::primary(), collection, StaticStrings::IndexNamePrimary,
           std::vector<std::vector<arangodb::basics::AttributeName>>(
               {{arangodb::basics::AttributeName(StaticStrings::KeyString, false)}}),
-          true, false, RocksDBColumnFamily::primary(),
+          true, false,
+          RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
           static_cast<RocksDBCollection*>(collection.getPhysical())->cacheEnabled()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
                       {AttributeName(StaticStrings::IdString, false)}}),
       _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
-  TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
+  TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
+                        RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
 }
 
@@ -526,23 +530,15 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   if (useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
-
     // write entry back to cache
-    auto entry =
-        cache::CachedValue::construct(key->string().data(),
-                                      static_cast<uint32_t>(key->string().size()),
-                                      val.data(), static_cast<uint64_t>(val.size()));
-    if (entry) {
-      Result status = _cache->insert(entry);
-      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
-        // the writeLock uses cpu_relax internally, so we can try yield
-        std::this_thread::yield();
-        status = _cache->insert(entry);
-      }
-      if (status.fail()) {
-        delete entry;
-      }
-    }
+    std::size_t attempts = 0;
+    cache::Cache::Inserter inserter(*_cache, key->string().data(),
+                                    static_cast<uint32_t>(key->string().size()),
+                                    val.data(), static_cast<uint64_t>(val.size()),
+                                    [&attempts](Result const& res) -> bool {
+                                      return res.is(TRI_ERROR_LOCK_TIMEOUT) &&
+                                             ++attempts < 2;
+                                    });
   }
 
   return RocksDBValue::documentId(val);
@@ -582,37 +578,80 @@ bool RocksDBPrimaryIndex::lookupRevision(transaction::Methods* trx,
   return true;
 }
 
-Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mthd,
-                                   LocalDocumentId const& documentId,
-                                   velocypack::Slice const slice,
-                                   OperationOptions& options) {
+Result RocksDBPrimaryIndex::probeKey(transaction::Methods& trx, 
+                                     RocksDBMethods* mthd,
+                                     RocksDBKeyLeaser const& key,
+                                     arangodb::velocypack::Slice keySlice,
+                                     OperationOptions const& options, 
+                                     bool lock) {
   IndexOperationMode mode = options.indexOperationMode;
-  VPackSlice keySlice;
-  RevisionId revision;
-  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
-
-  TRI_ASSERT(keySlice.isString());
-  RocksDBKeyLeaser key(&trx);
-  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
-
+  
   transaction::StringLeaser leased(&trx);
   rocksdb::PinnableSlice ps(leased.get());
   Result res;
-  if (!options.ignoreUniqueConstraints) {
-    rocksdb::Status s = mthd->GetForUpdate(_cf, key->string(), &ps);
+  rocksdb::Status s;
+  if (lock) {
+    s = mthd->GetForUpdate(_cf, key->string(), &ps);
+  } else {
+    s = mthd->Get(_cf, key->string(), &ps);
+  }
 
-    if (s.ok()) {  // detected conflicting primary key
-      if (mode == IndexOperationMode::internal) {
-        return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
-      }
-      res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
-      return addErrorMsg(res, keySlice.copyString());
-    } else if (!s.IsNotFound()) {
-      // IsBusy(), IsTimedOut() etc... this indicates a conflict
-      return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+  if (s.ok()) {  // detected conflicting primary key
+    if (mode == IndexOperationMode::internal) {
+    // in this error mode, we return the conflicting document's key
+    // inside the error message string (and nothing else)!
+      return res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, keySlice.copyString());
     }
+    // build a proper error message
+    res.reset(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
+    return addErrorMsg(res, keySlice.copyString());
+  } else if (!s.IsNotFound()) {
+    // IsBusy(), IsTimedOut() etc... this indicates a conflict
+    return addErrorMsg(res.reset(rocksutils::convertStatus(s)));
+  }
 
-    ps.Reset();  // clear used memory
+  ps.Reset();  // clear used memory
+
+  return res;
+}
+
+Result RocksDBPrimaryIndex::checkInsert(transaction::Methods& trx, 
+                                        RocksDBMethods* mthd,
+                                        LocalDocumentId const& documentId,
+                                        velocypack::Slice slice,
+                                        OperationOptions const& options) {
+  VPackSlice keySlice;
+  RevisionId revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  TRI_ASSERT(keySlice.isString());
+
+  RocksDBKeyLeaser key(&trx);
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+
+  return probeKey(trx, mthd, key, keySlice, options, /*lock*/ false);
+}
+
+Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, 
+                                   RocksDBMethods* mthd,
+                                   LocalDocumentId const& documentId,
+                                   velocypack::Slice slice,
+                                   OperationOptions const& options) {
+  VPackSlice keySlice;
+  RevisionId revision;
+  transaction::helpers::extractKeyAndRevFromDocument(slice, keySlice, revision);
+  TRI_ASSERT(keySlice.isString());
+  
+  RocksDBKeyLeaser key(&trx);
+  key->constructPrimaryIndexValue(objectId(), arangodb::velocypack::StringRef(keySlice));
+  
+  Result res;
+
+  if (!options.checkUniqueConstraintsInPreflight) {
+    res = probeKey(trx, mthd, key, keySlice, options, /*lock*/ true);
+
+    if (res.fail()) {
+      return res;
+    }
   }
 
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
@@ -632,10 +671,10 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& oldDocumentId,
-                                   velocypack::Slice const oldDoc,
+                                   velocypack::Slice oldDoc,
                                    LocalDocumentId const& newDocumentId,
-                                   velocypack::Slice const newDoc,
-                                   OperationOptions& options) {
+                                   velocypack::Slice newDoc,
+                                   OperationOptions const& /*options*/) {
   Result res;
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice.binaryEquals(oldDoc.get(StaticStrings::KeyString)));
@@ -659,7 +698,7 @@ Result RocksDBPrimaryIndex::update(transaction::Methods& trx, RocksDBMethods* mt
 
 Result RocksDBPrimaryIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
                                    LocalDocumentId const& documentId,
-                                   velocypack::Slice const slice) {
+                                   velocypack::Slice slice) {
   Result res;
 
   // TODO: deal with matching revisions?

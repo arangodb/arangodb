@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,9 +34,10 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEngine.h"
+#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -320,7 +321,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   appliedSeq = maxCommitSeq;
 
   RocksDBKey key;
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  rocksdb::ColumnFamilyHandle* const cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   RocksDBCollection* const rcoll = static_cast<RocksDBCollection*>(coll.getPhysical());
 
   // Step 1. store the document count
@@ -373,7 +375,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   auto indexes = coll.getIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
-    RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+    RocksDBCuckooIndexEstimatorType* est = idx->estimator();
     if (est == nullptr) {  // does not have an estimator
       LOG_TOPIC("ab329", TRACE, Logger::ENGINES)
           << "[" << this << "] index '" << idx->objectId()
@@ -387,7 +389,8 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
           << idx->objectId() << "'";
       output.clear();
 
-      est->serialize(output, maxCommitSeq);
+      auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::COMPRESSED;
+      est->serialize(output, maxCommitSeq, format);
       TRI_ASSERT(output.size() > sizeof(uint64_t));
 
       LOG_TOPIC("6b761", TRACE, Logger::ENGINES)
@@ -480,7 +483,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
   rocksdb::SequenceNumber globalSeq = engine.settingsManager()->earliestSeqNeeded();
 
   // Step 1. load the counter
-  auto cf = RocksDBColumnFamily::definitions();
+  auto cf = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
 
@@ -555,10 +558,10 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     }
 
     arangodb::velocypack::StringRef estimateInput(value.data(), value.size());
-    if (RocksDBCuckooIndexEstimator<uint64_t>::isFormatSupported(estimateInput)) {
+    if (RocksDBCuckooIndexEstimatorType::isFormatSupported(estimateInput)) {
       TRI_ASSERT(rocksutils::uint64FromPersistent(value.data()) <= db->GetLatestSequenceNumber());
 
-      auto est = std::make_unique<RocksDBCuckooIndexEstimator<uint64_t>>(estimateInput);
+      auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(estimateInput);
       LOG_TOPIC("63f3b", DEBUG, Logger::ENGINES)
           << "[" << this << "] found index estimator for objectId '"
           << idx->objectId() << "' committed seqNr '" << est->appliedSeq()
@@ -585,9 +588,11 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
     } else if (s.IsNotFound()) {
       // no tree, check if collection is non-empty
       auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
-      auto cmp = RocksDBColumnFamily::documents()->GetComparator();
+      auto cmp = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                     ->GetComparator();
       std::unique_ptr<rocksdb::Iterator> it{
-          db->NewIterator(ro, RocksDBColumnFamily::documents())};
+          db->NewIterator(ro, RocksDBColumnFamilyManager::get(
+                                  RocksDBColumnFamilyManager::Family::Documents))};
       it->Seek(bounds.start());
       if (it->Valid() && cmp->Compare(it->key(), bounds.end()) < 0) {
         LOG_TOPIC("ecdbc", WARN, Logger::ENGINES)
@@ -619,7 +624,8 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db, LogicalCollection& coll
             << "unsupported revision tree format in collection "
             << "with id '" << coll.id().id() << "', rebuilding";
         std::unique_ptr<rocksdb::Iterator> it{
-            db->NewIterator(ro, RocksDBColumnFamily::documents())};
+            db->NewIterator(ro, RocksDBColumnFamilyManager::get(
+                                    RocksDBColumnFamilyManager::Family::Documents))};
         rcoll->rebuildRevisionTree(it);
       }
     }
@@ -644,7 +650,7 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 /// @brief load collection
 /*static*/ RocksDBMetadata::DocCount RocksDBMetadata::loadCollectionCount(
     rocksdb::DB* db, uint64_t objectId) {
-  auto cf = RocksDBColumnFamily::definitions();
+  auto cf = RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::ReadOptions ro;
   ro.fill_cache = false;
 
@@ -668,7 +674,8 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 /// @brief remove collection metadata
 /*static*/ Result RocksDBMetadata::deleteCollectionMeta(rocksdb::DB* db,
                                                               uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  rocksdb::ColumnFamilyHandle* const cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::WriteOptions wo;
 
   // Step 1. delete the document count
@@ -706,7 +713,8 @@ void RocksDBMetadata::loadInitialNumberDocuments() {
 
 /// @brief remove collection index estimate
 /*static*/ Result RocksDBMetadata::deleteIndexEstimate(rocksdb::DB* db, uint64_t objectId) {
-  rocksdb::ColumnFamilyHandle* const cf = RocksDBColumnFamily::definitions();
+  rocksdb::ColumnFamilyHandle* const cf =
+      RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions);
   rocksdb::WriteOptions wo;
 
   RocksDBKey key;

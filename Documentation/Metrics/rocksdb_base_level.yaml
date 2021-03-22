@@ -1,0 +1,13 @@
+name: rocksdb_base_level
+help: |
+  rocksdb_base_level
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_base_level

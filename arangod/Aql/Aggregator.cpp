@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,6 +25,7 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlValueMaterializer.h"
+#include "Aql/Functions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -51,8 +52,9 @@ constexpr bool internalOnly = false;
 
 /// @brief struct containing aggregator meta information
 struct AggregatorInfo {
-  /// @brief function to generate a new aggregator instance in a query
-  std::function<std::unique_ptr<Aggregator>(velocypack::Options const* opts)> generator;
+  /// @brief factory to create a new aggregator instance in a query
+  /// Note: this is a shared_ptr because a unique_ptr cannot be initialized via initializer list
+  std::shared_ptr<Aggregator::Factory> factory;
 
   /// @brief whether or not the aggregator needs input
   /// note: currently this is false only for LENGTH/COUNT, for which the input
@@ -228,8 +230,8 @@ struct AggregatorSum final : public Aggregator {
   }
 
   void reduce(AqlValue const& cmpValue) override {
-    invoked = true;
     if (!invalid) {
+      invoked = true;
       if (cmpValue.isNull(true)) {
         // ignore `null` values here
         return;
@@ -241,9 +243,8 @@ struct AggregatorSum final : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
   AqlValue get() const override {
@@ -285,9 +286,8 @@ struct AggregatorAverage : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
   virtual AqlValue get() const override {
@@ -365,7 +365,7 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
 /// @brief base functionality for VARIANCE
 struct AggregatorVarianceBase : public Aggregator {
   AggregatorVarianceBase(velocypack::Options const* opts, bool population)
-      : Aggregator(opts), population(population), count(0), sum(0.0), mean(0.0), invalid(false) {}
+      : Aggregator(opts), count(0), sum(0.0), mean(0.0), invalid(false), population(population) {}
 
   void reset() override {
     count = 0;
@@ -390,16 +390,15 @@ struct AggregatorVarianceBase : public Aggregator {
           return;
         }
       }
+      invalid = true;
     }
-
-    invalid = true;
   }
 
-  bool const population;
   uint64_t count;
   double sum;
   double mean;
   bool invalid;
+  bool const population;
 };
 
 /// @brief the single server variant of VARIANCE
@@ -781,6 +780,32 @@ struct AggregatorCountDistinct : public Aggregator {
   std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
 };
 
+template <class T>
+struct GenericFactory : Aggregator::Factory {
+  virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const* opts) const override {
+    return std::make_unique<T>(opts);
+  }
+  void createInPlace(void* address, velocypack::Options const* opts) const override {
+    new (address) T(opts);
+  }
+  std::size_t getAggregatorSize() const override { return sizeof(T); }
+};
+
+template <class T>
+struct GenericVarianceFactory : Aggregator::Factory {
+  explicit GenericVarianceFactory(bool population) : population(population) {}
+
+  virtual std::unique_ptr<Aggregator> operator()(velocypack::Options const* opts) const override {
+    return std::make_unique<T>(opts, population);
+  }
+  void createInPlace(void* address, velocypack::Options const* opts) const override {
+    new (address) T(opts, population);
+  }
+  std::size_t getAggregatorSize() const override { return sizeof(T); }
+
+  bool population;
+};
+
 /// @brief the coordinator variant of COUNT_DISTINCT
 struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   explicit AggregatorCountDistinctStep2(velocypack::Options const* opts)
@@ -807,148 +832,180 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   }
 };
 
+struct BitFunctionAnd {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 & value2;
+  }
+};
+
+struct BitFunctionOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 | value2;
+  }
+};
+
+struct BitFunctionXOr {
+  uint64_t compute(uint64_t value1, uint64_t value2) noexcept {
+    return value1 ^ value2;
+  }
+};
+
+template <typename BitFunction>
+struct AggregatorBitFunction : public Aggregator, BitFunction {
+  explicit AggregatorBitFunction(velocypack::Options const* opts)
+      : Aggregator(opts), result(0), invalid(false), invoked(false) {}
+
+  void reset() override {
+    result = 0;
+    invalid = false;
+    invoked = false;
+  }
+
+  void reduce(AqlValue const& cmpValue) override {
+    if (!invalid) {
+      if (cmpValue.isNull(true)) {
+        // ignore `null` values here
+        return;
+      }
+      if (cmpValue.isNumber()) {
+        double const number = cmpValue.toDouble();
+        if (!std::isnan(number) && number >= 0.0) {
+          int64_t value = cmpValue.toInt64();
+          if (value <= static_cast<int64_t>(Functions::bitFunctionsMaxSupportedValue)) {
+            TRI_ASSERT(value >= 0 && value <= UINT32_MAX);
+            if (invoked) {
+              result = this->compute(result, static_cast<uint64_t>(value));
+            } else {
+              result = static_cast<uint64_t>(value);
+              invoked = true;
+            }
+            return;
+          }
+        }
+      }
+    
+      invalid = true;
+    }
+  }
+
+  AqlValue get() const override {
+    if (invalid || !invoked) {
+      return AqlValue(AqlValueHintNull());
+    }
+
+    return AqlValue(AqlValueHintUInt(result));
+  }
+
+  uint64_t result;
+  bool invalid;
+  bool invoked;
+};
+
+struct AggregatorBitAnd : public AggregatorBitFunction<BitFunctionAnd> {
+  explicit AggregatorBitAnd(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
+  explicit AggregatorBitOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
+  explicit AggregatorBitXOr(velocypack::Options const* opts)
+      : AggregatorBitFunction(opts) {}
+};
+
 /// @brief all available aggregators with their meta data
 std::unordered_map<std::string, AggregatorInfo> const aggregators = {
-    {"LENGTH",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorLength>(opts);
-         },
-         doesNotRequireInput, official, "LENGTH",
-         "SUM"  // we need to sum up the lengths from the DB servers
-     }},
-    {"MIN",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorMin>(opts);
-         },
-         doesRequireInput, official, "MIN",
-         "MIN"  // min is commutative
-     }},
-    {"MAX",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorMax>(opts);
-         },
-         doesRequireInput, official, "MAX",
-         "MAX"  // max is commutative
-     }},
-    {"SUM",
-     {
-         [](velocypack::Options const* opts) {
-           return std::make_unique<AggregatorSum>(opts);
-         },
-         doesRequireInput, official, "SUM",
-         "SUM"  // sum is commutative
-     }},
-    {"AVERAGE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverage>(opts);
-      },
-      doesRequireInput, official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
-    {"AVERAGE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverageStep1>(opts);
-      },
-      doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
-    {"AVERAGE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorAverageStep2>(opts);
-      },
-      doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
-    {"VARIANCE_POPULATION",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVariance>(opts, true);
-      },
-      doesRequireInput, official, "VARIANCE_POPULATION_STEP1",
-      "VARIANCE_POPULATION_STEP2"}},
-    {"VARIANCE_POPULATION_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
-      },
-      doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
-    {"VARIANCE_POPULATION_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(opts, true);
-      },
-      doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
-    {"VARIANCE_SAMPLE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVariance>(opts, false);
-      },
-      doesRequireInput, official, "VARIANCE_SAMPLE_STEP1",
-      "VARIANCE_SAMPLE_STEP2"}},
-    {"VARIANCE_SAMPLE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
-      },
-      doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
-    {"VARIANCE_SAMPLE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep2>(opts, false);
-      },
-      doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
-    {"STDDEV_POPULATION",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddev>(opts, true);
-      },
-      doesRequireInput, official, "STDDEV_POPULATION_STEP1",
-      "STDDEV_POPULATION_STEP2"}},
-    {"STDDEV_POPULATION_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, true);
-      },
-      doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
-    {"STDDEV_POPULATION_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddevBaseStep2>(opts, true);
-      },
-      doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
-    {"STDDEV_SAMPLE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddev>(opts, false);
-      },
-      doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
-    {"STDDEV_SAMPLE_STEP1",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorVarianceBaseStep1>(opts, false);
-      },
-      doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
-    {"STDDEV_SAMPLE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorStddevBaseStep2>(opts, false);
-      },
-      doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
-    {"UNIQUE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorUnique>(opts);
-      },
-      doesRequireInput, official, "UNIQUE", "UNIQUE_STEP2"}},
-    {"UNIQUE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorUniqueStep2>(opts);
-      },
-      doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
-    {"SORTED_UNIQUE",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorSortedUnique>(opts);
-      },
-      doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
-    {"SORTED_UNIQUE_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorSortedUniqueStep2>(opts);
-      },
-      doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
-    {"COUNT_DISTINCT",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorCountDistinct>(opts);
-      },
-      doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
-    {"COUNT_DISTINCT_STEP2",
-     {[](velocypack::Options const* opts) {
-        return std::make_unique<AggregatorCountDistinctStep2>(opts);
-      },
-      doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}}};
+  {"LENGTH",
+   {std::make_shared<GenericFactory<AggregatorLength>>(),
+    doesNotRequireInput, official, "LENGTH", "SUM"}},  // we need to sum up the lengths from the DB servers
+  {"MIN",
+   {std::make_shared<GenericFactory<AggregatorMin>>(),
+    doesRequireInput, official, "MIN", "MIN"}},  // min is commutative
+  {"MAX",
+   {std::make_shared<GenericFactory<AggregatorMax>>(),
+    doesRequireInput, official, "MAX", "MAX"}},  // max is commutative
+  {"SUM",
+   {std::make_shared<GenericFactory<AggregatorSum>>(),
+    doesRequireInput, official, "SUM", "SUM"}},  // sum is commutative
+  {"AVERAGE",
+   {std::make_shared<GenericFactory<AggregatorAverage>>(),
+    doesRequireInput, official, "AVERAGE_STEP1", "AVERAGE_STEP2"}},
+  {"AVERAGE_STEP1",
+   {std::make_shared<GenericFactory<AggregatorAverageStep1>>(),
+    doesRequireInput, internalOnly, "", "AVERAGE_STEP1"}},
+  {"AVERAGE_STEP2",
+   {std::make_shared<GenericFactory<AggregatorAverageStep2>>(),
+    doesRequireInput, internalOnly, "", "AVERAGE_STEP2"}},
+  {"VARIANCE_POPULATION",
+   {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(true),
+    doesRequireInput, official, "VARIANCE_POPULATION_STEP1",
+    "VARIANCE_POPULATION_STEP2"}},
+  {"VARIANCE_POPULATION_STEP1",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
+    doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP1"}},
+  {"VARIANCE_POPULATION_STEP2",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(true),
+    doesRequireInput, internalOnly, "", "VARIANCE_POPULATION_STEP2"}},
+  {"VARIANCE_SAMPLE",
+   {std::make_shared<GenericVarianceFactory<AggregatorVariance>>(false),
+    doesRequireInput, official, "VARIANCE_SAMPLE_STEP1",
+    "VARIANCE_SAMPLE_STEP2"}},
+  {"VARIANCE_SAMPLE_STEP1",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
+    doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP1"}},
+  {"VARIANCE_SAMPLE_STEP2",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep2>>(false),
+    doesRequireInput, internalOnly, "", "VARIANCE_SAMPLE_STEP2"}},
+  {"STDDEV_POPULATION",
+   {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(true),
+    doesRequireInput, official, "STDDEV_POPULATION_STEP1",
+    "STDDEV_POPULATION_STEP2"}},
+  {"STDDEV_POPULATION_STEP1",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(true),
+    doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP1"}},
+  {"STDDEV_POPULATION_STEP2",
+   {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(true),
+    doesRequireInput, internalOnly, "", "STDDEV_POPULATION_STEP2"}},
+  {"STDDEV_SAMPLE",
+   {std::make_shared<GenericVarianceFactory<AggregatorStddev>>(false),
+    doesRequireInput, official, "STDDEV_SAMPLE_STEP1", "STDDEV_SAMPLE_STEP2"}},
+  {"STDDEV_SAMPLE_STEP1",
+   {std::make_shared<GenericVarianceFactory<AggregatorVarianceBaseStep1>>(false),
+    doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP1"}},
+  {"STDDEV_SAMPLE_STEP2",
+   {std::make_shared<GenericVarianceFactory<AggregatorStddevBaseStep2>>(false),
+    doesRequireInput, internalOnly, "", "STDDEV_SAMPLE_STEP2"}},
+  {"UNIQUE",
+   {std::make_shared<GenericFactory<AggregatorUnique>>(),
+    doesRequireInput, official, "UNIQUE", "UNIQUE_STEP2"}},
+  {"UNIQUE_STEP2",
+   {std::make_shared<GenericFactory<AggregatorUniqueStep2>>(),
+    doesRequireInput, internalOnly, "", "UNIQUE_STEP2"}},
+  {"SORTED_UNIQUE",
+   {std::make_shared<GenericFactory<AggregatorSortedUnique>>(),
+    doesRequireInput, official, "SORTED_UNIQUE", "SORTED_UNIQUE_STEP2"}},
+  {"SORTED_UNIQUE_STEP2",
+   {std::make_shared<GenericFactory<AggregatorSortedUniqueStep2>>(),
+    doesRequireInput, internalOnly, "", "SORTED_UNIQUE_STEP2"}},
+  {"COUNT_DISTINCT",
+   {std::make_shared<GenericFactory<AggregatorCountDistinct>>(),
+    doesRequireInput, official, "UNIQUE", "COUNT_DISTINCT_STEP2"}},
+  {"COUNT_DISTINCT_STEP2",
+   {std::make_shared<GenericFactory<AggregatorCountDistinctStep2>>(),
+    doesRequireInput, internalOnly, "", "COUNT_DISTINCT_STEP2"}},
+  {"BIT_AND",
+   {std::make_shared<GenericFactory<AggregatorBitAnd>>(),
+    doesRequireInput, official, "BIT_AND", "BIT_AND"}},
+  {"BIT_OR",
+   {std::make_shared<GenericFactory<AggregatorBitOr>>(),
+    doesRequireInput, official, "BIT_OR", "BIT_OR"}},
+  {"BIT_XOR",
+   {std::make_shared<GenericFactory<AggregatorBitXOr>>(),
+    doesRequireInput, official, "BIT_XOR", "BIT_XOR"}},
+};
 
 /// @brief aliases (user-visible) for aggregation functions
 std::unordered_map<std::string, std::string> const aliases = {
@@ -963,11 +1020,10 @@ std::unordered_map<std::string, std::string> const aliases = {
 
 std::unique_ptr<Aggregator> Aggregator::fromTypeString(velocypack::Options const* opts,
                                                        std::string const& type) {
-  // will always return a valid generator function or throw an exception
-  auto generator = Aggregator::factoryFromTypeString(type);
-  TRI_ASSERT(generator != nullptr);
+  // will always return a valid factory or throw an exception
+  auto& factory = Aggregator::factoryFromTypeString(type);
 
-  return (*generator)(opts);
+  return factory(opts);
 }
 
 std::unique_ptr<Aggregator> Aggregator::fromVPack(velocypack::Options const* opts,
@@ -981,18 +1037,17 @@ std::unique_ptr<Aggregator> Aggregator::fromVPack(velocypack::Options const* opt
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-Aggregator::Factory Aggregator::factoryFromTypeString(
-    std::string const& type) {
+Aggregator::Factory const& Aggregator::factoryFromTypeString(std::string const& type) {
   auto it = ::aggregators.find(translateAlias(type));
 
   if (it != ::aggregators.end()) {
-    return &((*it).second.generator);
+    return *(it->second.factory);
   }
   // aggregator function name should have been validated before
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
-std::string Aggregator::translateAlias(std::string const& name) {
+std::string const& Aggregator::translateAlias(std::string const& name) {
   auto it = ::aliases.find(name);
 
   if (it != ::aliases.end()) {

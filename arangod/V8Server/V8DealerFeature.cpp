@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,8 +82,6 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-V8DealerFeature* V8DealerFeature::DEALER = nullptr;
-
 namespace {
 class V8GcThread : public Thread {
  public:
@@ -111,6 +109,13 @@ class V8GcThread : public Thread {
 };
 }  // namespace
 
+DECLARE_COUNTER(arangodb_v8_context_created_total, "V8 contexts created");
+DECLARE_COUNTER(arangodb_v8_context_creation_time_msec_total, "Total time for creating V8 contexts [ms]");
+DECLARE_COUNTER(arangodb_v8_context_destroyed_total, "V8 contexts destroyed");
+DECLARE_COUNTER(arangodb_v8_context_enter_failures_total, "V8 context enter failures");
+DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
+DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
+
 V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server)
     : application_features::ApplicationFeature(server, "V8Dealer"),
       _gcFrequency(60.0),
@@ -122,24 +127,25 @@ V8DealerFeature::V8DealerFeature(application_features::ApplicationServer& server
       _nrInflightContexts(0),
       _maxContextInvocations(0),
       _allowAdminExecute(false),
+      _allowJavaScriptTransactions(true),
+      _allowJavaScriptTasks(true),
       _enableJS(true),
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
       _dynamicContextCreationBlockers(0),
       _contextsCreationTime(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_creation_time_msec", 0, "Total time for creating V8 contexts [ms]")),
-      _contextsCreated(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_created", 0, "V8 contexts created")),
-      _contextsDestroyed(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_destroyed", 0, "V8 contexts destroyed")),
-      _contextsEntered(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_entered", 0, "V8 context enter events")),
-      _contextsExited(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_exited", 0, "V8 context exit events")),
-      _contextsEnterFailures(server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_v8_context_enter_failures", 0, "V8 context enter failures")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_creation_time_msec_total{})),
+      _contextsCreated(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_created_total{})),
+      _contextsDestroyed(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_destroyed_total{})),
+      _contextsEntered(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_entered_total{})),
+      _contextsExited(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_exited_total{})),
+      _contextsEnterFailures(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_v8_context_enter_failures_total{})) {
   setOptional(true);
   startsAfter<ClusterFeaturePhase>();
 
@@ -256,6 +262,26 @@ void V8DealerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       arangodb::options::Flags::OnCoordinator,
       arangodb::options::Flags::OnSingle,
       arangodb::options::Flags::Hidden));
+  
+  options->addOption(
+      "--javascript.transactions",
+      "enable JavaScript transactions",
+      new BooleanParameter(&_allowJavaScriptTransactions),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
+  
+  options->addOption(
+      "--javascript.tasks",
+      "enable JavaScript tasks",
+      new BooleanParameter(&_allowJavaScriptTasks),
+      arangodb::options::makeFlags(
+      arangodb::options::Flags::DefaultNoComponents,
+      arangodb::options::Flags::OnCoordinator,
+      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(30800);
 
   options->addOption(
       "--javascript.enabled", "enable the V8 JavaScript engine",
@@ -272,12 +298,18 @@ void V8DealerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   V8SecurityFeature& v8security = server().getFeature<V8SecurityFeature>();
 
+  // a bit of duck typing here to check if we are an agent.
+  // the problem is that the server role may be still unclear in this early
+  // phase, so we are also looking for startup options that identify an agent
+  bool const isAgent = 
+      (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_AGENT) ||
+      (result.touched("agency.activate") && *(options->get<BooleanParameter>("agency.activate")->ptr));
+
   // DBServer and Agent don't need JS. Agent role handled in AgencyFeature
-  if (ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER &&
-      (!result.touched("console") ||
-       !*(options->get<BooleanParameter>("console")->ptr))) {
+  if (!javascriptRequestedViaOptions(options) &&
+      (isAgent || ServerState::instance()->getRole() == ServerState::RoleEnum::ROLE_DBSERVER)) {
     // specifying --console requires JavaScript, so we can only turn it off
-    // if not specified
+    // if not requested
     _enableJS = false;
   }
 
@@ -367,6 +399,9 @@ void V8DealerFeature::prepare() {
 }
 
 void V8DealerFeature::start() {
+  TRI_ASSERT(_enableJS);
+  TRI_ASSERT(isEnabled());
+
   if (_copyInstallation) {
     copyInstallationFiles();  // will exit process if it fails
   } else {
@@ -415,7 +450,7 @@ void V8DealerFeature::start() {
         std::string systemErrorStr;
         long errorNo;
 
-        int res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
+        auto res = TRI_CreateRecursiveDirectory(_appPath.c_str(), errorNo, systemErrorStr);
 
         if (res == TRI_ERROR_NO_ERROR) {
           LOG_TOPIC("86aa0", INFO, arangodb::Logger::FIXME)
@@ -432,9 +467,6 @@ void V8DealerFeature::start() {
     LOG_TOPIC("86632", INFO, arangodb::Logger::V8)
         << "JavaScript using " << StringUtils::join(paths, ", ");
   }
-
-  // set singleton
-  DEALER = this;
 
   if (_nrMinContexts < 1) {
     _nrMinContexts = 1;
@@ -555,14 +587,16 @@ void V8DealerFeature::copyInstallationFiles() {
       FATAL_ERROR_EXIT();
     }
 
-    LOG_TOPIC("dd1c0", DEBUG, Logger::V8) << "Copying JS installation files from '"
-                                 << _startupDirectory << "' to '" << copyJSPath << "'";
-    int res = TRI_ERROR_NO_ERROR;
+    LOG_TOPIC("dd1c0", DEBUG, Logger::V8)
+        << "Copying JS installation files from '" << _startupDirectory
+        << "' to '" << copyJSPath << "'";
+    auto res = TRI_ERROR_NO_ERROR;
     if (FileUtils::exists(copyJSPath)) {
       res = TRI_RemoveDirectory(copyJSPath.c_str());
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC("1a20d", FATAL, Logger::V8) << "Error cleaning JS installation path '"
-                                     << copyJSPath << "': " << TRI_errno_string(res);
+        LOG_TOPIC("1a20d", FATAL, Logger::V8)
+            << "Error cleaning JS installation path '" << copyJSPath
+            << "': " << TRI_errno_string(res);
         FATAL_ERROR_EXIT();
       }
     }
@@ -675,8 +709,6 @@ void V8DealerFeature::unprepare() {
 
   // delete GC thread after all action threads have been stopped
   _gcThread.reset();
-
-  DEALER = nullptr;
 }
 
 bool V8DealerFeature::addGlobalContextMethod(std::string const& method) {
@@ -1723,10 +1755,24 @@ void V8DealerFeature::shutdownContext(V8Context* context) {
   ++_contextsDestroyed;
 }
 
+bool V8DealerFeature::javascriptRequestedViaOptions(std::shared_ptr<ProgramOptions> const& options) {
+  ProgramOptions::ProcessingResult const& result = options->processingResult();
+
+  if (result.touched("console") && *(options->get<BooleanParameter>("console")->ptr)) {
+    // --console
+    return true;
+  }
+  if (result.touched("javascript.enabled") && *(options->get<BooleanParameter>("javascript.enabled")->ptr)) {
+    // --javascript.enabled
+    return true;
+  }
+  return false;
+}
+
 V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
                                JavaScriptSecurityContext const& securityContext)
-    : _isolate(nullptr), _context(nullptr) {
-  _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
+    : _vocbase(vocbase), _isolate(nullptr), _context(nullptr) {
+  _context = vocbase->server().getFeature<V8DealerFeature>().enterContext(vocbase, securityContext);
   if (_context == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
                                    "unable to acquire V8 context in time");
@@ -1737,7 +1783,7 @@ V8ContextGuard::V8ContextGuard(TRI_vocbase_t* vocbase,
 V8ContextGuard::~V8ContextGuard() {
   if (_context) {
     try {
-      V8DealerFeature::DEALER->exitContext(_context);
+      _vocbase->server().getFeature<V8DealerFeature>().exitContext(_context);
     } catch (...) {
     }
   }
@@ -1746,12 +1792,10 @@ V8ContextGuard::~V8ContextGuard() {
 V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& isolate,
                                                      TRI_vocbase_t* vocbase,
                                                      JavaScriptSecurityContext const& securityContext)
-    : _isolate(isolate),
-      _context(nullptr),
-      _active(isolate ? false : true) {
+    : _vocbase(vocbase), _isolate(isolate), _context(nullptr), _active(isolate ? false : true) {
   TRI_ASSERT(vocbase != nullptr);
   if (_active) {
-    _context = V8DealerFeature::DEALER->enterContext(vocbase, securityContext);
+    _context = vocbase->server().getFeature<V8DealerFeature>().enterContext(vocbase, securityContext);
     if (!_context) {
       res.reset(TRI_ERROR_INTERNAL,
                 "V8ConditionalContextGuard - could not acquire context");
@@ -1764,7 +1808,7 @@ V8ConditionalContextGuard::V8ConditionalContextGuard(Result& res, v8::Isolate*& 
 V8ConditionalContextGuard::~V8ConditionalContextGuard() {
   if (_active && _context) {
     try {
-      V8DealerFeature::DEALER->exitContext(_context);
+      _vocbase->server().getFeature<V8DealerFeature>().exitContext(_context);
     } catch (...) {
     }
     _isolate = nullptr;

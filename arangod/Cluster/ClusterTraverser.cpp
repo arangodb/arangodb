@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,19 +28,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/PathEnumerator.h"
-#include "Graph/TraverserCache.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Graph/WeightedEnumerator.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Transaction/Helpers.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -92,11 +89,10 @@ void ClusterTraverser::clear() {
   _verticesToFetch.clear();
 }
 
-bool ClusterTraverser::getVertex(VPackSlice edge,
-                                 std::vector<arangodb::velocypack::StringRef>& result) {
-  bool res = _vertexGetter->getVertex(edge, result);
+bool ClusterTraverser::getVertex(VPackSlice edge, arangodb::traverser::EnumeratedPath& path) {
+  bool res = _vertexGetter->getVertex(edge, path);
   if (res) {
-    auto const& last = result.back();
+    auto const& last = path.lastVertex();
     // There will be no idString of length above uint32_t
     arangodb::velocypack::HashedStringRef other(last.data(),
                                                 static_cast<uint32_t>(last.length()));
@@ -142,24 +138,24 @@ void ClusterTraverser::fetchVertices() {
 }
 
 aql::AqlValue ClusterTraverser::fetchVertexData(arangodb::velocypack::StringRef idString) {
-    // There will be no idString of length above uint32_t
-    arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
-                                                         static_cast<uint32_t>(
-                                                             idString.length()));
-    auto cached = _vertices.find(hashedIdString);
-    if (cached == _vertices.end()) {
-      // Vertex not yet cached. Prepare for load.
+  // There will be no idString of length above uint32_t
+  arangodb::velocypack::HashedStringRef hashedIdString(idString.data(),
+                                                       static_cast<uint32_t>(
+                                                           idString.length()));
+  auto cached = _vertices.find(hashedIdString);
+  if (cached == _vertices.end()) {
+    // Vertex not yet cached. Prepare for load.
 
-      // we need to make sure the idString remains valid afterwards
-      hashedIdString = _opts->cache()->persistString(hashedIdString);
-      _verticesToFetch.emplace(hashedIdString);
-      fetchVertices();
-      cached = _vertices.find(hashedIdString);
+    // we need to make sure the idString remains valid afterwards
+    hashedIdString = _opts->cache()->persistString(hashedIdString);
+    _verticesToFetch.emplace(hashedIdString);
+    fetchVertices();
+    cached = _vertices.find(hashedIdString);
   }
   // Now all vertices are cached!!
   TRI_ASSERT(cached != _vertices.end());
   uint8_t const* ptr = cached->second.begin();
-  return aql::AqlValue(ptr);  // no copy constructor
+  return aql::AqlValue(ptr);  // non-copying constructor
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,8 @@
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/V8SecurityFeature.h"
+#include "Auth/TokenCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -38,6 +40,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Methods.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralRequest.h"
 #include "Sharding/ShardDistributionReporter.h"
@@ -69,9 +72,10 @@ static void onlyInCluster() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "ArangoDB is not running in cluster mode");
 }
 
-static void onlyInClusterOrActiveFailover() {
-  auto replicationFeature = ReplicationFeature::INSTANCE;
-  if (replicationFeature != nullptr && replicationFeature->isActiveFailoverEnabled()) {
+static void onlyInClusterOrActiveFailover(v8::Isolate* isolate) {
+  TRI_GET_GLOBALS();
+  auto& replicationFeature = v8g->_server.getFeature<ReplicationFeature>();
+  if (replicationFeature.isActiveFailoverEnabled()) {
     // active failover enabled
     return;
   }
@@ -100,10 +104,10 @@ static void CreateAgencyException(v8::FunctionCallbackInfo<v8::Value> const& arg
 
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::Code),
-                   v8::Number::New(isolate, result.httpCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.httpCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorNum),
-                   v8::Number::New(isolate, result.errorCode())).FromMaybe(false);
+                   v8::Number::New(isolate, static_cast<int>(result.errorCode()))).FromMaybe(false);
   errorObject->Set(context,
                    TRI_V8_STD_STRING(isolate, StaticStrings::ErrorMessage), errorMessage).FromMaybe(false);
   errorObject->Set(context,
@@ -126,7 +130,14 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
@@ -156,7 +167,6 @@ static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
@@ -181,7 +191,14 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
@@ -189,7 +206,6 @@ static void JS_CreateDirectoryAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.createDirectory(key);
 
@@ -229,7 +245,14 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
@@ -237,7 +260,6 @@ static void JS_IncreaseVersionAgency(v8::FunctionCallbackInfo<v8::Value> const& 
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   if (!comm.increaseVersion(key)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -257,14 +279,20 @@ static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
   }
 
   std::string const key = TRI_ObjectToString(isolate, args[0]);
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.getValues(key);
 
@@ -300,7 +328,14 @@ static void JS_APIAgency(std::string const& envelope,
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(std::string(envelope) + "([[...]])");
@@ -309,7 +344,6 @@ static void JS_APIAgency(std::string const& envelope,
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false);
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::POST,
@@ -325,15 +359,19 @@ static void JS_APIAgency(std::string const& envelope,
   TRI_V8_RETURN(l);
   TRI_V8_TRY_CATCH_END
 }
+
 static void JS_ReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("read", args);
 }
+
 static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("write", args);
 }
+
 static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("transact", args);
 }
+
 static void JS_TransientAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   JS_APIAgency("transient", args);
 }
@@ -350,7 +388,14 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
@@ -363,7 +408,6 @@ static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     recursive = TRI_ObjectToBoolean(isolate, args[1]);
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.removeValues(key, recursive);
 
@@ -383,7 +427,14 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
@@ -399,7 +450,6 @@ static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     ttl = TRI_ObjectToDouble(isolate, args[2]);
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
 
@@ -419,7 +469,14 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("agency()");
@@ -427,7 +484,6 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   VPackBuilder builder;
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   AgencyCommResult result =
       comm.sendWithFailover(arangodb::rest::RequestType::GET,
@@ -452,7 +508,14 @@ static void JS_EndpointsAgency(v8::FunctionCallbackInfo<v8::Value> const& args) 
   v8::HandleScope scope(isolate);
   auto context = TRI_IGETC;
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
@@ -497,7 +560,14 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
@@ -508,7 +578,7 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     count = TRI_ObjectToUInt64(isolate, args[0], true);
   }
 
-  if (count < 1 || count > 10000000) {
+  if (count < 1 || count > 100000000) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
@@ -517,7 +587,6 @@ static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     timeout = TRI_ObjectToDouble(isolate, args[1]);
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   uint64_t result = comm.uniqid(count, timeout);
 
@@ -535,13 +604,19 @@ static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this agency operation");
+  }
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("version()");
   }
 
-  TRI_GET_GLOBALS();
   AgencyComm comm(v8g->_server);
   auto const version = comm.version();
 
@@ -565,7 +640,7 @@ static void JS_DoesDatabaseExistClusterInfo(v8::FunctionCallbackInfo<v8::Value> 
 
   TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
-  bool const result = ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]), true);
+  bool const result = ci.doesDatabaseExist(TRI_ObjectToString(isolate, args[0]));
 
   if (result) {
     TRI_V8_RETURN_TRUE();
@@ -590,7 +665,7 @@ static void JS_Databases(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
-  std::vector<DatabaseID> res = ci.databases(false);
+  std::vector<DatabaseID> res = ci.databases();
   v8::Handle<v8::Array> a = v8::Array::New(isolate, (int)res.size());
   std::vector<DatabaseID>::iterator it;
   int count = 0;
@@ -610,12 +685,18 @@ static void JS_FlushClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args)
   v8::HandleScope scope(isolate);
 
   onlyInCluster();
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this cluster operation");
+  }
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("flush()");
   }
 
-  TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
 
@@ -911,8 +992,8 @@ static void JS_GetResponsibleShardClusterInfo(v8::FunctionCallbackInfo<v8::Value
 
   bool usesDefaultShardingAttributes;
 
-  int res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
-                                          shardId, usesDefaultShardingAttributes);
+  auto res = collInfo->getResponsibleShard(builder.slice(), documentIsComplete,
+                                           shardId, usesDefaultShardingAttributes);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -1061,6 +1142,13 @@ static void JS_GetCoordinators(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_UniqidClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_GET_GLOBALS();
+  V8SecurityFeature& v8security = v8g->_server.getFeature<V8SecurityFeature>();
+  if (!v8security.isInternalContext(isolate) && !v8security.isAdminScriptContext(isolate)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "not allowed to execute this cluster operation");
+  }
 
   if (args.Length() > 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>)");
@@ -1075,7 +1163,6 @@ static void JS_UniqidClusterInfo(v8::FunctionCallbackInfo<v8::Value> const& args
     TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
   }
 
-  TRI_GET_GLOBALS();
   auto& ci = v8g->_server.getFeature<ClusterFeature>().clusterInfo();
   uint64_t value = ci.uniqid(count);
 
@@ -1115,7 +1202,7 @@ static void JS_IdServerState(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  onlyInClusterOrActiveFailover();
+  onlyInClusterOrActiveFailover(isolate);
 
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("id()");
@@ -1306,531 +1393,6 @@ static void JS_StatusServerState(v8::FunctionCallbackInfo<v8::Value> const& args
   TRI_V8_TRY_CATCH_END
 }
 
-typedef std::uint64_t CoordTransactionID;
-typedef std::uint64_t OperationID;
-namespace {
-struct AsyncRequest {
-  network::Response response;
-  std::string destination;
-  CoordTransactionID coordTransactionID;
-  OperationID operationID;
-  bool done = false;
-};
-
-static std::mutex _requestMutex;
-std::condition_variable _requestCV;
-static std::vector<std::shared_ptr<AsyncRequest>> _requests;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare to send a request
-///
-/// this is used for asynchronous as well as synchronous requests.
-////////////////////////////////////////////////////////////////////////////////
-
-static void PrepareClusterCommRequest(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                      fuerte::RestVerb& reqType,
-                                      std::string& destination,
-                                      std::string& dbname,
-                                      std::string& path, VPackBufferUInt8& body,
-                                      std::unordered_map<std::string, std::string>& headerFields,
-                                      CoordTransactionID& coordTransactionID, double& timeout,
-                                      double& initTimeout) {
-  v8::Isolate* isolate = args.GetIsolate();
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-
-  onlyInClusterOrActiveFailover();
-
-  TRI_ASSERT(args.Length() >= 4);
-
-  reqType = fuerte::RestVerb::Get;
-  if (args[0]->IsString()) {
-    TRI_Utf8ValueNFC UTF8(isolate, args[0]);
-    std::string methstring = *UTF8;
-    StringUtils::toupperInPlace(methstring);
-    reqType = fuerte::from_string(methstring);
-    if (reqType == fuerte::RestVerb::Illegal) {
-      reqType = fuerte::RestVerb::Get;
-    }
-  }
-
-  destination = TRI_ObjectToString(isolate, args[1]);
-  dbname = TRI_ObjectToString(isolate, args[2]);
-  path = TRI_ObjectToString(isolate, args[3]);
-
-  body.clear();
-  if (!args[4]->IsUndefined()) {
-    if (args[4]->IsObject() && V8Buffer::hasInstance(isolate, args[4])) {
-      // supplied body is a Buffer object
-      char const* data = V8Buffer::data(isolate, args[4].As<v8::Object>());
-      size_t size = V8Buffer::length(isolate, args[4].As<v8::Object>());
-
-      if (data == nullptr) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                       "invalid <body> buffer value");
-      }
-
-      body.append(reinterpret_cast<uint8_t const*>(data), size);
-    } else {
-      auto str = TRI_ObjectToString(isolate, args[4]);
-      body.append(reinterpret_cast<uint8_t const*>(str.data()), str.length());
-    }
-  }
-
-  if (args.Length() > 5 && args[5]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[5].As<v8::Object>();
-    v8::Handle<v8::Array> props = obj->GetOwnPropertyNames(context).FromMaybe(v8::Local<v8::Array>());
-    uint32_t i;
-    for (i = 0; i < props->Length(); ++i) {
-      v8::Handle<v8::Value> prop = props->Get(context, i).FromMaybe(v8::Handle<v8::Value>());
-      v8::Handle<v8::Value> val = obj->Get(context, prop).FromMaybe(v8::Handle<v8::Value>());
-      std::string propstring = TRI_ObjectToString(isolate, prop);
-      std::string valstring = TRI_ObjectToString(isolate, val);
-      if (propstring != "") {
-        headerFields.insert(std::make_pair(propstring, valstring));
-      }
-    }
-  }
-
-  coordTransactionID = 0;
-  timeout = 24 * 3600.0;
-
-  if (args.Length() > 6 && args[6]->IsObject()) {
-    v8::Handle<v8::Object> opt = args[6].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_HasProperty(context, isolate, opt, CoordTransactionIDKey)) {
-      coordTransactionID = TRI_ObjectToUInt64(
-          isolate,
-          opt->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
-    }
-    TRI_GET_GLOBAL_STRING(TimeoutKey);
-    if (TRI_HasProperty(context, isolate, opt, TimeoutKey)) {
-      timeout = TRI_ObjectToDouble(isolate, opt->Get(context, TimeoutKey).FromMaybe(v8::Handle<v8::Value>()));
-    }
-    TRI_GET_GLOBAL_STRING(InitTimeoutKey);
-    if (TRI_HasProperty(context, isolate, opt, InitTimeoutKey)) {
-      initTimeout = TRI_ObjectToDouble(isolate, opt->Get(context, InitTimeoutKey).FromMaybe(v8::Handle<v8::Value>()));
-    }
-  }
-  if (coordTransactionID == 0) {
-    coordTransactionID = TRI_NewTickServer();
-  }
-  if (timeout == 0) {
-    timeout = 24 * 3600.0;
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prepare a ClusterCommResult for JavaScript
-////////////////////////////////////////////////////////////////////////////////
-
-static void Return_PrepareClusterCommResultForJS(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                                 ::AsyncRequest& res) {
-  v8::Isolate* isolate = args.GetIsolate();
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-
-  v8::Handle<v8::Object> r = v8::Object::New(isolate);
-    // convert the ids to strings as uint64_t might be too big for JavaScript
-    // numbers
-    TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    std::string id = StringUtils::itoa(res.coordTransactionID);
-    r->Set(context, CoordTransactionIDKey, TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
-
-    id = StringUtils::itoa(res.operationID);
-    TRI_GET_GLOBAL_STRING(OperationIDKey);
-    r->Set(context, OperationIDKey, TRI_V8_STD_STRING(isolate, id)).FromMaybe(false);
-    TRI_GET_GLOBAL_STRING(EndpointKey);
-
-    r->Set(context, EndpointKey, TRI_V8_STD_STRING(isolate, res.destination)).FromMaybe(false);
-    TRI_GET_GLOBAL_STRING(SingleRequestKey);
-    r->Set(context, SingleRequestKey, v8::Boolean::New(isolate, false)).FromMaybe(false);
-    TRI_GET_GLOBAL_STRING(ShardIDKey);
-    r->Set(context, ShardIDKey, TRI_V8_STD_STRING(isolate, res.destination.substr(8))).FromMaybe(false);
-
-    if (!res.done) {
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "SENDING")).FromMaybe(false);
-
-      TRI_V8_RETURN(r);
-    }
-    
-    network::Response const& response = res.response;
-
-    if (response.ok()) {
-      {
-        // The headers:
-        v8::Handle<v8::Object> h = v8::Object::New(isolate);
-        TRI_GET_GLOBAL_STRING(StatusKey);
-        r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "RECEIVED")).FromMaybe(false);
-
-        auto headers = response.response->header.meta();
-        headers[StaticStrings::ContentLength] = StringUtils::itoa(response.response->payloadSize());
-        for (auto& it : headers) {
-          h->Set(context, TRI_V8_STD_STRING(isolate, it.first), TRI_V8_STD_STRING(isolate, it.second)).FromMaybe(false);
-        }
-        r->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), h).FromMaybe(false);
-      }
-      TRI_GET_GLOBAL_STRING(CodeKey);
-      r->Set(context, CodeKey, v8::Number::New(isolate, response.statusCode())).FromMaybe(false);
-    
-      std::string json;
-      if (response.response->isContentTypeVPack()) {
-        json = response.response->slice().toJson();
-      } else if (response.response->isContentTypeJSON()) {
-        auto raw = response.response->payload();
-        json.append(reinterpret_cast<const char*>(raw.data()), raw.size());
-      }
-      if (json.size() > 0) {
-        r->Set(context, TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_ASCII_PAIR_STRING(isolate, json.data(), json.size())).FromMaybe(false);
-        V8Buffer* buffer = V8Buffer::New(isolate, json.data(), json.size());
-        v8::Local<v8::Object> bufferObject =
-            v8::Local<v8::Object>::New(isolate, buffer->_handle);
-        r->Set(context, TRI_V8_ASCII_STRING(isolate, "rawBody"), bufferObject).FromMaybe(false);
-      }
-    } else if (response.error == fuerte::Error::RequestTimeout) {
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "TIMEOUT")).FromMaybe(false);
-      TRI_GET_GLOBAL_STRING(TimeoutKey);
-      r->Set(context, TimeoutKey, v8::BooleanObject::New(isolate, true)).FromMaybe(false);
-    } else if (response.error == fuerte::Error::CouldNotConnect) {
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "BACKEND_UNAVAILABLE")).FromMaybe(false);
-      TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-      r->Set(context,
-             ErrorMessageKey,
-             TRI_V8_ASCII_STRING(isolate,
-                                 "required backend was not available")).FromMaybe(false);
-    } else {
-      TRI_GET_GLOBAL_STRING(StatusKey);
-      r->Set(context, StatusKey, TRI_V8_ASCII_STRING(isolate, "ERROR")).FromMaybe(false);
-    }
-  TRI_V8_RETURN(r);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief send an asynchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_AsyncRequest(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInClusterOrActiveFailover();
-
-  if (args.Length() < 4 || args.Length() > 7) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "asyncRequest("
-        "reqType, destination, dbname, path, body, headers, options)");
-  }
-  // Possible options:
-  //   - coordTransactionID   (number)
-  //   - timeout              (number)
-  //   - initTimeout          (number)
-
-  TRI_GET_GLOBALS();
-
-  auto* pool = v8g->_server.getFeature<arangodb::NetworkFeature>().pool();
-
-  if (pool == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(
-        TRI_ERROR_SHUTTING_DOWN,
-        "connectionpool object not found (JS_AsyncRequest)");
-  }
-
-  fuerte::RestVerb reqType;
-  std::string destination;
-  std::string dbname;
-  std::string path;
-  VPackBufferUInt8 body;
-  std::unordered_map<std::string, std::string> headerFields;
-  CoordTransactionID coordTransactionID = 0;
-  double timeout = 0.0;
-  double initTimeout = -1.0;
-
-  PrepareClusterCommRequest(args, reqType, destination, dbname, path, body, headerFields,
-                            coordTransactionID, timeout, initTimeout);
-  
-  network::RequestOptions reqOpts;
-  reqOpts.database = dbname;
-  reqOpts.retryNotFound = false;
-  reqOpts.timeout = network::Timeout(timeout);
-  reqOpts.skipScheduler = true;
-  reqOpts.contentType = StaticStrings::MimeTypeJsonNoEncoding;
-
-  OperationID opId = TRI_NewTickServer();
-  auto ar = std::make_shared<::AsyncRequest>();
-  ar->destination = destination;
-  ar->operationID = opId;
-  ar->coordTransactionID = coordTransactionID;
-  
-  network::sendRequest(pool, destination, reqType, path, std::move(body), reqOpts)
-  .thenValue([ar] (network::Response&& r) {
-    {
-      std::lock_guard<std::mutex> guard(::_requestMutex);
-      ar->response = std::move(r);
-      ar->done = true;
-    }
-    ::_requestCV.notify_all();
-  });
-  {
-    std::lock_guard<std::mutex> guard(::_requestMutex);
-    ::_requests.push_back(ar);
-    Return_PrepareClusterCommResultForJS(args, *ar);
-  }
-  ::_requestCV.notify_all();
-
-  LOG_TOPIC("cea85", DEBUG, Logger::CLUSTER)
-      << "JS_AsyncRequest: request has been submitted";
-
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enquire information about an asynchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Enquire(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-  onlyInCluster();
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("enquire(operationID)");
-  }
-
-  OperationID operationID = TRI_ObjectToUInt64(isolate, args[0], true);
-
-  LOG_TOPIC("77dbd", DEBUG, Logger::CLUSTER)
-      << "JS_Enquire: calling ClusterComm::enquire()";
-  
-  {
-    std::lock_guard<std::mutex> guard(::_requestMutex);
-    auto it = ::_requests.begin();
-    while (it != _requests.end()) {
-      std::shared_ptr<::AsyncRequest> req = *it;
-      if (req->operationID == operationID) {
-        Return_PrepareClusterCommResultForJS(args, *req);
-        return;
-      }
-      it++;
-    }
-  }
-
-  v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-  r->Set(context,
-         ErrorMessageKey,
-         TRI_V8_ASCII_STRING(isolate, "operation was dropped")).FromMaybe(false);
-  TRI_V8_RETURN(r);
-  
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief wait for the result of an asynchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Wait(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-
-  onlyInClusterOrActiveFailover();
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("wait(obj)");
-  }
-  // Possible options:
-  //   - clientTransactionID  (string)
-  //   - coordTransactionID   (number)
-  //   - operationID          (number)
-  //   - shardID              (string)
-  //   - timeout              (number)
-
-  CoordTransactionID mycoordTransactionID = 0;
-  OperationID myoperationID = 0;
-  ShardID myshardID = "";
-  double mytimeout = 24 * 3600.0;
-
-  if (args[0]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = TRI_ObjectToUInt64(
-          isolate,
-          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
-    }
-    TRI_GET_GLOBAL_STRING(OperationIDKey);
-    if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = TRI_ObjectToUInt64(
-          isolate,
-          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
-    }
-    TRI_GET_GLOBAL_STRING(ShardIDKey);
-    if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
-      myshardID = TRI_ObjectToString(isolate, obj->Get(context, ShardIDKey).FromMaybe(v8::Handle<v8::Value>()));
-    }
-    TRI_GET_GLOBAL_STRING(TimeoutKey);
-    if (TRI_HasProperty(context, isolate, obj, TimeoutKey)) {
-      mytimeout = TRI_ObjectToDouble(isolate, obj->Get(context, TimeoutKey).FromMaybe(v8::Handle<v8::Value>()));
-      if (mytimeout == 0.0) {
-        mytimeout = 24 * 3600.0;
-      }
-    }
-  }
-  
-  auto end = std::chrono::steady_clock::now() + std::chrono::duration<double>(mytimeout);
-  
-  while (end > std::chrono::steady_clock::now()) {
-    std::unique_lock<std::mutex> guard(::_requestMutex);
-    auto it = ::_requests.begin();
-    while (it != _requests.end()) {
-      std::shared_ptr<::AsyncRequest> req = *it;
-      if (req->coordTransactionID == mycoordTransactionID ||
-          req->operationID == myoperationID) {
-        if (req->done) {
-          Return_PrepareClusterCommResultForJS(args, *req);
-          _requests.erase(it);
-          return;
-        }
-      }
-      it++;
-    }
-    auto duration = (end - std::chrono::steady_clock::now());
-    ::_requestCV.wait_for(guard, duration);
-  }
-
-  LOG_TOPIC("04f61", DEBUG, Logger::CLUSTER) << "JS_Wait: calling ClusterComm::wait()";
-
-  v8::Handle<v8::Object> r = v8::Object::New(isolate);
-  TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-  r->Set(context,
-         ErrorMessageKey,
-         TRI_V8_ASCII_STRING(isolate, "operation was dropped")).FromMaybe(false);
-  TRI_V8_RETURN(r);
-    
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief drop the result of an asynchronous request
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Drop(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-  auto context = TRI_IGETC;
-
-  onlyInCluster();
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("drop(obj)");
-  }
-  // Possible options:
-  //   - coordTransactionID   (number)
-  //   - operationID          (number)
-  //   - shardID              (string)
-
-  CoordTransactionID mycoordTransactionID = 0;
-  OperationID myoperationID = 0;
-  ShardID myshardID = "";
-
-  if (args[0]->IsObject()) {
-    v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
-    TRI_GET_GLOBAL_STRING(CoordTransactionIDKey);
-    if (TRI_HasProperty(context, isolate, obj, CoordTransactionIDKey)) {
-      mycoordTransactionID = TRI_ObjectToUInt64(
-          isolate,
-          obj->Get(context, CoordTransactionIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
-    }
-    TRI_GET_GLOBAL_STRING(OperationIDKey);
-    if (TRI_HasProperty(context, isolate, obj, OperationIDKey)) {
-      myoperationID = TRI_ObjectToUInt64(
-          isolate,
-          obj->Get(context, OperationIDKey).FromMaybe(v8::Handle<v8::Value>()), true);
-    }
-    TRI_GET_GLOBAL_STRING(ShardIDKey);
-    if (TRI_HasProperty(context, isolate, obj, ShardIDKey)) {
-      myshardID = TRI_ObjectToString(isolate,
-                                     obj->Get(context,
-                                              ShardIDKey).FromMaybe(v8::Handle<v8::Value>()));
-    }
-  }
-
-  LOG_TOPIC("f2376", DEBUG, Logger::CLUSTER) << "JS_Drop: calling ClusterComm::drop()";
-  
-  {
-    std::lock_guard<std::mutex> guard(::_requestMutex);
-    auto it = ::_requests.begin();
-    while (it != _requests.end()) {
-      std::shared_ptr<::AsyncRequest>& req = *it;
-      if (req->coordTransactionID == mycoordTransactionID ||
-          req->operationID == myoperationID) {
-        _requests.erase(it);
-        break;
-      }
-      it++;
-    }
-  }
-
-
-  TRI_V8_RETURN_UNDEFINED();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get an ID for use with coordTransactionId
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetId(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("getId()");
-  }
-
-  auto id = TRI_NewTickServer();
-  std::string st = StringUtils::itoa(id);
-  v8::Handle<v8::String> s = TRI_V8_ASCII_STRING(isolate, st.c_str());
-
-  TRI_V8_RETURN(s);
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  auto context = TRI_IGETC;
-
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (af != nullptr && af->isActive()) {
-    // mop: really quick and dirty
-    v8::Handle<v8::Object> options = v8::Object::New(isolate);
-    v8::Handle<v8::Object> headers = v8::Object::New(isolate);
-    if (args.Length() > 2) {
-      if (args[2]->IsObject()) {
-        options = v8::Handle<v8::Object>::Cast(args[2]);
-        if (TRI_HasProperty(context, isolate, options, "headers")) {
-          headers = v8::Handle<v8::Object>::Cast(
-                                                 options->Get(context,
-                                                              TRI_V8_ASCII_STRING(isolate, "headers")).FromMaybe(v8::Handle<v8::Value>()));
-        }
-      }
-    }
-    options->Set(context, TRI_V8_ASCII_STRING(isolate, "headers"), headers).FromMaybe(false);
-
-    std::string authorization = "bearer " + af->tokenCache().jwtToken();
-    v8::Handle<v8::String> v8Authorization = TRI_V8_STD_STRING(isolate, authorization);
-    headers->Set(context, TRI_V8_ASCII_STRING(isolate, "Authorization"), v8Authorization).FromMaybe(false);
-
-    args[2] = options;
-  }
-  TRI_V8_TRY_CATCH_END
-  return JS_Download(args);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Collect the distribution of shards
 ////////////////////////////////////////////////////////////////////////////////
@@ -1905,6 +1467,78 @@ static void JS_GetAnalyzersRevision(v8::FunctionCallbackInfo<v8::Value> const& a
   analyzerRevision->toVelocyPack(result);
 
   TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+// send a self-heal request to all other coordinators, if any
+static void JS_PropagateSelfHeal(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (ServerState::instance()->isCoordinator()) {
+    auto& vocbase = GetContextVocBase(isolate);
+
+    NetworkFeature const& nf = vocbase.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+
+    network::RequestOptions options;
+    options.timeout = network::Timeout(10.0);
+    options.database = vocbase.name();
+    
+    // send an empty body
+    VPackBuffer<uint8_t> buffer;
+    buffer.append(VPackSlice::emptyObjectSlice().begin(), 1);
+
+    std::string const url("/_api/foxx/_local/heal");
+    
+    network::Headers headers;
+    auto auth = AuthenticationFeature::instance();
+    if (auth != nullptr && auth->isActive()) {
+      headers.try_emplace(StaticStrings::Authorization,
+                          "bearer " + auth->tokenCache().jwtToken());
+    }
+
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    for (auto const& coordinator : ci.getCurrentCoordinators()) {
+      if (coordinator == ServerState::instance()->getId()) {
+        // ourselves
+        continue;
+      }
+      auto f = network::sendRequest(pool, "server:" + coordinator, fuerte::RestVerb::Post,
+                                    url, buffer, options, headers);
+      futures.emplace_back(std::move(f));
+    }
+
+    Result res;
+    
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        auto& resp = it.get();
+        res.reset(resp.combinedResult());
+
+        if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
+          // it is expected in a multi-coordinator setup that a coordinator is not
+          // aware of a database that was created very recently.
+          res.reset();
+        }
+        if (res.fail()) {
+          break;
+        }
+      }
+    }
+
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  }
+  
+  TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2068,45 +1702,17 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
         isolate, TRI_V8_ASCII_STRING(isolate, "ArangoServerState"), ss);
   }
 
-  // ...........................................................................
-  // generate the cluster comm template
-  // ...........................................................................
-
-  ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoClusterComm"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
-
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "asyncRequest"), JS_AsyncRequest);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enquire"), JS_Enquire);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "wait"), JS_Wait);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"), JS_Drop);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getId"), JS_GetId);
-
-  v8g->ClusterCommTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ArangoClusterCommCtor"),
-                               ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
-
-  // register the global object
-  ss = rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-  if (!ss.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(
-        isolate, TRI_V8_ASCII_STRING(isolate, "ArangoClusterComm"), ss);
-  }
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "SYS_CLUSTER_DOWNLOAD"),
-                               JS_ClusterDownload);
-
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_SHARD_DISTRIBUTION"),
-      JS_GetShardDistribution);
+      JS_GetShardDistribution, true);
 
   TRI_AddGlobalFunctionVocbase(
       isolate,
       TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_COLLECTION_SHARD_DISTRIBUTION"),
-      JS_GetCollectionShardDistribution);
+      JS_GetCollectionShardDistribution, true);
+  
+  TRI_AddGlobalFunctionVocbase(
+      isolate,
+      TRI_V8_ASCII_STRING(isolate, "SYS_PROPAGATE_SELF_HEAL"),
+      JS_PropagateSelfHeal, true);
 }

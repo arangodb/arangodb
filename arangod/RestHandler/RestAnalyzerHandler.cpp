@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,7 +120,7 @@ void RestAnalyzerHandler::createAnalyzer( // create
   auto properties = body.get(StaticStrings::AnalyzerPropertiesField);
   if (properties.isString()) { // string still could be parsed to an object
     auto string_ref = getStringRef(properties);
-    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref);
+    propertiesFromStringBuilder = arangodb::velocypack::Parser::fromJson(string_ref.c_str(), string_ref.size());
     properties = propertiesFromStringBuilder->slice();
   }
   

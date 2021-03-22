@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -222,6 +222,14 @@ std::string const& GeneralRequest::value(std::string const& key, bool& found) co
 std::string const& GeneralRequest::value(std::string const& key) const {
   bool unused = true;
   return value(key, unused);
+}
+
+std::map<std::string, std::string> GeneralRequest::parameters() const {
+  std::map<std::string, std::string> parameters {};
+  for (auto const& paramPair : values()) {
+    parameters.try_emplace(paramPair.first, paramPair.second);
+  }
+  return parameters;
 }
 
 // needs to be here because of a gcc bug with templates and namespaces

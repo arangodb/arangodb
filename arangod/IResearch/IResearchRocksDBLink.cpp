@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,13 +22,13 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"  // required for RocksDBColumnFamily.h
+#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
 #include "IResearchLinkHelper.h"
 #include "IResearchView.h"
 #include "Indexes/IndexFactory.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -42,9 +42,10 @@
 namespace arangodb {
 namespace iresearch {
 
-IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection)
-    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(),
-                   RocksDBColumnFamily::invalid(), false),
+IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId)
+    : RocksDBIndex(iid, collection, IResearchLinkHelper::emptyIndexSlice(objectId).slice(),
+                   RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Invalid),
+                   false),
       IResearchLink(iid, collection) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -164,7 +165,8 @@ bool IResearchRocksDBLink::IndexFactory::equal(
 std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
     LogicalCollection& collection, VPackSlice const& definition,
     IndexId id, bool /*isClusterConstructor*/) const {
-  auto link = std::make_shared<IResearchRocksDBLink>(id, collection);
+  uint64_t objectId = basics::VelocyPackHelper::stringUInt64(definition, StaticStrings::ObjectId);
+  auto link = std::make_shared<IResearchRocksDBLink>(id, collection, objectId);
 
   auto const res = link->init(definition, [this](irs::directory& dir) {
     auto& selector = _server.getFeature<EngineSelectorFeature>();
@@ -201,3 +203,11 @@ std::shared_ptr<IResearchRocksDBLink::IndexFactory> IResearchRocksDBLink::create
 
 }  // namespace iresearch
 }  // namespace arangodb
+
+namespace iresearch {
+
+// use base irs::encryption type for ancestors
+template<>
+struct type<arangodb::iresearch::RocksDBEncryptionProvider> : type<irs::encryption> { };
+
+}

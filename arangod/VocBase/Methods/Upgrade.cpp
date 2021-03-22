@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -141,7 +141,12 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade, bool igno
   switch (vinfo.status) {
     case VersionResult::INVALID:
       TRI_ASSERT(false);  // never returned by Version::check
+      break;
     case VersionResult::VERSION_MATCH:
+      if (isUpgrade) {
+        dbflag = Flags::DATABASE_UPGRADE; // forcing the upgrade as server is in 
+                                          // upgrade state with some features disabled
+      }
       break;  // just run tasks that weren't run yet
     case VersionResult::UPGRADE_NEEDED: {
       if (!isUpgrade) {
@@ -229,7 +234,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
   addTask(upgradeFeature, "createSystemStatisticsDBServer",
           "creates the statistics system collections including their indices",
       /*system*/ Flags::DATABASE_SYSTEM,
-      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
+      /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_COORDINATOR_GLOBAL,
       /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::createStatisticsCollectionsAndIndices);
   addTask(upgradeFeature, "addDefaultUserOther", "add default users for a new database",
@@ -306,8 +311,8 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase, VersionResult& 
     // check that the database occurs in the database list
     if (!(t.databaseFlags & dbFlag)) {
       // special optimization: for local server and new database,
-      // an upgrade-only task can be viewed as executed.
-      if (isLocal && dbFlag == DATABASE_INIT && t.databaseFlags == DATABASE_UPGRADE) {
+      // an one-shot task can be viewed as executed.
+      if (isLocal && dbFlag == DATABASE_INIT && (t.databaseFlags & DATABASE_ONLY_ONCE)) {
         vinfo.tasks.try_emplace(t.name, true);
       }
       LOG_TOPIC("346ba", DEBUG, Logger::STARTUP)

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,9 +33,14 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#ifdef _WIN32
+#include <DbgHelp.h>
+#endif
+
 #include <algorithm>
 #include <atomic>
 #include <exception>
+#include <mutex>
 #include <thread>
 
 #include <boost/core/demangle.hpp>
@@ -159,6 +164,14 @@ void appendHexValue(unsigned char const* src, size_t len, char*& dst, bool strip
   }
 }
 
+template <typename T>
+void appendHexValue(T value, char*& dst, bool stripLeadingZeros) {
+  static_assert(std::is_integral_v<T> || std::is_pointer_v<T>);
+  unsigned char buffer[sizeof(T)];
+  memcpy(buffer, &value, sizeof(T));
+  appendHexValue(buffer, sizeof(T), dst, stripLeadingZeros);
+}
+
 #ifdef ARANGODB_HAVE_LIBUNWIND
 void appendAddress(unw_word_t pc, long base, char*& dst) {
   if (base == 0) {
@@ -185,7 +198,7 @@ void appendAddress(unw_word_t pc, long base, char*& dst) {
 size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const* info, void* ucontext) {
   // build a crash message
   char* p = s;
-  appendNullTerminatedString("ArangoDB ", p);
+  appendNullTerminatedString("💥 ArangoDB ", p);
   appendNullTerminatedString(ARANGODB_VERSION_FULL, p);
   appendNullTerminatedString(", thread ", p);
   p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
@@ -265,7 +278,7 @@ size_t buildLogMessage(char* s, char const* context, int signal, siginfo_t const
   return p - s;
 }
 
-void logBacktrace(char const* context, int signal, siginfo_t* info, void* ucontext) try {
+void logCrashInfo(char const* context, int signal, siginfo_t* info, void* ucontext) try {
   // buffer for constructing temporary log messages (to avoid malloc)
   char buffer[4096];
   memset(&buffer[0], 0, sizeof(buffer));
@@ -274,12 +287,42 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
   size_t length = buildLogMessage(p, context, signal, info, ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+} catch (...) {
+  // we better not throw an exception from inside a signal handler
+}
 
+void logBacktrace() try {
   if (!enableStacktraces.load(std::memory_order_relaxed)) {
     return;
   }
-   
+    
+  char const* currentThreadName = arangodb::Thread::currentThreadName();
+  if (currentThreadName != nullptr && strcmp("Logging", currentThreadName) == 0) {
+    // we must not log a backtrace from the logging thread itself. if we would
+    // do, we may cause a deadlock
+    return;
+  }
+    
 #ifdef ARANGODB_HAVE_LIBUNWIND
+  // buffer for constructing temporary log messages (to avoid malloc)
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Backtrace of thread ", p);
+    
+    p += arangodb::basics::StringUtils::itoa(uint64_t(arangodb::Thread::currentThreadNumber()), p);
+    char const* name = arangodb::Thread::currentThreadName();
+    if (name != nullptr && *name != '\0') {
+      appendNullTerminatedString(" [", p);
+      appendNullTerminatedString(name, p);
+      appendNullTerminatedString("]", p);
+    }
+     
+    LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  }
+
   // log backtrace, of up to maxFrames depth 
   { 
 #ifdef __linux__
@@ -288,7 +331,7 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
 #else
     long base = 0;
 #endif
-
+  
     unw_cursor_t cursor;
     // unw_word_t ip, sp;
     unw_context_t uc;
@@ -315,10 +358,22 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
           break;
         }
 
+        if (frame == maxFrames + skipFrames) {
+          memset(&buffer[0], 0, sizeof(buffer));
+          char* p = &buffer[0];
+          appendNullTerminatedString("..reached maximum frame display depth (", p);
+          p += arangodb::basics::StringUtils::itoa(uint64_t(maxFrames), p);
+          appendNullTerminatedString("). stopping backtrace", p);
+
+          size_t length = p - &buffer[0];
+          LOG_TOPIC("bbb04", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
+          break;
+        }
+
         if (frame >= skipFrames) {
           // this is a stack frame we want to display
           memset(&buffer[0], 0, sizeof(buffer));
-          p = &buffer[0];
+          char* p = &buffer[0];
           appendNullTerminatedString("frame ", p);
           if (frame < 10) {
             // pad frame id to 2 digits length
@@ -356,34 +411,38 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
             appendNullTerminatedString("*no symbol name available for this frame", p); 
           }
 
-          length = p - &buffer[0];
+          size_t length = p - &buffer[0];
           LOG_TOPIC("308c3", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], length);
         }
-      } while (++frame < (maxFrames + skipFrames) && unw_step(&cursor) > 0);
+      } while (++frame < (maxFrames + skipFrames + 1) && unw_step(&cursor) > 0);
       // flush logs as early as possible
       arangodb::Logger::flush();
     }
   }
+  
 #endif
-
-  // log info about the current process
-  {
-    auto processInfo = TRI_ProcessInfoSelf();
-    memset(&buffer[0], 0, sizeof(buffer));
-    p = &buffer[0];
-    appendNullTerminatedString("available physical memory: ", p);
-    p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
-    appendNullTerminatedString(", rss usage: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
-    appendNullTerminatedString(", vsz usage: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
-    appendNullTerminatedString(", threads: ", p);
-    p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
-
-    LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
-  }
 } catch (...) {
   // we better not throw an exception from inside a signal handler
+}
+
+// log info about the current process
+void logProcessInfo() {
+  // buffer for constructing temporary log messages (to avoid malloc)
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  auto processInfo = TRI_ProcessInfoSelf();
+  char* p = &buffer[0];
+  appendNullTerminatedString("available physical memory: ", p);
+  p += arangodb::basics::StringUtils::itoa(arangodb::PhysicalMemory::getValue(), p);
+  appendNullTerminatedString(", rss usage: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._residentSize), p);
+  appendNullTerminatedString(", vsz usage: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._virtualSize), p);
+  appendNullTerminatedString(", threads: ", p);
+  p += arangodb::basics::StringUtils::itoa(uint64_t(processInfo._numberThreads), p);
+
+  LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
 }
 
 /// @brief Logs the reception of a signal to the logfile.
@@ -406,7 +465,9 @@ void logBacktrace(char const* context, int signal, siginfo_t* info, void* uconte
 #ifndef _WIN32
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    ::logBacktrace("signal handler invoked", signal, info, ucontext);
+    logCrashInfo("signal handler invoked", signal, info, ucontext);
+    logBacktrace();
+    logProcessInfo();
     arangodb::Logger::flush();
     arangodb::Logger::shutdown();
   } else {
@@ -422,13 +483,99 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 }
 #endif
 
+#ifdef _WIN32
+
+static std::string miniDumpDirectory = "C:\\temp";
+static std::mutex miniDumpLock;
+
+void createMiniDump(EXCEPTION_POINTERS* pointers) {
+  // we have to serialize calls to MiniDumpWriteDump
+  std::lock_guard<std::mutex> lock(miniDumpLock);
+
+  char buffer[4096];
+  memset(&buffer[0], 0, sizeof(buffer));
+
+  time_t rawtime;
+  time(&rawtime);
+  struct tm timeinfo;
+  _gmtime64_s(&timeinfo, &rawtime);
+  char time[20];
+  strftime(time, sizeof(time), "%Y-%m-%dT%H-%M-%S", &timeinfo);
+
+  char filename[MAX_PATH];
+  _snprintf_s(filename, sizeof(filename), "%s\\%s_%d_%d.dmp", miniDumpDirectory.c_str(),
+              time, GetCurrentProcessId(), GetCurrentThreadId());
+  HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                            FILE_ATTRIBUTE_NORMAL, NULL);
+
+  if (hFile == INVALID_HANDLE_VALUE) {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Could not open minidump file: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("ba80e", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+    return;
+  }
+
+  MINIDUMP_EXCEPTION_INFORMATION exceptionInfo;
+  exceptionInfo.ThreadId = GetCurrentThreadId();
+  exceptionInfo.ExceptionPointers = pointers;
+  exceptionInfo.ClientPointers = FALSE;
+
+  if (MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                        MINIDUMP_TYPE(MiniDumpNormal | MiniDumpWithProcessThreadData | MiniDumpWithDataSegs),
+                        pointers ? &exceptionInfo : nullptr, nullptr, nullptr)) {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Wrote minidump: ", p);
+    appendNullTerminatedString(filename, p);
+    LOG_TOPIC("93315", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  } else {
+    char* p = &buffer[0];
+    appendNullTerminatedString("Failed to write minidump: ", p);
+    p += arangodb::basics::StringUtils::itoa(GetLastError(), p);
+    LOG_TOPIC("af06b", WARN, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  }
+
+  CloseHandle(hFile);
+}
+
+LONG CALLBACK unhandledExceptionFilter(EXCEPTION_POINTERS* pointers) {
+  TRI_ASSERT(pointers && pointers->ExceptionRecord);
+
+  {
+    char buffer[4096];
+    memset(&buffer[0], 0, sizeof(buffer));
+    char* p = &buffer[0];
+    appendNullTerminatedString("Unhandled exception: ", p);
+    appendHexValue(pointers->ExceptionRecord->ExceptionCode, p, false);
+    appendNullTerminatedString(" at address ", p);
+    appendHexValue(pointers->ContextRecord->Rip, p, false);
+    appendNullTerminatedString(" in thread ", p);
+    appendHexValue(GetCurrentThreadId(), p, true);
+    LOG_TOPIC("87ff4", INFO, arangodb::Logger::CRASH)
+        << arangodb::Logger::CHARS(&buffer[0], p - &buffer[0]);
+  } 
+  createMiniDump(pointers);
+  return EXCEPTION_CONTINUE_SEARCH;
+}
+#endif
+
 } // namespace
 
 namespace arangodb {
 
+void CrashHandler::logBacktrace() {
+  ::logBacktrace();
+  Logger::flush();
+}
+
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(char const* context) {
-  ::logBacktrace(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
+  ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
+  ::logBacktrace();
+  ::logProcessInfo();
   Logger::flush();
   Logger::shutdown();
 
@@ -521,6 +668,8 @@ void CrashHandler::installCrashHandler() {
   sigaction(SIGILL, &act, nullptr);
   sigaction(SIGFPE, &act, nullptr);
   sigaction(SIGABRT, &act,nullptr);
+#else // _WIN32
+  SetUnhandledExceptionFilter(unhandledExceptionFilter);
 #endif
 
   // install handler for std::terminate()
@@ -559,5 +708,11 @@ void CrashHandler::installCrashHandler() {
     CrashHandler::crash(&buffer[0]);
   });
 }
+
+#ifdef _WIN32
+void CrashHandler::setMiniDumpDirectory(std::string path) {
+  ::miniDumpDirectory = std::move(path);
+}
+#endif
 
 }  // namespace arangodb

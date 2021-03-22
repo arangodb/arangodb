@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -195,7 +195,7 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
     } else {
       LOG_TOPIC("a0b4f", ERR, arangodb::Logger::CLUSTER) << "unable to store cluster upgrade information in agency: " << result.errorMessage();
     }
-  } else if (result.httpCode() != (int)arangodb::rest::ResponseCode::PRECONDITION_FAILED) {
+  } else if (result.httpCode() != rest::ResponseCode::PRECONDITION_FAILED) {
     LOG_TOPIC("482a3", WARN, arangodb::Logger::CLUSTER) << "unable to fetch upgrade information: " << result.errorMessage();
   } else {
     // someone else is performing the upgrade

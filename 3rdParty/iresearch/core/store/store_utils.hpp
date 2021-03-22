@@ -37,8 +37,6 @@
 #include "utils/attributes.hpp"
 #include "utils/std.hpp"
 
-#include <unordered_set>
-
 namespace {
 
 using iresearch::data_input;
@@ -164,13 +162,13 @@ inline int64_t read_zvlong(data_input& in) {
 }
 
 inline void write_string(data_output& out, const char* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(reinterpret_cast<const byte_type*>(s), len);
 }
 
 inline void write_string(data_output& out, const byte_type* s, size_t len) {
-  assert(len < integer_traits<uint32_t>::const_max);
+  assert(len < std::numeric_limits<uint32_t>::max());
   out.write_vint(uint32_t(len));
   out.write_bytes(s, len);
 }
@@ -325,14 +323,16 @@ FORCE_INLINE uint32_t shift_pack_32(uint32_t val, bool b) noexcept {
   return (val << 1) | uint32_t(b);
 }
 
-FORCE_INLINE bool shift_unpack_64(uint64_t in, uint64_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint64_t>
+FORCE_INLINE T shift_unpack_64(uint64_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
-FORCE_INLINE bool shift_unpack_32(uint32_t in, uint32_t& out) noexcept {
-  out = in >> 1;
-  return in & 1;
+template<typename T = bool, typename U = uint32_t>
+FORCE_INLINE T shift_unpack_32(uint32_t in, U& out) noexcept {
+  out = static_cast<U>(in >> 1);
+  return static_cast<T>(in & 1);
 }
 
 // ----------------------------------------------------------------------------
@@ -399,7 +399,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     return *pos_++;
   }
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept final {
+  virtual const byte_type* read_buffer(size_t size, BufferHint /*hint*/) noexcept override final {
     const auto* pos = pos_ + size;
 
     if (pos > data_.end()) {

@@ -574,11 +574,19 @@ class filter_test_case_base : public index_test_base {
     auto prepared_order = order.prepare();
     auto prepared_filter = filter.prepare(rdr, prepared_order);
     auto score_less = [&prepared_order](
-        const irs::bytes_ref& lhs,
-        const irs::bytes_ref& rhs)->bool {
-      return prepared_order.less(lhs.c_str(), rhs.c_str());
+        const std::pair<irs::bstring, irs::doc_id_t>& lhs,
+        const std::pair<irs::bstring, irs::doc_id_t>& rhs)->bool {
+      if (prepared_order.less(lhs.first.c_str(), rhs.first.c_str())) {
+        return true;
+      }
+
+      if (prepared_order.less(rhs.first.c_str(), lhs.first.c_str())) {
+        return false;
+      }
+
+      return lhs.second < rhs.second;
     };
-    std::multimap<irs::bstring, irs::doc_id_t, decltype(score_less)> scored_result(score_less);
+    std::multiset<std::pair<irs::bstring, irs::doc_id_t>, decltype(score_less)> scored_result(score_less);
 
     for (const auto& sub: rdr) {
       auto docs = prepared_filter->execute(sub, prepared_order);
@@ -597,14 +605,17 @@ class filter_test_case_base : public index_test_base {
 
         if (score && !score->is_default()) {
           scored_result.emplace(
-            irs::bytes_ref{ score->evaluate(), prepared_order.score_size() },
-            docs->value());
+            irs::bytes_ref(score->evaluate(), prepared_order.score_size()),
+            docs->value()
+          );
         } else {
           scored_result.emplace(
-            irs::bytes_ref::EMPTY,
-            docs->value());
+            irs::bstring(prepared_order.score_size(), 0),
+            docs->value()
+          );
         }
       }
+      ASSERT_FALSE(docs->next());
     }
 
     std::vector<irs::doc_id_t> result;
@@ -642,6 +653,7 @@ class filter_test_case_base : public index_test_base {
         // put score attributes to iterator
         result.push_back(docs->value());
       }
+      ASSERT_FALSE(docs->next());
     }
   }
 };

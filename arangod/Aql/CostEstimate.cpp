@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -54,4 +54,14 @@ void CostEstimate::initialize() {
 bool CostEstimate::isValid() const {
   // a value of < 0 will mean that the cost estimation was not performed yet
   return estimatedCost >= 0.0;
+}
+
+void CostEstimate::saveEstimatedNrItems() {
+  _outerSubqueryEstimatedNrItems.push(estimatedNrItems);
+}
+
+void CostEstimate::restoreEstimatedNrItems() {
+  TRI_ASSERT(!_outerSubqueryEstimatedNrItems.empty());
+  estimatedNrItems = _outerSubqueryEstimatedNrItems.top();
+  _outerSubqueryEstimatedNrItems.pop();
 }

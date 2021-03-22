@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,6 +40,9 @@
 #include <queue>
 
 namespace arangodb {
+namespace maintenance {
+enum ActionState;
+}
 
 template <typename T>
 struct SharedPtrComparer {
@@ -130,10 +133,9 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::shared_ptr<maintenance::Action> postAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  /// @brief Check if a shard is locked for a maintenance action.
-  /// returns the ActionDescription of the job if locked. If the shard
-  /// is not locked, a nullptr is returned.
-  std::shared_ptr<maintenance::ActionDescription> isShardLocked(ShardID const& shardId) const;
+  /// returns whether or not the shard has an action of the specified type
+  /// (equivalent to NAME) that has the specified state
+  bool hasAction(maintenance::ActionState state, ShardID const& shardId, std::string const& type) const;
 
   /// @brief Lock a shard for a certain action description. Returns `false` if
   /// the shard is already locked and `true` otherwise. If the lock succeeds, the
@@ -334,7 +336,7 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   std::unordered_set<std::string> dirty(
     std::unordered_set<std::string> const& = std::unordered_set<std::string>());
   /// @brief get n random db names
-  std::unordered_set<std::string> pickRandomDirty (size_t n);
+  std::unordered_set<std::string> pickRandomDirty(size_t n);
 
 
  protected:
@@ -383,14 +385,14 @@ class MaintenanceFeature : public application_features::ApplicationFeature {
   ///  duplicates from adding to _actionRegistry
   int32_t _secondsActionsBlock;
 
-  /// @brief tunable option for number of seconds COMPLETE and FAILE actions remain
+  /// @brief tunable option for number of seconds COMPLETE and FAILED actions remain
   ///  within _actionRegistry
   int32_t _secondsActionsLinger;
 
   /// @brief flag to indicate when it is time to stop thread pool
   std::atomic<bool> _isShuttingDown;
 
-  /// @brief simple counter for creating MaintenanceAction id.  Ok for it to roll over.
+  /// @brief simple counter for creating MaintenanceAction id. Ok for it to roll over.
   std::atomic<uint64_t> _nextActionId;
 
   //

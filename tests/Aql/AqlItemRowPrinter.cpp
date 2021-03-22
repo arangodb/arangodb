@@ -25,8 +25,9 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/ShadowAqlItemRow.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include <velocypack/Slice.h>
 
@@ -47,8 +48,9 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
     }
   }
 
-  auto monitor = ResourceMonitor{};
-  auto manager = AqlItemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  auto manager = AqlItemBlockManager{monitor, SerializationFormat::SHADOWROWS};
 
   struct {
     void operator()(std::ostream& stream, InputAqlItemRow const&) {
@@ -64,7 +66,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream, RowType const& row
   if (row.getNumRegisters() > 0) {
     stream << row.getValue(0).slice().toJson();
   }
-  for (RegisterId i = 1; i < row.getNumRegisters(); ++i) {
+  for (RegisterId::value_t i = 1; i < row.getNumRegisters(); ++i) {
     stream << ", ";
     stream << row.getValue(i).slice().toJson();
   }

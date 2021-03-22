@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -48,7 +48,7 @@ bool parseDirectionBool(arangodb::velocypack::Slice slice, bool& direction) {
 
 bool parseDirectionString(arangodb::velocypack::Slice slice, bool& direction) {
   if (slice.isString()) {
-    std::string value = arangodb::iresearch::getStringRef(slice);
+    std::string value = slice.copyString();
     arangodb::basics::StringUtils::tolowerInPlace(value);
 
     if (value == "asc") {

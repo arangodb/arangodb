@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -60,7 +60,7 @@ class SubqueryEndNode : public ExecutionNode {
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 
-  void getVariablesUsedHere(VarSet& usedVars) const final {
+  void getVariablesUsedHere(VarSet& usedVars) const override final {
     if (_inVariable != nullptr) {
       usedVars.emplace(_inVariable);
     }

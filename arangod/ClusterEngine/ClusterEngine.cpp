@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -40,7 +40,6 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
-#include "StorageEngine/RocksDBOptionFeature.h"
 #include "Transaction/Context.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Options.h"
@@ -55,8 +54,10 @@ using namespace arangodb::application_features;
 std::string const ClusterEngine::EngineName("Cluster");
 std::string const ClusterEngine::FeatureName("ClusterEngine");
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 // fall back to the using the mock storage engine
 bool ClusterEngine::Mocking = false;
+#endif
 
 // create the storage engine
 ClusterEngine::ClusterEngine(application_features::ApplicationServer& server)
@@ -78,14 +79,24 @@ bool ClusterEngine::isRocksDB() const {
 }
 
 bool ClusterEngine::isMock() const {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   return ClusterEngine::Mocking ||
          (_actualEngine && _actualEngine->name() == "Mock");
+#else
+  return false;
+#endif
+}
+
+HealthData ClusterEngine::healthCheck() {
+  return {};
 }
 
 ClusterEngineType ClusterEngine::engineType() const {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
   if (isMock()) {
     return ClusterEngineType::MockEngine;
   }
+#endif
   TRI_ASSERT(_actualEngine != nullptr);
 
   TRI_ASSERT(isRocksDB());
@@ -139,7 +150,7 @@ std::unique_ptr<PhysicalCollection> ClusterEngine::createPhysicalCollection(
       new ClusterCollection(collection, engineType(), info));
 }
 
-void ClusterEngine::getStatistics(velocypack::Builder& builder) const {
+void ClusterEngine::getStatistics(velocypack::Builder& builder, bool v2) const {
   Result res = getEngineStatsFromDBServers(server().getFeature<ClusterFeature>(), builder);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -163,22 +174,23 @@ void ClusterEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                                       arangodb::velocypack::Builder& builder,
                                       bool includeIndexes, TRI_voc_tick_t maxTick) {}
 
-int ClusterEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
-                                            arangodb::velocypack::Builder& result,
-                                            bool wasCleanShutdown, bool isUpgrade) {
+ErrorCode ClusterEngine::getCollectionsAndIndexes(TRI_vocbase_t& vocbase,
+                                                  arangodb::velocypack::Builder& result,
+                                                  bool wasCleanShutdown, bool isUpgrade) {
   return TRI_ERROR_NO_ERROR;
 }
 
-int ClusterEngine::getViews(TRI_vocbase_t& vocbase, arangodb::velocypack::Builder& result) {
+ErrorCode ClusterEngine::getViews(TRI_vocbase_t& vocbase,
+                                  arangodb::velocypack::Builder& result) {
   return TRI_ERROR_NO_ERROR;
 }
 
 VPackBuilder ClusterEngine::getReplicationApplierConfiguration(TRI_vocbase_t& vocbase,
-                                                               int& status) {
+                                                               ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-VPackBuilder ClusterEngine::getReplicationApplierConfiguration(int& status) {
+VPackBuilder ClusterEngine::getReplicationApplierConfiguration(ErrorCode& status) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -191,8 +203,7 @@ std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(arangodb::CreateDatab
 }
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::createDatabase(arangodb::CreateDatabaseInfo&& info,
-                                                             int& status) {
-  // error lol
+                                                             ErrorCode& status) {
   status = TRI_ERROR_INTERNAL;
   auto rv = std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, std::move(info));
   status = TRI_ERROR_NO_ERROR;
@@ -266,7 +277,11 @@ Result ClusterEngine::compactAll(bool changeLevel, bool compactBottomMostLevel) 
 void ClusterEngine::addOptimizerRules(aql::OptimizerRulesFeature& feature) {
   if (engineType() == ClusterEngineType::RocksDBEngine) {
     RocksDBOptimizerRules::registerResources(feature);
-  } else if (engineType() != ClusterEngineType::MockEngine) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  } else if (engineType() == ClusterEngineType::MockEngine) {
+    // do nothing
+#endif
+  } else {
     // invalid engine type...
     TRI_ASSERT(false);
   }

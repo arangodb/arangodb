@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,8 +46,12 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   void stop() override final;
   void unprepare() override final;
 
-  // tracks a query, using execution time
-  void trackQuery(double time);
+  void updateMetrics();
+
+  // tracks a query start
+  void trackQueryStart() noexcept;
+  // tracks a query completion, using execution time
+  void trackQueryEnd(double time);
   // tracks a slow query, using execution time
   void trackSlowQuery(double time);
 
@@ -65,6 +69,7 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool smartJoins() const { return _smartJoins; }
   bool parallelizeTraversals() const { return _parallelizeTraversals; }
 #endif
+  uint64_t queryGlobalMemoryLimit() const { return _queryGlobalMemoryLimit; }
   uint64_t queryMemoryLimit() const { return _queryMemoryLimit; }
   double queryMaxRuntime() const { return _queryMaxRuntime; }
   uint64_t maxQueryPlans() const { return _maxQueryPlans; }
@@ -79,10 +84,12 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   bool _trackDataSources;
   bool _failOnWarning;
   bool _queryCacheIncludeSystem;
+  bool _queryMemoryLimitOverride;
 #ifdef USE_ENTERPRISE
   bool _smartJoins;
   bool _parallelizeTraversals;
 #endif
+  uint64_t _queryGlobalMemoryLimit;
   uint64_t _queryMemoryLimit;
   double _queryMaxRuntime;
   uint64_t _maxQueryPlans;
@@ -105,6 +112,9 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Counter& _totalQueryExecutionTime;
   Counter& _queriesCounter;
   Counter& _slowQueriesCounter;
+  Gauge<uint64_t>& _runningQueries;
+  Gauge<uint64_t>& _globalQueryMemoryUsage;
+  Gauge<uint64_t>& _globalQueryMemoryLimit;
 };
 
 }  // namespace arangodb

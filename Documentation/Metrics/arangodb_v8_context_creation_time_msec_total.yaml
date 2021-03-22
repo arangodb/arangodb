@@ -1,0 +1,12 @@
+name: arangodb_v8_context_creation_time_msec_total
+help: |
+  Accumulated total time for creating V8 contexts.
+unit: ms
+type: counter
+category: V8
+complexity: medium
+exposedBy:
+  - coordinator
+  - single
+description: |
+  Accumulated total time for creating V8 contexts.

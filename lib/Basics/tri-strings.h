@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -85,12 +85,6 @@ char* TRI_IsContainedMemory(char const* full, size_t fullLength,
                             char const* part, size_t partLength);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief duplicates a string
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_DuplicateString(char const*);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -103,12 +97,6 @@ char* TRI_DuplicateString(char const*, size_t length);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CopyString(char* dst, char const* src, size_t length);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief concatenate three strings using a memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_Concatenate3String(char const*, char const*, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees a string
@@ -139,17 +127,6 @@ constexpr size_t TRI_MaxLengthEscapeControlsCString(size_t inLength) {
 
 char* TRI_EscapeControlsCString(char const* in, size_t inLength, char* out,
                                 size_t* outLength, bool appendNewline);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief escapes special characters using unicode escapes
-///
-/// This method escapes an UTF-8 character string by replacing the unprintable
-/// characters by a \\uXXXX sequence. Set escapeSlash to true in order to also
-/// escape the character '/'.
-////////////////////////////////////////////////////////////////////////////////
-
-char* TRI_EscapeUtf8String(char const* in, size_t inLength, bool escapeSlash,
-                           size_t* outLength, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unescapes unicode escape sequences

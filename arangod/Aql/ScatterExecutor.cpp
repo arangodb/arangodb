@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ ScatterExecutor::ClientBlockData::ClientBlockData(ExecutionEngine& engine,
                                                   RegisterInfos const& registerInfos)
     : _queue{}, _executor(nullptr), _executorHasMore{false} {
   // We only get shared ptrs to const data. so we need to copy here...
-  IdExecutorInfos executorInfos(false, 0, "", false);
+  IdExecutorInfos executorInfos(false, RegisterId(0), "", false);
   auto idExecutorRegisterInfos =
     RegisterInfos{{},
                   {},

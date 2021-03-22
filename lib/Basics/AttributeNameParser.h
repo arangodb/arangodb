@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -112,6 +112,14 @@ void TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
 
 void TRI_ParseAttributeString(std::string const& input,
                               std::vector<AttributeName>& result, bool allowExpansion);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Parse an input string into attribute names and expansion flags
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ParseAttributeString(std::string_view input,
+                              std::vector<AttributeName>& result, bool allowExpansion);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Transform a vector of AttributeNames back into a string

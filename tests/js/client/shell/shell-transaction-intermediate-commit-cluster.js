@@ -31,47 +31,9 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let errors = arangodb.errors;
+let { getEndpointById, getEndpointsByType } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
 
-function getEndpointById(id) {
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter((d) => (d.id === id))
-                              .map(toEndpoint)
-                              .map(endpointToURL)[0];
-}
-
-function getEndpointsByType(type) {
-  const isType = (d) => (d.role.toLowerCase() === type);
-  const toEndpoint = (d) => (d.endpoint);
-  const endpointToURL = (endpoint) => {
-    if (endpoint.substr(0, 6) === 'ssl://') {
-      return 'https://' + endpoint.substr(6);
-    }
-    let pos = endpoint.indexOf('://');
-    if (pos === -1) {
-      return 'http://' + endpoint;
-    }
-    return 'http' + endpoint.substr(pos);
-  };
-
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  return instanceInfo.arangods.filter(isType)
-                              .map(toEndpoint)
-                              .map(endpointToURL);
-}
-  
 /// @brief set failure point
 function debugCanUseFailAt(endpoint) {
   let res = request.get({
@@ -123,12 +85,12 @@ function getMetric(endpoint, name) {
   let res = request.get({
     url: endpoint + '/_admin/metrics',
   });
-  let re = new RegExp("^" + name + "\\{");
+  let re = new RegExp("^" + name);
   let matches = res.body.split('\n').filter((line) => !line.match(/^#/)).filter((line) => line.match(re));
   if (!matches.length) {
     throw "Metric " + name + " not found";
   }
-  return Number(matches[0].replace(/^.*?\} (\d+)$/, '$1'));
+  return Number(matches[0].replace(/^.* (\d+)$/, '$1'));
 }
 
 function assertInSync(leader, follower, shardId) {

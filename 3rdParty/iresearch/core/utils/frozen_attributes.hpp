@@ -29,6 +29,45 @@
 
 namespace iresearch {
 
+template<typename T>
+struct attribute_ptr {
+  T* ptr{};
+
+  attribute_ptr() = default;
+  attribute_ptr(T& v) noexcept : ptr(&v) { }
+  attribute_ptr(T* v) noexcept : ptr(v) { }
+
+  operator attribute_ptr<attribute>() const noexcept {
+    return attribute_ptr<attribute>{ptr};
+  }
+}; // attribute_ptr
+
+template<typename T>
+struct type<attribute_ptr<T>> : type<T> { };
+
+namespace detail {
+
+template<size_t I, typename... T>
+constexpr attribute_ptr<attribute> get_mutable_helper(std::tuple<T...>& t, type_info::type_id id) noexcept {
+   auto& v = std::get<I>(t);
+   if (type<std::remove_reference_t<decltype(v)>>::id() == id) {
+     return v;
+   }
+
+   if constexpr (I < std::tuple_size<std::tuple<T...>>::value - 1) {
+     return get_mutable_helper<I+1>(t, id);
+   } else {
+     return {};
+   }
+}
+
+}
+
+template<typename... T>
+constexpr attribute* get_mutable(std::tuple<T...>& t, type_info::type_id id) noexcept {
+  return detail::get_mutable_helper<0>(t, id).ptr;
+}
+
 template<
   size_t Size,
   typename Base,
@@ -47,7 +86,7 @@ template<
       attrs_(values) {
   }
 
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final {
+  virtual attribute* get_mutable(type_info::type_id type) noexcept override final {
     const auto it = attrs_.find(type);
     return it == attrs_.end() ? nullptr : it->second;
   }

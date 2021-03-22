@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,7 +52,7 @@ class ClusterQuery final : public arangodb::aql::Query {
                            arangodb::velocypack::Builder& answer,
                            arangodb::QueryAnalyzerRevisions const& analyzersRevision);
   
-  arangodb::futures::Future<Result> finalizeClusterQuery(int errorCode);
+  arangodb::futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
   /// @brief first one should be the local one

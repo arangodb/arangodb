@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -43,6 +43,12 @@ bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
 
 arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
                                            std::string const& name);
+
+// FIXME: remove this overload after C++20 and use heterogenious lookup in functions Feature
+inline arangodb::aql::Function const* getFunction(arangodb::aql::AqlFunctionFeature& functions,
+                                                  std::string_view  name) {
+  return getFunction(functions, static_cast<std::string>(name));
+}
 
 }  // namespace iresearch
 }  // namespace arangodb

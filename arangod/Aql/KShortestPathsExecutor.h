@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,8 +31,6 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Graph/KShortestPathsFinder.h"
-#include "Graph/KPathFinder.h"
-
 
 #include <velocypack/Builder.h>
 
@@ -46,7 +44,6 @@ class Slice;
 
 namespace graph {
 class KShortestPathsFinder;
-class KPathFinder;
 class ShortestPathFinder;
 class ShortestPathResult;
 class TraverserCache;
@@ -57,13 +54,15 @@ namespace aql {
 template <BlockPassthrough>
 class SingleRowFetcher;
 class OutputAqlItemRow;
-class NoStats;
+class TraversalStats;
+class QueryContext;
 
-template<class FinderType>
+template <class FinderType>
 class KShortestPathsExecutorInfos {
   using InputVertex = GraphNode::InputVertex;
+
  public:
-  KShortestPathsExecutorInfos(RegisterId outputRegister,
+  KShortestPathsExecutorInfos(RegisterId outputRegister, QueryContext& query,
                               std::unique_ptr<FinderType>&& finder,
                               InputVertex&& source, InputVertex&& target);
 
@@ -75,6 +74,8 @@ class KShortestPathsExecutorInfos {
 
   [[nodiscard]] auto finder() const -> FinderType&;
 
+  aql::QueryContext& query() noexcept;
+  
   /**
    * @brief test if we use a register or a constant input
    *
@@ -110,6 +111,8 @@ class KShortestPathsExecutorInfos {
   [[nodiscard]] auto getTargetVertex() const noexcept -> InputVertex;
 
  private:
+  QueryContext& _query;
+
   /// @brief the shortest path finder.
   std::unique_ptr<FinderType> _finder;
 
@@ -135,7 +138,7 @@ class KShortestPathsExecutor {
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = KShortestPathsExecutorInfos<FinderType>;
-  using Stats = NoStats;
+  using Stats = TraversalStats;
 
   using InputVertex = GraphNode::InputVertex;
 
@@ -178,8 +181,11 @@ class KShortestPathsExecutor {
                                  arangodb::velocypack::Builder& builder,
                                  arangodb::velocypack::Slice& id) -> bool;
 
+  [[nodiscard]] auto stats() -> Stats;
+
  private:
   Infos& _infos;
+  transaction::Methods _trx;
   InputAqlItemRow _inputRow;
   ExecutionState _rowState;
   /// @brief the shortest path finder.

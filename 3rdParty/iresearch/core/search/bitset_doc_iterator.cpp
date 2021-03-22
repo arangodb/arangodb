@@ -22,50 +22,39 @@
 
 #include "bitset_doc_iterator.hpp"
 #include "formats/empty_term_reader.hpp"
-#include "utils/bitset.hpp"
 #include "utils/math_utils.hpp"
 
 namespace iresearch {
 
-bitset_doc_iterator::bitset_doc_iterator(const bitset& set,
-                                         const order::prepared& ord)
-  : attributes{{
-      { type<document>::id(), &doc_   },
-      { type<cost>::id(),     &cost_  },
-      { type<score>::id(),    &score_ },
-    }},
-    cost_(set.count()),
+bitset_doc_iterator::bitset_doc_iterator(
+    const word_t* begin,
+    const word_t* end) noexcept
+  : cost_(math::math_traits<word_t>::pop(begin, end)),
     doc_(cost_.estimate()
       ? doc_limits::invalid()
       : doc_limits::eof()),
-    score_(ord),
-    begin_(set.begin()),
-    end_(set.end()),
-    next_(begin_) {
+    begin_(begin),
+    end_(end) {
+  reset();
 }
 
-bitset_doc_iterator::bitset_doc_iterator(
-      const sub_reader& reader,
-      const byte_type* stats,
-      const bitset& set,
-      const order::prepared& order,
-      boost_t boost)
-  : bitset_doc_iterator(set, order) {
-  // prepare score
-  if (!order.empty()) {
-    order::prepared::scorers scorers(
-      order, reader, empty_term_reader(cost_.estimate()),
-      stats, score_.data(),
-      *this, // doc_iterator attributes
-      boost);
-
-    irs::reset(score_, std::move(scorers));
+attribute* bitset_doc_iterator::get_mutable(irs::type_info::type_id id) noexcept {
+  if (type<document>::id() == id) {
+    return &doc_;
   }
+
+  return type<cost>::id() == id
+    ? &cost_ : nullptr;
 }
 
 bool bitset_doc_iterator::next() noexcept {
   while (!word_) {
     if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
+
       doc_.value = doc_limits::eof();
       word_ = 0;
 
@@ -74,28 +63,46 @@ bool bitset_doc_iterator::next() noexcept {
 
     word_ = *next_++;
     base_ += bits_required<word_t>();
+    doc_.value = base_ - 1;
   }
 
-  const doc_id_t delta = math::math_traits<word_t>::ctz(word_);
-  irs::unset_bit(word_, delta);
-  doc_.value = base_ + delta;
+  // FIXME remove conversion
+  const doc_id_t delta = doc_id_t(math::math_traits<word_t>::ctz(word_));
+  assert(delta < bits_required<word_t>());
+
+  word_ = (word_ >> delta) >> 1;
+  doc_.value += 1 + delta;
 
   return true;
 }
 
 doc_id_t bitset_doc_iterator::seek(doc_id_t target) noexcept {
-  next_ = begin_ + bitset::word(target);
+  const doc_id_t word_idx = target / bits_required<word_t>();
 
-  if (next_ >= end_) {
-    doc_.value = doc_limits::eof();
-    word_ = 0;
+  while (1) {
+    next_ = begin_ + word_idx;
 
-    return doc_.value;
+    if (next_ >= end_) {
+      if (refill(&begin_, &end_)) {
+        reset();
+        continue;
+      }
+
+      doc_.value = doc_limits::eof();
+      word_ = 0;
+
+      return doc_.value;
+    }
+
+    break;
   }
 
-  base_ = doc_id_t(std::distance(begin_, next_) * bits_required<word_t>());
-  word_ = (*next_++) & ((~word_t(0)) << bitset::bit(target));
+  const doc_id_t bit_idx = target % bits_required<word_t>();
+  base_ = word_idx * bits_required<word_t>();
+  word_ = (*next_++) >> bit_idx;
+  doc_.value = base_ - 1 + bit_idx;
 
+  // FIXME consider inlining to speedup
   next();
 
   return doc_.value;

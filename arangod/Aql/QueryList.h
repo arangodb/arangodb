@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,9 +26,11 @@
 
 #include <cmath>
 #include <list>
+#include <optional>
 
 #include "Aql/QueryExecutionState.h"
 #include "Basics/Common.h"
+#include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"
 
@@ -47,10 +49,10 @@ struct QueryEntryCopy {
   QueryEntryCopy(TRI_voc_tick_t id, std::string const& database,
                  std::string const& user, std::string&& queryString,
                  std::shared_ptr<arangodb::velocypack::Builder> const& bindParameters,
-                 std::vector<std::string> dataSources,
-                 double started, double runTime,
-                 QueryExecutionState::ValueType state, bool stream);
-  
+                 std::vector<std::string> dataSources, double started,
+                 double runTime, QueryExecutionState::ValueType state,
+                 bool stream, std::optional<ErrorCode> resultCode);
+
   void toVelocyPack(arangodb::velocypack::Builder& out) const;
 
   TRI_voc_tick_t const id;
@@ -62,6 +64,7 @@ struct QueryEntryCopy {
   double const started;
   double const runTime;
   QueryExecutionState::ValueType const state;
+  std::optional<ErrorCode> resultCode;
   bool stream;
 
 };
@@ -221,7 +224,9 @@ class QueryList {
   size_t count();
 
  private:
-  std::string extractQueryString(Query const* query, size_t maxLength) const;
+  std::string extractQueryString(Query const& query, size_t maxLength) const;
+
+  void killQuery(Query& query, size_t maxLength, bool silent); 
 
   /// @brief default maximum number of slow queries to keep in list
   static constexpr size_t defaultMaxSlowQueries = 64;

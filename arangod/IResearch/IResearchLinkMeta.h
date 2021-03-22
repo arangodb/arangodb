@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -192,19 +192,29 @@ struct IResearchLinkMeta : public FieldMeta {
         _analyzerDefinitions(mask),
         _sort(mask),
         _storedValues(mask),
-        _sortCompression(mask) {
+        _sortCompression(mask),
+        _collectionName(mask) {
     }
 
     bool _analyzerDefinitions;
     bool _sort;
     bool _storedValues;
     bool _sortCompression;
+    bool _collectionName;
   };
 
   std::set<AnalyzerPool::ptr, FieldMeta::AnalyzerComparer> _analyzerDefinitions;
   IResearchViewSort _sort; // sort condition associated with the link
   IResearchViewStoredValues _storedValues; // stored values associated with the link
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
+
+  /// @brief Linked collection name. Stored here for cluster deployment only.
+  /// For sigle server collection could be renamed so can`t store it here or 
+  /// syncronisation will be needed. For cluster rename is not possible so 
+  /// there is no problem but solved recovery issue - we will be able to index
+  /// _id attribute without doing agency request for collection name
+  std::string _collectionName;
+
   // NOTE: if adding fields don't forget to modify the comparison operator !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask !!!
   // NOTE: if adding fields don't forget to modify IResearchLinkMeta::Mask constructor !!!

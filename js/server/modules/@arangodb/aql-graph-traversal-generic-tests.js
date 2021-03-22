@@ -1800,7 +1800,7 @@ function testOpenDiamondShortestPathWT(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testOpenDiamondKPaths(testGraph) {
+function testOpenDiamondKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
   const query = aql`
         FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
@@ -1811,6 +1811,44 @@ function testOpenDiamondKPaths(testGraph) {
   const necessaryPaths = [
     ["A", "B", "D", "F"],
     ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testOpenDiamondKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR path IN 1..3 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('F')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "D", "F"],
+    ["A", "C", "D", "F"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testOpenDiamondKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.openDiamond.name()));
+  const query = aql`
+        FOR path IN 1..3 INBOUND K_PATHS ${testGraph.vertex('F')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["F", "D", "B", "A"],
+    ["F", "D", "C", "A"]
   ];
 
   const res = db._query(query);
@@ -2289,7 +2327,7 @@ function testSmallCircleShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testSmallCircleKPaths(testGraph) {
+function testSmallCircleKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
   const query = aql`
         FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}
@@ -2299,6 +2337,42 @@ function testSmallCircleKPaths(testGraph) {
 
   const necessaryPaths = [
     ["A", "B", "C", "D"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 1..3 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('D')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "C", "D"], ["A", "D"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testSmallCircleKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
+  const query = aql`
+        FOR path IN 1..3 INBOUND K_PATHS ${testGraph.vertex('D')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["D", "C", "B", "A"]
   ];
 
   const res = db._query(query);
@@ -4252,7 +4326,7 @@ function testCompleteGraphShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testCompleteGraphKPathsD1(testGraph) {
+function testCompleteGraphKPathsD1Outbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
   const query = aql`
         FOR path IN 1..1 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}
@@ -4262,6 +4336,42 @@ function testCompleteGraphKPathsD1(testGraph) {
 
   const necessaryPaths = [
     ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testCompleteGraphKPathsD1Any(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR path IN 1..1 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('C')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "C"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testCompleteGraphKPathsD1Inbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.completeGraph.name()));
+  const query = aql`
+        FOR path IN 1..1 INBOUND K_PATHS ${testGraph.vertex('C')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["C", "A"]
   ];
 
   const res = db._query(query);
@@ -4634,7 +4744,7 @@ function testEasyPathShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testEasyPathKPaths(testGraph) {
+function testEasyPathKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
   const query = aql`
         FOR path IN 1..9 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}
@@ -4644,6 +4754,42 @@ function testEasyPathKPaths(testGraph) {
 
   const necessaryPaths = [
     ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testEasyPathKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const query = aql`
+        FOR path IN 1..9 Any K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('J')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testEasyPathKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.easyPath.name()));
+  const query = aql`
+        FOR path IN 1..9 INBOUND K_PATHS ${testGraph.vertex('J')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["J" ,"I" ,"H" ,"G" ,"F" ,"E" ,"D" ,"C" ,"B" ,"A"]
   ];
 
   const res = db._query(query);
@@ -5345,7 +5491,7 @@ function testAdvancedPathShortestPath(testGraph) {
   assertResIsContainedInPathList(allowedPaths, actualPath);
 }
 
-function testAdvancedPathKPaths(testGraph) {
+function testAdvancedPathKPathsOutbound(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
   const query = aql`
         FOR path IN 1..8 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}
@@ -5358,6 +5504,48 @@ function testAdvancedPathKPaths(testGraph) {
     ["A", "D", "E", "F", "G", "H", "I"],
     ["A", "B", "C", "D", "E", "H", "I"],
     ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testAdvancedPathKPathsAny(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+        FOR path IN 1..8 ANY K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('I')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["A", "D", "E", "H", "I"],
+    ["A", "D", "E", "F", "G", "H", "I"],
+    ["A", "B", "C", "D", "E", "H", "I"],
+    ["A", "B", "C", "D", "E", "F", "G", "H", "I"],
+  ];
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+
+  assertResIsEqualInPathList(necessaryPaths, foundPaths);
+}
+
+function testAdvancedPathKPathsInbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.advancedPath.name()));
+  const query = aql`
+        FOR path IN 1..8 OUTBOUND K_PATHS ${testGraph.vertex('I')} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const necessaryPaths = [
+    ["I" ,"H" ,"E" ,"D" ,"A"],
+    ["I" ,"H" ,"G" ,"F" ,"E" ,"D" ,"A"],
+    ["I" ,"H" ,"E" ,"D" ,"C" ,"B" ,"A"],
+    ["I" ,"H" ,"G" ,"F" ,"E" ,"D" ,"C" ,"B" ,"A"],
   ];
 
   const res = db._query(query);
@@ -5431,6 +5619,62 @@ function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph,
   });
 }
 
+function testUnconnectedGraphKPathsOutbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('B')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testUnconnectedGraphKPathsOutboundInvalidFromVertex(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex()} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testUnconnectedGraphKPathsOutboundInvalidToVertex(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.nonExistingVertex()}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testEmptyGraphKPathsOutbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex() + "0"} TO ${testGraph.nonExistingVertex() + "1"}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
 const testsByGraph = {
   openDiamond: {
     testOpenDiamondDfsUniqueVerticesPath,
@@ -5462,7 +5706,9 @@ const testsByGraph = {
     testOpenDiamondWeightedLabelVariableForwarding,
     testOpenDiamondShortestPath,
     testOpenDiamondShortestPathWT,
-    testOpenDiamondKPaths,
+    testOpenDiamondKPathsOutbound,
+    testOpenDiamondKPathsInbound,
+    testOpenDiamondKPathsAny,
     testOpenDiamondShortestPathEnabledWeightCheck,
     testOpenDiamondShortestPathEnabledWeightCheckWT,
     testOpenDiamondKShortestPathWithMultipleLimits,
@@ -5503,7 +5749,9 @@ const testsByGraph = {
     testSmallCircleWeightedUniqueEdgesPathUniqueVerticesGlobal,
     testSmallCircleWeightedUniqueEdgesNoneUniqueVerticesGlobal,
     testSmallCircleShortestPath,
-    testSmallCircleKPaths,
+    testSmallCircleKPathsOutbound,
+    testSmallCircleKPathsAny,
+    testSmallCircleKPathsInbound,
     testSmallCircleShortestPathEnabledWeightCheck,
     testSmallCircleKShortestPathWithMultipleLimits,
     testSmallCircleKShortestPathWithMultipleLimitsWT,
@@ -5555,7 +5803,9 @@ const testsByGraph = {
     testCompleteGraphWeightedUniqueEdgesPathUniqueVerticesGlobalD10,
     testCompleteGraphWeightedUniqueEdgesNoneUniqueVerticesGlobalD10,
     testCompleteGraphShortestPath,
-    testCompleteGraphKPathsD1,
+    testCompleteGraphKPathsD1Outbound,
+    testCompleteGraphKPathsD1Any,
+    testCompleteGraphKPathsD1Inbound,
     testCompleteGraphKPathsD2,
     testCompleteGraphKPathsD3,
     testCompleteGraphShortestPathEnabledWeightCheck,
@@ -5587,7 +5837,9 @@ const testsByGraph = {
     testEasyPathAllCombinations,
     testEasyPathPruning,
     testEasyPathShortestPath,
-    testEasyPathKPaths,
+    testEasyPathKPathsOutbound,
+    testEasyPathKPathsAny,
+    testEasyPathKPathsInbound,
     testEasyPathShortestPathEnabledWeightCheck,
     testEasyPathKShortestPathMultipleLimits,
     testEasyPathKShortestPathMultipleLimitsWT,
@@ -5629,7 +5881,9 @@ const testsByGraph = {
     testAdvancedPathWeightedUniqueEdgesUniqueNoneVerticesGlobalEnabledWeights,
 
     testAdvancedPathShortestPath,
-    testAdvancedPathKPaths,
+    testAdvancedPathKPathsOutbound,
+    testAdvancedPathKPathsAny,
+    testAdvancedPathKPathsInbound,
     testAdvancedPathShortestPathEnabledWeightCheck,
     testAdvancedPathKShortestPathMultiLimit,
     testAdvancedPathKShortestPathMultiLimitWT,
@@ -5638,6 +5892,14 @@ const testsByGraph = {
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,
+  },
+  unconnectedGraph: {
+    testUnconnectedGraphKPathsOutbound,
+    testUnconnectedGraphKPathsOutboundInvalidToVertex,
+    testUnconnectedGraphKPathsOutboundInvalidFromVertex
+  },
+  emptyGraph: {
+    testEmptyGraphKPathsOutbound
   }
 };
 

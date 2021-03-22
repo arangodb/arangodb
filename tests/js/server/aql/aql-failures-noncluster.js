@@ -220,22 +220,6 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testReturnBlock : function () {
-      internal.debugSetFailAt("ReturnBlock::getSome");
-      assertFailingQuery(`
-        FOR year IN [ 2010, 2011, 2012 ]
-          LET quarters = ( (
-            FOR q IN [ 'jhaskdjhjkasdhkjahsd', 2, 3, 4 ]
-              RETURN CONCAT('xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx', q)
-          ) )
-          RETURN UNIQUE(quarters)
-      `, ['-splice-subqueries']);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
     testSortBlock1 : function () {
       internal.debugSetFailAt("SortBlock::doSorting");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
@@ -343,27 +327,6 @@ function ahuacatlFailureSuite () {
     testEnumerateListBlock2 : function () {
       internal.debugSetFailAt("EnumerateListBlock::getAqlValue");
       assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)", [ "-all" ]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryBlock1 : function () {
-      internal.debugSetFailAt("SubqueryBlock::getSome");
-      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)", [ "-all" ]);
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x", [ "-all" ]);
-      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x", [ "-all" ]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubqueryBlock2 : function () {
-      internal.debugSetFailAt("SubqueryBlock::executeSubquery");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x", [ "-all" ]);
-      assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x", [ "-all" ]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

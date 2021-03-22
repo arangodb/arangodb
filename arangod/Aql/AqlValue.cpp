@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -52,10 +52,12 @@ using namespace arangodb::aql;
 // this is a copy of that functionality, because the functions in velocypack
 // are not accessible from here
 namespace {
+
+
 static inline uint64_t toUInt64(int64_t v) noexcept {
   // If v is negative, we need to add 2^63 to make it positive,
   // before we can cast it to an uint64_t:
-  uint64_t shift2 = 1ULL << 63;
+  constexpr uint64_t shift2 = 1ULL << 63;
   int64_t shift = static_cast<int64_t>(shift2 - 1);
   return v >= 0 ? static_cast<uint64_t>(v) : static_cast<uint64_t>((v + shift) + 1) + shift2;
   // Note that g++ and clang++ with -O3 compile this away to
@@ -71,12 +73,18 @@ static inline uint8_t intLength(int64_t value) noexcept {
   }
   uint64_t x = value >= 0 ? static_cast<uint64_t>(value)
                           : static_cast<uint64_t>(-(value + 1));
-  uint8_t xSize = 0;
-  do {
-    xSize++;
-    x >>= 8;
-  } while (x >= 0x80);
-  return xSize + 1;
+  // check  4 MSB bytes - if there is at least one 1 than all  4 LSB should be kept and we could add 4 to counter
+  // and then check how many of 4 MSB we actually need.
+  // if 4 MSB bytes are all 0 then we should check only 4 LSB
+  // we actually set (5 : 1) as we at the end will anyway need to do +1 for last byte - so do it here.
+  uint8_t nSize = (x & UINT64_C(0xFFFFFFFF80000000)) ? x >>= 32, 5 : 1;
+
+  // same trick but with 4 left bytes now checking by 2 bytes
+  nSize += (x & UINT64_C(0xFFFF8000)) ? x >>= 16, 2 : 0;
+
+  // same trick with 2 last bytes
+  nSize += (x & 0xFF80) ? 1 :0;
+  return nSize;
 }
 }  // namespace
 
@@ -84,6 +92,10 @@ static inline uint8_t intLength(int64_t value) noexcept {
 uint64_t AqlValue::hash(uint64_t seed) const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -91,20 +103,9 @@ uint64_t AqlValue::hash(uint64_t seed) const {
       // different representations in case it's an array/object/number
       return slice(t).normalizedHash(seed);
     }
-    case DOCVEC: {
-      uint64_t const tmp = docvecLength() ^ 0xba5bedf00d;
-      uint64_t value = VELOCYPACK_HASH(&tmp, sizeof(tmp), seed);
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          value = it->getValueReference(i, 0).hash(value);
-        }
-      }
-      return value;
-    }
     case RANGE: {
-      uint64_t const n = _data.range->size();
-      
+      uint64_t const n = _data.rangeMeta.range->size();
+
       // simon: copied from VPackSlice::normalizedHash()
       // normalize arrays by hashing array length and iterating
       // over all array members
@@ -113,10 +114,10 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 
       for (uint64_t i = 0; i < n; ++i) {
         // upcast integer values to double
-        double v = static_cast<double>(_data.range->at(i));
+        double v = static_cast<double>(_data.rangeMeta.range->at(i));
         value ^= VELOCYPACK_HASH(&v, sizeof(v), value);
       }
-      
+
       return value;
     }
   }
@@ -127,17 +128,21 @@ uint64_t AqlValue::hash(uint64_t seed) const {
 /// @brief whether or not the value contains a none value
 bool AqlValue::isNone() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isNone();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNone();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isNone();
+      return VPackSlice(_data.pointerMeta.pointer).isNone();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isNone();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isNone();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -149,22 +154,26 @@ bool AqlValue::isNone() const noexcept {
 /// @brief whether or not the value is a null value
 bool AqlValue::isNull(bool emptyIsNull) const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      VPackSlice s(&_data.internal[0]);
+      VPackSlice s(_data.inlineSliceMeta.slice);
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      VPackSlice s(_data.pointer);
+      VPackSlice s(_data.pointerMeta.pointer);
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
     case VPACK_MANAGED_SLICE: {
-      VPackSlice s(_data.slice);
+      VPackSlice s(_data.managedSliceMeta.managedPointer);
       s = s.resolveExternal();
       return (s.isNull() || (emptyIsNull && s.isNone()));
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -176,17 +185,21 @@ bool AqlValue::isNull(bool emptyIsNull) const noexcept {
 /// @brief whether or not the value is a boolean value
 bool AqlValue::isBoolean() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isBoolean();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isBoolean();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isBoolean();
+      return VPackSlice(_data.pointerMeta.pointer).isBoolean();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isBoolean();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isBoolean();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -198,17 +211,21 @@ bool AqlValue::isBoolean() const noexcept {
 /// @brief whether or not the value is a number
 bool AqlValue::isNumber() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return true;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isNumber();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isNumber();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isNumber();
+      return VPackSlice(_data.pointerMeta.pointer).isNumber();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isNumber();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isNumber();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -220,44 +237,52 @@ bool AqlValue::isNumber() const noexcept {
 /// @brief whether or not the value is a string
 bool AqlValue::isString() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isString();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isString();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isString();
+      return VPackSlice(_data.pointerMeta.pointer).isString();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isString();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isString();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
   }
-  
+
   return false;
 }
 
 /// @brief whether or not the value is an object
 bool AqlValue::isObject() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isObject();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isObject();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isObject();
+      return VPackSlice(_data.pointerMeta.pointer).isObject();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isObject();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isObject();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
   }
-  
+
   return false;
 }
 
@@ -265,22 +290,26 @@ bool AqlValue::isObject() const noexcept {
 /// as arrays, too!)
 bool AqlValue::isArray() const noexcept {
   switch (type()) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal().isArray();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal().isArray();
     }
     case VPACK_SLICE_POINTER: {
       // not resolving externals here
-      return VPackSlice(_data.pointer).isArray();
+      return VPackSlice(_data.pointerMeta.pointer).isArray();
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal().isArray();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal().isArray();
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
   }
-  
+
   return true;
 }
 
@@ -307,13 +336,15 @@ char const* AqlValue::getTypeString() const noexcept {
 size_t AqlValue::length() const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      //values above will immediately throw in Slice::length - let it be for consistency (one place of throwing)
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return static_cast<size_t>(slice(t).length());
-    }
-    case DOCVEC: {
-      return docvecLength();
     }
     case RANGE: {
       return range()->size();
@@ -332,7 +363,6 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
       doCopy = false;
     [[fallthrough]];
     case VPACK_INLINE:
-    [[fallthrough]];
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       if (s.isArray()) {
@@ -350,33 +380,6 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through
-      break;
-    }
-    case DOCVEC: {
-      size_t const n = docvecLength();
-      if (position < 0) {
-        // a negative position is allowed
-        position = static_cast<int64_t>(n) + position;
-      }
-      if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within array bounds
-        size_t total = 0;
-        for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->numRows())) {
-            // found the correct vector
-            if (doCopy) {
-              mustDestroy = true;
-              return it
-                  ->getValueReference(static_cast<size_t>(position - total), 0)
-                  .clone();
-            }
-            return it->getValue(static_cast<size_t>(position - total), 0);
-          }
-          total += it->numRows();
-        }
-      }
-      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -388,11 +391,15 @@ AqlValue AqlValue::at(int64_t position, bool& mustDestroy, bool doCopy) const {
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
+        return AqlValue(AqlValueHintInt(_data.rangeMeta.range->at(static_cast<size_t>(position))));
       }
-      // intentionally falls through
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -425,32 +432,6 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
           return AqlValue(s.at(position).begin());
         }
       }
-      // intentionally falls through
-      break;
-    }
-    case DOCVEC: {
-      if (position < 0) {
-        // a negative position is allowed
-        position = static_cast<int64_t>(n) + position;
-      }
-      if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within array bounds
-        size_t total = 0;
-        for (auto const& it : *_data.docvec) {
-          if (position < static_cast<int64_t>(total + it->numRows())) {
-            // found the correct vector
-            if (doCopy) {
-              mustDestroy = true;
-              return it
-                  ->getValueReference(static_cast<size_t>(position - total), 0)
-                  .clone();
-            }
-            return it->getValue(static_cast<size_t>(position - total), 0);
-          }
-          total += it->numRows();
-        }
-      }
-      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -461,11 +442,16 @@ AqlValue AqlValue::at(int64_t position, size_t n, bool& mustDestroy, bool doCopy
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
+        return AqlValue(AqlValueHintInt(_data.rangeMeta.range->at(static_cast<size_t>(position))));
       }
       // intentionally falls through
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -495,14 +481,17 @@ AqlValue AqlValue::getKeyAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -538,14 +527,17 @@ AqlValue AqlValue::getIdAttribute(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -575,14 +567,17 @@ AqlValue AqlValue::getFromAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -612,14 +607,17 @@ AqlValue AqlValue::getToAttribute(bool& mustDestroy, bool doCopy) const {
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -655,14 +653,17 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -699,14 +700,17 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(found.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -767,14 +771,17 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
           return AqlValue(s.begin());
         }
       }
-      // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       // will return null
       break;
     }
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      break; // just do default
   }
 
   // default is to return null
@@ -785,13 +792,17 @@ AqlValue AqlValue::get(CollectionNameResolver const& resolver,
 bool AqlValue::hasKey(std::string const& name) const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(slice(t));
       return (s.isObject() && s.hasKey(name));
     }
-    case DOCVEC:
     case RANGE: {
       break;
     }
@@ -811,6 +822,18 @@ double AqlValue::toDouble(bool& failed) const {
   failed = false;
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+      return static_cast<double>(_data.shortNumberMeta.data.int48.val);
+    case VPACK_INLINE_INT64:
+      return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val));
+    case VPACK_INLINE_UINT64:
+      return static_cast<double>(basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val));
+    case VPACK_INLINE_DOUBLE: {
+     double val;
+     auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+     memcpy(&val, &hostVal, sizeof(val));
+     return val;
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -840,7 +863,6 @@ double AqlValue::toDouble(bool& failed) const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy;  // we can ignore destruction here
@@ -859,6 +881,27 @@ double AqlValue::toDouble(bool& failed) const {
 int64_t AqlValue::toInt64() const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+      // no check for overflow here as we have 48 bit value  - it will fit into 64bit
+      return static_cast<int64_t>(_data.shortNumberMeta.data.int48.val);
+    case VPACK_INLINE_INT64:
+      return basics::littleToHost(_data.longNumberMeta.data.intLittleEndian.val);
+    case VPACK_INLINE_UINT64:
+      if (ADB_UNLIKELY(_data.longNumberMeta.data.uintLittleEndian.val > 
+          static_cast<uint64_t>(std::numeric_limits<int64_t>::max()))) {
+        throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
+      }
+      return basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+    case VPACK_INLINE_DOUBLE: {
+      double val;
+      auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      memcpy(&val, &hostVal, sizeof(val));
+      if (ADB_UNLIKELY(val > 
+          static_cast<double>(std::numeric_limits<int64_t>::max()))) {
+        throw velocypack::Exception(velocypack::Exception::NumberOutOfRange);
+      }
+      return static_cast<int64_t>(val);
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -893,7 +936,6 @@ int64_t AqlValue::toInt64() const {
       // intentionally falls through
       break;
     }
-    case DOCVEC:
     case RANGE: {
       if (length() == 1) {
         bool mustDestroy;
@@ -911,6 +953,18 @@ int64_t AqlValue::toInt64() const {
 bool AqlValue::toBoolean() const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+      return _data.shortNumberMeta.data.int48.val != 0;
+    case VPACK_INLINE_INT64: // intentinally ignore endianess. 0 is always 0
+      return _data.longNumberMeta.data.intLittleEndian.val != 0;
+    case VPACK_INLINE_UINT64: // intentinally ignore endianess. 0 is always 0
+      return _data.longNumberMeta.data.uintLittleEndian.val != 0;
+    case VPACK_INLINE_DOUBLE: {
+      auto const hostVal = basics::littleToHost(_data.longNumberMeta.data.uintLittleEndian.val);
+      double val;
+      memcpy(&val, &hostVal, sizeof(val));
+      return val != 0.0;
+    }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
@@ -931,7 +985,6 @@ bool AqlValue::toBoolean() const {
       // all other cases, including Null and None
       return false;
     }
-    case DOCVEC:
     case RANGE: {
       return true;
     }
@@ -939,26 +992,14 @@ bool AqlValue::toBoolean() const {
   return false;
 }
 
-/// @brief return the total size of the docvecs
-size_t AqlValue::docvecLength() const {
-  TRI_ASSERT(type() == DOCVEC);
-  TRI_ASSERT(_data.docvec != nullptr);
-  size_t s = 0;
-  for (auto const& it : *_data.docvec) {
-    TRI_ASSERT(it != nullptr);
-    s += it->numRows();
-  }
-  return s;
-}
-
 /// @brief return the memory origin type for values of type VPACK_MANAGED_SLICE
 AqlValue::MemoryOriginType AqlValue::memoryOriginType() const noexcept {
   TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
-  MemoryOriginType mot = static_cast<MemoryOriginType>(_data.internal[sizeof(_data.internal) - 2]);
+  MemoryOriginType mot = static_cast<MemoryOriginType>(_data.managedSliceMeta.getOrigin());
   TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
   return mot;
 }
-  
+
 /// @brief store meta information for values of type VPACK_MANAGED_SLICE
 void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::ValueLength length) {
   TRI_ASSERT(length > 0);
@@ -970,46 +1011,36 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot, arangodb::velocypack::V
   // the first 6 bytes contain the byteSize
   // the next byte contains the memoryOriginType (0 = new[], 1 = malloc)
   // the last byte contains the AqlValueType (always VPACK_MANAGED_SLICE)
-  _data.words[1] = basics::hostToBig<uint64_t>(
-      ((length & 0x0000ffffffffffffULL) << 16U) | 
-      (static_cast<uint8_t>(mot) << 8) |
-      static_cast<uint8_t>(AqlValueType::VPACK_MANAGED_SLICE)
-  );
+  _data.managedSliceMeta.lengthOrigin = length;
+  if constexpr (basics::isLittleEndian()) {
+    _data.managedSliceMeta.lengthOrigin <<= 16;
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(mot) << 8);
+    _data.managedSliceMeta.lengthOrigin |= AqlValueType::VPACK_MANAGED_SLICE;
+  } else {
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(mot) << 48);
+    _data.managedSliceMeta.lengthOrigin |= (static_cast<uint64_t>(AqlValueType::VPACK_MANAGED_SLICE) << 56);
+  }
   TRI_ASSERT(type() == VPACK_MANAGED_SLICE);
   TRI_ASSERT(memoryOriginType() == mot);
   TRI_ASSERT(memoryUsage() == length);
 }
-  
+
 /// @brief construct a V8 value as input for the expression execution in V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options const* options) const {
   auto context = TRI_IGETC;
   AqlValueType t = type();
   switch (t) {
     case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return TRI_VPackToV8(isolate, slice(t), options);
     }
-    case DOCVEC: {
-      // calculate the result array length
-      size_t const s = docvecLength();
-      // allocate the result array
-      v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(s));
-      uint32_t j = 0;  // output row count
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          result->Set(context, j++, it->getValueReference(i, 0).toV8(isolate, options)).FromMaybe(false);
-
-          if (V8PlatformFeature::isOutOfMemory(isolate)) {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-          }
-        }
-      }
-      return result;
-    }
     case RANGE: {
-      size_t const n = _data.range->size();
+      size_t const n = _data.rangeMeta.range->size();
       Range::throwIfTooBigForMaterialization(n);
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(n));
 
@@ -1018,11 +1049,11 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate, velocypack::Options c
         result->Set(context,
                     i,
                     v8::Number::New(isolate,
-                                    static_cast<double>(_data.range->at(static_cast<size_t>(i)))
+                                    static_cast<double>(_data.rangeMeta.range->at(static_cast<size_t>(i)))
                                     )
                     ).FromMaybe(true);
 
-        if (i % 1000 == 0) {
+        if (i % 1024 == 0) {
           if (V8PlatformFeature::isOutOfMemory(isolate)) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
           }
@@ -1043,11 +1074,15 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   switch (t) {
     case VPACK_SLICE_POINTER:
       if (!resolveExternals && isManagedDocument()) {
-        builder.addExternal(_data.pointer);
+        builder.addExternal(_data.pointerMeta.pointer);
         break;
-      }  
-      [[fallthrough]];
+      }
+    [[fallthrough]];
     case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_MANAGED_SLICE: {
       if (resolveExternals) {
         bool const sanitizeExternals = true;
@@ -1061,24 +1096,12 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
       }
       break;
     }
-    case DOCVEC: {
-      builder.openArray(/*unindexed*/allowUnindexed);
-      for (auto const& it : *_data.docvec) {
-        size_t const n = it->numRows();
-        for (size_t i = 0; i < n; ++i) {
-          it->getValueReference(i, 0).toVelocyPack(options, builder,
-                                                   resolveExternals, allowUnindexed);
-        }
-      }
-      builder.close();
-      break;
-    }
     case RANGE: {
       builder.openArray(/*unindexed*/allowUnindexed);
-      size_t const n = _data.range->size();
+      size_t const n = _data.rangeMeta.range->size();
       Range::throwIfTooBigForMaterialization(n);
       for (size_t i = 0; i < n; ++i) {
-        builder.add(VPackValue(_data.range->at(i)));
+        builder.add(VPackValue(_data.rangeMeta.range->at(i)));
       }
       builder.close();
       break;
@@ -1091,12 +1114,15 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
     case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       hasCopied = false;
       return *this;
     }
-    case DOCVEC:
     case RANGE: {
       VPackBuffer<uint8_t> buffer;
       VPackBuilder builder(buffer);
@@ -1115,9 +1141,14 @@ AqlValue AqlValue::materialize(VPackOptions const* options, bool& hasCopied,
 AqlValue AqlValue::clone() const {
   AqlValueType t = type();
   switch (t) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return AqlValue(*this);
     case VPACK_INLINE: {
       // copy internal data
-      VPackSlice s(&_data.internal[0]);
+      VPackSlice s(_data.inlineSliceMeta.slice);
       if (!s.isExternal()) {
         return AqlValue(*this);
       }
@@ -1126,24 +1157,15 @@ AqlValue AqlValue::clone() const {
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
-        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointer));
+        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointerMeta.pointer));
       }
       // copy from regular pointer. this may copy the data
-      return AqlValue(_data.pointer);
+      return AqlValue(_data.pointerMeta.pointer);
     }
     case VPACK_MANAGED_SLICE: {
       // byte size is stored in the first 6 bytes of the second uint64_t value
-      VPackValueLength length = static_cast<VPackValueLength>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
-      return AqlValue(VPackSlice(_data.slice), length);
-    }
-    case DOCVEC: {
-      auto c = std::make_unique<std::vector<SharedAqlItemBlockPtr>>();
-      c->reserve(docvecLength());
-      for (auto const& it : *_data.docvec) {
-        c->emplace_back(it->slice(0, it->numRows()));
-        TRI_ASSERT(c->back() != nullptr);
-      }
-      return AqlValue(c.release());
+      VPackValueLength length = _data.managedSliceMeta.getLength();
+      return AqlValue(VPackSlice(_data.managedSliceMeta.managedPointer), length);
     }
     case RANGE: {
       // create a new value with a new range
@@ -1158,7 +1180,11 @@ AqlValue AqlValue::clone() const {
 /// @brief destroy the value's internals
 void AqlValue::destroy() noexcept {
   switch (type()) {
-    case VPACK_INLINE: 
+    case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER: {
       // nothing to do
       return;
@@ -1166,20 +1192,15 @@ void AqlValue::destroy() noexcept {
     case VPACK_MANAGED_SLICE: {
       MemoryOriginType const memoryType = memoryOriginType();
       if (memoryType == MemoryOriginType::New) {
-        delete[] _data.slice;
+        delete[] _data.managedSliceMeta.managedPointer;
       } else {
         TRI_ASSERT(memoryType == MemoryOriginType::Malloc);
-        free(_data.slice);
+        free(_data.managedSliceMeta.managedPointer);
       }
       break;
     }
-    case DOCVEC: {
-      // Will delete all ItemBlocks
-      delete _data.docvec;
-      break;
-    }
     case RANGE: {
-      delete _data.range;
+      delete _data.rangeMeta.range;
       break;
     }
   }
@@ -1195,16 +1216,21 @@ VPackSlice AqlValue::slice() const {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice(AqlValueType type) const {
   switch (type) {
+    case VPACK_INLINE_INT48:
+     return VPackSlice(_data.shortNumberMeta.data.slice.slice);
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+     return VPackSlice(_data.longNumberMeta.data.slice.slice);
     case VPACK_INLINE: {
-      return VPackSlice(&_data.internal[0]).resolveExternal();
+      return VPackSlice(_data.inlineSliceMeta.slice).resolveExternal();
     }
     case VPACK_SLICE_POINTER: {
-      return VPackSlice(_data.pointer);
+      return VPackSlice(_data.pointerMeta.pointer);
     }
     case VPACK_MANAGED_SLICE: {
-      return VPackSlice(_data.slice).resolveExternal();
+      return VPackSlice(_data.managedSliceMeta.managedPointer).resolveExternal();
     }
-    case DOCVEC:
     case RANGE: {
     }
   }
@@ -1220,8 +1246,8 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
   if (leftType != rightType) {
     // TODO implement this case more efficiently
-    if (leftType == RANGE || rightType == RANGE || leftType == DOCVEC || rightType == DOCVEC) {
-      // range|docvec against x
+    if (leftType == RANGE || rightType == RANGE) {
+      // range against x
       VPackBuilder leftBuilder;
       left.toVelocyPack(options, leftBuilder, /*resolveExternal*/false, /*allowUnindexed*/true);
 
@@ -1234,70 +1260,51 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
     }
     // fall-through to other types intentional
   }
-
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    // if right value type is also optimized inline we can optimize comparison
+      if (leftType == rightType) {
+        if (leftType == VPACK_INLINE_UINT64) {
+          uint64_t l = static_cast<uint64_t>(left.toInt64());
+          uint64_t r = static_cast<uint64_t>(right.toInt64());
+          if (l == r) {
+            return 0;
+          }
+          return (l < r ? -1 : 1);
+        } else {
+          int64_t l = left.toInt64();
+          int64_t r = right.toInt64();
+          if (l == r) {
+            return 0;
+          }
+          return (l < r ? -1 : 1);
+        }
+        // intentional fallthrough to double comparison
+      }
+    [[fallthrough]];
+    case VPACK_INLINE_DOUBLE:
+    // here we could only compare doubles in case of right is also inlined
+    // the same is done in VelocyPackHelper::compare for numbers. Equal types are compared
+    // directly - unequal (or doubles) as doubles
+      if (rightType >= VPACK_INLINE_INT48 &&
+          rightType <= VPACK_INLINE_DOUBLE) {
+        double l = left.toDouble();
+        double r = right.toDouble();
+        if (l == r) {
+          return 0;
+        }
+        return (l < r ? -1 : 1);
+      }
+    [[fallthrough]];
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: {
       return arangodb::basics::VelocyPackHelper::compare(left.slice(leftType), right.slice(rightType),
                                                          compareUtf8, options);
-    }
-    case DOCVEC: {
-      // use lexicographic ordering of AqlValues regardless of block,
-      // DOCVECs have a single register coming from ReturnNode.
-      size_t lblock = 0;
-      size_t litem = 0;
-      size_t rblock = 0;
-      size_t ritem = 0;
-      size_t const lsize = left._data.docvec->size();
-      size_t const rsize = right._data.docvec->size();
-
-      if (lsize == 0 || rsize == 0) {
-        if (lsize == rsize) {
-          // both empty
-          return 0;
-        }
-        return (lsize < rsize ? -1 : 1);
-      }
-
-      size_t lrows = left._data.docvec->at(0)->numRows();
-      size_t rrows = right._data.docvec->at(0)->numRows();
-
-      while (lblock < lsize && rblock < rsize) {
-        AqlValue const& lval =
-            left._data.docvec->at(lblock)->getValueReference(litem, 0);
-        AqlValue const& rval =
-            right._data.docvec->at(rblock)->getValueReference(ritem, 0);
-
-        int cmp = Compare(options, lval, rval, compareUtf8);
-
-        if (cmp != 0) {
-          return cmp;
-        }
-        if (++litem == lrows) {
-          litem = 0;
-          lblock++;
-          if (lblock < lsize) {
-            lrows = left._data.docvec->at(lblock)->numRows();
-          }
-        }
-        if (++ritem == rrows) {
-          ritem = 0;
-          rblock++;
-          if (rblock < rsize) {
-            rrows = right._data.docvec->at(rblock)->numRows();
-          }
-        }
-      }
-
-      if (lblock == lsize && rblock == rsize) {
-        // both blocks exhausted
-        return 0;
-      }
-
-      return (lblock < lsize ? -1 : 1);
     }
     case RANGE: {
       if (left.range()->_low < right.range()->_low) {
@@ -1315,21 +1322,9 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
       return 0;
     }
   }
-
   return 0;
 }
 
-
-AqlValue::AqlValue(std::vector<arangodb::aql::SharedAqlItemBlockPtr>* docvec) noexcept {
-  TRI_ASSERT(docvec != nullptr);
-  _data.docvec = docvec;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  for (auto const& it : *_data.docvec) {
-    TRI_ASSERT(it != nullptr);
-  }
-#endif
-  setType(AqlValueType::DOCVEC);
-}
 
 AqlValue::AqlValue() noexcept {
   // construct a slice of type None
@@ -1353,34 +1348,52 @@ AqlValue::AqlValue(uint8_t const* pointer) {
   } else {
     setPointer<false>(pointer);
   }
-  TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
 }
 
 AqlValue::AqlValue(AqlValue const& other, void* data) noexcept {
   TRI_ASSERT(data != nullptr);
-  TRI_ASSERT(other.type() != VPACK_INLINE);
-  _data.data = data;
-  // copy meta data
-  _data.words[1] = other._data.words[1];
+  setType(other.type());
+  switch (other.type()) {
+    case VPACK_MANAGED_SLICE:
+      _data.managedSliceMeta.lengthOrigin = other._data.managedSliceMeta.lengthOrigin;
+      _data.managedSliceMeta.managedPointer = static_cast<uint8_t*>(data);
+      break;
+    case VPACK_SLICE_POINTER:
+      _data.pointerMeta.isManagedDoc = other._data.pointerMeta.isManagedDoc;
+      _data.pointerMeta.pointer = static_cast<uint8_t*>(data);
+      break;
+    case RANGE:
+      _data.rangeMeta.range = static_cast<Range*>(data);
+      break;
+    case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+    default:
+      TRI_ASSERT(false);
+      break;
+  }
 }
 
 AqlValue::AqlValue(AqlValueHintNone const&) noexcept {
-  _data.internal[0] = 0x00;  // none in VPack
+  _data.inlineSliceMeta.slice[0] = 0x00;  // none in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintNull const&) noexcept {
-  _data.internal[0] = 0x18;  // null in VPack
+  _data.inlineSliceMeta.slice[0] = 0x18;  // null in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintBool const& v) noexcept {
-  _data.internal[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
+  _data.inlineSliceMeta.slice[0] = v.value ? 0x1a : 0x19;  // true/false in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintZero const&) noexcept {
-  _data.internal[0] = 0x30;  // 0 in VPack
+  _data.inlineSliceMeta.slice[0] = 0x30;  // 0 in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
@@ -1388,103 +1401,104 @@ AqlValue::AqlValue(AqlValueHintDouble const& v) noexcept {
   double value = v.value;
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     // null
-    _data.internal[0] = 0x18;
+    _data.inlineSliceMeta.slice[0] = 0x18;
+     setType(AqlValueType::VPACK_INLINE);
   } else {
     // a "real" double
-    _data.internal[0] = 0x1b;
-    uint64_t dv;
-    memcpy(&dv, &value, sizeof(double));
-    VPackValueLength vSize = sizeof(double);
-    int i = 1;
-    for (uint64_t x = dv; vSize > 0; vSize--) {
-      _data.internal[i] = x & 0xff;
-      x >>= 8;
-      ++i;
+    _data.longNumberMeta.data.slice.slice[0] = 0x1b;
+    // unify +0.0 and -0.0 to +0.0
+    if (ADB_UNLIKELY(value == -0.0)) { 
+      value = 0.0;
     }
+    uint64_t uintVal;
+    memcpy(&uintVal, &value, sizeof(uintVal));
+    _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(uintVal);
+    setType(AqlValueType::VPACK_INLINE_DOUBLE);
   }
-  setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintInt const& v) noexcept {
   int64_t value = v.value;
-  if (value >= 0 && value <= 9) {
+  if (value >= -6 && value <= 9) {
     // a smallint
-    _data.internal[0] = static_cast<uint8_t>(0x30U + value);
-  } else if (value < 0 && value >= -6) {
-    // a negative smallint
-    _data.internal[0] = static_cast<uint8_t>(0x40U + value);
+    _data.shortNumberMeta.data.int48.val = value;
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(value >= 0 ? (0x30U + value) : (0x40U + value));
+    setType(AqlValueType::VPACK_INLINE_INT48);
   } else {
-    uint8_t vSize = intLength(value);
+    uint8_t const vSize = intLength(value);
     uint64_t x;
-    if (vSize == 8) {
+    if (vSize > 6) {
       x = toUInt64(value);
+      _data.longNumberMeta.data.intLittleEndian.val = arangodb::basics::hostToLittle(x); // FIXME: use just value ???
+      // always store as 8 byte Slice as we need full aligned value in binary representation
+      _data.longNumberMeta.data.slice.slice[0] = 0x1fU + 8;
+      setType(AqlValueType::VPACK_INLINE_INT64);
     } else {
       int64_t shift = 1LL << (vSize * 8 - 1);  // will never overflow!
       x = value >= 0 ? static_cast<uint64_t>(value)
                      : static_cast<uint64_t>(value + shift) + shift;
-    }
-    _data.internal[0] = 0x1fU + vSize;
-    int i = 1;
-    while (vSize-- > 0 && i < 16) {
-      _data.internal[i] = x & 0xffU;  // GCC-10: complains about possible out of bounds access (i = 16)
-      ++i;
-      x >>= 8;
+      _data.shortNumberMeta.data.int48.val = value;
+      _data.shortNumberMeta.data.slice.slice[0] = 0x1fU + vSize;
+      x = arangodb::basics::hostToLittle(x);
+      memcpy(&_data.shortNumberMeta.data.slice.slice[1], &x, vSize);
+      setType(AqlValueType::VPACK_INLINE_INT48);
     }
   }
-  setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintUInt const& v) noexcept {
   uint64_t value = v.value;
   if (value <= 9) {
     // a Smallint, 0x30 - 0x39
-    _data.internal[0] = static_cast<uint8_t>(0x30U + value);
-  } else {
+    // treat SmallInt as INT just to be consistent
+    _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
+    _data.shortNumberMeta.data.slice.slice[0] = static_cast<uint8_t>(0x30U + value);
+    setType(AqlValueType::VPACK_INLINE_INT48);
+  } else if (value < 0x000080ffffffffffULL) {
     // UInt, 0x28 - 0x2f
-    int i = 1;
-    uint8_t vSize = 0;
-    do {
-      vSize++;
-      _data.internal[i] = static_cast<uint8_t>(value & 0xffU);
-      ++i;
-      value >>= 8;
-    } while (value != 0);
-    _data.internal[0] = 0x27U + vSize;
+    uint8_t const vSize = intLength(value);
+    _data.shortNumberMeta.data.slice.slice[0] = 0x27U + vSize;
+    value = arangodb::basics::hostToLittle(value);
+    memcpy(&_data.shortNumberMeta.data.slice.slice[1], &value, vSize);
+    _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(value);
+    setType(AqlValueType::VPACK_INLINE_INT48);
+  } else {
+      // value larger than largest int48 value
+    _data.longNumberMeta.data.uintLittleEndian.val = arangodb::basics::hostToLittle(value);
+    // always store as 8 byte Slice as we need full aligned value in binary representation
+    _data.longNumberMeta.data.slice.slice[0] = 0x27U + 8;
+    setType(AqlValueType::VPACK_INLINE_UINT64);
   }
-  setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(char const* value, size_t length) {
   TRI_ASSERT(value != nullptr);
   if (length == 0) {
     // empty string
-    _data.internal[0] = 0x40;
+    _data.inlineSliceMeta.slice[0] = 0x40;
     setType(AqlValueType::VPACK_INLINE);
-  } else if (length < sizeof(_data.internal) - 1) {
+  } else if (length < sizeof(AqlValue) - 1) {
     // short string... can store it inline
-    _data.internal[0] = static_cast<uint8_t>(0x40 + length);
-    memcpy(_data.internal + 1, value, length);
+    _data.inlineSliceMeta.slice[0] = static_cast<uint8_t>(0x40 + length);
+    memcpy(_data.inlineSliceMeta.slice + 1, value, length);
     setType(AqlValueType::VPACK_INLINE);
   } else if (length <= 126) {
     // short string... cannot store inline, but we don't need to
     // create a full-featured Builder object here
     setManagedSliceData(MemoryOriginType::New, length + 1);
-    _data.slice = new uint8_t[length + 1];
-    _data.slice[0] = static_cast<uint8_t>(0x40U + length);
-    memcpy(&_data.slice[1], value, length);
+    _data.managedSliceMeta.managedPointer = new uint8_t[length + 1];
+    _data.managedSliceMeta.managedPointer[0] = static_cast<uint8_t>(0x40U + length);
+    memcpy(_data.managedSliceMeta.managedPointer + 1, value, length);
   } else {
     // long string
     // create a big enough uint8_t buffer
     size_t byteSize = length + 9;
     setManagedSliceData(MemoryOriginType::New, byteSize);
-    _data.slice = new uint8_t[byteSize];
-    _data.slice[0] = static_cast<uint8_t>(0xbfU);
-    uint64_t v = length;
-    for (uint64_t i = 0; i < 8; ++i) {
-      _data.slice[i + 1] = v & 0xffU;
-      v >>= 8;
-    }
-    memcpy(&_data.slice[9], value, length);
+    _data.managedSliceMeta.managedPointer = new uint8_t[byteSize];
+    _data.managedSliceMeta.managedPointer[0] = static_cast<uint8_t>(0xbfU);
+    uint64_t v = arangodb::basics::hostToLittle(length);
+    memcpy(&_data.managedSliceMeta.managedPointer[1], &v, sizeof(v));
+    memcpy(&_data.managedSliceMeta.managedPointer[9], value, length);
   }
 }
 
@@ -1492,41 +1506,40 @@ AqlValue::AqlValue(std::string const& value)
     : AqlValue(value.data(), value.size()) {}
 
 AqlValue::AqlValue(AqlValueHintEmptyArray const&) noexcept {
-  _data.internal[0] = 0x01;  // empty array in VPack
+  _data.inlineSliceMeta.slice[0] = 0x01;  // empty array in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(AqlValueHintEmptyObject const&) noexcept {
-  _data.internal[0] = 0x0a;  // empty object in VPack
+  _data.inlineSliceMeta.slice[0] = 0x0a;  // empty object in VPack
   setType(AqlValueType::VPACK_INLINE);
 }
 
 AqlValue::AqlValue(arangodb::velocypack::Buffer<uint8_t>&& buffer) {
   // intentionally do not resolve externals here
   VPackValueLength length = buffer.length();
-  if (length < sizeof(_data.internal)) {
+  if (length < sizeof(AqlValue)) {
     // Use inline value
-    memcpy(_data.internal, buffer.data(), static_cast<size_t>(length));
-    setType(AqlValueType::VPACK_INLINE);
+    initFromSlice(VPackSlice(buffer.data()), buffer.length());
     buffer.clear(); // for move semantics
   } else {
     // Use managed slice
     if (buffer.usesLocalMemory()) {
       setManagedSliceData(MemoryOriginType::New, length);
-      _data.slice = new uint8_t[length];
-      memcpy(&_data.slice[0], buffer.data(), length);
+      _data.managedSliceMeta.managedPointer = new uint8_t[length];
+      memcpy(_data.managedSliceMeta.managedPointer, buffer.data(), length);
       buffer.clear(); // for move semantics
     } else {
       // steal dynamic memory from the Buffer
       setManagedSliceData(MemoryOriginType::Malloc, length);
-      _data.slice = buffer.steal();
+      _data.managedSliceMeta.managedPointer = buffer.steal();
     }
   }
 }
 
 AqlValue::AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
   setPointer<true>(v.ptr);
-  TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
+  TRI_ASSERT(!VPackSlice(_data.pointerMeta.pointer).isExternal());
 }
 
 AqlValue::AqlValue(AqlValueHintCopy const& v) {
@@ -1544,18 +1557,28 @@ AqlValue::AqlValue(arangodb::velocypack::Slice slice, arangodb::velocypack::Valu
 }
 
 AqlValue::AqlValue(int64_t low, int64_t high) {
-  _data.range = new Range(low, high);
+  _data.rangeMeta.range = new Range(low, high);
   setType(AqlValueType::RANGE);
 }
 
 bool AqlValue::requiresDestruction() const noexcept {
-  auto t = type();
-  return (t != VPACK_SLICE_POINTER && t != VPACK_INLINE);
+  auto const t = type();
+  switch (t) {
+    case VPACK_SLICE_POINTER:
+    case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+      return false;
+    default:
+      return true;
+  }
 }
 
 bool AqlValue::isEmpty() const noexcept {
-  return (_data.internal[0] == '\x00' &&
-          _data.internal[sizeof(_data.internal) - 1] == VPACK_INLINE);
+  return (_data.inlineSliceMeta.slice[0] == '\x00' &&
+          _data.aqlValueType == VPACK_INLINE);
 }
 
 bool AqlValue::isPointer() const noexcept {
@@ -1563,16 +1586,14 @@ bool AqlValue::isPointer() const noexcept {
 }
 
 bool AqlValue::isManagedDocument() const noexcept {
-  return isPointer() && (_data.internal[sizeof(_data.internal) - 2] == 1);
+  return isPointer() && (_data.pointerMeta.isManagedDoc == 1);
 }
 
 bool AqlValue::isRange() const noexcept { return type() == RANGE; }
 
-bool AqlValue::isDocvec() const noexcept { return type() == DOCVEC; }
-
 Range const* AqlValue::range() const {
   TRI_ASSERT(isRange());
-  return _data.range;
+  return _data.rangeMeta.range;
 }
 
 void AqlValue::erase() noexcept {
@@ -1585,24 +1606,18 @@ size_t AqlValue::memoryUsage() const noexcept {
   auto const t = type();
   switch (t) {
     case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
     case VPACK_SLICE_POINTER:
       return 0;
     case VPACK_MANAGED_SLICE:
-      // byte size is stored in the first 6 bytes of the second uint64_t value
-      return static_cast<size_t>((basics::bigToHost<uint64_t>(_data.words[1]) & 0xffffffffffff0000ULL) >> 16);
-    case DOCVEC:
-      // no need to count the memory usage for the item blocks in docvec.
-      // these have already been counted elsewhere (in ctors of AqlItemBlock
-      // and AqlItemBlock::setValue)
-      return sizeof(_data.docvec) + sizeof(SharedAqlItemBlockPtr) * _data.docvec->size();
+      return _data.managedSliceMeta.getLength();
     case RANGE:
       return sizeof(Range);
   }
   return 0;
-}
-
-AqlValue::AqlValueType AqlValue::type() const noexcept {
-  return static_cast<AqlValueType>(_data.internal[sizeof(_data.internal) - 1]);
 }
 
 void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocypack::ValueLength length) {
@@ -1613,35 +1628,75 @@ void AqlValue::initFromSlice(arangodb::velocypack::Slice slice, arangodb::velocy
   // }
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
-  if (length < sizeof(_data.internal)) {
-    // Use inline value
-    memcpy(_data.internal, slice.begin(), static_cast<size_t>(length));
-    setType(AqlValueType::VPACK_INLINE);
+  if (length <= sizeof(_data.inlineSliceMeta.slice)) {
+    if (slice.isDouble()) {
+      setType(AqlValueType::VPACK_INLINE_DOUBLE);
+      TRI_ASSERT(length == (sizeof(double) + 1));
+      memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+    } else if (slice.isInteger() && length <= 9) { // we could hold only 8 bytes number values 
+      if (length > 7) {
+        setType(slice.isUInt() ? AqlValueType::VPACK_INLINE_UINT64 : AqlValueType::VPACK_INLINE_INT64);
+        memcpy(_data.longNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+      } else {
+        memcpy(_data.shortNumberMeta.data.slice.slice, slice.begin(), static_cast<size_t>(length));
+        if (slice.isUInt()) {
+          setType(AqlValueType::VPACK_INLINE_INT48);
+          _data.shortNumberMeta.data.int48.val = static_cast<int64_t>(slice.getUIntUnchecked());
+        } else {
+          TRI_ASSERT(slice.isInt() || slice.isSmallInt());
+          // treat SmallInt as INT just to be consistent
+          setType(AqlValueType::VPACK_INLINE_INT48);
+          _data.shortNumberMeta.data.int48.val = slice.getIntUnchecked();
+        }
+      }
+    } else {
+      // Use inline value
+      memcpy(_data.inlineSliceMeta.slice, slice.begin(), static_cast<size_t>(length));
+      setType(AqlValueType::VPACK_INLINE);
+    }
   } else {
     // Use managed slice
     setManagedSliceData(MemoryOriginType::New, length);
-    _data.slice = new uint8_t[length];
-    memcpy(&_data.slice[0], slice.begin(), length);
+    _data.managedSliceMeta.managedPointer = new uint8_t[length];
+    memcpy(_data.managedSliceMeta.managedPointer, slice.begin(), length);
   }
 }
 
 void AqlValue::setType(AqlValue::AqlValueType type) noexcept {
-  _data.internal[sizeof(_data.internal) - 1] = type;
+  _data.aqlValueType = type;
 }
 
 void* AqlValue::data() const noexcept {
-  TRI_ASSERT(type() != VPACK_INLINE);
-  TRI_ASSERT(_data.data != nullptr);
-  return _data.data;
+  switch (type()) {
+    case VPACK_SLICE_POINTER:
+      return const_cast<uint8_t*>(_data.pointerMeta.pointer);
+    case VPACK_MANAGED_SLICE:
+      // pointer is stored in the second uint64_t value
+      return  _data.managedSliceMeta.managedPointer;
+    case RANGE:
+      return const_cast<Range*>(_data.rangeMeta.range);
+    case VPACK_INLINE:
+    case VPACK_INLINE_INT48:
+    case VPACK_INLINE_INT64:
+    case VPACK_INLINE_UINT64:
+    case VPACK_INLINE_DOUBLE:
+    default:
+      TRI_ASSERT(false);
+      return nullptr;
+  }
 }
 
 template <bool isManagedDoc>
 void AqlValue::setPointer(uint8_t const* pointer) noexcept {
-  _data.pointer = pointer;
-  // we use the byte at (size - 2) to distinguish between data pointing to
-  // database documents (size[-2] == 1) and other data(size[-2] == 0)
-  _data.internal[sizeof(_data.internal) - 2] = isManagedDoc ? 1 : 0;
-  _data.internal[sizeof(_data.internal) - 1] = AqlValueType::VPACK_SLICE_POINTER;
+  _data.pointerMeta.pointer = pointer;
+  // we use isManagedDoc flag to distinguish between data pointing to
+  // database documents (1) and other data(0)
+  if constexpr (isManagedDoc) {
+    _data.pointerMeta.isManagedDoc = 1;
+  } else {
+    _data.pointerMeta.isManagedDoc = 0;
+  }
+  setType(AqlValueType::VPACK_SLICE_POINTER);
 }
 
 template void AqlValue::setPointer<true>(uint8_t const* pointer) noexcept;
@@ -1672,12 +1727,26 @@ AqlValue& AqlValueGuard::value() noexcept { return _value; }
 
 size_t std::hash<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& x) const
     noexcept {
-  if (x.type() == arangodb::aql::AqlValue::VPACK_INLINE) {
-      return static_cast<size_t>(arangodb::velocypack::Slice(&x._data.internal[0]).hash());
+  auto const type = x.type();
+  switch (type) {
+    case arangodb::aql::AqlValue::VPACK_INLINE:
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.inlineSliceMeta.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.shortNumberMeta.data.slice.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_DOUBLE:
+      return static_cast<size_t>(arangodb::velocypack::Slice(x._data.longNumberMeta.data.slice.slice).hash());
+    case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
+      return std::hash<void const*>()(x._data.pointerMeta.pointer);
+    case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:
+      return std::hash<void const*>()(x._data.managedSliceMeta.managedPointer);
+    case arangodb::aql::AqlValue::RANGE:
+      return std::hash<void const*>()(x._data.rangeMeta.range);
+    default:
+      TRI_ASSERT(false);
+      return 0;
   }
-  // treat all other pointer types the same, because they will
-  // have the same bit representations
-  return std::hash<void const*>()(x._data.pointer);
 }
 
 bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue const& a,
@@ -1687,11 +1756,26 @@ bool std::equal_to<arangodb::aql::AqlValue>::operator()(arangodb::aql::AqlValue 
   if (type != b.type()) {
     return false;
   }
-  if (type == arangodb::aql::AqlValue::VPACK_INLINE) {
-    return arangodb::velocypack::Slice(&a._data.internal[0])
-           .binaryEquals(arangodb::velocypack::Slice(&b._data.internal[0]));
+  switch (type) {
+    case arangodb::aql::AqlValue::VPACK_INLINE:
+      return arangodb::velocypack::Slice(a._data.inlineSliceMeta.slice)
+           .binaryEquals(arangodb::velocypack::Slice(b._data.inlineSliceMeta.slice));
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT48:
+      // equal is equal. sign does not matter. So compare unsigned
+      return a._data.shortNumberMeta.data.int48.val == b._data.shortNumberMeta.data.int48.val;
+    case arangodb::aql::AqlValue::VPACK_INLINE_INT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_UINT64:
+    case arangodb::aql::AqlValue::VPACK_INLINE_DOUBLE:
+      // equal is equal. sign/endianess does not matter
+      return a._data.longNumberMeta.data.intLittleEndian.val == b._data.longNumberMeta.data.intLittleEndian.val;
+    case arangodb::aql::AqlValue::VPACK_SLICE_POINTER:
+      return a._data.pointerMeta.pointer == b._data.pointerMeta.pointer;
+    case arangodb::aql::AqlValue::VPACK_MANAGED_SLICE:
+      return a._data.managedSliceMeta.managedPointer ==  b._data.managedSliceMeta.managedPointer;
+    case arangodb::aql::AqlValue::RANGE:
+      return a._data.rangeMeta.range == b._data.rangeMeta.range;
+    default:
+      TRI_ASSERT(false);
+      return false;
   }
-  // treat all other pointer types the same, because they will
-  // have the same bit representations
-  return a._data.pointer == b._data.pointer;
 }

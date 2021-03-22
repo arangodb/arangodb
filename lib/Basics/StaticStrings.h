@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,6 +131,7 @@ class StaticStrings {
   static std::string const IndexSparse;        // index sparsity marker
   static std::string const IndexType;          // index type
   static std::string const IndexUnique;        // index uniqueness marker
+  static std::string const IndexEstimates;     // index estimates flag
 
   // static index names
   static std::string const IndexNameEdge;
@@ -256,6 +257,28 @@ class StaticStrings {
   static std::string const GraphInitial;
   static std::string const GraphInitialCid;
   static std::string const GraphName;
+  static std::string const GraphTraversalProfileLevel;
+
+  // Pregel Section Start
+
+  // Pregel Accumulator Attributes
+  static std::string const AccumulatorHot;
+  static std::string const AccumulatorCold;
+  static std::string const AccumulatorValue;
+  static std::string const AccumulatorSender;
+  static std::string const AccumulatorName;
+
+  // Pregel VertexComputation Attributes
+  static std::string const VertexComputationPregelId;
+  static std::string const VertexComputationVertexId;
+  static std::string const VertexComputationPhase;
+  static std::string const VertexComputationGlobalSuperstep;
+  static std::string const VertexComputationPhaseStep;
+  static std::string const VertexComputationMessage;
+  static std::string const VertexComputationVoteActive;
+  static std::string const VertexComputationVoteHalt;
+
+  // Pregel Section End
 
   // Query Strings
   static std::string const QuerySortASC;
@@ -340,46 +363,8 @@ class StaticStrings {
   static std::string const ValidationParameterLevel;
   static std::string const ValidationParameterRule;
 
-  // metrics prometheus labels
-  static std::string const HeartbeatSendTimeMs;
-  static std::string const HeartbeatFailureCounter;
-
-  static std::string const MaintenancePhaseOneRuntimeMs;
-  static std::string const MaintenancePhaseTwoRuntimeMs;
-  static std::string const MaintenanceAgencySyncRuntimeMs;
-
-  static std::string const MaintenanceActionRuntimeMs;
-  static std::string const MaintenanceActionAccumRuntimeMs;
-  static std::string const MaintenanceActionFailureCounter;
-  static std::string const MaintenanceActionQueueTimeMs;
-  static std::string const MaintenanceActionAccumQueueTimeMs;
-
-  static std::string const MaintenancePhaseOneAccumRuntimeMs;
-  static std::string const MaintenancePhaseTwoAccumRuntimeMs;
-  static std::string const MaintenanceAgencySyncAccumRuntimeMs;
-
-  static std::string const ActionDuplicateCounter;
-  static std::string const ActionRegisteredCounter;
-  static std::string const ActionDoneCounter;
-
-  static std::string const ShardsOutOfSync;
-  static std::string const ShardsTotalCount;
-  static std::string const ShardsLeaderCount;
-  static std::string const ShardsNotReplicated;
-
-  static std::string const AgencyCommRequestTimeMs;
-
-  static std::string const SchedulerQueueLength;
-  static std::string const SchedulerAwakeWorkers;
-  static std::string const SchedulerNumWorker;
-
-  static std::string const DroppedFollowerCount;
-
-  static std::string const SupervisionRuntimeMs;
-  static std::string const SupervisionRuntimeWaitForSyncMs;
-  static std::string const SupervisionAccumRuntimeMs;
-  static std::string const SupervisionAccumRuntimeWaitForSyncMs;
-  static std::string const SupervisionFailedServerCount;
+  // TODO: remove me after refactor is done
+  static std::string const GraphRefactorFlag;
 };
 }  // namespace arangodb
 

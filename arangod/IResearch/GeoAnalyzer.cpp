@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -27,14 +28,16 @@
 #include "s2/s2point_region.h"
 #include "s2/s2latlng.h"
 
-#include "analysis/analyzers.hpp"
 
+#include "analysis/analyzers.hpp"
 #include "velocypack/Builder.h"
 #include "velocypack/velocypack-aliases.h"
-
 #include "Geo/GeoJson.h"
 #include "Geo/GeoParams.h"
 #include "IResearch/Geo.h"
+
+
+
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"

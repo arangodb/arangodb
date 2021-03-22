@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,9 +25,9 @@
 #define ARANGODB_IRESEARCH__IRESEARCH_GEO_ANALYZER 1
 
 #include <s2/s2region_term_indexer.h>
-
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
+
 #include "analysis/analyzer.hpp"
 #include "utils/frozen_attributes.hpp"
 
@@ -51,7 +52,7 @@ class GeoAnalyzer
   : public irs::frozen_attributes<2, irs::analysis::analyzer>,
     private irs::util::noncopyable {
  public:
-  virtual bool next() noexcept final;
+  virtual bool next() noexcept override final;
   using irs::analysis::analyzer::reset;
 
   virtual void prepare(S2RegionTermIndexer::Options& opts) const = 0;

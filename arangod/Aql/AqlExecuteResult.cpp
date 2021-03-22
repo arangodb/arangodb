@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,9 @@
 #include "AqlExecuteResult.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Basics/StaticStrings.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ResultT.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
@@ -33,6 +34,7 @@
 #include <velocypack/Iterator.h>
 
 #include <map>
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::aql;

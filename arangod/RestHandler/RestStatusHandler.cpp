@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -138,7 +138,7 @@ RestStatus RestStatusHandler::executeStandard(ServerSecurityFeature& security) {
 
     result.close();
 
-    auto* agent = AgencyFeature::AGENT;
+    auto* agent = server().getFeature<AgencyFeature>().agent();
 
     if (agent != nullptr) {
       result.add("agent", VPackValue(VPackValueType::Object));
@@ -269,7 +269,7 @@ RestStatus RestStatusHandler::executeOverview() {
     }
   }
 
-  int res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
+  auto const res = TRI_DeflateStringBuffer(buffer.stringBuffer(), buffer.size());
 
   if (res != TRI_ERROR_NO_ERROR) {
     result.add("hash", VPackValue(buffer.c_str()));
@@ -287,12 +287,12 @@ RestStatus RestStatusHandler::executeOverview() {
 RestStatus RestStatusHandler::executeMemoryProfile() {
 #if defined(USE_MEMORY_PROFILE)
   long err;
-  std::string filename;
+  std::string fileName;
   std::string msg;
-  int res = TRI_GetTempName(nullptr, filename, true, err, msg);
+  int res = TRI_GetTempName(nullptr, fileName, true, err, msg);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    generateError(rest::ResponseCode::INTERNAL_ERROR, res, msg);
+    generateError(rest::ResponseCode::SERVER_ERROR, res, msg);
   } else {
     char const* f = fileName.c_str();
     try {

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,6 +50,13 @@ CostEstimate SubqueryStartNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
 
   CostEstimate estimate = _dependencies.at(0)->getCost();
+
+  // Save the nrItems going into the subquery to restore later at the
+  // corresponding SubqueryEndNode.
+  estimate.saveEstimatedNrItems();
+
+  estimate.estimatedCost += estimate.estimatedNrItems;
+
   return estimate;
 }
 

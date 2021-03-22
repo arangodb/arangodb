@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,10 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 
+#include <atomic>
 #include <chrono>
+#include <memory>
+#include <unordered_set>
 
 namespace arangodb {
 
@@ -71,7 +74,7 @@ class ActionBase {
   virtual bool done() const;
 
   /// @brief waiting for a worker to grab it and go!
-  bool runable() const { return READY == _state; }
+  bool runnable() const { return READY == _state; }
 
   /// @brief did initialization have issues?
   bool ok() const { return FAILED != _state; }
@@ -223,8 +226,8 @@ class ActionBase {
 
 }  // namespace maintenance
 
-Result actionError(int errorCode, std::string const& errorMessage);
-Result actionWarn(int errorCode, std::string const& errorMessage);
+Result actionError(ErrorCode errorCode, std::string const& errorMessage);
+Result actionWarn(ErrorCode errorCode, std::string const& errorMessage);
 
 }  // namespace arangodb
 

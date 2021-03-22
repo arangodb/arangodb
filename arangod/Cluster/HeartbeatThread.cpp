@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -188,6 +188,12 @@ class HeartbeatBackgroundJobThread : public Thread {
 /// @brief constructs a heartbeat thread
 ////////////////////////////////////////////////////////////////////////////////
 
+struct HeartbeatScale {
+  static log_scale_t<uint64_t> scale() { return {2, 4, 8000, 10}; }
+};
+DECLARE_COUNTER(arangodb_heartbeat_failures_total, "Counting failed heartbeat transmissions");
+DECLARE_HISTOGRAM(arangodb_heartbeat_send_time_msec, HeartbeatScale, "Time required to send heartbeat [ms]");
+
 HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server,
                                  AgencyCallbackRegistry* agencyCallbackRegistry,
                                  std::chrono::microseconds interval, uint64_t maxFailsBeforeWarning)
@@ -213,13 +219,12 @@ HeartbeatThread::HeartbeatThread(application_features::ApplicationServer& server
       _lastPlanVersionNoticed(0),
       _lastCurrentVersionNoticed(0),
       _updateCounter(0),
+      _lastUnhealthyTimestamp(std::chrono::steady_clock::time_point()),
       _agencySync(_server, this),
-      _heartbeat_send_time_ms(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::HeartbeatSendTimeMs, log_scale_t<uint64_t>(2, 4, 8000, 10),
-          "Time required to send heartbeat [ms]")),
-      _heartbeat_failure_counter(server.getFeature<arangodb::MetricsFeature>().counter(
-          StaticStrings::HeartbeatFailureCounter, 0,
-          "Counting failed heartbeat transmissions")) {}
+      _heartbeat_send_time_ms(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_send_time_msec{})),
+      _heartbeat_failure_counter(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_heartbeat_failures_total{})) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -270,7 +275,7 @@ void HeartbeatThread::run() {
   } else if (ServerState::instance()->isDBServer(role)) {
     runDBServer();
   } else if (ServerState::instance()->isSingleServer(role)) {
-    if (ReplicationFeature::INSTANCE->isActiveFailoverEnabled()) {
+    if (_server.getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
       runSingleServer();
     }
   } else if (ServerState::instance()->isAgent(role)) {
@@ -666,10 +671,9 @@ void HeartbeatThread::getNewsFromAgencyForCoordinator() {
 void HeartbeatThread::runSingleServer() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  TRI_ASSERT(replication != nullptr);
+  ReplicationFeature& replication = _server.getFeature<ReplicationFeature>();
 
-  GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  GlobalReplicationApplier* applier = replication.globalReplicationApplier();
   TRI_ASSERT(applier != nullptr && _server.hasFeature<ClusterFeature>());
   ClusterInfo& ci = _server.getFeature<ClusterFeature>().clusterInfo();
 
@@ -706,7 +710,8 @@ void HeartbeatThread::runSingleServer() {
       // check current local version of database objects version, and bump
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
-      uint64_t currentVersion = DatabaseFeature::DATABASE->versionTracker()->current();
+      uint64_t currentVersion =
+          _server.getFeature<DatabaseFeature>().versionTracker()->current();
       if (currentVersion != lastSentVersion) {
         AgencyOperation incrementVersion("Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
         AgencyWriteTransaction trx(incrementVersion);
@@ -792,7 +797,7 @@ void HeartbeatThread::runSingleServer() {
         if (result.successful()) {  // successful leadership takeover
           leader = myIdBuilder.slice();
           // intentionally falls through to case 2
-        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+        } else if (result.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
           // current value in agency
           LOG_TOPIC("7cf85", INFO, Logger::HEARTBEAT)
@@ -882,7 +887,8 @@ void HeartbeatThread::runSingleServer() {
         TRI_ASSERT(!applier->isActive());
         applier->forget();  // make sure applier is doing a resync
 
-        Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
+        auto& gs = _server.getFeature<GeneralServerFeature>();
+        Result res = gs.jobManager().clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC("e0817", WARN, Logger::HEARTBEAT)
               << "could not cancel all async jobs " << res.errorMessage();
@@ -1278,7 +1284,8 @@ bool HeartbeatThread::sendServerState() {
   if (isStopping()) {
     timeout = 5.0;
   }
-  const AgencyCommResult result = _agency.sendServerState(timeout);
+
+  AgencyCommResult const result = _agency.sendServerState(timeout);
 
   if (result.successful()) {
     _numFails = 0;

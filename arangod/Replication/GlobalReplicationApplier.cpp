@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,7 +73,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
   StorageEngine& engine =
       _configuration._server.getFeature<EngineSelectorFeature>().engine();
-  int res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
+  auto res = engine.saveReplicationApplierConfiguration(builder.slice(), doSync);
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -84,7 +84,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
     application_features::ApplicationServer& server) {
   StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
-  int res = TRI_ERROR_INTERNAL;
+  auto res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine.getReplicationApplierConfiguration(res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
@@ -100,13 +100,12 @@ ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration(
 }
 
 std::shared_ptr<InitialSyncer> GlobalReplicationApplier::buildInitialSyncer() const {
-  return std::make_shared<arangodb::GlobalInitialSyncer>(_configuration);
+  return arangodb::GlobalInitialSyncer::create(_configuration);
 }
 
 std::shared_ptr<TailingSyncer> GlobalReplicationApplier::buildTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick) const {
-  return std::make_shared<arangodb::GlobalTailingSyncer>(_configuration, initialTick,
-                                                         useTick);
+  return arangodb::GlobalTailingSyncer::create(_configuration, initialTick, useTick);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

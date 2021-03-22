@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,10 +73,9 @@ void ShortestPathFinder::destroyEngines() {
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
       // CL_COMM_SENT
-      std::string message("Could not destroy all traversal engines");
-      message += std::string(": ") +
-                 TRI_errno_string(network::fuerteToArangoErrorCode(res));
-      LOG_TOPIC("d31a4", ERR, arangodb::Logger::FIXME) << message;
+      LOG_TOPIC("d31a4", ERR, arangodb::Logger::GRAPHS)
+          << "Could not destroy all traversal engines: "
+          << TRI_errno_string(network::fuerteToArangoErrorCode(res));
     }
   }
 }

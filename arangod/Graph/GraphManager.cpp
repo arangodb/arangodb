@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,6 +36,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -458,8 +459,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
 Result GraphManager::applyOnAllGraphs(std::function<Result(std::unique_ptr<Graph>)> const& callback) const {
   std::string const queryStr{"FOR g IN _graphs RETURN g"};
   arangodb::aql::Query query(transaction::StandaloneContext::Create(_vocbase),
-                             arangodb::aql::QueryString{"FOR g IN _graphs RETURN g"},
-                             nullptr, nullptr);
+                             arangodb::aql::QueryString{queryStr},
+                             nullptr);
+  query.queryOptions().skipAudit = true;
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
@@ -649,7 +651,8 @@ Result GraphManager::readGraphKeys(velocypack::Builder& builder) const {
 Result GraphManager::readGraphByQuery(velocypack::Builder& builder,
                                       std::string const& queryStr) const {
   arangodb::aql::Query query(ctx(), arangodb::aql::QueryString(queryStr),
-                             nullptr, nullptr);
+                             nullptr);
+  query.queryOptions().skipAudit = true;
 
   LOG_TOPIC("f6782", DEBUG, arangodb::Logger::GRAPHS)
       << "starting to load graphs information";

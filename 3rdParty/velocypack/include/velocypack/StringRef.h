@@ -38,6 +38,10 @@ namespace velocypack {
 class HashedStringRef;
 class Slice;
 
+/// a non-owning string reference.
+/// the StringRef does not own the data it points to. 
+/// it is the caller's responsibility to keep the pointed-to string 
+/// data valid while the StringRef points to it.
 class StringRef {
  public:
   /// @brief create an empty StringRef
@@ -186,7 +190,7 @@ inline bool operator!=(arangodb::velocypack::StringRef const& lhs, arangodb::vel
 }
 
 inline bool operator==(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
-  return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.c_str(), lhs.size()) == 0);
+  return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
 }
 
 inline bool operator!=(arangodb::velocypack::StringRef const& lhs, std::string const& rhs) {
@@ -222,8 +226,7 @@ template <>
 struct equal_to<arangodb::velocypack::StringRef> {
   bool operator()(arangodb::velocypack::StringRef const& lhs,
                   arangodb::velocypack::StringRef const& rhs) const noexcept {
-    return (lhs.size() == rhs.size() &&
-            (std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0));
+    return (lhs.size() == rhs.size() && std::memcmp(lhs.data(), rhs.data(), lhs.size()) == 0);
   }
 };
 

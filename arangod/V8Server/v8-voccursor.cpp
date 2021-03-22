@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -311,19 +311,17 @@ struct V8Cursor final {
     }
 
     // options
-    auto options = std::make_shared<VPackBuilder>();
+    VPackBuilder options;
     if (args.Length() > 2) {
       // we have options! yikes!
       if (!args[2]->IsObject()) {
         TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
       }
 
-      TRI_V8ToVPack(isolate, *options, args[2], false);
-    } else {
-      VPackObjectBuilder guard(options.get());
+      TRI_V8ToVPack(isolate, options, args[2], false);
     }
     size_t batchSize =
-        VelocyPackHelper::getNumericValue<size_t>(options->slice(), "batchSize", 1000);
+        VelocyPackHelper::getNumericValue<size_t>(options.slice(), "batchSize", 1000);
 
     TRI_vocbase_t* vocbase = v8g->_vocbase;
     TRI_ASSERT(vocbase != nullptr);
@@ -333,7 +331,7 @@ struct V8Cursor final {
     auto ctx = transaction::V8Context::CreateWhenRequired(*vocbase, true);
     auto q = std::make_unique<aql::Query>(ctx,
                                           aql::QueryString(queryString), std::move(bindVars),
-                                          std::move(options));
+                                          options.slice());
     
     // specify ID 0 so it uses the external V8 context
     auto cc = cursors->createQueryStream(std::move(q), batchSize, ttl);

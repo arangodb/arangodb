@@ -53,14 +53,6 @@ output_buf::int_type output_buf::overflow(int_type c) {
 // --SECTION--                              buffered_index_output implementation
 // -----------------------------------------------------------------------------
 
-buffered_index_output::buffered_index_output(size_t buf_size)
-  : buf_(memory::make_unique<byte_type[]>(buf_size)),
-    start_(0),
-    pos_(buf_.get()),
-    end_(pos_ + buf_size),
-    buf_size_(buf_size) {
-}
-
 void buffered_index_output::write_int(int32_t value) {
   if (remain() < sizeof(uint32_t)) {
     index_output::write_int(value);
@@ -114,7 +106,7 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
     // is data larger or equal than buffer?
     if (length >= buf_size_) {
       // we flush the buffer
-      if (pos_ > buf_.get()) {
+      if (pos_ > buf_) {
         flush();
       }
 
@@ -144,24 +136,24 @@ void buffered_index_output::write_bytes(const byte_type* b, size_t length) {
 }
 
 size_t buffered_index_output::file_pointer() const {
-  assert(buf_.get() <= pos_);
-  return start_ + size_t(std::distance(buf_.get(), pos_));
+  assert(buf_ <= pos_);
+  return start_ + size_t(std::distance(buf_, pos_));
 }
 
 void buffered_index_output::flush() {
-  assert(buf_.get() <= pos_);
-  const auto size = size_t(std::distance(buf_.get(), pos_));
-  flush_buffer(buf_.get(), size);
+  assert(buf_ <= pos_);
+  const auto size = size_t(std::distance(buf_, pos_));
+  flush_buffer(buf_, size);
   start_ += size;
-  pos_ = buf_.get();
+  pos_ = buf_;
 }
 
 void buffered_index_output::close() {
-  if (pos_ > buf_.get()) {
+  if (pos_ > buf_) {
     flush();
   }
   start_ = 0;
-  pos_ = buf_.get();
+  pos_ = buf_;
 }
 
 }

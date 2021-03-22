@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -79,7 +79,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch, v8::Handle<v8::Value>& re
         // found something that looks like an ArangoError
         if ((errorNumValue->IsNumber() || errorNumValue->IsNumberObject()) &&
             (errorMessageValue->IsString() || errorMessageValue->IsStringObject())) {
-          int errorCode = static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue));
+          auto errorCode =
+              ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, errorNumValue))};
           std::string errorMessage(TRI_ObjectToString(isolate, errorMessageValue));
 
           if (*stacktrace && stacktrace.length() > 0) {

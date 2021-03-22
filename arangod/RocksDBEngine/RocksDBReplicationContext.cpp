@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/system-functions.h"
 #include "Logger/Logger.h"
@@ -37,6 +38,7 @@
 #include "Replication/utilities.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBMethods.h"
@@ -269,11 +271,48 @@ Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase, bool incl
   TRI_voc_tick_t tick = TRI_NewTickServer();  // = _lastArangoTick
   if (global) {
     // global inventory
-    DatabaseFeature::DATABASE->inventory(result, tick, nameFilter);
+    vocbase.server().getFeature<DatabaseFeature>().inventory(result, tick, nameFilter);
   } else {
     // database-specific inventory
     vocbase.inventory(result, tick, nameFilter);
   }
+  vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
+
+  return Result();
+}
+
+// returns a stripped down version of the inventory, used for shard synchronization only
+Result RocksDBReplicationContext::getInventory(TRI_vocbase_t& vocbase,
+                                               std::string const& collectionName,
+                                               VPackBuilder& result) {
+  {
+    MUTEX_LOCKER(locker, _contextLock);
+    lazyCreateSnapshot();
+  }
+
+  TRI_ASSERT(_snapshot != nullptr);
+
+  // add a "collections" array with just our collection
+  result.add("collections", VPackValue(VPackValueType::Array));
+      
+  ExecContext const& exec = ExecContext::current();
+  if (exec.canUseCollection(vocbase.name(), collectionName, auth::Level::RO)) {
+    auto collection = vocbase.lookupCollection(collectionName);
+    if (collection != nullptr) {
+      if (collection->status() != TRI_VOC_COL_STATUS_DELETED &&
+          collection->status() != TRI_VOC_COL_STATUS_CORRUPTED) {
+        // dump inventory data for collection/shard into result
+        collection->toVelocyPackForInventory(result);
+      }
+    }
+  }
+
+  result.close(); // collections
+  
+  // fake an empty "views" array here
+  result.add("views", VPackValue(VPackValueType::Array));
+  result.close(); // views
+
   vocbase.replicationClients().track(syncerId(), replicationClientServerId(), clientInfo(), _snapshotTick, _ttl);
 
   return Result();
@@ -314,7 +353,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   TransactionId trxId{0};
@@ -404,7 +444,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
   trxId = TransactionId(transaction::Context::makeTransactionId());
   rcoll->meta().placeBlocker(trxId, blockerSeq);
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::documents());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents));
 
   VPackBuilder builder(buffer, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
@@ -472,7 +513,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
   }
 
   TRI_ASSERT(cIter->lastSortedIteratorOffset == 0);
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   TransactionId trxId{0};
@@ -487,7 +529,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   RocksDBKey docKey;
   VPackBuilder tmpHashBuilder;
   rocksdb::TransactionDB* db = _engine.db();
@@ -517,7 +559,9 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
         docKey.constructDocument(cObjectId, docId);
 
         rocksdb::PinnableSlice ps;
-        auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+        auto s = db->Get(cIter->readOptions(),
+                         RocksDBColumnFamilyManager::get(
+                             RocksDBColumnFamilyManager::Family::Documents),
                          docKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);
@@ -539,7 +583,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(TRI_vocbase_t& vocbase
       tmpHashBuilder.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
       hashval ^= tmpHashBuilder.slice().hashString();
       tmpHashBuilder.clear();
-      tmpHashBuilder.add(docRev.toValuePair(&ridBuffer[0]));
+      tmpHashBuilder.add(docRev.toValuePair(ridBuffer));
       hashval ^= tmpHashBuilder.slice().hashString();
 
       cIter->iter->Next();
@@ -607,7 +651,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   // Position the iterator correctly
   if (chunk != 0 && ((std::numeric_limits<std::size_t>::max() / chunk) < chunkSize)) {
@@ -650,7 +695,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
 
   // reserve some space in the result builder to avoid frequent reallocations
   b.reserve(8192);
-  char ridBuffer[21];  // temporary buffer for stringifying revision ids
+  char ridBuffer[arangodb::basics::maxUInt64StringSize];  // temporary buffer for stringifying revision ids
   rocksdb::TransactionDB* db = _engine.db();
   auto* rcoll = static_cast<RocksDBMetaCollection*>(cIter->logical->getPhysical());
   const uint64_t cObjectId = rcoll->objectId();
@@ -669,7 +714,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
       tmpKey.constructDocument(cObjectId, docId);
 
       rocksdb::PinnableSlice ps;
-      auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+      auto s = db->Get(cIter->readOptions(),
+                       RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents),
                        tmpKey.string(), &ps);
       if (s.ok()) {
         TRI_ASSERT(ps.size() > 0);
@@ -688,7 +734,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(TRI_vocbase_t& vocbase,
     arangodb::velocypack::StringRef docKey(RocksDBKey::primaryKey(cIter->iter->key()));
     b.openArray(true);
     b.add(velocypack::ValuePair(docKey.data(), docKey.size(), velocypack::ValueType::String));
-    b.add(docRev.toValuePair(&ridBuffer[0]));
+    b.add(docRev.toValuePair(ridBuffer));
     b.close();
   }
   b.close();
@@ -722,7 +768,8 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
   }
 
-  TRI_ASSERT(cIter->bounds.columnFamily() == RocksDBColumnFamily::primary());
+  TRI_ASSERT(cIter->bounds.columnFamily() ==
+             RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex));
 
   // Position the iterator must be reset to the beginning
   // after calls to dumpKeys moved it forwards
@@ -808,7 +855,9 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
         tmpKey.constructDocument(cObjectId, docId);
 
         rocksdb::PinnableSlice ps;
-        auto s = db->Get(cIter->readOptions(), RocksDBColumnFamily::documents(),
+        auto s = db->Get(cIter->readOptions(),
+                         RocksDBColumnFamilyManager::get(
+                             RocksDBColumnFamilyManager::Family::Documents),
                          tmpKey.string(), &ps);
         if (s.ok()) {
           TRI_ASSERT(ps.size() > 0);

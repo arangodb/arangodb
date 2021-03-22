@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -55,8 +55,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_H
 #define ARANGODB_LOGGER_LOGGER_H 1
 
-#include <stddef.h>
 #include <atomic>
+#include <cstddef>
 #include <functional>
 #include <memory>
 #include <string>
@@ -86,22 +86,37 @@ struct LogMessage {
   LogMessage& operator=(LogMessage const&) = delete;
 
   LogMessage(char const* function, char const* file, int line,
-             LogLevel level, size_t topicId, std::string&& message, size_t offset)
-      : _function(function),
-        _file(file),
-        _line(line),
-        _level(level),
-        _topicId(topicId),
-        _message(std::move(message)),
-        _offset(offset) {}
+             LogLevel level, size_t topicId, std::string&& message, 
+             uint32_t offset, bool shrunk) noexcept;
 
+  /// @brief whether or no the message was already shrunk
+  bool shrunk() const noexcept { return _shrunk; }
+
+  /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
+  void shrink(std::size_t maxLength);
+
+  /// @brief all details about the log message. we need to
+  /// keep all this data around and not just the big log
+  /// message string, because some LogAppenders will refer
+  /// to individual components such as file, line etc.
+
+  /// @brief function name of log message source code location
   char const* _function;
+  /// @brief file of log message source code location
   char const* _file;
+  /// @brief line of log message source code location
   int const _line;
+  /// @brief log level
   LogLevel const _level;
+  /// @brief id of log topic
   size_t const _topicId;
-  std::string const _message;
-  size_t const _offset;
+  /// @biref the actual log message
+  std::string _message;
+  /// @brief byte offset where actual message starts (i.e. excluding prologue)
+  uint32_t _offset;
+  /// @brief whether or not the log message was already shrunk (used to
+  /// prevent duplicate shrinking of message)
+  bool _shrunk;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,6 +265,7 @@ class Logger {
 
   static void setRole(char role);
   static void setOutputPrefix(std::string const&);
+  static void setHostname(std::string const&);
   static void setShowIds(bool);
   static bool getShowIds() { return _showIds; };
   static void setShowLineNumber(bool);
@@ -274,12 +290,15 @@ class Logger {
   // can be called after fork()
   static void clearCachedPid() { _cachedPid = 0; }
 
+  static bool translateLogLevel(std::string const& l, bool isGeneral, LogLevel& level) noexcept;
+
   static std::string const& translateLogLevel(LogLevel) noexcept;
 
   static void log(char const* logid, char const* function, char const* file, int line,
                   LogLevel level, size_t topicId, std::string const& message);
 
   static void append(LogGroup&, std::unique_ptr<LogMessage>& msg,
+                     bool forceDirect,
                      std::function<void(std::unique_ptr<LogMessage>&)> const& inactive =
                          [](std::unique_ptr<LogMessage>&) -> void {});
 
@@ -335,6 +354,7 @@ class Logger {
   static char _role;  // current server role to log
   static TRI_pid_t _cachedPid;
   static std::string _outputPrefix;
+  static std::string _hostname;
 
   static std::unique_ptr<LogThread> _loggingThread;
 };

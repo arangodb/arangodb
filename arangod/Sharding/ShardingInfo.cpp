@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -340,7 +340,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids) const 
   _shardingStrategy->toVelocyPack(result);
 }
 
-std::string ShardingInfo::distributeShardsLike() const {
+std::string const& ShardingInfo::distributeShardsLike() const {
   return _distributeShardsLike;
 }
 
@@ -478,9 +478,10 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _shardIds = map;
 }
 
-int ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
-                                      ShardID& shardID, bool& usesDefaultShardKeys,
-                                      VPackStringRef const& key) {
+ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
+                                            bool docComplete, ShardID& shardID,
+                                            bool& usesDefaultShardKeys,
+                                            VPackStringRef const& key) {
   return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
                                                 usesDefaultShardKeys, key);
 }

@@ -31,6 +31,8 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionNode.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "Mocks/Servers.h"
 
@@ -88,8 +90,9 @@ class AqlExecutorTestCase : public ::testing::Test {
  protected:
   // available variables
   static inline std::unique_ptr<mocks::MockAqlServer> _server;
-  ResourceMonitor monitor{};
-  AqlItemBlockManager itemBlockManager{&monitor, SerializationFormat::SHADOWROWS};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager itemBlockManager{monitor, SerializationFormat::SHADOWROWS};
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 };
 

@@ -124,12 +124,39 @@ class directory_test_case : public tests::directory_test_case_base {
       EXPECT_EQ(0, file->file_pointer());
       EXPECT_EQ(file->length(), it->size());
 
+      auto dup_file = file->dup();
+      ASSERT_FALSE(!dup_file);
+      ASSERT_EQ(0, dup_file->file_pointer());
+      EXPECT_FALSE(dup_file->eof());
+      EXPECT_EQ(dup_file->length(), it->size());
+      auto reopened_file = file->reopen();
+      ASSERT_FALSE(!reopened_file);
+      ASSERT_EQ(0, reopened_file->file_pointer());
+      EXPECT_FALSE(reopened_file->eof());
+      EXPECT_EQ(reopened_file->length(), it->size());
+
       const auto checksum = file->checksum(file->length());
 
       buf.resize(it->size());
       const auto read = file->read_bytes(&(buf[0]), it->size());
       ASSERT_EQ(read, it->size());
       ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = dup_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
+
+      {
+        buf.clear();
+        buf.resize(it->size());
+        const auto read = reopened_file->read_bytes(&(buf[0]), it->size());
+        ASSERT_EQ(read, it->size());
+        ASSERT_EQ(ref_cast<byte_type>(string_ref(*it)), buf);
+      }
 
       crc.process_bytes(buf.c_str(), buf.size());
 
@@ -163,7 +190,7 @@ class directory_test_case : public tests::directory_test_case_base {
     ASSERT_TRUE(l->unlock());
     ASSERT_TRUE(l->is_locked(locked) && !locked);
 
-    // Check read_bytes on empty file
+    // empty file
     {
       byte_type buf[10];
 
@@ -173,20 +200,15 @@ class directory_test_case : public tests::directory_test_case_base {
         ASSERT_FALSE(!out);
       }
 
-      // read from file
       {
         auto in = dir.open("empty_file", irs::IOAdvice::NORMAL);
         ASSERT_FALSE(!in);
+        ASSERT_TRUE(in->eof());
 
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(0, read);
-        } catch (const eof_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
-        }
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->checksum(0));
+        ASSERT_EQ(0, in->checksum(42));
       }
 
       ASSERT_TRUE(dir.remove("empty_file"));
@@ -210,20 +232,17 @@ class directory_test_case : public tests::directory_test_case_base {
       {
         byte_type buf[1024 + 691]{}; // 1024 + 691 from above
         auto in = dir.open("nonempty_file", irs::IOAdvice::NORMAL);
+        ASSERT_FALSE(in->eof());
         size_t expected = sizeof buf;
         ASSERT_FALSE(!in);
         ASSERT_EQ(expected, in->read_bytes(buf, sizeof buf));
 
-        size_t read = std::numeric_limits<size_t>::max();
-        try {
-          expected = in->length() - sizeof buf; // 'sizeof buf' already read above
-          read = in->read_bytes(buf, sizeof buf);
-          ASSERT_EQ(expected, read);
-        } catch (const io_error&) {
-          // TODO: rework stream logic, stream should not throw an error
-        } catch (...) {
-          ASSERT_TRUE(false);
-        }
+        expected = in->length() - sizeof buf; // 'sizeof buf' already read above
+        const size_t read = in->read_bytes(buf, sizeof buf);
+        ASSERT_EQ(expected, read);
+        ASSERT_TRUE(in->eof());
+        ASSERT_EQ(0, in->read_bytes(buf, sizeof buf));
+        ASSERT_TRUE(in->eof());
       }
 
       ASSERT_TRUE(dir.remove("nonempty_file"));
@@ -318,6 +337,13 @@ TEST_P(directory_test_case, rename) {
     bool res = true;
     ASSERT_TRUE(dir_->exists(res, "bar1"));
     ASSERT_FALSE(res);
+  }
+
+  {
+    bool res = false;
+    ASSERT_TRUE(dir_->rename("foo1", "foo1"));
+    ASSERT_TRUE(dir_->exists(res, "foo1"));
+    ASSERT_TRUE(res);
   }
 
   {
@@ -1277,7 +1303,7 @@ TEST_F(fs_directory_test, orphaned_lock) {
       char hostname[256] = {};
       ASSERT_EQ(0, get_host_name(hostname, sizeof hostname));
 
-      const std::string pid = std::to_string(integer_traits<int>::const_max);
+      const std::string pid = std::to_string(std::numeric_limits<int>::max());
       auto out = dir_->create("lock");
       ASSERT_FALSE(!out);
       out->write_bytes(reinterpret_cast<const byte_type*>(hostname), strlen(hostname));

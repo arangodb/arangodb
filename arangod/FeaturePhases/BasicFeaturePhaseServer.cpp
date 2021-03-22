@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -58,7 +58,9 @@ BasicFeaturePhaseServer::BasicFeaturePhaseServer(ApplicationServer& server)
   startsAfter<DaemonFeature>();
   startsAfter<DatabasePathFeature>();
   startsAfter<EnvironmentFeature>();
+#ifdef TRI_HAVE_GETRLIMIT
   startsAfter<FileDescriptorsFeature>();
+#endif
   startsAfter<LanguageFeature>();
   startsAfter<MaxMapCountFeature>();
   startsAfter<NonceFeature>();

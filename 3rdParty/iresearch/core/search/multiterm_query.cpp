@@ -23,8 +23,87 @@
 #include "multiterm_query.hpp"
 
 #include "shared.hpp"
-#include "bitset_doc_iterator.hpp"
-#include "disjunction.hpp"
+#include "search/bitset_doc_iterator.hpp"
+#include "search/disjunction.hpp"
+#include "utils/bitset.hpp"
+#include "utils/range.hpp"
+
+namespace {
+
+using namespace irs;
+
+class lazy_bitset_iterator final : public bitset_doc_iterator {
+ public:
+  lazy_bitset_iterator(
+      const sub_reader& segment,
+      const term_reader& field,
+      const order::prepared& ord,
+      const std::vector<multiterm_state::unscored_term_state>& states,
+      cost::cost_t estimation) noexcept
+    : bitset_doc_iterator(estimation),
+      score_(ord),
+      field_(&field),
+      segment_(&segment),
+      states_(states.data(), states.size()) {
+    assert(!states_.empty());
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    return irs::type<score>::id() == id
+      ? &score_
+      : bitset_doc_iterator::get_mutable(id);
+  }
+
+ protected:
+  virtual bool refill(const word_t** begin, const word_t** end) override;
+
+ private:
+  score score_;
+  std::unique_ptr<word_t[]> set_;
+  const term_reader* field_;
+  const sub_reader* segment_;
+  range<const multiterm_state::unscored_term_state> states_;
+}; // lazy_bitset_iterator
+
+bool lazy_bitset_iterator::refill(
+    const word_t** begin,
+    const word_t** end) {
+  if (!field_) {
+    return false;
+  }
+
+  const size_t bits = segment_->docs_count() + irs::doc_limits::min();
+  const size_t words = bitset::bits_to_words(bits);
+  set_ = memory::make_unique<word_t[]>(words);
+  std::memset(set_.get(), 0, sizeof(word_t)*words);
+
+  auto provider = [begin = states_.begin(), end = states_.end()]() mutable noexcept
+      -> const seek_term_iterator::seek_cookie* {
+    if (begin != end) {
+      auto* cookie = begin->get();
+      ++begin;
+      return cookie;
+    }
+    return nullptr;
+  };
+
+  const size_t count = field_->bit_union(provider, set_.get());
+  field_ = nullptr;
+
+  if (count) {
+    // we don't want to emit doc_limits::invalid()
+    // ensure first bit isn't set,
+    assert(!irs::check_bit(set_[0], 0));
+
+    *begin = set_.get();
+    *end = set_.get() + words;
+    return true;
+  }
+
+  return false;
+}
+
+}
 
 namespace iresearch {
 
@@ -50,24 +129,15 @@ doc_iterator::ptr multiterm_query::execute(
     return doc_iterator::empty();
   }
 
-  // prepared disjunction
-  const bool has_bit_set = state->unscored_docs.any();
-  disjunction_t::doc_iterators_t itrs;
-  itrs.reserve(state->scored_states.size() + size_t(has_bit_set)); // +1 for possible bitset_doc_iterator
-
   // get required features for order
   auto& features = ord.features();
-
-  // add an iterator for the unscored docs
-  if (has_bit_set) {
-    // ensure first bit isn't set,
-    // since we don't want to emit doc_limits::invalid()
-    assert(state->unscored_docs.any() && !state->unscored_docs.test(0));
-
-    itrs.emplace_back(memory::make_managed<bitset_doc_iterator>(state->unscored_docs));
-  }
-
   auto& stats = this->stats();
+
+  const bool has_unscored_terms = !state->unscored_terms.empty();
+
+  disjunction_t::doc_iterators_t itrs(
+    state->scored_states.size() + size_t(has_unscored_terms));
+  auto it = itrs.begin();
 
   // add an iterator for each of the scored states
   const bool no_score = ord.empty();
@@ -78,6 +148,10 @@ doc_iterator::ptr multiterm_query::execute(
     }
 
     auto docs = terms->postings(features);
+
+    if (IRS_UNLIKELY(!docs)) {
+      continue;
+    }
 
     if (!no_score) {
       auto* score = irs::get_mutable<irs::score>(docs.get());
@@ -94,21 +168,33 @@ doc_iterator::ptr multiterm_query::execute(
       }
     }
 
-    itrs.emplace_back(std::move(docs));
+    *it = std::move(docs);
+    ++it;
+  }
 
-    if (IRS_UNLIKELY(!itrs.back().it)) {
-      itrs.pop_back();
-      continue;
-    }
+  if (has_unscored_terms) {
+    *it = {
+      memory::make_managed<::lazy_bitset_iterator>(
+        segment, *state->reader, ord,
+        state->unscored_terms,
+        state->unscored_states_estimation)
+    };
+    ++it;
+  }
+
+  if (IRS_UNLIKELY(it != itrs.end())) {
+    itrs.erase(it, itrs.end());
   }
 
   if (ord.empty()) {
     return make_disjunction<disjunction_t>(
-      std::move(itrs), ord, merge_type_, state->estimation());
+      std::move(itrs), ord, merge_type_,
+      state->estimation());
   }
 
   return make_disjunction<scored_disjunction_t>(
-    std::move(itrs), ord, merge_type_, state->estimation());
+    std::move(itrs), ord, merge_type_,
+    state->estimation());
 }
 
 } // ROOT

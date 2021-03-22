@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -164,7 +164,7 @@ void ClusterQuery::prepareClusterQuery(VPackSlice querySlice,
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
-futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
+futures::Future<Result> ClusterQuery::finalizeClusterQuery(ErrorCode errorCode) {
   TRI_ASSERT(_trx);
   TRI_ASSERT(ServerState::instance()->isDBServer());
   
@@ -206,7 +206,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(int errorCode) {
           << " this: " << (uintptr_t)this;
 
      _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-     _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+     _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
      _execStats.setExecutionTime(elapsedSince(_startTime));
     _shutdownState.store(ShutdownState::Done);
      

@@ -33,8 +33,7 @@
 
 namespace iresearch {
 
-class all_iterator final
-    : public frozen_attributes<3, doc_iterator> {
+class all_iterator final : public doc_iterator {
  public:
   all_iterator(
     const irs::sub_reader& reader,
@@ -43,27 +42,41 @@ class all_iterator final
     uint64_t docs_count,
     boost_t boost);
 
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override {
+    return irs::get_mutable(attrs_, id);
+  }
+
   virtual bool next() noexcept override {
-    return !doc_limits::eof(seek(doc_.value + 1));
+    auto& doc = std::get<document>(attrs_);
+
+    if (doc.value >= max_doc_) {
+      doc.value = doc_limits::eof();
+      return false;
+    } else {
+      doc.value++;
+      return true;
+    }
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
-    doc_.value = target <= max_doc_
+    auto& doc = std::get<document>(attrs_);
+
+    doc.value = target <= max_doc_
       ? target
       : doc_limits::eof();
 
-    return doc_.value;
+    return doc.value;
   }
 
   virtual irs::doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
  private:
-  document doc_;
-  score score_;
+  using attributes = std::tuple<document, cost, score>;
+
   doc_id_t max_doc_; // largest valid doc_id
-  cost cost_;
+  attributes attrs_;
 }; // all_iterator
 
 } // ROOT

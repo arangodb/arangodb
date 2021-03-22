@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -50,29 +50,29 @@ RestAgencyPrivHandler::RestAgencyPrivHandler(application_features::ApplicationSe
 
 inline RestStatus RestAgencyPrivHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("53e2d", WARN, Logger::AGENCY) << "Empty request to agency!";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyPrivHandler::reportTooManySuffices() {
   LOG_TOPIC("472c8", WARN, Logger::AGENCY)
       << "Agency handles a single suffix: vote, log or configure";
-  generateError(rest::ResponseCode::NOT_FOUND, 404);
+  generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyPrivHandler::reportBadQuery(std::string const& message) {
-  generateError(rest::ResponseCode::BAD, 400, message);
+  generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, message);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyPrivHandler::reportMethodNotAllowed() {
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   return RestStatus::DONE;
 }
 
 inline RestStatus RestAgencyPrivHandler::reportGone() {
-  generateError(rest::ResponseCode::GONE, 410);
+  generateError(rest::ResponseCode::GONE, TRI_ERROR_HTTP_GONE);
   return RestStatus::DONE;
 }
 
@@ -103,7 +103,8 @@ RestStatus RestAgencyPrivHandler::reportError(VPackSlice error) {
   LOG_TOPIC("558e5", DEBUG, Logger::AGENCY) << error.toJson();
   rest::ResponseCode code;
   try {
-    code = GeneralResponse::responseCode(error.get(StaticStrings::Code).getNumber<int>());
+    code = GeneralResponse::responseCode(
+        ErrorCode{error.get(StaticStrings::Code).getNumber<int>()});
     generateResult(code, error);
   } catch (std::exception const& e) {
     std::string errstr("Failure reporting error ");
@@ -255,7 +256,7 @@ RestStatus RestAgencyPrivHandler::execute() {
           return reportBadQuery(e.what());
         }
       } else {
-        generateError(rest::ResponseCode::NOT_FOUND, 404);  // nothing else here
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);  // nothing else here
         return RestStatus::DONE;
       }
     }

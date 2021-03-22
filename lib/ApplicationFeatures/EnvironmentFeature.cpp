@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -176,12 +176,25 @@ void EnvironmentFeature::prepare() {
 
 #ifdef __linux__
   {
+#ifdef ARANGODB_HAVE_JEMALLOC
+    char const* v = getenv("LD_PRELOAD");
+    if (v != nullptr &&
+        (strstr(v, "/valgrind/") != nullptr || strstr(v, "/vgpreload") != nullptr)) {
+      // smells like Valgrind
+      LOG_TOPIC("a2a1e", WARN, arangodb::Logger::MEMORY)
+          << "found LD_PRELOAD env variable value that looks like we are running under Valgrind. "
+          << "this is unsupported in combination with jemalloc and may cause undefined behavior at least with memcheck!";
+    }
+#endif
+  }
+
+  {
     char const* v = getenv("MALLOC_CONF");
 
     if (v != nullptr) {
       // report value of MALLOC_CONF environment variable
       LOG_TOPIC("d89f7", WARN, arangodb::Logger::MEMORY)
-          << "found custom MALLOC_CONF environment value '" << v << "'";
+          << "found custom MALLOC_CONF environment value: " << v;
     }
   }
 

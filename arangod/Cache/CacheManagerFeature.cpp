@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #include "CacheManagerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/SharedPRNGFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -47,9 +48,6 @@ using namespace arangodb::cache;
 using namespace arangodb::options;
 
 namespace arangodb {
-
-Manager* CacheManagerFeature::MANAGER = nullptr;
-const uint64_t CacheManagerFeature::minRebalancingInterval = 500 * 1000;
 
 CacheManagerFeature::CacheManagerFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "CacheManager"),
@@ -104,14 +102,16 @@ void CacheManagerFeature::start() {
   auto scheduler = SchedulerFeature::SCHEDULER;
   auto postFn = [scheduler](std::function<void()> fn) -> bool {
     try {
-      return scheduler->queue(RequestLane::INTERNAL_LOW, fn);
+      return scheduler->queue(RequestLane::INTERNAL_LOW, std::move(fn));
     } catch (...) {
       return false;
     }
   };
-  _manager.reset(new Manager(postFn, _cacheSize));
-  MANAGER = _manager.get();
-  _rebalancer.reset(new CacheRebalancerThread(server(), _manager.get(), _rebalancingInterval));
+
+  SharedPRNGFeature& sharedPRNG = server().getFeature<SharedPRNGFeature>();
+  _manager = std::make_unique<Manager>(sharedPRNG, postFn, _cacheSize);
+
+  _rebalancer = std::make_unique<CacheRebalancerThread>(server(), _manager.get(), _rebalancingInterval);
   _rebalancer->start();
   LOG_TOPIC("13894", DEBUG, Logger::STARTUP) << "cache manager has started";
 }
@@ -129,6 +129,6 @@ void CacheManagerFeature::stop() {
   }
 }
 
-void CacheManagerFeature::unprepare() { MANAGER = nullptr; }
+cache::Manager* CacheManagerFeature::manager() { return _manager.get(); }
 
 }  // namespace arangodb

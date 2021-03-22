@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -167,6 +167,12 @@ class GraphNode : public ExecutionNode {
 
   /// @brief Returns a reference to the engines. (CLUSTER ONLY)
   std::unordered_map<ServerID, aql::EngineId> const* engines() const;
+
+  /// @brief Clears the graph Engines. (CLUSTER ONLY)
+  /// NOTE: Use with care, if you do not refill
+  /// the engines this graph node cannot communicate.
+  /// and will yield no results.
+  void clearEngines();
 
   std::vector<aql::Collection*> const& edgeColls() const;
 

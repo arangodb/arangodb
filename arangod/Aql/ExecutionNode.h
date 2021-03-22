@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -197,6 +197,10 @@ class ExecutionNode {
   /// @brief factory from JSON
   static ExecutionNode* fromVPackFactory(ExecutionPlan* plan,
                                          arangodb::velocypack::Slice const& slice);
+
+  /// @brief remove registers right of (greater than) the specified register
+  /// from the internal maps
+  void removeRegistersGreaterThan(RegisterId maxRegister);
 
   /// @brief cast an ExecutionNode to a specific sub-type
   /// in maintainer mode, this function will perform a dynamic_cast and abort
@@ -471,6 +475,8 @@ class ExecutionNode {
   [[nodiscard]] bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
   [[nodiscard]] bool alwaysCopiesRows() const;
+  
+  auto getRegsToKeepStack() const -> RegIdSetStack;
 
  protected:
   /// @brief set the id, use with care! The purpose is to use a cloned node
@@ -488,8 +494,6 @@ class ExecutionNode {
   /// @brief toVelocyPackHelper, for a generic node
   void toVelocyPackHelperGeneric(arangodb::velocypack::Builder&, unsigned flags,
                                  std::unordered_set<ExecutionNode const*>& seen) const;
-
-  auto getRegsToKeepStack() const -> RegIdSetStack;
 
   RegisterId variableToRegisterId(Variable const*) const;
 
@@ -802,6 +806,10 @@ class CalculationNode : public ExecutionNode {
 };
 
 /// @brief class SubqueryNode
+/// in 3.8, SubqueryNodes are only used during query planning and optimization, but
+/// will finally be replaced with SubqueryStartNode and SubqueryEndNode nodes by the
+/// splice-subqueries optimizer rule. In addition, any query execution plan from 3.7
+/// may contain this node type. We can clean this up in 3.9.
 class SubqueryNode : public ExecutionNode {
   friend class ExecutionNode;
   friend class ExecutionBlock;

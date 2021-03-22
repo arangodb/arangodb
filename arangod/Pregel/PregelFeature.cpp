@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/NumberOfCores.h"
+#include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -349,14 +350,19 @@ void PregelFeature::cleanupAll() {
   }
 
   VPackSlice sExecutionNum = body.get(Utils::executionNumberKey);
-  if (!sExecutionNum.isInteger()) {
+  if (!sExecutionNum.isInteger() && !sExecutionNum.isString()) {
     LOG_TOPIC("8410a", ERR, Logger::PREGEL) << "Invalid execution number";
   }
-  uint64_t exeNum = sExecutionNum.getUInt();
+  uint64_t exeNum = 0;
+  if (sExecutionNum.isInteger()) {
+    exeNum = sExecutionNum.getUInt();
+  } else if (sExecutionNum.isString()) {
+    exeNum = basics::StringUtils::uint64(sExecutionNum.copyString());
+  }
   std::shared_ptr<Conductor> co = instance->conductor(exeNum);
   if (!co) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number");
+        TRI_ERROR_CURSOR_NOT_FOUND, "Conductor not found, invalid execution number: " + std::to_string(exeNum));
   }
 
   if (path == Utils::finishedStartupPath) {

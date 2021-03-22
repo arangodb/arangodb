@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,15 +25,20 @@
 #ifndef ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H
 #define ARANGOD_SUPERIVSED_SCHEDULER_SCHEDULER_H 1
 
-#include <boost/lockfree/queue.hpp>
+#include <array>
 #include <condition_variable>
+#include <functional>
 #include <list>
 #include <mutex>
+
+#include <boost/lockfree/queue.hpp>
 
 #include "RestServer/Metrics.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
+class NetworkFeature;
+class SharedPRNGFeature;
 class SupervisedSchedulerWorkerThread;
 class SupervisedSchedulerManagerThread;
 
@@ -41,17 +46,35 @@ class SupervisedScheduler final : public Scheduler {
  public:
   SupervisedScheduler(application_features::ApplicationServer& server,
                       uint64_t minThreads, uint64_t maxThreads, uint64_t maxQueueSize,
-                      uint64_t fifo1Size, uint64_t fifo2Size,
-                      double unavailabilityQueueFillGrade);
-  virtual ~SupervisedScheduler();
-
-  bool queue(RequestLane lane, fu2::unique_function<void()>) override ADB_WARN_UNUSED_RESULT;
+                      uint64_t fifo1Size, uint64_t fifo2Size, uint64_t fifo3Size,
+                      double ongoingMultiplier, double unavailabilityQueueFillGrade);
+  ~SupervisedScheduler() final;
 
   bool start() override;
   void shutdown() override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
+
+  void trackBeginOngoingLowPriorityTask();
+  void trackEndOngoingLowPriorityTask();
+
+  /// @brief set the time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms]
+  void setLastLowPriorityDequeueTime(uint64_t time) noexcept;
+
+  constexpr static uint64_t const NumberOfQueues = 4;
+
+  constexpr static uint64_t const HighPriorityQueue = 1;
+  constexpr static uint64_t const MediumPriorityQueue = 2;
+  constexpr static uint64_t const LowPriorityQueue = 3;
+
+  static_assert(HighPriorityQueue < NumberOfQueues);
+  static_assert(MediumPriorityQueue < NumberOfQueues);
+  static_assert(LowPriorityQueue < NumberOfQueues);
+  
+  static_assert(HighPriorityQueue < MediumPriorityQueue);
+  static_assert(MediumPriorityQueue < LowPriorityQueue);
 
   /// @brief approximate fill grade of the scheduler's queue (in %)
   double approximateQueueFillGrade() const override;
@@ -66,7 +89,7 @@ class SupervisedScheduler final : public Scheduler {
  private:
   friend class SupervisedSchedulerManagerThread;
   friend class SupervisedSchedulerWorkerThread;
-  
+
   // each worker thread has a state block which contains configuration values.
   // _queueRetryTime_us is the number of microseconds this particular
   // thread should spin before going to sleep. Note that this spinning is only
@@ -104,7 +127,7 @@ class SupervisedScheduler final : public Scheduler {
     // cppcheck-suppress missingOverride
     bool start();
   };
-  
+
   struct WorkItem final {
     fu2::unique_function<void()> _handler;
 
@@ -114,8 +137,8 @@ class SupervisedScheduler final : public Scheduler {
 
     void operator()() { _handler(); }
   };
- 
-  std::unique_ptr<WorkItem> getWork(std::shared_ptr<WorkerState>& state);
+
+  std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
   void startOneThread();
   void stopOneThread();
 
@@ -131,25 +154,29 @@ class SupervisedScheduler final : public Scheduler {
   void runWorker();
   void runSupervisor();
 
+  [[nodiscard]] bool queueItem(RequestLane lane, std::unique_ptr<WorkItemBase> item) override;
+
  private:
+  NetworkFeature& _nf;
+  SharedPRNGFeature& _sharedPRNG;
+
   std::atomic<uint64_t> _numWorkers;
   std::atomic<bool> _stopping;
   std::atomic<bool> _acceptingNewJobs;
 
   // Since the lockfree queue can only handle PODs, one has to wrap lambdas
   // in a container class and store pointers. -- Maybe there is a better way?
-  boost::lockfree::queue<WorkItem*> _queues[3];
+  boost::lockfree::queue<WorkItemBase*> _queues[NumberOfQueues];
 
   // aligning required to prevent false sharing - assumes cache line size is 64
   alignas(64) std::atomic<uint64_t> _jobsSubmitted;
   alignas(64) std::atomic<uint64_t> _jobsDequeued;
   alignas(64) std::atomic<uint64_t> _jobsDone;
 
-  uint64_t const _minNumWorkers;
-  uint64_t const _maxNumWorkers;
-  uint64_t const _maxFifoSize;
-  uint64_t const _fifo1Size;
-  uint64_t const _fifo2Size;
+  size_t const _minNumWorkers;
+  size_t const _maxNumWorkers;
+  uint64_t const _maxFifoSizes[NumberOfQueues];
+  size_t const _ongoingLowPriorityLimit;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -180,10 +207,18 @@ class SupervisedScheduler final : public Scheduler {
   Gauge<uint64_t>& _metricsAwakeThreads;
   Gauge<uint64_t>& _metricsNumWorkingThreads;
   Gauge<uint64_t>& _metricsNumWorkerThreads;
-
+  
   Counter& _metricsThreadsStarted;
   Counter& _metricsThreadsStopped;
   Counter& _metricsQueueFull;
+  Gauge<uint64_t>& _ongoingLowPriorityGauge;
+  
+  /// @brief amount of time it took for the last low prio item to be dequeued
+  /// (time between queuing and dequeing) [ms].
+  /// this metric is only updated probabilistically
+  Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
+
+  std::array<std::reference_wrapper<Gauge<uint64_t>>, NumberOfQueues> _metricsQueueLengths;
 };
 
 }  // namespace arangodb

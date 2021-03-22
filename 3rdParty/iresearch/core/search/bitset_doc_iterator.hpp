@@ -28,42 +28,52 @@
 #include "search/score.hpp"
 #include "utils/frozen_attributes.hpp"
 #include "utils/type_limits.hpp"
-#include "utils/bitset.hpp"
 
 namespace iresearch {
 
-class bitset_doc_iterator final
-  : public frozen_attributes<3, doc_iterator>,
+class bitset_doc_iterator
+  : public doc_iterator,
     private util::noncopyable {
  public:
-  explicit bitset_doc_iterator(const bitset& set)
-    : bitset_doc_iterator(set, order::prepared::unordered()) {
+  using word_t = size_t;
+
+  bitset_doc_iterator(const word_t* begin, const word_t* end) noexcept;
+
+  virtual bool next() noexcept override final;
+  virtual doc_id_t seek(doc_id_t target) noexcept override final;
+  virtual doc_id_t value() const noexcept override final { return doc_.value; }
+  virtual attribute* get_mutable(irs::type_info::type_id id) noexcept override;
+
+ protected:
+  explicit bitset_doc_iterator(cost::cost_t cost) noexcept
+    : cost_(cost),
+      doc_(doc_limits::invalid()),
+      begin_(nullptr),
+      end_(nullptr) {
+    reset();
   }
 
-  bitset_doc_iterator(
-    const sub_reader& reader,
-    const byte_type* stats,
-    const bitset& set,
-    const order::prepared& order,
-    boost_t boost);
-
-  virtual bool next() noexcept override;
-  virtual doc_id_t seek(doc_id_t target) noexcept override;
-  virtual doc_id_t value() const noexcept override { return doc_.value; }
+  virtual bool refill(const word_t** /*begin*/,
+                      const word_t** /*end*/) {
+    return false;
+  }
 
  private:
-  using word_t = bitset::word_t;
-
-  bitset_doc_iterator(const bitset& set, const order::prepared& ord);
+  // assume begin_, end_ are set
+  void reset() noexcept {
+    next_ = begin_;
+    word_ = 0;
+    base_ = doc_limits::invalid() - bits_required<word_t>(); // before the first word
+    assert(begin_ <= end_);
+  }
 
   cost cost_;
   document doc_;
-  score score_;
   const word_t* begin_;
   const word_t* end_;
   const word_t* next_;
-  word_t word_{};
-  doc_id_t base_{doc_limits::invalid() - bits_required<word_t>()}; // before the first word
+  word_t word_;
+  doc_id_t base_;
 }; // bitset_doc_iterator
 
 } // ROOT

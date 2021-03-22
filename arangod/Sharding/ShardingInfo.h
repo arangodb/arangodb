@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ class ShardingInfo {
   LogicalCollection* collection() const;
   void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids) const;
 
-  std::string distributeShardsLike() const;
+  std::string const& distributeShardsLike() const;
   void distributeShardsLike(std::string const& cid, ShardingInfo const* other);
 
   std::vector<std::string> const& avoidServers() const;
@@ -100,9 +100,9 @@ class ShardingInfo {
   std::shared_ptr<ShardMap> shardIds(std::unordered_set<std::string> const& includedShards) const;
   void setShardMap(std::shared_ptr<ShardMap> const& map);
 
-  int getResponsibleShard(arangodb::velocypack::Slice, bool docComplete,
-                          ShardID& shardID, bool& usesDefaultShardKeys,
-                          arangodb::velocypack::StringRef const&);
+  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice, bool docComplete,
+                                ShardID& shardID, bool& usesDefaultShardKeys,
+                                arangodb::velocypack::StringRef const& key);
 
   static void sortShardNamesNumerically(std::vector<ShardID>& list);
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -270,6 +270,14 @@ class IResearchLink {
   /// @brief get stored values
   ////////////////////////////////////////////////////////////////////////////////
   IResearchViewStoredValues const& storedValues() const noexcept;
+
+  /// @brief sets the _collectionName in Link meta. Used in cluster only to store
+  /// linked collection name (as shard name differs from the cluster-wide collection name)
+  /// @param name  collectioName to set. Should match existing value of  the _collectionName
+  /// if it is not empty. 
+  /// @return true if name not existed in link before and was actually set by this call,
+  /// false otherwise
+  bool setCollectionName(irs::string_ref name) noexcept;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////

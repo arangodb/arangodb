@@ -33,6 +33,8 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/RebootTracker.h"
 #include "Mocks/Servers.h"
 #include "Transaction/Methods.h"
@@ -296,8 +298,9 @@ TEST(EngineInfoContainerTest,
   testee.addNode(&sNode);
   // Close the second snippet
   testee.closeSnippet();
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
 
   std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
@@ -550,8 +553,9 @@ TEST(EngineInfoContainerTest, snippets_are_a_stack_insert_node_always_into_top_s
   testee.closeSnippet();
 
   testee.addNode(&tbNode);
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   std::vector<uint64_t> coordinatorQueryIds{};
   auto result =
@@ -734,8 +738,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_throws_an_err
       .Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
   */
   std::vector<uint64_t> coordinatorQueryIds{};
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
   SnippetList coordSnippets;
   auto result =
       testee.buildEngines(query,
@@ -911,8 +916,9 @@ TEST(EngineInfoContainerTest, error_cases_cloning_of_a_query_fails_returns_a_nul
         return nullptr;
       });
   */
-  ResourceMonitor monitor;
-  AqlItemBlockManager mgr(&monitor, SerializationFormat::SHADOWROWS); /// TODO
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
+  AqlItemBlockManager mgr(monitor, SerializationFormat::SHADOWROWS); /// TODO
    std::vector<uint64_t> coordinatorQueryIds{};
   SnippetList coordSnippets;
   auto result =

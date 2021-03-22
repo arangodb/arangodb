@@ -65,7 +65,6 @@ const testPaths = {
 var _resilience = function(path) {
   this.func = function resilience (options) {
     let suiteName = path;
-    let testCases = tu.scanTestPaths(testPaths[path], options);
     let localOptions = _.clone(options);
     localOptions.cluster = true;
     localOptions.propagateInstanceInfo = true;
@@ -78,10 +77,14 @@ var _resilience = function(path) {
     if (localOptions.dbServers < 5) {
       localOptions.dbServers = 5;
     }
-    return tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
+    let testCases = tu.scanTestPaths(testPaths[path], localOptions);
+    let rc = tu.performTests(localOptions, testCases, suiteName, tu.runThere, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
+      'javascript.allow-admin-execute': 'true',
     });
+    options.cleanup = options.cleanup && localOptions.cleanup;
+    return rc;
   };
 };
 
@@ -100,16 +103,20 @@ const resilienceAnalyzers = (new _resilience('resilience_analyzers')).func;
 // //////////////////////////////////////////////////////////////////////////////
 
 function clientResilience (options) {
-  let testCases = tu.scanTestPaths(testPaths.client_resilience, options);
-  options.cluster = true;
-  if (options.coordinators < 2) {
-    options.coordinators = 2;
+  let localOptions = _.clone(options);
+  localOptions.cluster = true;
+  if (localOptions.coordinators < 2) {
+    localOptions.coordinators = 2;
   }
 
-  return tu.performTests(options, testCases, 'client_resilience', tu.runInArangosh, {
+  let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
+  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
+    'javascript.allow-admin-execute': 'true',
   });
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -126,18 +133,21 @@ function activeFailover (options) {
       }
     };
   }
-  let testCases = tu.scanTestPaths(testPaths.active_failover, options);
   let localOptions = _.clone(options);
   localOptions.activefailover = true;
   localOptions.singles = 4;
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
-  return tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
+  let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
+  let rc = tu.performTests(localOptions, testCases, 'client_resilience', tu.runInArangosh, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
+    'javascript.allow-admin-execute': 'true',
   });
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
 }
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc, allTestPaths) {

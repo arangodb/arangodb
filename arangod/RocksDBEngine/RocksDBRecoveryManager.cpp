@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "RocksDBEngine/RocksDBColumnFamily.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
@@ -193,8 +193,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       // collection with this objectID not known.Skip.
       return nullptr;
     }
-    DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vocbase = df->useDatabase(dbColPair.first);
+    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
+    TRI_vocbase_t* vocbase = df.useDatabase(dbColPair.first);
     if (vocbase == nullptr) {
       return nullptr;
     }
@@ -211,8 +211,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       return nullptr;
     }
 
-    DatabaseFeature* df = DatabaseFeature::DATABASE;
-    TRI_vocbase_t* vb = df->useDatabase(std::get<0>(triple));
+    DatabaseFeature& df = _server.getFeature<DatabaseFeature>();
+    TRI_vocbase_t* vb = df.useDatabase(std::get<0>(triple));
     if (vb == nullptr) {
       return nullptr;
     }
@@ -243,9 +243,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     //          - documents - _rev (revision as maxtick)
     //          - databases
 
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+            ->GetID()) {
       storeMaxHLC(RocksDBKey::documentId(key).id());
-    } else if (column_family_id == RocksDBColumnFamily::primary()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::PrimaryIndex)
+                   ->GetID()) {
       // document key
       arangodb::velocypack::StringRef ref = RocksDBKey::primaryKey(key);
       TRI_ASSERT(!ref.empty());
@@ -273,7 +277,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
 
-    } else if (column_family_id == RocksDBColumnFamily::definitions()->GetID()) {
+    } else if (column_family_id ==
+               RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Definitions)
+                   ->GetID()) {
       auto const type = RocksDBKey::type(key);
 
       if (type == RocksDBEntryType::Collection) {
@@ -315,7 +321,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     incTick();
 
     updateMaxTick(column_family_id, key, value);
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+            ->GetID()) {
       auto coll = findCollection(RocksDBKey::objectId(key));
       if (coll) {
         coll->meta().adjustNumberDocumentsInRecovery(_currentSequence,
@@ -331,16 +339,20 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hashval = 0;
-      if (column_family_id == RocksDBColumnFamily::vpack()->GetID()) {
+      if (column_family_id ==
+          RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex)
+              ->GetID()) {
         hashval = RocksDBVPackIndex::HashForKey(key);
-      } else if (column_family_id == RocksDBColumnFamily::edge()->GetID()) {
+      } else if (column_family_id ==
+                 RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex)
+                     ->GetID()) {
         hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->insert(hashval);
@@ -361,7 +373,8 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
   void handleDeleteCF(uint32_t cfId, const rocksdb::Slice& key) {
     incTick();
 
-    if (cfId == RocksDBColumnFamily::documents()->GetID()) {
+    if (cfId == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+                    ->GetID()) {
       uint64_t objectId = RocksDBKey::objectId(key);
 
       storeMaxHLC(RocksDBKey::documentId(key).id());
@@ -383,16 +396,18 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     } else {
       // We have to adjust the estimate with an insert
       uint64_t hashval = 0;
-      if (cfId == RocksDBColumnFamily::vpack()->GetID()) {
+      if (cfId == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::VPackIndex)
+                      ->GetID()) {
         hashval = RocksDBVPackIndex::HashForKey(key);
-      } else if (cfId == RocksDBColumnFamily::edge()->GetID()) {
+      } else if (cfId == RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::EdgeIndex)
+                             ->GetID()) {
         hashval = RocksDBEdgeIndex::HashForKey(key);
       }
 
       if (hashval != 0) {
         auto* idx = findIndex(RocksDBKey::objectId(key));
         if (idx) {
-          RocksDBCuckooIndexEstimator<uint64_t>* est = idx->estimator();
+          RocksDBCuckooIndexEstimatorType* est = idx->estimator();
           if (est && est->appliedSeq() < _currentSequence) {
             // We track estimates for this index
             est->remove(hashval);
@@ -443,7 +458,9 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
     }
 
     // check for a range-delete of the primary index
-    if (column_family_id == RocksDBColumnFamily::documents()->GetID()) {
+    if (column_family_id ==
+        RocksDBColumnFamilyManager::get(RocksDBColumnFamilyManager::Family::Documents)
+            ->GetID()) {
       uint64_t objectId = RocksDBKey::objectId(begin_key);
       TRI_ASSERT(objectId == RocksDBKey::objectId(end_key));
 
@@ -459,7 +476,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
       }
       for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
-        RocksDBCuckooIndexEstimator<uint64_t>* est = ridx->estimator();
+        RocksDBCuckooIndexEstimatorType* est = ridx->estimator();
         TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);
         if (est) {
           est->clearInRecovery(_currentSequence);
@@ -535,7 +552,7 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
 
         if (!s.ok()) {
           rv = rocksutils::convertStatus(s);
-          std::string msg = "error during WAL scan: " + rv.errorMessage();
+          std::string msg = basics::StringUtils::concatT("error during WAL scan: ", rv.errorMessage());
           LOG_TOPIC("ee333", ERR, Logger::ENGINES) << msg;
           rv.reset(rv.errorNumber(), std::move(msg));  // update message
           break;
@@ -554,7 +571,9 @@ Result RocksDBRecoveryManager::parseRocksWAL() {
     res = std::move(shutdownRv);
   } else {
     if (shutdownRv.fail()) {
-      res.reset(res.errorNumber(), res.errorMessage() + " - " + shutdownRv.errorMessage());
+      res.reset(res.errorNumber(),
+                basics::StringUtils::concatT(res.errorMessage(), " - ",
+                                             shutdownRv.errorMessage()));
     }
   }
 

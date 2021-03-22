@@ -152,10 +152,10 @@ bool decrypt(
 encrypted_output::encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t buf_size)
+    size_t num_buffers)
   : out_(&out),
     cipher_(&cipher),
-    buf_size_(cipher.block_size() * std::max(size_t(1), buf_size)),
+    buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
     buf_(memory::make_unique<byte_type[]>(buf_size_)),
     start_(0),
     pos_(buf_.get()),
@@ -166,8 +166,8 @@ encrypted_output::encrypted_output(
 encrypted_output::encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
-    size_t buf_size)
-  : encrypted_output(*out, cipher, buf_size) {
+    size_t num_buffers)
+  : encrypted_output(*out, cipher, num_buffers) {
   managed_out_ = std::move(out);
 }
 
@@ -247,7 +247,7 @@ void encrypted_output::write_bytes(const byte_type* b, size_t length) {
   }
 }
 
-size_t encrypted_output::file_pointer() const {
+size_t encrypted_output::file_pointer() const noexcept {
   assert(buf_.get() <= pos_);
   return start_ + size_t(std::distance(buf_.get(), pos_));
 }
@@ -285,34 +285,38 @@ void encrypted_output::close() {
 encrypted_input::encrypted_input(
     index_input& in,
     encryption::stream& cipher,
-    size_t buf_size,
-    size_t padding /* = 0*/
-) : buffered_index_input(cipher.block_size() * std::max(size_t(1), buf_size)),
+    size_t num_buffers,
+    size_t padding /* = 0*/)
+  : buf_size_(cipher.block_size() * std::max(size_t(1), num_buffers)),
+    buf_(std::make_unique<byte_type[]>(buf_size_)),
     in_(&in),
     cipher_(&cipher),
     start_(in_->file_pointer()),
     length_(in_->length() - start_ - padding) {
-  assert(cipher.block_size() && buffer_size());
+  assert(cipher.block_size() && buf_size_);
   assert(in_ && in_->length() >= in_->file_pointer() + padding);
+  buffered_index_input::reset(buf_.get(), buf_size_, 0);
 }
 
 encrypted_input::encrypted_input(
     index_input::ptr&& in,
     encryption::stream& cipher,
-    size_t buf_size,
-    size_t padding /* = 0*/
-) : encrypted_input(*in, cipher, buf_size, padding) {
+    size_t num_buffers,
+    size_t padding /* = 0*/)
+  : encrypted_input(*in, cipher, num_buffers, padding) {
   managed_in_ = std::move(in);
 }
 
 encrypted_input::encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept
-  : buffered_index_input(rhs.buffer_size()),
+  : buf_size_(rhs.buf_size_),
+    buf_(std::make_unique<byte_type[]>(buf_size_)),
     managed_in_(std::move(in)),
     in_(managed_in_.get()),
     cipher_(rhs.cipher_),
     start_(rhs.start_),
     length_(rhs.length_) {
   assert(cipher_->block_size());
+  buffered_index_input::reset(buf_.get(), buf_size_, rhs.file_pointer());
 }
 
 int64_t encrypted_input::checksum(size_t offset) const {
@@ -323,8 +327,10 @@ int64_t encrypted_input::checksum(size_t offset) const {
     const_cast<encrypted_input*>(this)->seek_internal(begin);
   });
 
+  const_cast<encrypted_input*>(this)->seek_internal(begin);
+
   crc32c crc;
-  byte_type buf[DEFAULT_BUFFER_SIZE];
+  byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
 
   for (auto pos = begin; pos < end; ) {
     const auto to_read = (std::min)(end - pos, sizeof buf);
@@ -360,8 +366,10 @@ index_input::ptr encrypted_input::reopen() const {
 }
 
 void encrypted_input::seek_internal(size_t pos) {
-  if (pos != file_pointer()) {
-    in_->seek(start_ + pos);
+  pos += start_;
+
+  if (pos != in_->file_pointer()) {
+    in_->seek(pos);
   }
 }
 

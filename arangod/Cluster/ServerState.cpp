@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,16 +37,18 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/ResultT.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterInfo.h"
-#include "Basics/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Rest/CommonDefines.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -378,7 +380,7 @@ bool ServerState::logoff(double timeout) {
       return true;
     }
 
-    if (res.httpCode() == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE || !res.connected()) {
+    if (res.httpCode() == rest::ResponseCode::SERVICE_UNAVAILABLE || !res.connected()) {
       LOG_TOPIC("1776b", INFO, Logger::CLUSTER)
           << "unable to unregister server from agency, because agency is in "
              "shutdown";
@@ -560,7 +562,7 @@ bool ServerState::hasPersistedId() {
 bool ServerState::writePersistedId(std::string const& id) {
   std::string uuidFilename = getUuidFilename();
   // try to create underlying directory
-  int error;
+  auto error = TRI_ERROR_NO_ERROR;
   FileUtils::createDirectory(FileUtils::dirname(uuidFilename), &error);
 
   try {

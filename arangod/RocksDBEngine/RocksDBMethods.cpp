@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,67 +38,6 @@
 #include <rocksdb/utilities/write_batch_with_index.h>
 
 using namespace arangodb;
-
-// ================= RocksDBSavePoint ==================
-
-RocksDBSavePoint::RocksDBSavePoint(transaction::Methods* trx,
-                                   TRI_voc_document_operation_e operationType)
-    : _trx(trx),
-      _operationType(operationType),
-      _handled(_trx->isSingleOperationTransaction()) {
-  TRI_ASSERT(trx != nullptr);
-  if (!_handled) {
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    // only create a savepoint when necessary
-    mthds->SetSavePoint();
-  }
-}
-
-RocksDBSavePoint::~RocksDBSavePoint() {
-  if (!_handled) {
-    try {
-      // only roll back if we create a savepoint and have
-      // not performed an intermediate commit in-between
-      rollback();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("519ed", ERR, Logger::ENGINES)
-          << "caught exception during rollback to savepoint: " << ex.what();
-    } catch (...) {
-      // whatever happens during rollback, no exceptions are allowed to escape
-      // from here
-    }
-  }
-}
-
-void RocksDBSavePoint::finish(bool hasPerformedIntermediateCommit) {
-  if (!_handled && !hasPerformedIntermediateCommit) {
-    // pop the savepoint from the transaction in order to
-    // save some memory for transactions with many operations
-    // this is only safe to do when we have a created a savepoint
-    // when creating the guard, and when there hasn't been an
-    // intermediate commit in the transaction
-    // when there has been an intermediate commit, we must
-    // leave the savepoint alone, because it belonged to another
-    // transaction, and the current transaction will not have any
-    // savepoint
-    auto mthds = RocksDBTransactionState::toMethods(_trx);
-    mthds->PopSavePoint();
-  }
-
-  // this will prevent the rollback call in the destructor
-  _handled = true;
-}
-
-void RocksDBSavePoint::rollback() {
-  TRI_ASSERT(!_handled);
-  auto mthds = RocksDBTransactionState::toMethods(_trx);
-  mthds->RollbackToSavePoint();
-
-  auto state = RocksDBTransactionState::toState(_trx);
-  state->rollbackOperation(_operationType);
-
-  _handled = true;  // in order to not roll back again by accident
-}
 
 // =================== RocksDBMethods ===================
 
@@ -147,6 +86,7 @@ RocksDBReadOnlyMethods::RocksDBReadOnlyMethods(RocksDBTransactionState* state)
   auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   _db = engine.db();
+  TRI_ASSERT(_db != nullptr);
 }
 
 rocksdb::Status RocksDBReadOnlyMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -192,14 +132,25 @@ void RocksDBReadOnlyMethods::PutLogData(rocksdb::Slice const& blob) {
 std::unique_ptr<rocksdb::Iterator> RocksDBReadOnlyMethods::NewIterator(
     rocksdb::ReadOptions const& opts, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(_db->NewIterator(opts, cf));
+  
+  std::unique_ptr<rocksdb::Iterator> iterator(_db->NewIterator(opts, cf));
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBReadOnlyMethods");
+  }
+  return iterator;
 }
 
 // =================== RocksDBTrxMethods ====================
 
+RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
+    : RocksDBMethods(state), _indexingDisabled(false) {
+  TRI_ASSERT(_state != nullptr);
+}
+
 bool RocksDBTrxMethods::DisableIndexing() {
   if (!_indexingDisabled) {
     TRI_ASSERT(_state != nullptr);
+    TRI_ASSERT(_state->_rocksTransaction);
     _state->_rocksTransaction->DisableIndexing();
     _indexingDisabled = true;
     return true;
@@ -209,16 +160,12 @@ bool RocksDBTrxMethods::DisableIndexing() {
 
 bool RocksDBTrxMethods::EnableIndexing() {
   if (_indexingDisabled) {
+    TRI_ASSERT(_state->_rocksTransaction);
     _state->_rocksTransaction->EnableIndexing();
     _indexingDisabled = false;
     return true;
   }
   return false;
-}
-
-RocksDBTrxMethods::RocksDBTrxMethods(RocksDBTransactionState* state)
-    : RocksDBMethods(state), _indexingDisabled(false) {
-  TRI_ASSERT(_state != nullptr);
 }
 
 rocksdb::Status RocksDBTrxMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -288,7 +235,12 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->_rocksTransaction);
-  return std::unique_ptr<rocksdb::Iterator>(_state->_rocksTransaction->GetIterator(opts, cf));
+
+  std::unique_ptr<rocksdb::Iterator> iterator(_state->_rocksTransaction->GetIterator(opts, cf));
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBTrxMethods");
+  }
+  return iterator;
 }
 
 void RocksDBTrxMethods::SetSavePoint() {
@@ -378,6 +330,8 @@ RocksDBBatchedWithIndexMethods::RocksDBBatchedWithIndexMethods(RocksDBTransactio
   auto& selector = state->vocbase().server().getFeature<EngineSelectorFeature>();
   auto& engine = selector.engine<RocksDBEngine>();
   _db = engine.db();
+  TRI_ASSERT(_db != nullptr);
+  TRI_ASSERT(_wb != nullptr);
 }
 
 rocksdb::Status RocksDBBatchedWithIndexMethods::Get(rocksdb::ColumnFamilyHandle* cf,
@@ -427,6 +381,10 @@ void RocksDBBatchedWithIndexMethods::PutLogData(rocksdb::Slice const& blob) {
 std::unique_ptr<rocksdb::Iterator> RocksDBBatchedWithIndexMethods::NewIterator(
     rocksdb::ReadOptions const& ro, rocksdb::ColumnFamilyHandle* cf) {
   TRI_ASSERT(cf != nullptr);
-  return std::unique_ptr<rocksdb::Iterator>(
-      _wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
+  std::unique_ptr<rocksdb::Iterator> iterator(_wb->NewIteratorWithBase(_db->NewIterator(ro, cf)));
+
+  if (iterator == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid iterator in RocksDBBatchedWithIndexMethods");
+  }
+  return iterator;
 }

@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -85,8 +86,8 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
 
   // initialize aggregators
   for (auto const& r : infos.getAggregateTypes()) {
-    auto factory = Aggregator::factoryFromTypeString(r);
-    aggregators.emplace_back((*factory)(infos.getVPackOptions()));
+    auto& factory = Aggregator::factoryFromTypeString(r);
+    aggregators.emplace_back(factory(infos.getVPackOptions()));
   }
 
   return aggregators;
@@ -105,7 +106,7 @@ void BaseWindowExecutor::applyAggregators(InputAqlItemRow& input) {
   TRI_ASSERT(_aggregators.size() == _infos.getAggregatedRegisters().size());
   size_t j = 0;
   for (auto const& r : _infos.getAggregatedRegisters()) {
-    if (r.second == RegisterPlan::MaxRegisterId) {  // e.g. LENGTH / COUNT
+    if (r.second.value() == RegisterId::maxRegisterId) {  // e.g. LENGTH / COUNT
       _aggregators[j]->reduce(::EmptyValue);
     } else {
       _aggregators[j]->reduce(input.getValue(/*inRegister*/ r.second));
@@ -222,7 +223,7 @@ ExecutorState WindowExecutor::consumeInputRange(AqlItemBlockInputRange& inputRan
     auto [state, input] = inputRange.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(input.isInitialized());
     
-    if (rangeRegister != RegisterPlan::MaxRegisterId) {
+    if (rangeRegister.isValid()) {
       AqlValue val = input.getValue(rangeRegister);
       _windowRows.emplace_back(b.calcRow(val, qc));
     }

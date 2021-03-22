@@ -388,6 +388,9 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> collect_variable_list;
 %type <node> keep;
 %type <node> aggregate;
+%type <node> aggregate_list;
+%type <node> aggregate_element;
+%type <node> aggregate_function_call;
 %type <node> collect_optional_into;
 %type <strval> count_into;
 %type <node> expression;
@@ -591,18 +594,18 @@ prune_and_options:
         // Options
         node->addMember($2);
       } else {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
     }
     | T_STRING expression T_STRING object {
       /* prune and options */
       auto node = static_cast<AstNode*>(parser->peekStack());
       if (!TRI_CaseEqualString($1.value, "PRUNE")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'PRUNE'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($2 != nullptr);
       if (!TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($4 != nullptr);
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -792,7 +795,7 @@ let_element:
 count_into:
     T_WITH T_STRING T_INTO variable_name {
       if (!TRI_CaseEqualString($2.value, "COUNT")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", $2.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'COUNT'", {$2.value, $2.length}, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = $4;
@@ -817,6 +820,7 @@ collect_statement:
 
       ::startCollectScope(scopes);
 
+      // in the AST this is transformed to COLLECT AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -829,6 +833,7 @@ collect_statement:
         ::registerAssignVariables(parser, scopes, yylloc.first_line, yylloc.first_column, variables, $1);
       }
 
+      // in the AST this is transformed to COLLECT var = expr AGGREGATE var = COUNT()
       auto node = parser->ast()->createNodeCollectCount($1, $2.value, $2.length, $3);
       parser->ast()->addOperation(node);
     }
@@ -989,7 +994,7 @@ collect_optional_into:
 variable_list:
     variable_name {
       if (! parser->ast()->scopes()->existsVariable($1.value, $1.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($1.value, $1.length);
@@ -1001,7 +1006,7 @@ variable_list:
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3.value, $3.length)) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", $3.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of unknown variable '%s' for KEEP", {$3.value, $3.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeReference($3.value, $3.length);
@@ -1016,7 +1021,7 @@ variable_list:
 keep:
     T_STRING {
       if (!TRI_CaseEqualString($1.value, "KEEP")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       auto node = parser->ast()->createNodeArray();
@@ -1031,9 +1036,34 @@ aggregate:
     T_AGGREGATE {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } collect_list {
+    } aggregate_list {
       auto list = static_cast<AstNode*>(parser->popStack());
       $$ = list;
+    }
+  ;
+
+aggregate_list:
+    aggregate_element {
+    }
+  | aggregate_list T_COMMA aggregate_element {
+    }
+  ;
+
+aggregate_element:
+    variable_name T_ASSIGN aggregate_function_call {
+      auto node = parser->ast()->createNodeAssign($1.value, $1.length, $3);
+      parser->pushArrayElement(node);
+    }
+  ;
+
+aggregate_function_call:
+    function_name T_OPEN {
+      parser->pushStack($1.value);
+      auto node = parser->ast()->createNodeArray();
+      parser->pushStack(node);
+    } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
+      auto list = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeAggregateFunctionCall(static_cast<char const*>(parser->popStack()), list);
     }
   ;
 
@@ -1338,14 +1368,14 @@ function_call:
       parser->pushStack(node);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list);
+      $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list, false);
     }
   | T_LIKE T_OPEN {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), list, false);
     }
   ;
 
@@ -1411,39 +1441,39 @@ operator_binary:
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      AstNode* expression = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, expression);
     }
   | expression T_NOT T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($4);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
   | expression T_LIKE expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("LIKE"), arguments, false);
     }
   | expression T_REGEX_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      $$ = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
     }
   | expression T_REGEX_NON_MATCH expression {
       AstNode* arguments = parser->ast()->createNodeArray(2);
       arguments->addMember($1);
       arguments->addMember($3);
-      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments);
+      AstNode* node = parser->ast()->createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("REGEX_TEST"), arguments, false);
       $$ = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, node);
     }
   | expression quantifier T_EQ expression {
@@ -1583,7 +1613,7 @@ for_options:
       } else {
         // everything else must be OPTIONS
         if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
         }
       
         ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1600,7 +1630,7 @@ for_options:
 
       if (!TRI_CaseEqualString($1.value, "SEARCH") ||
           !TRI_CaseEqualString($3.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
@@ -1620,7 +1650,7 @@ options:
       TRI_ASSERT($2 != nullptr);
 
       if (!TRI_CaseEqualString($1.value, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
       
       ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
@@ -1662,7 +1692,7 @@ object_element:
 
       if (variable == nullptr) {
         // variable does not exist
-        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_VARIABLE_NAME_UNKNOWN, "use of unknown variable '%s' in object literal", {$1.value, $1.length}, yylloc.first_line, yylloc.first_column);
       }
 
       // create a reference to the variable
@@ -1676,7 +1706,7 @@ object_element:
   | T_PARAMETER T_COLON expression {
       // bind-parameter : attribute-value
       if ($1.length < 1 || $1.value[0] == '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       auto param = parser->ast()->createNodeParameter($1.value, $1.length);
@@ -2007,7 +2037,7 @@ in_or_into_collection_name:
     }
   | T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
@@ -2017,7 +2047,7 @@ in_or_into_collection_name:
 bind_parameter:
     T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);
@@ -2030,7 +2060,7 @@ bind_parameter:
 bind_parameter_datasource_expected:
     T_DATA_SOURCE_PARAMETER {
       if ($1.length < 2 || $1.value[0] != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1.value, yylloc.first_line, yylloc.first_column);
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
       }
 
       $$ = parser->ast()->createNodeParameterDatasource($1.value, $1.length);

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,6 +24,7 @@
 #ifndef ARANGODB_BASICS_THREADS_H
 #define ARANGODB_BASICS_THREADS_H 1
 
+#include "Basics/ErrorCode.h"
 #include "Basics/operating-system.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,8 +67,8 @@ bool TRI_IsSelfThread(TRI_thread_t* thread);
 
 // SHOULD BE REMOVED
 void TRI_InitThread(TRI_thread_t* thread);
-int TRI_JoinThread(TRI_thread_t* thread);
-int TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
-int TRI_DetachThread(TRI_thread_t* thread);
+ErrorCode TRI_JoinThread(TRI_thread_t* thread);
+ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread, std::uint32_t timeout);
+bool TRI_DetachThread(TRI_thread_t* thread);
 
 #endif

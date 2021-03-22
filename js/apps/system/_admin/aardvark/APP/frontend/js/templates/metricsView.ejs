@@ -1,0 +1,166 @@
+<%
+let tableStyle = '';
+let textStyle = '';
+let buttonText = '';
+
+if (activeView === "text") {
+  tableStyle = "display: none;";
+  buttonText = "Show Table";
+} else {
+  textStyle = "display: none;";
+  buttonText = "Show Text";
+}
+%>
+
+<div id="metricContent" style="padding-top: 0;">
+
+  <div class="bottomButtonBar">
+    <button id="downloadAs" class="pull-right button-success">Download</button>
+    <button id="reloadMetrics" class="pull-right button-success">Reload</button>
+    <button id="toggleView" class="pull-right button-close"><%= buttonText %></button>
+  </div>
+
+  <div id="metricsAsTable" style="<%= tableStyle %>">
+    <div class="header first">Counters</div>
+    <div class="pure-g" style="background: white; padding-top: 10px;">
+      <div id="<%= name %>" class="metricsBox pure-u-1-1">
+        <table class="pure-table pure-table-metrics-counter">
+          <thead>
+          <tr>
+            <th>Name</th>
+            <th>Value</th>
+            <th>Info</th>
+          </tr>
+          </thead>
+
+          <tbody>
+          <% _.each(collection.where({type: "COUNTER"}), (model) => { 
+            _.each(model.get('metrics'), (metric) => {
+              let l = [];
+              _.each(Object.keys(metric.labels || {}), (label) => {
+                if (label === 'role' || label === 'shortname') {
+                  return;
+                }
+                l.push(label + '=' + JSON.stringify(metric.labels[label]));
+              });
+              let labelString = ' {' + l.join(', ') + '}'; 
+              if (labelString.length <= 3) {
+                labelString = '';
+              }
+          %>
+            <tr>
+              <td><%= model.get('name') + labelString %></td>
+              <td class="alignRight"><%= metric.value %></td>
+              <td><%= model.get('info') %></td>
+            </tr>
+          <% }); %>
+          <% }); %>
+          </tbody>
+
+          <tbody>
+          <tr>
+            <td style="border-right: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);">
+              <div class="header">Gauges</div>
+            </td>
+            <td style="border-left: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);">
+              <div class="header"></div>
+            </td>
+            <td style="border-left: 0; border-bottom: 1px solid rgba(0, 0, 0, .3);">
+              <div class="header"></div>
+            </td>
+          </tr>
+          </tbody>
+
+          <tbody>
+          <% _.each(collection.where({type: "GAUGE"}), (model) => { 
+            _.each(model.get('metrics'), (metric) => {
+              let l = [];
+              _.each(Object.keys(metric.labels || {}), (label) => {
+                if (label === 'role' || label === 'shortname') {
+                  return;
+                }
+                l.push(label + '=' + JSON.stringify(metric.labels[label]));
+              });
+              let labelString = ' {' + l.join(', ') + '}'; 
+              if (labelString.length <= 3) {
+                labelString = '';
+              }
+          %>
+            <tr>
+              <td><%= model.get('name')+ labelString  %></td>
+              <td class="alignRight"><%= metric.value %></td>
+              <td><%= model.get('info') %></td>
+            </tr>
+          <% }); %>
+          <% }); %>
+          </tbody>
+
+        </table>
+      </div>
+    </div>
+
+    <div class="header child">Histograms</div>
+    <div class="pure-g" style="background: white; padding-top: 10px;">
+      <% _.each(collection.where({type: "HISTOGRAM"}), (model) => { 
+        _.each(model.get('metrics'), (metric) => {
+          let l = [];
+          _.each(Object.keys(metric.labels || {}), (label) => {
+            if (label === 'role' || label === 'shortname') {
+              return;
+            }
+            l.push(label + '=' + JSON.stringify(metric.labels[label]));
+          });
+          let labelString = ' {' + l.join(', ') + '}'; 
+          if (labelString.length <= 3) {
+            labelString = '';
+          }
+      %>
+        <div id="<%= name %>" class="metricsBox pure-u-1-1 pure-u-sm-1-1 pure-u-md-1-2 pure-u-lg-1-3 pure-u-xl-1-3">
+          <%
+            let count = metric.count;
+            if (!metric.hasOwnProperty('count')) {
+              /* use value from highest bucket */
+              count = 0;
+              _.forEach(metric.buckets, (value, key) => {
+                try {
+                  count = Number.parseFloat(value);
+                } catch (e) {
+                  count = 'n/A';
+                }
+              });
+            }
+          %>
+          <div class="tableHeader"><%= model.get("name") + labelString %> (<%= count %>)
+            <div
+              style="font-weight: 100"><%= model.get("info") %></div>
+          </div>
+          <table class="pure-table pure-table-metrics-histogram">
+            <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>Value</th>
+            </tr>
+            </thead>
+            <tbody>
+
+            <% _.forEach(metric.buckets, (value, key) => { %>
+              <tr>
+                <td class="alignRight">&lt;= <%= key %></td>
+                <td class="alignRight"><%= value %></td>
+              </tr>
+            <% }); %>
+
+            </tbody>
+          </table>
+        </div>
+      <% }); %>
+      <% }); %>
+
+    </div>
+  </div>
+
+  <div id="metricsAsText" style="<%= textStyle %>">
+    <pre><%= collection.metricsAsText() %></pre>
+  </div>
+
+</div>

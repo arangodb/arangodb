@@ -43,6 +43,8 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SubqueryStartExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
@@ -55,6 +57,68 @@ namespace aql {
 
 using LambdaExePassThrough = TestLambdaExecutor;
 using LambdaExe = TestLambdaSkipExecutor;
+
+// The numbers here are random, but all of them are below 1000 which is the default batch size
+static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
+
+static constexpr auto skipCall = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 15;
+  return res;
+};
+
+static constexpr auto softLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.softLimit = 35u;
+  return res;
+};
+
+static constexpr auto hardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 76u;
+  return res;
+};
+
+static constexpr auto fullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 17u;
+  res.fullCount = true;
+  return res;
+};
+
+static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.softLimit = 64u;
+  return res;
+};
+
+static constexpr auto skipAndHardLimit = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 32;
+  res.hardLimit = 51u;
+  return res;
+};
+static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 8;
+  res.hardLimit = 57u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlyFullCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
+static constexpr auto onlySkipAndCount = []() -> const AqlCall {
+  AqlCall res{};
+  res.offset = 16;
+  res.hardLimit = 0u;
+  res.fullCount = true;
+  return res;
+};
 
 // This test is supposed to only test getSome return values,
 // it is not supposed to test the fetch logic!
@@ -69,7 +133,8 @@ using LambdaExe = TestLambdaSkipExecutor;
 class SharedExecutionBlockImplTest {
  protected:
   mocks::MockAqlServer server{};
-  ResourceMonitor monitor{};
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   std::unique_ptr<arangodb::aql::Query> fakedQuery{server.createFakeQuery()};
   std::vector<std::unique_ptr<ExecutionNode>> _execNodes;
 
@@ -100,13 +165,13 @@ class SharedExecutionBlockImplTest {
     return stack;
   }
 
-  RegisterInfos makeRegisterInfos(RegisterId inputRegisters = RegisterPlan::MaxRegisterId,
-                                  RegisterId outputRegisters = RegisterPlan::MaxRegisterId) {
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
+  RegisterInfos makeRegisterInfos(RegisterCount inputRegisters = RegisterId::maxRegisterId,
+                                  RegisterCount outputRegisters = RegisterId::maxRegisterId) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
       EXPECT_LE(inputRegisters, outputRegisters);
       // We cannot have no output registers here.
-      EXPECT_LT(outputRegisters, RegisterPlan::MaxRegisterId);
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
+      EXPECT_LT(outputRegisters, RegisterId::maxRegisterId);
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
       // Special case: we do not have input registers, but need an output register.
       // For now we only allow a single output register, but actually we could leverage this restriction if necessary.
       EXPECT_EQ(outputRegisters, 0);
@@ -114,23 +179,23 @@ class SharedExecutionBlockImplTest {
 
     auto readAble = RegIdSet{};
     auto writeAble = RegIdSet{};
-    if (inputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= inputRegisters; ++i) {
+    if (inputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= inputRegisters; ++i) {
         readAble.emplace(i);
       }
-      for (RegisterId i = inputRegisters + 1; i <= outputRegisters; ++i) {
+      for (RegisterId::value_t i = inputRegisters + 1; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
-    } else if (outputRegisters != RegisterPlan::MaxRegisterId) {
-      for (RegisterId i = 0; i <= outputRegisters; ++i) {
+    } else if (outputRegisters != RegisterId::maxRegisterId) {
+      for (RegisterId::value_t i = 0; i <= outputRegisters; ++i) {
         writeAble.emplace(i);
       }
     }
     RegIdSetStack registersToKeep = {readAble, readAble, readAble};
-    RegisterId regsToRead =
-        (inputRegisters == RegisterPlan::MaxRegisterId) ? 0 : inputRegisters + 1;
-    RegisterId regsToWrite =
-        (outputRegisters == RegisterPlan::MaxRegisterId) ? 0 : outputRegisters + 1;
+    RegisterCount regsToRead =
+        (inputRegisters == RegisterId::maxRegisterId) ? 0 : inputRegisters + 1;
+    RegisterCount regsToWrite =
+        (outputRegisters == RegisterId::maxRegisterId) ? 0 : outputRegisters + 1;
     return RegisterInfos(readAble, writeAble, regsToRead, regsToWrite, {}, registersToKeep);
   }
 
@@ -320,12 +385,12 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
   }
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
-                                                      RegisterId nrRegs) {
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     auto registersToClear = RegIdFlatSet{};
     auto regsToKeepProto = RegIdFlatSet{};
-    for (RegisterId r = 1; r <= nrRegs; ++r) {
+    for (RegisterId::value_t r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
       regsToKeepProto.emplace(r - 1);
@@ -371,8 +436,8 @@ class ExecutionBlockImplExecuteSpecificTest : public SharedExecutionBlockImplTes
 
   auto onceLinesProducer(ExecutionBlock* dependency, size_t numberLines)
       -> std::unique_ptr<ExecutionBlock> {
-    RegisterId outReg = 0;
-    RegisterId inReg = RegisterPlan::MaxRegisterId;
+    RegisterCount outReg = 0;
+    RegisterCount inReg = RegisterId::maxRegisterId;
     SkipCall skipCall = generateNeverSkipCall();
     auto didProduce = std::make_shared<bool>(false);
     auto builder = std::make_shared<VPackBuilder>();
@@ -1046,7 +1111,7 @@ class ExecutionBlockImplExecuteIntegrationTest
                          RegisterId reg, size_t expected) const -> void {
     ASSERT_NE(block, nullptr);
     ASSERT_GT(block->numRows(), row);
-    ASSERT_GE(block->numRegisters(), reg);
+    ASSERT_GE(block->numRegisters(), reg.value());
     auto const& value = block->getValueReference(row, reg);
     ASSERT_TRUE(value.isNumber());
     EXPECT_EQ(static_cast<size_t>(value.toInt64()), expected);
@@ -1159,8 +1224,8 @@ class ExecutionBlockImplExecuteIntegrationTest
       call.fullCount = false;
       return {inputRange.upstreamState(), NoStats{}, skipped, call};
     };
-    auto const inReg = outReg == 0 ? RegisterPlan::MaxRegisterId : outReg - 1;
-    auto registerInfos = makeRegisterInfos(inReg, outReg);
+    auto const inReg = outReg == 0 ? RegisterId::maxRegisterId : outReg.value() - 1;
+    auto registerInfos = makeRegisterInfos(inReg, outReg.value());
     auto executorInfos = makeSkipExecutorInfos(std::move(writeData), skipData, resetCall);
     auto producer =
         std::make_unique<ExecutionBlockImpl<LambdaExe>>(fakedQuery->rootEngine(),
@@ -1196,7 +1261,7 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExePassThrough>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeExecutorInfos(std::move(forwardData)));
     producer->addDependency(dependency);
     return producer;
@@ -1256,18 +1321,18 @@ class ExecutionBlockImplExecuteIntegrationTest
       return {inputRange.upstreamState(), NoStats{}, skipped, request};
     };
     auto producer = std::make_unique<ExecutionBlockImpl<LambdaExe>>(
-        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg, maxReg),
+        fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(maxReg.value(), maxReg.value()),
         makeSkipExecutorInfos(std::move(forwardData), std::move(skipData)));
     producer->addDependency(dependency);
     return producer;
   }
 
   std::unique_ptr<ExecutionBlock> createSubqueryStart(ExecutionBlock* dependency,
-                                                      RegisterId nrRegs) {
+                                                      RegisterCount nrRegs) {
     auto readableIn = RegIdSet{};
     auto writeableOut = RegIdSet{};
     RegIdSet registersToClear{};
-    for (RegisterId r = 1; r <= nrRegs; ++r) {
+    for (RegisterId::value_t r = 1; r <= nrRegs; ++r) {
       // NrReg and usedRegs are off-by-one...
       readableIn.emplace(r - 1);
     }
@@ -1343,7 +1408,7 @@ class ExecutionBlockImplExecuteIntegrationTest
         auto got = result->getValueReference(i, testReg).slice();
         EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *expectedIt, false))
             << "Expected: " << expectedIt.value().toJson() << " got: " << got.toJson()
-            << " in row " << i << " and register " << testReg;
+            << " in row " << i << " and register " << testReg.value();
         expectedIt++;
       }
     } else {
@@ -1632,7 +1697,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_call_forwarding_implement_
   };
 
   auto lower = std::make_unique<ExecutionBlockImpl<TestLambdaSkipExecutor>>(
-      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg, outReg),
+      fakedQuery->rootEngine(), generateNodeDummy(), makeRegisterInfos(outReg.value(), outReg.value()),
       makeSkipExecutorInfos(std::move(forwardCall), std::move(forwardSkipCall)));
   lower->addDependency(upper.get());
 
@@ -1800,7 +1865,7 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, test_multiple_upstream_calls_pa
       auto got = block->getValueReference(0, outReg).slice();
       EXPECT_TRUE(basics::VelocyPackHelper::equal(got, *it, false))
           << "Expected: " << it.value().toJson() << " got: " << got.toJson()
-          << " in row " << i << " and register " << outReg;
+          << " in row " << i << " and register " << outReg.value();
       if (i == 0) {
         // The first data row includes skip
         EXPECT_EQ(skipped.getSkipCount(), offset);
@@ -2369,68 +2434,6 @@ TEST_P(ExecutionBlockImplExecuteIntegrationTest, empty_subquery) {
     skipAsserter.reset();
   }
 }
-
-// The numbers here are random, but all of them are below 1000 which is the default batch size
-static constexpr auto defaultCall = []() -> const AqlCall { return AqlCall{}; };
-
-static constexpr auto skipCall = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 15;
-  return res;
-};
-
-static constexpr auto softLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.softLimit = 35u;
-  return res;
-};
-
-static constexpr auto hardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 76u;
-  return res;
-};
-
-static constexpr auto fullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 17u;
-  res.fullCount = true;
-  return res;
-};
-
-static constexpr auto skipAndSoftLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.softLimit = 64u;
-  return res;
-};
-
-static constexpr auto skipAndHardLimit = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 32;
-  res.hardLimit = 51u;
-  return res;
-};
-static constexpr auto skipAndHardLimitAndFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 8;
-  res.hardLimit = 57u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlyFullCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
-static constexpr auto onlySkipAndCount = []() -> const AqlCall {
-  AqlCall res{};
-  res.offset = 16;
-  res.hardLimit = 0u;
-  res.fullCount = true;
-  return res;
-};
 
 INSTANTIATE_TEST_CASE_P(
     ExecutionBlockExecuteIntegration, ExecutionBlockImplExecuteIntegrationTest,

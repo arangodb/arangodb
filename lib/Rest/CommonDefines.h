@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -137,6 +137,7 @@ enum class ResponseCode {
   NOT_IMPLEMENTED = 501,
   BAD_GATEWAY = 502,
   SERVICE_UNAVAILABLE = 503,
+  GATEWAY_TIMEOUT = 504,
   HTTP_VERSION_NOT_SUPPORTED = 505,
   BANDWIDTH_LIMIT_EXCEEDED = 509,
   NOT_EXTENDED = 510
@@ -232,15 +233,16 @@ inline const char* responseToString(ResponseCode responseCode) {
       return "502 BAD_GATEWAY";
     case ResponseCode::SERVICE_UNAVAILABLE:
       return "503 SERVICE_UNAVAILABLE";
+    case ResponseCode::GATEWAY_TIMEOUT:
+      return "504 GATEWAY_TIMEOUT";
     case ResponseCode::HTTP_VERSION_NOT_SUPPORTED:
       return "505 HTTP_VERSION_NOT_SUPPORTED";
     case ResponseCode::BANDWIDTH_LIMIT_EXCEEDED:
       return "509 BANDWIDTH_LIMIT_EXCEEDED";
     case ResponseCode::NOT_EXTENDED:
       return "510 NOT_EXTENDED";
-    default:
-      return "??? UNEXPECTED";
   }
+  return "??? UNEXPECTED";
 }
 
 inline std::ostream& operator<<(std::ostream& ostream, ResponseCode responseCode) {

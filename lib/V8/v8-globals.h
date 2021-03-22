@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,6 +35,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/operating-system.h"
 #include "V8/JavaScriptSecurityContext.h"
 
@@ -82,6 +83,28 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
       .ToLocalChecked();
 }
 
+static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
+                                                        void const* ptr, std::size_t length) {
+  if (ADB_UNLIKELY(length > (unsigned int)std::numeric_limits<int>::max())) {
+    throw std::overflow_error("string length out of range");
+  }
+  return v8Utf8StringFactory(isolate, ptr, static_cast<int>(length));
+}
+
+template <typename T, typename U = std::decay_t<T>,
+          std::enable_if_t<std::is_same_v<U, std::string> || std::is_same_v<U, std::string_view> ||
+                               std::is_same_v<U, char const*> || std::is_same_v<U, arangodb::basics::StringBuffer>,
+                           int> = 0>
+v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, T const&);
+
+template <std::size_t n>
+v8::Local<v8::String> v8Utf8StringFactoryT(v8::Isolate* isolate, char const (&arg)[n]) {
+  // Note that "n" includes the terminating null byte
+  static_assert(n > 0);
+  TRI_ASSERT(arg[n-1] == '\0');
+  return v8Utf8StringFactory(isolate, arg, n-1);
+}
+
 /// @brief shortcut for creating a v8 symbol for the specified string
 #define TRI_V8_ASCII_STRING(isolate, name) \
   v8OneByteStringFactory(isolate, (name), (int)strlen(name))
@@ -95,11 +118,11 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
 /// @brief shortcut for creating a v8 symbol for the specified string of unknown
 /// length
 #define TRI_V8_STRING(isolate, name) \
-  v8Utf8StringFactory(isolate, (name), (int)strlen(name))
+  v8Utf8StringFactoryT(isolate, (name))
 
 /// @brief shortcut for creating a v8 symbol for the specified string
 #define TRI_V8_STD_STRING(isolate, name) \
-  v8Utf8StringFactory(isolate, (name).data(), (int)(name).size())
+  v8Utf8StringFactoryT(isolate, (name))
 
 /// @brief shortcut for creating a v8 symbol for the specified string of known
 /// length
@@ -240,12 +263,6 @@ static inline v8::Local<v8::String> v8Utf8StringFactory(v8::Isolate* isolate,
     TRI_V8_SET_TYPE_ERROR(message);      \
     return;                              \
   } while (0)
-
-/// @brief "not yet implemented" handler for sharding
-#define TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection) \
-  if (collection && ServerState::instance()->isCoordinator()) {       \
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);                \
-  }
 
 /// @brief Return undefined (default..)
 ///   implicitly requires 'args and 'isolate' to be available

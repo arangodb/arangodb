@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -46,7 +46,6 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
-#include "V8Server/v8-user-structures.h"
 #include "VocBase/Methods/Tasks.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
@@ -64,13 +63,6 @@ using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
-TRI_vocbase_t* Databases::lookup(std::string const& dbname) {
-  if (DatabaseFeature::DATABASE != nullptr) {
-    return DatabaseFeature::DATABASE->lookupDatabase(dbname);
-  }
-  return nullptr;
-}
-
 std::vector<std::string> Databases::list(application_features::ApplicationServer& server,
                                          std::string const& user) {
   if (!server.hasFeature<DatabaseFeature>()) {
@@ -81,7 +73,7 @@ std::vector<std::string> Databases::list(application_features::ApplicationServer
   if (user.empty()) {
     if (ServerState::instance()->isCoordinator()) {
       ClusterInfo& ci = server.getFeature<ClusterFeature>().clusterInfo();
-      return ci.databases(false);
+      return ci.databases();
     } else {
       // list of all databases
       return databaseFeature.getDatabaseNames();
@@ -317,6 +309,9 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       createInfo.setId(clusterInfo.uniqid());
     }
+    if (server.getFeature<ClusterFeature>().forceOneShard()) {
+      createInfo.sharding("single");
+    }
 
     res = ShardingInfo::validateShardsAndReplicationFactor(options, server, true);
     if (res.ok()) {
@@ -339,28 +334,15 @@ arangodb::Result Databases::create(application_features::ApplicationServer& serv
     return res;
   }
 
-  // Invalidate Foxx Queue database cache. We do not care if this fails,
-  // because the cache entry has a TTL
-  if (ServerState::instance()->isSingleServerOrCoordinator()) {
-    try {
-      auto& sysDbFeature = server.getFeature<arangodb::SystemDatabaseFeature>();
-      auto database = sysDbFeature.use();
-
-      TRI_ExpireFoxxQueueDatabaseCache(database.get());
-    } catch (...) {
-    }
-  }
-
   events::CreateDatabase(dbName, res, exec);
 
   return Result();
 }
 
 namespace {
-int dropDBCoordinator(std::string const& dbName) {
+ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   // Arguments are already checked, there is exactly one argument
-  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
-  TRI_vocbase_t* vocbase = databaseFeature->useDatabase(dbName);
+  TRI_vocbase_t* vocbase = df.useDatabase(dbName);
 
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
@@ -381,7 +363,7 @@ int dropDBCoordinator(std::string const& dbName) {
   int tries = 0;
 
   while (++tries <= 6000) {
-    TRI_vocbase_t* vocbase = databaseFeature->useDatabase(id);
+    TRI_vocbase_t* vocbase = df.useDatabase(id);
 
     if (vocbase == nullptr) {
       // object has vanished
@@ -407,11 +389,13 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
   }
 
   Result res;
-  V8DealerFeature* dealer = V8DealerFeature::DEALER;
-  if (dealer != nullptr && dealer->isEnabled()) {
+  auto& server = systemVocbase->server();
+  if (server.hasFeature<V8DealerFeature>() && server.isEnabled<V8DealerFeature>()) {
+    V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
     try {
-      JavaScriptSecurityContext securityContext = JavaScriptSecurityContext::createInternalContext();
-      
+      JavaScriptSecurityContext securityContext =
+          JavaScriptSecurityContext::createInternalContext();
+
       v8::Isolate* isolate = v8::Isolate::GetCurrent();
       V8ConditionalContextGuard guard(res, isolate, systemVocbase, securityContext);
 
@@ -427,20 +411,21 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
 
       if (ServerState::instance()->isCoordinator()) {
         // If we are a coordinator in a cluster, we have to behave differently:
-        res = ::dropDBCoordinator(dbName);
+        auto& df = server.getFeature<DatabaseFeature>();
+        res = ::dropDBCoordinator(df, dbName);
       } else {
-        res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
+        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
 
         if (res.fail()) {
           events::DropDatabase(dbName, res, exec);
-          return Result(res);
+          return res;
         }
 
         arangodb::Task::removeTasksForDatabase(dbName);
         // run the garbage collection in case the database held some objects
         // which can now be freed
         TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer->addGlobalContextMethod("reloadRouting");
+        dealer.addGlobalContextMethod("reloadRouting");
       }
     } catch (arangodb::basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
@@ -455,9 +440,10 @@ arangodb::Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemV
   } else {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:
-      res = ::dropDBCoordinator(dbName);
+      auto& df = server.getFeature<DatabaseFeature>();
+      res = ::dropDBCoordinator(df, dbName);
     } else {
-      res = DatabaseFeature::DATABASE->dropDatabase(dbName, true);
+      res = server.getFeature<DatabaseFeature>().dropDatabase(dbName, true);
     }
   }
 

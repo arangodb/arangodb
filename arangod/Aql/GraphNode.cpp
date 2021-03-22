@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -508,7 +508,9 @@ std::string const& GraphNode::collectionToShardName(std::string const& collName)
   }
 
   auto found = _collectionToShard.find(collName);
-  TRI_ASSERT(found != _collectionToShard.cend());
+  if (found == _collectionToShard.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, "unable to find shard '" + collName + "' in query shard map");
+  }
   return found->second;
 }
 
@@ -549,7 +551,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& e : _edgeColls) {
-      nodes.add(VPackValue(collectionToShardName(e->name())));
+      auto const& shard = collectionToShardName(e->name());
+      // if the mapped shard for a collection is empty, it means that
+      // we have an edge collection that is only relevant on some of the
+      // target servers
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -557,7 +565,13 @@ void GraphNode::toVelocyPackHelper(VPackBuilder& nodes, unsigned flags,
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& v : _vertexColls) {
-      nodes.add(VPackValue(collectionToShardName(v->name())));
+      // if the mapped shard for a collection is empty, it means that
+      // we have a vertex collection that is only relevant on some of the
+      // target servers
+      auto const& shard = collectionToShardName(v->name());
+      if (!shard.empty()) {
+        nodes.add(VPackValue(shard));
+      }
     }
   }
 
@@ -646,6 +660,15 @@ void GraphNode::addEngine(aql::EngineId engineId, ServerID const& server) {
 std::unordered_map<ServerID, aql::EngineId> const* GraphNode::engines() const {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   return &_engines;
+}
+
+/// @brief Clears the graph Engines. (CLUSTER ONLY)
+/// NOTE: Use with care, if you do not refill
+/// the engines this graph node cannot communicate.
+/// and will yield no results.
+void GraphNode::clearEngines() {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  _engines.clear();
 }
 
 BaseOptions* GraphNode::options() const { return _options.get(); }
@@ -759,9 +782,11 @@ void GraphNode::addVertexCollection(Collections const& collections, std::string 
   }
 }
 
+#ifndef USE_ENTERPRISE
 void GraphNode::addVertexCollection(aql::Collection& collection) {
   _vertexColls.emplace_back(&collection);
 }
+#endif
 
 std::vector<aql::Collection const*> GraphNode::collections() const {
   std::unordered_set<aql::Collection const*> set;

@@ -29,56 +29,77 @@
 #include "index/index_meta.hpp"
 
 #include "formats/format_utils.hpp"
+#include "utils/hash_set_utils.hpp"
 #include "utils/index_utils.hpp"
 #include "utils/singleton.hpp"
 #include "utils/type_limits.hpp"
 
-#include <unordered_map>
-
 namespace {
 
-class all_iterator final : public irs::doc_iterator {
+using namespace irs;
+
+struct column_ref_eq : value_ref_eq<column_meta*> {
+  using self_t::operator();
+
+  bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+    return lhs.second->name == rhs;
+  }
+
+  bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
+    return this->operator()(rhs, lhs);
+  }
+};
+
+using name_to_column_map = flat_hash_set<column_ref_eq>;
+
+class all_iterator final : public doc_iterator {
  public:
-  explicit all_iterator(irs::doc_id_t docs_count) noexcept
-    : max_doc_(irs::doc_id_t(irs::doc_limits::min() + docs_count - 1)) {
+  explicit all_iterator(doc_id_t docs_count) noexcept
+    : max_doc_(doc_id_t(doc_limits::min() + docs_count - 1)) {
   }
 
   virtual bool next() noexcept override {
-    return !irs::doc_limits::eof(seek(doc_.value + 1));
+    if (doc_.value >= max_doc_) {
+      doc_.value = doc_limits::eof();
+      return false;
+    } else {
+      doc_.value++;
+      return true;
+    }
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) noexcept override {
+  virtual doc_id_t seek(doc_id_t target) noexcept override {
     doc_.value = target <= max_doc_
       ? target
-      : irs::doc_limits::eof();
+      : doc_limits::eof();
 
     return doc_.value;
   }
 
-  virtual irs::doc_id_t value() const noexcept override {
+  virtual doc_id_t value() const noexcept override {
     return doc_.value;
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::type<irs::document>::id() == type ? &doc_ : nullptr;
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<document>::id() == type ? &doc_ : nullptr;
   }
 
  private:
-  irs::document doc_;
-  irs::doc_id_t max_doc_; // largest valid doc_id
+  document doc_;
+  doc_id_t max_doc_; // largest valid doc_id
 }; // all_iterator
 
-class mask_doc_iterator final : public irs::doc_iterator {
+class mask_doc_iterator final : public doc_iterator {
  public:
   explicit mask_doc_iterator(
-      irs::doc_iterator::ptr&& it,
-      const irs::document_mask& mask) noexcept
+      doc_iterator::ptr&& it,
+      const document_mask& mask) noexcept
     : mask_(mask), it_(std::move(it))  {
   }
 
   virtual bool next() override {
     while (it_->next()) {
-      if (mask_.find(value()) == mask_.end()) {
+      if (!mask_.contains(value())) {
         return true;
       }
     }
@@ -86,10 +107,10 @@ class mask_doc_iterator final : public irs::doc_iterator {
     return false;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+  virtual doc_id_t seek(doc_id_t target) override {
     const auto doc = it_->seek(target);
 
-    if (mask_.find(doc) == mask_.end()) {
+    if (!mask_.contains(doc)) {
       return doc;
     }
 
@@ -98,27 +119,27 @@ class mask_doc_iterator final : public irs::doc_iterator {
     return value();
   }
 
-  virtual irs::doc_id_t value() const override {
+  virtual doc_id_t value() const override {
     return it_->value();
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     return it_->get_mutable(type);
   }
 
  private:
-  const irs::document_mask& mask_; // excluded document ids
-  irs::doc_iterator::ptr it_;
+  const document_mask& mask_; // excluded document ids
+  doc_iterator::ptr it_;
 }; // mask_doc_iterator
 
 class masked_docs_iterator 
-    : public irs::doc_iterator,
-      private irs::util::noncopyable {
+    : public doc_iterator,
+      private util::noncopyable {
  public:
   masked_docs_iterator(
-    irs::doc_id_t begin,
-    irs::doc_id_t end,
-    const irs::document_mask& docs_mask)
+    doc_id_t begin,
+    doc_id_t end,
+    const document_mask& docs_mask)
   : docs_mask_(docs_mask),
     end_(end),
     next_(begin) {
@@ -128,45 +149,45 @@ class masked_docs_iterator
     while (next_ < end_) {
       current_.value = next_++;
 
-      if (docs_mask_.find(current_.value) == docs_mask_.end()) {
+      if (!docs_mask_.contains(current_.value)) {
         return true;
       }
     }
 
-    current_.value = irs::doc_limits::eof();
+    current_.value = doc_limits::eof();
 
     return false;
   }
 
-  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+  virtual doc_id_t seek(doc_id_t target) override {
     next_ = target;
     next();
 
     return value();
   }
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    return irs::type<irs::document>::id() == type ? &current_ : nullptr;
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::type<document>::id() == type ? &current_ : nullptr;
   }
 
-  virtual irs::doc_id_t value() const override {
+  virtual doc_id_t value() const override {
     return current_.value;
   }
 
  private:
-  irs::document current_;
-  const irs::document_mask& docs_mask_;
-  const irs::doc_id_t end_; // past last valid doc_id
-  irs::doc_id_t next_;
+  document current_;
+  const document_mask& docs_mask_;
+  const doc_id_t end_; // past last valid doc_id
+  doc_id_t next_;
 };
 
 bool read_columns_meta(
-    const irs::format& codec,
-    const irs::directory& dir,
-    const irs::segment_meta& meta,
-    std::vector<irs::column_meta>& columns,
-    std::vector<irs::column_meta*>& id_to_column,
-    std::unordered_map<irs::hashed_string_ref, irs::column_meta*>& name_to_column) {
+    const format& codec,
+    const directory& dir,
+    const segment_meta& meta,
+    std::vector<column_meta>& columns,
+    std::vector<column_meta*>& id_to_column,
+    name_to_column_map& name_to_column) {
   size_t count = 0;
   irs::field_id max_id;
   auto reader = codec.get_column_meta_reader();
@@ -176,7 +197,7 @@ bool read_columns_meta(
     return false;
   }
 
-  columns.reserve(count);
+  columns.reserve(count); // prevent reallocations
   id_to_column.resize(max_id + 1); // +1 for count
   name_to_column.reserve(count);
 
@@ -184,9 +205,7 @@ bool read_columns_meta(
     columns.emplace_back(std::move(col_meta));
 
     auto& column = columns.back();
-    const auto res = name_to_column.emplace(
-      irs::make_hashed_ref(irs::string_ref(column.name)),
-      &column);
+    const auto res = name_to_column.emplace(hash_utils::hash(column.name), &column);
 
     assert(column.id < id_to_column.size());
 
@@ -203,10 +222,8 @@ bool read_columns_meta(
 
   // check column meta order
 
-  auto less = [] (
-      const irs::column_meta& lhs,
-      const irs::column_meta& rhs
-  ) noexcept {
+  auto less = [] (const irs::column_meta& lhs,
+                  const irs::column_meta& rhs) noexcept {
     return lhs.name < rhs.name;
   };
 
@@ -311,13 +328,12 @@ class segment_reader_impl : public sub_reader {
   field_reader::ptr field_reader_;
   std::vector<column_meta*> id_to_column_;
   uint64_t meta_version_;
-  std::unordered_map<hashed_string_ref, column_meta*> name_to_column_;
+  name_to_column_map name_to_column_;
 
   segment_reader_impl(
     const directory& dir,
     uint64_t meta_version,
-    uint64_t docs_count
-  );
+    uint64_t docs_count);
 };
 
 segment_reader::segment_reader(impl_ptr&& impl) noexcept

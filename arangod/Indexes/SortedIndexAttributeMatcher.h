@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -82,7 +82,7 @@ arangodb::aql::AstNode* specializeCondition(arangodb::Index const* index,
 void matchAttributes(arangodb::Index const* index, arangodb::aql::AstNode const* node,
                      arangodb::aql::Variable const* reference,
                      std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>>& found,
-                     size_t& postFilterConditions, size_t& values, 
+                     size_t& values, 
                      std::unordered_set<std::string>& nonNullAttributes, bool isExecution);
 
 /// @brief whether or not the access fits

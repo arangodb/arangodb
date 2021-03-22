@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -123,7 +123,7 @@ auto root() -> std::shared_ptr<Root const>;
 // base case for recursions.
 class Root : public std::enable_shared_from_this<Root>, public Path {
  public:
-  void forEach(std::function<void(char const* component)> const&) const final {}
+  void forEach(std::function<void(char const* component)> const&) const override final {}
 
  public:
   class Arango : public StaticComponent<Arango, Root> {

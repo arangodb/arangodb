@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Endpoint.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/debugging.h"
 #include "Basics/operating-system.h"
@@ -63,8 +64,6 @@ Endpoint::Endpoint(DomainType domainType, EndpointType type,
 }
 
 std::string Endpoint::uriForm(std::string const& endpoint) {
-  static std::string illegal;
-
   if (StringUtils::isPrefix(endpoint, "http+tcp://")) {
     return "http://" + endpoint.substr(11);
   } else if (StringUtils::isPrefix(endpoint, "http+ssl://")) {
@@ -78,15 +77,13 @@ std::string Endpoint::uriForm(std::string const& endpoint) {
   } else if (StringUtils::isPrefix(endpoint, "http+unix://")) {
     return "unix://" + endpoint.substr(12);
   } else {
-    return illegal;
+    return StaticStrings::Empty;
   }
 }
 
 std::string Endpoint::unifiedForm(std::string const& specification) {
-  static std::string illegal;
-
   if (specification.size() < 7) {
-    return illegal;
+    return StaticStrings::Empty;
   }
 
   TransportType protocol = TransportType::HTTP;
@@ -105,7 +102,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 
   size_t pos = copy.find("://");
   if (pos == std::string::npos) {
-    return illegal;
+    return StaticStrings::Empty;
   }
   // lowercase schema for prefix-checks
   std::string schema = StringUtils::tolower(copy.substr(0, pos + 3));
@@ -131,7 +128,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     return prefix + schema + copy.substr(7);
 #else
     // no unix socket for windows
-    return illegal;
+    return StaticStrings::Empty;
 #endif
   }
 
@@ -139,7 +136,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
 #ifndef _WIN32
     return prefix + schema + copy.substr(6);
 #else
-    return illegal;
+    return StaticStrings::Empty;
 #endif
   }
 
@@ -149,7 +146,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   } else if (StringUtils::isPrefix(schema, "tcp://")) {
     prefix.append("tcp://");
   } else {
-    return illegal;
+    return StaticStrings::Empty;
   }
   copy = StringUtils::tolower(copy.substr(6, copy.length()));
 
@@ -174,7 +171,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
     }
 
     // invalid address specification
-    return illegal;
+    return StaticStrings::Empty;
   }
 
   // Replace localhost with 127.0.0.1
@@ -219,16 +216,14 @@ Endpoint* Endpoint::clientFactory(std::string const& specification) {
 /// @brief create an endpoint object from a string value
 ////////////////////////////////////////////////////////////////////////////////
 
-Endpoint* Endpoint::factory(const Endpoint::EndpointType type, std::string const& specification,
+Endpoint* Endpoint::factory(Endpoint::EndpointType type, std::string const& specification,
                             int listenBacklog, bool reuseAddress) {
   if (specification.size() < 7) {
     return nullptr;
   }
 
-  if (listenBacklog > 0 && type == EndpointType::CLIENT) {
-    // backlog is only allowed for server endpoints
-    TRI_ASSERT(false);
-  }
+  // backlog is only allowed for server endpoints
+  TRI_ASSERT(listenBacklog == 0 || type != EndpointType::CLIENT);
 
   if (listenBacklog == 0 && type == EndpointType::SERVER) {
     // use some default value
@@ -343,7 +338,7 @@ Endpoint* Endpoint::factory(const Endpoint::EndpointType type, std::string const
 /// @brief return the default endpoint (http/vstream)
 ////////////////////////////////////////////////////////////////////////////////
 
-std::string const Endpoint::defaultEndpoint(TransportType type) {
+std::string Endpoint::defaultEndpoint(TransportType type) {
   switch (type) {
     case TransportType::HTTP:
       return "http+tcp://" + std::string(EndpointIp::_defaultHost) + ":" +

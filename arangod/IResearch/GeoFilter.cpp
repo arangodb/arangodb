@@ -1,7 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -351,7 +352,7 @@ std::pair<GeoStates, irs::bstring> prepareStates(
 
   std::pair<GeoStates, irs::bstring> res(
     std::piecewise_construct,
-    std::forward_as_tuple(index.size()),
+    std::forward_as_tuple(index),
     std::forward_as_tuple(order.stats_size(), 0));
 
   auto const size = sortedTerms.size();

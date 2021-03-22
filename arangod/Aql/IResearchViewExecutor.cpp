@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,17 +24,18 @@
 
 #include "IResearchViewExecutor.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/SingleRowFetcher.h"
-#include "AqlCall.h"
+#include "Basics/StringUtils.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "IResearch/IResearchView.h"
-#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -44,6 +45,7 @@
 #include <analysis/token_attributes.hpp>
 #include <search/boolean_filter.hpp>
 #include <search/score.hpp>
+#include <search/cost.hpp>
 #include <utility>
 
 // TODO Eliminate access to the plan if possible!
@@ -57,11 +59,40 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using namespace arangodb::iresearch;
 
 namespace {
 
 constexpr irs::payload NoPayload;
+
+size_t calculateSkipAllCount(CountApproximate approximation,
+                             size_t currentPos,
+                             irs::doc_iterator* docs) {
+  TRI_ASSERT(docs);
+  size_t skipped{0};
+  switch (approximation) {
+    case CountApproximate::Cost:
+      {
+        auto* cost = irs::get<irs::cost>(*docs);
+        if (ADB_LIKELY(cost)) {
+          skipped =  cost->estimate();
+          skipped -= std::min(skipped, currentPos);
+          break;
+        }
+      }
+      [[fallthrough]];
+    default:
+      // check for unknown approximation or absence of the cost attribute.
+      // fallback to exact anyway
+      TRI_ASSERT(CountApproximate::Exact == approximation);
+      while (docs->next()) {
+        skipped++;
+      }
+      break;
+  }
+  return skipped;
+}
 
 inline std::shared_ptr<arangodb::LogicalCollection> lookupCollection(  // find collection
     arangodb::transaction::Methods& trx,  // transaction
@@ -119,7 +150,7 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
     IResearchViewStoredValues const& storedValues, ExecutionPlan const& plan,
     Variable const& outVariable, aql::AstNode const& filterCondition,
     std::pair<bool, bool> volatility, IResearchViewExecutorInfos::VarInfoMap const& varInfoMap,
-    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs)
+    int depth, IResearchViewNode::ViewValuesRegisters&& outNonMaterializedViewRegs, iresearch::CountApproximate countApproximate)
     : _scoreRegisters(std::move(scoreRegisters)),
       _reader(std::move(reader)),
       _query(query),
@@ -134,7 +165,9 @@ IResearchViewExecutorInfos::IResearchViewExecutorInfos(
       _volatileFilter(_volatileSort || volatility.first),
       _varInfoMap(varInfoMap),
       _depth(depth),
-      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)) {
+      _outNonMaterializedViewRegs(std::move(outNonMaterializedViewRegs)),
+      _countApproximate(countApproximate),
+      _filterConditionIsEmpty(::filterConditionIsEmpty(&_filterCondition)) {
   TRI_ASSERT(_reader != nullptr);
   std::tie(_documentOutReg, _collectionPointerReg) = std::visit(
       overload{[&](aql::IResearchViewExecutorInfos::MaterializeRegisters regs) {
@@ -578,8 +611,9 @@ void IResearchViewExecutorBase<Impl, Traits>::reset() {
       infos().filterCondition().toVelocyPack(builder, true);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           rv.errorNumber(),
-          "failed to build filter while querying arangosearch view, query '" +
-              builder.toJson() + "': " + rv.errorMessage());
+          StringUtils::concatT("failed to build filter while querying "
+                               "arangosearch view, query '",
+                               builder.toJson(), "': ", rv.errorMessage()));
     }
 
     if (infos().volatileSort() || !_isInitialized) {
@@ -672,7 +706,7 @@ bool IResearchViewExecutorBase<Impl, Traits>::writeRow(ReadContext& ctx,
   TRI_ASSERT(documentId.isSet());
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(!collection.readDocumentWithCallback(&_trx, documentId, ctx.callback))) {
+    if (ADB_UNLIKELY(!collection.getPhysical()->read(&_trx, documentId, ctx.callback))) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType & MaterializeType::LateMaterialize) ==
@@ -802,6 +836,8 @@ IResearchViewExecutor<ordered, materializeType>::IResearchViewExecutor(Fetcher& 
       _pkReader(),
       _itr(),
       _readerOffset(0),
+      _currentSegmentPos(0),
+      _totalPos(0),
       _scr(&irs::score::no_score()),
       _numScores(0) {
   this->_storedValuesReaders.resize(this->_infos.getOutNonMaterializedViewRegs().size());
@@ -827,6 +863,8 @@ bool IResearchViewExecutor<ordered, materializeType>::readPK(LocalDocumentId& do
   TRI_ASSERT(_pkReader.value);
 
   if (_itr->next()) {
+    ++_totalPos;
+    ++_currentSegmentPos;
     if (_doc->value == _pkReader.itr->seek(_doc->value)) {
       bool const readSuccess = DocumentPrimaryKey::read(documentId, _pkReader.value->value);
 
@@ -853,6 +891,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
   size_t const atMost = ctx.outputRow.numRowsLeft();
 
   size_t const count = this->_reader->size();
+
   for (; _readerOffset < count;) {
     if (!_itr) {
       if (!this->_indexReadBuffer.empty()) {
@@ -882,6 +921,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
 
         // We don't have a collection, skip the current reader.
         ++_readerOffset;
+        _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
         continue;
@@ -905,6 +945,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
       if (iteratorExhausted) {
         // The iterator is exhausted, we need to continue with the next reader.
         ++_readerOffset;
+        _currentSegmentPos = 0;
         _itr.reset();
         _doc = nullptr;
       }
@@ -933,6 +974,7 @@ void IResearchViewExecutor<ordered, materializeType>::fillBuffer(IResearchViewEx
     if (iteratorExhausted) {
       // The iterator is exhausted, we need to continue with the next reader.
       ++_readerOffset;
+      _currentSegmentPos = 0;
       _itr.reset();
       _doc = nullptr;
 
@@ -982,14 +1024,14 @@ bool IResearchViewExecutor<ordered, materializeType>::resetIterator() {
     if (!_scr) {
       _scr = &irs::score::no_score();
       _numScores = 0;
+    } else {
+      _numScores = this->infos().scorers().size();
     }
-
-    _numScores = this->infos().scorers().size();
   }
 
   _itr = segmentReader.mask(std::move(_itr));
   TRI_ASSERT(_itr);
-
+  _currentSegmentPos = 0;
   return true;
 }
 
@@ -1001,6 +1043,8 @@ void IResearchViewExecutor<ordered, materializeType>::reset() {
   _itr.reset();
   _doc = nullptr;
   _readerOffset = 0;
+  _currentSegmentPos = 0;
+  _totalPos = 0;
 }
 
 template <bool ordered, MaterializeType materializeType>
@@ -1010,26 +1054,24 @@ size_t IResearchViewExecutor<ordered, materializeType>::skip(size_t limit) {
 
   size_t const toSkip = limit;
 
-  for (size_t count = this->_reader->size(); _readerOffset < count;) {
+  for (size_t count = this->_reader->size(); _readerOffset < count; ++_readerOffset) {
     if (!_itr && !resetIterator()) {
       continue;
     }
 
     while (limit && _itr->next()) {
+      ++_currentSegmentPos;
+      ++_totalPos;
       --limit;
     }
 
     if (!limit) {
       break;  // do not change iterator if already reached limit
     }
-
-    ++_readerOffset;
     _itr.reset();
     _doc = nullptr;
   }
-
   saveCollection();
-
   return toSkip - limit;
 }
 
@@ -1040,20 +1082,25 @@ size_t IResearchViewExecutor<ordered, materializeType>::skipAll() {
 
   size_t skipped = 0;
 
-  for (size_t count = this->_reader->size(); _readerOffset < count;) {
-    if (!_itr && !resetIterator()) {
-      continue;
+  if (_readerOffset < this->_reader->size()) {
+    if (this->infos().filterConditionIsEmpty()) {
+      skipped =  this->_reader->live_docs_count();
+      TRI_ASSERT(_totalPos <= skipped);
+      skipped -= std::min(skipped, _totalPos);
+      _readerOffset = this->_reader->size();
+      _currentSegmentPos = 0;
+    } else {
+      for (size_t count = this->_reader->size(); _readerOffset < count;
+           ++_readerOffset, _currentSegmentPos = 0) {
+        if (!_itr && !resetIterator()) {
+          continue;
+        }
+        skipped += calculateSkipAllCount(this->infos().countApproximate(), _currentSegmentPos, _itr.get());
+        _itr.reset();
+        _doc = nullptr;
+      }
     }
-
-    while (_itr->next()) {
-      skipped++;
-    }
-
-    ++_readerOffset;
-    _itr.reset();
-    _doc = nullptr;
   }
-
   return skipped;
 }
 
@@ -1078,6 +1125,7 @@ void IResearchViewExecutor<ordered, materializeType>::saveCollection() {
 
       // We don't have a collection, skip the current reader.
       ++_readerOffset;
+      _currentSegmentPos = 0;
       _itr.reset();
       _doc = nullptr;
     }
@@ -1118,7 +1166,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     irs::score const& score, size_t numScores,
     LogicalCollection const& collection,
     irs::doc_iterator::ptr&& pkReader,
-    size_t storedValuesIndex,
+    size_t index,
     irs::doc_iterator* sortReaderRef,
     irs::payload const* sortReaderValue,
     irs::doc_iterator::ptr&& sortReader) noexcept
@@ -1127,7 +1175,7 @@ IResearchViewMergeExecutor<ordered, materializeType>::Segment::Segment(
     score(&score),
     numScores(numScores),
     collection(&collection),
-    storedValuesIndex(storedValuesIndex),
+    segmentIndex(index),
     sortReaderRef(sortReaderRef),
     sortValue(sortReaderValue),
     sortReader(std::move(sortReader)) {
@@ -1318,6 +1366,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
 
   while (_heap_it.next()) {
     auto& segment = _segments[_heap_it.value()];
+    ++segment.segmentPos;
     TRI_ASSERT(segment.docs);
     TRI_ASSERT(segment.doc);
     TRI_ASSERT(segment.score);
@@ -1344,7 +1393,7 @@ void IResearchViewMergeExecutor<ordered, materializeType>::fillBuffer(ReadContex
     if constexpr ((materializeType & MaterializeType::UseStoredValues) ==
                   MaterializeType::UseStoredValues) {
       TRI_ASSERT(segment.doc);
-      this->pushStoredValues(*segment.doc, segment.storedValuesIndex);
+      this->pushStoredValues(*segment.doc, segment.segmentIndex);
     }
 
     // doc and scores are both pushed, sizes must now be coherent
@@ -1364,6 +1413,7 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skip(size_t limit) 
   size_t const toSkip = limit;
 
   while (limit && _heap_it.next()) {
+    ++this->_segments[_heap_it.value()].segmentPos;
     --limit;
   }
 
@@ -1376,11 +1426,30 @@ size_t IResearchViewMergeExecutor<ordered, materializeType>::skipAll() {
   TRI_ASSERT(this->_filter != nullptr);
 
   size_t skipped = 0;
-
-  while (_heap_it.next()) {
-    skipped++;
+  if (_heap_it.size()) {
+    for (auto& segment : _segments) {
+      TRI_ASSERT(segment.docs);
+      if (this->infos().filterConditionIsEmpty()) {
+        TRI_ASSERT(segment.segmentIndex < this->_reader->size());
+        auto const live_docs_count =  (*this->_reader)[segment.segmentIndex].live_docs_count();
+        TRI_ASSERT(segment.segmentPos <= live_docs_count);
+        skipped += live_docs_count - segment.segmentPos;
+      } else {
+       skipped +=  calculateSkipAllCount(this->infos().countApproximate(),
+                                         segment.segmentPos, segment.docs.get());
+      }
+    }
+    // Adjusting by count of docs already consumed by heap but not consumed by executor.
+    // This count is heap size minus 1 already consumed by executor after heap.next.
+    // But we should adjust by the heap size only if the heap was advanced at least once
+    // (heap is actually filled on first next) or we have nothing consumed from doc iterators!
+    if (!_segments.empty() && this->infos().countApproximate() == CountApproximate::Exact &&
+        !this->infos().filterConditionIsEmpty() &&
+        _heap_it.size() && this->_segments[_heap_it.value()].segmentPos) {
+       skipped += (_heap_it.size() - 1);
+    }
+    _heap_it.reset();
   }
-
   return skipped;
 }
 

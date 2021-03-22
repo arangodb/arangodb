@@ -1,0 +1,17 @@
+name: arangodb_agency_supervision_failed_server_total
+help: |
+  Counter for FailedServer jobs.
+unit: number
+type: counter
+category: Agency
+complexity: medium
+exposedBy:
+  - agent
+description: |
+  Counter for FailedServer jobs.
+threshold: |
+  Many FailedServer jobs indicate frequent failures of dbservers. This
+  is generally not good.
+troubleshoot: |
+  Find the root cause of server failures. Overload and bad network latency
+  can lead to misdetected server failures.

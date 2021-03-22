@@ -121,7 +121,7 @@ namespace tests {
 
   class analyzed_string_field: public templates::string_field {
    public:
-    analyzed_string_field(const iresearch::string_ref& name, const iresearch::string_ref& value)
+    analyzed_string_field(const std::string& name, const iresearch::string_ref& value)
       : templates::string_field(name, value),
         token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::text>::get(), "en")) {
       if (!token_stream_) {
@@ -153,28 +153,28 @@ namespace tests {
         const tests::json_doc_generator::json_value& value) {
       if (value.is_string()) {
         doc.insert(std::make_shared<analyzed_string_field>(
-          iresearch::string_ref(name),
+          name,
           value.str
         ));
       } else if (value.is_null()) {
         doc.insert(std::make_shared<analyzed_string_field>(
-          iresearch::string_ref(name),
+          name,
           "null"
         ));
       } else if (value.is_bool() && value.b) {
         doc.insert(std::make_shared<analyzed_string_field>(
-          iresearch::string_ref(name),
+          name,
           "true"
         ));
       } else if (value.is_bool() && !value.b) {
         doc.insert(std::make_shared<analyzed_string_field>(
-          iresearch::string_ref(name),
+          name,
           "false"
         ));
       } else if (value.is_number()) {
         const auto str = std::to_string(value.as_number<uint64_t>());
         doc.insert(std::make_shared<analyzed_string_field>(
-          iresearch::string_ref(name),
+          name,
           str
         ));
       }
@@ -186,23 +186,23 @@ namespace tests {
         const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(iresearch::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(iresearch::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(iresearch::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_number()) {
         const double dValue = data.as_number<double_t>();
@@ -210,7 +210,7 @@ namespace tests {
         // 'value' can be interpreted as a double
         doc.insert(std::make_shared<tests::double_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-        field.name(iresearch::string_ref(name));
+        field.name(name);
         field.value(dValue);
       }
     };
@@ -964,6 +964,7 @@ TEST_F(IqlQueryBuilderTestSuite, test_query_builder_bool_fns) {
       ASSERT_NE("A", irs::read_string<std::string>(in));
     }
 
+    ASSERT_FALSE(docsItr->next());
     ASSERT_FALSE(docsItr->next());
   }
 

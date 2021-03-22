@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -44,6 +44,7 @@
 #include "RestServer/ServerIdFeature.h"
 
 using namespace arangodb;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 /// @brief common replication applier
 struct ApplierThread : public Thread {
@@ -253,8 +254,9 @@ void ReplicationApplier::doStart(std::function<void()>&& cb,
 
   if (_state._preventStart) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_LOCKED, std::string("cannot start replication applier for ") +
-                              _databaseName + ": " + TRI_errno_string(TRI_ERROR_LOCKED));
+        TRI_ERROR_LOCKED,
+        StringUtils::concatT("cannot start replication applier for ", _databaseName,
+                             ": ", TRI_errno_string(TRI_ERROR_LOCKED)));
   }
 
   if (_state.isActive()) {
@@ -426,7 +428,7 @@ void ReplicationApplier::removeState() {
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("87a61", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -452,7 +454,7 @@ Result ReplicationApplier::resetState(bool reducedSet) {
   if (!filename.empty() && TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC("2914f", TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "' for " << _databaseName;
-    int res = TRI_UnlinkFile(filename.c_str());
+    auto res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result{res, std::string("unable to remove replication state file '") + filename + "'"};

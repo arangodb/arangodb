@@ -29,9 +29,10 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ResourceUsage.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/TraversalExecutor.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Graph/TraverserOptions.h"
@@ -206,7 +207,7 @@ class TraverserHelper : public Traverser {
     _done = false;
   }
 
-  bool getVertex(VPackSlice edge, std::vector<arangodb::velocypack::StringRef>& result) override {
+  bool getVertex(VPackSlice, arangodb::traverser::EnumeratedPath&) override {
     // Implement
     return false;
   }
@@ -267,7 +268,8 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
@@ -288,7 +290,7 @@ class TraversalExecutorTestInputStartVertex : public ::testing::Test {
 
   TraversalExecutorTestInputStartVertex()
       : fakedQuery(server.createFakeQuery()),
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
         myGraph("v", "e"),
@@ -445,7 +447,8 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
   std::unique_ptr<arangodb::aql::Query> fakedQuery;
 
-  ResourceMonitor monitor;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor monitor{global};
   AqlItemBlockManager itemBlockManager;
   SharedAqlItemBlockPtr block;
 
@@ -467,7 +470,7 @@ class TraversalExecutorTestConstantStartVertex : public ::testing::Test {
 
   TraversalExecutorTestConstantStartVertex()
       : fakedQuery(server.createFakeQuery()),
-        itemBlockManager(&monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
         block(new AqlItemBlock(itemBlockManager, 1000, 2)),
         traversalOptions(generateOptions(fakedQuery.get(), 1, 1)),
         myGraph("v", "e"),

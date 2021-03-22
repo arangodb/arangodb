@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,7 +81,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
     try {
       GeneralRequest const* request = _request.get();
       auto const type = request->requestType();
-      int result = static_cast<int>(_response->responseCode());
+      auto const result = _response->responseCode();
 
       switch (type) {
         case rest::RequestType::DELETE_REQ:
@@ -216,22 +216,23 @@ RestStatus RestDocumentHandler::insertDocument() {
             // Will commit if no error occured.
             // or abort if an error occured.
             // result stays valid!
-            Result res = _activeTrx->finish(opres.result);
-            if (opres.fail()) {
-              generateTransactionError(cname, opres);
-              return;
-            }
+            return _activeTrx->finishAsync(opres.result).thenValue([=, opres(std::move(opres))](Result&& res) {
+              if (opres.fail()) {
+                generateTransactionError(cname, opres);
+                return;
+              }
 
-            if (res.fail()) {
-              generateTransactionError(cname, OperationResult(res, opOptions),
-                                       "");
-              return;
-            }
+              if (res.fail()) {
+                generateTransactionError(cname, OperationResult(res, opOptions),
+                                         "");
+                return;
+              }
 
-            generateSaved(opres, cname,
-                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                          _activeTrx->transactionContextPtr()->getVPackOptions(),
-                          isMultiple);
+              generateSaved(opres, cname,
+                            TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                            _activeTrx->transactionContextPtr()->getVPackOptions(),
+                            isMultiple);
+            });
           }));
 }
 
@@ -316,31 +317,34 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   return waitForFuture(
-      _activeTrx->documentAsync(collection, search, options).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-        Result res = _activeTrx->finish(opRes.result);
+      _activeTrx->documentAsync(collection, search, options)
+          .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+            return _activeTrx->finishAsync(opRes.result)
+                .thenValue([=, opRes(std::move(opRes))](Result&& res) {
+                  if (!opRes.ok()) {
+                    generateTransactionError(collection, opRes, key, ifRid);
+                    return;
+                  }
 
-        if (!opRes.ok()) {
-          generateTransactionError(collection, opRes, key, ifRid);
-          return;
-        }
+                  if (!res.ok()) {
+                    generateTransactionError(collection, OperationResult(res, options),
+                                             key, ifRid);
+                    return;
+                  }
 
-        if (!res.ok()) {
-          generateTransactionError(collection, OperationResult(res, options), key, ifRid);
-          return;
-        }
+                  if (ifNoneRid.isSet()) {
+                    RevisionId const rid = RevisionId::fromSlice(opRes.slice());
+                    if (ifNoneRid == rid) {
+                      generateNotModified(rid);
+                      return;
+                    }
+                  }
 
-        if (ifNoneRid.isSet()) {
-          RevisionId const rid = RevisionId::fromSlice(opRes.slice());
-          if (ifNoneRid == rid) {
-            generateNotModified(rid);
-            return;
-          }
-        }
-
-        // use default options
-        generateDocument(opRes.slice(), generateBody,
-                         _activeTrx->transactionContextPtr()->getVPackOptions());
-      }));
+                  // use default options
+                  generateDocument(opRes.slice(), generateBody,
+                                   _activeTrx->transactionContextPtr()->getVPackOptions());
+                });
+          }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,11 +476,15 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
         if (headerRev.isSet()) {
           builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
         } else if (!opOptions.ignoreRevs && revInBody.isSet()) {
-          builder.add(StaticStrings::RevString, VPackValue(headerRev.toString()));
+          builder.add(StaticStrings::RevString, VPackValue(revInBody.toString()));
+          headerRev = revInBody;   // make sure that we report 412 and not 409
         }
       }
 
       body = builder.slice();
+    } else if (!headerRev.isSet() && revInBody.isSet() &&
+               opOptions.ignoreRevs == false) {
+      headerRev = revInBody;   // make sure that we report 412 and not 409
     }
   }
 
@@ -509,24 +517,24 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   return waitForFuture(std::move(f).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    Result res = _activeTrx->finish(opRes.result);
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+      // ...........................................................................
+      // outside write transaction
+      // ...........................................................................
 
-    // ...........................................................................
-    // outside write transaction
-    // ...........................................................................
+      if (opRes.fail()) {
+        generateTransactionError(cname, opRes, key, headerRev);
+        return;
+      }
 
-    if (opRes.fail()) {
-      generateTransactionError(cname, opRes, key, headerRev);
-      return;
-    }
+      if (!res.ok()) {
+        generateTransactionError(cname, OperationResult(res, opOptions), key, headerRev);
+        return;
+      }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, OperationResult(res, opOptions), key, headerRev);
-      return;
-    }
-
-    generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                  _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
+      generateSaved(opRes, cname, TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                    _activeTrx->transactionContextPtr()->getVPackOptions(), isArrayCase);
+    });
   }));
 }
 
@@ -615,28 +623,28 @@ RestStatus RestDocumentHandler::removeDocument() {
 
   bool const isMultiple = search.isArray();
 
-  return waitForFuture(_activeTrx->removeAsync(cname, search, opOptions)
-                       .thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+  return waitForFuture(
+      _activeTrx->removeAsync(cname, search, opOptions).thenValue([=, buffer(std::move(buffer))](OperationResult opRes) {
+        return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+          // ...........................................................................
+          // outside write transaction
+          // ...........................................................................
 
-    // ...........................................................................
-    // outside write transaction
-    // ...........................................................................
+          if (opRes.fail()) {
+            generateTransactionError(cname, opRes, key, revision);
+            return;
+          }
 
-    if (opRes.fail()) {
-      generateTransactionError(cname, opRes, key, revision);
-      return;
-    }
+          if (!res.ok()) {
+            generateTransactionError(cname, OperationResult(res, opOptions), key);
+            return;
+          }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, OperationResult(res, opOptions), key);
-      return;
-    }
-
-    generateDeleted(opRes, cname,
-                    TRI_col_type_e(_activeTrx->getCollectionType(cname)),
-                    _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
-  }));
+          generateDeleted(opRes, cname,
+                          TRI_col_type_e(_activeTrx->getCollectionType(cname)),
+                          _activeTrx->transactionContextPtr()->getVPackOptions(), isMultiple);
+        });
+      }));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -677,21 +685,20 @@ RestStatus RestDocumentHandler::readManyDocuments() {
     return RestStatus::DONE;
   }
 
-  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions)
-                       .thenValue([=](OperationResult opRes) {
-    auto res = _activeTrx->finish(opRes.result);
+  return waitForFuture(_activeTrx->documentAsync(cname, search, opOptions).thenValue([=](OperationResult opRes) {
+    return _activeTrx->finishAsync(opRes.result).thenValue([=, opRes(std::move(opRes))](Result&& res) {
+      if (opRes.fail()) {
+        generateTransactionError(cname, opRes);
+        return;
+      }
 
-    if (opRes.fail()) {
-      generateTransactionError(cname, opRes);
-      return;
-    }
+      if (!res.ok()) {
+        generateTransactionError(cname, OperationResult(res, opOptions), "");
+        return;
+      }
 
-    if (!res.ok()) {
-      generateTransactionError(cname, OperationResult(res, opOptions), "");
-      return;
-    }
-
-    generateDocument(opRes.slice(), true,
-                     _activeTrx->transactionContextPtr()->getVPackOptions());
+      generateDocument(opRes.slice(), true,
+                       _activeTrx->transactionContextPtr()->getVPackOptions());
+    });
   }));
 }

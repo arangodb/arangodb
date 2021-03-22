@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -118,9 +118,14 @@ struct OperationOptions {
   // restored by replicated and arangorestore
   bool isRestore;
 
-  // for replication; only set true if you an guarantee that any conflicts have
-  // already been removed, and are simply not reflected in the transaction read
-  bool ignoreUniqueConstraints;
+  // for replication; only set true if case insert/replace should have a read-only
+  // preflight phase, in which it checks whether a document can actually be inserted
+  // before carrying out the actual insert/replace.
+  // separating the check phase from the actual insert/replace allows running the
+  // preflight check without modifying the transaction's underlying WriteBatch object,
+  // so in case a unique constraint violation is detected, it does not need to be
+  // rebuilt (this would be _very_ expensive).
+  bool checkUniqueConstraintsInPreflight;
 
   // when truncating - should we also run the compaction?
   // defaults to true.
@@ -129,7 +134,7 @@ struct OperationOptions {
   // get associated execution context
   ExecContext const& context() const;
 
-private:
+ private:
   ExecContext const* _context;
 };
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -53,7 +53,8 @@ class TraverserDocumentCache final : public TraverserCache {
                             arangodb::velocypack::Builder& builder) override;
 
   /// Looks up the document and inserts it into the builder
-  void insertVertexIntoResult(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& builder) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::velocypack::Builder& result) override;
+  bool appendVertex(arangodb::velocypack::StringRef idString, arangodb::aql::AqlValue& result) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
@@ -62,8 +63,6 @@ class TraverserDocumentCache final : public TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
 
   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
-
-  aql::AqlValue fetchVertexAqlResult(arangodb::velocypack::StringRef idString) override;
 
  protected:
   //////////////////////////////////////////////////////////////////////////////
@@ -78,14 +77,6 @@ class TraverserDocumentCache final : public TraverserCache {
   void insertIntoCache(arangodb::velocypack::StringRef id,
                        arangodb::velocypack::Slice const& document);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup a document from the database and insert it into the cache.
-  ///        The Slice returned here is only valid until the NEXT call of this
-  ///        function.
-  //////////////////////////////////////////////////////////////////////////////
-
-  arangodb::velocypack::Slice lookupAndCache(arangodb::velocypack::StringRef idString);
-  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The hash-cache that saves documents found in the Database
   //////////////////////////////////////////////////////////////////////////////

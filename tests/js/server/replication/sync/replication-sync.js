@@ -703,6 +703,101 @@ function BaseTestConfig () {
       assertEqual(st.checksum, collectionChecksum(cn));
     },
 
+    testUpdateHugeIntermediateCommits: function () {
+      // can only use this with failure tests enabled
+      let r = arango.GET("/_db/" + db._name() + "/_admin/debug/failat");
+      if (String(r) === "false") {
+        return;
+      }
+
+      connectToMaster();
+
+      var st;
+
+      compare(
+        function (state) {
+          let c = db._create(cn);
+          let docs = [];
+          //  insert some documents 'before'
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: 'a' + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+
+          //  insert some documents 'after'
+          for (let i = 0; i < 110000; ++i) {
+            docs.push({ _key: 'z' + i });
+            if (docs.length === 5000) {
+              c.insert(docs);
+              docs = [];
+            }
+          }
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(220000, state.count);
+
+          st = _.clone(state); // save state
+        },
+        function (state) {
+          arango.PUT_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+        },
+        true
+      );
+
+      connectToMaster();
+      var c = db._collection(cn);
+      let selectors = [];
+      let docs = [];
+      //  update some documents at the 'front'
+      for (let i = 0; i < 50000; ++i) {
+        selectors.push({ _key: 'a' + i });
+        docs.push({ updated: true });
+        if (docs.length === 5000) {
+          c.update(selectors, docs);
+          selectors = [];
+          docs = [];
+        }
+      }
+
+      //  remove some documents from the 'back'
+      for (let i = 0; i < 50000; ++i) {
+        selectors.push({ _key: 'z' + i });
+        docs.push({ updated: true });
+        if (docs.length === 5000) {
+          c.update(selectors, docs);
+          selectors = [];
+          docs = [];
+        }
+      }
+
+      //  update the state
+      st.checksum = collectionChecksum(cn);
+      st.count = collectionCount(cn);
+      assertEqual(220000, collectionCount(cn));
+
+      connectToSlave();
+
+      //  and sync again
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      assertEqual(st.count, collectionCount(cn));
+      assertEqual(st.checksum, collectionChecksum(cn));
+
+      arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
+    },
+
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test collection properties
     // //////////////////////////////////////////////////////////////////////////////

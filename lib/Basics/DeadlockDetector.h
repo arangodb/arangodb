@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -103,7 +103,7 @@ class DeadlockDetector {
 
  private:
   /// @brief add a thread to the list of blocked threads
-  int detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
+  ErrorCode detectDeadlockNoLock(TID tid, T const* value, bool isWrite) const {
     if (!_enabled) {
       return TRI_ERROR_NO_ERROR;
     }
@@ -172,7 +172,7 @@ class DeadlockDetector {
   }
 
   /// @brief add a thread to the list of blocked threads
-  int setBlocked(TID tid, T const* value, bool isWrite) {
+  ErrorCode setBlocked(TID tid, T const* value, bool isWrite) {
     MUTEX_LOCKER(mutexLocker, _lock);
 
     if (!_enabled) {
@@ -187,7 +187,7 @@ class DeadlockDetector {
     }
 
     try {
-      int res = detectDeadlockNoLock(tid, value, isWrite);
+      auto res = detectDeadlockNoLock(tid, value, isWrite);
 
       if (res != TRI_ERROR_NO_ERROR) {
         // clean up

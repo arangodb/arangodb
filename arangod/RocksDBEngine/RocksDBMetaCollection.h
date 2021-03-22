@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,10 +56,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
-  
-  int lockWrite(double timeout = 0.0);
+
+  ErrorCode lockWrite(double timeout = 0.0);
   void unlockWrite();
-  int lockRead(double timeout = 0.0);
+  ErrorCode lockRead(double timeout = 0.0);
   void unlockRead();
   
   /// recalculate counts for collection in case of failure, blocks other writes for a short period
@@ -67,7 +67,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
  
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
-  Result compact() override final;
+  void compact() override final;
   
   /// estimate size of collection and indexes
   void estimateSize(velocypack::Builder& builder);
@@ -121,7 +121,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                     rocksdb::SequenceNumber commitSeq) const;
 
  private:
-  int doLock(double timeout, AccessMode::Type mode);
+  ErrorCode doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations() const;
   std::size_t revisionTreeDepth() const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree() const;

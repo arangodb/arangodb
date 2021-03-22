@@ -59,8 +59,6 @@ iresearch::bstring& static_buf() {
 namespace iresearch {
 namespace numeric_utils {
 
-using iresearch::integer_traits;
-
 template<typename T>
 struct encode_traits;
 
@@ -113,7 +111,7 @@ size_t encode(typename EncodeTraits::type value, byte_type* out, size_t shift) {
   typedef typename EncodeTraits::type type;
   
   value ^= type(1) << (bits_required<type>() - 1);
-  value &= integer_traits<type>::const_max ^ ((type(1) << shift) - 1);
+  value &= std::numeric_limits<type>::max() ^ ((type(1) << shift) - 1);
   if (!is_big_endian()) {
     value = EncodeTraits::hton(value);
   } 
@@ -182,42 +180,42 @@ uint64_t decoded64(const byte_type* in) {
 }
 
 const bytes_ref& mini32() {
-  static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MIN>(), integer_traits<int32_t>::const_min);
+  static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MIN>(), std::numeric_limits<int32_t>::min());
   return data; 
 }
 
 const bytes_ref& maxi32() {
-  static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MAX>(), integer_traits<int32_t>::const_max);
+  static bytes_ref data = encode(static_buf<int32_t, buf_id_t::MAX>(), std::numeric_limits<int32_t>::max());
   return data;
 }
 
 const bytes_ref& minu32() {
-  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MIN>(), integer_traits<uint32_t>::const_min);
+  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MIN>(), std::numeric_limits<uint32_t>::min());
   return data; 
 }
 
 const bytes_ref& maxu32() {
-  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MAX>(), integer_traits<uint32_t>::const_max);
+  static bytes_ref data = encode(static_buf<uint32_t, buf_id_t::MAX>(), std::numeric_limits<uint32_t>::max());
   return data;
 }
 
 const bytes_ref& mini64() {
-  static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MIN>(), integer_traits<int64_t>::const_min);
+  static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MIN>(), std::numeric_limits<int64_t>::min());
   return data;
 }
 
 const bytes_ref& maxi64() {
-  static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MAX>(), integer_traits<int64_t>::const_max);
+  static bytes_ref data = encode(static_buf<int64_t, buf_id_t::MAX>(), std::numeric_limits<int64_t>::max());
   return data;
 }
 
 const bytes_ref& minu64() {
-  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MIN>(), integer_traits<uint64_t>::const_min);
+  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MIN>(), std::numeric_limits<uint64_t>::min());
   return data;
 }
 
 const bytes_ref& maxu64() {
-  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MAX>(), integer_traits<uint64_t>::const_max);
+  static bytes_ref data = encode(static_buf<uint64_t, buf_id_t::MAX>(), std::numeric_limits<uint64_t>::max());
   return data;
 }
 

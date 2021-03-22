@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -119,7 +119,9 @@ arangodb::Result Indexes::getAll(LogicalCollection const* collection,
       auto& feature = collection->vocbase().server().getFeature<ClusterFeature>();
       Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid, estimates);
       if (rv.fail()) {
-        return Result(rv.errorNumber(), "could not retrieve estimates: '" + rv.errorMessage() + "'");
+        return Result(rv.errorNumber(), basics::StringUtils::concatT(
+                                            "could not retrieve estimates: '",
+                                            rv.errorMessage(), "'"));
       }
 
       // we will merge in the index estimates later
@@ -452,7 +454,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
       return res;
     } else if (tmp.slice().isNone()) {
       // did not find a suitable index
-      int code = create ? TRI_ERROR_OUT_OF_MEMORY : TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
+      auto code = create ? TRI_ERROR_OUT_OF_MEMORY : TRI_ERROR_ARANGO_INDEX_NOT_FOUND;
       events::CreateIndex(collection->vocbase().name(), collection->name(), indexDef, code);
       return Result(code);
     }
@@ -481,7 +483,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice const& inp
 
 arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType type,
                                       std::vector<std::string> const& fields,
-                                      bool unique, bool sparse) {
+                                      bool unique, bool sparse, bool estimates) {
   VPackBuilder props;
 
   props.openObject();
@@ -497,6 +499,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection* coll, Index::IndexType 
   props.close();
   props.add(arangodb::StaticStrings::IndexUnique, arangodb::velocypack::Value(unique));
   props.add(arangodb::StaticStrings::IndexSparse, arangodb::velocypack::Value(sparse));
+  props.add(arangodb::StaticStrings::IndexEstimates, arangodb::velocypack::Value(estimates));
   props.close();
 
   VPackBuilder ignored;
@@ -670,8 +673,6 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
         collection->vocbase().name(), std::to_string(collection->id().id()), iid, 0.0  // args
     );
 #endif
-    events::DropIndex(collection->vocbase().name(), collection->name(),
-                      std::to_string(iid.id()), res.errorNumber());
     return res;
   } else {
     READ_LOCKER(readLocker, collection->vocbase()._inventoryLock);
@@ -706,7 +707,7 @@ arangodb::Result Indexes::drop(LogicalCollection* collection, VPackSlice const& 
     }
 
     bool ok = col->dropIndex(idx->id());
-    int code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
+    auto code = ok ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
     events::DropIndex(collection->vocbase().name(), collection->name(),
                       std::to_string(iid.id()), code);
     return Result(code);

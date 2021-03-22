@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,6 +26,7 @@
 
 #include "AgentInterface.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 #include "Node.h"
 #include <map>
 
@@ -180,7 +181,6 @@ class Store {
   /// @brief Clear entries, whose time to live has expired
   query_t clearExpired() const;
 
-  /// @brief Run thread
  private:
   /// @brief underlying application server, needed for testing code
   application_features::ApplicationServer& _server;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -92,6 +92,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+#include "VocBase/Methods/Queries.h"
 #include "VocBase/Methods/Transactions.h"
 
 #ifdef USE_ENTERPRISE
@@ -135,7 +136,7 @@ static v8::Handle<v8::Object> WrapClass(v8::Isolate* isolate,
 static void JS_Transaction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
   // check if we have some transaction object
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("TRANSACTION(<object>)");
@@ -213,24 +214,6 @@ static void JS_NormalizeString(v8::FunctionCallbackInfo<v8::Value> const& args) 
   }
 
   TRI_normalize_V8_Obj(args, args[0]);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enables or disables native backtrace
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EnableNativeBacktraces(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("ENABLE_NATIVE_BACKTRACES(<value>)");
-  }
-
-  arangodb::basics::Exception::SetVerbose(TRI_ObjectToBoolean(isolate, args[0]));
-
-  TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -516,7 +499,7 @@ static void JS_ParseAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string const queryString(TRI_ObjectToString(isolate, args[0]));
   // If we execute an AQL query from V8 we need to unset the nolock headers
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             nullptr, nullptr);
+                             nullptr);
   auto parseResult = query.parse();
 
   if (parseResult.result.fail()) {
@@ -584,11 +567,12 @@ static void JS_WarningAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // only register the error if we have a query...
     // note: we may not have a query if the AQL functions are called without
     // a query, e.g. during tests
-    int code = static_cast<int>(TRI_ObjectToInt64(isolate, args[0]));
+    auto code = ErrorCode{static_cast<int>(TRI_ObjectToInt64(isolate, args[0]))};
     std::string const message = TRI_ObjectToString(isolate, args[1]);
 
-    auto expressionContext = static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
-    expressionContext->registerWarning( code, message.c_str());
+    auto expressionContext =
+        static_cast<arangodb::aql::ExpressionContext*>(v8g->_expressionContext);
+    expressionContext->registerWarning(code, message.c_str());
   } else {
     TRI_V8_THROW_TYPE_ERROR("must only be invoked from AQL user defined functions");
   }
@@ -632,19 +616,18 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  auto options = std::make_shared<VPackBuilder>();
-
+  VPackBuilder options;
   if (args.Length() > 2) {
     // handle options
     if (!args[2]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
-    TRI_V8ToVPack(isolate, *options, args[2], false);
+    TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
   // bind parameters will be freed by the query later
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true),
-                             aql::QueryString(queryString), bindVars, options);
+                             aql::QueryString(queryString), bindVars, options.slice());
   auto queryResult = query.explain();
 
   if (queryResult.result.fail()) {
@@ -705,48 +688,33 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 2) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
 
   if (!args[0]->IsObject()) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
 
-  auto queryBuilder = std::make_shared<VPackBuilder>();
-  try {
-    TRI_V8ToVPack(isolate, *queryBuilder, args[0], false);
-  } catch (arangodb::basics::Exception const& ex) {
-    events::QueryDocument(vocbase.name(), VPackSlice(), ex.code());
-    throw;
-  }
+  VPackBuilder queryBuilder;
+  TRI_V8ToVPack(isolate, queryBuilder, args[0], false);
 
-  auto options = std::make_shared<VPackBuilder>();
-
+  VPackBuilder options;
   if (args.Length() > 1) {
-    // we have options! yikes!
     if (!args[1]->IsUndefined() && !args[1]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    try {
-      TRI_V8ToVPack(isolate, *options, args[1], false);
-    } catch (arangodb::basics::Exception const& ex) {
-      events::QueryDocument(vocbase.name(), queryBuilder->slice(), ex.code());
-      throw;
-    }
+    TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
   arangodb::aql::ClusterQuery query(transaction::V8Context::Create(vocbase, true),
-                                    aql::QueryOptions(options->slice()));
+                                    aql::QueryOptions(options.slice()));
   
-  VPackSlice collections = queryBuilder->slice().get("collections");
-  VPackSlice variables = queryBuilder->slice().get("variables");
+  VPackSlice collections = queryBuilder.slice().get("collections");
+  VPackSlice variables = queryBuilder.slice().get("variables");
   
   QueryAnalyzerRevisions analyzersRevision;
-  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder->slice());
+  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
   if (ADB_UNLIKELY(revisionRes.fail())) {
     TRI_V8_THROW_EXCEPTION(revisionRes);
   }
@@ -755,7 +723,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder snippetBuilder; // simon: hack to make format conform
   snippetBuilder.openObject();
   snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder->slice().get("nodes"));
+  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
   snippetBuilder.close();
   snippetBuilder.close();
  
@@ -769,7 +737,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResult queryResult = query.executeSync();
 
   if (queryResult.result.fail()) {
-    events::QueryDocument(vocbase.name(), queryBuilder->slice(), queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -809,8 +776,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
               TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached)).FromMaybe(false);
 
-  events::QueryDocument(vocbase.name(), queryBuilder->slice(), TRI_ERROR_NO_ERROR);
-
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -826,14 +791,12 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() < 1 || args.Length() > 3) {
-    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_EXCEPTION_USAGE(
         "AQL_EXECUTE(<queryString>, <bindVars>, <options>)");
   }
 
   // get the query string
   if (!args[0]->IsString()) {
-    events::QueryDocument(vocbase.name(), "", "", TRI_ERROR_BAD_PARAMETER);
     TRI_V8_THROW_TYPE_ERROR("expecting string for <queryString>");
   }
 
@@ -844,43 +807,27 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (args.Length() > 1) {
     if (!args[1]->IsUndefined() && !args[1]->IsNull() && !args[1]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryString, "", TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindVars>");
     }
     if (args[1]->IsObject()) {
-      bindVars.reset(new VPackBuilder);
-      try {
-        TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
-      } catch (arangodb::basics::Exception const& ex) {
-        events::QueryDocument(vocbase.name(), queryString, "", ex.code());
-        throw;
-      }
+      bindVars = std::make_shared<VPackBuilder>();
+      TRI_V8ToVPack(isolate, *(bindVars.get()), args[1], false);
     }
   }
 
   // options
-  auto options = std::make_shared<VPackBuilder>();
+  VPackBuilder options;
   if (args.Length() > 2) {
-    // we have options! yikes!
     if (!args[2]->IsObject()) {
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""),
-                            TRI_ERROR_BAD_PARAMETER);
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    try {
-      TRI_V8ToVPack(isolate, *options, args[2], false);
-    } catch (arangodb::basics::Exception const& ex) {
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""), ex.code());
-      throw;
-    }
+    TRI_V8ToVPack(isolate, options, args[2], false);
   }
 
   // bind parameters will be freed by the query later
   arangodb::aql::Query query(transaction::V8Context::Create(vocbase, true), aql::QueryString(queryString),
-                             bindVars, options);
+                             bindVars, options.slice());
 
   arangodb::aql::QueryResultV8 queryResult = query.executeV8(isolate);
 
@@ -888,15 +835,7 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED)) {
       TRI_GET_GLOBALS();
       v8g->_canceled = true;
-      events::QueryDocument(vocbase.name(), queryString,
-                            (bindVars ? bindVars->slice().toJson() : ""),
-                            TRI_ERROR_REQUEST_CANCELED);
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-
-    events::QueryDocument(vocbase.name(), queryString,
-                          (bindVars ? bindVars->slice().toJson() : ""),
-                          queryResult.result.errorNumber());
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.result.errorNumber(), queryResult.result.errorMessage());
   }
 
@@ -932,9 +871,6 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   result->Set(context,
               TRI_V8_ASCII_STRING(isolate, "cached"),
               v8::Boolean::New(isolate, queryResult.cached)).FromMaybe(false);
-
-  events::QueryDocument(vocbase.name(), queryString,
-                        (bindVars ? bindVars->slice().toJson() : ""), TRI_ERROR_NO_ERROR);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1058,55 +994,102 @@ static void JS_QueriesPropertiesAql(v8::FunctionCallbackInfo<v8::Value> const& a
 static void JS_QueriesCurrentAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT(params)");
+  }
+  
   auto& vocbase = GetContextVocBase(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
   }
 
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
   VPackBuilder b;
-  b.openArray();
-  for (auto const& q : queryList->listCurrent()) {
-    q.toVelocyPack(b);
+  Result res = methods::Queries::listCurrent(vocbase, b, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
-  b.close();
-              
   TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
   
   TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of slow running queries or clears the list
+/// @brief returns the list of slow running queries
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW(params)");
+  }
+  
   auto& vocbase = GetContextVocBase(isolate);
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
-
-  if (args.Length() == 1) {
-    queryList->clearSlow();
-    TRI_V8_RETURN_TRUE();
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
   }
 
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
-  }
-
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
   VPackBuilder b;
-  b.openArray();
-  for (auto const& q : queryList->listSlow()) {
-    q.toVelocyPack(b);
+  Result res = methods::Queries::listSlow(vocbase, b, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
-  b.close();
-              
   TRI_V8_RETURN(TRI_VPackToV8(isolate, b.slice()));
+  
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clears the list of slow queries
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesClearSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CLEAR_SLOW(params)");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+    } else {
+      allDatabases = TRI_ObjectToBoolean(isolate, args[0]);
+    }
+  }
+
+  bool const fanout = ServerState::instance()->isCoordinator();
+  
+  Result res = methods::Queries::clearSlow(vocbase, allDatabases, fanout);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  TRI_V8_RETURN_TRUE();
   
   TRI_V8_TRY_CATCH_END
 }
@@ -1118,23 +1101,37 @@ static void JS_QueriesSlowAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_QueriesKillAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  auto& vocbase = GetContextVocBase(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<id>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<params>)");
+  }
+  
+  auto& vocbase = GetContextVocBase(isolate);
+  uint64_t id = 0;
+  bool allDatabases = false;
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      auto context = TRI_IGETC;
+
+      v8::Handle<v8::Object> obj = args[0]->ToObject(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
+      allDatabases = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+      id = TRI_GetOptionalBooleanProperty(isolate, obj, "all", false);
+      if (TRI_HasProperty(context, isolate, obj, "id")) {
+        id = TRI_ObjectToUInt64(
+            isolate, obj->Get(context, TRI_V8_ASCII_STRING(isolate, "id")).FromMaybe(v8::Local<v8::Value>()), true);
+      }
+    } else {
+      id = TRI_ObjectToUInt64(isolate, args[0], true);
+    }
   }
 
-  auto id = TRI_ObjectToUInt64(isolate, args[0], true);
-  auto* queryList = vocbase.queryList();
-  TRI_ASSERT(queryList != nullptr);
+  Result res = methods::Queries::kill(vocbase, id, allDatabases);
 
-  Result res = queryList->kill(id);
-
-  if (res.ok()) {
-    TRI_V8_RETURN_TRUE();
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
+  TRI_V8_RETURN_TRUE();
 
-  TRI_V8_THROW_EXCEPTION(res);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1401,7 +1398,7 @@ static void JS_EngineStats(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   StorageEngine& engine = v8g->_server.getFeature<EngineSelectorFeature>().engine();
   VPackBuilder builder;
-  engine.getStatistics(builder);
+  engine.getStatistics(builder, true);
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
@@ -1624,9 +1621,11 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   VPackBuilder options;
-
   if (args.Length() >= 2 && args[1]->IsObject()) {
     TRI_V8ToVPack(isolate, options, args[1], false);
+  } else {
+    options.openObject();
+    options.close();
   }
 
   VPackBuilder users;
@@ -1759,11 +1758,13 @@ static void JS_TrustedProxies(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   auto context = TRI_IGETC;
 
-  if (GeneralServerFeature::hasProxyCheck()) {
+  TRI_GET_GLOBALS();
+  auto& gs = v8g->_server.getFeature<GeneralServerFeature>();
+  if (gs.proxyCheck()) {
     v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
     uint32_t i = 0;
-    for (auto const& proxyDef : GeneralServerFeature::getTrustedProxies()) {
+    for (auto const& proxyDef : gs.trustedProxies()) {
       result->Set(context, i++, TRI_V8_STD_STRING(isolate, proxyDef)).FromMaybe(false);
     }
     TRI_V8_RETURN(result);
@@ -1909,6 +1910,31 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_SystemStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  auto& vocbase = GetContextVocBase(isolate);
+
+  if (args.Length() != 1 || !args[0]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("SYSTEM_STATISTICS(start)");
+  }
+                                           
+  double start = TRI_ObjectToDouble(isolate, args[0]);
+
+  VPackBuilder builder;
+  Result res = vocbase.server().getFeature<StatisticsFeature>().getClusterSystemStatistics(vocbase, start, builder);
+
+  if (res.fail()) {
+    TRI_V8_THROW_EXCEPTION(res);
+  }
+  
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
+
+  TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this is for single server mode to dump an agency
 ////////////////////////////////////////////////////////////////////////////////
@@ -1916,6 +1942,7 @@ static void JS_CurrentWalFiles(v8::FunctionCallbackInfo<v8::Value> const& args) 
 static void JS_AgencyDump(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+
   auto context = TRI_IGETC;
   auto& vocbase = GetContextVocBase(isolate);
 
@@ -2091,6 +2118,9 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_SLOW"),
                                JS_QueriesSlowAql, true);
   TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_CLEAR_SLOW"),
+                               JS_QueriesClearSlowAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "AQL_QUERIES_KILL"),
                                JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(
@@ -2108,19 +2138,19 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "COMPARE_STRING"),
-                               JS_CompareString);
+                               JS_CompareString, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "NORMALIZE_STRING"),
-                               JS_NormalizeString);
+                               JS_NormalizeString, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "TIMEZONES"), JS_GetIcuTimezones);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "LOCALES"), JS_GetIcuLocales);
+                               TRI_V8_ASCII_STRING(isolate, "TIMEZONES"), JS_GetIcuTimezones, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "LOCALES"), JS_GetIcuLocales, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "FORMAT_DATETIME"),
-                               JS_FormatDatetime);
+                               JS_FormatDatetime, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "PARSE_DATETIME"),
-                               JS_ParseDatetime);
+                               JS_ParseDatetime, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "ENDPOINTS"),
@@ -2131,11 +2161,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRANSACTIONS"),
                                JS_Transactions, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate,
-                                                   "ENABLE_NATIVE_BACKTRACES"),
-                               JS_EnableNativeBacktraces, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate,
@@ -2162,8 +2187,13 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "AGENCY_DUMP"),
                                JS_AgencyDump, true);
   
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYSTEM_STATISTICS"),
+                               JS_SystemStatistics, true);
+  
 #ifdef USE_ENTERPRISE
-  if (V8DealerFeature::DEALER && V8DealerFeature::DEALER->allowAdminExecute()) {
+  if (v8g->_server.hasFeature<V8DealerFeature>() &&
+      v8g->_server.getFeature<V8DealerFeature>().allowAdminExecute()) {
     TRI_AddGlobalFunctionVocbase(isolate,
                                  TRI_V8_ASCII_STRING(isolate, "ENCRYPTION_KEY_RELOAD"),
                                  JS_EncryptionKeyReload, true);
@@ -2202,7 +2232,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
       ->DefineOwnProperty(TRI_IGETC,
                           TRI_V8_ASCII_STRING(isolate, "ENABLE_STATISTICS"),
                           v8::Boolean::New(isolate,
-                                           vocbase.server().getFeature<StatisticsFeature>().isEnabled()), v8::ReadOnly)
+                                           vocbase.server().getFeature<StatisticsFeature>().isEnabled()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result  
 
   // replication factors
@@ -2251,7 +2281,7 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                           vocbase.server().getFeature<DatabaseFeature>().useOldSystemCollections()), v8::PropertyAttribute(v8::ReadOnly | v8::DontEnum))
       .FromMaybe(false);  // ignore result
 
-  // a thread-global variable that will is supposed to contain the AQL module
+  // a thread-global variable that will contain the AQL module.
   // do not remove this, otherwise AQL queries will break
   context->Global()
       ->DefineOwnProperty(TRI_IGETC, TRI_V8_ASCII_STRING(isolate, "_AQL"),

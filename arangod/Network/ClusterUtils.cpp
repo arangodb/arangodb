@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -38,7 +38,7 @@ namespace network {
 OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter) {
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusAccepted:
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
@@ -69,7 +69,7 @@ OperationResult clusterResultInsert(arangodb::fuerte::StatusCode code,
 OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
                                       std::shared_ptr<VPackBuffer<uint8_t>> body,
                                       OperationOptions options,
-                                      std::unordered_map<int, size_t> const& errorCounter) {
+                                      std::unordered_map<ErrorCode, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusOK:
       return OperationResult(Result(), std::move(body), std::move(options), errorCounter);
@@ -90,7 +90,7 @@ OperationResult clusterResultDocument(arangodb::fuerte::StatusCode code,
 OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter) {
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusAccepted:
     case fuerte::StatusCreated: {
@@ -117,7 +117,7 @@ OperationResult clusterResultModify(arangodb::fuerte::StatusCode code,
 OperationResult clusterResultDelete(arangodb::fuerte::StatusCode code,
                                     std::shared_ptr<VPackBuffer<uint8_t>> body,
                                     OperationOptions options,
-                                    std::unordered_map<int, size_t> const& errorCounter) {
+                                    std::unordered_map<ErrorCode, size_t> const& errorCounter) {
   switch (code) {
     case fuerte::StatusOK:
     case fuerte::StatusAccepted:

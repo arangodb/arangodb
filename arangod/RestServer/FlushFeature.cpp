@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -155,8 +155,8 @@ void FlushFeature::start() {
     WRITE_LOCKER(lock, _threadLock);
     _flushThread.reset(new FlushThread(*this, _flushInterval));
   }
-  DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
-  dbFeature->registerPostRecoveryCallback([this]() -> Result {
+  DatabaseFeature& dbFeature = server().getFeature<DatabaseFeature>();
+  dbFeature.registerPostRecoveryCallback([this]() -> Result {
     READ_LOCKER(lock, _threadLock);
     if (!this->_flushThread->start()) {
       LOG_TOPIC("bdc3c", FATAL, Logger::FLUSH) << "unable to start FlushThread";

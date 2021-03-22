@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,6 +49,33 @@ struct array_deserializer {
 
 namespace executor {
 
+template<typename T>
+struct inserter {
+
+  template<typename V>
+  void insert(V&& v) {
+    t.emplace_back(std::forward<V>(v));
+  }
+
+  T receiver() { return std::move(t); }
+
+  T t;
+};
+
+template<typename D>
+struct inserter<std::unordered_set<D>> {
+  using T = std::unordered_set<D>;
+
+  template<typename V>
+  void insert(V&& v) {
+    t.emplace(std::forward<V>(v));
+  }
+
+  T receiver() { return std::move(t); }
+
+  T t;
+};
+
 template <typename D, template <typename> typename C, typename F, typename H>
 struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
   using proxy_type = typename array_deserializer<D, C, F>::constructed_type;
@@ -57,19 +84,21 @@ struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
 
   template <typename ctx>
   static auto unpack(slice_type slice, typename H::state_type, ctx&& c) -> result_type {
-    if (!slice.isArray()) {
-      return result_type{deserialize_error{"array expected"}};
+    if constexpr (!hints::hint_is_array<H>) {
+      if (!slice.isArray()) {
+        return result_type{deserialize_error{"array expected"}};
+      }
     }
 
     using namespace std::string_literals;
     std::size_t index = 0;
-    proxy_type result;
+    inserter<proxy_type> result;
 
     for (auto const& member : ::arangodb::velocypack::deserializer::array_iterator(slice)) {
       auto member_result =
           deserialize<D, hints::hint_list_empty, ctx>(member, {}, std::forward<ctx>(c));
       if (member_result) {
-        result.emplace_back(std::move(member_result).get());
+        result.insert(std::move(member_result).get());
       } else {
         return std::move(member_result)
             .error()
@@ -79,7 +108,7 @@ struct deserialize_plan_executor<array_deserializer<D, C, F>, H> {
       index++;
     }
 
-    return result_type{std::move(result)};
+    return result_type{std::move(result.receiver())};
   }
 };
 

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,7 @@ class CollectNode : public ExecutionNode {
               Variable const* expressionVariable, Variable const* outVariable,
               std::vector<Variable const*> const& keepVariables,
               std::unordered_map<VariableId, std::string const> const& variableMap,
-              bool count, bool isDistinctCommand);
+              bool isDistinctCommand);
 
   CollectNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
               Variable const* expressionVariable, Variable const* outVariable,
@@ -65,12 +65,12 @@ class CollectNode : public ExecutionNode {
               std::unordered_map<VariableId, std::string const> const& variableMap,
               std::vector<GroupVarInfo> const& collectVariables,
               std::vector<AggregateVarInfo> const& aggregateVariables,
-              bool count, bool isDistinctCommand);
+              bool isDistinctCommand, bool count);
 
   ~CollectNode() override;
 
   /// @brief return the type of the node
-  NodeType getType() const final;
+  NodeType getType() const override final;
 
   /// @brief whether or not the node requires an additional post SORT
   bool isDistinctCommand() const;
@@ -92,7 +92,7 @@ class CollectNode : public ExecutionNode {
 
   /// @brief export to VelocyPack
   void toVelocyPackHelper(arangodb::velocypack::Builder&, unsigned flags,
-                          std::unordered_set<ExecutionNode const*>& seen) const final;
+                          std::unordered_set<ExecutionNode const*>& seen) const override final;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
@@ -123,17 +123,10 @@ class CollectNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const final;
+                       bool withProperties) const override final;
 
   /// @brief estimateCost
-  CostEstimate estimateCost() const final;
-
-  /// @brief whether or not the count flag is set
-  bool count() const;
-  /// @brief set the count option
-  void count(bool value);
-
-  bool hasOutVariableButNoCount() const;
+  CostEstimate estimateCost() const override final;
 
   /// @brief whether or not the node has an outVariable (i.e. INTO ...)
   bool hasOutVariable() const;
@@ -187,10 +180,10 @@ class CollectNode : public ExecutionNode {
   std::vector<AggregateVarInfo>& aggregateVariables();
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const final;
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const final;
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   static void calculateAccessibleUserVariables(ExecutionNode const& node,
                                                std::vector<Variable const*>& userVariables);
@@ -216,9 +209,6 @@ class CollectNode : public ExecutionNode {
 
   /// @brief map of all variable ids and names (needed to construct group data)
   std::unordered_map<VariableId, std::string const> _variableMap;
-
-  /// @brief COUNTing node?
-  bool _count;
 
   /// @brief whether or not the node requires an additional post-SORT
   bool const _isDistinctCommand;

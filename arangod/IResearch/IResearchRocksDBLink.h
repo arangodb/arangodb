@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -41,7 +41,7 @@ namespace iresearch {
 
 class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
  public:
-  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection);
+  IResearchRocksDBLink(IndexId iid, LogicalCollection& collection, uint64_t objectId);
 
   void afterTruncate(TRI_voc_tick_t tick,
                      transaction::Methods* trx) override {
@@ -61,8 +61,8 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   Result insert(transaction::Methods& trx,
                 RocksDBMethods* /*methods*/,
                 LocalDocumentId const& documentId,
-                VPackSlice const doc,
-                OperationOptions& /*options*/) override {
+                VPackSlice doc,
+                OperationOptions const& /*options*/) override {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
@@ -86,7 +86,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   Result remove(transaction::Methods& trx,
                 RocksDBMethods*,
                 LocalDocumentId const& documentId,
-                VPackSlice const doc) override {
+                VPackSlice doc) override {
     return IResearchLink::remove(trx, documentId, doc);
   }
 

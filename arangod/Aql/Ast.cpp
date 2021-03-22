@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,6 +29,7 @@
 #include "Ast.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Arithmetic.h"
@@ -56,12 +57,14 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+namespace StringUtils = arangodb::basics::StringUtils;
 
 namespace {
 
 auto doNothingVisitor = [](AstNode const*) {};
-   
-[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query, int code, char const* details) {
+
+[[noreturn]] void throwFormattedError(arangodb::aql::QueryContext& query,
+                                      ErrorCode code, char const* details) {
   std::string msg = arangodb::aql::QueryWarnings::buildFormattedString(code, details);
   query.warnings().registerError(code, msg.c_str());
 }
@@ -206,7 +209,7 @@ Ast::SpecialNodes::SpecialNodes()
 /// @brief create the AST
 Ast::Ast(QueryContext& query, AstPropertiesFlagsType flags /* = AstPropertyFlag::AST_FLAG_DEFAULT */)
     : _query(query),
-      _resources(&query.resourceMonitor()),
+      _resources(query.resourceMonitor()),
       _root(nullptr),
       _functionsMayAccessDocuments(false),
       _containsTraversal(false),
@@ -598,24 +601,15 @@ AstNode* Ast::createNodeCollect(AstNode const* groups, AstNode const* aggregates
   return node;
 }
 
-/// @brief create an AST collect node, COUNT INTO
+/// @brief create an AST collect node with a single COUNT aggregator
 AstNode* Ast::createNodeCollectCount(AstNode const* list, char const* name,
                                      size_t nameLength, AstNode const* options) {
-  AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
-  node->reserve(2);
+  auto count = createNodeAssign(name, nameLength,
+                                createNodeAggregateFunctionCall("COUNT", createNodeArray()));
+  auto aggregators = createNodeArray(1);
+  aggregators->addMember(count);
 
-  if (options == nullptr) {
-    // no options given. now use default options
-    options = &_specialNodes.NopNode;
-  }
-
-  node->addMember(options);
-  node->addMember(list);
-
-  AstNode* variable = createNodeVariable(name, nameLength, true);
-  node->addMember(variable);
-
-  return node;
+  return createNodeCollect(list, aggregators, nullptr, nullptr, nullptr, options);
 }
 
 /// @brief create an AST sort node
@@ -1130,6 +1124,14 @@ AstNode* Ast::createNodeValueInt(int64_t value) {
 
 /// @brief create an AST double value node
 AstNode* Ast::createNodeValueDouble(double value) {
+  if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
+    return createNodeValueNull();
+  }
+
+  if (value == -0.0) {
+    // unify -0.0 and +0.0 
+    value = 0.0;
+  }
   AstNode* node = createNode(NODE_TYPE_VALUE);
   node->setValueType(VALUE_TYPE_DOUBLE);
   node->setDoubleValue(value);
@@ -1548,9 +1550,50 @@ AstNode const* Ast::createNodeOptions(AstNode const* options) const {
   return &_specialNodes.NopNode;
 }
 
+/// @brief create an AST function call node for aggregate functions
+AstNode* Ast::createNodeAggregateFunctionCall(char const* functionName, AstNode const* arguments) {
+  if (functionName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  auto normalized = normalizeFunctionName(functionName, strlen(functionName));
+
+  if (!Aggregator::isValid(normalized.first)) {
+    // aggregate expression must be a call to MIN|MAX|LENGTH...
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_AGGREGATE_EXPRESSION);
+  }
+
+  TRI_ASSERT(arguments != nullptr);
+  TRI_ASSERT(arguments->type == NODE_TYPE_ARRAY);
+
+  if (Aggregator::requiresInput(normalized.first)) {
+    // validate number of function call arguments
+    size_t numExpectedArguments = 1; // at the moment all aggregators take only a single argument
+    if (arguments->numMembers() != numExpectedArguments) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,
+                                    functionName, 1, 1);
+    }
+  }
+
+  // TODO - we should consider to introduce a NODE_TYPE_AGGREATE_FCALL type
+  AstNode* node = createNode(NODE_TYPE_FCALL);
+
+  // Register a pointer to the function.
+  // However, this function is never called, but the function name is later translated to an aggregator.
+  // This also implies that ATM we can only support aggregator functions that also have a matching AQL function.
+  auto& server = query().vocbase().server();
+  auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
+  TRI_ASSERT(func != nullptr);
+  node->setData(static_cast<void const*>(func));
+
+  node->addMember(arguments);
+
+  return node;
+}
+
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
-                                     AstNode const* arguments) {
+                                     AstNode const* arguments, bool allowInternalFunctions) {
   if (functionName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1561,8 +1604,17 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
 
   if (normalized.second) {
     // built-in function
-    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
+    auto& server = query().vocbase().server();
+    auto func = server.getFeature<AqlFunctionFeature>().byName(normalized.first);
     TRI_ASSERT(func != nullptr);
+    
+    if (!allowInternalFunctions && func->hasFlag(Function::Flags::Internal)) {
+      // a function flagged as internal, but internal functions cannot be used in this context.
+      // throw an error pretending that the function does not exist
+      std::string msg = basics::Exception::FillExceptionString(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, normalized.first.c_str());
+      msg.append(" - this is an internal function and not supposed to be used directly");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN, std::move(msg));
+    }
    
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
@@ -1584,7 +1636,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
                                     static_cast<int>(numExpectedArguments.first),
                                     static_cast<int>(numExpectedArguments.second));
     }
-
+    
     if (func->hasFlag(Function::Flags::CanReadDocuments)) {
       // this also qualifies a query for potentially reading documents via function calls!
       _functionsMayAccessDocuments = true;
@@ -1602,6 +1654,11 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName, size_t length,
   node->addMember(arguments);
 
   return node;
+}
+
+AstNode* Ast::createNodeFunctionCall(char const* functionName, AstNode const* arguments,
+                                     bool allowInternalFunctions) {
+  return createNodeFunctionCall(functionName, strlen(functionName), arguments, allowInternalFunctions);
 }
 
 /// @brief create an AST range node
@@ -1635,8 +1692,6 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
 /// @brief injects bind parameters into the AST
 void Ast::injectBindParameters(BindParameters& parameters,
                                arangodb::CollectionNameResolver const& resolver) {
-  auto& p = parameters.get();
-
   if (_containsBindParameters || _containsTraversal) {
     // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
@@ -1649,17 +1704,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
 
-        auto const& it = p.find(param);
-
-        if (it == p.end()) {
+        VPackSlice value = parameters.markUsed(param);
+        if (value.isNone()) {
           // query uses a bind parameter that was not defined by the user
           ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING, param.c_str());
         }
-
-        // mark the bind parameter as being used
-        (*it).second.second = true;
-
-        auto const& value = (*it).second.first;
 
         if (node->type == NODE_TYPE_PARAMETER) {
           auto const constantParameter = node->isConstant();
@@ -1834,12 +1883,12 @@ void Ast::injectBindParameters(BindParameters& parameters,
     }
   }
 
-  for (auto it = p.begin(); it != p.end(); ++it) {
-    if (!(*it).second.second) {
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
-                                    (*it).first.c_str());
+  // visit all bind parameters to ensure that they are all marked as used
+  parameters.visit([](std::string const& key, VPackSlice /*value*/, bool used) {
+    if (!used) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
     }
-  }
+  });
 }
 
 /// @brief replace an attribute access with just the variable
@@ -2951,30 +3000,33 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   if (node->type == NODE_TYPE_OPERATOR_UNARY_PLUS) {
     // + number => number
     return const_cast<AstNode*>(converted);
-  } else {
-    // - number
-    if (converted->value.type == VALUE_TYPE_INT) {
-      // int64
-      return createNodeValueInt(-converted->getIntValue());
-    } else {
-      // double
-      double const value = -converted->getDoubleValue();
-
-      if (value != value ||  // intentional
-          value == HUGE_VAL || value == -HUGE_VAL) {
-        // IEEE754 NaN values have an interesting property that we can
-        // exploit...
-        // if the architecture does not use IEEE754 values then this shouldn't
-        // do
-        // any harm either
-        return const_cast<AstNode*>(&_specialNodes.ZeroNode);
-      }
-
-      return createNodeValueDouble(value);
-    }
+  }
+  
+  // - number
+  if (converted->value.type == VALUE_TYPE_INT) {
+    // int64
+    return createNodeValueInt(-converted->getIntValue());
   }
 
-  TRI_ASSERT(false);
+  // double
+  double value = -converted->getDoubleValue();
+
+  if (value != value ||  // intentional
+      value == HUGE_VAL || value == -HUGE_VAL) {
+    // IEEE754 NaN values have an interesting property that we can
+    // exploit...
+    // if the architecture does not use IEEE754 values then this shouldn't
+    // do
+    // any harm either
+    return const_cast<AstNode*>(&_specialNodes.ZeroNode);
+  }
+
+  if (value == -0.0) {
+    // unify +0.0 and -0.0
+    value = 0.0;
+  }
+
+  return createNodeValueDouble(value);
 }
 
 /// @brief optimizes the unary operator NOT
@@ -3404,7 +3456,7 @@ AstNode* Ast::optimizeFunctionCall(transaction::Methods& trx,
         auto countArgs = createNodeArray();
         countArgs->addMember(createNodeValueString(arg->getStringValue(),
                                                    arg->getStringLength()));
-        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs);
+        return createNodeFunctionCall(TRI_CHAR_LENGTH_PAIR("COLLECTION_COUNT"), countArgs, true);
       }
     }
   } else if (func->name == "IS_NULL") {
@@ -3525,7 +3577,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
   }
 
   // constant propagation
-  if (variable->constValue() == nullptr) {
+  if (variable->getConstAstNode() == nullptr) {
     return node;
   }
 
@@ -3536,7 +3588,7 @@ AstNode* Ast::optimizeReference(AstNode* node) {
     return node;
   }
 
-  return static_cast<AstNode*>(variable->constValue());
+  return variable->getConstAstNode();
 }
 
 /// @brief optimizes indexed access, e.g. a[0] or a['foo']
@@ -3589,7 +3641,7 @@ AstNode* Ast::optimizeLet(AstNode* node) {
     // e.g.
     // LET a = 1 LET b = a + 1, c = b + a can be optimized to LET a = 1 LET b =
     // 2 LET c = 4
-    v->constValue(static_cast<void*>(expression));
+    v->setConstAstNode(expression);
   }
 
   return node;
@@ -3638,10 +3690,10 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
-        std::string("collection or ") + TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
-            std::string(" as operand to FOR loop; you specified type '") +
-            expression->getValueTypeString() + std::string("' with content '") +
-            expression->toString() + std::string("'"));
+        StringUtils::concatT("collection or ", TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED),
+                             " as operand to FOR loop; you specified type '",
+                             expression->getValueTypeString(),
+                             "' with content '", expression->toString(), "'"));
   }
 
   // no real optimizations will be done here
@@ -4134,8 +4186,4 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* node,
   std::transform(attrs.begin(), attrs.end(), std::back_inserter(vec),
                  [](basics::AttributeName const& a) { return a.name; });
   return createNodeAttributeAccess(node, vec);
-}
-
-AstNode* Ast::createNodeFunctionCall(char const* functionName, AstNode const* arguments) {
-  return createNodeFunctionCall(functionName, strlen(functionName), arguments);
 }

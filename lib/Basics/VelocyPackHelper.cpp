@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -593,9 +593,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     }
   }
 
-  int res = TRI_CLOSE(fd);
-
-  if (res < 0) {
+  if (int res = TRI_CLOSE(fd); res < 0) {
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     LOG_TOPIC("3f835", WARN, arangodb::Logger::FIXME)
         << "cannot close saved file '" << tmp << "': " << TRI_LAST_ERROR_STR;
@@ -603,9 +601,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-  res = TRI_RenameFile(tmp.c_str(), filename.c_str());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (auto res = TRI_RenameFile(tmp.c_str(), filename.c_str()); res != TRI_ERROR_NO_ERROR) {
     TRI_set_errno(res);
     LOG_TOPIC("7f5c9", WARN, arangodb::Logger::FIXME)
         << "cannot rename saved file '" << tmp << "' to '" << filename
@@ -630,7 +626,7 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
         LOG_TOPIC("6b8f6", WARN, arangodb::Logger::FIXME)
             << "cannot sync directory '" << filename << "': " << TRI_LAST_ERROR_STR;
       }
-      res = TRI_CLOSE(fd);
+      int res = TRI_CLOSE(fd);
       if (res < 0) {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("7ceee", WARN, arangodb::Logger::FIXME)
@@ -778,73 +774,6 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       TRI_ASSERT(false);
       return 0;
   }
-}
-
-double VelocyPackHelper::toDouble(VPackSlice const& slice, bool& failed) {
-  TRI_ASSERT(!slice.isNone());
-
-  failed = false;
-  switch (slice.type()) {
-    case VPackValueType::None:
-    case VPackValueType::Null:
-      return 0.0;
-    case VPackValueType::Bool:
-      return (slice.getBoolean() ? 1.0 : 0.0);
-    case VPackValueType::Double:
-    case VPackValueType::Int:
-    case VPackValueType::UInt:
-    case VPackValueType::SmallInt:
-      return slice.getNumericValue<double>();
-    case VPackValueType::String: {
-      std::string tmp(slice.copyString());
-      try {
-        // try converting string to number
-        return std::stod(tmp);
-      } catch (...) {
-        if (tmp.empty()) {
-          return 0.0;
-        }
-        // conversion failed
-      }
-      break;
-    }
-    case VPackValueType::Array: {
-      VPackValueLength const n = slice.length();
-
-      if (n == 0) {
-        return 0.0;
-      } else if (n == 1) {
-        return VelocyPackHelper::toDouble(slice.at(0).resolveExternal(), failed);
-      }
-      break;
-    }
-    case VPackValueType::External: {
-      return VelocyPackHelper::toDouble(slice.resolveExternal(), failed);
-    }
-    case VPackValueType::Illegal:
-    case VPackValueType::Object:
-    case VPackValueType::UTCDate:
-    case VPackValueType::MinKey:
-    case VPackValueType::MaxKey:
-    case VPackValueType::Binary:
-    case VPackValueType::BCD:
-    case VPackValueType::Custom:
-    case VPackValueType::Tagged:
-      break;
-  }
-
-  failed = true;
-  return 0.0;
-}
-
-// modify a VPack double value in place
-void VelocyPackHelper::patchDouble(VPackSlice slice, double value) {
-  TRI_ASSERT(slice.isDouble());
-  // get pointer to the start of the value
-  uint8_t* p = const_cast<uint8_t*>(slice.begin());
-  // skip one byte for the header and overwrite
-  // some architectures do not support unaligned writes, so copy bytewise
-  memcpy(p + 1, &value, sizeof(double));
 }
 
 bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals, bool checkCustom) {

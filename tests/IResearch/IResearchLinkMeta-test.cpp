@@ -164,7 +164,6 @@ class IResearchLinkMetaTest
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
-
 TEST_F(IResearchLinkMetaTest, test_defaults) {
   arangodb::iresearch::IResearchLinkMeta meta;
 
@@ -215,12 +214,12 @@ TEST_F(IResearchLinkMetaTest, test_inheritDefaults) {
   EXPECT_EQ(1U, meta._fields.size());
 
   for (auto& field : meta._fields) {
-    EXPECT_EQ(1U, expectedFields.erase(field.key()));
+    EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
     EXPECT_EQ(1U, field.value()->_fields.size());
 
     for (auto& fieldOverride : field.value()->_fields) {
       auto& actual = *(fieldOverride.value());
-      EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.key()));
+      EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       if ("xyz" == fieldOverride.key()) {
         EXPECT_TRUE(actual._fields.empty());
@@ -314,7 +313,7 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     \"includeAllFields\": true, \
     \"trackListPositions\": true, \
     \"storeValues\": \"value\", \
-    \"analyzers\": [ \"empty\", \"identity\" ] \
+    \"analyzers\": [ \"empty\", \"identity\" ]\
   }");
 
   // without active vocbase
@@ -337,12 +336,12 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_EQ(3U, meta._fields.size());
 
     for (auto& field : meta._fields) {
-      EXPECT_EQ(1U, expectedFields.erase(field.key()));
+      EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
       for (auto& fieldOverride : field.value()->_fields) {
         auto& actual = *(fieldOverride.value());
 
-        EXPECT_EQ(1U, expectedOverrides.erase(fieldOverride.key()));
+        EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
 
         if ("default" == fieldOverride.key()) {
           EXPECT_TRUE(actual._fields.empty());
@@ -415,6 +414,149 @@ TEST_F(IResearchLinkMetaTest, test_readCustomizedValues) {
     EXPECT_TRUE(expectedFields.empty());
     EXPECT_TRUE(meta._includeAllFields);
     EXPECT_TRUE(meta._trackListPositions);
+    EXPECT_EQ(arangodb::iresearch::ValueStorage::VALUE, meta._storeValues);
+    auto itr = meta._analyzers.begin();
+    EXPECT_TRUE(*itr);
+    EXPECT_EQ("testVocbase::empty", itr->_pool->name());
+    EXPECT_EQ("empty", itr->_shortName);
+    EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+    EXPECT_FALSE(!itr->_pool->get());
+    ++itr;
+    EXPECT_TRUE(*itr);
+    EXPECT_EQ("identity", itr->_pool->name());
+    EXPECT_EQ("identity", itr->_shortName);
+    EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+                 itr->_pool->features()));
+    EXPECT_FALSE(!itr->_pool->get());
+  }
+}
+
+TEST_F(IResearchLinkMetaTest, test_readCustomizedValuesCluster) {
+  auto oldRole = arangodb::ServerState::instance()->getRole();
+  auto restoreRole  = irs::make_finally(
+    [oldRole](){
+      arangodb::ServerState::instance()->setRole(oldRole);});
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
+  auto json = VPackParser::fromJson(
+      "{ \
+    \"fields\": { \
+      \"a\": {}, \
+      \"b\": {}, \
+      \"c\": { \
+        \"fields\": { \
+          \"default\": { \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"storeValues\": \"none\", \"analyzers\": [ \"identity\" ] }, \
+          \"all\": { \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"storeValues\": \"value\", \"analyzers\": [ \"empty\" ] }, \
+          \"some\": { \"trackListPositions\": true, \"storeValues\": \"id\" }, \
+          \"none\": {} \
+        } \
+      } \
+    }, \
+    \"includeAllFields\": true, \
+    \"trackListPositions\": true, \
+    \"storeValues\": \"value\", \
+    \"analyzers\": [ \"empty\", \"identity\" ],\
+    \"collectionName\":\"testCollection\"\
+  }");
+
+  // without active vocbase
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
+    EXPECT_FALSE(meta.init(server.server(), json->slice(), false, tmpString));
+  }
+
+  // with active vocbase
+  {
+    std::unordered_set<std::string> expectedFields = {"a", "b", "c"};
+    std::unordered_set<std::string> expectedOverrides = {"default", "all",
+                                                         "some", "none"};
+    std::unordered_set<std::string> expectedAnalyzers = {"empty", "identity"};
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, testDBInfo(server.server()));
+    arangodb::iresearch::IResearchLinkMeta meta;
+    std::string tmpString;
+    EXPECT_TRUE(meta.init(server.server(), json->slice(), false, tmpString, vocbase.name()));
+    EXPECT_EQ(3U, meta._fields.size());
+
+    for (auto& field : meta._fields) {
+      EXPECT_EQ(1U, expectedFields.erase(static_cast<std::string>(field.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
+
+      for (auto& fieldOverride : field.value()->_fields) {
+        auto& actual = *(fieldOverride.value());
+
+        EXPECT_EQ(1U, expectedOverrides.erase(static_cast<std::string>(fieldOverride.key()))); // FIXME: after C++20 remove cast and use heterogeneous lookup
+
+        if ("default" == fieldOverride.key()) {
+          EXPECT_TRUE(actual._fields.empty());
+          EXPECT_FALSE(actual._includeAllFields);
+          EXPECT_FALSE(actual._trackListPositions);
+          EXPECT_EQ(arangodb::iresearch::ValueStorage::NONE, actual._storeValues);
+          EXPECT_EQ(1U, actual._analyzers.size());
+          EXPECT_TRUE(*(actual._analyzers.begin()));
+          EXPECT_EQ("identity", actual._analyzers.begin()->_pool->name());
+          EXPECT_EQ("identity", actual._analyzers.begin()->_shortName);
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+                       actual._analyzers.begin()->_pool->features()));
+          EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
+        } else if ("all" == fieldOverride.key()) {
+          EXPECT_EQ(2U, actual._fields.size());
+          EXPECT_TRUE((actual._fields.find("d") != actual._fields.end()));
+          EXPECT_TRUE((actual._fields.find("e") != actual._fields.end()));
+          EXPECT_TRUE(actual._includeAllFields);
+          EXPECT_TRUE(actual._trackListPositions);
+          EXPECT_EQ(arangodb::iresearch::ValueStorage::VALUE, actual._storeValues);
+          EXPECT_EQ(1U, actual._analyzers.size());
+          EXPECT_TRUE(*(actual._analyzers.begin()));
+          EXPECT_EQ("testVocbase::empty", actual._analyzers.begin()->_pool->name());
+          EXPECT_EQ("empty", actual._analyzers.begin()->_shortName);
+          EXPECT_TRUE((irs::flags({irs::type<irs::frequency>::get()}) ==
+                       actual._analyzers.begin()->_pool->features()));
+          EXPECT_FALSE(!actual._analyzers.begin()->_pool->get());
+        } else if ("some" == fieldOverride.key()) {
+          EXPECT_TRUE(actual._fields.empty());    // not inherited
+          EXPECT_TRUE(actual._includeAllFields);  // inherited
+          EXPECT_TRUE(actual._trackListPositions);
+          EXPECT_EQ(arangodb::iresearch::ValueStorage::ID, actual._storeValues);
+          EXPECT_EQ(2U, actual._analyzers.size());
+          auto itr = actual._analyzers.begin();
+          EXPECT_TRUE(*itr);
+          EXPECT_EQ("testVocbase::empty", itr->_pool->name());
+          EXPECT_EQ("empty", itr->_shortName);
+          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_FALSE(!itr->_pool->get());
+          ++itr;
+          EXPECT_TRUE(*itr);
+          EXPECT_EQ("identity", itr->_pool->name());
+          EXPECT_EQ("identity", itr->_shortName);
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+                       itr->_pool->features()));
+          EXPECT_FALSE(!itr->_pool->get());
+        } else if ("none" == fieldOverride.key()) {
+          EXPECT_TRUE(actual._fields.empty());      // not inherited
+          EXPECT_TRUE(actual._includeAllFields);    // inherited
+          EXPECT_TRUE(actual._trackListPositions);  // inherited
+          EXPECT_EQ(arangodb::iresearch::ValueStorage::VALUE, actual._storeValues);
+          auto itr = actual._analyzers.begin();
+          EXPECT_TRUE(*itr);
+          EXPECT_EQ("testVocbase::empty", itr->_pool->name());
+          EXPECT_EQ("empty", itr->_shortName);
+          EXPECT_EQ(irs::flags({irs::type<irs::frequency>::get()}), itr->_pool->features());
+          EXPECT_FALSE(!itr->_pool->get());
+          ++itr;
+          EXPECT_TRUE(*itr);
+          EXPECT_EQ("identity", itr->_pool->name());
+          EXPECT_EQ("identity", itr->_shortName);
+          EXPECT_TRUE((irs::flags({irs::type<irs::norm>::get(), irs::type<irs::frequency>::get()}) ==
+                       itr->_pool->features()));
+          EXPECT_FALSE(!itr->_pool->get());
+        }
+      }
+    }
+
+    EXPECT_TRUE(expectedOverrides.empty());
+    EXPECT_TRUE(expectedFields.empty());
+    EXPECT_TRUE(meta._includeAllFields);
+    EXPECT_TRUE(meta._trackListPositions);
+    EXPECT_EQ("testCollection", meta._collectionName);
     EXPECT_EQ(arangodb::iresearch::ValueStorage::VALUE, meta._storeValues);
     auto itr = meta._analyzers.begin();
     EXPECT_TRUE(*itr);
@@ -1236,6 +1378,85 @@ TEST_F(IResearchLinkMetaTest, test_writeMaskAll) {
     EXPECT_TRUE(slice.hasKey("primarySort"));
     EXPECT_TRUE(slice.hasKey("storedValues"));
     EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_FALSE(slice.hasKey("collectionName"));
+  }
+}
+
+TEST_F(IResearchLinkMetaTest, test_writeMaskAllCluster) {
+  auto oldRole = arangodb::ServerState::instance()->getRole();
+  auto restoreRole  = irs::make_finally(
+    [oldRole](){
+      arangodb::ServerState::instance()->setRole(oldRole);});
+  arangodb::ServerState::instance()->setRole(arangodb::ServerState::RoleEnum::ROLE_DBSERVER);
+  // not fullAnalyzerDefinition
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, false, nullptr, nullptr, &mask));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    EXPECT_EQ(5U, slice.length());
+    EXPECT_TRUE(slice.hasKey("fields"));
+    EXPECT_TRUE(slice.hasKey("includeAllFields"));
+    EXPECT_TRUE(slice.hasKey("trackListPositions"));
+    EXPECT_TRUE(slice.hasKey("storeValues"));
+    EXPECT_TRUE(slice.hasKey("analyzers"));
+  }
+
+  // with fullAnalyzerDefinition
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
+    meta._collectionName = "Test"; // init to make it show in json
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, true, nullptr, nullptr, &mask));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    EXPECT_EQ(10, slice.length());
+    EXPECT_TRUE(slice.hasKey("fields"));
+    EXPECT_TRUE(slice.hasKey("includeAllFields"));
+    EXPECT_TRUE(slice.hasKey("trackListPositions"));
+    EXPECT_TRUE(slice.hasKey("storeValues"));
+    EXPECT_TRUE(slice.hasKey("analyzers"));
+    EXPECT_TRUE(slice.hasKey("analyzerDefinitions"));
+    EXPECT_TRUE(slice.hasKey("primarySort"));
+    EXPECT_TRUE(slice.hasKey("storedValues"));
+    EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_TRUE(slice.hasKey("collectionName"));
+  }
+
+  // with fullAnalyzerDefinition without collection name
+  {
+    arangodb::iresearch::IResearchLinkMeta meta;
+    arangodb::iresearch::IResearchLinkMeta::Mask mask(true);
+    arangodb::velocypack::Builder builder;
+
+    builder.openObject();
+    EXPECT_TRUE(meta.json(server.server(), builder, true, nullptr, nullptr, &mask));
+    builder.close();
+
+    auto slice = builder.slice();
+
+    EXPECT_EQ(9, slice.length());
+    EXPECT_TRUE(slice.hasKey("fields"));
+    EXPECT_TRUE(slice.hasKey("includeAllFields"));
+    EXPECT_TRUE(slice.hasKey("trackListPositions"));
+    EXPECT_TRUE(slice.hasKey("storeValues"));
+    EXPECT_TRUE(slice.hasKey("analyzers"));
+    EXPECT_TRUE(slice.hasKey("analyzerDefinitions"));
+    EXPECT_TRUE(slice.hasKey("primarySort"));
+    EXPECT_TRUE(slice.hasKey("storedValues"));
+    EXPECT_TRUE(slice.hasKey("primarySortCompression"));
+    EXPECT_FALSE(slice.hasKey("collectionName"));
   }
 }
 
@@ -3210,3 +3431,15 @@ TEST_F(IResearchLinkMetaTestNoSystem, test_readAnalyzerDefinitions) {
     EXPECT_EQ("empty", meta._analyzers[0]._shortName);
   }
 }
+
+TEST_F(IResearchLinkMetaTest, test_collectioNameComparison) {
+  arangodb::iresearch::IResearchLinkMeta meta;
+  arangodb::iresearch::IResearchLinkMeta meta1;
+  // while upgrading in cluster missing collectionName
+  // should not trigger link recreation!
+  meta._collectionName = "";
+  meta1._collectionName = "2";
+  ASSERT_EQ(meta, meta1);
+  ASSERT_FALSE(meta != meta1);
+}
+

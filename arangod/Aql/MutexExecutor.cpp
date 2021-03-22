@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -32,6 +32,8 @@
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
+#include "Basics/Exceptions.h"
+#include "Basics/debugging.h"
 
 #include "Logger/LogMacros.h"
 
@@ -52,6 +54,11 @@ MutexExecutor::MutexExecutor(MutexExecutorInfos const& infos)
 auto MutexExecutor::distributeBlock(SharedAqlItemBlockPtr block, SkipResult skipped,
                                     std::unordered_map<std::string, ClientBlockData>& blockMap)
     -> void {
+
+  TRI_IF_FAILURE("MutexExecutor::distributeBlock") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   if (block != nullptr) {
     std::unordered_map<std::string, std::vector<std::size_t>> choosenMap;
     choosenMap.reserve(blockMap.size());

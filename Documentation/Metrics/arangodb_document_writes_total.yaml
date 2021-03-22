@@ -1,0 +1,16 @@
+name: arangodb_document_writes_total
+help: |
+  Total number of document write operations (excl. synchronous replication).
+unit: number
+type: counter
+category: Transactions
+complexity: medium
+exposedBy:
+  - agent
+  - dbserver
+  - single
+description: |
+  Total number of document write operations (insert, update, replace, remove) on
+  leaders, excluding writes by the synchronous replication on followers.
+  This metric is only present if the option `--server.export-read-write-metrics` 
+  is set to `true`.

@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 #define IRESEARCH_LIMITED_SAMPLE_COLLECTOR_H
 
+#include <absl/container/flat_hash_map.h>
+
 #include "shared.hpp"
 #include "analysis/token_attributes.hpp"
 #include "search/collectors.hpp"
@@ -37,35 +39,6 @@ namespace iresearch {
 
 struct sub_reader;
 struct index_reader;
-
-template<typename DocIterator>
-void fill(bitset& bs, DocIterator& it) {
-  auto* doc = irs::get<irs::document>(it);
-
-  if (!doc) {
-    return; // no doc value
-  }
-
-  while (it.next()) {
-    bs.set(doc->value);
-  }
-}
-
-inline void fill(bitset& bs, const term_iterator& term, size_t docs_count) {
-  auto it = term.postings(irs::flags::empty_instance());
-
-  if (!it) {
-    return; // no doc_ids in iterator
-  }
-
-  docs_count += (irs::doc_limits::min)();
-
-  if (bs.size() < docs_count) {
-    bs.reset(docs_count); // ensure we have enough space
-  }
-
-  fill(bs, *it);
-}
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class limited_sample_collector
@@ -117,9 +90,9 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
 
     if (!scored_terms_limit_) {
       // state will not be scored
-      // add all doc_ids from the doc_iterator to the unscored_docs
-      fill(state_.state->unscored_docs, *state_.terms, state_.segment->docs_count());
 
+      state_.state->unscored_terms.emplace_back(state_.terms->cookie());
+      state_.state->unscored_states_estimation += *state_.docs_count;
       return; // nothing to collect (optimization)
     }
 
@@ -138,14 +111,11 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       pop();
 
       auto& min_state = scored_states_[min_state_idx];
-      auto state_term_it = min_state.state->reader->iterator(); // FIXME cache iterator???
 
       assert(min_state.cookie);
-      if (state_term_it->seek(bytes_ref::NIL, *min_state.cookie)) {
-        // state will not be scored
-        // add all doc_ids from the doc_iterator to the unscored_docs
-        fill(min_state.state->unscored_docs, *state_term_it, min_state.segment->docs_count());
-      }
+      // state will not be scored
+      min_state.state->unscored_terms.emplace_back(std::move(min_state.cookie));
+      min_state.state->unscored_states_estimation += min_state.docs_count;
 
       // update min state
       min_state.docs_count = *state_.docs_count;
@@ -158,8 +128,8 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
       push();
     } else {
       // state will not be scored
-      // add all doc_ids from the doc_iterator to the unscored_docs
-      fill(state_.state->unscored_docs, *state_.terms, state_.segment->docs_count());
+      state_.state->unscored_terms.emplace_back(state_.terms->cookie());
+      state_.state->unscored_states_estimation += *state_.docs_count;
     }
   }
 
@@ -174,7 +144,7 @@ class limited_sample_collector : private irs::compact<0, Comparer>,
     }
 
     // stats for a specific term
-    std::unordered_map<hashed_bytes_ref, stats_state> term_stats;
+    absl::flat_hash_map<hashed_bytes_ref, stats_state> term_stats;
 
     // iterate over all the states from which statistcis should be collected
     uint32_t stats_offset = 0;

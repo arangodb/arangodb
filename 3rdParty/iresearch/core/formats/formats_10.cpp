@@ -44,11 +44,11 @@
 #include "index/index_reader.hpp"
 #include "index/index_meta.hpp"
 
-#include "store/memory_directory.hpp"
-#include "store/store_utils.hpp"
-
 #include "search/cost.hpp"
 #include "search/score.hpp"
+
+#include "store/memory_directory.hpp"
+#include "store/store_utils.hpp"
 
 #include "utils/bit_packing.hpp"
 #include "utils/bit_utils.hpp"
@@ -110,11 +110,11 @@ class noop_compressor final : compression::compressor {
     return ptr(ptr(), &INSTANCE);
   }
 
-  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) {
+  virtual bytes_ref compress(byte_type* in, size_t size, bstring& /*buf*/) override {
     return bytes_ref(in, size);
   }
 
-  virtual void flush(data_output& /*out*/) { }
+  virtual void flush(data_output& /*out*/) override { }
 
  private:
   noop_compressor() = default;
@@ -194,15 +194,14 @@ inline void prepare_output(
     const string_ref& ext,
     const string_ref& format,
     const int32_t version) {
-  assert( !out );
+  assert(!out);
   file_name(str, state.name, ext);
   out = state.dir->create(str);
 
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::write_header(*out, format, version);
@@ -217,15 +216,14 @@ inline void prepare_input(
     const string_ref& format,
     const int32_t min_ver,
     const int32_t max_ver ) {
-  assert( !in );
+  assert(!in);
   file_name(str, state.meta->name, ext);
   in = state.dir->open(str, advice);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      str.c_str()
-    ));
+      str.c_str()));
   }
 
   format_utils::check_header(*in, format, min_ver, max_ver);
@@ -317,11 +315,7 @@ class postings_writer_base : public irs::postings_writer {
 
  protected:
   virtual void release(irs::term_meta *meta) noexcept final {
-  #ifdef IRESEARCH_DEBUG
-    auto* state = dynamic_cast<version10::term_meta*>(meta);
-  #else
     auto* state = static_cast<version10::term_meta*>(meta);
-  #endif // IRESEARCH_DEBUG
     assert(state);
 
     alloc_.destroy(state);
@@ -493,8 +487,7 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
     MAX_SKIP_LEVELS,
     state.doc_count,
     [this] (size_t i, index_output& out) { write_skip(i, out); },
-    directory_utils::get_allocator(*state.dir)
-  );
+    directory_utils::get_allocator(*state.dir));
 
   format_utils::write_header(out, TERMS_FORMAT_NAME, terms_format_version_); // write postings format name
   out.write_vint(BLOCK_SIZE); // write postings block size
@@ -506,14 +499,10 @@ void postings_writer_base::prepare(index_output& out, const irs::flush_state& st
 void postings_writer_base::encode(
     data_output& out,
     const irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  const auto& meta = dynamic_cast<const version10::term_meta&>(state);
-#else
   const auto& meta = static_cast<const version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
   out.write_vint(meta.docs_count);
-  if (meta.freq != integer_traits<uint32_t>::const_max) {
+  if (meta.freq != std::numeric_limits<uint32_t>::max()) {
     assert(meta.freq >= meta.docs_count);
     out.write_vint(meta.freq - meta.docs_count);
   }
@@ -674,8 +663,8 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
 
     if (pos_->size > 0) {
       data_output& out = *pos_out_;
-      uint32_t last_pay_size = integer_traits<uint32_t>::const_max;
-      uint32_t last_offs_len = integer_traits<uint32_t>::const_max;
+      uint32_t last_pay_size = std::numeric_limits<uint32_t>::max();
+      uint32_t last_offs_len = std::numeric_limits<uint32_t>::max();
       uint32_t pay_buf_start = 0;
       for (uint32_t i = 0; i < pos_->size; ++i) {
         const uint32_t pos_delta = pos_->buf[i];
@@ -722,7 +711,7 @@ void postings_writer_base::end_term(version10::term_meta& meta, const uint32_t* 
   }
 
   if (!tfreq) {
-    meta.freq = integer_traits<uint32_t>::const_max;
+    meta.freq = std::numeric_limits<uint32_t>::max();
   }
 
   // if we have flushed at least
@@ -762,8 +751,7 @@ void postings_writer_base::begin_doc(doc_id_t id, const frequency* freq) {
   if (id < doc_.last) {
     throw index_error(string_utils::to_string(
       "while beginning doc_ in postings_writer, error: docs out of order '%d' < '%d'",
-      id, doc_.last
-    ));
+      id, doc_.last));
   }
 
   doc_.push(id, freq ? freq->value : 0);
@@ -863,8 +851,8 @@ class postings_writer final: public postings_writer_base {
 }; // postings_writer
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
@@ -915,8 +903,8 @@ irs::postings_writer::state postings_writer<FormatTraits, VolatileAttributes>::w
 }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -1358,7 +1346,7 @@ struct position_impl<IteratorTraits, false, false> {
     pos_in_->seek(state.term_state->pos_start);
     freq_ = state.freq;
     features_ = state.features;
-    enc_buf_ = reinterpret_cast<uint32_t*>(state.enc_buf);
+    enc_buf_ = state.enc_buf;
     tail_start_ = state.tail_start;
     tail_length_ = state.tail_length;
   }
@@ -1446,6 +1434,33 @@ class position final : public irs::position,
     return impl::attribute(type);
   }
 
+  virtual value_t seek(value_t target) override {
+    const uint32_t freq = *this->freq_;
+    if (this->pend_pos_ > freq) {
+        skip(this->pend_pos_ - freq);
+        this->pend_pos_ = freq;
+    }
+    while (value_ < target && this->pend_pos_) {
+      if (this->buf_pos_ == postings_writer_base::BLOCK_SIZE) {
+        refill();
+        this->buf_pos_ = 0;
+      }
+      if constexpr (IteratorTraits::one_based_position_storage()) {
+        value_ += (uint32_t)(!pos_limits::valid(value_));
+      }
+      value_ += this->pos_deltas_[this->buf_pos_];
+      assert(irs::pos_limits::valid(value_));
+      this->read_attributes();
+
+      ++this->buf_pos_;
+      --this->pend_pos_;
+    }
+    if (0 == this->pend_pos_ && value_ < target) {
+      value_ = pos_limits::eof();
+    }
+    return value_;
+  }
+
   virtual bool next() override {
     if (0 == this->pend_pos_) {
       value_ = pos_limits::eof();
@@ -1497,7 +1512,6 @@ class position final : public irs::position,
   }
 
  private:
-
   void refill() {
     if (this->pos_in_->file_pointer() == this->tail_start_) {
       this->read_tail_block();
@@ -1545,28 +1559,31 @@ struct position<IteratorTraits, false> : attribute {
 /// @class doc_iterator
 ///////////////////////////////////////////////////////////////////////////////
 template<typename IteratorTraits>
-class doc_iterator final
-    : public frozen_attributes<5, irs::doc_iterator> {
+class doc_iterator final : public irs::doc_iterator {
+ private:
+  using attributes = std::conditional_t<
+    IteratorTraits::frequency() && IteratorTraits::position(),
+      std::tuple<document, frequency, cost, score, position<IteratorTraits>>,
+      std::conditional_t<IteratorTraits::frequency(),
+        std::tuple<document, frequency, cost, score>,
+        std::tuple<document, cost, score>
+      >>;
+
  public:
+  // hide 'ptr' defined in irs::doc_iterator
+  using ptr = memory::managed_ptr<doc_iterator>;
+
   doc_iterator() noexcept
-    : attributes{{
-        { type<document>::id(), &doc_ },
-        { type<cost>::id(), &cost_    },
-        { type<score>::id(), &scr_    },
-        { type<frequency>::id(),     IteratorTraits::frequency() ? &freq_ : nullptr  },
-        { type<irs::position>::id(), IteratorTraits::position()  ? &pos_  : nullptr  },
-      }},
-      skip_levels_(1),
+    : skip_levels_(1),
       skip_(postings_writer_base::BLOCK_SIZE, postings_writer_base::SKIP_N) {
     assert(
       std::all_of(docs_, docs_ + postings_writer_base::BLOCK_SIZE,
-                  [](doc_id_t doc) { return doc == doc_limits::invalid(); })
-    );
+                  [](doc_id_t doc) { return doc == doc_limits::invalid(); }));
   }
 
   void prepare(
       const features& field,
-      const attribute_provider& attrs,
+      const term_meta& meta,
       const index_input* doc_in,
       [[maybe_unused]] const index_input* pos_in,
       [[maybe_unused]] const index_input* pay_in) {
@@ -1580,15 +1597,7 @@ class doc_iterator final
     // add mandatory attributes
     begin_ = end_ = docs_;
 
-    // get state attribute
-    auto* meta = irs::get<irs::term_meta>(attrs);
-    assert(meta);
-
-#ifdef IRESEARCH_DEBUG
-    term_state_ = dynamic_cast<const version10::term_meta&>(*meta);
-#else
-    term_state_ = static_cast<const version10::term_meta&>(*meta);
-#endif
+    term_state_ = static_cast<const version10::term_meta&>(meta);
 
     // init document stream
     if (term_state_.docs_count > 1) {
@@ -1607,18 +1616,18 @@ class doc_iterator final
       assert(!doc_in_->eof());
     }
 
-    cost_.value(term_state_.docs_count); // estimate iterator
+    std::get<cost>(attrs_).reset(term_state_.docs_count); // estimate iterator
 
     if constexpr (IteratorTraits::frequency()) {
-      assert(irs::get<frequency>(attrs));
-      term_freq_ = irs::get<frequency>(attrs)->value;
+      assert(meta.freq);
+      term_freq_ = meta.freq;
 
       if constexpr (IteratorTraits::position()) {
         doc_state state;
         state.pos_in = pos_in;
         state.pay_in = pay_in;
         state.term_state = &term_state_;
-        state.freq = &freq_.value;
+        state.freq = &std::get<frequency>(attrs_).value;
         state.features = features_;
         state.enc_buf = enc_buf_;
 
@@ -1631,7 +1640,7 @@ class doc_iterator final
         }
 
         state.tail_length = term_freq_ % postings_writer_base::BLOCK_SIZE;
-        pos_.prepare(state);
+        std::get<position<IteratorTraits>>(attrs_).prepare(state);
       }
     }
 
@@ -1643,9 +1652,15 @@ class doc_iterator final
     }
   }
 
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
+  }
+
   virtual doc_id_t seek(doc_id_t target) override {
-    if (target <= doc_.value) {
-      return doc_.value;
+    auto& doc = std::get<document>(attrs_);
+
+    if (target <= doc.value) {
+      return doc.value;
     }
 
     seek_to_block(target);
@@ -1654,7 +1669,7 @@ class doc_iterator final
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return doc_limits::eof();
       }
@@ -1662,55 +1677,63 @@ class doc_iterator final
       refill();
     }
 
+    [[maybe_unused]] uint32_t notify{0};
     while (begin_ < end_) {
-      doc_.value += *begin_++;
+      doc.value += *begin_++;
 
       if constexpr (!IteratorTraits::position()) {
-        if (doc_.value >= target) {
+        if (doc.value >= target) {
           if constexpr (IteratorTraits::frequency()) {
             doc_freq_ = doc_freqs_ + relative_pos();
             assert((doc_freq_ - 1) >= doc_freqs_ && (doc_freq_ - 1) < std::end(doc_freqs_));
-            freq_.value = doc_freq_[-1];
+            std::get<frequency>(attrs_).value = doc_freq_[-1];
           }
-          return doc_.value;
+          return doc.value;
         }
       } else {
         assert(IteratorTraits::frequency());
-        freq_.value = *doc_freq_++;
+        auto& freq = std::get<frequency>(attrs_);
+        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        freq.value = *doc_freq_++;
+        notify += freq.value;
 
-        pos_.notify(freq_.value);
-
-        if (doc_.value >= target) {
-          pos_.clear();
-          return doc_.value;
+        if (doc.value >= target) {
+          pos.notify(notify);
+          pos.clear();
+          return doc.value;
         }
       }
     }
 
-    while (doc_.value < target) {
+    if constexpr (IteratorTraits::position()) {
+      std::get<position<IteratorTraits>>(attrs_).notify(notify);
+    }
+    while (doc.value < target) {
       next();
     }
 
-    return doc_.value;
+    return doc.value;
   }
 
   virtual doc_id_t value() const noexcept final {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( disable : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(disable : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
   virtual bool next() override {
+    auto& doc = std::get<document>(attrs_);
+
     if (begin_ == end_) {
       cur_pos_ += relative_pos();
 
       if (cur_pos_ == term_state_.docs_count) {
-        doc_.value = doc_limits::eof();
+        doc.value = doc_limits::eof();
         begin_ = end_ = docs_; // seal the iterator
         return false;
       }
@@ -1718,14 +1741,16 @@ class doc_iterator final
       refill();
     }
 
-    doc_.value += *begin_++; // update document attribute
+    doc.value += *begin_++; // update document attribute
 
     if constexpr (IteratorTraits::frequency()) {
-      freq_.value = *doc_freq_++; // update frequency attribute
+      auto& freq = std::get<frequency>(attrs_);
+      freq.value = *doc_freq_++; // update frequency attribute
 
       if constexpr (IteratorTraits::position()) {
-        pos_.notify(freq_.value);
-        pos_.clear();
+        auto& pos = std::get<position<IteratorTraits>>(attrs_);
+        pos.notify(freq.value);
+        pos.clear();
       }
     }
 
@@ -1733,8 +1758,8 @@ class doc_iterator final
   }
 
 #if defined(_MSC_VER)
-  #pragma warning( default : 4706 )
-#elif defined (__GNUC__)
+  #pragma warning(default : 4706)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
 
@@ -1813,16 +1838,15 @@ class doc_iterator final
     }
 
     // if this is the initial doc_id then set it to min() for proper delta value
-    if (!doc_limits::valid(doc_.value)) {
-      doc_.value = (doc_limits::min)();
+    if (auto& doc = std::get<document>(attrs_);
+        !doc_limits::valid(doc.value)) {
+      doc.value = (doc_limits::min)();
     }
 
     begin_ = docs_;
     doc_freq_ = doc_freqs_;
   }
 
-  irs::cost cost_;
-  irs::score scr_;
   std::vector<skip_state> skip_levels_;
   skip_reader skip_;
   skip_context* skip_ctx_; // pointer to used skip context, will be used by skip reader
@@ -1834,12 +1858,10 @@ class doc_iterator final
   doc_id_t* end_{docs_};
   uint32_t* doc_freq_{}; // pointer into docs_ to the frequency attribute value for the current doc
   uint32_t term_freq_{}; // total term frequency
-  document doc_;
-  frequency freq_;
   index_input::ptr doc_in_;
   version10::term_meta term_state_;
   features features_; // field features
-  position<IteratorTraits> pos_;
+  attributes attrs_;
 }; // doc_iterator
 
 template<typename IteratorTraits>
@@ -1902,11 +1924,11 @@ void doc_iterator<IteratorTraits>::seek_to_block(doc_id_t target) {
     const size_t skipped = skip_.seek(target);
     if (skipped > (cur_pos_ + relative_pos())) {
       doc_in_->seek(last.doc_ptr);
-      doc_.value = last.doc;
+      std::get<document>(attrs_).value = last.doc;
       cur_pos_ = skipped;
       begin_ = end_ = docs_; // will trigger refill in "next"
       if constexpr (IteratorTraits::position()) {
-        pos_.prepare(last); // notify positions
+        std::get<position<IteratorTraits>>(attrs_).prepare(last); // notify positions
       }
     }
   }
@@ -1950,14 +1972,12 @@ std::string file_name<irs::index_meta_writer, index_meta>(const index_meta& meta
 
 struct index_meta_reader final: public irs::index_meta_reader {
   virtual bool last_segments_file(
-    const directory& dir, std::string& name
-  ) const override;
+    const directory& dir, std::string& name) const override;
 
   virtual void read(
     const directory& dir,
     index_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // index_meta_reader
 
 template<>
@@ -1984,18 +2004,17 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   {
     format_utils::write_header(*out, FORMAT_NAME, version_);
     out->write_vlong(meta.generation());
     out->write_long(meta.counter());
-    assert(meta.size() <= integer_traits<uint32_t>::const_max);
+    assert(meta.size() <= std::numeric_limits<uint32_t>::max());
     out->write_vint(uint32_t(meta.size()));
 
-    for (auto& segment: meta) {
+    for (auto& segment : meta) {
       write_string(*out, segment.filename);
       write_string(*out, segment.meta.codec->type().name());
     }
@@ -2016,8 +2035,7 @@ bool index_meta_writer::prepare(directory& dir, index_meta& meta) {
   if (!dir.sync(seg_file)) {
     throw io_error(string_utils::to_string(
       "failed to sync file, path: %s",
-      seg_file.c_str()
-    ));
+      seg_file.c_str()));
   }
 
   // only noexcept operations below
@@ -2041,8 +2059,7 @@ bool index_meta_writer::commit() {
     throw io_error(string_utils::to_string(
       "failed to rename file, src path: '%s' dst path: '%s'",
       src.c_str(),
-      dst.c_str()
-    ));
+      dst.c_str()));
   }
 
   // only noexcept operations below
@@ -2123,14 +2140,12 @@ void index_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2140,8 +2155,7 @@ void index_meta_reader::read(
     *in,
     index_meta_writer::FORMAT_NAME,
     index_meta_writer::FORMAT_MIN,
-    index_meta_writer::FORMAT_MAX
-  );
+    index_meta_writer::FORMAT_MAX);
 
   // read data from segments file
   auto gen = in->read_vlong();
@@ -2175,8 +2189,7 @@ void index_meta_reader::read(
   complete(
     meta, gen, cnt,
     std::move(segments),
-    has_payload ? &payload : nullptr
-  );
+    has_payload ? &payload : nullptr);
 }
 
 // ----------------------------------------------------------------------------
@@ -2203,8 +2216,7 @@ struct segment_meta_writer final : public irs::segment_meta_writer{
   virtual void write(
     directory& dir,
     std::string& filename,
-    const segment_meta& meta
-  ) override;
+    const segment_meta& meta) override;
 
  private:
   int32_t version_;
@@ -2219,8 +2231,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (meta.docs_count < meta.live_docs_count) {
     throw index_error(string_utils::to_string(
       "invalid segment meta '%s' detected : docs_count=" IR_SIZE_T_SPECIFIER ", live_docs_count=" IR_SIZE_T_SPECIFIER "",
-      meta.name.c_str(), meta.docs_count, meta.live_docs_count
-    ));
+      meta.name.c_str(), meta.docs_count, meta.live_docs_count));
   }
 
   meta_file = file_name<irs::segment_meta_writer>(meta);
@@ -2229,8 +2240,7 @@ void segment_meta_writer::write(directory& dir, std::string& meta_file, const se
   if (!out) {
     throw io_error(string_utils::to_string(
       "failed to create file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   byte_type flags = meta.column_store ? HAS_COLUMN_STORE : 0;
@@ -2264,8 +2274,7 @@ struct segment_meta_reader final : public irs::segment_meta_reader {
   virtual void read(
     const directory& dir,
     segment_meta& meta,
-    const string_ref& filename = string_ref::NIL // null == use meta
-  ) override;
+    const string_ref& filename = string_ref::NIL) override; // null == use meta
 }; // segment_meta_reader
 
 void segment_meta_reader::read(
@@ -2278,14 +2287,12 @@ void segment_meta_reader::read(
     : static_cast<std::string>(filename);
 
   auto in = dir.open(
-    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      meta_file.c_str()
-    ));
+      meta_file.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2294,8 +2301,7 @@ void segment_meta_reader::read(
     *in,
     segment_meta_writer::FORMAT_NAME,
     segment_meta_writer::FORMAT_MIN,
-    segment_meta_writer::FORMAT_MAX
-  );
+    segment_meta_writer::FORMAT_MAX);
 
   auto name = read_string<std::string>(*in);
   const auto segment_version = in->read_vlong();
@@ -2305,8 +2311,7 @@ void segment_meta_reader::read(
   if (docs_count < live_docs_count) {
     throw index_error(std::string("while reader segment meta '") + name
       + "', error: docs_count(" + std::to_string(docs_count)
-      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")"
-    );
+      + ") < live_docs_count(" + std::to_string(live_docs_count) + ")");
   }
 
   const auto size = in->read_vlong();
@@ -2320,8 +2325,7 @@ void segment_meta_reader::read(
   if (flags & ~(segment_meta_writer::HAS_COLUMN_STORE | segment_meta_writer::SORTED)) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: use of unsupported flags '%u'",
-      name.c_str(), flags
-    ));
+      name.c_str(), flags));
   }
 
   const auto sorted = bool(flags & segment_meta_writer::SORTED);
@@ -2329,15 +2333,13 @@ void segment_meta_reader::read(
   if ((!field_limits::valid(sort)) && sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as sorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   if ((field_limits::valid(sort)) && !sorted) {
     throw index_error(string_utils::to_string(
       "while reading segment meta '%s', error: incorrectly marked as unsorted",
-      name.c_str()
-    ));
+      name.c_str()));
   }
 
   format_utils::check_footer(*in, checksum);
@@ -2396,12 +2398,11 @@ void document_mask_writer::write(
   if (!out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
-  // segment can't have more than integer_traits<uint32_t>::const_max documents
-  assert(docs_mask.size() <= integer_traits<uint32_t>::const_max);
+  // segment can't have more than std::numeric_limits<uint32_t>::max() documents
+  assert(docs_mask.size() <= std::numeric_limits<uint32_t>::max());
   const auto count = static_cast<uint32_t>(docs_mask.size());
 
   format_utils::write_header(*out, FORMAT_NAME, FORMAT_MAX);
@@ -2425,8 +2426,7 @@ class document_mask_reader final: public irs::document_mask_reader {
   virtual bool read(
     const directory& dir,
     const segment_meta& meta,
-    document_mask& docs_mask
-  ) override;
+    document_mask& docs_mask) override;
 }; // document_mask_reader
 
 bool document_mask_reader::read(
@@ -2441,8 +2441,7 @@ bool document_mask_reader::read(
   if (!dir.exists(exists, in_name)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   if (!exists) {
@@ -2451,14 +2450,12 @@ bool document_mask_reader::read(
   }
 
   auto in = dir.open(
-    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      in_name.c_str()
-    ));
+      in_name.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in);
@@ -2467,16 +2464,15 @@ bool document_mask_reader::read(
     *in,
     document_mask_writer::FORMAT_NAME,
     document_mask_writer::FORMAT_MIN,
-    document_mask_writer::FORMAT_MAX
-  );
+    document_mask_writer::FORMAT_MAX);
 
-  auto count = in->read_vint();
+  size_t count = in->read_vint();
+  docs_mask.reserve(count);
 
   while (count--) {
     static_assert(
       sizeof(doc_id_t) == sizeof(decltype(in->read_vint())),
-      "sizeof(doc_id) != sizeof(decltype(id))"
-    );
+      "sizeof(doc_id) != sizeof(decltype(id))");
 
     docs_mask.insert(in->read_vint());
   }
@@ -2536,8 +2532,7 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
 
   if (!out_) {
     throw io_error(string_utils::to_string(
-      "Failed to create file, path: %s", filename.c_str()
-    ));
+      "Failed to create file, path: %s", filename.c_str()));
   }
 
   format_utils::write_header(*out_, FORMAT_NAME, version_);
@@ -2550,15 +2545,13 @@ void meta_writer::prepare(directory& dir, const segment_meta& meta) {
       assert(out_cipher_ && out_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_output::DEFAULT_BUFFER_SIZE,
-        out_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        out_cipher_->block_size());
 
       out_ = index_output::make<encrypted_output>(
         std::move(out_),
         *out_cipher_,
-        blocks_in_buffer
-      );
+        blocks_in_buffer);
     }
   }
 }
@@ -2615,8 +2608,7 @@ bool meta_reader::prepare(
   if (!dir.exists(exists, filename)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   if (!exists) {
@@ -2625,14 +2617,12 @@ bool meta_reader::prepare(
   }
 
   in_ = dir.open(
-    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
-  );
+    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE);
 
   if (!in_) {
     throw io_error(string_utils::to_string(
       "failed to open file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   const auto checksum = format_utils::checksum(*in_);
@@ -2647,11 +2637,10 @@ bool meta_reader::prepare(
   count = in_->read_long(); // read number of objects to read
   max_id = in_->read_long(); // read highest column id written
 
-  if (max_id >= irs::integer_traits<size_t>::const_max) {
+  if (max_id >= std::numeric_limits<size_t>::max()) {
     throw index_error(string_utils::to_string(
       "invalid max column id: " IR_UINT64_T_SPECIFIER ", path: %s",
-      max_id, filename.c_str()
-    ));
+      max_id, filename.c_str()));
   }
 
   format_utils::check_footer(*in_, checksum);
@@ -2662,8 +2651,7 @@ bool meta_reader::prepare(
     *in_,
     meta_writer::FORMAT_NAME,
     meta_writer::FORMAT_MIN,
-    meta_writer::FORMAT_MAX
-  );
+    meta_writer::FORMAT_MAX);
 
   if (version > meta_writer::FORMAT_MIN) {
     encryption* enc = get_encryption(dir.attributes());
@@ -2672,9 +2660,8 @@ bool meta_reader::prepare(
       assert(in_cipher_ && in_cipher_->block_size());
 
       const auto blocks_in_buffer = math::div_ceil64(
-        buffered_index_input::DEFAULT_BUFFER_SIZE,
-        in_cipher_->block_size()
-      );
+        DEFAULT_ENCRYPTION_BUFFER_SIZE,
+        in_cipher_->block_size());
 
       in_ = memory::make_unique<encrypted_input>(
         std::move(in_),
@@ -2759,7 +2746,7 @@ ColumnProperty write_compact(
   const bytes_ref compressed = compressor.compress(&data[0], data.size(), encode_buf);
 
   if (is_good_compression_ratio(data.size(), compressed.size())) {
-    assert(compressed.size() <= irs::integer_traits<int32_t>::const_max);
+    assert(compressed.size() <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(compressed.size())); // compressed size
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(compressed.c_str()), compressed.size());
@@ -2767,7 +2754,7 @@ ColumnProperty write_compact(
     out.write_bytes(compressed.c_str(), compressed.size());
     irs::write_zvlong(out, data.size() - MAX_DATA_BLOCK_SIZE); // original size
   } else {
-    assert(data.size() <= irs::integer_traits<int32_t>::const_max);
+    assert(data.size() <= static_cast<uint32_t>(std::numeric_limits<int32_t>::max()));
     irs::write_zvint(out, int32_t(0) - int32_t(data.size())); // -ve to mark uncompressed
     if (cipher) {
       cipher->encrypt(out.file_pointer(), const_cast<irs::byte_type*>(data.c_str()), data.size());
@@ -2934,8 +2921,7 @@ class index_block {
       const auto stats = encode::avg::encode(keys_, key_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
-        keys_, block_size, reinterpret_cast<uint32_t*>(buf)
-      );
+        keys_, block_size, reinterpret_cast<uint32_t*>(buf));
 
       if (1 == stats.second && 0 == keys_[0] && encode::bitpack::rl(bits)) {
         props |= CP_DENSE;
@@ -2953,8 +2939,7 @@ class index_block {
       const auto stats = encode::avg::encode(offsets_, offset_);
       const auto bits = encode::avg::write_block(
         out, stats.first, stats.second,
-        offsets_, block_size, buf
-      );
+        offsets_, block_size, buf);
 
       if (0 == offsets_[0] && encode::bitpack::rl(bits)) {
         props |= CP_FIXED;
@@ -2997,8 +2982,7 @@ class writer final : public irs::columnstore_writer {
       version_(version) {
     static_assert(
       2*MAX_DATA_BLOCK_SIZE >= INDEX_BLOCK_SIZE*sizeof(uint64_t),
-      "buffer is not big enough"
-    );
+      "buffer is not big enough");
 
     assert(version >= FORMAT_MIN && version <= FORMAT_MAX);
   }
@@ -3051,7 +3035,7 @@ class writer final : public irs::columnstore_writer {
        // evaluate overall column properties
       auto column_props = blocks_props_;
       if (0 != (column_props_ & CP_DENSE)) { column_props |= CP_COLUMN_DENSE; }
-      if (cipher_) 						   { column_props |= CP_COLUMN_ENCRYPT; }
+      if (cipher_) { column_props |= CP_COLUMN_ENCRYPT; }
 
       write_enum(out, column_props);
       if (ctx_->version_ > FORMAT_MIN) {
@@ -3200,8 +3184,7 @@ void writer::prepare(directory& dir, const segment_meta& meta) {
   if (!data_out) {
     throw io_error(string_utils::to_string(
       "Failed to create file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   format_utils::write_header(*data_out, FORMAT_NAME, version_);
@@ -3312,7 +3295,7 @@ void writer::rollback() noexcept {
 template<typename Block, typename Allocator>
 class block_cache : irs::util::noncopyable {
  public:
-  block_cache(const Allocator& alloc = Allocator())
+  explicit block_cache(const Allocator& alloc = Allocator())
     : cache_(alloc) {
   }
   block_cache(block_cache&&) = default;
@@ -3379,9 +3362,7 @@ class sparse_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
-
+        vend - vbegin); // length
       return true;
     }
 
@@ -3480,8 +3461,7 @@ class sparse_block : util::noncopyable {
     assert(vend >= vbegin);
     out = bytes_ref(
       data_.c_str() + vbegin, // start
-      vend - vbegin // length
-    );
+      vend - vbegin); // length
 
     return true;
   }
@@ -3502,8 +3482,7 @@ class sparse_block : util::noncopyable {
       assert(begin->offset >= vbegin);
       value = bytes_ref(
         data_.c_str() + vbegin, // start
-        begin->offset - vbegin // length
-      );
+        begin->offset - vbegin); // length
 
       if (!visitor(key, value)) {
         return false;
@@ -3514,8 +3493,7 @@ class sparse_block : util::noncopyable {
     assert(data_.size() >= begin->offset);
     value = bytes_ref(
       data_.c_str() + begin->offset, // start
-      data_.size() - begin->offset // length
-    );
+      data_.size() - begin->offset); // length
 
     return visitor(begin->key, value);
   }
@@ -3596,8 +3574,7 @@ class dense_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_->c_str() + vbegin, // start
-        vend - vbegin // length
-      );
+        vend - vbegin); // length
     }
 
     irs::bytes_ref* payload_{ &DUMMY };
@@ -3624,8 +3601,7 @@ class dense_block : util::noncopyable {
     if (!encode::avg::read_block_rl32(in, base_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_block', base_key=%du, avg_delta=%du",
-        base_, avg
-      ));
+        base_, avg));
     }
 
     // read data offsets
@@ -3679,8 +3655,7 @@ class dense_block : util::noncopyable {
       assert(*begin >= vbegin);
       value = bytes_ref(
         data_.c_str() + vbegin, // start
-        *begin - vbegin // length
-      );
+        *begin - vbegin); // length
 
       if (!visitor(key, value)) {
         return false;
@@ -3691,8 +3666,7 @@ class dense_block : util::noncopyable {
     assert(data_.size() >= *begin);
     value = bytes_ref(
       data_.c_str() + *begin, // start
-      data_.size() - *begin // length
-    );
+      data_.size() - *begin); // length
 
     return visitor(key, value);
   }
@@ -3744,8 +3718,7 @@ class dense_fixed_offset_block : util::noncopyable {
       assert(payload_ != &DUMMY);
       *payload_ = bytes_ref(
         data_.c_str() + offset,
-        value_ == value_back_ ? data_.size() - offset : avg_length_
-      );
+        value_ == value_back_ ? data_.size() - offset : avg_length_);
 
       return true;
     }
@@ -3804,16 +3777,14 @@ class dense_fixed_offset_block : util::noncopyable {
     if (!encode::avg::read_block_rl32(in, base_key_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_fixed_offset_block', base_key=%du, avg_delta=%du",
-        base_key_, avg
-      ));
+        base_key_, avg));
     }
 
     // fixed length block must be encoded with RL encoding
     if (!encode::avg::read_block_rl32(in, base_offset_, avg_length_)) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_fixed_offset_block', base_offset=%du, avg_length=%du",
-        base_key_, avg_length_
-      ));
+        base_key_, avg_length_));
     }
 
     // read data
@@ -3860,8 +3831,7 @@ class dense_fixed_offset_block : util::noncopyable {
     assert(data_.size() >= offset);
     value = bytes_ref(
       data_.c_str() + offset, // start
-      data_.size() - offset // length
-    );
+      data_.size() - offset); // length
 
     return visitor(key, value);
   }
@@ -3928,8 +3898,7 @@ class sparse_mask_block : util::noncopyable {
   sparse_mask_block() noexcept {
     std::fill(
       std::begin(keys_), std::end(keys_),
-      doc_limits::eof()
-    );
+      doc_limits::eof());
   }
 
   void load(index_input& in,
@@ -3963,8 +3932,7 @@ class sparse_mask_block : util::noncopyable {
     // to generate better optimized code
 
     const auto it = std::lower_bound(
-      std::begin(keys_), std::end(keys_), key
-    );
+      std::begin(keys_), std::end(keys_), key);
 
     return !(std::end(keys_) == it || *it > key);
   }
@@ -4067,8 +4035,7 @@ class dense_mask_block {
     if (!encode::avg::read_block_rl32(in, min_, avg) || 1 != avg) {
       throw index_error(string_utils::to_string(
         "Invalid RL encoding in 'dense_mask_block', base_key=%du, avg_delta=%du",
-        min_, avg
-      ));
+        min_, avg));
     }
 
     // mask block has no data, so all offsets should be equal to 0
@@ -4176,7 +4143,7 @@ typedef read_context<> read_context_t;
 
 class context_provider: private util::noncopyable {
  public:
-  context_provider(size_t max_pool_size)
+  explicit context_provider(size_t max_pool_size)
     : pool_(std::max(size_t(1), max_pool_size)) {
   }
 
@@ -4304,8 +4271,11 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final
-    : public irs::frozen_attributes<4, irs::doc_iterator> {
+class column_iterator final : public irs::doc_iterator {
+ private:
+  using attributes = std::tuple<
+    document, cost, score, payload>;
+
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
@@ -4315,21 +4285,19 @@ class column_iterator final
       const column_t& column,
       const typename column_t::block_ref* begin,
       const typename column_t::block_ref* end)
-    : attributes{{
-        { irs::type<irs::document>::id(), &doc_    },
-        { irs::type<irs::cost>::id(),     &cost_   },
-        { irs::type<irs::score>::id(),    &score_  },
-        { irs::type<irs::payload>::id(),  &payload_ },
-      }},
-      cost_(column.size()),
-      begin_(begin),
+    : begin_(begin),
       seek_origin_(begin),
       end_(end),
       column_(&column) {
+    std::get<cost>(attrs_).reset(column.size());
+  }
+
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override {
+    return irs::get_mutable(attrs_, type);
   }
 
   virtual doc_id_t value() const noexcept override {
-    return doc_.value;
+    return std::get<document>(attrs_).value;
   }
 
   virtual doc_id_t seek(irs::doc_id_t doc) override {
@@ -4345,7 +4313,7 @@ class column_iterator final
       while (next_block() && !block_.next()) { }
     }
 
-    doc_.value = block_.value();
+    std::get<document>(attrs_).value = block_.value();
     return value();
   }
 
@@ -4356,7 +4324,7 @@ class column_iterator final
       }
     }
 
-    doc_.value = block_.value();
+    std::get<document>(attrs_).value = block_.value();
     return true;
   }
 
@@ -4364,12 +4332,15 @@ class column_iterator final
   typedef typename column_t::refs_t refs_t;
 
   bool next_block() {
+    auto& doc = std::get<document>(attrs_);
+    auto& payload = std::get<irs::payload>(attrs_);
+
     if (begin_ == end_) {
       // reached the end of the column
       block_.seal();
       seek_origin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
+      payload.value = bytes_ref::NIL;
+      doc.value = irs::doc_limits::eof();
 
       return false;
     }
@@ -4378,14 +4349,14 @@ class column_iterator final
       const auto& cached = load_block(*column_->ctxs_, column_->decompressor(), column_->encrypted(), *begin_);
 
       if (block_ != cached) {
-        block_.reset(cached, payload_);
+        block_.reset(cached, payload);
       }
     } catch (...) {
       // unable to load block, seal the iterator
       block_.seal();
       begin_ = end_;
-      payload_.value = bytes_ref::NIL;
-      doc_.value = irs::doc_limits::eof();
+      payload.value = bytes_ref::NIL;
+      doc.value = irs::doc_limits::eof();
 
       throw;
     }
@@ -4396,10 +4367,7 @@ class column_iterator final
   }
 
   block_iterator_t block_;
-  irs::payload payload_;
-  irs::document doc_;
-  irs::cost cost_;
-  irs::score score_;
+  attributes attrs_;
   const typename column_t::block_ref* begin_;
   const typename column_t::block_ref* seek_origin_;
   const typename column_t::block_ref* end_;
@@ -4515,8 +4483,7 @@ class sparse_column final : public column {
   }
 
   virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
+      const columnstore_reader::values_visitor_f& visitor) const override {
     block_t block; // don't cache new blocks
     for (auto begin = refs_.begin(), end = refs_.end()-1; begin != end; ++begin) { // -1 for upper bound
       const auto& cached = load_block(*ctxs_, decompressor(), encrypted(), *begin, block);
@@ -4815,8 +4782,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed(
         in, INDEX_BLOCK_SIZE, buf,
-        [](uint64_t) {}
-      );
+        [](uint64_t) {});
 
       blocks_count -= INDEX_BLOCK_SIZE;
     }
@@ -4834,8 +4800,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed_tail(
         in, blocks_count, buf,
-        [](uint64_t) { }
-      );
+        [](uint64_t) { });
     }
 
 
@@ -4848,8 +4813,7 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
   virtual bool visit(
-      const columnstore_reader::values_visitor_f& visitor
-  ) const override {
+      const columnstore_reader::values_visitor_f& visitor) const override {
     auto doc = min_;
 
     for (auto left = this->size(); left; --left) {
@@ -4868,56 +4832,60 @@ class dense_fixed_offset_column<dense_mask_block> final : public column {
   }
 
  private:
-  class column_iterator final :
-      public irs::frozen_attributes<3, irs::doc_iterator> {
+  class column_iterator final : public irs::doc_iterator {
+   private:
+    using attributes = std::tuple<
+      document, cost, score>;
+
    public:
     explicit column_iterator(const column_t& column) noexcept
-      : attributes{{
-          { irs::type<irs::document>::id(), &value_  },
-          { irs::type<irs::cost>::id(),     &cost_   },
-          { irs::type<irs::score>::id(),    &score_  },
-        }},
-        cost_(column.size()),
-        min_(1 + column.min_),
+      : min_(1 + column.min_),
         max_(column.max()) {
+      std::get<cost>(attrs_).reset(column.size());
+    }
+
+    virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+      return irs::get_mutable(attrs_, type);
     }
 
     virtual irs::doc_id_t value() const noexcept override {
-      return value_.value;
+      return std::get<document>(attrs_).value;
     }
 
     virtual irs::doc_id_t seek(irs::doc_id_t doc) noexcept override {
+      auto& value = std::get<document>(attrs_);
+
       if (doc < min_) {
-        if (!doc_limits::valid(value_.value)) {
+        if (!doc_limits::valid(value.value)) {
           next();
         }
 
-        return value();
+        return this->value();
       }
 
       min_ = doc;
       next();
 
-      return value_.value;
+      return value.value;
     }
 
     virtual bool next() noexcept override {
+      auto& value = std::get<document>(attrs_);
+
       if (min_ > max_) {
-        value_.value = doc_limits::eof();
+        value.value = doc_limits::eof();
 
         return false;
       }
 
 
-      value_.value = min_++;
+      value.value = min_++;
 
       return true;
     }
 
    private:
-    document value_;
-    irs::cost cost_;
-    irs::score score_;
+    attributes attrs_;
     doc_id_t min_{ doc_limits::invalid() };
     doc_id_t max_{ doc_limits::invalid() };
   }; // column_iterator
@@ -4970,8 +4938,7 @@ class reader final: public columnstore_reader, public context_provider {
 
   virtual bool prepare(
     const directory& dir,
-    const segment_meta& meta
-  ) override;
+    const segment_meta& meta) override;
 
   virtual const column_reader* column(field_id field) const override;
 
@@ -4990,8 +4957,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   if (!dir.exists(exists, filename)) {
     throw io_error(string_utils::to_string(
       "failed to check existence of file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   if (!exists) {
@@ -5005,8 +4971,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
   if (!stream) {
     throw io_error(string_utils::to_string(
       "Failed to open file, path: %s",
-      filename.c_str()
-    ));
+      filename.c_str()));
   }
 
   // check header
@@ -5048,8 +5013,7 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     if (factory_id >= IRESEARCH_COUNTOF(COLUMN_FACTORIES)) {
       throw index_error(string_utils::to_string(
         "Failed to load column id=" IR_SIZE_T_SPECIFIER ", got invalid properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
+        i, static_cast<uint32_t>(props)));
     }
 
     // create column
@@ -5058,21 +5022,18 @@ bool reader::prepare(const directory& dir, const segment_meta& meta) {
     if (!factory) {
       static_assert(
         std::is_same<std::underlying_type<ColumnProperty>::type, uint32_t>::value,
-        "Enum 'ColumnProperty' has different underlying type"
-      );
+        "Enum 'ColumnProperty' has different underlying type");
 
       throw index_error(string_utils::to_string(
         "Failed to open column id=" IR_SIZE_T_SPECIFIER ", properties=%d",
-        i, static_cast<uint32_t>(props)
-      ));
+        i, static_cast<uint32_t>(props)));
     }
 
     auto column = factory(*this, props);
 
     if (!column) {
       throw index_error(string_utils::to_string(
-        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i
-      ));
+        "Factory failed to create column id=" IR_SIZE_T_SPECIFIER, i));
     }
 
     compression::decompressor::ptr decomp;
@@ -5140,7 +5101,6 @@ class postings_reader_base : public irs::postings_reader {
   virtual size_t decode(
     const byte_type* in,
     const flags& field,
-    attribute_provider& attrs,
     irs::term_meta& state) final;
 
  protected:
@@ -5161,8 +5121,7 @@ void postings_reader_base::prepare(
     postings_writer_base::DOC_EXT,
     postings_writer_base::DOC_FORMAT_NAME,
     postings_writer_base::FORMAT_MIN,
-    postings_writer_base::FORMAT_MAX
-  );
+    postings_writer_base::FORMAT_MAX);
 
   // Since terms doc postings too large
   //  it is too costly to verify checksum of
@@ -5178,8 +5137,7 @@ void postings_reader_base::prepare(
       postings_writer_base::POS_EXT,
       postings_writer_base::POS_FORMAT_NAME,
       postings_writer_base::FORMAT_MIN,
-      postings_writer_base::FORMAT_MAX
-    );
+      postings_writer_base::FORMAT_MAX);
 
     // Since terms pos postings too large
     // it is too costly to verify checksum of
@@ -5195,8 +5153,7 @@ void postings_reader_base::prepare(
         postings_writer_base::PAY_EXT,
         postings_writer_base::PAY_FORMAT_NAME,
         postings_writer_base::FORMAT_MIN,
-        postings_writer_base::FORMAT_MAX
-      );
+        postings_writer_base::FORMAT_MAX);
 
       // Since terms pos postings too large
       // it is too costly to verify checksum of
@@ -5211,43 +5168,36 @@ void postings_reader_base::prepare(
   format_utils::check_header(in,
     postings_writer_base::TERMS_FORMAT_NAME,
     postings_writer_base::TERMS_FORMAT_MIN,
-    postings_writer_base::TERMS_FORMAT_MAX
-  );
+    postings_writer_base::TERMS_FORMAT_MAX);
 
   const uint64_t block_size = in.read_vint();
 
   if (block_size != postings_writer_base::BLOCK_SIZE) {
     throw index_error(string_utils::to_string(
       "while preparing postings_reader, error: invalid block size '" IR_UINT64_T_SPECIFIER "'",
-      block_size
-    ));
+      block_size));
   }
 }
 
 size_t postings_reader_base::decode(
     const byte_type* in,
     const flags& meta,
-    attribute_provider& attrs,
     irs::term_meta& state) {
-#ifdef IRESEARCH_DEBUG
-  auto& term_meta = dynamic_cast<version10::term_meta&>(state);
-#else
   auto& term_meta = static_cast<version10::term_meta&>(state);
-#endif // IRESEARCH_DEBUG
 
-  auto* term_freq = irs::get_mutable<frequency>(&attrs);
+  const bool has_freq = meta.check<frequency>();
   const auto* p = in;
 
   term_meta.docs_count = vread<uint32_t>(p);
-  if (term_freq) {
-    term_freq->value = term_meta.docs_count + vread<uint32_t>(p);
+  if (has_freq) {
+    term_meta.freq = term_meta.docs_count + vread<uint32_t>(p);
   }
 
   term_meta.doc_start += vread<uint64_t>(p);
-  if (term_freq && term_freq->value && meta.check<irs::position>()) {
+  if (has_freq && term_meta.freq && meta.check<irs::position>()) {
     term_meta.pos_start += vread<uint64_t>(p);
 
-    term_meta.pos_end = term_freq->value > postings_writer_base::BLOCK_SIZE
+    term_meta.pos_end = term_meta.freq > postings_writer_base::BLOCK_SIZE
         ? vread<uint64_t>(p)
         : type_limits<type_t::address_t>::invalid();
 
@@ -5278,57 +5228,75 @@ class postings_reader final: public postings_reader_base {
 
   virtual irs::doc_iterator::ptr iterator(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& features) override;
+    const flags& features,
+    const term_meta& meta) override;
+
+  virtual size_t bit_union(
+    const flags& field,
+    const term_provider_f& provider,
+    size_t* set) override;
 
  private:
-  template<typename IteratorTraits>
-  irs::doc_iterator::ptr iterator(
-      const attribute_provider& attrs,
-      const ::features& features) {
-    auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
-    it->prepare(features, attrs, doc_in_.get(), pos_in_.get(), pay_in_.get());
+  struct doc_iterator_maker {
+    template<typename IteratorTraits>
+    static typename doc_iterator<IteratorTraits>::ptr make(
+        const ::features& features,
+        const postings_reader& ctx,
+        const term_meta& meta) {
+      auto it = memory::make_managed<doc_iterator<IteratorTraits>>();
 
-    return it;
-  }
+      it->prepare(
+        features, meta,
+        ctx.doc_in_.get(),
+        ctx.pos_in_.get(),
+        ctx.pay_in_.get());
+
+      return it;
+    }
+  };
+
+  template<typename Maker, typename... Args>
+  irs::doc_iterator::ptr iterator_impl(
+    const flags& field,
+    const flags& features,
+    Args&&... args);
 }; // postings_reader
 
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wswitch"
 #endif
 
 template<typename FormatTraits, bool OneBasedPositionStorage>
-irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+template<typename Maker, typename... Args>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator_impl(
     const flags& field,
-    const attribute_provider& attrs,
-    const flags& req) {
-
-  // compile field features
+    const flags& req,
+    Args&&... args) {
   const auto features = ::features(field);
-  // get enabled features:
-  // find intersection between requested and available features
+  // get enabled features as the intersection
+  // between requested and available features
   const auto enabled = features & req;
 
   switch (enabled) {
     case features::FREQ | features::POS | features::OFFS | features::PAY: {
-      return iterator<iterator_traits<true, true, true, true>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, true, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::OFFS: {
-      return iterator<iterator_traits<true, true, true, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, true, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS | features::PAY: {
-      return iterator<iterator_traits<true, true, false, true>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, false, true>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ | features::POS: {
-      return iterator<iterator_traits<true, true, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, true, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     case features::FREQ: {
-      return iterator<iterator_traits<true, false, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<true, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
     default: {
-      return iterator<iterator_traits<false, false, false, false>>(attrs, features);
+      return Maker::template make<iterator_traits<false, false, false, false>>(features, *this, std::forward<Args>(args)...);
     }
   }
 
@@ -5337,9 +5305,104 @@ irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::i
 }
 
 #if defined(_MSC_VER)
-#elif defined (__GNUC__)
+#elif defined(__GNUC__)
   #pragma GCC diagnostic pop
 #endif
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+irs::doc_iterator::ptr postings_reader<FormatTraits, OneBasedPositionStorage>::iterator(
+    const flags& field,
+    const flags& req,
+    const term_meta& meta) {
+  return iterator_impl<doc_iterator_maker>(field, req, meta);
+}
+
+template<typename IteratorTraits, size_t N>
+void bit_union(
+    index_input& doc_in, doc_id_t docs_count,
+    uint32_t (&docs)[N], uint32_t (&enc_buf)[N],
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  size_t num_blocks = docs_count / postings_writer_base::BLOCK_SIZE;
+
+  doc_id_t doc = doc_limits::min();
+  while (num_blocks--) {
+    IteratorTraits::read_block(doc_in, enc_buf, docs);
+    if constexpr (IteratorTraits::frequency()) {
+      IteratorTraits::skip_block(doc_in);
+    }
+
+    // FIXME optimize
+    for (const auto delta : docs) {
+      doc += delta;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+    }
+  }
+
+  doc_id_t docs_left = docs_count % postings_writer_base::BLOCK_SIZE;
+
+  while (docs_left--) {
+    doc_id_t delta;
+    if constexpr (IteratorTraits::frequency()) {
+      if (!shift_unpack_32(doc_in.read_vint(), delta)) {
+        doc_in.read_vint();
+      }
+    } else {
+      delta = doc_in.read_vint();
+    }
+
+    doc += delta;
+    irs::set_bit(set[doc / BITS], doc % BITS);
+  }
+}
+
+template<typename FormatTraits, bool OneBasedPositionStorage>
+size_t postings_reader<FormatTraits, OneBasedPositionStorage>::bit_union(
+    const flags& field,
+    const term_provider_f& provider,
+    size_t* set) {
+  constexpr auto BITS{bits_required<std::remove_pointer_t<decltype(set)>>()};
+  uint32_t enc_buf[postings_writer_base::BLOCK_SIZE];
+  uint32_t docs[postings_writer_base::BLOCK_SIZE];
+  const bool has_freq = field.check<frequency>();
+
+  assert(doc_in_);
+  auto doc_in = doc_in_->reopen(); // reopen thread-safe stream
+
+  if (!doc_in) {
+    // implementation returned wrong pointer
+    IR_FRMT_ERROR("Failed to reopen document input in: %s", __FUNCTION__);
+
+    throw io_error("failed to reopen document input");
+  }
+
+  size_t count = 0;
+  while (const irs::term_meta* meta = provider()) {
+    auto& term_state = static_cast<const version10::term_meta&>(*meta);
+
+    if (term_state.docs_count > 1) {
+      doc_in->seek(term_state.doc_start);
+      assert(!doc_in->eof());
+
+      if (has_freq) {
+        using iterator_traits_t = iterator_traits<true, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      } else {
+        using iterator_traits_t = iterator_traits<false, false, false, false>;
+        ::bit_union<iterator_traits_t>(*doc_in, term_state.docs_count, docs, enc_buf, set);
+      }
+
+      count += term_state.docs_count;
+    } else {
+      const doc_id_t doc = doc_limits::min() + term_state.e_single_doc;
+      irs::set_bit(set[doc / BITS], doc % BITS);
+
+      ++count;
+    }
+  }
+
+  return count;
+}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                         format10
@@ -5525,8 +5588,7 @@ segment_meta_writer::ptr format11::get_segment_meta_writer() const {
 
 column_meta_writer::ptr format11::get_column_meta_writer() const {
   return memory::make_unique<columns::meta_writer>(
-    int32_t(columns::meta_writer::FORMAT_MAX)
-  );
+    int32_t(columns::meta_writer::FORMAT_MAX));
 }
 
 /*static*/ irs::format::ptr format11::make() {
@@ -5562,8 +5624,7 @@ const ::format12 FORMAT12_INSTANCE;
 
 columnstore_writer::ptr format12::get_columnstore_writer() const {
   return memory::make_unique<columns::writer>(
-    int32_t(columns::writer::FORMAT_MAX)
-  );
+    int32_t(columns::writer::FORMAT_MAX));
 }
 
 /*static*/ irs::format::ptr format12::make() {

@@ -80,7 +80,7 @@ bool token_stream_payload::next() {
 // ----------------------------------------------------------------------------
 
 string_field::string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
 ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
@@ -88,7 +88,7 @@ string_field::string_field(
 }
 
 string_field::string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
   ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
@@ -127,7 +127,7 @@ irs::token_stream& string_field::get_tokens() const {
 // ----------------------------------------------------------------------------
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
 ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }) {
   features_ |= extra_features;
@@ -135,7 +135,7 @@ string_ref_field::string_ref_field(
 }
 
 string_ref_field::string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features /*= irs::flags::empty_instance()*/
   ): features_({ irs::type<irs::frequency>::get(), irs::type<irs::position>::get() }),
@@ -182,14 +182,14 @@ void europarl_doc_template::init() {
   {
     insert(std::make_shared<tests::long_field>());
     auto& field = static_cast<tests::long_field&>(indexed.back());
-    field.name(irs::string_ref("date"));
+    field.name("date");
   }
   insert(std::make_shared<tests::templates::string_field>("datestr"));
   insert(std::make_shared<tests::templates::string_field>("body"));
   {
     insert(std::make_shared<tests::int_field>());
     auto& field = static_cast<tests::int_field&>(indexed.back());
-    field.name(irs::string_ref("id"));
+    field.name("id");
   }
   insert(std::make_shared<string_field>("idstr"));
 }
@@ -241,29 +241,29 @@ void generic_json_field_factory(
     const json_doc_generator::json_value& data) {
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str
     ));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
@@ -290,29 +290,29 @@ void payloaded_json_field_factory(
 
     // not analyzed field
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str
     ));
   } else if (json_doc_generator::ValueType::NIL == data.vt) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
   } else if (json_doc_generator::ValueType::BOOL == data.vt && !data.b) {
     doc.insert(std::make_shared<tests::binary_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_false()));
   } else if (data.is_number()) {
     // 'value' can be interpreted as a double
     doc.insert(std::make_shared<tests::double_field>());
     auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-    field.name(iresearch::string_ref(name));
+    field.name(name);
     field.value(data.as_number<double_t>());
   }
 }
@@ -324,7 +324,7 @@ void normalized_string_json_field_factory(
   static irs::flags norm{ irs::type<irs::norm>::get() };
   if (json_doc_generator::ValueType::STRING == data.vt) {
     doc.insert(std::make_shared<templates::string_field>(
-      irs::string_ref(name),
+      name,
       data.str,
       norm
       ));
@@ -381,7 +381,7 @@ class index_test_case : public tests::index_test_base {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -929,7 +929,7 @@ class index_test_case : public tests::index_test_base {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (tests::json_doc_generator::ValueType::STRING == data.vt) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -2289,7 +2289,90 @@ class index_test_case : public tests::index_test_base {
       ASSERT_EQ(reader.begin(), reader.end());
     }
   }
+
+  void docs_bit_union(const irs::flags& features);
 }; // index_test_case
+
+void index_test_case::docs_bit_union(const irs::flags& features) {
+  tests::templates::string_ref_field field("0", features);
+  const size_t N = irs::bits_required<uint64_t>(2) + 7;
+
+  {
+    auto writer = open_writer();
+
+    {
+      auto docs = writer->documents();
+      for (size_t i = 1; i <= N; ++i) {
+        const irs::string_ref value = i % 2 ? "A" : "B";
+        field.value(value);
+        ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+      }
+
+      field.value("C");
+      ASSERT_TRUE(docs.insert().insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  auto reader = open_reader();
+  ASSERT_NE(nullptr, reader);
+  ASSERT_EQ(1, reader->size());
+  auto& segment = (*reader)[0];
+  ASSERT_EQ(N+1, segment.docs_count());
+  ASSERT_EQ(N+1, segment.live_docs_count());
+
+  const auto* term_reader = segment.field(field.name());
+  ASSERT_NE(nullptr, term_reader);
+  ASSERT_EQ(N+1, term_reader->docs_count());
+  ASSERT_EQ(3, term_reader->size());
+  ASSERT_EQ("A", irs::ref_cast<char>(term_reader->min()));
+  ASSERT_EQ("C", irs::ref_cast<char>(term_reader->max()));
+  ASSERT_EQ(field.name(), term_reader->meta().name);
+  ASSERT_EQ(field.features(), term_reader->meta().features);
+  ASSERT_FALSE(irs::field_limits::valid(term_reader->meta().norm));
+
+  constexpr size_t expected_docs_B[] {
+    0b0101010101010101010101010101010101010101010101010101010101010100,
+    0b0101010101010101010101010101010101010101010101010101010101010101,
+    0b0000000000000000000000000000000000000000000000000000000001010101
+  };
+
+  constexpr size_t expected_docs_A[] {
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b1010101010101010101010101010101010101010101010101010101010101010,
+    0b0000000000000000000000000000000000000000000000000000000010101010
+  };
+
+  irs::seek_term_iterator::seek_cookie::ptr cookies[2];
+
+  auto term = term_reader->iterator();
+  ASSERT_TRUE(term->next());
+  ASSERT_EQ("A", irs::ref_cast<char>(term->value()));
+  term->read();
+  cookies[0] = term->cookie();
+  ASSERT_TRUE(term->next());
+  term->read();
+  cookies[1] = term->cookie();
+  ASSERT_EQ("B", irs::ref_cast<char>(term->value()));
+
+  auto cookie_provider = [
+      begin = std::begin(cookies),
+      end = std::end(cookies)]()mutable -> const irs::seek_term_iterator::seek_cookie*{
+    if (begin != end) {
+      auto cookie = begin->get();
+      ++begin;
+      return cookie;
+    }
+    return nullptr;
+  };
+
+  size_t actual_docs_AB[3]{};
+  ASSERT_EQ(N, term_reader->bit_union(cookie_provider, actual_docs_AB));
+  ASSERT_EQ(expected_docs_A[0] | expected_docs_B[0], actual_docs_AB[0]);
+  ASSERT_EQ(expected_docs_A[1] | expected_docs_B[1], actual_docs_AB[1]);
+  ASSERT_EQ(expected_docs_A[2] | expected_docs_B[2], actual_docs_AB[2]);
+}
 
 TEST_P(index_test_case, arango_demo_docs) {
   {
@@ -2484,6 +2567,11 @@ TEST_P(index_test_case, europarl_docs) {
   assert_index();
 }
 
+TEST_P(index_test_case, docs_bit_union) {
+  docs_bit_union({});
+  docs_bit_union({irs::type<irs::frequency>::get()});
+}
+
 TEST_P(index_test_case, europarl_docs_automaton) {
   {
     tests::templates::europarl_doc_template doc;
@@ -2494,21 +2582,21 @@ TEST_P(index_test_case, europarl_docs_automaton) {
   // prefix
   {
     auto acceptor = irs::from_wildcard("forb%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // part
   {
     auto acceptor = irs::from_wildcard("%ende%");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 
   // suffix
   {
     auto acceptor = irs::from_wildcard("%ione");
-    irs::automaton_table_matcher matcher(acceptor, fst::fsa::kRho);
+    irs::automaton_table_matcher matcher(acceptor, true);
     assert_index(0, &matcher);
   }
 }
@@ -2576,7 +2664,7 @@ TEST_P(index_test_case, concurrent_add_remove_mt) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2657,7 +2745,7 @@ TEST_P(index_test_case, concurrent_add_remove_overlap_commit_mt) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -2789,7 +2877,7 @@ TEST_P(index_test_case, document_context) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4208,7 +4296,7 @@ TEST_P(index_test_case, doc_removal) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -4730,7 +4818,7 @@ TEST_P(index_test_case, doc_update) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -5511,7 +5599,7 @@ TEST_P(index_test_case, import_reader) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -5928,7 +6016,7 @@ TEST_P(index_test_case, refresh_reader) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -6260,7 +6348,7 @@ TEST_P(index_test_case, segment_column_user_system) {
       // add 2 identical fields (without storing) to trigger non-default norm value
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -6272,7 +6360,7 @@ TEST_P(index_test_case, segment_column_user_system) {
   // add 2 identical fields (without storing) to trigger non-default norm value
   for (size_t i = 2; i; --i) {
     doc0.insert(std::make_shared<tests::templates::string_field>(
-      irs::string_ref("test-field"),
+      "test-field",
       "test-value",
       irs::flags({ irs::type<irs::norm>::get() }) // trigger addition of a system column
     ), true, false);
@@ -6363,7 +6451,7 @@ TEST_P(index_test_case, import_concurrent) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6445,7 +6533,7 @@ TEST_P(index_test_case, import_concurrent) {
     auto docsItr = termItr->postings(iresearch::flags());
     while (docsItr->next()) {
       ASSERT_TRUE(values(docsItr->value(), actual_value));
-      ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+      ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
       ++removed;
     }
     ASSERT_FALSE(docsItr->next());
@@ -6464,7 +6552,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6487,17 +6575,16 @@ TEST_P(index_test_case, concurrent_consolidation) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6520,14 +6607,13 @@ TEST_P(index_test_case, concurrent_consolidation) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6573,7 +6659,7 @@ TEST_P(index_test_case, concurrent_consolidation) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6592,7 +6678,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6615,17 +6701,16 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6648,14 +6733,13 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6714,7 +6798,7 @@ TEST_P(index_test_case, concurrent_consolidation_dedicated_commit) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6733,7 +6817,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6756,17 +6840,16 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6789,14 +6872,13 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6858,7 +6940,7 @@ TEST_P(index_test_case, concurrent_consolidation_two_phase_dedicated_commit) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -6877,7 +6959,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     [&names] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
 
@@ -6900,17 +6982,16 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   ASSERT_EQ(size-1, irs::directory_cleaner::clean(dir()));
 
   auto consolidate_range = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
       size_t begin,
-      size_t end
-  ) {
+      size_t end) {
     if (begin > meta.size() || end > meta.size()) {
       return;
     }
 
     for (;begin < end; ++begin) {
-      candidates.emplace(&meta[begin].meta);
+      candidates.emplace_back(&meta[begin].meta);
     }
   };
 
@@ -6934,14 +7015,13 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
     pool.emplace_back(std::thread([&wait_for_all, &consolidate_range, &writer, &dir, i] () mutable {
       wait_for_all();
 
-      size_t num_segments = irs::integer_traits<size_t>::const_max;
+      size_t num_segments = std::numeric_limits<size_t>::max();
 
       while (num_segments > 1) {
         auto policy = [&consolidate_range, &i, &num_segments, &dir] (
-            std::set<const irs::segment_meta*>& candidates,
+            irs::index_writer::consolidation_t& candidates,
             const irs::index_meta& meta,
-            const irs::index_writer::consolidating_segments_t&
-        ) mutable {
+            const irs::index_writer::consolidating_segments_t&) mutable {
           num_segments = meta.size();
           consolidate_range(candidates, meta, i, i+2);
         };
@@ -6989,7 +7069,7 @@ TEST_P(index_test_case, concurrent_consolidation_cleanup) {
   auto docsItr = termItr->postings(iresearch::flags());
   while (docsItr->next()) {
     ASSERT_TRUE(values(docsItr->value(), actual_value));
-    ASSERT_EQ(1, names.erase(irs::to_string<irs::string_ref>(actual_value.c_str())));
+    ASSERT_EQ(1, names.erase(irs::to_string<std::string>(actual_value.c_str())));
     ++removed;
   }
   ASSERT_FALSE(docsItr->next());
@@ -7003,10 +7083,9 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   ASSERT_NE(nullptr, writer);
 
   auto check_consolidating_segments = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_TRUE(consolidating_segments.empty());
   };
 
@@ -7015,7 +7094,7 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7034,11 +7113,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
   // null candidate
   {
     auto invalid_candidate_policy = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(nullptr);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(nullptr);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7052,11 +7130,10 @@ TEST_P(index_test_case, consolidate_invalid_candidate) {
     const irs::segment_meta meta("foo", nullptr, 6, 5, false, irs::segment_meta::file_set(), irs::field_limits::invalid());
 
     auto invalid_candidate_policy = [&meta](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& /*meta*/,
-        const irs::index_writer::consolidating_segments_t&
-    ) {
-      candidates.insert(&meta);
+        const irs::index_writer::consolidating_segments_t&) {
+      candidates.emplace_back(&meta);
     };
 
     ASSERT_FALSE(writer->consolidate(invalid_candidate_policy)); // invalid candidate
@@ -7072,7 +7149,7 @@ TEST_P(index_test_case, consolidate_single_segment) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7086,10 +7163,9 @@ TEST_P(index_test_case, consolidate_single_segment) {
 
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7188,7 +7264,7 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7240,10 +7316,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7400,10 +7475,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
       ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count()))); // consolidate
 
       auto check_consolidating_segments = [](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_TRUE(consolidating_segments.empty());
       };
       ASSERT_TRUE(writer->consolidate(check_consolidating_segments)); // check segments registered for consolidation
@@ -7558,10 +7632,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7695,10 +7768,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 
       const std::vector<size_t> expected_consolidating_segments{ 0, 1 };
       auto check_consolidating_segments = [&expected_consolidating_segments](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments) {
         ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
         for (auto i : expected_consolidating_segments) {
           auto& expected_consolidating_segment = meta[i];
@@ -7795,10 +7867,9 @@ TEST_P(index_test_case, segment_consolidate_long_running) {
 TEST_P(index_test_case, segment_consolidate_clear_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7811,7 +7882,7 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -7976,10 +8047,9 @@ TEST_P(index_test_case, segment_consolidate_clear_commit) {
 TEST_P(index_test_case, segment_consolidate_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -7992,7 +8062,7 @@ TEST_P(index_test_case, segment_consolidate_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8330,7 +8400,7 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -8342,10 +8412,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8364,14 +8433,13 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // register 'SEGMENTS_COUNT/2' consolidations
   for (size_t i = 0, j = 0; i < SEGMENTS_COUNT/2; ++i) {
     auto merge_adjacent = [&j](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
       ASSERT_TRUE(j < meta.size());
-      candidates.emplace(&meta[j++].meta);
+      candidates.emplace_back(&meta[j++].meta);
     };
 
     ASSERT_TRUE(writer->consolidate(merge_adjacent));
@@ -8380,10 +8448,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // check all segments registered
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_EQ(meta.size(), consolidating_segments.size());
       for (auto& segment : meta) {
         ASSERT_TRUE(consolidating_segments.end() != consolidating_segments.find(&segment.meta));
@@ -8397,10 +8464,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
   // ensure consolidating segments is empty
   {
     auto check_consolidating_segments = [](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    ) {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       ASSERT_TRUE(consolidating_segments.empty());
     };
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
@@ -8457,10 +8523,9 @@ TEST_P(index_test_case, consolidate_check_consolidating_segments) {
 TEST_P(index_test_case, segment_consolidate_pending_commit) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i : expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -8473,7 +8538,7 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -9184,10 +9249,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_TRUE(writer->consolidate(check_consolidating_segments));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
       auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       sub_policy(candidates, meta, consolidating_segments);
       writer->commit();
@@ -9347,15 +9411,14 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9422,18 +9485,17 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
     ASSERT_FALSE(writer->consolidate(irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count())));
 
     auto do_commit_and_consolidate_count = [&writer, &query_doc4](
-      std::set<const irs::segment_meta*>& candidates,
-      const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-      ) {
-        writer->commit();
-        writer->begin(); // another commit to process pending consolidating_segments
-        writer->commit();
-        // new transaction with passed 1st phase
-        writer->documents().remove(*query_doc4.filter);
-        writer->begin();
-        auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
-        sub_policy(candidates, meta, consolidating_segments);
+        irs::index_writer::consolidation_t& candidates,
+        const irs::index_meta& meta,
+        const irs::index_writer::consolidating_segments_t& consolidating_segments) {
+      writer->commit();
+      writer->begin(); // another commit to process pending consolidating_segments
+      writer->commit();
+      // new transaction with passed 1st phase
+      writer->documents().remove(*query_doc4.filter);
+      writer->begin();
+      auto sub_policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
+      sub_policy(candidates, meta, consolidating_segments);
     };
 
     // this should fail as segments 1 and 0 are actually consolidated on previous  commit
@@ -9999,10 +10061,9 @@ TEST_P(index_test_case, segment_consolidate_pending_commit) {
 TEST_P(index_test_case, consolidate_segment_versions) {
   std::vector<size_t> expected_consolidating_segments;
   auto check_consolidating_segments = [&expected_consolidating_segments](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t& consolidating_segments
-  ) {
+      const irs::index_writer::consolidating_segments_t& consolidating_segments) {
     ASSERT_EQ(expected_consolidating_segments.size(), consolidating_segments.size());
     for (auto i: expected_consolidating_segments) {
       auto& expected_consolidating_segment = meta[i];
@@ -10505,10 +10566,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
       // segment 2 (version 0) created entirely while consolidate is in progress
       auto policy = [&writer, doc3](
-          std::set<const irs::segment_meta*>& candidates,
+          irs::index_writer::consolidation_t& candidates,
           const irs::index_meta& meta,
-          const irs::index_writer::consolidating_segments_t& consolidating_segments
-      )->void {
+          const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
         auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
         policy(candidates, meta, consolidating_segments); // compute policy first then add segment
         {
@@ -10849,10 +10909,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       {
@@ -11010,10 +11069,9 @@ TEST_P(index_test_case, consolidate_segment_versions) {
 
     // segment 2 (version 0) created entirely while consolidate is in progress
     auto policy = [&writer, doc3, &doc4](
-        std::set<const irs::segment_meta*>& candidates,
+        irs::index_writer::consolidation_t& candidates,
         const irs::index_meta& meta,
-        const irs::index_writer::consolidating_segments_t& consolidating_segments
-    )->void {
+        const irs::index_writer::consolidating_segments_t& consolidating_segments)->void {
       auto policy = irs::index_utils::consolidation_policy(irs::index_utils::consolidate_count());
       policy(candidates, meta, consolidating_segments); // compute policy first then add segment
       // segment 2 (version 0)
@@ -11772,7 +11830,7 @@ TEST_P(index_test_case, segment_consolidate) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       }
@@ -12015,13 +12073,12 @@ TEST_P(index_test_case, segment_consolidate) {
   }
 
   auto merge_if_masked = [](
-      std::set<const irs::segment_meta*>& candidates,
+      irs::index_writer::consolidation_t& candidates,
       const irs::index_meta& meta,
-      const irs::index_writer::consolidating_segments_t&
-  )->void {
+      const irs::index_writer::consolidating_segments_t&)->void {
     for (auto& segment : meta) {
       if (segment.meta.live_docs_count != segment.meta.docs_count) {
-        candidates.insert(&segment.meta);
+        candidates.emplace_back(&segment.meta);
       }
     }
   };
@@ -12473,7 +12530,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12564,7 +12621,7 @@ TEST_P(index_test_case, segment_consolidate) {
       [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
         if (data.is_string()) {
           doc.insert(std::make_shared<tests::templates::string_field>(
-            irs::string_ref(name),
+            name,
             data.str
           ));
         }
@@ -12638,7 +12695,7 @@ TEST_P(index_test_case, segment_consolidate_policy) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -13199,7 +13256,7 @@ TEST_P(index_test_case, segment_options) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }
@@ -13590,6 +13647,102 @@ TEST_P(index_test_case, writer_insert_immediate_remove_all) {
   ASSERT_EQ(count, one_segment_files_count);
 }
 
+TEST_P(index_test_case, ensure_no_empty_norms_written) {
+  struct empty_token_stream : irs::token_stream {
+    bool next() noexcept { return false; }
+    irs::attribute* get_mutable(irs::type_info::type_id type) noexcept {
+      if (type == irs::type<irs::increment>::id()) {
+        return &inc;
+      }
+
+      if (type == irs::type<irs::term_attribute>::id()) {
+        return &term;
+      }
+
+      return nullptr;
+    }
+
+    irs::increment inc;
+    irs::term_attribute term;
+  };
+
+  struct empty_field {
+    std::string name() const { return "test"; };
+    irs::flags features() const {
+      return { irs::type<irs::position>::get(),
+               irs::type<irs::frequency>::get(),
+               irs::type<irs::norm>::get() };
+    }
+    irs::token_stream& get_tokens() const noexcept {
+      return stream;
+    }
+
+    mutable empty_token_stream stream;
+  } empty;
+
+  {
+    auto writer = open_writer();
+
+    // no norms is written as there is nothing to index
+    {
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(empty));
+    }
+
+    // we don't write default norms
+    {
+      const tests::templates::string_field field(
+        empty.name(), "bar", empty.features());
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    {
+      const tests::templates::string_field field(
+        empty.name(), "bar", empty.features());
+      auto docs = writer->documents();
+      auto doc = docs.insert();
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+      ASSERT_TRUE(doc.insert<irs::Action::INDEX>(field));
+    }
+
+    writer->commit();
+  }
+
+  {
+    auto reader = irs::directory_reader::open(dir(), codec());
+    ASSERT_EQ(1, reader.size());
+    auto& segment = (*reader)[0];
+    ASSERT_EQ(3, segment.docs_count());
+    ASSERT_EQ(3, segment.live_docs_count());
+
+    auto field = segment.fields();
+    ASSERT_NE(nullptr, field);
+    ASSERT_TRUE(field->next());
+    auto& field_reader = field->value();
+    ASSERT_EQ(empty.name(), field_reader.meta().name);
+    ASSERT_TRUE(irs::field_limits::valid(field_reader.meta().norm));
+    ASSERT_FALSE(field->next());
+    ASSERT_FALSE(field->next());
+
+    auto column_reader = segment.column_reader(field_reader.meta().norm);
+    ASSERT_NE(nullptr, column_reader);
+    ASSERT_EQ(1, column_reader->size());
+    auto it = column_reader->iterator();
+    ASSERT_NE(nullptr, it);
+    auto payload = irs::get<irs::payload>(*it);
+    ASSERT_NE(nullptr, payload);
+    ASSERT_TRUE(it->next());
+    ASSERT_EQ(3, it->value());
+    irs::bytes_ref_input in(payload->value);
+    const auto value = irs::read_zvfloat(in);
+    ASSERT_NE(irs::norm::DEFAULT(), value);
+    ASSERT_FALSE(it->next());
+    ASSERT_FALSE(it->next());
+  }
+}
 
 INSTANTIATE_TEST_CASE_P(
   index_test_10,
@@ -13957,7 +14110,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
           ));
       }
@@ -13968,7 +14121,7 @@ TEST_P(index_test_case_11, clean_writer_with_payload) {
 
   irs::index_writer::init_options writer_options;
   uint64_t payload_committed_tick{ 0 };
-  irs::bstring input_payload = irs::ref_cast<irs::byte_type>(irs::string_ref("init"));
+  irs::bstring input_payload = static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("init")));
   bool payload_provider_result{ false };
   writer_options.meta_payload_provider = 
     [&payload_provider_result, &payload_committed_tick, &input_payload](uint64_t tick, irs::bstring& out) {

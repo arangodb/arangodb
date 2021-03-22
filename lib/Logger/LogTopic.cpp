@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -154,7 +154,7 @@ LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
-LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
+LogTopic LdapFeature::LDAP_TOPIC("ldap", LogLevel::INFO);
 
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::DEBUG);
 LogTopic AuditFeature::AUDIT_AUTHORIZATION("audit-authorization", LogLevel::INFO);

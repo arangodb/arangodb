@@ -77,6 +77,8 @@ struct IRESEARCH_API data_input {
 
   virtual size_t length() const = 0;
 
+  /// @return EOF mark
+  /// @note calling "read_byte()" on a stream in EOF state is undefined behavior
   virtual bool eof() const = 0;
 
   int16_t read_short() {
@@ -157,15 +159,13 @@ class IRESEARCH_API input_buf final : public std::streambuf, util::noncopyable {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API buffered_index_input : public index_input {
  public:
-  static const size_t DEFAULT_BUFFER_SIZE = 1024;
-
   virtual byte_type read_byte() override final;
 
   virtual size_t read_bytes(byte_type* b, size_t count) override final;
 
-  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept final;
+  virtual const byte_type* read_buffer(size_t size, BufferHint hint) noexcept override final;
 
-  virtual size_t file_pointer() const override final {
+  virtual size_t file_pointer() const noexcept override final {
     return start_ + offset();
   }
 
@@ -174,8 +174,6 @@ class IRESEARCH_API buffered_index_input : public index_input {
   }
 
   virtual void seek(size_t pos) override final;
-
-  size_t buffer_size() const { return buf_size_; }
 
   virtual int32_t read_int() override final;
 
@@ -186,41 +184,48 @@ class IRESEARCH_API buffered_index_input : public index_input {
   virtual uint64_t read_vlong() override final;
 
  protected:
-  explicit buffered_index_input(
-    size_t buf_size = DEFAULT_BUFFER_SIZE
-  ) noexcept;
+  buffered_index_input() = default;
 
-  buffered_index_input(const buffered_index_input& rhs) noexcept;
+  void reset(byte_type* buf, size_t size, size_t start) noexcept {
+    buf_ = buf;
+    begin_ = buf;
+    end_ = buf;
+    buf_size_ = size;
+    start_ = start;
+  }
 
   virtual void seek_internal(size_t pos) = 0;
 
   virtual size_t read_internal(byte_type* b, size_t count) = 0;
 
   // returns number of reamining bytes in the buffer
-  FORCE_INLINE size_t remain() const {
+  FORCE_INLINE size_t remain() const noexcept {
     return std::distance(begin_, end_);
   }
 
  private:
+  buffered_index_input(const buffered_index_input&) = delete;
+  buffered_index_input& operator=(const buffered_index_input&) = delete;
+
   // returns number of bytes between begin_ & end_
   size_t refill();
 
   // returns number of elements between current position and beginning of the buffer
-  FORCE_INLINE size_t offset() const { 
-    return std::distance(buf_.get(), begin_); 
+  FORCE_INLINE size_t offset() const noexcept {
+    return std::distance(buf_, begin_);
   }
 
   // returns number of valid bytes in the buffer 
-  FORCE_INLINE size_t size() const { 
-    return std::distance(buf_.get(), end_); 
+  FORCE_INLINE size_t size() const noexcept {
+    return std::distance(buf_, end_);
   }
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  std::unique_ptr< byte_type[] > buf_; // buffer itself
-  byte_type* begin_{ buf_.get() }; // current position in the buffer
-  byte_type* end_{ buf_.get() }; // end of the valid bytes in the buffer
+  byte_type* buf_{}; // buffer itself
+  byte_type* begin_{ buf_ }; // current position in the buffer
+  byte_type* end_{ buf_ }; // end of the valid bytes in the buffer
   size_t start_{}; // position of the buffer in file
-  size_t buf_size_; // size of the buffer in bytes
+  size_t buf_size_{}; // size of the buffer in bytes
   IRESEARCH_API_PRIVATE_VARIABLES_END
 }; // buffered_index_input
 

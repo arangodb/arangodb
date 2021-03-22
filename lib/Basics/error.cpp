@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,31 +24,29 @@
 #include <cstring>
 #include <unordered_map>
 
-#include "Basics/Common.h"
+#include <frozen/unordered_map.h>
+
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/error-registry.h"
 #include "Basics/exitcodes.h"
 #include "Basics/voc-errors.h"
 
 /// @brief error number and system error
 struct ErrorContainer {
-  int _number = TRI_ERROR_NO_ERROR;
-  int _sys = TRI_ERROR_NO_ERROR;
+  ErrorCode _number = TRI_ERROR_NO_ERROR;
+  int _sys = 0;
 };
 
 /// @brief holds the last error that occurred in the current thread
 thread_local ErrorContainer LastError;
 
-/// @brief the error messages, will be read-only after initialization
-static std::unordered_map<int, char const*> ErrorMessages;
-static std::unordered_map<int, char const*> ExitMessages;
-
 /// @brief returns the last error
-int TRI_errno() { return LastError._number; }
+ErrorCode TRI_errno() { return LastError._number; }
 
 /// @brief returns the last error as string
-char const* TRI_last_error() {
-  int err = LastError._number;
+std::string_view TRI_last_error() {
+  ErrorCode err = LastError._number;
 
   if (err == TRI_ERROR_SYS_ERROR) {
     return strerror(LastError._sys);
@@ -58,7 +56,7 @@ char const* TRI_last_error() {
 }
 
 /// @brief sets the last error
-int TRI_set_errno(int error) {
+ErrorCode TRI_set_errno(ErrorCode error) {
   LastError._number = error;
 
   if (error == TRI_ERROR_SYS_ERROR) {
@@ -70,31 +68,10 @@ int TRI_set_errno(int error) {
   return error;
 }
 
-/// @brief defines an exit code string
-void TRI_set_exitno_string(int code, char const* msg) {
-  TRI_ASSERT(msg != nullptr);
-
-  if (!ExitMessages.try_emplace(code, msg).second) {
-    // logic error, error number is redeclared
-    printf("Error: duplicate declaration of exit code %i in %s:%i\n", code, __FILE__, __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-}
-
-/// @brief defines an error string
-void TRI_set_errno_string(int code, char const* msg) {
-  TRI_ASSERT(msg != nullptr);
-
-  if (!ErrorMessages.try_emplace(code, msg).second) {
-    // logic error, error number is redeclared
-    printf("Error: duplicate declaration of error code %i in %s:%i\n", code,
-           __FILE__, __LINE__);
-    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
-  }
-}
 
 /// @brief return an error message for an error code
-char const* TRI_errno_string(int code) noexcept {
+std::string_view TRI_errno_string(ErrorCode code) noexcept {
+  using arangodb::error::ErrorMessages;
   auto it = ErrorMessages.find(code);
 
   if (it == ErrorMessages.end()) {
@@ -103,10 +80,4 @@ char const* TRI_errno_string(int code) noexcept {
   }
 
   return (*it).second;
-}
-
-/// @brief initializes the error messages
-void TRI_InitializeError() {
-  TRI_InitializeErrorMessages();
-  TRI_InitializeExitMessages();
 }

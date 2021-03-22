@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -229,8 +229,11 @@ class RocksDBKeyLeaser {
   ~RocksDBKeyLeaser();
   inline RocksDBKey* builder() { return &_key; }
   inline RocksDBKey* operator->() { return &_key; }
+  inline RocksDBKey const* operator->() const { return &_key; }
   inline RocksDBKey* get() { return &_key; }
+  inline RocksDBKey const* get() const { return &_key; }
   inline RocksDBKey& ref() { return _key; }
+  inline RocksDBKey const& ref() const { return _key; }
 
  private:
   transaction::Context* _ctx;

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,14 +39,34 @@
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ServerState.h"
 #include "Random/RandomGenerator.h"
+#include "StorageEngine/HealthData.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::application_features;
 using namespace arangodb::cluster::paths;
 using namespace arangodb::cluster::paths::aliases;
+
+struct RuntimeScale {
+  static log_scale_t<uint64_t> scale() { return {2, 50, 8000, 10}; }
+};
+struct WaitForReplicationScale {
+  static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
+};
+  
+DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
+                  "Accumulated Supervision Runtime [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
+                  "Accumulated Supervision wait for replication time [ms]");
+DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
+                  "Counter for FailedServer jobs");
+DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_msec, RuntimeScale,
+                  "Agency Supervision runtime histogram [ms]");
+DECLARE_HISTOGRAM(arangodb_agency_supervision_runtime_wait_for_replication_msec, WaitForReplicationScale,
+                  "Agency Supervision wait for replication time [ms]");
 
 struct HealthRecord {
   std::string shortName;
@@ -179,26 +199,21 @@ Supervision::Supervision(application_features::ApplicationServer& server)
       _selfShutdown(false),
       _upgraded(false),
       _nextServerCleanup(),
-      _supervision_runtime_msec(server.getFeature<arangodb::MetricsFeature>().histogram(
-          StaticStrings::SupervisionRuntimeMs, log_scale_t<uint64_t>(2, 50, 8000, 10),
-          "Agency Supervision runtime histogram [ms]")),
+      _supervision_runtime_msec(
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_msec{})),
       _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().histogram(
-              StaticStrings::SupervisionRuntimeWaitForSyncMs,
-              log_scale_t<uint64_t>(2, 10, 2000, 10),
-              "Agency Supervision wait for replication time [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_accum_runtime_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeMs, 0,
-              "Accumulated Supervision Runtime [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_msec_total{})),
       _supervision_accum_runtime_wait_for_sync_msec(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionAccumRuntimeWaitForSyncMs, 0,
-              "Accumulated Supervision  wait for replication time  [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total{})),
       _supervision_failed_server_counter(
-          server.getFeature<arangodb::MetricsFeature>().counter(
-              StaticStrings::SupervisionFailedServerCount, 0,
-              "Counter for FailedServer jobs")) {}
+        server.getFeature<arangodb::MetricsFeature>().add(
+          arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() {
   if (!isStopping()) {
@@ -478,9 +493,9 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot, HealthRecord& pers
 void handleOnStatus(Agent* agent, Node const& snapshot, HealthRecord& persisted,
                     HealthRecord& transisted, std::string const& serverID,
                     uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-  if (serverID.compare(0, 4, "PRMR") == 0) {
+  if (ClusterHelpers::isDBServerName(serverID)) {
     handleOnStatusDBServer(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
-  } else if (serverID.compare(0, 4, "CRDN") == 0) {
+  } else if (ClusterHelpers::isCoordinatorName(serverID)) {
     handleOnStatusCoordinator(agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0, 4, "SNGL") == 0) {
     handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID, jobId, envelope);
@@ -526,8 +541,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       snapshot().hasAsNode(currentServersRegisteredPrefix).first;
   std::vector<std::string> todelete;
   for (auto const& machine : snapshot().hasAsChildren(healthPrefix).first) {
-    if ((type == "DBServers" && machine.first.compare(0, 4, "PRMR") == 0) ||
-        (type == "Coordinators" && machine.first.compare(0, 4, "CRDN") == 0) ||
+    if ((type == "DBServers" && ClusterHelpers::isDBServerName(machine.first)) ||
+        (type == "Coordinators" && ClusterHelpers::isCoordinatorName(machine.first)) ||
         (type == "Singles" && machine.first.compare(0, 4, "SNGL") == 0)) {
       // Put only those on list which are no longer planned:
       if (machinesPlanned.find(machine.first) == machinesPlanned.end()) {
@@ -624,10 +639,48 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       // Sync.status is copied to Health.syncStatus
       std::string syncTime;
       std::string syncStatus;
-      bool heartBeatVisible = _transient.has(syncPrefix + serverID);
-      if (heartBeatVisible) {
+
+      // in recent versions of ArangoDB, servers can also report back
+      // whether they are healthy or not, by sending in the "health"
+      // struct with details. currently only DB servers do this, and 
+      // versions older than 3.8 don't send this at all. so it is an 
+      // optional attribute, and we cannot rely on it being present. 
+      // the assumption is thus that servers that do not send back any 
+      // health data should be considered healthy.
+      // TODO: decide on how to exactly handle the "health" info here,
+      // and then make use of it. it remains unused for now and is thus
+      // specially marked.
+      [[maybe_unused]] bool isHealthy = true;
+      
+      bool heartbeatVisible = _transient.has(syncPrefix + serverID);
+      if (heartbeatVisible) {
         syncTime = _transient.hasAsString(syncPrefix + serverID + "/time").first;
         syncStatus = _transient.hasAsString(syncPrefix + serverID + "/status").first;
+        // it is optional for servers to send health data, so we need to be prepared
+        // for not receiving any.
+        auto healthData = _transient.hasAsBuilder(syncPrefix + serverID + "/health");
+        if (healthData.second) {
+          VPackSlice healthSlice = healthData.first.slice();
+          if (healthSlice.isObject()) {
+            // check health status reported by server
+            HealthData hd = HealthData::fromVelocyPack(healthSlice);
+
+            LOG_TOPIC("c77f5", TRACE, Logger::SUPERVISION)
+               << "server " << serverID 
+               << " sent health data: " << healthSlice.toJson()
+               << ", ok: " << hd.res.ok() 
+               << ", message: " << hd.res.errorMessage()
+               << ", bg error: " << hd.backgroundError
+               << ", free disk bytes: " << hd.freeDiskSpaceBytes
+               << ", free disk percent: " << hd.freeDiskSpacePercent;
+
+            if (hd.res.fail()) {
+              // server reported itself as unhealthy.
+              // TODO: do something about this!
+              isHealthy = false;
+            }
+          }
+        }
       } else {
         syncTime = timepointToString(std::chrono::system_clock::time_point()); // beginning of time
         syncStatus = "UNKNOWN";
@@ -635,7 +688,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
       // Compute the time when we last discovered a new heartbeat from that server:
       std::chrono::system_clock::time_point lastAckedTime;
-      if (heartBeatVisible) {
+      if (heartbeatVisible) {
         if (transientHealthRecordFound) {
           lastAckedTime = (syncTime != transist.syncTime)
                           ? startTimeLoop
@@ -1028,16 +1081,6 @@ void Supervision::run() {
                 // 55 seconds is less than a minute, which fits to the
                 // 60 seconds timeout in /_admin/cluster/health
 
-                // wait 5 min or until next scheduled run
-                if (_agent->leaderFor() > 300 &&
-                    _nextServerCleanup < std::chrono::system_clock::now()) {
-                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
-                      << "Begin cleanupExpiredServers";
-                  cleanupExpiredServers(snapshot(), _transient);
-                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
-                      << "Finished cleanupExpiredServers";
-                }
-
                 try {
                   LOG_TOPIC("aa565", TRACE, Logger::SUPERVISION)
                       << "Begin doChecks";
@@ -1052,6 +1095,29 @@ void Supervision::run() {
                       << "Supervision::doChecks() generated an uncaught "
                          "exception.";
                 }
+
+                // wait 5 min or until next scheduled run
+                if (_agent->leaderFor() > 300 &&
+                    _nextServerCleanup < std::chrono::system_clock::now()) {
+                  // Make sure that we have the latest and greatest information
+                  // about heartbeats in _transient. Note that after a long
+                  // Maintenance mode of the supervision, the `doChecks` above
+                  // might have updated /arango/Supervision/Health in the transient
+                  // store *just now above*. We need to reflect these changes in
+                  // _transient.
+                  _agent->executeTransientLocked([&]() {
+                    if (_agent->transient().has(_agencyPrefix)) {
+                      _transient = _agent->transient().get(_agencyPrefix);
+                    }
+                  });
+
+                  LOG_TOPIC("dcded", TRACE, Logger::SUPERVISION)
+                      << "Begin cleanupExpiredServers";
+                  cleanupExpiredServers(snapshot(), _transient);
+                  LOG_TOPIC("dedcd", TRACE, Logger::SUPERVISION)
+                      << "Finished cleanupExpiredServers";
+                }
+
               } else {
                 LOG_TOPIC("7928f", INFO, Logger::SUPERVISION)
                     << "Postponing supervision for now, waiting for incoming "
@@ -1586,6 +1652,10 @@ bool Supervision::handleJobs() {
       << "Begin cleanupFinishedAndFailedJobs";
   cleanupFinishedAndFailedJobs();
 
+  LOG_TOPIC("0892c", TRACE, Logger::SUPERVISION)
+      << "Begin cleanupHotbackupTransferJobs";
+  cleanupHotbackupTransferJobs();
+
   return true;
 }
 
@@ -1643,6 +1713,93 @@ void Supervision::cleanupFinishedAndFailedJobs() {
 
   cleanup(finishedPrefix, maximalFinishedJobs);
   cleanup(failedPrefix, maximalFailedJobs);
+}
+
+// Guarded by caller
+void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+    Node const& snapshot,
+    std::shared_ptr<VPackBuilder> envelope) {
+  // This deletes old Hotbackup transfer jobs in 
+  // /Target/HotBackup/TransferJobs according to their time stamp.
+  // We keep at most 100 transfer jobs which are completed.
+  constexpr uint64_t maximalNumberTransferJobs = 100;
+  constexpr char const* prefix = "/Target/HotBackup/TransferJobs/";
+
+  auto const& jobs = snapshot.hasAsChildren(prefix).first;
+  if (jobs.size() <= maximalNumberTransferJobs + 6) {
+    // We tolerate some more jobs before we take action. This is to
+    // avoid that we go through all jobs every second. Oasis takes
+    // a hotbackup every 2h, so this number 6 would lead to the list
+    // being traversed approximately every 12h.
+    return;
+  }
+  typedef std::pair<std::string, std::string> keyDate;
+  std::vector<keyDate> v;
+  v.reserve(jobs.size());
+  for (auto const& p : jobs) {
+    auto const& dbservers = p.second->hasAsChildren("DBServers");
+    if (!dbservers.second) {
+      continue;
+    }
+    bool completed = true;
+    for (auto const& pp : dbservers.first) {
+      auto const& status = pp.second->hasAsString("Status");
+      if (!status.second) {
+        completed = false;
+      } else {
+        if (status.first.compare("COMPLETED") != 0) {
+          completed = false;
+        }
+      }
+    }
+    if (!completed) {
+      continue;
+    }
+    auto created = p.second->hasAsString("timestamp");
+    if (created.second) {
+      v.emplace_back(p.first, created.first);
+    } else {
+      v.emplace_back(p.first, "1970");  // will be sorted very early
+    }
+  }
+  std::sort(v.begin(), v.end(), [](keyDate const& a, keyDate const& b) -> bool {
+    return a.second < b.second;
+  });
+  if (v.size() <= maximalNumberTransferJobs) {
+    return;
+  }
+  size_t toBeDeleted = v.size() - maximalNumberTransferJobs;  // known to be positive
+  LOG_TOPIC("98452", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
+                                           << " old transfer jobs"
+                                              " in "
+                                           << prefix;
+  // We build a transaction here
+  for (auto it = v.begin(); toBeDeleted-- > 0 && it != v.end(); ++it) {
+    envelope->add(VPackValue(prefix + it->first));
+    {
+      VPackObjectBuilder guard2(envelope.get());
+      envelope->add("op", VPackValue("delete"));
+    }
+  }
+}
+
+void Supervision::cleanupHotbackupTransferJobs() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard1(envelope.get());
+    VPackObjectBuilder guard2(envelope.get());
+    arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
+        snapshot(), envelope);
+  }
+  if (envelope->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION) << "Failed to remove old transfer jobs: " << envelope->toJson();
+    }
+  }
 }
 
 // Guarded by caller
@@ -2170,8 +2327,13 @@ void Supervision::readyOrphanedIndexCreations() {
   }
 }
 
-void Supervision::enforceReplication() {
-  _lock.assertLockedByCurrentThread();
+// This is the functional version which actually does the work, it is
+// called by the private method Supervision::enforceReplication and the
+// unit tests:
+void arangodb::consensus::enforceReplicationFunctional(
+    Node const& snapshot, 
+    uint64_t& jobId,
+    std::shared_ptr<VPackBuilder> envelope) {
 
   // First check the number of AddFollower and RemoveFollower jobs in ToDo:
   // We always maintain that we have at most maxNrAddRemoveJobsInTodo
@@ -2182,7 +2344,7 @@ void Supervision::enforceReplication() {
   // the function:
   int const maxNrAddRemoveJobsInTodo = 50;
 
-  auto const& todos = snapshot().hasAsChildren(toDoPrefix).first;
+  auto const& todos = snapshot.hasAsChildren(toDoPrefix).first;
   int nrAddRemoveJobsInTodo = 0;
   for (auto it = todos.begin(); it != todos.end(); ++it) {
     auto jobNode = *(it->second);
@@ -2195,9 +2357,7 @@ void Supervision::enforceReplication() {
   }
 
   // We will loop over plannedDBs, so we use hasAsChildren
-  auto const& plannedDBs = snapshot().hasAsChildren(planColPrefix).first;
-  // We will lookup in currentDBs, so we use hasAsNode
-  auto const& currentDBs = snapshot().hasAsNode(curColPrefix).first;
+  auto const& plannedDBs = snapshot.hasAsChildren(planColPrefix).first;
 
   for (const auto& db_ : plannedDBs) {  // Planned databases
     auto const& db = *(db_.second);
@@ -2212,8 +2372,8 @@ void Supervision::enforceReplication() {
         auto replFact2 = col.hasAsString(StaticStrings::ReplicationFactor);
         if (replFact2.second && replFact2.first == StaticStrings::Satellite) {
           // satellites => distribute to every server
-          auto available = Job::availableServers(snapshot());
-          replicationFactor = Job::countGoodOrBadServersInList(snapshot(), available);
+          auto available = Job::availableServers(snapshot);
+          replicationFactor = Job::countGoodOrBadServersInList(snapshot, available);
         } else {
           LOG_TOPIC("d3b54", DEBUG, Logger::SUPERVISION)
               << "no replicationFactor entry in " << col.toJson();
@@ -2244,26 +2404,15 @@ void Supervision::enforceReplication() {
             }
           }
           size_t actualReplicationFactor =
-              1 + Job::countGoodOrBadServersInList(snapshot(), onlyFollowers.slice());
-          // leader plus GOOD followers
+              1 + Job::countGoodOrBadServersInList(snapshot, onlyFollowers.slice());
+          // leader plus GOOD or BAD followers (not FAILED)
           size_t apparentReplicationFactor = shard.slice().length();
 
           if (actualReplicationFactor != replicationFactor ||
               apparentReplicationFactor != replicationFactor) {
-            // First check the case that not all are in sync:
-            std::string curPath =
-                db_.first + "/" + col_.first + "/" + shard_.first + "/servers";
-            auto const& currentServers = currentDBs.hasAsArray(curPath);
-            size_t inSyncReplicationFactor = actualReplicationFactor;
-            if (currentServers.second) {
-              if (currentServers.first.length() < actualReplicationFactor) {
-                inSyncReplicationFactor = currentServers.first.length();
-              }
-            }
-
             // Check that there is not yet an addFollower or removeFollower
             // or moveShard job in ToDo for this shard:
-            auto const& todo = snapshot().hasAsChildren(toDoPrefix).first;
+            auto const& todo = snapshot.hasAsChildren(toDoPrefix).first;
             bool found = false;
             for (auto const& pair : todo) {
               auto const& job = pair.second;
@@ -2283,22 +2432,30 @@ void Supervision::enforceReplication() {
               }
             }
             // Check that shard is not locked:
-            if (snapshot().has(blockedShardsPrefix + shard_.first)) {
+            if (snapshot.has(blockedShardsPrefix + shard_.first)) {
               found = true;
             }
             if (!found) {
-              if (actualReplicationFactor < replicationFactor) {
-                AddFollower(snapshot(), _agent, std::to_string(_jobId++),
+              auto shardsLikeMe = Job::clones(snapshot, db_.first,
+                                              col_.first, shard_.first);
+              auto inSyncReplicas = Job::findAllInSyncReplicas(
+                  snapshot, db_.first, shardsLikeMe);
+              size_t inSyncReplicationFactor 
+                = Job::countGoodOrBadServersInList(snapshot, inSyncReplicas);
+
+              if (actualReplicationFactor < replicationFactor &&
+                  apparentReplicationFactor < 2 + replicationFactor) {
+                AddFollower(snapshot, nullptr, std::to_string(jobId++),
                             "supervision", db_.first, col_.first, shard_.first)
-                    .create();
+                    .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
               } else if (apparentReplicationFactor > replicationFactor &&
                          inSyncReplicationFactor >= replicationFactor) {
-                RemoveFollower(snapshot(), _agent, std::to_string(_jobId++),
+                RemoveFollower(snapshot, nullptr, std::to_string(jobId++),
                                "supervision", db_.first, col_.first, shard_.first)
-                    .create();
+                    .create(envelope);
                 if (++nrAddRemoveJobsInTodo >= maxNrAddRemoveJobsInTodo) {
                   return;
                 }
@@ -2310,6 +2467,26 @@ void Supervision::enforceReplication() {
     }
   }
 }
+
+void Supervision::enforceReplication() {
+  _lock.assertLockedByCurrentThread();
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder guard1(envelope.get());
+    VPackObjectBuilder guard2(envelope.get());
+    arangodb::consensus::enforceReplicationFunctional(snapshot(),
+                                                      _jobId, envelope);
+  }
+  if (envelope->slice()[0].length() > 0) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232a", INFO, Logger::SUPERVISION) << "Failed to insert jobs: " << envelope->toJson();
+    }
+  }
+}
+
 
 void Supervision::fixPrototypeChain(Builder& migrate) {
   _lock.assertLockedByCurrentThread();

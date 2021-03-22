@@ -37,11 +37,12 @@ namespace iresearch {
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API basic_token_stream : public token_stream {
  public:
-  virtual attribute* get_mutable(type_info::type_id type) noexcept final;
+  virtual attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(attrs_, type);
+  }
 
  protected:
-  term_attribute term_;
-  increment inc_;
+  std::tuple<term_attribute, increment> attrs_;
 }; // basic_token_stream
 
 //////////////////////////////////////////////////////////////////////////////
@@ -85,12 +86,16 @@ class IRESEARCH_API boolean_token_stream final
 ///        on initial string length 
 //////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API string_token_stream final
-    : public frozen_attributes<3, token_stream>,
+    : public token_stream,
       private util::noncopyable {
  public:
   string_token_stream() noexcept;
 
   virtual bool next() noexcept override;
+
+  virtual attribute* get_mutable(type_info::type_id id) noexcept override final {
+    return irs::get_mutable(attrs_, id);
+  }
 
   void reset(const bytes_ref& value) noexcept {
     value_ = value;
@@ -103,9 +108,7 @@ class IRESEARCH_API string_token_stream final
   }
 
  private:
-  offset offset_;
-  increment inc_;
-  term_attribute term_;
+  std::tuple<offset, increment, term_attribute> attrs_;
   bytes_ref value_;
   bool in_use_;
 }; // string_token_stream 

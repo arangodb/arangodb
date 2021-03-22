@@ -64,6 +64,7 @@ class FlushFeatureTest
   std::vector<std::pair<arangodb::application_features::ApplicationFeature&, bool>> features;
 
   FlushFeatureTest() : engine(server), server(nullptr, nullptr) {
+    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(), false);  // required for V8DealerFeature::prepare()
@@ -71,16 +72,12 @@ class FlushFeatureTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::MetricsFeature>(), false); 
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(), false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::V8DealerFeature>(), false);  // required for DatabaseFeature::createDatabase(...)
 
 #if USE_ENTERPRISE
     features.emplace_back(server.addFeature<arangodb::LdapFeature>(), false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
-
-    arangodb::DatabaseFeature::DATABASE =
-        &server.getFeature<arangodb::DatabaseFeature>();
 
     for (auto& f : features) {
       f.first.prepare();

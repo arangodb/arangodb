@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,8 +36,8 @@ class FileResult {
   // forwarded methods
   bool ok() const { return _result.ok(); }
   bool fail() const { return _result.fail(); }
-  int errorNumber() const { return _result.errorNumber(); }
-  std::string errorMessage() const { return _result.errorMessage(); }
+  ErrorCode errorNumber() const { return _result.errorNumber(); }
+  std::string_view errorMessage() const { return _result.errorMessage(); }
 
  public:
   int sysErrorNumber() const { return _sysErrorNumber; }

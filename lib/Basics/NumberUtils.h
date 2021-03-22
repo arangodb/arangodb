@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,6 +34,12 @@
 namespace arangodb {
 namespace NumberUtils {
 
+template <typename T>
+constexpr bool isPowerOfTwo(T value) {
+  static_assert(std::is_integral_v<T>);
+  return (value & (value - 1)) == 0;
+}
+
 // low-level worker function to convert the string value between p
 // (inclusive) and e (exclusive) into a negative number value of type T,
 // without validation of the input string - use this only for trusted input!
@@ -65,9 +71,8 @@ template <typename T>
 inline T atoi_positive_unchecked(char const* p, char const* e) noexcept {
   T result = 0;
   while (p != e) {
-    result = (result * 10) + *(p++) - '0';
+    result = (result * 10) + (*(p++) - '0');
   }
-
   return result;
 }
 

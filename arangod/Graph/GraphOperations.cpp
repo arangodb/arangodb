@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -772,14 +772,23 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
 
   // check if vertex collections are part of the graph definition
   auto it = _graph.vertexCollections().find(fromCollectionName);
+
   if (it == _graph.vertexCollections().end()) {
-    // not found from vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options), true);
+    // not found _from vertex
+    return std::make_pair(
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _from collection '" + fromCollectionName + "' is not part of the graph"),
+                        options),
+        true);
   }
   it = _graph.vertexCollections().find(toCollectionName);
   if (it == _graph.vertexCollections().end()) {
-    // not found to vertex
-    return std::make_pair(OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options), true);
+    // not found _to vertex
+    return std::make_pair(
+        OperationResult(Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
+                               "referenced _to collection '" + toCollectionName + "' is not part of the graph"),
+                        options),
+        true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options), true);
@@ -920,7 +929,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
 
   {
     aql::QueryString const queryString{
-        "FOR e IN @@collection "
+        "/*removeEdgeOrVertex*/ FOR e IN @@collection "
         "FILTER e._from == @toDeleteId "
         "OR e._to == @toDeleteId "
         "REMOVE e IN @@collection"};
@@ -934,7 +943,7 @@ OperationResult GraphOperations::removeEdgeOrVertex(const std::string& collectio
       bindVars->add("toDeleteId", VPackValue(toDeleteId));
       bindVars->close();
 
-      arangodb::aql::Query query(ctx(), queryString, bindVars, nullptr);
+      arangodb::aql::Query query(ctx(), queryString, bindVars);
       auto queryResult = query.executeSync();
 
       if (queryResult.result.fail()) {

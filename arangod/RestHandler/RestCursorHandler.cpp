@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -56,9 +56,7 @@ RestCursorHandler::RestCursorHandler(application_features::ApplicationServer& se
       _queryRegistry(queryRegistry),
       _cursor(nullptr),
       _hasStarted(false),
-      _queryKilled(false),
-      _isValidForFinalize(false),
-      _auditLogged(false) {}
+      _queryKilled(false) {}
 
 RestCursorHandler::~RestCursorHandler() {
   if (_cursor) {
@@ -139,38 +137,11 @@ void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
   // this is needed because the context is managing resources (e.g. leases
   // for a managed transaction) that we want to free as early as possible
   _queryResult.context.reset();
-
-  if (!_isValidForFinalize || _auditLogged) {
-    // set by RestCursorHandler before
-    return;
-  }
-    
-  VPackSlice body = _request->payload(false); 
-  events::QueryDocument(*_request, _response.get(), body);
-  _auditLogged = true;
 }
 
 void RestCursorHandler::cancel() {
   RestVocbaseBaseHandler::cancel();
   return cancelQuery();
-}
-
-void RestCursorHandler::handleError(basics::Exception const& ex) {
-  TRI_DEFER(RestVocbaseBaseHandler::handleError(ex));
-
-  if (!_isValidForFinalize || _auditLogged) {
-    return;
-  }
-
-  try {
-    bool success = true;
-     VPackSlice body = parseVPackBody(success);
-     if (success) {
-       events::QueryDocument(*_request, _response.get(), body);
-     }
-    _auditLogged = true;
-  } catch (...) {
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -206,7 +177,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
 
   std::shared_ptr<VPackBuilder> bindVarsBuilder;
   if (!bindVars.isNone()) {
-    bindVarsBuilder = std::make_unique<VPackBuilder>(bindVars);
+    bindVarsBuilder = std::make_shared<VPackBuilder>(bindVars);
   }
 
   TRI_ASSERT(_options == nullptr);
@@ -227,7 +198,7 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   const AccessMode::Type mode = AccessMode::Type::WRITE;
   auto query = std::make_unique<aql::Query>(createTransactionContext(mode),
       arangodb::aql::QueryString(querySlice.copyString()),
-      bindVarsBuilder, _options);
+      bindVarsBuilder, opts);
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -330,7 +301,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     options.buildUnindexedObjects = true;
 
     // conservatively allocate a few bytes per value to be returned
-    int res;
+    auto res = TRI_ERROR_NO_ERROR;
     if (n >= 10000) {
       res = _response->reservePayload(128 * 1024);
     } else if (n >= 1000) {
@@ -569,14 +540,15 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     return RestStatus::WAITING;
   }
 
-  builder.add(StaticStrings::Error, VPackValue(false));
-  builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
-  builder.close();
-
   if (r.ok()) {
+    builder.add(StaticStrings::Error, VPackValue(false));
+    builder.add(StaticStrings::Code, VPackValue(static_cast<int>(code)));
+    builder.close();
+
     _response->setContentType(rest::ContentType::JSON);
     generateResult(code, std::move(buffer), std::move(ctx));
   } else {
+    // builder can be in a broken state here. simply return the error
     generateError(r);
   }
   
@@ -608,10 +580,6 @@ RestStatus RestCursorHandler::createQueryCursor() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
     return RestStatus::DONE;
   }
-
-  // tell RestCursorHandler::finalizeExecute that the request
-  // could be parsed successfully and that it may look at it
-  _isValidForFinalize = true;
 
   TRI_ASSERT(_query == nullptr);
   return registerQueryOrCursor(body);

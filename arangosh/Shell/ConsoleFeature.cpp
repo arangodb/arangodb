@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -131,8 +131,7 @@ void ConsoleFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--console.history",
                      "whether or not to load and persist command-line history",
                      new BooleanParameter(&_useHistory))
-                     .setIntroducedIn(30405)
-                     .setIntroducedIn(30500);
+                     .setIntroducedIn(30405);
 
   options->addOption("--console.pager", "enable paging", new BooleanParameter(&_pager));
 

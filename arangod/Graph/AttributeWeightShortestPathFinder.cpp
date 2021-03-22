@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -157,7 +157,6 @@ AttributeWeightShortestPathFinder::AttributeWeightShortestPathFinder(ShortestPat
       _highscoreSet(false),
       _highscore(0),
       _bingo(false),
-      _resultCode(TRI_ERROR_NO_ERROR),
       _intermediateSet(false),
       _intermediate() {
   // cppcheck-suppress *
@@ -173,7 +172,6 @@ void AttributeWeightShortestPathFinder::clear() {
   _highscoreSet = false;
   _highscore = 0;
   _bingo = false;
-  _resultCode = TRI_ERROR_NO_ERROR;
   _intermediateSet = false;
   _intermediate = arangodb::velocypack::StringRef{};
 }

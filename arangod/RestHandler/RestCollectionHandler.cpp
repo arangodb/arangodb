@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,11 @@
 #include "RestCollectionHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/MaintenanceFeature.h"
+#include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -130,7 +133,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     return RestStatus::DONE;
   }
 
-  std::string const& sub = suffixes[1];
   _builder.clear();
 
   std::shared_ptr<LogicalCollection> coll;
@@ -141,12 +143,11 @@ RestStatus RestCollectionHandler::handleCommandGet() {
   }
 
   TRI_ASSERT(coll);
+
+  std::string const& sub = suffixes[1];
+  
   if (sub == "checksum") {
     // /_api/collection/<identifier>/checksum
-    if (ServerState::instance()->isCoordinator()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-    }
-
     bool withRevisions = _request->parsedValue("withRevisions", false);
     bool withData = _request->parsedValue("withData", false);
 
@@ -158,7 +159,6 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     if (res.ok()) {
       {
         VPackObjectBuilder obj(&_builder, true);
-
         obj->add("checksum", VPackValue(std::to_string(checksum)));
         obj->add("revision", VPackValue(revId.toString()));
 
@@ -190,14 +190,48 @@ RestStatus RestCollectionHandler::handleCommandGet() {
     // /_api/collection/<identifier>/count
     initializeTransaction(*coll);
     _ctxt = std::make_unique<methods::Collections::Context>(coll, _activeTrx.get());
-
+    
     bool details = _request->parsedValue("details", false);
+    bool checkSyncStatus = _request->parsedValue("checkSyncStatus", false);
+    // the checkSyncStatus flag is only set in internal requests performed 
+    // by the ShardDistributionReporter. it is used to determine the shard 
+    // synchronization status by asking the maintainance. the functionality
+    // is only available on DB servers. as this is an internal API, it is ok
+    // to make some assumptions about the requests and let everything else 
+    // fail.
+    if (checkSyncStatus) {
+      if (!ServerState::instance()->isDBServer()) {
+        generateError(Result(TRI_ERROR_NOT_IMPLEMENTED, "syncStatus API is only available on DB servers"));
+        return RestStatus::DONE;
+      }
+
+      // details automatically turned off here, as we will not need them
+      details = false;
+    
+      // check if a SynchronizeShard job is currently executing for the specified shard
+      bool isSyncing = server().getFeature<MaintenanceFeature>().hasAction(
+          maintenance::EXECUTING, 
+          name, 
+          arangodb::maintenance::SYNCHRONIZE_SHARD);
+
+      // already put some data into the response
+      _builder.openObject();
+      _builder.add("syncing", VPackValue(isSyncing));
+    }
+
     return waitForFuture(
         collectionRepresentationAsync(*_ctxt,
                                       /*showProperties*/ true,
                                       /*showFigures*/ FiguresType::None,
                                       /*showCount*/ details ? CountType::Detailed : CountType::Standard)
-            .thenValue([this](futures::Unit&&) { standardResponse(); }));
+            .thenValue([this, checkSyncStatus](futures::Unit&&) { 
+              if (checkSyncStatus) {
+                // checkSyncStatus == true, so we opened the _builder on our own
+                // before, and we are now responsible for closing it again.
+                _builder.close();
+              }
+              standardResponse(); 
+            }));
   } else if (sub == "properties") {
     // /_api/collection/<identifier>/properties
     collectionRepresentation(coll,
@@ -430,16 +464,12 @@ RestStatus RestCollectionHandler::handleCommandPut() {
     }
 
   } else if (sub == "compact") {
-    res = coll->compact();
+    coll->compact();
 
-    if (res.ok()) {
-      collectionRepresentation(name, /*showProperties*/ false,
-                               /*showFigures*/ FiguresType::None,
-                               /*showCount*/ CountType::None);
-      return standardResponse();
-    }
-    generateError(res);
-    return RestStatus::DONE;
+    collectionRepresentation(name, /*showProperties*/ false,
+                             /*showFigures*/ FiguresType::None,
+                             /*showCount*/ CountType::None);
+    return standardResponse();
   } else if (sub == "responsibleShard") {
     if (!ServerState::instance()->isCoordinator()) {
       res.reset(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);

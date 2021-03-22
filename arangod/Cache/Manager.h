@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,7 +25,6 @@
 #define ARANGODB_CACHE_MANAGER_H
 
 #include "Basics/ReadWriteSpinLock.h"
-#include "Basics/SharedAtomic.h"
 #include "Basics/SharedCounter.h"
 #include "Basics/SpinLocker.h"
 #include "Cache/CachedValue.h"
@@ -47,6 +46,8 @@
 #include <utility>
 
 namespace arangodb {
+class SharedPRNGFeature;
+
 namespace cache {
 
 class Cache;           // forward declaration
@@ -69,7 +70,7 @@ class Rebalancer;      // forward declaration
 /// have more space.
 ///
 /// There should be a single Manager instance exposed via
-/// CacheManagerFeature::MANAGER --- use this unless you are very certain you
+/// CacheManagerFeature::manager() --- use this unless you are very certain you
 /// need a different instance.
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
@@ -88,7 +89,9 @@ class Manager {
   /// @brief Initialize the manager with a scheduler post method and global
   /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+  Manager(SharedPRNGFeature& sharedPRNG,
+          PostFn schedulerPost, std::uint64_t globalLimit, bool enableWindowedStats = true);
+
   ~Manager();
 
   //////////////////////////////////////////////////////////////////////////////
@@ -163,6 +166,8 @@ class Manager {
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
   bool post(std::function<void()> fn);
+  
+  SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 
  private:
   // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
@@ -175,6 +180,8 @@ class Manager {
       32 * 16 * sizeof(std::shared_ptr<Cache>);
   static constexpr std::uint64_t triesFast = 100;
   static constexpr std::uint64_t triesSlow = 1000;
+
+  SharedPRNGFeature& _sharedPRNG;
 
   // simple state variables
   basics::ReadWriteSpinLock _lock;
@@ -215,9 +222,9 @@ class Manager {
   enum TaskEnvironment { none, rebalancing, resizing };
   PostFn _schedulerPost;
   std::uint64_t _resizeAttempt;
-  basics::SharedAtomic<std::uint64_t> _outstandingTasks;
-  basics::SharedAtomic<std::uint64_t> _rebalancingTasks;
-  basics::SharedAtomic<std::uint64_t> _resizingTasks;
+  std::atomic<std::uint64_t> _outstandingTasks;
+  std::atomic<std::uint64_t> _rebalancingTasks;
+  std::atomic<std::uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
@@ -258,7 +265,7 @@ class Manager {
   void unprepareTask(TaskEnvironment environment);
 
   // periodically run to rebalance allocations globally
-  int rebalance(bool onlyCalculate = false);
+  ErrorCode rebalance(bool onlyCalculate = false);
 
   // helpers for global resizing
   void shrinkOvergrownCaches(TaskEnvironment environment);

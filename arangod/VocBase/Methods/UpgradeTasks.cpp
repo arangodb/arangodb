@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -336,7 +336,7 @@ static Result createIndex(std::string const& name, Index::IndexType type,
     return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   "Collection " + name + " not found");
   }
-  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse);
+  return methods::Indexes::createIndex(colIt->get(), type, fields, unique, sparse, false /*estimates*/);
 }
 
 Result createSystemStatisticsIndices(TRI_vocbase_t& vocbase,

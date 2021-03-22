@@ -87,7 +87,7 @@ std::size_t StringRef::find(char c, std::size_t offset) const noexcept {
   }
 
   char const* p =
-      static_cast<char const*>(memchr(static_cast<void const*>(_data + offset), c, _length - offset));
+      static_cast<char const*>(std::memchr(static_cast<void const*>(_data + offset), c, _length - offset));
 
   if (p == nullptr) {
     return std::string::npos;
@@ -115,7 +115,7 @@ std::size_t StringRef::rfind(char c, std::size_t offset) const noexcept {
 }
   
 int StringRef::compare(StringRef const& other) const noexcept {
-  int res = memcmp(_data, other._data, (std::min)(_length, other._length));
+  int res = std::memcmp(_data, other._data, (std::min)(_length, other._length));
 
   if (res != 0) {
     return res;
@@ -125,9 +125,12 @@ int StringRef::compare(StringRef const& other) const noexcept {
 }
 
 bool StringRef::equals(StringRef const& other) const noexcept {
-  return (size() == other.size() &&
-          (memcmp(data(), other.data(), size()) == 0));
+  return (size() == other.size() && std::memcmp(data(), other.data(), size()) == 0);
 }
+
+#ifdef VELOCYPACK_64BIT
+static_assert(sizeof(StringRef) == 16, "unexpected size of StringRef");
+#endif
 
 namespace arangodb {
 namespace velocypack {

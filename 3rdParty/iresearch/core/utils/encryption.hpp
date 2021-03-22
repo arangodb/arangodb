@@ -108,6 +108,11 @@ IRESEARCH_API bool decrypt(
 );
 
 ////////////////////////////////////////////////////////////////////////////////
+///// @brief reasonable default value for a buffer serving encryption
+////////////////////////////////////////////////////////////////////////////////
+constexpr size_t DEFAULT_ENCRYPTION_BUFFER_SIZE = 1024;
+
+////////////////////////////////////////////////////////////////////////////////
 ///// @class encrypted_output
 ////////////////////////////////////////////////////////////////////////////////
 class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyable {
@@ -115,20 +120,18 @@ class IRESEARCH_API encrypted_output : public irs::index_output, util::noncopyab
   encrypted_output(
     index_output& out,
     encryption::stream& cipher,
-    size_t buf_size
-  );
+    size_t num_buffers);
 
   encrypted_output(
     index_output::ptr&& out,
     encryption::stream& cipher,
-    size_t buf_size
-  );
+    size_t num_buffers);
 
   virtual void flush() override final;
 
   virtual void close() override final;
 
-  virtual size_t file_pointer() const override final;
+  virtual size_t file_pointer() const noexcept override final;
 
   virtual void write_byte(byte_type b) override final;
 
@@ -180,25 +183,25 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
     index_input& in,
     encryption::stream& cipher,
     size_t buf_size,
-    size_t padding = 0
-  );
+    size_t padding = 0);
 
   encrypted_input(
     index_input::ptr&& in,
     encryption::stream& cipher,
     size_t buf_size,
-    size_t padding = 0
-  );
+    size_t padding = 0);
 
   virtual index_input::ptr dup() const override final;
 
   virtual index_input::ptr reopen() const override final;
 
-  virtual size_t length() const override final {
+  virtual size_t length() const noexcept override final {
     return length_;
   }
 
   virtual int64_t checksum(size_t offset) const override final;
+
+  size_t buffer_size() const noexcept { return buf_size_; }
 
   const index_input& stream() const noexcept {
     return *in_;
@@ -216,6 +219,8 @@ class IRESEARCH_API encrypted_input : public buffered_index_input, util::noncopy
  private:
   encrypted_input(const encrypted_input& rhs, index_input::ptr&& in) noexcept;
 
+  size_t buf_size_;
+  std::unique_ptr<byte_type[]> buf_;
   index_input::ptr managed_in_;
   index_input* in_;
   encryption::stream* cipher_;

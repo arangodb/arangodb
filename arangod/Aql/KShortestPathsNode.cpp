@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,18 +28,31 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/KShortestPathsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
-#include "Graph/KPathFinder.h"
+#include "Graph/Enumerators/TwoSidedEnumerator.h"
 #include "Graph/KShortestPathsFinder.h"
+#include "Graph/PathManagement/PathResult.h"
+#include "Graph/PathManagement/PathStore.h"
+#include "Graph/PathManagement/PathStoreTracer.h"
+#include "Graph/PathManagement/PathValidator.h"
+#include "Graph/Providers/ClusterProvider.h"
+#include "Graph/Providers/ProviderTracer.h"
+#include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/FifoQueue.h"
+#include "Graph/Queues/QueueTracer.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/ShortestPathResult.h"
 #include "Indexes/Index.h"
+#include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
+
+#include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -77,8 +90,7 @@ static void parseNodeInput(AstNode const* node, std::string& id,
   }
 }
 
-static GraphNode::InputVertex prepareVertexInput(
-    KShortestPathsNode const* node, bool isTarget) {
+static GraphNode::InputVertex prepareVertexInput(KShortestPathsNode const* node, bool isTarget) {
   using InputVertex = GraphNode::InputVertex;
   if (isTarget) {
     if (node->usesTargetInVariable()) {
@@ -100,7 +112,8 @@ static GraphNode::InputVertex prepareVertexInput(
 }
 }  // namespace
 
-KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
+KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                       TRI_vocbase_t* vocbase,
                                        arangodb::graph::ShortestPathType::Type shortestPathType,
                                        AstNode const* direction, AstNode const* start,
                                        AstNode const* target, AstNode const* graph,
@@ -151,8 +164,8 @@ KShortestPathsNode::KShortestPathsNode(
     ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
     arangodb::graph::ShortestPathType::Type shortestPathType,
     std::vector<Collection*> const& edgeColls,
-    std::vector<Collection*> const& vertexColls,
-    TRI_edge_direction_e defaultDirection, std::vector<TRI_edge_direction_e> const& directions,
+    std::vector<Collection*> const& vertexColls, TRI_edge_direction_e defaultDirection,
+    std::vector<TRI_edge_direction_e> const& directions,
     Variable const* inStartVariable, std::string const& startVertexId,
     Variable const* inTargetVariable, std::string const& targetVertexId,
     std::unique_ptr<graph::BaseOptions> options, graph::Graph const* graph)
@@ -178,7 +191,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr) {
-
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _shortestPathType = arangodb::graph::ShortestPathType::fromString(
         base.get(StaticStrings::GraphQueryShortestPathType).copyString().c_str());
@@ -253,7 +265,6 @@ KShortestPathsNode::KShortestPathsNode(ExecutionPlan& plan, KShortestPathsNode c
 }
 
 void KShortestPathsNode::setStartInVariable(Variable const* inVariable) {
-  TRI_ASSERT(_inStartVariable == nullptr);
   _inStartVariable = inVariable;
   _startVertexId = "";
 }
@@ -316,7 +327,8 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
   auto outputRegister = variableToRegisterId(&pathOutVariable());
   auto outputRegisters = RegIdSet{outputRegister};
 
-  auto registerInfos = createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
+  auto registerInfos =
+      createRegisterInfos(std::move(inputRegisters), std::move(outputRegisters));
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -328,16 +340,97 @@ std::unique_ptr<ExecutionBlock> KShortestPathsNode::createBlock(
 #endif
 
   if (shortestPathType() == arangodb::graph::ShortestPathType::Type::KPaths) {
-    auto finder = std::make_unique<graph::KPathFinder>(*opts);
-    auto executorInfos =
-        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
-                                    std::move(sourceInput), std::move(targetInput));
-    return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KPathFinder>>>(
-        &engine, this, std::move(registerInfos), std::move(executorInfos));
+    arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{opts->minDepth,
+                                                                 opts->maxDepth};
+
+    if (!ServerState::instance()->isCoordinator()) {
+      // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
+      // be changed in the future) create BaseProviderOptions
+      BaseProviderOptions forwardProviderOptions(opts->tmpVar(), buildUsedIndexes(),
+                                                 opts->collectionToShard());
+      BaseProviderOptions backwardProviderOptions(opts->tmpVar(),
+                                                  buildReverseUsedIndexes(),
+                                                  opts->collectionToShard());
+
+      if (opts->query().queryOptions().getTraversalProfileLevel() ==
+          TraversalProfileLevel::None) {
+        using KPathRefactored = KPathEnumerator<SingleServerProvider>;
+
+        auto kPathUnique = std::make_unique<KPathRefactored>(
+            SingleServerProvider{opts->query(), forwardProviderOptions,
+                                 opts->query().resourceMonitor()},
+            SingleServerProvider{opts->query(), backwardProviderOptions,
+                                 opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactored>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      } else {
+        // TODO: implement better initialization with less duplicate code
+        using TracedKPathRefactored = TracedKPathEnumerator<SingleServerProvider>;
+        auto kPathUnique = std::make_unique<TracedKPathRefactored>(
+            ProviderTracer<SingleServerProvider>{opts->query(), forwardProviderOptions,
+                                                 opts->query().resourceMonitor()},
+            ProviderTracer<SingleServerProvider>{opts->query(), backwardProviderOptions,
+                                                 opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<TracedKPathRefactored>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      }
+    } else {
+      auto cache = std::make_shared<RefactoredClusterTraverserCache>(
+          opts->query().resourceMonitor());
+      ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false);
+      ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true);
+
+      if (opts->query().queryOptions().getTraversalProfileLevel() ==
+          TraversalProfileLevel::None) {
+        using KPathRefactoredCluster = KPathEnumerator<ClusterProvider>;
+
+        auto kPathUnique = std::make_unique<KPathRefactoredCluster>(
+            ClusterProvider{opts->query(), forwardProviderOptions,
+                            opts->query().resourceMonitor()},
+            ClusterProvider{opts->query(), backwardProviderOptions,
+                            opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredCluster>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      } else {
+        using KPathRefactoredClusterTracer = TracedKPathEnumerator<ClusterProvider>;
+
+        auto kPathUnique = std::make_unique<KPathRefactoredClusterTracer>(
+            ProviderTracer<ClusterProvider>{opts->query(), forwardProviderOptions,
+                                            opts->query().resourceMonitor()},
+            ProviderTracer<ClusterProvider>{opts->query(), backwardProviderOptions,
+                                            opts->query().resourceMonitor()},
+            std::move(enumeratorOptions), opts->query().resourceMonitor());
+
+        auto executorInfos =
+            KShortestPathsExecutorInfos(outputRegister, engine.getQuery(),
+                                        std::move(kPathUnique), std::move(sourceInput),
+                                        std::move(targetInput));
+        return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<KPathRefactoredClusterTracer>>>(
+            &engine, this, std::move(registerInfos), std::move(executorInfos));
+      }
+    }
   } else {
     auto finder = std::make_unique<graph::KShortestPathsFinder>(*opts);
     auto executorInfos =
-        KShortestPathsExecutorInfos(outputRegister, std::move(finder),
+        KShortestPathsExecutorInfos(outputRegister, engine.getQuery(), std::move(finder),
                                     std::move(sourceInput), std::move(targetInput));
     return std::make_unique<ExecutionBlockImpl<KShortestPathsExecutor<graph::KShortestPathsFinder>>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -349,8 +442,9 @@ ExecutionNode* KShortestPathsNode::clone(ExecutionPlan* plan, bool withDependenc
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp = std::make_unique<ShortestPathOptions>(*oldOpts);
-  auto c = std::make_unique<KShortestPathsNode>(plan, _id, _vocbase, _shortestPathType, _edgeColls,
-                                                _vertexColls, _defaultDirection, _directions,
+  auto c = std::make_unique<KShortestPathsNode>(plan, _id, _vocbase, _shortestPathType,
+                                                _edgeColls, _vertexColls,
+                                                _defaultDirection, _directions,
                                                 _inStartVariable, _startVertexId,
                                                 _inTargetVariable, _targetVertexId,
                                                 std::move(tmp), _graphObj);
@@ -380,6 +474,100 @@ void KShortestPathsNode::kShortestPathsCloneHelper(ExecutionPlan& plan,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
+}
+
+std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildUsedIndexes() const {
+  std::vector<IndexAccessor> indexAccessors{};
+
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = true;
+
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _toCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_OUT: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _fromCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
+    }
+  }
+  return indexAccessors;
+}
+
+std::vector<arangodb::graph::IndexAccessor> KShortestPathsNode::buildReverseUsedIndexes() const {
+  std::vector<IndexAccessor> indexAccessors{};
+
+  size_t numEdgeColls = _edgeColls.size();
+  bool onlyEdgeIndexes = true;
+
+  for (size_t i = 0; i < numEdgeColls; ++i) {
+    auto dir = _directions[i];
+    switch (dir) {
+      case TRI_EDGE_IN: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* fromCondition = _fromCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], fromCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _fromCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_OUT: {
+        std::shared_ptr<Index> indexToUse{nullptr};
+        aql::AstNode* toCondition = _toCondition->clone(_plan->getAst());
+        bool res = aql::utils::getBestIndexHandleForFilterCondition(
+            *_edgeColls[i], toCondition, options()->tmpVar(), 1000,
+            aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        if (!res) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expected edge index not found");
+        }
+
+        indexAccessors.emplace_back(indexToUse,
+                                    _toCondition->clone(options()->query().ast()), 0);
+        break;
+      }
+      case TRI_EDGE_ANY:
+        TRI_ASSERT(false);
+        break;
+    }
+  }
+  return indexAccessors;
 }
 
 void KShortestPathsNode::prepareOptions() {
@@ -418,7 +606,9 @@ void KShortestPathsNode::prepareOptions() {
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
   if (ServerState::instance()->isCoordinator()) {
-    _options->activateCache(false, engines());
+    if (!opts->refactor()) {
+      _options->activateCache(false, engines());
+    }
   } else {
     _options->activateCache(false, nullptr);
   }
