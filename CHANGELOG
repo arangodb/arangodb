@@ -40,13 +40,6 @@ devel
 * Rename "save" return attribute to "dst" in AQL functions `DATE_UTCTOLOCAL` and
   `DATE_LOCALTOUTC`.
 
-* Make ReplicationFeature formally depend on ServerIdFeature, because the
-  former relies on the server id being already loaded by the latter.
-  If this dependency is not established properly, it is undefined if the
-  ReplicationFeature starts earlier than the ServerIdFeature, which can lead
-  to the ReplicationFeature not sending its server id properly to the leader
-  when doing replication between two single servers.
-
 * Fix potentially undefined behavior when creating a CalculationTransactionContext
   for an arangosearch analyzer. An uninitialized struct member was passed as an
   argument to its base class. This potentially had no observable effects, but
