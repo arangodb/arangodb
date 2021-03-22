@@ -306,13 +306,9 @@ size_t RocksDBIndex::memory() const {
 
 /// compact the index, should reduce read amplification
 void RocksDBIndex::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
   if (_cf != RocksDBColumnFamily::invalid()) {
-    RocksDBKeyBounds bounds = this->getBounds();
-    TRI_ASSERT(_cf == bounds.columnFamily());
-    rocksdb::Slice b = bounds.start(), e = bounds.end();
-    db->CompactRange(opts, _cf, &b, &e);
+    RocksDBEngine* engine = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    engine->compactRange(getBounds());
   }
 }
 

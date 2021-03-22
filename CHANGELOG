@@ -1,6 +1,16 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* When dropping a collection or an index with a larger amount of documents, the
+  key range for the collection/index in RocksDB gets compacted. Previously, the
+  compaction was running in foreground and thus would block the deletion
+  operations.
+  Now, the compaction is running in background, so that the deletion operations
+  can return earlier.
+  The maximum number of compaction jobs that are executed in background can be
+  configured using the new startup parameter
+  `--rocksdb.max-parallel-compactions`, which defaults to 2.
+
 * Fix slower-than-necessary arangoimport behavior:
   arangoimport has a built-in rate limiter, which can be useful for importing
   data with a somewhat constant rate. However, it is enabled by default and
