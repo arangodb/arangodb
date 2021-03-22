@@ -23,6 +23,8 @@
 #ifndef IRESEARCH_TERMS_FILTER_H
 #define IRESEARCH_TERMS_FILTER_H
 
+#include <set>
+
 #include "search/filter.hpp"
 #include "utils/string.hpp"
 

@@ -162,29 +162,29 @@ TEST(bitset_iterator_test, next) {
 
   // sparse bitset with dense region
   {
-    const size_t size = 173;
-    irs::bitset bs(size);
-
     // set bits
     irs::bitset::word_t data[] {
       irs::bitset::word_t(0),
       ~irs::bitset::word_t(UINT64_C(0x8000000000000000)),
-      irs::bitset::word_t(0)
+      irs::bitset::word_t(UINT64_C(0x8000000000000000))
     };
 
-    bs.memset(data);
-
-    irs::bitset_doc_iterator it(bs.begin(), bs.end());
+    irs::bitset_doc_iterator it(std::begin(data), std::end(data));
     auto* doc = irs::get<irs::document>(it);
     ASSERT_TRUE(bool(doc));
     ASSERT_TRUE(!irs::type_limits<irs::type_t::doc_id_t>::valid(it.value()));
 
-    irs::doc_id_t expected_doc = 64;
-    while (it.next()) {
+    irs::doc_id_t expected_docs[64];
+    std::iota(std::begin(expected_docs), std::end(expected_docs) - 1, 64);
+    *(std::end(expected_docs) - 1) = 191;
+
+    auto expected_doc = std::begin(expected_docs);
+    while (it.next() ) {
       ASSERT_EQ(it.value(), doc->value);
-      ASSERT_EQ(expected_doc, it.value());
+      ASSERT_EQ(*expected_doc, it.value());
       ++expected_doc;
     }
+
     ASSERT_TRUE(irs::doc_limits::eof(it.value()));
     ASSERT_EQ(it.value(), doc->value);
     ASSERT_FALSE(it.next());

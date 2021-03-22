@@ -194,32 +194,6 @@
   type: counter
   unit: number
 - category: Agency
-  complexity: simple
-  description: 'Accumulated supervision runtime.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision runtime.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Agency
-  complexity: medium
-  description: 'Accumulated supervision wait for replication time.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision wait for replication time.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total
-  type: counter
-  unit: ms
-- category: Agency
   complexity: medium
   description: 'Counter for FailedServer jobs.
 
@@ -451,21 +425,6 @@
   name: arangodb_aql_slow_query_time
   type: histogram
   unit: s
-- category: AQL
-  complexity: simple
-  description: 'Number of slow AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Number of slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query_total
-  type: counter
-  unit: number
 - category: AQL
   complexity: simple
   description: 'Total execution time of all AQL queries.
@@ -1294,20 +1253,6 @@
   unit: number
 - category: Maintenance
   complexity: medium
-  description: 'Accumulated runtime of `Current` loading.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Current` loading.
-
-    '
-  name: arangodb_load_current_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
   description: 'Histogram of `Current` loading runtimes.
 
     '
@@ -1319,20 +1264,6 @@
     '
   name: arangodb_load_current_runtime
   type: histogram
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of `Plan` loading
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Plan` loading
-
-    '
-  name: arangodb_load_plan_accum_runtime_msec_total
-  type: counter
   unit: ms
 - category: Maintenance
   complexity: medium
@@ -1349,47 +1280,39 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action queue time for Maintenance.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are done and have been removed.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated action queue time for Maintenance.
+  help: 'Counter of actions that are done and have been removed from the registry.
 
     '
-  name: arangodb_maintenance_action_accum_queue_time_msec_total
+  name: arangodb_maintenance_action_done_total
   type: counter
-  unit: ms
+  unit: number
 - category: Maintenance
   complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated action queue time for Maintenance.
+    to the desired state. Actions are created, registered, queued and executed.
 
-    '
-  name: arangodb_maintenance_action_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
+    Once they are done they will eventually be removed.
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of action queue time for Maintenance.
 
-    '
-  name: arangodb_maintenance_action_done_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been discarded because of a duplicate.
+    This metric counts the number of actions that have been created but found to
+
+    be a duplicate of a already queued action.
 
     '
   exposedBy:
@@ -1401,8 +1324,18 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Failure counter for the maintenance actions.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    Those action can fail for different reasons. This metric counts the failed
+
+    actions and can thus provide hints to investigate a malfunction.
 
     '
   exposedBy:
@@ -1414,8 +1347,16 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Time spent in the queue before execution for maintenance actions.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend waiting in the queue in a histogram.
 
     '
   exposedBy:
@@ -1427,8 +1368,16 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been registered in the action registry.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are queued or active.
 
     '
   exposedBy:
@@ -1440,8 +1389,16 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Histogram of time spent execution maintenance actions.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend executing in a histogram.
 
     '
   exposedBy:
@@ -1453,24 +1410,24 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of agency sync phase. This includes phase one
-    and
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    phase two.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of agency sync phase.
+    data store provided by the agency are investigated and local changes are
 
-    '
-  name: arangodb_maintenance_agency_sync_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram for total time spent on agency sync.
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of individual agency syncs in a histogram.
+
+    During DDL operations the runtime can increase but should generally be below
+
+    1s.
 
     '
   exposedBy:
@@ -1482,21 +1439,22 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase one in maintenance.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase one in maintenance.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  name: arangodb_maintenance_phase1_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 1 runtime histogram.
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase1 of an agency sync. Phase1 calculates
+
+    the difference between the local and the target state.
 
     '
   exposedBy:
@@ -1508,21 +1466,22 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase two of maintenance.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase two of maintenance.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  name: arangodb_maintenance_phase2_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 2 runtime histogram.
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase2 of an agency sync. Phase2 calculates
+
+    what actions to execute given the difference of the local and target state.
 
     '
   exposedBy:

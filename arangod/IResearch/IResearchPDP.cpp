@@ -48,7 +48,7 @@ irs::parametric_description readParametricDescription(
   const auto& data = args.first;
 
   if (data.size() >= LZ4_MAX_INPUT_SIZE
-      || rawSize >= irs::integer_traits<int>::const_max) {
+      || rawSize >= std::numeric_limits<int>::max()) {
     return {};
   }
 

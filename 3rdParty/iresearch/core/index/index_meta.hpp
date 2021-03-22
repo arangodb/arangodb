@@ -24,18 +24,18 @@
 #ifndef IRESEARCH_INDEX_META_H
 #define IRESEARCH_INDEX_META_H
 
+#include <algorithm>
+#include <vector>
+#include <atomic>
+
+#include <absl/container/flat_hash_set.h>
+
 #include "store/directory.hpp"
 
 #include "error/error.hpp"
 
 #include "utils/string.hpp"
 #include "utils/type_limits.hpp"
-
-#include <algorithm>
-#include <unordered_set>
-#include <unordered_map>
-#include <vector>
-#include <atomic>
 
 namespace iresearch {
 
@@ -53,7 +53,7 @@ MSVC_ONLY(template class IRESEARCH_API std::shared_ptr<const irs::format>;) // f
 namespace iresearch {
 
 struct IRESEARCH_API segment_meta {
-  typedef std::unordered_set<std::string> file_set;
+  using file_set = absl::flat_hash_set<std::string>;
 
   segment_meta() = default;
   segment_meta(const segment_meta&) = default;

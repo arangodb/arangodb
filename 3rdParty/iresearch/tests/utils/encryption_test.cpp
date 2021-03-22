@@ -346,6 +346,16 @@ class encryption_test_case : public tests::directory_test_case_base {
         }
       }
 
+      // checksum
+      {
+        auto dup = decryptor.reopen();
+        dup->seek(0);
+        ASSERT_EQ(checksum, dup->checksum(dup->length()));
+        ASSERT_EQ(0, dup->file_pointer()); // checksum doesn't change position
+        ASSERT_EQ(checksum, dup->checksum(std::numeric_limits<size_t>::max()));
+        ASSERT_EQ(0, dup->file_pointer()); // checksum doesn't change position
+      }
+
       // check reopen
       {
         auto dup = decryptor.reopen();
@@ -365,6 +375,8 @@ class encryption_test_case : public tests::directory_test_case_base {
         auto dup = decryptor.reopen();
         dup->seek(0);
         ASSERT_EQ(checksum, dup->checksum(dup->length()));
+        ASSERT_EQ(0, dup->file_pointer()); // checksum doesn't change position
+        ASSERT_EQ(checksum, dup->checksum(std::numeric_limits<size_t>::max()));
         ASSERT_EQ(0, dup->file_pointer()); // checksum doesn't change position
       }
 

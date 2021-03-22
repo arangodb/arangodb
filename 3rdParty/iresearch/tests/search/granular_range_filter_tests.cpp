@@ -68,23 +68,23 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
   ) {
     if (data.is_string()) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     } else if (data.is_null()) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
     } else if (data.is_bool() && data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
     } else if (data.is_bool() && !data.b) {
       doc.insert(std::make_shared<tests::binary_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
     } else if (data.is_number()) {
       // 'value' can be interpreted as a double
@@ -92,28 +92,28 @@ class granular_range_filter_test_case : public tests::filter_test_case_base {
       {
         doc.insert(std::make_shared<granular_double_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(dValue);
       }
 
       // 'value' can be interpreted as a float
       doc.insert(std::make_shared<granular_float_field>());
       auto& field = (doc.indexed.end() - 1).as<tests::float_field>();
-      field.name(irs::string_ref(name));
+      field.name(name);
       field.value(data.as_number<float_t>());
 
       const uint64_t lValue = uint64_t(std::ceil(dValue));
       {
         doc.insert(std::make_shared<granular_long_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::long_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(lValue);
       }
 
       {
         doc.insert(std::make_shared<granular_int_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::int_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(int32_t(lValue));
       }
     }
@@ -1943,23 +1943,23 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
     ) {
       if (data.is_string()) {
         doc.insert(std::make_shared<tests::templates::string_field>(
-          irs::string_ref(name),
+          name,
           data.str
         ));
       } else if (data.is_null()) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::null_token_stream::value_null()));
       } else if (data.is_bool() && data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_bool() && !data.b) {
         doc.insert(std::make_shared<tests::binary_field>());
         auto& field = (doc.indexed.end() - 1).as<tests::binary_field>();
-        field.name(irs::string_ref(name));
+        field.name(name);
         field.value(irs::ref_cast<irs::byte_type>(irs::boolean_token_stream::value_true()));
       } else if (data.is_number()) {
         // 'value' can be interpreted as a double
@@ -1967,7 +1967,7 @@ TEST_P(granular_range_filter_test_case, by_range_numeric_sequence) {
         {
           doc.insert(std::make_shared<granular_double_field>());
           auto& field = (doc.indexed.end() - 1).as<tests::double_field>();
-          field.name(irs::string_ref(name));
+          field.name(name);
           field.value(dValue);
         }
       }
@@ -2191,8 +2191,8 @@ TEST_P(granular_range_filter_test_case, visit) {
   std::string fld = "prefix";
   irs::string_ref field = irs::string_ref(fld);
   irs::by_granular_range::options_type::range_type rng;
-  rng.min = {irs::ref_cast<irs::byte_type>(irs::string_ref("abc"))};
-  rng.max = {irs::ref_cast<irs::byte_type>(irs::string_ref("abcd"))};
+  rng.min = {static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("abc")))};
+  rng.max = {static_cast<irs::bstring>(irs::ref_cast<irs::byte_type>(irs::string_ref("abcd")))};
   rng.min_type = irs::BoundType::INCLUSIVE;
   rng.max_type = irs::BoundType::INCLUSIVE;
   // read segment

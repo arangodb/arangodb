@@ -37,15 +37,18 @@
 #include "utils/range.hpp"
 #include "index_writer.hpp"
 
+#include <absl/container/flat_hash_map.h>
+
 #include <list>
 #include <sstream>
 
 namespace {
+using namespace irs;
 
 typedef range<irs::index_writer::modification_context> modification_contexts_ref;
 typedef range<irs::segment_writer::update_context> update_contexts_ref;
 
-const size_t NON_UPDATE_RECORD = irs::integer_traits<size_t>::const_max; // non-update
+const size_t NON_UPDATE_RECORD = std::numeric_limits<size_t>::max(); // non-update
 
 const irs::column_info_provider_t DEFAULT_COLUMN_INFO = [](const irs::string_ref&) {
   // no compression, no encryption
@@ -61,16 +64,16 @@ struct flush_segment_context {
   const update_contexts_ref update_contexts_; // update contexts for documents in segment_meta
 
   flush_segment_context(
-    const irs::index_meta::index_segment_t& segment,
-    size_t doc_id_begin,
-    size_t doc_id_end,
-    const update_contexts_ref& update_contexts,
-    const modification_contexts_ref& modification_contexts
-  ): doc_id_begin_(doc_id_begin),
-     doc_id_end_(doc_id_end),
-     modification_contexts_(modification_contexts),
-     segment_(segment),
-     update_contexts_(update_contexts) {
+      const irs::index_meta::index_segment_t& segment,
+      size_t doc_id_begin,
+      size_t doc_id_end,
+      const update_contexts_ref& update_contexts,
+      const modification_contexts_ref& modification_contexts)
+    : doc_id_begin_(doc_id_begin),
+      doc_id_end_(doc_id_end),
+      modification_contexts_(modification_contexts),
+      segment_(segment),
+      update_contexts_(update_contexts) {
     assert(doc_id_begin_ <= doc_id_end_);
     assert(doc_id_end_ - irs::doc_limits::min() <= segment_.meta.docs_count);
     assert(update_contexts.size() == segment_.meta.docs_count);
@@ -327,12 +330,11 @@ const std::string& write_document_mask(
 }
 
 // mapping: name -> { new segment, old segment }
-typedef std::map<
+using candidates_mapping_t = absl::flat_hash_map<
   irs::string_ref,
   std::pair<
     const irs::segment_meta*, // new segment
-    std::pair<const irs::segment_meta*, size_t> // old segment + index within merge_writer
->> candidates_mapping_t;
+    std::pair<const irs::segment_meta*, size_t>>>; // old segment + index within merge_writer
 
 /// @param candidates_mapping output mapping
 /// @param candidates candidates for mapping
@@ -340,7 +342,7 @@ typedef std::map<
 /// @returns first - has removals, second - number of mapped candidates
 std::pair<bool, size_t> map_candidates(
     candidates_mapping_t& candidates_mapping,
-    const std::set<const irs::segment_meta*>& candidates,
+    const irs::index_writer::consolidation_t& candidates,
     const irs::index_meta::index_segments_t& segments
 ) {
   size_t i = 0;
@@ -501,7 +503,7 @@ bool map_removals(
   return true;
 }
 
-std::string to_string(std::set<const irs::segment_meta*>& consolidation) {
+std::string to_string(const irs::index_writer::consolidation_t& consolidation) {
   std::stringstream ss;
   size_t total_size = 0;
   size_t total_docs_count = 0;
@@ -560,7 +562,7 @@ void readers_cache::clear() noexcept {
 }
 
 size_t readers_cache::purge(
-    const std::unordered_set<key_t, key_hash_t>& segments) noexcept {
+    const absl::flat_hash_set<key_t, key_hash_t>& segments) noexcept {
   if (segments.empty()) {
     return 0;
   }
@@ -571,7 +573,8 @@ size_t readers_cache::purge(
 
   for (auto it = cache_.begin(); it != cache_.end(); ) {
     if (segments.end() != segments.find(it->first)) {
-      it = cache_.erase(it);
+      const auto erase_me = it++;
+      cache_.erase(erase_me);
       ++erased;
     } else {
       ++it;
@@ -591,7 +594,7 @@ index_writer::active_segment_context::active_segment_context(
     segment_context_ptr ctx,
     std::atomic<size_t>& segments_active,
     flush_context* flush_ctx /*= nullptr*/, // the flush_context the segment_context is currently registered with
-    size_t pending_segment_context_offset /*= integer_traits<size_t>::const_max*/ // the segment offset in flush_ctx_->pending_segments_
+    size_t pending_segment_context_offset /*= std::numeric_limits<size_t>::max()*/ // the segment offset in flush_ctx_->pending_segments_
 ) noexcept
   : ctx_(ctx),
     flush_ctx_(flush_ctx),
@@ -762,7 +765,7 @@ void index_writer::documents_context::reset() noexcept {
       ctx->uncomitted_doc_id_begin_ - flushed_docs_start;
 
     assert(docs_mask_tail_doc_id <= segment.meta.live_docs_count);
-    assert(docs_mask_tail_doc_id <= integer_traits<doc_id_t>::const_max);
+    assert(docs_mask_tail_doc_id <= std::numeric_limits<doc_id_t>::max());
     segment.docs_mask_tail_doc_id = doc_id_t(docs_mask_tail_doc_id);
 
     if (docs_mask_tail_doc_id - doc_limits::min() >= segment.meta.docs_count) {
@@ -788,7 +791,7 @@ void index_writer::documents_context::reset() noexcept {
   auto& writer = *(ctx->writer_);
   auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
-  assert(integer_traits<doc_id_t>::const_max >= writer.docs_cached());
+  assert(std::numeric_limits<doc_id_t>::max() >= writer.docs_cached());
   assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() >= flushed_update_contexts.size()); // update_contexts located inside th writer
   assert(ctx->uncomitted_doc_id_begin_ - doc_limits::min() <= flushed_update_contexts.size() + writer_docs);
   ctx->buffered_docs_.store(flushed_update_contexts.size() + writer_docs);
@@ -799,7 +802,7 @@ void index_writer::documents_context::reset() noexcept {
        doc_id_end = writer_docs + doc_limits::min();
        doc_id < doc_id_end;
        ++doc_id) {
-    assert(doc_id <= integer_traits<doc_id_t>::const_max);
+    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
     writer.remove(doc_id_t(doc_id));
   }
 }
@@ -975,7 +978,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
   }
 
   assert(ctx.writer_);
-  assert(integer_traits<doc_id_t>::const_max >= ctx.writer_->docs_cached());
+  assert(std::numeric_limits<doc_id_t>::max() >= ctx.writer_->docs_cached());
   auto& writer = *(ctx.writer_);
   auto writer_docs = writer.initialized() ? writer.docs_cached() : 0;
 
@@ -987,7 +990,7 @@ void index_writer::flush_context::emplace(active_segment_context&& segment) {
        doc_id_end = writer_docs + doc_limits::min();
        doc_id < doc_id_end;
        ++doc_id) {
-    assert(doc_id <= integer_traits<doc_id_t>::const_max);
+    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
     assert(writer.doc_context(doc_id).generation <= modification_count); // can == modification_count if inserts come after modification
     writer.doc_context(doc_id_t(doc_id)).generation += generation_base; // update to flush_context generation
   }
@@ -1060,7 +1063,7 @@ uint64_t index_writer::segment_context::flush() {
 
   auto flushed_docs_count = flushed_update_contexts_.size();
 
-  assert(integer_traits<doc_id_t>::const_max >= writer_->docs_cached());
+  assert(std::numeric_limits<doc_id_t>::max() >= writer_->docs_cached());
   flushed_update_contexts_.reserve(flushed_update_contexts_.size() + writer_->docs_cached());
   flushed_.emplace_back(std::move(writer_meta_.meta));
 
@@ -1069,7 +1072,7 @@ uint64_t index_writer::segment_context::flush() {
        doc_id_end = writer_->docs_cached() + doc_limits::min();
        doc_id < doc_id_end;
        ++doc_id) {
-    assert(doc_id <= integer_traits<doc_id_t>::const_max);
+    assert(doc_id <= std::numeric_limits<doc_id_t>::max());
     flushed_update_contexts_.emplace_back(writer_->doc_context(doc_id_t(doc_id)));
   }
 
@@ -1415,7 +1418,7 @@ index_writer::consolidation_result index_writer::consolidate(
     codec = codec_;
   }
 
-  std::set<const segment_meta*> candidates;
+  consolidation_t candidates;
   const auto run_id = reinterpret_cast<size_t>(&candidates);
 
   // hold a reference to the last committed state to prevent files from being
@@ -1454,7 +1457,7 @@ index_writer::consolidation_result index_writer::consolidate(
     // check that candidates are not involved in ongoing merges
     for (const auto* candidate : candidates) {
       // segment has been already chosen for consolidation (or at least was choosen), give up
-      if (consolidating_segments_.end() != consolidating_segments_.find(candidate)) {
+      if (consolidating_segments_.contains(candidate)) {
         return { 0, ConsolidationError::FAIL };
       }
     }
@@ -1483,15 +1486,22 @@ index_writer::consolidation_result index_writer::consolidate(
     }
   });
 
+  // sort candidates
+  std::sort(candidates.begin(), candidates.end());
+
+  // remove duplicates
+  candidates.erase(
+    std::unique(candidates.begin(), candidates.end()),
+    candidates.end());
 
   // validate candidates
   {
     size_t found = 0;
 
-    const auto candidate_not_found = candidates.end();
-
+    const auto not_found = candidates.end();
     for (const auto& segment : *committed_meta) {
-      found += size_t(candidate_not_found != candidates.find(&segment.meta));
+      const auto it = std::lower_bound(candidates.begin(), not_found, &segment.meta);
+      found += (it != not_found && *it == &segment.meta);
     }
 
     if (found != candidates.size()) {
@@ -1554,7 +1564,7 @@ index_writer::consolidation_result index_writer::consolidate(
         if (!candidates.empty()) {
           decltype(flush_context::segment_mask_) cached_mask;
           // pointers are different so check by name
-          for (const auto& candidate : candidates) {
+          for (const auto* candidate : candidates) {
             if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                 current_committed_meta->end(),
@@ -1578,7 +1588,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // only if we have different index meta
       if (committed_meta != current_committed_meta) {
         // pointers are different so check by name
-        for (const auto& candidate : candidates) {
+        for (const auto* candidate : candidates) {
           if (current_committed_meta->end() ==
               std::find_if(current_committed_meta->begin(),
                            current_committed_meta->end(),
@@ -1603,7 +1613,7 @@ index_writer::consolidation_result index_writer::consolidate(
       // register consolidation for the next transaction
       ctx->pending_segments_.emplace_back(
         std::move(consolidation_segment),
-        integer_traits<size_t>::max(), // skip deletes, will accumulate deletes from existing candidates
+        std::numeric_limits<size_t>::max(), // skip deletes, will accumulate deletes from existing candidates
         extract_refs(dir), // do not forget to track refs
         std::move(candidates), // consolidation context candidates
         std::move(committed_meta), // consolidation context meta
@@ -1971,7 +1981,7 @@ index_writer::pending_context_t index_writer::flush_all() {
     // force a flush of the underlying segment_writer
     max_tick = std::max(entry.segment_->flush(), max_tick);
 
-    entry.doc_id_end_ = // may be integer_traits<size_t>::const_max if segment_meta only in this flush_context
+    entry.doc_id_end_ = // may be std::numeric_limits<size_t>::max() if segment_meta only in this flush_context
       std::min(entry.segment_->uncomitted_doc_id_begin_, entry.doc_id_end_); // update so that can use valid value below
     entry.modification_offset_end_ = std::min(
       entry.segment_->uncomitted_modification_queries_,
@@ -2293,7 +2303,7 @@ index_writer::pending_context_t index_writer::flush_all() {
         for (size_t doc_id = doc_limits::min();
              doc_id < valid_doc_id_begin;
              ++doc_id) {
-          assert(integer_traits<doc_id_t>::const_max >= doc_id);
+          assert(std::numeric_limits<doc_id_t>::max() >= doc_id);
           if (flush_segment_ctx.docs_mask_.emplace(doc_id_t(doc_id)).second) {
             assert(flush_segment_ctx.segment_.meta.live_docs_count);
             --flush_segment_ctx.segment_.meta.live_docs_count; // decrement count of live docs
@@ -2305,7 +2315,7 @@ index_writer::pending_context_t index_writer::flush_all() {
              doc_id_end = flushed.meta.docs_count + doc_limits::min();
              doc_id < doc_id_end;
              ++doc_id) {
-          assert(integer_traits<doc_id_t>::const_max >= doc_id);
+          assert(std::numeric_limits<doc_id_t>::max() >= doc_id);
           if (flush_segment_ctx.docs_mask_.emplace(doc_id_t(doc_id)).second) {
             assert(flush_segment_ctx.segment_.meta.live_docs_count);
             --flush_segment_ctx.segment_.meta.live_docs_count; // decrement count of live docs

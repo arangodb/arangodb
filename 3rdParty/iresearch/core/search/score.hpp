@@ -51,7 +51,7 @@ class IRESEARCH_API score : public attribute {
 
   bool is_default() const noexcept;
 
-  [[nodiscard]] const byte_type* evaluate() const {
+  [[nodiscard]] FORCE_INLINE const byte_type* evaluate() const {
     assert(func_);
     return func_();
   }

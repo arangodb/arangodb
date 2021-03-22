@@ -394,7 +394,7 @@ TEST_F(TextAnalyzerParserTestSuite, test_text_analyzer) {
 
     {
       irs::analysis::text_token_stream::options_t options;
-      options.explicit_stopwords = std::unordered_set<std::string>({ "a", "of", "and" });
+      options.explicit_stopwords = { "a", "of", "and" };
       options.locale = irs::locale_utils::locale("en_US.UTF-8");
       irs::analysis::text_token_stream stream(options, options.explicit_stopwords);
       testFunc(data, &stream);
@@ -1055,12 +1055,6 @@ TEST_F(TextAnalyzerParserTestSuite, test_make_config_text) {
   std::string actual;
   ASSERT_TRUE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::text>::get(), config));
   ASSERT_EQ("ru", actual);
-}
-
-TEST_F(TextAnalyzerParserTestSuite, test_make_config_invalid_format) {
-  std::string config = "{\"locale\":\"ru_RU.utf-8\",\"case\":\"lower\",\"stopwords\":[],\"accent\":true}";
-  std::string actual;
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "text", irs::type<irs::text_format::csv>::get(), config));
 }
 
 TEST_F(TextAnalyzerParserTestSuite, test_deterministic_stopwords_order) {
