@@ -506,16 +506,6 @@ if (CROSS_COMPILING)
   SET(USE_LIBUNWIND OFF)
 endif()
 
-if (USE_JEMALLOC AND USE_SHARED_LIBRARIES)
-  # TODO We should solve and allow this
-  message(FATAL_ERROR "USE_JEMALLOC and USE_SHARED_LIBRARIES don't work together. Please turn one of them off.")
-endif ()
-
-if (USE_LIBUNWIND AND USE_SHARED_LIBRARIES)
-  # TODO We should solve and allow this
-  message(FATAL_ERROR "USE_LIBUNWIND and USE_SHARED_LIBRARIES don't work together. Please turn one of them off.")
-endif ()
-
 ################################################################################
 ## EXTERNAL PROGRAMS
 ################################################################################

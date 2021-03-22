@@ -35,7 +35,13 @@ if (LINUX OR DARWIN)
     SET(JEMALLOC_PROF "--enable-prof")
   endif ()
 
-  set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libjemalloc.a")
+  if (BUILD_SHARED_LIBS)
+      set(LIBJEMALLOC_FILENAME libjemalloc_pic.a)
+  else ()
+      set(LIBJEMALLOC_FILENAME libjemalloc.a)
+  endif ()
+
+  set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/${LIBJEMALLOC_FILENAME}")
   ExternalProject_Add(
     jemalloc_build
     SOURCE_DIR
@@ -62,7 +68,7 @@ if (LINUX OR DARWIN)
     INSTALL_COMMAND
       $(MAKE) install_include
            && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
-           && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
+           && ${CMAKE_COMMAND} -E copy ${JEMALLOC_BINARY_DIR}/lib/${LIBJEMALLOC_FILENAME} ${CMAKE_CURRENT_BINARY_DIR}/lib
     STEP_TARGETS
       ${JEMALLOC_LIB} jemalloc
   )
