@@ -78,8 +78,10 @@ function replicationClientsSuite() {
         docs.push({ _key: "test" + i, value: i });
       }
 
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+      db._createDatabase(cn);
+      db._useDatabase(cn);
       try {
+        let c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
         c.insert(docs);
         
         let shards = c.shards(true);
@@ -88,7 +90,7 @@ function replicationClientsSuite() {
         let shardLeader = shardServers[0];
 
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 300));
+        assertEqual([], getClients(findServer(shardLeader).url + "/_db/" + cn, 300));
 
         // add a follower
         c.properties({ replicationFactor: 2 });
@@ -107,11 +109,12 @@ function replicationClientsSuite() {
         assertNotEqual(shardLeader, shardFollower);
         
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 300));
+        assertEqual([], getClients(findServer(shardLeader).url + "/_db/" + cn, 300));
         // follower should have 0 clients registered
-        assertEqual([], getClients(findServer(shardFollower).url, 300));
+        assertEqual([], getClients(findServer(shardFollower).url + "/_db/" + cn, 300));
       } finally {
-        db._drop(cn);
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
       }
     },
     
@@ -124,8 +127,10 @@ function replicationClientsSuite() {
         docs.push({ _key: "test" + i, value: i });
       }
 
-      let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      db._createDatabase(cn);
+      db._useDatabase(cn);
       try {
+        let c = db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
         c.insert(docs);
         
         let shards = c.shards(true);
@@ -137,11 +142,12 @@ function replicationClientsSuite() {
         assertNotEqual(shardLeader, shardFollower);
         
         // leader should have 0 clients registered
-        assertEqual([], getClients(findServer(shardLeader).url, 300));
+        assertEqual([], getClients(findServer(shardLeader).url + "/_db/" + cn, 300));
         // follower should have 0 clients registered
-        assertEqual([], getClients(findServer(shardFollower).url, 300));
+        assertEqual([], getClients(findServer(shardFollower).url + "/_db/" + cn, 300));
       } finally {
-        db._drop(cn);
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
       }
     },
     
