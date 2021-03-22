@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 400 */
-/*global fail, assertEqual, AQL_EXECUTE */
+/*global fail, assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -89,7 +89,7 @@ function aqlFailureSuite () {
         assertTrue(route !== undefined);
         const serverInfo = parts.filter(m => m.startsWith("server:"))[0];
         assertTrue(serverInfo !== undefined);
-        const serverName = serverInfo.split(":")[1]
+        const serverName = serverInfo.split(":")[1];
         assertTrue(serverName !== undefined);
         callFinish(serverName, route);
       }
