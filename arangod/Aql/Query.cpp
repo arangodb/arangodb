@@ -1413,10 +1413,41 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     // Also note: If an error in cleanup happens the query was completed already,
     // so this error does not need to be reported to client.
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
-    LOG_TOPIC("63572", WARN, Logger::QUERIES)
-        << " Failed to cleanup leftovers of a query. Due to communication errors. "
-        << " The DBServers will eventually clean up the state. If the query used exclusive locks "
-        << " you may see some delay in execution.";
+
+    if (isModificationQuery()) {
+      // For modification queries these left-over locks will have negative side effects
+      // We will report those to the user.
+      // Lingering Read-locks should not block the system.
+      std::vector<std::string_view> writeLocked{};
+      std::vector<std::string_view> exclusiveLocked{};
+      _collections.visit([&](std::string const& name, Collection& col) -> bool {
+        switch (col.accessType()) {
+          case AccessMode::Type::WRITE: {
+            writeLocked.emplace_back(name);
+            break;
+          }
+          case AccessMode::Type::EXCLUSIVE: {
+            exclusiveLocked.emplace_back(name);
+            break;
+          }
+          default:
+            // We do not need to capture reads.
+            break;
+        }
+        return true;
+      });
+      LOG_TOPIC("63572", WARN, Logger::QUERIES)
+          << " Failed to cleanup leftovers of a query. Due to communication errors. "
+          << " The DBServers will eventually clean up the state. The following locks still exist: "
+          << " write: " << writeLocked << " you may not drop this collection until timeout."
+          << " exclusive: " << exclusiveLocked << " you may not access this collection until timeout.";
+      for (auto const& [serverDst, queryId] : _serverQueryIds) {
+        TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+        auto msg = "Failed to send unlock request DELETE _api/aql/finish/" + std::to_string(queryId) + " to " + serverDst;
+        _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
+        LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
+      }
+    }
     return ExecutionState::DONE;
   }
 }
