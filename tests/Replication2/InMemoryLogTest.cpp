@@ -20,8 +20,14 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <Replication2/InMemoryLog.h>
+
 #include <gtest/gtest.h>
 
+using namespace arangodb;
+using namespace arangodb::replication2;
+
 TEST(InMemoryLogTest, test) {
+  auto log = InMemoryLog{};
   ASSERT_TRUE(true);
 }

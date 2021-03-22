@@ -21,3 +21,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InMemoryLog.h"
+
+#include <utility>
+
+using namespace arangodb;
+using namespace arangodb::replication2;
+
+LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
+    : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
+
+LogTerm LogEntry::logTerm() const { return _logTerm; }
+
+LogIndex LogEntry::logIndex() const { return _logIndex; }
+
+LogPayload const& LogEntry::logPayload() const { return _payload; }
