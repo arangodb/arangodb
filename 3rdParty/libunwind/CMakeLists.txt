@@ -24,7 +24,15 @@ if (LINUX)
   set(LIBUNWIND_CC_TMP "${CMAKE_C_COMPILER}")
   set(LIBUNWIND_CXX_TMP "${CMAKE_CXX_COMPILER}")
 
-  set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}/src/.libs/libunwind.a")
+  if (BUILD_SHARED_LIBS)
+      set(LIBUNWIND_FILEEXT so)
+      set(LIBUNWIND_SHARED_OR_STATIC_OPTS --enable-shared --disable-static)
+  else ()
+      set(LIBUNWIND_FILEEXT a)
+      set(LIBUNWIND_SHARED_OR_STATIC_OPTS --disable-shared --enable-static)
+  endif ()
+
+  set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}/src/.libs/libunwind.${LIBUNWIND_FILEEXT}")
   # note: in the following configure, turning on cxx exceptions will cause duplicate
   # symbols (_Unwind_Resume and such) when linking, as some libc++ implementations
   # also use it internally
@@ -40,7 +48,7 @@ if (LINUX)
                   CFLAGS=${CMAKE_C_FLAGS}
                   CXXFLAGS=${CMAKE_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
-                  --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
+                  ${LIBUNWIND_SHARED_OR_STATIC_OPTS} --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions
     BUILD_COMMAND
       $(MAKE) 
     BUILD_IN_SOURCE
