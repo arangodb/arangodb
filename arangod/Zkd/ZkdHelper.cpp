@@ -65,40 +65,6 @@ zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
   return result;
 }
 
-namespace {
-
-uint64_t space_out_2(uint32_t v) {
-    uint64_t x = v;
-    x = (x | (x << 8)) & 0x00FF00FFul;
-    x = (x | (x << 4)) & 0x0F0F0F0Ful;
-    x = (x | (x << 2)) & 0x33333333ul;
-    x = (x | (x << 1)) & 0x55555555ul;
-
-    return x;
-}
-
-uint64_t space_out_3(uint16_t v) {
-    uint64_t x = v;
-    x = (x | (x << 16)) & 0x00FF0000FF0000FFul;
-    x = (x | (x << 8)) & 0x000000F00F00F00Ful;
-    x = (x | (x << 4)) & 0x30C30C30C30C30C3ul;
-    x = (x | (x << 2)) & 0x0249249249249249ul;
-
-    return x;
-}
-
-uint64_t space_out_4(uint16_t v) {
-    uint64_t x = v;
-    x = (x | (x << 24)) & 0x000000FF000000FFul;
-    x = (x | (x << 12)) & 0x000F000F000F000Ful;
-    x = (x | (x << 6)) & 0x0303030303030303ul;
-    x = (x | (x << 3)) & 0x1111111111111111ul;
-
-    return x;
-}
-}
-
-
 zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
   return byte_string{ reinterpret_cast<const std::byte*>(str), len};
 }
