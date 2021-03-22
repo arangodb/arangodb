@@ -291,20 +291,15 @@ uint64_t RocksDBMetaCollection::recalculateCounts() {
   return _meta.numberDocuments();
 }
 
-Result RocksDBMetaCollection::compact() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = this->bounds();
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-  
+void RocksDBMetaCollection::compact() {
+  RocksDBEngine* engine = rocksutils::globalRocksEngine();
+  engine->compactRange(bounds());
+
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   for (std::shared_ptr<Index> i : _indexes) {
     RocksDBIndex* index = static_cast<RocksDBIndex*>(i.get());
     index->compact();
   }
-  
-  return {};
 }
 
 void RocksDBMetaCollection::estimateSize(velocypack::Builder& builder) {
