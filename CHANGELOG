@@ -1,6 +1,12 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Allow process-specific logfile names.
+
+  This change allows replacing '$PID' with the current process id in the
+  `--log.output` and `--audit.output` startup parameters.
+  This way it is easier to write process-specific logfiles.
+
 * Backport a bugfix from upstream RocksDB for opening encrypted files with small
   sizes. Without the bugfix, the server may run into assertion failures during
   recovery.
