@@ -181,7 +181,7 @@ void ReplicationFeature::start() {
 void ReplicationFeature::beginShutdown() {
   try {
     if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stopAndJoin();
+      _globalReplicationApplier->stop();
     }
   } catch (...) {
     // ignore any error
