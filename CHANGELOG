@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the
