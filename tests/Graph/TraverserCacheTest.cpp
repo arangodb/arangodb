@@ -55,6 +55,7 @@ class TraverserCacheTest : public ::testing::Test {
   std::unique_ptr<RefactoredTraverserCache> traverserCache{nullptr};
   std::shared_ptr<transaction::Context> queryContext{nullptr};
   std::unique_ptr<arangodb::transaction::Methods> trx{nullptr};
+  std::map<std::string, std::string> collectionToShardMap{}; // can be empty, only used in standalone mode
   arangodb::ResourceMonitor* _monitor;
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
@@ -62,7 +63,6 @@ class TraverserCacheTest : public ::testing::Test {
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
-    std::map<std::string, std::string> collectionToShardMap{}; // can be empty, only used in standalone mode
     traverserCache =
         std::make_unique<RefactoredTraverserCache>(trx.get(), query.get(),
                                                    query->resourceMonitor(), stats, collectionToShardMap);
