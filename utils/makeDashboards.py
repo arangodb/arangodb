@@ -229,6 +229,7 @@ while i < len(sys.argv):
                 persona = p
             else:
                 print("Warning: persona " + p + " not known.", file=sys.stderr)
+                sys.exit(1)
             i += 2
         else:
             i += 1

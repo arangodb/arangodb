@@ -4,8 +4,12 @@ help: |
 unit: ms
 type: histogram
 category: Maintenance
-complexity: medium
+complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Time spent in the queue before execution for maintenance actions.
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  This metric tracks the time actions spend waiting in the queue in a histogram.
