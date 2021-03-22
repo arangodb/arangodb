@@ -275,6 +275,9 @@ set(ARANGODB_TESTS_SOURCES
   VocBase/VersionTest.cpp
   VPackDeserializer/BasicTests.cpp)
 
+set(ARANGODB_REPLICATION2_TEST_SOURCES
+  Replication2/InMemoryLogTest.cpp)
+
 if (USE_FAILURE_TESTS)
   # add test that depends on USE_FAILURE_TESTS
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES} Aql/OldSubqueriesTest.cpp)
@@ -300,6 +303,13 @@ add_executable(
   main.cpp
 )
 
+add_executable(
+  arangodbtests_replication2
+  ${ARANGODB_TESTS_COMMON_SOURCES}
+  ${ARANGODB_REPLICATION2_TEST_SOURCES}
+  main.cpp
+)
+
 #required by fakeit dtor mock -- https://github.com/eranpeer/FakeIt/issues/84
 if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(arangodbtests PRIVATE -fno-devirtualize)
@@ -318,21 +328,34 @@ target_link_libraries(arangodbtests
   boost_boost
 )
 
+target_link_libraries(arangodbtests_replication2
+  gtest
+  arangoserver
+  arango_replication2
+  arango_iresearch
+  )
+
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
-endif()
+endif ()
 
 target_include_directories(arangodbtests PRIVATE
   ${INCLUDE_DIRECTORIES}
-)
+  )
+target_include_directories(arangodbtests_replication2 PRIVATE
+  ${INCLUDE_DIRECTORIES}
+  )
+target_link_libraries(arangodbtests_replication2 arango)
 
 if(MSVC AND USE_FAIL_ON_WARNINGS)
   target_compile_options(arangodbtests PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
+  target_compile_options(arangodbtests_replication2 PRIVATE /WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 if (DARWIN AND USE_FAIL_ON_WARNINGS)
   # Missing Braces is broken in older CLangs - disable them here.
   target_compile_options(arangodbtests PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
+  target_compile_options(arangodbtests_replication2 PRIVATE -Werror -Wno-error=deprecated-declarations -Wno-missing-braces)
 endif()
 
 # add these includes as system includes because otherwise
@@ -341,6 +364,9 @@ target_include_directories(arangodbtests SYSTEM PRIVATE
   ${V8_INCLUDE_DIR}
   ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
+  ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
+)
+target_include_directories(arangodbtests_replication2 SYSTEM PRIVATE
   ${CMAKE_SOURCE_DIR}/3rdParty/rocksdb/${ARANGO_ROCKSDB_VERSION}/third-party/gtest-1.8.1/fused-src
 )
 

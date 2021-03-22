@@ -545,6 +545,9 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   Replication/utilities.cpp
   )
 
+set(LIB_ARANGO_REPLICATION2_SOURCES
+  Replication2/InMemoryLog.cpp Replication2/InMemoryLog.h)
+
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
   RestServer/MetricsFeature.cpp
@@ -858,6 +861,10 @@ add_library(arango_cache STATIC
 
 add_library(arango_replication STATIC
   ${LIB_ARANGO_REPLICATION_SOURCES}
+)
+
+add_library(arango_replication2 STATIC
+  ${LIB_ARANGO_REPLICATION2_SOURCES}
 )
 
 add_library(arango_metrics STATIC

@@ -219,6 +219,8 @@ target_link_libraries(arango
   ${SYSTEM_LIBRARIES}
 )
 
+add_dependencies(arango v8_build)
+
 set(FROZEN_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/frozen/include")
 
 target_include_directories(arango PRIVATE ${FROZEN_INCLUDE_DIR})
