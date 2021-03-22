@@ -428,7 +428,18 @@ bool IndexExecutor::CursorReader::readIndex(OutputAqlItemRow& output) {
       return _cursor->nextDocument(_documentProducer, output.numRowsLeft());
     case Type::Count: {
       uint64_t counter = 0;
-      _cursor->skipAll(counter);
+
+      if (_checkUniqueness) {
+        _cursor->all([&](LocalDocumentId const& token) -> bool {
+          if (_context.checkUniqueness(token)) {
+            counter++;
+          }
+          return true;
+        });
+      } else {
+        _cursor->skipAll(counter);
+      }
+
       InputAqlItemRow const& input = _context.getInputRow();
       RegisterId registerId = _context.getOutputRegister();
       TRI_ASSERT(!output.isFull());
