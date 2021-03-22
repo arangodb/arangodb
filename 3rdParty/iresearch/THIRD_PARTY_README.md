@@ -33,10 +33,10 @@ number of components produced by third parties
     - Copyright: Cyril Allauzen, Michael Riley 
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: Part of the source code tree
-2.  Title: Murmurhash
-    - Copyright: Austin Appleby
-    - License: [MIT license](https://opensource.org/licenses/MIT)
-    - How it's used: Part of the source code tree
+2.  Title: Abseil C++ Common Libraries
+    - Copyright: Google Inc.
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: Statically linked into the library
 3.  Title: Boost C++ Libraries
     - Copyright: Beman Dawes, David Abrahams, 1998-2005, Rene Rivera 2004-2005
     - License: [Boost Software License, Version 1.0](http://www.boost.org/LICENSE_1_0.txt)
@@ -68,11 +68,11 @@ number of components produced by third parties
 10. Title: cmdline
     - Copyright: Hideyuki Tanaka
     - License: [BSD 3-clause](https://github.com/tanakh/cmdline/blob/master/LICENSE)
-    - How it's used: command line parser
+    - How it's used: command line parser, statically linked
 11. Title: simdcomp
     - Copyright: Daniel Lemire
     - License: [BSD 3-clause](https://github.com/lemire/simdcomp/LICENSE)
-    - How it's used: compression library
+    - How it's used: compression library, statically or dynamically linked
 12. Title: frozen
     - Copyright: serge-sans-paille <sguelton@quarkslab.com>
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
@@ -81,7 +81,15 @@ number of components produced by third parties
     - Copyright: Daniel Povey <dpovey@gmail.com>
     - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
     - How it's used: a set of extensions for OpenFST library
-
+14. Title: Unicorn Library
+    - Copyright: Ross Smith
+    - License: [MIT license](https://opensource.org/licenses/MIT)
+    - How it's used: Word segmentation rules implementation for
+      segmentation analyzer
+15. Title: Velocypack Library
+    - Copyright: Jan Steemann
+    - License: [Apache 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+    - How it's used: Binary JSON parser
 ## Third Party Open Source Software licenses
 
 ### OpenFST

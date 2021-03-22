@@ -79,7 +79,7 @@ lz4stream_decode lz4_make_stream_decode() {
 // -----------------------------------------------------------------------------
 
 bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out) {
-  assert(size <= integer_traits<int>::const_max); // LZ4 API uses int
+  assert(size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
   const auto src_size = static_cast<int>(size);
 
   // ensure we have enough space to store compressed data
@@ -100,13 +100,13 @@ bytes_ref lz4::lz4compressor::compress(byte_type* src, size_t size, bstring& out
 bytes_ref lz4::lz4decompressor::decompress(
     const byte_type* src,  size_t src_size,
     byte_type* dst,  size_t dst_size) {
-  assert(src_size <= integer_traits<int>::const_max); // LZ4 API uses int
+  assert(src_size <= static_cast<unsigned>(std::numeric_limits<int>::max())); // LZ4 API uses int
 
   const auto lz4_size = LZ4_decompress_safe(
     reinterpret_cast<const char*>(src),
     reinterpret_cast<char*>(dst),
     static_cast<int>(src_size),  // LZ4 API uses int
-    static_cast<int>(std::min(dst_size, static_cast<size_t>(integer_traits<int>::const_max))) // LZ4 API uses int
+    static_cast<int>(std::min(dst_size, static_cast<size_t>(std::numeric_limits<int>::max()))) // LZ4 API uses int
   );
 
   if (IRS_UNLIKELY(lz4_size < 0)) {

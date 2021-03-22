@@ -315,7 +315,7 @@ template<typename T>
 class text_field : public tests::field_base {
  public:
   text_field(
-      const irs::string_ref& name, bool payload = false
+      const std::string& name, bool payload = false
   ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")) {
     if (payload) {
       if (!token_stream_->reset(value_)) {
@@ -327,7 +327,7 @@ class text_field : public tests::field_base {
   }
 
   text_field(
-      const irs::string_ref& name, const T& value, bool payload = false
+      const std::string& name, const T& value, bool payload = false
   ): token_stream_(irs::analysis::analyzers::get("text", irs::type<irs::text_format::json>::get(), "{\"locale\":\"C\", \"stopwords\":[]}")),
      value_(value) {
     if (payload) {
@@ -380,11 +380,11 @@ class text_field : public tests::field_base {
 class string_field : public tests::field_base {
  public:
   string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
   string_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
@@ -409,11 +409,11 @@ class string_field : public tests::field_base {
 class string_ref_field : public tests::field_base {
  public:
   string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );
   string_ref_field(
-    const irs::string_ref& name,
+    const std::string& name,
     const irs::string_ref& value,
     const irs::flags& extra_features = irs::flags::empty_instance()
   );

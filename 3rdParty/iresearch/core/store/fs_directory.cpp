@@ -237,11 +237,12 @@ class fs_index_input : public buffered_index_input {
 
   virtual int64_t checksum(size_t offset) const override final {
     // "read_internal" modifies pos_
-    auto restore_position = make_finally([pos = this->pos_, this]() noexcept {
+    auto restore_position = make_finally(
+        [pos = this->pos_, this]() noexcept {
       const_cast<fs_index_input*>(this)->pos_ = pos;
     });
 
-    const auto begin = handle_->pos;
+    const auto begin = pos_;
     const auto end = (std::min)(begin + offset, handle_->size);
 
     crc32c crc;
@@ -347,21 +348,8 @@ class fs_index_input : public buffered_index_input {
       handle_->pos = pos_;
     }
 
-    size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
+    const size_t read = irs::file_utils::fread(fd, b, sizeof(byte_type) * len);
     pos_ = handle_->pos += read;
-
-    if (read != len) {
-      if (0 == read) {
-        //eof(true);
-        // read past eof
-        throw eof_error();
-      }
-
-      // read error
-      throw io_error(string_utils::to_string(
-        "failed to read from input file, read '" IR_SIZE_T_SPECIFIER "' out of '" IR_SIZE_T_SPECIFIER "' bytes, error '%d'",
-        read, len, irs::file_utils::ferror(fd)));
-    }
 
     assert(handle_->pos == pos_);
     return read;

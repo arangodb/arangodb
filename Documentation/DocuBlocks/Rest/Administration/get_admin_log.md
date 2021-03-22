@@ -38,9 +38,9 @@ Sort the log entries either ascending (if *sort* is *asc*) or descending
 imposes a chronological order. The default value is *asc*.
 
 @RESTQUERYPARAM{serverId,string,optional}
-Returns all log entries of a specified server by supplying the serverId. All
-other query parameters remain valid. If no serverId is given, the asked server
-will reply.
+Returns all log entries of the specified server. All other query parameters 
+remain valid. If no serverId is given, the asked server
+will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.
@@ -105,6 +105,11 @@ Only return the log entries containing the text specified in *search*.
 Sort the log entries either ascending (if *sort* is *asc*) or descending
 (if *sort* is *desc*) according to their *lid* values. Note that the *lid*
 imposes a chronological order. The default value is *asc*.
+
+@RESTQUERYPARAM{serverId,string,optional}
+Returns all log entries of the specified server. All other query parameters 
+remain valid. If no serverId is given, the asked server
+will reply. This parameter is only meaningful on Coordinators.
 
 @RESTDESCRIPTION
 Returns fatal, error, warning or info log messages from the server's global log.

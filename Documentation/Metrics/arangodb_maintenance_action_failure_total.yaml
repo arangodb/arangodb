@@ -4,8 +4,13 @@ help: |
 unit: number
 type: counter
 category: Maintenance
-complexity: medium
+complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Failure counter for the maintenance actions.
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  Those action can fail for different reasons. This metric counts the failed
+  actions and can thus provide hints to investigate a malfunction.

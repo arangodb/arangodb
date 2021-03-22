@@ -120,6 +120,12 @@ void arangodb::basics::TRI_ParseAttributeString(std::string const& input,
   TRI_ParseAttributeString(arangodb::velocypack::StringRef(input), result, allowExpansion);
 }
 
+void arangodb::basics::TRI_ParseAttributeString(std::string_view input,
+                                                std::vector<AttributeName>& result,
+                                                bool allowExpansion) {
+  TRI_ParseAttributeString(arangodb::velocypack::StringRef(input.data(), input.size()), result, allowExpansion);
+}
+
 void arangodb::basics::TRI_ParseAttributeString(arangodb::velocypack::StringRef const& input,
                                                 std::vector<AttributeName>& result,
                                                 bool allowExpansion) {

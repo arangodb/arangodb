@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchIdentityAnalyzer.h"
-#include "IResearch/IResearchVPackFormat.h"
 
 namespace arangodb {
 namespace iresearch {

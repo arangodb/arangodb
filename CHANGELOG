@@ -1,5 +1,13 @@
 devel
 -----
+* Added new ArangoSearch analyzer type "mask"
+
+* Fix error message in case of index unique constraint violations. They were
+  lacking the actual error message (i.e. "unique constraint violated") and
+  only showed the index details. The issue was introduced only in devel in Feb.
+
+* Removed old metrics in new v2 metric api. Those metric endpoints were
+  identical to the sum value of histograms.
 
 * Remove some leftover replication tailing clients from internal bookkeeping
   once they are finished with getting a shard in sync. Previously, such 
@@ -914,6 +922,9 @@ devel
   (assuming the data fits in one batch).
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 

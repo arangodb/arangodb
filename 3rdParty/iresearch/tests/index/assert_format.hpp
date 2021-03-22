@@ -251,6 +251,9 @@ class term_reader : public irs::term_reader {
   virtual uint64_t docs_count() const override { return data_.docs.size(); }
   virtual const irs::bytes_ref& (min)() const override { return min_; }
   virtual const irs::bytes_ref& (max)() const override { return max_; }
+  virtual size_t bit_union(
+    const cookie_provider& provider,
+    size_t* bitset) const override;
   virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
     if (irs::type<irs::frequency>::id() == type) {
       return pfreq_;
