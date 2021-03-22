@@ -220,7 +220,7 @@ void ReplicationFeature::beginShutdown() {
 void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop();
+      _globalReplicationApplier->stopAndJoin();
     }
   } catch (...) {
     // ignore any error
