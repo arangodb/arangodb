@@ -83,7 +83,6 @@ class MockGraphProvider {
     class Edge {
      public:
       Edge(EdgeType e) : _edge(e){};
-      Edge() : _edge({{}, {}, 0}){};
 
       std::string toString() const {
         return "Edge - _from: " + _edge._from + ", _to: " + _edge._to;
@@ -141,6 +140,8 @@ class MockGraphProvider {
     VertexType getVertexIdentifier() const { return getVertex().getID(); }
 
     bool isProcessable() const { return _isProcessable; }
+
+    bool isLooseEnd() const { return !isProcessable(); }
 
     void resolve() {
       TRI_ASSERT(!isProcessable());

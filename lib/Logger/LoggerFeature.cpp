@@ -42,6 +42,7 @@
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/conversions.h"
 #include "Basics/error.h"
@@ -114,8 +115,13 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--log.output,-o",
-      "log destination(s), e.g. file:///path/to/file (Linux, macOS) "
-      "or file://C:\\path\\to\\file (Windows)",
+      "log destination(s), e.g. "
+#ifdef _WIN32
+      "file://C:\\path\\to\\file"
+#else
+      "file:///path/to/file"
+#endif
+      " (any '$PID' will be replaced with the process id)",
       new VectorParameter<StringParameter>(&_output));
 
   options->addOption("--log.level,-l", "the global or topic-specific log level",
@@ -363,6 +369,11 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LogAppenderFile::setFileGroup(gidNumber);
   }
 #endif
+
+  // replace $PID with current process id in filenames
+  for (auto& output : _output) {
+    output = StringUtils::replace(output, "$PID", std::to_string(Thread::currentProcessId()));
+  }
 }
 
 void LoggerFeature::prepare() {

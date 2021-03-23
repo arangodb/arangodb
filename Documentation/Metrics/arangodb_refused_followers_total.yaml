@@ -1,0 +1,11 @@
+name: arangodb_refused_followers_total
+help: |
+  Number of refusal answers from a follower during synchronous replication.
+unit: number
+type: counter
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of refusal answers from a follower during synchronous replication.

@@ -161,6 +161,48 @@ void addToShardStatistics(arangodb::ShardStatistics& stats,
   }
 }
 
+void addToShardStatistics(std::unordered_map<arangodb::ServerID, arangodb::ShardStatistics>& stats, 
+                          arangodb::velocypack::Slice databaseSlice) {
+  std::unordered_set<VPackStringRef> serversSeenForDatabase;
+
+  for (auto it : VPackObjectIterator(databaseSlice)) {
+    VPackSlice collection = it.value;
+
+    bool hasDistributeShardsLike = false;
+    if (VPackSlice dsl = collection.get(arangodb::StaticStrings::DistributeShardsLike); dsl.isString()) {
+      hasDistributeShardsLike = dsl.getStringLength() > 0;
+    }
+
+    std::unordered_set<VPackStringRef> serversSeenForCollection;
+
+    VPackSlice shards = collection.get("shards");
+    for (auto pair : VPackObjectIterator(shards)) {
+      int i = 0;
+      for (auto const& serv : VPackArrayIterator(pair.value)) {
+        auto& stat = stats[serv.copyString()];
+
+        if (serversSeenForCollection.emplace(serv.stringRef()).second) {
+          ++stat.collections;
+
+          if (serversSeenForDatabase.emplace(serv.stringRef()).second) {
+            ++stat.databases;
+          }
+        }
+
+        ++stat.shards;
+        if (i++ == 0) {
+          ++stat.leaders;
+          if (!hasDistributeShardsLike) {
+            ++stat.realLeaders;
+          }
+        } else {
+          ++stat.followers;
+        }
+      }
+    }
+  }
+}
+
 static inline arangodb::AgencyOperation IncreaseVersion() {
   return arangodb::AgencyOperation{"Plan/Version",
                                    arangodb::AgencySimpleOperationType::INCREMENT_OP};
@@ -326,6 +368,15 @@ CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 /// @brief creates a cluster info object
 ////////////////////////////////////////////////////////////////////////////////
 
+struct ClusterInfoScale {
+  static log_scale_t<float> scale() { return { std::exp(1.f), 0.f, 2500.f, 10 }; }
+};
+
+DECLARE_LEGACY_COUNTER(arangodb_load_current_accum_runtime_msec_total, "Accumulated runtime of Current loading [ms]");
+DECLARE_HISTOGRAM(arangodb_load_current_runtime, ClusterInfoScale, "Current loading runtimes [ms]");
+DECLARE_LEGACY_COUNTER(arangodb_load_plan_accum_runtime_msec_total, "Accumulated runtime of Plan loading [ms]");
+DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale, "Plan loading runtimes [ms]");
+
 ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
                          AgencyCallbackRegistry* agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode)
@@ -340,16 +391,10 @@ ClusterInfo::ClusterInfo(application_features::ApplicationServer& server,
     _currentIndex(0),
     _planLoader(std::thread::id()),
     _uniqid(),
-    _lpTimer(_server.getFeature<MetricsFeature>().histogram(
-               "arangodb_load_plan_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Plan loading runtimes [ms]")),
-    _lpTotal(_server.getFeature<MetricsFeature>().counter(
-               "arangodb_load_plan_accum_runtime_msec", 0, "Accumulated runtime of Plan loading [ms]")),
-    _lcTimer(_server.getFeature<MetricsFeature>().histogram(
-               "arangodb_load_current_runtime", log_scale_t(std::exp(1.f), 0.f, 2500.f, 10),
-               "Current loading runtimes [ms]")),
-    _lcTotal(_server.getFeature<MetricsFeature>().counter(
-               "arangodb_load_current_accum_runtime_msec", 0, "Accumulated runtime of Current loading [ms]")) {
+    _lpTimer(_server.getFeature<MetricsFeature>().add(arangodb_load_plan_runtime{})),
+    _lpTotal(_server.getFeature<MetricsFeature>().add(arangodb_load_plan_accum_runtime_msec_total{})),
+    _lcTimer(_server.getFeature<MetricsFeature>().add(arangodb_load_current_runtime{})),
+    _lcTotal(_server.getFeature<MetricsFeature>().add(arangodb_load_current_accum_runtime_msec_total{})) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;
@@ -1987,6 +2032,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
 Result ClusterInfo::getShardStatisticsForDatabase(DatabaseID const& dbName,
                                                   std::string const& restrictServer,
                                                   VPackBuilder& builder) const {
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] = agencyCache.read(
     std::vector<std::string>{
@@ -2013,6 +2059,11 @@ Result ClusterInfo::getShardStatisticsForDatabase(DatabaseID const& dbName,
 /// optionally restricted to the specified server
 Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
                                              VPackBuilder& builder) const {
+  if (!restrictServer.empty() &&
+      (!serverExists(restrictServer) || !ClusterHelpers::isDBServerName(restrictServer))) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
+  }
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] = agencyCache.read(
     std::vector<std::string>{
@@ -2042,6 +2093,11 @@ Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
 /// optionally restricted to the specified server
 Result ClusterInfo::getShardStatisticsGlobalDetailed(std::string const& restrictServer,
                                                      VPackBuilder& builder) const {
+  if (!restrictServer.empty() &&
+      (!serverExists(restrictServer) || !ClusterHelpers::isDBServerName(restrictServer))) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
+  }
+
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
   auto [acb, idx] = agencyCache.read(
     std::vector<std::string>{
@@ -2066,6 +2122,46 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(std::string const& restrict
 
     builder.add(VPackValue(db.key.copyString()));
     stats.toVelocyPack(builder);
+  }
+  builder.close();
+    
+  return {};
+}
+
+/// @brief get shard statistics for all databases, split by servers.
+Result ClusterInfo::getShardStatisticsGlobalByServer(VPackBuilder& builder) const {
+  auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+  auto [acb, idx] = agencyCache.read(
+    std::vector<std::string>{
+      AgencyCommHelper::path("Plan/Collections")});
+
+  velocypack::Slice databasesSlice =
+    acb->slice()[0].get(std::vector<std::string>(
+                          {AgencyCommHelper::path(), "Plan", "Collections"}));
+  
+  if (!databasesSlice.isObject()) {
+    return Result(TRI_ERROR_INTERNAL, "invalid Plan structure");
+  }
+  
+  std::unordered_map<ServerID, ShardStatistics> stats;
+  {
+    // create empty static objects for each DB server
+    READ_LOCKER(readLocker, _DBServersProt.lock);
+    for (auto& it : _DBServers) {
+      stats.emplace(it.first, ShardStatistics{});
+    }
+  }
+ 
+  for (auto db : VPackObjectIterator(databasesSlice)) {
+    addToShardStatistics(stats, db.value);
+  }
+  
+  builder.openObject();
+  for (auto& it : stats) {
+    builder.add(VPackValue(it.first));
+    auto& stat = it.second;
+    stat.servers = 1;
+    stat.toVelocyPack(builder);
   }
   builder.close();
     
@@ -5384,6 +5480,48 @@ ClusterInfo::getCurrent(uint64_t& index, std::unordered_set<std::string> const& 
   }
   return ret;
 }
+  
+std::vector<std::string> ClusterInfo::getFailedServers() const {
+  MUTEX_LOCKER(guard, _failedServersMutex);
+  return _failedServers;
+}
+
+void ClusterInfo::setFailedServers(std::vector<std::string> const& failedServers) {
+  MUTEX_LOCKER(guard, _failedServersMutex);
+  _failedServers = failedServers;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void ClusterInfo::setServers(std::unordered_map<ServerID, std::string> servers) {
+  WRITE_LOCKER(readLocker, _serversProt.lock);
+  _servers = std::move(servers);
+}
+
+void ClusterInfo::setServerAliases(std::unordered_map<ServerID, std::string> aliases) {
+  WRITE_LOCKER(readLocker, _serversProt.lock);
+  _serverAliases = std::move(aliases);
+}
+  
+void ClusterInfo::setServerAdvertisedEndpoints(std::unordered_map<ServerID, std::string> advertisedEndpoints) {
+  WRITE_LOCKER(readLocker, _serversProt.lock);
+  _serverAdvertisedEndpoints = std::move(advertisedEndpoints);
+}
+  
+void ClusterInfo::setServerTimestamps(std::unordered_map<ServerID, std::string> timestamps) {
+  WRITE_LOCKER(readLocker, _serversProt.lock);
+  _serverTimestamps = std::move(timestamps);
+}
+#endif
+  
+bool ClusterInfo::serverExists(ServerID const& serverId) const noexcept {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  return _servers.find(serverId) != _servers.end();
+}
+
+bool ClusterInfo::serverAliasExists(std::string const& alias) const noexcept {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  return _serverAliases.find(alias) != _serverAliases.end();
+}
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
   if (!_serversProt.isValid) {
@@ -5405,7 +5543,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   return ret;
 }
 
-std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() {
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoints() const {
   std::unordered_map<std::string, std::string> ret;
   READ_LOCKER(readLocker, _serversProt.lock);
   // note: don't try to change this to
@@ -5417,7 +5555,7 @@ std::unordered_map<ServerID, std::string> ClusterInfo::getServerAdvertisedEndpoi
   return ret;
 }
 
-std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() {
+std::unordered_map<ServerID, std::string> ClusterInfo::getServerTimestamps() const {
   READ_LOCKER(readLocker, _serversProt.lock);
   return _serverTimestamps;
 }
@@ -5462,9 +5600,9 @@ arangodb::Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> body) {
 
 arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
   auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
-  auto [acb, index] = agencyCache.read(
-    std::vector<std::string>{AgencyCommHelper::path("Plan")});
-  auto result = acb->slice();
+  auto [acb, index] = agencyCache.read({AgencyCommHelper::path("Plan"),
+                                        AgencyCommHelper::path("Sync/LatestID")});
+  VPackSlice result = acb->slice();
 
   if (result.isArray()) {
     body->add(acb->slice());
@@ -5479,18 +5617,21 @@ arangodb::Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> body) {
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   // Apply only Collections and DBServers
   AgencyWriteTransaction planTransaction(std::vector<AgencyOperation>{
-      AgencyOperation(
-        "Plan/Collections", AgencyValueOperationType::SET,
-        plan.get(std::vector<std::string>{"arango", "Plan", "Collections"})),
-      AgencyOperation(
-        "Plan/Databases", AgencyValueOperationType::SET,
-        plan.get(std::vector<std::string>{"arango", "Plan", "Databases"})),
-      AgencyOperation(
-        "Plan/Views", AgencyValueOperationType::SET,
-        plan.get(std::vector<std::string>{"arango", "Plan", "Views"})),
-      AgencyOperation("Plan/Version", AgencySimpleOperationType::INCREMENT_OP),
-      AgencyOperation("Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
+      {"Plan/Collections", AgencyValueOperationType::SET,
+        plan.get({"arango", "Plan", "Collections"})},
+      {"Plan/Databases", AgencyValueOperationType::SET,
+        plan.get({"arango", "Plan", "Databases"})},
+      {"Plan/Views", AgencyValueOperationType::SET,
+        plan.get({"arango", "Plan", "Views"})},
+      {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
+      {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
+      {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}});
 
+  VPackSlice latestIdSlice = plan.get({"arango", "Sync", "LatestID"});
+  if (!latestIdSlice.isNone()) {
+    planTransaction.operations.push_back(
+      {"Sync/LatestID", AgencyValueOperationType::SET, latestIdSlice});
+  }
   AgencyCommResult r = _agency.sendTransactionWithFailover(planTransaction);
   if (!r.successful()) {
     arangodb::Result result(

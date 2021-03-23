@@ -190,7 +190,7 @@ TEST(ngram_token_stream_test, next_utf8) {
     ASSERT_TRUE(offset);
     auto* inc = irs::get<irs::increment>(stream);
     auto expected_token = expected.begin();
-    uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
+    uint32_t pos = std::numeric_limits<uint32_t>::max();
     while (stream.next()) {
       ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value);
       ASSERT_EQ(expected_token->start, offset->start);
@@ -660,7 +660,7 @@ TEST(ngram_token_stream_test, next) {
     ASSERT_TRUE(offset);
     auto* inc = irs::get<irs::increment>(stream);
     auto expected_token = expected.begin();
-    uint32_t pos = iresearch::integer_traits<uint32_t>::const_max;
+    uint32_t pos = std::numeric_limits<uint32_t>::max();
     while (stream.next()) {
       ASSERT_EQ(irs::ref_cast<irs::byte_type>(expected_token->value), value->value);
       ASSERT_EQ(expected_token->start, offset->start);
@@ -1204,7 +1204,6 @@ TEST(ngram_token_stream_test, test_make_config_invalid_format) {
   std::string config = "{\"min\":11,\"max\":22,\"preserveOriginal\":true}";
   std::string actual;
   ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::text>::get(), config));
-  ASSERT_FALSE(irs::analysis::analyzers::normalize(actual, "ngram", irs::type<irs::text_format::csv>::get(), config));
 }
 
 
@@ -1218,7 +1217,7 @@ TEST(ngram_token_stream_test, test_out_of_range_pos_issue) {
     std::basic_stringstream<char> ss;
     ss << "test_" << i;
     ASSERT_TRUE(stream->reset(ss.str()));
-    uint32_t pos = irs::integer_traits<uint32_t>::const_max;
+    uint32_t pos = std::numeric_limits<uint32_t>::max();
     uint32_t last_pos = 0;
     while (stream->next()) {
       pos += inc->value;

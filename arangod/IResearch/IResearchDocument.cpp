@@ -37,7 +37,6 @@
 #include "Misc.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-
 #include "analysis/token_attributes.hpp"
 #include "analysis/token_streams.hpp"
 

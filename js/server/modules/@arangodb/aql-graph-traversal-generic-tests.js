@@ -5619,6 +5619,62 @@ function testAdvancedPathKShortestPathEnabledWeightCheckMultiLimitGen(testGraph,
   });
 }
 
+function testUnconnectedGraphKPathsOutbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.vertex('B')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testUnconnectedGraphKPathsOutboundInvalidFromVertex(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex()} TO ${testGraph.vertex('A')}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testUnconnectedGraphKPathsOutboundInvalidToVertex(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.unconnectedGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.vertex('A')} TO ${testGraph.nonExistingVertex()}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
+function testEmptyGraphKPathsOutbound(testGraph) {
+  assertTrue(testGraph.name().startsWith(protoGraphs.emptyGraph.name()));
+
+  const query = aql`
+        FOR path IN 1..3 OUTBOUND K_PATHS ${testGraph.nonExistingVertex() + "0"} TO ${testGraph.nonExistingVertex() + "1"}
+        GRAPH ${testGraph.name()}
+        RETURN path.vertices[* RETURN CURRENT.key]
+      `;
+
+  const res = db._query(query);
+  const foundPaths = res.toArray();
+  assertEqual(foundPaths.length, 0);
+}
+
 const testsByGraph = {
   openDiamond: {
     testOpenDiamondDfsUniqueVerticesPath,
@@ -5836,6 +5892,14 @@ const testsByGraph = {
   },
   largeBinTree: {
     testLargeBinTreeAllCombinations,
+  },
+  unconnectedGraph: {
+    testUnconnectedGraphKPathsOutbound,
+    testUnconnectedGraphKPathsOutboundInvalidToVertex,
+    testUnconnectedGraphKPathsOutboundInvalidFromVertex
+  },
+  emptyGraph: {
+    testEmptyGraphKPathsOutbound
   }
 };
 

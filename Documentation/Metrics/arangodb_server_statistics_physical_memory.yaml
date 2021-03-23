@@ -1,0 +1,14 @@
+name: arangodb_server_statistics_physical_memory
+help: |
+  Physical memory in bytes
+unit: bytes
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Physical memory in bytes.

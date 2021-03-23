@@ -327,6 +327,8 @@ int64_t encrypted_input::checksum(size_t offset) const {
     const_cast<encrypted_input*>(this)->seek_internal(begin);
   });
 
+  const_cast<encrypted_input*>(this)->seek_internal(begin);
+
   crc32c crc;
   byte_type buf[DEFAULT_ENCRYPTION_BUFFER_SIZE];
 
@@ -364,8 +366,10 @@ index_input::ptr encrypted_input::reopen() const {
 }
 
 void encrypted_input::seek_internal(size_t pos) {
-  if (pos != file_pointer()) {
-    in_->seek(start_ + pos);
+  pos += start_;
+
+  if (pos != in_->file_pointer()) {
+    in_->seek(pos);
   }
 }
 

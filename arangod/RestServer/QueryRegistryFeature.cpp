@@ -29,6 +29,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
@@ -97,6 +98,32 @@ namespace arangodb {
 
 std::atomic<aql::QueryRegistry*> QueryRegistryFeature::QUERY_REGISTRY{nullptr};
 
+struct QueryTimeScale {
+  static log_scale_t<double> scale() { return {2., 0.0, 50.0, 20}; }
+};
+struct SlowQueryTimeScale {
+  static log_scale_t<double> scale() { return {2., 1.0, 2000.0, 10}; }
+};
+
+DECLARE_COUNTER(arangodb_aql_all_query_total,
+                "Total number of AQL queries finished");
+DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale,
+                  "Execution time histogram for all AQL queries [s]");
+DECLARE_LEGACY_COUNTER(arangodb_aql_slow_query_total,
+                "Total number of slow AQL queries finished");
+DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale,
+                  "Execution time histogram for slow AQL queries [s]");
+DECLARE_COUNTER(arangodb_aql_total_query_time_msec_total,
+                "Total execution time of all AQL queries [ms]");
+DECLARE_GAUGE(arangodb_aql_current_query, uint64_t,
+              "Current number of AQL queries executing");
+DECLARE_GAUGE(
+    arangodb_aql_global_memory_usage, uint64_t,
+    "Total memory usage of all AQL queries executing [bytes], granularity: " +
+        std::to_string(ResourceMonitor::chunkSize) + " bytes steps");
+DECLARE_GAUGE(arangodb_aql_global_memory_limit, uint64_t,
+              "Total memory limit for all AQL queries combined [bytes]");
+
 QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServer& server)
     : ApplicationFeature(server, "QueryRegistry"),
       _trackingEnabled(true),
@@ -106,10 +133,12 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _trackDataSources(false),
       _failOnWarning(aql::QueryOptions::defaultFailOnWarning),
       _queryCacheIncludeSystem(false),
+      _queryMemoryLimitOverride(true),
 #ifdef USE_ENTERPRISE
       _smartJoins(true),
       _parallelizeTraversals(true),
 #endif
+      _queryGlobalMemoryLimit(0),
       _queryMemoryLimit(defaultMemoryLimit(PhysicalMemory::getValue())),
       _queryMaxRuntime(aql::QueryOptions::defaultMaxRuntime),
       _maxQueryPlans(aql::QueryOptions::defaultMaxNumberOfPlans),
@@ -122,25 +151,21 @@ QueryRegistryFeature::QueryRegistryFeature(application_features::ApplicationServ
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
       _queryTimes(
-        server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_aql_query_time", log_scale_t(2., 0.0, 50.0, 20),
-          "Execution time histogram for all AQL queries [s]")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_query_time{})),
       _slowQueryTimes(
-        server.getFeature<arangodb::MetricsFeature>().histogram(
-          "arangodb_aql_slow_query_time", log_scale_t(2., 1.0, 2000.0, 10),
-          "Execution time histogram for slow AQL queries [s]")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_total_query_time_msec", 0, "Total execution time of all AQL queries [ms]")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_total_query_time_msec_total{})),
       _queriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_all_query", 0, "Total number of AQL queries finished")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_all_query_total{})),
       _slowQueriesCounter(
-        server.getFeature<arangodb::MetricsFeature>().counter(
-          "arangodb_aql_slow_query", 0, "Total number of slow AQL queries finished")),
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_slow_query_total{})),
       _runningQueries(
-        server.getFeature<arangodb::MetricsFeature>().gauge<uint64_t>(
-          "arangodb_aql_current_query", 0, "Current number of AQL queries executing")) {
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_current_query{})),
+      _globalQueryMemoryUsage(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_usage{})),
+      _globalQueryMemoryLimit(
+        server.getFeature<arangodb::MetricsFeature>().add(arangodb_aql_global_memory_limit{})) {
   setOptional(false);
   startsAfter<V8FeaturePhase>();
 
@@ -158,11 +183,22 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
   options->addOldOption("database.query-cache-max-results",
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
+  
+  options->addOption("--query.global-memory-limit",
+                     "memory threshold for all AQL queries combined (in bytes, 0 = no limit)",
+                     new UInt64Parameter(&_queryGlobalMemoryLimit, PhysicalMemory::getValue()),
+                     arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic))
+                     .setIntroducedIn(30800);
 
   options->addOption("--query.memory-limit",
-                     "memory limit per AQL query (in bytes, 0 = no limit)",
+                     "memory threshold per AQL query (in bytes, 0 = no limit)",
                      new UInt64Parameter(&_queryMemoryLimit, PhysicalMemory::getValue()),
                      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
+  
+  options->addOption("--query.memory-limit-override",
+                     "allow increasing per-query memory limits for individual queries",
+                     new BooleanParameter(&_queryMemoryLimitOverride))
+                     .setIntroducedIn(30800);
   
   options->addOption("--query.max-runtime",
                      "runtime threshold for AQL queries (in seconds, 0 = no limit)",
@@ -265,6 +301,13 @@ void QueryRegistryFeature::collectOptions(std::shared_ptr<ProgramOptions> option
 }
 
 void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
+  if (_queryGlobalMemoryLimit > 0 &&
+      _queryMemoryLimit > _queryGlobalMemoryLimit) {
+    LOG_TOPIC("2af5f", FATAL, Logger::AQL)
+        << "invalid value for `--query.global-memory-limit`. expecting 0 or a value >= `--query.memory-limit`";
+    FATAL_ERROR_EXIT();
+  }
+
   if (_queryMaxRuntime < 0.0) {
     LOG_TOPIC("46572", FATAL, Logger::AQL)
         << "invalid value for `--query.max-runtime`. expecting 0 or a positive value";
@@ -289,19 +332,26 @@ void QueryRegistryFeature::validateOptions(std::shared_ptr<ProgramOptions> optio
     // set to default value based on instance type
     _queryRegistryTTL = ServerState::instance()->isSingleServer() ? 30 : 600;
   }
+
+  TRI_ASSERT(_queryGlobalMemoryLimit == 0 || _queryMemoryLimit <= _queryGlobalMemoryLimit);
   
   aql::QueryOptions::defaultMemoryLimit = _queryMemoryLimit;
   aql::QueryOptions::defaultMaxNumberOfPlans = _maxQueryPlans;
   aql::QueryOptions::defaultMaxRuntime = _queryMaxRuntime;
   aql::QueryOptions::defaultTtl = _queryRegistryTTL;
   aql::QueryOptions::defaultFailOnWarning = _failOnWarning;
+  aql::QueryOptions::allowMemoryLimitOverride = _queryMemoryLimitOverride;
 }
 
 void QueryRegistryFeature::prepare() {
-#ifndef ARANGODB_USE_GOOGLE_TESTS  
+  // set the global memory limit
+  GlobalResourceMonitor::instance().memoryLimit(_queryGlobalMemoryLimit);
+  // prepare gauge value
+  _globalQueryMemoryLimit = _queryGlobalMemoryLimit;
+  
+#ifndef ARANGODB_USE_GOOGLE_TESTS
   // we are now intentionally not printing this message during testing,
   // because otherwise it would be printed a *lot* of times
-
   // note that options() can be a nullptr during unit testing
   if (server().options() != nullptr &&
       !server().options()->processingResult().touched("--query.memory-limit")) {
@@ -348,15 +398,21 @@ void QueryRegistryFeature::unprepare() {
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
 }
 
+void QueryRegistryFeature::updateMetrics() {
+  GlobalResourceMonitor const& global = GlobalResourceMonitor::instance();
+  _globalQueryMemoryUsage = global.current();
+  _globalQueryMemoryLimit = global.memoryLimit();
+}
+
 void QueryRegistryFeature::trackQueryStart() noexcept {
-  _runningQueries += 1;
+  ++_runningQueries;
 }
 
 void QueryRegistryFeature::trackQueryEnd(double time) { 
   ++_queriesCounter; 
   _queryTimes.count(time);
   _totalQueryExecutionTime += static_cast<uint64_t>(1000.0 * time);
-  _runningQueries -= 1;
+  --_runningQueries;
 }
 
 void QueryRegistryFeature::trackSlowQuery(double time) { 

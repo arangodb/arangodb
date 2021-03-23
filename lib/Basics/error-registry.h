@@ -16,7 +16,7 @@ struct elsa<ErrorCode> {
 #include <frozen/unordered_map.h>
 
 namespace arangodb::error {
-constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessages = {
+constexpr static frozen::unordered_map<ErrorCode, const char*, 352> ErrorMessages = {
     {TRI_ERROR_NO_ERROR,  // 0
       "no error"},
     {TRI_ERROR_FAILED,  // 1
@@ -280,11 +280,9 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
     {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,  // 1448
       "creating collection failed due to precondition"},
     {TRI_ERROR_CLUSTER_SERVER_UNKNOWN,  // 1449
-      "got a request from an unkown server"},
+      "got a request from an unknown server"},
     {TRI_ERROR_CLUSTER_TOO_MANY_SHARDS,  // 1450
       "too many shards"},
-    {TRI_ERROR_CLUSTER_COLLECTION_ID_EXISTS,  // 1453
-      "collection ID already exists"},
     {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION_IN_PLAN,  // 1454
       "could not create collection in plan"},
     {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION,  // 1456
@@ -293,8 +291,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "timeout in cluster operation"},
     {TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_PLAN,  // 1458
       "could not remove collection from plan"},
-    {TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_COLLECTION_IN_CURRENT,  // 1459
-      "could not remove collection from current"},
     {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE_IN_PLAN,  // 1460
       "could not create database in plan"},
     {TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,  // 1461
@@ -385,8 +381,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "unable to read-lock collection %s"},
     {TRI_ERROR_QUERY_TOO_MANY_COLLECTIONS,  // 1522
       "too many collections/shards"},
-    {TRI_ERROR_QUERY_DOCUMENT_ATTRIBUTE_REDECLARED,  // 1530
-      "document attribute '%s' is assigned multiple times"},
     {TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN,  // 1540
       "usage of unknown function '%s()'"},
     {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH,  // 1541
@@ -403,8 +397,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "bind parameter '%s' was not declared in the query"},
     {TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,  // 1553
       "bind parameter '%s' has an invalid value or type"},
-    {TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE,  // 1560
-      "invalid logical value"},
     {TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE,  // 1561
       "invalid arithmetic value"},
     {TRI_ERROR_QUERY_DIVISION_BY_ZERO,  // 1562
@@ -425,8 +417,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "invalid aggregate expression"},
     {TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,  // 1575
       "query options must be readable at query compile time"},
-    {TRI_ERROR_QUERY_EXCEPTION_OPTIONS,  // 1576
-      "query options expected"},
     {TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,  // 1577
       "could not use forced index hint"},
     {TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL,  // 1578
@@ -513,20 +503,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "task not found"},
     {TRI_ERROR_GRAPH_INVALID_GRAPH,  // 1901
       "invalid graph"},
-    {TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH,  // 1902
-      "could not create graph"},
-    {TRI_ERROR_GRAPH_INVALID_VERTEX,  // 1903
-      "invalid vertex"},
-    {TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX,  // 1904
-      "could not create vertex"},
-    {TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,  // 1905
-      "could not change vertex"},
     {TRI_ERROR_GRAPH_INVALID_EDGE,  // 1906
       "invalid edge"},
-    {TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE,  // 1907
-      "could not create edge"},
-    {TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,  // 1908
-      "could not change edge"},
     {TRI_ERROR_GRAPH_TOO_MANY_ITERATIONS,  // 1909
       "too many iterations - try increasing the value of 'maxIterations'"},
     {TRI_ERROR_GRAPH_INVALID_FILTER_RESULT,  // 1910
@@ -555,16 +533,10 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "edge collection not used in graph"},
     {TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION,  // 1932
       "collection _graphs does not exist"},
-    {TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING,  // 1933
-      "Invalid example type. Has to be String, Array or Object"},
-    {TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT,  // 1934
-      "Invalid example type. Has to be Array or Object"},
     {TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS,  // 1935
       "Invalid number of arguments. Expected: "},
     {TRI_ERROR_GRAPH_INVALID_PARAMETER,  // 1936
       "Invalid parameter type."},
-    {TRI_ERROR_GRAPH_INVALID_ID,  // 1937
-      "Invalid id"},
     {TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,  // 1938
       "collection used in orphans"},
     {TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,  // 1939
@@ -573,8 +545,6 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "empty graph"},
     {TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,  // 1941
       "internal graph data corrupt"},
-    {TRI_ERROR_GRAPH_INTERNAL_EDGE_COLLECTION_ALREADY_SET,  // 1942
-      "edge collection already set"},
     {TRI_ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,  // 1943
       "malformed orphan list"},
     {TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,  // 1944
@@ -583,6 +553,8 @@ constexpr static frozen::unordered_map<ErrorCode, const char*, 366> ErrorMessage
       "initial collection is not allowed to be removed manually"},
     {TRI_ERROR_GRAPH_NO_INITIAL_COLLECTION,  // 1946
       "no valid initial collection found"},
+    {TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,  // 1947
+      "referenced vertex collection is not part of the graph"},
     {TRI_ERROR_SESSION_UNKNOWN,  // 1950
       "unknown session"},
     {TRI_ERROR_SESSION_EXPIRED,  // 1951

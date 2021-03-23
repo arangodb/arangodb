@@ -202,6 +202,65 @@ static std::unique_ptr<fuerte::Response> buildResponse(fuerte::StatusCode status
   return resp;
 }
 
+namespace {
+
+struct Pack {
+  DestinationId dest;
+  futures::Promise<network::Response> promise;
+  std::unique_ptr<fuerte::Response> tmp_res;
+  std::unique_ptr<fuerte::Request> tmp_req;
+  fuerte::Error tmp_err;
+  RequestLane continuationLane;
+  bool skipScheduler;
+  Pack(DestinationId&& dest, RequestLane lane, bool skip,
+       futures::Promise<network::Response> promise)
+      : dest(std::move(dest)),
+        promise(std::move(promise)),
+        continuationLane(lane),
+        skipScheduler(skip) {}
+};
+
+void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
+                         RequestOptions const& options, std::string endpoint,
+                         std::unique_ptr<Request>&& req) {
+  auto& server = pool->config().clusterInfo->server();
+  NetworkFeature& nf = server.getFeature<NetworkFeature>();
+  nf.sendRequest(*pool, options, endpoint, std::move(req), 
+    [p(std::move(p)), pool, &options, endpoint](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
+      TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled); 
+
+      if (err == fuerte::Error::ConnectionClosed && isFromPool) {
+        // retry under certain conditions
+        actuallySendRequest(std::move(p), pool, options, endpoint, std::move(req));
+        return;
+      }
+
+      auto* sch = SchedulerFeature::SCHEDULER;
+      if (p->skipScheduler || sch == nullptr) {
+        p->promise.setValue(network::Response{std::move(p->dest), err,
+                                              std::move(req), std::move(res)});
+        return;
+      }
+
+      p->tmp_err = err;
+      p->tmp_res = std::move(res);
+      p->tmp_req = std::move(req);
+
+      TRI_ASSERT(p->tmp_req != nullptr);
+
+      bool queued = sch->queue(p->continuationLane, [p]() mutable {
+        p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
+                                     std::move(p->tmp_req), std::move(p->tmp_res)});
+      });
+      if (ADB_UNLIKELY(!queued)) {
+        p->promise.setValue(Response{std::move(p->dest), fuerte::Error::QueueCapacityExceeded,
+                                     std::move(p->tmp_req), nullptr});
+      }
+    });
+}
+
+}
+
 /// @brief send a request to a given destination
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
@@ -234,51 +293,14 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
-    struct Pack {
-      DestinationId dest;
-      futures::Promise<network::Response> promise;
-      std::unique_ptr<fuerte::Response> tmp_res;
-      std::unique_ptr<fuerte::Request> tmp_req;
-      fuerte::Error tmp_err;
-      RequestLane continuationLane;
-      bool skipScheduler;
-      Pack(DestinationId&& dest, RequestLane lane, bool skip, futures::Promise<network::Response> promise)
-          : dest(std::move(dest)), promise(std::move(promise)), continuationLane(lane), skipScheduler(skip) {}
-    };
     // fits in SSO of std::function
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
-    auto& server = pool->config().clusterInfo->server();
-    auto&& [f, promise] = futures::makePromise<network::Response>();
-    auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler, std::move(promise));
-    NetworkFeature& nf = server.getFeature<NetworkFeature>();
-    nf.sendRequest(*pool, options, spec.endpoint, std::move(req), [p(std::move(p))](fuerte::Error err, std::unique_ptr<fuerte::Request> req, std::unique_ptr<fuerte::Response> res) mutable {
-      TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
+    auto&& [f, p] = futures::makePromise<network::Response>();
 
-      auto* sch = SchedulerFeature::SCHEDULER;
-      if (p->skipScheduler || sch == nullptr) {
-        p->promise.setValue(network::Response{std::move(p->dest), err,
-                                              std::move(req), std::move(res)});
-        return;
-      }
-
-      p->tmp_err = err;
-      p->tmp_res = std::move(res);
-      p->tmp_req = std::move(req);
-
-      TRI_ASSERT(p->tmp_req != nullptr);
-
-      bool queued = sch->queue(p->continuationLane, [p]() mutable {
-        p->promise.setValue(Response{std::move(p->dest), p->tmp_err,
-                                     std::move(p->tmp_req), std::move(p->tmp_res)});
-      });
-      if (ADB_UNLIKELY(!queued)) {
-        p->promise.setValue(Response{std::move(p->dest), fuerte::Error::QueueCapacityExceeded,
-                                     std::move(p->tmp_req), nullptr});
-      }
-    });
-
+    auto pack = std::make_shared<Pack>(std::move(dest), options.continuationLane,
+                                    options.skipScheduler, std::move(p));
+    actuallySendRequest(std::move(pack), pool, options, spec.endpoint, std::move(req));
     return std::move(f);
 
   } catch (std::exception const& e) {
@@ -375,7 +397,8 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState> {
     nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
                    [self = shared_from_this()](fuerte::Error err,
                                                std::unique_ptr<fuerte::Request> req,
-                                               std::unique_ptr<fuerte::Response> res) {
+                                               std::unique_ptr<fuerte::Response> res,
+                                               bool isFromPool) {
                      self->_tmp_err = err;
                      self->_tmp_req = std::move(req);
                      self->_tmp_res = std::move(res);

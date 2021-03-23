@@ -41,6 +41,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ResultT.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
@@ -198,12 +199,12 @@ void buildHealthResult(VPackBuilder& builder,
         VPackObjectBuilder obMember(&builder, serverId);
 
         builder.add(VPackObjectIterator(member.value));
-        if (serverId.compare(0, 4, "PRMR", 4) == 0) {
+        if (ClusterHelpers::isDBServerName(serverId)) {
           builder.add("Role", VPackValue("DBServer"));
           builder.add("CanBeDeleted",
                       VPackValue(VPackValue(member.value.get("Status").isEqualString("FAILED") &&
                                             canBeDeleted->count(serverId) == 1)));
-        } else if (serverId.compare(0, 4, "CRDN", 4) == 0) {
+        } else if (ClusterHelpers::isCoordinatorName(serverId)) {
           builder.add("Role", VPackValue("Coordinator"));
           builder.add("CanBeDeleted", VPackValue(member.value.get("Status").isEqualString("FAILED")));
         }
@@ -665,7 +666,9 @@ RestStatus RestAdminClusterHandler::handleShardStatistics() {
   VPackBuilder builder;
   Result res;
 
-  if (details) {
+  if (restrictServer == "all") {
+    res = ci.getShardStatisticsGlobalByServer(builder);
+  } else if (details) {
     res = ci.getShardStatisticsGlobalDetailed(restrictServer, builder);
   } else {
     res = ci.getShardStatisticsGlobal(restrictServer, builder);

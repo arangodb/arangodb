@@ -28,19 +28,16 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/BreadthFirstEnumerator.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/PathEnumerator.h"
-#include "Graph/TraverserCache.h"
+#include "Graph/ClusterTraverserCache.h"
 #include "Graph/WeightedEnumerator.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
-#include "Transaction/Helpers.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;

@@ -626,6 +626,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 /// @brief fetches documents in a collection in random order, local
 OperationResult transaction::Methods::anyLocal(std::string const& collectionName,
                                                OperationOptions const& options) {
+
   DataSourceId cid = addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
@@ -633,6 +634,14 @@ OperationResult transaction::Methods::anyLocal(std::string const& collectionName
   }
 
   VPackBuilder resultBuilder;
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
   resultBuilder.openArray();
 
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ANY);
@@ -750,13 +759,14 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
     return opRes.result;
   }
 
-  auto translateName = [this](std::string const& collectionName) {
-    if (_state->isDBServer() && vocbase().isOneShard()) {
+  auto translateName = [this](std::string const& collectionName) { 
+    if (_state->isDBServer()) {
       auto collection = resolver()->getCollectionStructCluster(collectionName);
       if (collection != nullptr) {
         auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
+          TRI_ASSERT(vocbase().isOneShard());
           return (*shards)[0];
         }
       }
@@ -870,6 +880,15 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
   std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
 
   VPackBuilder resultBuilder;
+  Result res;
+
+  if (_state->isDBServer()) {
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return futures::makeFuture(
+        OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options));
+    }
+  }
 
   auto workForOneDocument = [&](VPackSlice value, bool isMultiple) -> Result {
     Result res;
@@ -912,7 +931,6 @@ Future<OperationResult> transaction::Methods::documentLocal(std::string const& c
     return res;
   };
 
-  Result res;
   std::unordered_map<ErrorCode, size_t> countErrorCodes;
   if (!value.isArray()) {
     res = workForOneDocument(value, false);
@@ -1733,8 +1751,17 @@ OperationResult transaction::Methods::allLocal(std::string const& collectionName
   TRI_ASSERT(trxCollection(cid)->isLocked(AccessMode::Type::READ));
 
   VPackBuilder resultBuilder;
-  resultBuilder.openArray();
 
+  if (_state->isDBServer()) {
+    std::shared_ptr<LogicalCollection> const& collection = trxCollection(cid)->collection();
+    auto const& followerInfo = collection->followers();
+    if (!followerInfo->getLeader().empty()) {
+      return OperationResult(TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION, options);
+    }
+  }
+
+  resultBuilder.openArray();
+  
   auto iterator = indexScan(collectionName, transaction::Methods::CursorType::ALL);
 
   iterator->allDocuments(
@@ -1874,16 +1901,18 @@ Future<OperationResult> transaction::Methods::truncateLocal(std::string const& c
              responses[i].unwrap().statusCode() == fuerte::StatusOK);
         if (!replicationWorked) {
           auto const& followerInfo = collection->followers();
+          LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
+              << "truncateLocal: dropping follower " << (*followers)[i]
+              << " for shard " << collection->vocbase().name() << "/" << collectionName
+              << ": " << responses[i].unwrap().combinedResult().errorMessage();
           res = followerInfo->remove((*followers)[i]);
           if (res.ok()) {
             _state->removeKnownServer((*followers)[i]);
-            LOG_TOPIC("0e2e0", WARN, Logger::REPLICATION)
-                << "truncateLocal: dropped follower " << (*followers)[i]
-                << " for shard " << collectionName;
           } else {
             LOG_TOPIC("359bc", WARN, Logger::REPLICATION)
                 << "truncateLocal: could not drop follower " << (*followers)[i]
-                << " for shard " << collectionName << ": " << res.errorMessage();
+                << " for shard " << collection->vocbase().name() << "/" << collection->name()
+                << ": " << res.errorMessage();
             THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER);
           }
         }

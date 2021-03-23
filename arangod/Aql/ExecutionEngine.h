@@ -29,6 +29,7 @@
 #include "Aql/types.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Common.h"
+#include "Basics/Result.h"
 #include "Containers/SmallVector.h"
 
 #include <memory>

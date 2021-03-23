@@ -308,7 +308,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING):
     case static_cast<int>(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED):
     case static_cast<int>(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE):
-    case static_cast<int>(TRI_ERROR_QUERY_INVALID_LOGICAL_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_DIVISION_BY_ZERO):
     case static_cast<int>(TRI_ERROR_QUERY_ARRAY_EXPECTED):
@@ -316,7 +315,6 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_QUERY_INVALID_DATE_VALUE):
     case static_cast<int>(TRI_ERROR_QUERY_MULTI_MODIFY):
     case static_cast<int>(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS):
-    case static_cast<int>(TRI_ERROR_QUERY_EXCEPTION_OPTIONS):
     case static_cast<int>(TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL):
     case static_cast<int>(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION):
     case static_cast<int>(TRI_ERROR_QUERY_FUNCTION_INVALID_NAME):
@@ -342,13 +340,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_USER_INVALID_NAME):
     case static_cast<int>(TRI_ERROR_TASK_INVALID_ID):
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_GRAPH):
-    case static_cast<int>(TRI_ERROR_GRAPH_COULD_NOT_CREATE_GRAPH):
-    case static_cast<int>(TRI_ERROR_GRAPH_INVALID_VERTEX):
-    case static_cast<int>(TRI_ERROR_GRAPH_COULD_NOT_CREATE_VERTEX):
-    case static_cast<int>(TRI_ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX):
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_EDGE):
-    case static_cast<int>(TRI_ERROR_GRAPH_COULD_NOT_CREATE_EDGE):
-    case static_cast<int>(TRI_ERROR_GRAPH_COULD_NOT_CHANGE_EDGE):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_MULTI_USE):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS):
     case static_cast<int>(TRI_ERROR_GRAPH_CREATE_MISSING_NAME):
@@ -356,11 +348,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_WRONG_COLLECTION_TYPE_VERTEX):
     case static_cast<int>(TRI_ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_USED_IN_EDGE_DEF):
-    case static_cast<int>(TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING):
-    case static_cast<int>(TRI_ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT):
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_NUMBER_OF_ARGUMENTS):
     case static_cast<int>(TRI_ERROR_GRAPH_INVALID_PARAMETER):
-    case static_cast<int>(TRI_ERROR_GRAPH_INVALID_ID):
     case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST):
     case static_cast<int>(TRI_ERROR_ARANGO_NO_JOURNAL):
@@ -376,6 +365,7 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SMART_JOIN_ATTRIBUTE):
     case static_cast<int>(TRI_ERROR_VALIDATION_FAILED):
     case static_cast<int>(TRI_ERROR_VALIDATION_BAD_PARAMETER):
+    case static_cast<int>(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
       return ResponseCode::BAD;
 
     case static_cast<int>(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE):

@@ -191,6 +191,8 @@ QueryStreamCursor::QueryStreamCursor(std::unique_ptr<arangodb::aql::Query> q,
   if (!trx.addStatusChangeCallback(&_stateChangeCb)) {
     _stateChangeCb = nullptr;
   }
+      
+  _query->exitV8Context();
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -217,6 +219,12 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder)
   LOG_TOPIC("9af59", TRACE, Logger::QUERIES)
     << "executing query " << _id << ": '"
     << _query->queryString().extract(1024) << "'";
+  
+  auto guard = scopeGuard([&] {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  });
 
   try {
     ExecutionState state = prepareDump();
@@ -260,12 +268,16 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
 
   std::shared_ptr<SharedQueryState> ss = _query->sharedState();
   ss->resetWakeupHandler();
+  
+  auto guard = scopeGuard([&] {
+    if (_query) {
+      _query->exitV8Context();
+    }
+  });
 
   try {
     aql::ExecutionEngine* engine = _query->rootEngine();
     TRI_ASSERT(engine != nullptr);
-
-    SharedAqlItemBlockPtr value;
 
     ExecutionState state = ExecutionState::WAITING;
     while (state == ExecutionState::WAITING) {
@@ -322,11 +334,22 @@ void QueryStreamCursor::resetWakeupHandler() {
 }
 
 ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
+  ResourceMonitor& resourceMonitor = _query->resourceMonitor();
+
+  // this is here to track _temporary_ memory usage during result
+  // building.
+  ResourceUsageScope guard(resourceMonitor);
+  auto const& buffer = builder.bufferRef();
+
   bool const silent = _query->queryOptions().silent;
 
   // reserve some space in Builder to avoid frequent reallocs
   if (!silent) {
-    builder.reserve(16 * 1024);
+    constexpr uint64_t reserveSize = 16 * 1024;
+    // track memory usage
+    guard.increase(reserveSize);
+    // reserve the actual memory
+    builder.reserve(reserveSize);
   }
 
   builder.add("result", VPackValue(VPackValueType::Array, true));
@@ -346,9 +369,14 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
       if (!silent && resultRegister.isValid()) {
         AqlValue const& value = block->getValueReference(_queryResultPos, resultRegister);
         if (!value.isEmpty()) {  // ignore empty blocks (e.g. from UpdateBlock)
+          uint64_t oldCapacity = buffer.capacity();
+
           value.toVelocyPack(&vopts, builder, /*resolveExternals*/false,
                              /*allowUnindexed*/true);
           ++rowsWritten;
+        
+          // track memory usage
+          guard.increase(buffer.capacity() - oldCapacity);
         }
       }
       ++_queryResultPos;
@@ -383,6 +411,10 @@ ExecutionState QueryStreamCursor::writeResult(VPackBuilder& builder) {
   if (!hasMore) {
     TRI_ASSERT(!_extrasBuffer.empty());
     builder.add("extra", VPackSlice(_extrasBuffer.data()));
+  
+    // very important here, because _query may become invalid after here!
+    guard.revert();
+
     _query.reset();
     this->setDeleted();
     return ExecutionState::DONE;
@@ -413,12 +445,6 @@ ExecutionState QueryStreamCursor::prepareDump() {
   // We want to fill a result of batchSize if possible and have at least
   // one row left (or be definitively DONE) to set "hasMore" reliably.
   ExecutionState state = ExecutionState::HASMORE;
-  auto guard = scopeGuard([&] {
-    if (_query) {
-      _query->exitV8Context();
-    }
-  });
-  
   bool const silent = _query->queryOptions().silent;
   
   while (state != ExecutionState::DONE && (silent || numRows <= batchSize())) {

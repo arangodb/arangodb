@@ -24,7 +24,6 @@
 
 #include "bm25.hpp"
 
-#include "scorers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
 #include "index/field_meta.hpp"

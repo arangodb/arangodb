@@ -1,0 +1,13 @@
+name: rocksdb_estimate_num_keys
+help: |
+  rocksdb_estimate_num_keys
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_estimate_num_keys

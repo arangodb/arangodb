@@ -21,12 +21,13 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Basics/StringUtils.h>
-#include <Logger/LogMacros.h>
-#include "gtest/gtest.h"
-
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/StringUtils.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Queues/FifoQueue.h"
+
+#include "gtest/gtest.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -68,7 +69,8 @@ class QueueTest : public ::testing::Test {
   ~QueueTest() {}
 
  public:
-  arangodb::ResourceMonitor _resourceMonitor {};
+  arangodb::GlobalResourceMonitor _global{};
+  arangodb::ResourceMonitor _resourceMonitor{_global};
 };
 
 TEST_F(QueueTest, it_should_be_empty_if_new_queue_initialized) {

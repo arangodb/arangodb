@@ -108,6 +108,15 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/boost)
 set(BOOST_VERSION ${BOOST_VERSION} PARENT_SCOPE)
 
 ################################################################################
+## Velocypack
+################################################################################
+
+set(BuildVelocyPackExamples OFF CACHE BOOL "Build VelocyPack Examples" FORCE)
+set(BuildTools OFF CACHE BOOL "Build VelocyPack Tools" FORCE)
+
+add_subdirectory(velocypack EXCLUDE_FROM_ALL)
+
+################################################################################
 ## IResearch
 ################################################################################
 
@@ -138,7 +147,6 @@ set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib" PARENT_SCOPE)
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 set(UNWIND_ROOT "invalid")
 set(BFD_ROOT "invalid")
-
 find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
 
 set(CMAKE_MACOSX_RPATH ON) # suppress cmake warning (use same value as cmake default)
@@ -258,10 +266,6 @@ target_include_directories(fuerte SYSTEM PRIVATE
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
-if(NOT TARGET velocypack)
-add_library(velocypack INTERFACE)
-target_include_directories(velocypack INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/velocypack/include")
-endif()
 
 set(TAOCPP_JSON_BUILD_TESTS    OFF CACHE BOOL "Build taocpp::json test programs"    FORCE)
 set(TAOCPP_JSON_BUILD_EXAMPLES OFF CACHE BOOL "Build taocpp::json example programs" FORCE)

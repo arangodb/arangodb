@@ -92,7 +92,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _transactionContext(ctx),
       _sharedState(std::move(sharedState)),
       _v8Context(nullptr),
-      _bindParameters(bindParameters),
+      _bindParameters(_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
@@ -103,6 +103,7 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
       _resultCode(std::nullopt),
       _contextOwnedByExterior(ctx->isV8Context() && v8::Isolate::GetCurrent() != nullptr),
       _embeddedQuery(ctx->isV8Context() && transaction::V8Context::isEmbedded()),
+      _registeredInV8Context(false),
       _queryKilled(false),
       _queryHashCalculated(false) {
 
@@ -147,7 +148,8 @@ Query::Query(std::shared_ptr<transaction::Context> const& ctx,
     LOG_TOPIC("8979d", INFO, Logger::QUERIES) << "options: " << b.toJson();
   }
 
-  _resourceMonitor.setMemoryLimit(_queryOptions.memoryLimit);
+  // set memory limit for query
+  _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
 
   // store name of user that started the query
@@ -208,7 +210,7 @@ Query::~Query() {
   _snippets.clear(); // simon: must be before plan
   _plans.clear(); // simon: must be before AST
   _ast.reset();
-
+  
   LOG_TOPIC("f5cee", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::~Query this: " << (uintptr_t)this;
@@ -799,7 +801,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
 
   if (!_snippets.empty()) {
     _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peakMemoryUsage());
+    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
     _execStats.setExecutionTime(elapsedSince(_startTime));
     for (auto& engine : _snippets) {
       engine->collectExecutionStats(_execStats);
@@ -1007,10 +1009,9 @@ void Query::enterV8Context() {
       registerCtx();
     }
     TRI_ASSERT(_v8Context != nullptr);
-  } else {
-    if (!_embeddedQuery) {  // may happen for stream trx
-      registerCtx();
-    }
+  } else if (!_embeddedQuery && !_registeredInV8Context) {  // may happen for stream trx
+    registerCtx();
+    _registeredInV8Context = true;
   }
 }
 
@@ -1037,8 +1038,10 @@ void Query::exitV8Context() {
       server.getFeature<V8DealerFeature>().exitContext(_v8Context);
       _v8Context = nullptr;
     }
-  } else if (!_embeddedQuery) {
+  } else if (!_embeddedQuery && _registeredInV8Context) {
+    // prevent duplicate deregistration
     unregister();
+    _registeredInV8Context = false;
   }
 }
 

@@ -274,7 +274,7 @@ class LogicalCollection : public LogicalDataSource {
   Result truncate(transaction::Methods& trx, OperationOptions& options);
 
   /// @brief compact-data operation
-  Result compact();
+  void compact();
 
   Result insert(transaction::Methods* trx, velocypack::Slice slice,
                 ManagedDocumentResult& result, OperationOptions& options);
