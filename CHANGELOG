@@ -1798,15 +1798,12 @@ v3.7.1-beta.1 (2020-06-07)
   ```
   Here the c would be off, or a count on main query would be off.
 
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is
+* Fixed crash in execution of non-spliced subqueries if remainder of subquery is
   skipped.
 
 * Added missing mutex to ConnectionPool::cancelConnections().
 
 * Foxx API now respects "idiomatic" flag being explicitly set to false.
-
-* Fix crash in execution of non-spliced subqueries if remainder of subquery is
-  skipped.
 
 * Made modification subqueries non-passthrough. The passthrough logic only works
   if exactly as many output rows are produced as input rows are injected.
