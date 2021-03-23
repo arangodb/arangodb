@@ -9,5 +9,8 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
   Total number of AQL queries finished.
+  This metric was named `arangodb_aql_all_query` in previous
+  versions of ArangoDB.

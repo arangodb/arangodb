@@ -11,4 +11,7 @@ exposedBy:
   - agent
   - single
 description: |
-  Number of seconds elapsed since server start.
+  Number of seconds elapsed since server start, including fractional
+  seconds.
+  This metric was named `arangodb_server_statistics_server_uptime`
+  in previous versions of ArangoDB.
