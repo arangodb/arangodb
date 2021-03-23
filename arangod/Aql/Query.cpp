@@ -1413,6 +1413,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     // Also note: If an error in cleanup happens the query was completed already,
     // so this error does not need to be reported to client.
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+    // TODO: For Max: should the Level be WARN or better INFO? This will not be sever as we clean up the state.
     LOG_TOPIC("63572", WARN, Logger::QUERIES)
         << " Failed to cleanup leftovers of a query. Due to communication errors. "
         << " The DBServers will eventually clean up the state. If the query used exclusive locks "
