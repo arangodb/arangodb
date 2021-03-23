@@ -155,7 +155,7 @@ TEST(directory_reader_test, open) {
     [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
     if (tests::json_doc_generator::ValueType::STRING == data.vt) {
       doc.insert(std::make_shared<tests::templates::string_field>(
-        irs::string_ref(name),
+        name,
         data.str
       ));
     }

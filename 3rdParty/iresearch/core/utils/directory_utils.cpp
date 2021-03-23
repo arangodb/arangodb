@@ -214,12 +214,11 @@ void remove_all_unreferenced(directory& dir) {
 }
 
 directory_cleaner::removal_acceptor_t remove_except_current_segments(
-  const directory& dir, const format& codec
-) {
-  static const auto acceptor = [](
+    const directory& dir, const format& codec) {
+  const auto acceptor = [](
       const std::string& filename, 
-      const std::unordered_set<std::string>& retain) {
-    return retain.find(filename) == retain.end();
+      const absl::flat_hash_set<std::string>& retain) {
+    return !retain.contains(filename);
   };
 
   index_meta meta;
@@ -235,7 +234,7 @@ directory_cleaner::removal_acceptor_t remove_except_current_segments(
 
   reader->read(dir, meta, segment_file);
 
-  std::unordered_set<std::string> retain;
+  absl::flat_hash_set<std::string> retain;
   retain.reserve(meta.size());
 
   meta.visit_files([&retain] (std::string& file) {

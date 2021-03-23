@@ -72,9 +72,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_dropped_followers_total", "arangodb_dropped_followers_count");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls rocksdb_write_stalls");
+      "arangodb_rocksdb_write_stalls_total", "rocksdb_write_stalls");
     nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops rocksdb_write_stops");
+      "arangodb_rocksdb_write_stops_total", "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_shards_leader_number", "arangodb_shards_leader_count");
     nameVersionTable.try_emplace(
@@ -175,12 +175,6 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_aql_total_query_time_msec_total",
       "arangodb_aql_total_query_time_msec");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stalls_total",
-      "rocksdb_write_stalls");
-    nameVersionTable.try_emplace(
-      "arangodb_rocksdb_write_stops_total",
-      "rocksdb_write_stops");
     nameVersionTable.try_emplace(
       "arangodb_collection_lock_acquisition_micros_total",
       "arangodb_collection_lock_acquisition_micros");
@@ -376,6 +370,23 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "rocksdb_engine_throttle_bps",
       "rocksdbengine_throttle_bps");
+
+    v2suppressions = {
+      // Note that if we ever need to suppress a metric which is
+      // coming from the statistics feature further code is needed
+      // there. This list is only considered for the normally registered
+      // metrics in the MetricsFeature.
+        "arangodb_maintenance_phase1_accum_runtime_msec_total",
+        "arangodb_maintenance_phase2_accum_runtime_msec_total",
+        "arangodb_maintenance_agency_sync_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_runtime_msec_total",
+        "arangodb_maintenance_action_accum_queue_time_msec_total",
+        "arangodb_agency_supervision_accum_runtime_msec_total",
+        "arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total",
+        "arangodb_load_current_accum_runtime_msec_total",
+        "arangodb_load_plan_accum_runtime_msec_total",
+        "arangodb_aql_slow_query_total",
+    };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
       "failed to allocate and populate the metrics v1/v2 translation table " << e.what();
@@ -472,7 +483,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
-        // In v1 we do a nameing conversion. Note that we set 
+        // In v1 we do a name conversion. Note that we set 
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
@@ -495,6 +506,8 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
           }
         }
         alternativeName = name;
+      } else if(auto iter = v2suppressions.find(name); iter != v2suppressions.end()) {
+        continue;
       }
       if (lastType != name) {
         result += "# HELP " + name + " " + i.second->help() + "\n";

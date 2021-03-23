@@ -4,6 +4,35 @@ devel
 * Update the Web UI's list of built-in AQL functions for proper syntax
   highlighting in the query editor.
 
+* Bug-fix in the case of very rare network issues there was a chance that
+  an AQL query could get stuck during a cleanup and after a commit.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
+
+* Switched to GCC 10 as the default compiler and use Sandy Bridge as the
+  default required architecture (Linux, macOS binaries).
+
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
+* Added new ArangoSearch analyzer type "mask".
+
+* Fix error message in case of index unique constraint violations. They were
+  lacking the actual error message (i.e. "unique constraint violated") and
+  only showed the index details. The issue was introduced only in devel in Feb.
+
+* Removed old metrics in new v2 metric api. Those metric endpoints were
+  identical to the sum value of histograms.
+
+* Allow process-specific logfile names.
+
+  This change allows replacing '$PID' with the current process id in the 
+  `--log.output` and `--audit.output` startup parameters.
+  This way it is easier to write process-specific logfiles.
+
 * Backport a bugfix from upstream RocksDB for opening encrypted files with
   small sizes. Without the bugfix, the server may run into assertion failures
   during recovery.
@@ -26,14 +55,8 @@ devel
     unregister the hotbackup restore callback." on shutdown, although this was
     meaningless.
 
-* Rename "save" return attribute in AQL function `DATE_UTCTOLOCAL` to "dst".
-
-* Make ReplicationFeature formally depend on ServerIdFeature, because the
-  former relies on the server id being already loaded by the latter.
-  If this dependency is not established properly, it is undefined if the
-  ReplicationFeature starts earlier than the ServerIdFeature, which can lead
-  to the ReplicationFeature not sending its server id properly to the leader
-  when doing replication between two single servers.
+* Rename "save" return attribute to "dst" in AQL functions `DATE_UTCTOLOCAL` and
+  `DATE_LOCALTOUTC`.
 
 * Fix potentially undefined behavior when creating a CalculationTransactionContext
   for an arangosearch analyzer. An uninitialized struct member was passed as an
@@ -902,6 +925,9 @@ devel
   (assuming the data fits in one batch).
 
 * Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
+
+* Bug-Fix: In one-shard-database setups that were created in 3.6.* and then
+  upgraded to 3.7.5 the DOCUMENT method in AQL will now return documents again.
 
 * Make internal ClusterInfo::getPlan() wait for initial plan load from agency.
 

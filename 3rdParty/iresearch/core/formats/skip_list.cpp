@@ -43,7 +43,7 @@ inline size_t max_levels(size_t skip_0, size_t skip_n, size_t count) {
   return levels;
 }
 
-const size_t UNDEFINED = irs::integer_traits<size_t>::const_max;
+const size_t UNDEFINED = std::numeric_limits<size_t>::max();
 
 } // LOCAL
 

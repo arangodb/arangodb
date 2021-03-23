@@ -59,7 +59,10 @@ struct IRESEARCH_API lz4 {
 
     int acceleration() const noexcept { return acceleration_; }
 
-    virtual bytes_ref compress(byte_type* src, size_t size, bstring& out) override;
+    virtual bytes_ref compress(
+      byte_type* src,
+      size_t size,
+      bstring& out) override IRESEARCH_ATTRIBUTE_NONNULL();
 
    private:
     const int acceleration_{0}; // 0 - default acceleration
@@ -67,8 +70,9 @@ struct IRESEARCH_API lz4 {
 
   class IRESEARCH_API lz4decompressor final : public compression::decompressor {
    public:
-    virtual bytes_ref decompress(const byte_type* src, size_t src_size,
-                                 byte_type* dst, size_t dst_size) override;
+    virtual bytes_ref decompress(
+      const byte_type* src, size_t src_size,
+      byte_type* dst, size_t dst_size) override IRESEARCH_ATTRIBUTE_NONNULL();
   };
 
   static void init();
