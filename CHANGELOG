@@ -1941,6 +1941,12 @@ v3.7.1-beta.1 (2020-06-07)
 
 * Expanded -std=c++17 flag to all compilers.
 
+* Fixed issue ES-600: log out of LDAP automatically.
+
+  Option `--ldap.allow-offline` was added with `false` value by default to let
+  server use cached offline credentials in case of LDAP server communication was
+  lost and ArangoDB can't prolong cache online.
+
 * Include all requests to the web interface at endpoint `/_admin/aardvark` in
   a node's requests statistics. Previously, requests going to `/_admin/aardvark`
   were excluded from the request statistics if and only if the requested
