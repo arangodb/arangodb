@@ -47,13 +47,6 @@ v3.7.11 (XXXX-XX-XX)
 * Fixed a bug in the index count optimization that doubled counted documents
   when using array expansions in the fields definition.
 
-* Make ReplicationFeature formally depend on ServerIdFeature, because the former
-  relies on the server id being already loaded by the latter.
-  If this dependency is not established properly, it is undefined if the
-  ReplicationFeature starts earlier than the ServerIdFeature, which can lead to
-  the ReplicationFeature not sending its server id properly to the leader when
-  doing replication between two single servers.
-
 
 v3.7.10 (2021-03-14)
 --------------------
