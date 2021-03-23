@@ -1,6 +1,8 @@
 devel
 -----
 
+* Switched to GCC 10 as the default compiler.
+
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
 
