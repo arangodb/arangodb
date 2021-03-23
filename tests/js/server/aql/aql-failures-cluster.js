@@ -164,8 +164,7 @@ function ahuacatlFailureSuite () {
       // Force cleanup to fail.
       // This should result in a positive query, but may leave locks on DBServers.
       internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
-      // NOTE we need to insert two documents here to not end up with a single remote operation node.
-      const res = AQL_EXECUTE(`FOR value IN 1..2 INSERT {value} INTO ${cn}`);
+      const res = AQL_EXECUTE(`INSERT {Hallo:12} INTO ${cn}`);
       assertEqual(res.stats.writesExecuted, 1);
     },
 
@@ -175,7 +174,7 @@ function ahuacatlFailureSuite () {
       // It should also leave locks on DBServers.
       internal.debugSetFailAt("Query::finalize_before_done");
       internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
-      assertFailingQuery(`FOR value IN 1..2 INSERT {value} INTO ${cn}`);
+      assertFailingQuery(`INSERT {Hallo:12} INTO ${cn}`);
     },
   };
 }
