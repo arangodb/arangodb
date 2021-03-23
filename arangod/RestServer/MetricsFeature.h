@@ -187,7 +187,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
   bool _export;
   bool _exportReadWriteMetrics;
 
-  std::unordered_map<std::string,std::string> nameVersionTable;
+  std::unordered_map<std::string, std::string> nameVersionTable;
   std::unordered_set<std::string> v2suppressions;
 };
 

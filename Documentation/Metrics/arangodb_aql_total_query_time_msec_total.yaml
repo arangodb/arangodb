@@ -2,12 +2,14 @@ name: arangodb_aql_total_query_time_msec_total
 help: |
   Total execution time of all AQL queries.
 unit: ms
-type: histogram
+type: counter
 category: AQL
 complexity: simple
 exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Total execution time of all AQL queries.
+  Total execution time of all AQL queries, in milliseconds,
+  including all slow queries.
