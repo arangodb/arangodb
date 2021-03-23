@@ -1,6 +1,9 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fixed Github issue #13665: Improve index selection when there are multiple
+  candidate indexes.
+
 * Allow process-specific logfile names.
 
   This change allows replacing '$PID' with the current process id in the

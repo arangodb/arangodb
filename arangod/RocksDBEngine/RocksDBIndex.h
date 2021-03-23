@@ -144,8 +144,6 @@ class RocksDBIndex : public Index {
   virtual void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimator<uint64_t>>) {}
   virtual void recalculateEstimates() {}
 
-  bool isPersistent() const override final { return true; }
-
   Result setObjectIds(std::uint64_t plannedObjectId, std::uint64_t plannedTempObjectId);
 
  protected:

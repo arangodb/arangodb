@@ -64,8 +64,6 @@ class IResearchLinkMock final : public arangodb::Index, public IResearchLink {
     return IResearchLink::insert(trx, documentId, doc);
   }
 
-  bool isPersistent() const override;
-
   bool isSorted() const override { return IResearchLink::isSorted(); }
 
   bool isHidden() const override { return IResearchLink::isHidden(); }
