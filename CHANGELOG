@@ -1,6 +1,10 @@
 devel
 -----
-* Added new ArangoSearch analyzer type "mask"
+
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
+* Added new ArangoSearch analyzer type "mask".
 
 
 * Fixed UPSERT in cluster: It does now read it's own write, which should prevent
