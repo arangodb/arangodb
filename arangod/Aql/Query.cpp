@@ -1384,6 +1384,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " Query::finalize: before cleanupPlanAndEngine"
       << " this: " << (uintptr_t)this;
 
+
   if (_serverQueryIds.empty()) {
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
