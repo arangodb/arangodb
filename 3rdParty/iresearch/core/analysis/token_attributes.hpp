@@ -180,7 +180,7 @@ class IRESEARCH_API position
     return pos ? *pos : *empty();
   }
 
-  value_t seek(value_t target) {
+  virtual value_t seek(value_t target) {
     while ((value_< target) && next());
     return value_;
   }

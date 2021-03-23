@@ -29,11 +29,19 @@
 
     has registered.
 
+    This metric was named `arangodb_agency_cache_callback_count` in
+
+    previous versions of ArangoDB.
+
+    Note that on single servers this metrics will only have a non-zero value
+
+    in "active failover" deployment mode.
+
     '
   exposedBy:
-  - agent
   - dbserver
   - coordinator
+  - single
   help: 'Current number of entries in agency cache callbacks table.
 
     '
@@ -50,15 +58,14 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: 'This metric reflects the current number of agency callbacks being
-
-    registered.
-
-    '
+  description: "This metric reflects the current number of agency callbacks being\nregistered,
+    including agency cache callbacks.\nThis metric was named `arangodb_agency_callback_count`
+    in previous versions \nof ArangoDB.\nNote that on single servers this metrics
+    will only have a non-zero value\nin \"active failover\" deployment mode.\n"
   exposedBy:
   - coordinator
   - dbserver
-  - agent
+  - single
   help: 'Current number of agency callbacks registered.
 
     '
@@ -75,15 +82,13 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: 'This metric reflects the total number of agency callbacks ever registered
-
-    over time.
-
-    '
+  description: "This metric was named `arangodb_agency_callback_registered` in previous
+    versions \nof ArangoDB.\nNote that on single servers this metrics will only have
+    a non-zero value\nin \"active failover\" deployment mode.\n"
   exposedBy:
   - coordinator
   - dbserver
-  - agent
+  - single
   help: 'Total number of agency callbacks ever registered.
 
     '
@@ -92,9 +97,9 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: 'Current number of entries in agency client id lookup table.
-
-    '
+  description: "Current number of entries in agency client id lookup table.\nThe lookup
+    table is used internally for agency inquire operations\nand should be compacted
+    at the same time when the agency's in-memory\nlog is compacted. \n"
   exposedBy:
   - agent
   help: 'Current number of entries in agency client id lookup table.
@@ -144,7 +149,17 @@
   unit: number
 - category: Agency
   complexity: simple
-  description: 'Agency replicated log size in bytes.
+  description: 'Size of the agency''s in-memory part of replicated log in bytes.
+
+    The replicated log will grow in memory until a certain number of
+
+    log entries have been accumulated. Then the in-memory log will
+
+    be compacted. The number of in-memory log entries to keep before
+
+    log compaction kicks in can be controlled via the startup option
+
+    ` --agency.compaction-keep-size`.
 
     '
   exposedBy:
@@ -193,32 +208,6 @@
   name: arangodb_agency_read_ok_total
   type: counter
   unit: number
-- category: Agency
-  complexity: simple
-  description: 'Accumulated supervision runtime.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision runtime.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Agency
-  complexity: medium
-  description: 'Accumulated supervision wait for replication time.
-
-    '
-  exposedBy:
-  - agent
-  help: 'Accumulated supervision wait for replication time.
-
-    '
-  name: arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total
-  type: counter
-  unit: ms
 - category: Agency
   complexity: medium
   description: 'Counter for FailedServer jobs.
@@ -363,11 +352,16 @@
   complexity: simple
   description: 'Total number of AQL queries finished.
 
+    This metric was named `arangodb_aql_all_query` in previous
+
+    versions of ArangoDB.
+
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Total number of AQL queries finished.
 
     '
@@ -383,6 +377,7 @@
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Current number of AQL queries executing.
 
     '
@@ -391,45 +386,58 @@
   unit: number
 - category: AQL
   complexity: simple
-  description: 'Total memory limit for all AQL queries combined.
+  description: 'Total memory limit for all AQL queries combined, in bytes.
+
+    If this value is reported as `0`, it means there is no total memory
+
+    limit in place for AQL queries. The value can be adjusted by the setting
+
+    the `--query.global-memory-limit` startup option.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Total memory limit for all AQL queries combined.
 
     '
   name: arangodb_aql_global_memory_limit
   type: gauge
-  unit: number
+  unit: bytes
 - category: AQL
   complexity: simple
-  description: 'Total memory usage of all AQL queries executing; granularity: 32768
-    bytes steps.
-
-    '
+  description: "Total memory usage of all AQL queries currently executing.\nThe granularity
+    of this metric is steps of 32768 bytes. The current\nmemory usage of all AQL queries
+    will be compared against the configured\nlimit in the `--query.global-memory-limit`
+    startup option. \nIf the startup option has a value of `0`, then no global memory
+    limit\nwill be enforced. If the startup option has a non-zero value, queries\nwill
+    be aborted once the total query memory usage goes above the configured\nlimit.\n"
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Total memory usage of all AQL queries executing; granularity: 32768 bytes
     steps.
 
     '
   name: arangodb_aql_global_memory_usage
   type: gauge
-  unit: number
+  unit: bytes
 - category: AQL
   complexity: simple
-  description: 'Execution time histogram for all AQL queries.
+  description: 'Execution time histogram for all AQL queries, in seconds.
+
+    The histogram includes all slow queries.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Execution time histogram for all AQL queries.
 
     '
@@ -438,13 +446,20 @@
   unit: s
 - category: AQL
   complexity: simple
-  description: 'Execution time histogram for slow AQL queries.
+  description: 'Execution time histogram for slow AQL queries, in seconds.
+
+    Queries are considered "slow" if their execution time is above the
+
+    threshold configured in the startup options `--query.slow-threshold`
+
+    or `--query.slow-streaming-threshold`, resp.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Execution time histogram for slow AQL queries.
 
     '
@@ -453,33 +468,21 @@
   unit: s
 - category: AQL
   complexity: simple
-  description: 'Number of slow AQL queries.
+  description: 'Total execution time of all AQL queries, in milliseconds,
+
+    including all slow queries.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Number of slow AQL queries.
-
-    '
-  name: arangodb_aql_slow_query_total
-  type: counter
-  unit: number
-- category: AQL
-  complexity: simple
-  description: 'Total execution time of all AQL queries.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
+  - single
   help: 'Total execution time of all AQL queries.
 
     '
   name: arangodb_aql_total_query_time_msec_total
-  type: histogram
+  type: counter
   unit: ms
 - category: Statistics
   complexity: simple
@@ -1031,9 +1034,11 @@
   unit: number
 - category: Health
   complexity: simple
-  description: 'Number of drop-follower events.
-
-    '
+  description: "Total number of drop-follower events. This metric is increased on
+    leaders\nwhenever a write operation cannot be replicated to a follower during\nsynchronous
+    replication, and it would be unsafe in terms of data consistency \nto keep that
+    follower.\nThis metric was named `arangodb_dropped_followers_count` in previous\nversions
+    of ArangoDB.\n"
   exposedBy:
   - dbserver
   help: 'Number of drop-follower events.
@@ -1042,7 +1047,7 @@
   name: arangodb_dropped_followers_total
   threshold: 'Usually, drop-follower events should only happen if servers are
 
-    restarted.
+    restarted or if there are real problems on followers.
 
     '
   type: counter
@@ -1089,7 +1094,25 @@
   unit: ms
 - category: Statistics
   complexity: simple
-  description: 'Number of asynchronously executed HTTP requests.
+  description: 'This counter reflects the total number of **asynchronous** HTTP (or
+    VST)
+
+    requests which have hit this particular instance of `arangod`. Asynchronous
+
+    refers to the fact that the response is not sent with the HTTP response,
+
+    but is rather queried separately using the `/_api/jobs` API.
+
+    See [this Section](async-results-management.html) for details.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1101,13 +1124,23 @@
 
     '
   name: arangodb_http_request_statistics_async_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP DELETE requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **DELETE**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1117,13 +1150,23 @@
 
     '
   name: arangodb_http_request_statistics_http_delete_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP GET requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **GET** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1133,13 +1176,23 @@
 
     '
   name: arangodb_http_request_statistics_http_get_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP HEAD requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **HEAD** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1149,13 +1202,23 @@
 
     '
   name: arangodb_http_request_statistics_http_head_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP OPTIONS requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **OPTIONS**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1165,13 +1228,23 @@
 
     '
   name: arangodb_http_request_statistics_http_options_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP PATCH requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **PATCH**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1181,13 +1254,23 @@
 
     '
   name: arangodb_http_request_statistics_http_patch_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP POST requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **POST** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1197,13 +1280,23 @@
 
     '
   name: arangodb_http_request_statistics_http_post_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP PUT requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **PUT** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1213,11 +1306,33 @@
 
     '
   name: arangodb_http_request_statistics_http_put_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of other HTTP requests.
+  description: 'This counter reflects the total number of HTTP (or VST) **other**
+
+    or **ILLEGAL** requests which have hit this particular instance of
+
+    `arangod`. These are all requests, which are not one of the following:
+
+    `DELETE`, `GET`, `HEAD`, `POST`, `PUT`, `OPTIONS`, `PATCH`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1229,11 +1344,33 @@
 
     '
   name: arangodb_http_request_statistics_other_http_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests executed by superuser/JWT.
+  description: 'This counter reflects the total number of HTTP (or VST)
+
+    requests that have been authenticated with the JWT superuser token,
+
+    which have hit this particular instance of
+
+    `arangod`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1245,11 +1382,28 @@
 
     '
   name: arangodb_http_request_statistics_superuser_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests.
+  description: 'This counter reflects the total number of HTTP (or VST) requests which
+
+    have hit this particular instance of `arangod`. Note that this counter
+
+    is ever growing during the lifetime of the `arangod` process. However,
+
+    when the process is restarted, it starts from scratch. In the Grafana
+
+    dashboards, it is usually visualized as a rate per second, averaged
+
+    with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1261,11 +1415,33 @@
 
     '
   name: arangodb_http_request_statistics_total_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests executed by user clients.
+  description: 'This counter reflects the total number of HTTP (or VST) requests
+
+    that have been authenticated for some user (as opposed to with the
+
+    JWT superuser token), which have hit this particular instance of
+
+    `arangod`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1277,35 +1453,43 @@
 
     '
   name: arangodb_http_request_statistics_user_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: medium
-  description: 'Number of intermediate commits performed in transactions.
-
-    '
+  description: "Number of intermediate commits performed in transactions.\nAn intermediate
+    commit happens if a logical transaction needs to be\nsplit into multiple physical
+    transaction because of the volume of data\nhandled in the transaction. The thresholds
+    for when to perform an\nintermediate commit can be controlled by startup options
+    \n`--rocksdb.intermediate-commit-count` (number of write operations after\nwhich
+    an intermediate commit is triggered) and `--rocksdb.intermediate-commit-size`\n(cumulated
+    size of write operations after which an intermediate commit is triggered).\nThe
+    values can also be overridden for individual transactions.\nThis metric was named
+    `arangodb_intermediate_commits` in previous\nversions of ArangoDb.\n"
   exposedBy:
   - dbserver
+  - single
   help: 'Number of intermediate commits performed in transactions.
 
     '
   name: arangodb_intermediate_commits_total
+  troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.
+    It can\nhappen for large transactions and large data-loading jobs. However, as
+    modifications\nperformed by intermediate commits are persisted and cannot simply
+    be rolled back in \nmemory, it should be monitored whether the intermediate commits
+    only happen for\noperations where they are expected. If they also happen for operations
+    that are\nsupposed to be atomic, then the intermediate commit size and count parameters
+    need\nto be adjusted, or larger operations should be broken up into smaller ones
+    in the\nclient application.\n"
   type: counter
   unit: number
-- category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of `Current` loading.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Current` loading.
-
-    '
-  name: arangodb_load_current_accum_runtime_msec_total
-  type: counter
-  unit: ms
 - category: Maintenance
   complexity: medium
   description: 'Histogram of `Current` loading runtimes.
@@ -1322,20 +1506,6 @@
   unit: ms
 - category: Maintenance
   complexity: medium
-  description: 'Accumulated runtime of `Plan` loading
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  help: 'Accumulated runtime of `Plan` loading
-
-    '
-  name: arangodb_load_plan_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
   description: 'Histogram of `Plan` loading runtimes.
 
     '
@@ -1349,47 +1519,39 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action queue time for Maintenance.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are done and have been removed.
 
     '
   exposedBy:
   - dbserver
-  help: 'Accumulated action queue time for Maintenance.
+  help: 'Counter of actions that are done and have been removed from the registry.
 
     '
-  name: arangodb_maintenance_action_accum_queue_time_msec_total
+  name: arangodb_maintenance_action_done_total
   type: counter
-  unit: ms
+  unit: number
 - category: Maintenance
   complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated action queue time for Maintenance.
+    to the desired state. Actions are created, registered, queued and executed.
 
-    '
-  name: arangodb_maintenance_action_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: advanced
-  description: 'Accumulated action runtime for Maintenance.
+    Once they are done they will eventually be removed.
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated number of action queue time for Maintenance.
 
-    '
-  name: arangodb_maintenance_action_done_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been discarded because of a duplicate.
+    This metric counts the number of actions that have been created but found to
+
+    be a duplicate of a already queued action.
 
     '
   exposedBy:
@@ -1401,8 +1563,18 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Failure counter for the maintenance actions.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    Those action can fail for different reasons. This metric counts the failed
+
+    actions and can thus provide hints to investigate a malfunction.
 
     '
   exposedBy:
@@ -1414,8 +1586,16 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Time spent in the queue before execution for maintenance actions.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend waiting in the queue in a histogram.
 
     '
   exposedBy:
@@ -1427,8 +1607,16 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
-  description: 'Counter of actions that have been registered in the action registry.
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric counts the number of actions that are queued or active.
 
     '
   exposedBy:
@@ -1440,8 +1628,16 @@
   type: counter
   unit: number
 - category: Maintenance
-  complexity: medium
-  description: 'Histogram of time spent execution maintenance actions.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
+
+    to the desired state. Actions are created, registered, queued and executed.
+
+    Once they are done they will eventually be removed.
+
+
+    This metric tracks the time actions spend executing in a histogram.
 
     '
   exposedBy:
@@ -1453,24 +1649,24 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: medium
-  description: 'Accumulated runtime of agency sync phase. This includes phase one
-    and
+  complexity: simple
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    phase two.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of agency sync phase.
+    data store provided by the agency are investigated and local changes are
 
-    '
-  name: arangodb_maintenance_agency_sync_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: medium
-  description: 'Histogram for total time spent on agency sync.
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of individual agency syncs in a histogram.
+
+    During DDL operations the runtime can increase but should generally be below
+
+    1s.
 
     '
   exposedBy:
@@ -1482,21 +1678,22 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase one in maintenance.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase one in maintenance.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  name: arangodb_maintenance_phase1_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 1 runtime histogram.
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase1 of an agency sync. Phase1 calculates
+
+    the difference between the local and the target state.
 
     '
   exposedBy:
@@ -1508,21 +1705,22 @@
   type: histogram
   unit: ms
 - category: Maintenance
-  complexity: simple
-  description: 'Accumulated runtime of phase two of maintenance.
+  complexity: advanced
+  description: 'Database servers execute reconciliation actions to let the cluster
+    converge
 
-    '
-  exposedBy:
-  - dbserver
-  help: 'Accumulated runtime of phase two of maintenance.
+    to the desired state. To identify the target state differences in the meta
 
-    '
-  name: arangodb_maintenance_phase2_accum_runtime_msec_total
-  type: counter
-  unit: ms
-- category: Maintenance
-  complexity: simple
-  description: 'Maintenance Phase 2 runtime histogram.
+    data store provided by the agency are investigated and local changes are
+
+    reported. This process is called agency sync and is executed in regular
+
+    intervals.
+
+
+    This metric tracks the runtime of phase2 of an agency sync. Phase2 calculates
+
+    what actions to execute given the difference of the local and target state.
 
     '
   exposedBy:
@@ -1549,6 +1747,8 @@
 - category: Network
   complexity: advanced
   description: 'Internal request round-trip time as a percentage of timeout.
+
+    This metric will have a value between 0 and 100.
 
     '
   exposedBy:
@@ -1751,15 +1951,23 @@
   unit: bytes
 - category: Replication
   complexity: advanced
-  description: 'Number of refusal answers from a follower during synchronous replication.
-
-    '
+  description: "Number of refusal answers from a follower during synchronous replication.\nA
+    refusal answer will only be sent by a follower if the follower is under\nthe impression
+    that the replication request was not sent by the current\nshard leader. This can
+    happen if replication requests to the follower are \ndelayed or the follower is
+    slow to process incoming requests and there was \na leader change for the shard.\nIf
+    such a refusal answer is received by the shard leader, it will drop the\nfollower
+    from the list of followers.\nThis metrics was named `arangodb_refused_followers_count`
+    in previous\nversions of ArangoDB.\n"
   exposedBy:
   - dbserver
   help: 'Number of refusal answers from a follower during synchronous replication.
 
     '
   name: arangodb_refused_followers_total
+  threshold: "Usually, refusal answers only occur if request processing on followers
+    is \ndelayed and there was a recent leadership change. This should not be a\ncommon
+    case and normally indicates a problem with the setup or with the load.\n"
   type: counter
   unit: number
 - category: Replication
@@ -2410,7 +2618,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of CPU cores visible to the arangod process.
+  description: 'Number of CPU cores visible to the arangod process, unless the
+
+    environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES`
+
+    is set. In that case, the environment variable''s value will be reported.
 
     '
   exposedBy:
@@ -2426,9 +2638,9 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Percentage of time that the system CPUs have been idle.
-
-    '
+  description: "Percentage of time that the system CPUs have been idle, as \na value
+    between 0 and 100, and as reported by the operating system.\nThis metric is only
+    reported on some operating systems.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -2439,10 +2651,15 @@
     '
   name: arangodb_server_statistics_idle_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
-  description: 'Percentage of time that the system CPUs have been waiting for I/O.
+  description: 'Percentage of time that the system CPUs have been waiting for I/O,
+    as
+
+    a value between 0 and 100, and as reported by the operating system.
+
+    This metric is only reported on some operating systems.
 
     '
   exposedBy:
@@ -2455,12 +2672,12 @@
     '
   name: arangodb_server_statistics_iowait_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
-  description: 'Physical memory in bytes.
-
-    '
+  description: "Physical memory of the system in bytes, as reported by the operating
+    system \nunless the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY`
+    \nis set. In that case, the environment variable's value will be reported.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -2474,7 +2691,13 @@
   unit: bytes
 - category: Statistics
   complexity: simple
-  description: 'Number of seconds elapsed since server start.
+  description: 'Number of seconds elapsed since server start, including fractional
+
+    seconds.
+
+    This metric was named `arangodb_server_statistics_server_uptime`
+
+    in previous versions of ArangoDB.
 
     '
   exposedBy:
@@ -2490,7 +2713,12 @@
   unit: s
 - category: Statistics
   complexity: simple
-  description: 'Percentage of time that the system CPUs have spent in kernel mode.
+  description: 'Percentage of time that the system CPUs have spent in kernel mode,
+    as
+
+    a value between 0 and 100, and as reported by the operating system.
+
+    This metric is only reported on some operating systems.
 
     '
   exposedBy:
@@ -2503,10 +2731,14 @@
     '
   name: arangodb_server_statistics_system_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
-  description: 'Percentage of time that the system CPUs have spent in user mode.
+  description: 'Percentage of time that the system CPUs have spent in user mode, as
+
+    a value between 0 and 100, and as reported by the operating system.
+
+    This metric is only reported on some operating systems.
 
     '
   exposedBy:
@@ -2519,7 +2751,7 @@
     '
   name: arangodb_server_statistics_user_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Replication
   complexity: simple
   description: 'Number of leader shards on this machine. Every shard has a leader
@@ -2712,13 +2944,15 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: 'Number of transactions aborted.
-
-    '
+  description: "Total number of transactions aborted. In the cluster, this metric
+    will \nbe collected separately for transactions on coordinators and the\ntransaction
+    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_aborted`
+    in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Number of transactions aborted.
 
     '
@@ -2727,13 +2961,15 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: 'Number of transactions committed.
-
-    '
+  description: "Total number of transactions committed. In the cluster, this metric
+    will \nbe collected separately for transactions on coordinators and the\ntransaction
+    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_committed`
+    in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Number of transactions committed.
 
     '
@@ -2742,13 +2978,17 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: 'Total number of expired transactions.
-
-    '
+  description: "Total number of expired transactions, i.e. transactions that have\nbeen
+    begun but that were automatically garbage-collected due to \ninactivity within
+    the transactions' time-to-live (TTL) period.\nIn the cluster, this metric will
+    be collected separately for transactions \non coordinators and the transaction
+    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_expired`
+    in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Total number of expired transactions.
 
     '
@@ -2757,13 +2997,15 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: 'Number of transactions started.
-
-    '
+  description: "Total number of transactions started/begun. In the cluster, this metric
+    will \nbe collected separately for transactions on coordinators and the\ntransaction
+    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_started`
+    in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
   help: 'Number of transactions started.
 
     '

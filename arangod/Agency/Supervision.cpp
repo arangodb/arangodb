@@ -57,9 +57,9 @@ struct WaitForReplicationScale {
   static log_scale_t<uint64_t> scale() { return {2, 10, 2000, 10}; }
 };
   
-DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
+DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_msec_total,
                   "Accumulated Supervision Runtime [ms]");
-DECLARE_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
+DECLARE_LEGACY_COUNTER(arangodb_agency_supervision_accum_runtime_wait_for_replication_msec_total,
                   "Accumulated Supervision wait for replication time [ms]");
 DECLARE_COUNTER(arangodb_agency_supervision_failed_server_total,
                   "Counter for FailedServer jobs");

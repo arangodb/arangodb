@@ -48,26 +48,29 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-RefactoredTraverserCache::RefactoredTraverserCache(arangodb::transaction::Methods* trx,
-                                                   aql::QueryContext* query,
-                                                   arangodb::ResourceMonitor& resourceMonitor,
-                                                   std::map<std::string, std::string> const& collectionToShardMap)
+RefactoredTraverserCache::RefactoredTraverserCache(
+    arangodb::transaction::Methods* trx, aql::QueryContext* query,
+    arangodb::ResourceMonitor& resourceMonitor, arangodb::aql::TraversalStats& stats,
+    std::map<std::string, std::string> const& collectionToShardMap)
     : _query(query),
       _trx(trx),
       _stringHeap(resourceMonitor, 4096), /* arbitrary block-size may be adjusted for performance */
-      _collectionToShardMap(collectionToShardMap)
-{
+      _collectionToShardMap(collectionToShardMap),
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 }
 
+RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
+
 void RefactoredTraverserCache::clear() {
+  _resourceMonitor.decreaseMemoryUsage(
+      _persistedStrings.size() * sizeof(arangodb::velocypack::HashedStringRef));
   _persistedStrings.clear();
   _stringHeap.clear();
 }
 
 template <typename ResultType>
-bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
-                                          EdgeDocumentToken const& idToken,
+bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                                           ResultType& result) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
@@ -96,7 +99,6 @@ bool RefactoredTraverserCache::appendEdge(aql::TraversalStats& stats,
         << "Could not extract indexed edge document, return 'null' instead. "
         << "This is most likely a caching issue. Try: 'db." << col->name()
         << ".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
-    TRI_ASSERT(false);  // for maintainer mode
   }
   return res;
 }
@@ -167,10 +169,9 @@ bool RefactoredTraverserCache::appendVertex(aql::TraversalStats& stats,
   return false;
 }
 
-void RefactoredTraverserCache::insertEdgeIntoResult(aql::TraversalStats& stats,
-                                                    EdgeDocumentToken const& idToken,
+void RefactoredTraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                                     VPackBuilder& builder) {
-  if (!appendEdge(stats, idToken, builder)) {
+  if (!appendEdge(idToken, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
@@ -183,24 +184,6 @@ void RefactoredTraverserCache::insertVertexIntoResult(aql::TraversalStats& stats
   }
 }
 
-aql::AqlValue RefactoredTraverserCache::fetchEdgeAqlResult(aql::TraversalStats& stats,
-                                                           EdgeDocumentToken const& idToken) {
-  aql::AqlValue val;
-  if (!appendEdge(stats, idToken, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
-aql::AqlValue RefactoredTraverserCache::fetchVertexAqlResult(
-    aql::TraversalStats& stats, arangodb::velocypack::HashedStringRef idString) {
-  aql::AqlValue val;
-  if (!appendVertex(stats, idString, val)) {
-    val = aql::AqlValue(aql::AqlValueHintNull{});
-  }
-  return val;
-}
-
 arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
     arangodb::velocypack::HashedStringRef idString) {
   auto it = _persistedStrings.find(idString);
@@ -209,5 +192,6 @@ arangodb::velocypack::HashedStringRef RefactoredTraverserCache::persistString(
   }
   auto res = _stringHeap.registerString(idString);
   _persistedStrings.emplace(res);
+  _resourceMonitor.increaseMemoryUsage(sizeof(res));
   return res;
 }

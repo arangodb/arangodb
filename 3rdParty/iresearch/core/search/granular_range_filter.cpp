@@ -607,7 +607,7 @@ DEFINE_FACTORY_DEFAULT(by_granular_range)
     }
 
     if (current_states >= range_states.size()) {
-      range_states.emplace_back(index.size());
+      range_states.emplace_back(index);
     }
 
     range_states[current_states++].insert(*reader) = std::move(state);

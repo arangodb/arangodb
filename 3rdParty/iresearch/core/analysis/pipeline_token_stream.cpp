@@ -211,7 +211,7 @@ irs::analysis::analyzer::ptr make_json(const irs::string_ref& args) {
 REGISTER_ANALYZER_JSON(irs::analysis::pipeline_token_stream, make_json,
   normalize_json_config);
 
-irs::attribute* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
+irs::payload* find_payload(const std::vector<irs::analysis::analyzer::ptr>& pipeline) {
   for (auto it = pipeline.rbegin(); it != pipeline.rend(); ++it) {
     auto payload = irs::get_mutable<irs::payload>(it->get());
     if (payload) {
@@ -235,14 +235,17 @@ namespace iresearch {
 namespace analysis {
 
 pipeline_token_stream::pipeline_token_stream(pipeline_token_stream::options_t&& options)
-  : attributes{ {
-    { irs::type<payload>::id(), find_payload(options)},
-    { irs::type<increment>::id(), &inc_},
-    { irs::type<offset>::id(), all_have_offset(options)? &offs_: nullptr},
-    { irs::type<term_attribute>::id(), options.empty() ?
-                                         nullptr
-                                         : irs::get_mutable<term_attribute>(options.back().get())}},
-    irs::type<pipeline_token_stream>::get()} {
+  : analyzer{irs::type<pipeline_token_stream>::get()},
+    attrs_{
+      {},
+      options.empty()
+        ? nullptr
+        : irs::get_mutable<term_attribute>(options.back().get()),
+      all_have_offset(options)
+        ? &offs_
+        : attribute_ptr<offset>{},
+      find_payload(options)
+    } {
   const auto track_offset = irs::get<offset>(*this) != nullptr;
   pipeline_.reserve(options.size());
   for (const auto& p : options) {
@@ -291,7 +294,7 @@ bool pipeline_token_stream::next() {
       ++current_;
       // check do we need to do step forward due to rollback to 0.
       step_for_rollback |= top_holds_position && current_->pos != 0 &&
-        current_->pos != irs::integer_traits<uint32_t>::const_max;
+        current_->pos != std::numeric_limits<uint32_t>::max();
       if (!current_->reset(prev_start, prev_end, irs::ref_cast<char>(prev_term))) {
         return false;
       }
@@ -311,7 +314,7 @@ bool pipeline_token_stream::next() {
   if (step_for_rollback) {
     pipeline_inc++;
   }
-  inc_.value = pipeline_inc;
+  std::get<increment>(attrs_).value = pipeline_inc;
   offs_.start = current_->start();
   offs_.end = current_->end();
   return true;
