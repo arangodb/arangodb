@@ -4,8 +4,12 @@ help: |
 unit: number
 type: counter
 category: Maintenance
-complexity: medium
+complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Counter of actions that have been registered in the action registry.
+  Database servers execute reconciliation actions to let the cluster converge
+  to the desired state. Actions are created, registered, queued and executed.
+  Once they are done they will eventually be removed.
+
+  This metric counts the number of actions that are queued or active.
