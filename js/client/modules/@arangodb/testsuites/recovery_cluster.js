@@ -121,6 +121,7 @@ function runArangodRecovery (params) {
   // arangosh has different name for parameter :(
   additionalTestParams['javascript.execute'] =  params.script;
   additionalTestParams['javascript.run-main'] = true;
+  additionalTestParams['server.request-timeout'] = '60';
 
   if (params.setup) {
     additionalTestParams['javascript.script-parameter'] = 'setup';
