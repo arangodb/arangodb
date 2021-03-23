@@ -1482,7 +1482,7 @@
   name: arangodb_intermediate_commits_total
   troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.
     It can\nhappen for large transactions and large data-loading jobs. However, as
-    modifications\nperformed byintermediate commits are persisted and cannot simply
+    modifications\nperformed by intermediate commits are persisted and cannot simply
     be rolled back in \nmemory, it should be monitored whether the intermediate commits
     only happen for\noperations where they are expected. If they also happen for operations
     that are\nsupposed to be atomic, then the intermediate commit size and count parameters
@@ -1956,7 +1956,7 @@
     that the replication request was not sent by the current\nshard leader. This can
     happen if replication requests to the follower are \ndelayed or the follower is
     slow to process incoming requests and there was \na leader change for the shard.\nIf
-    such refusal answer is received by the shard leader, it will drop the\nfollower
+    such a refusal answer is received by the shard leader, it will drop the\nfollower
     from the list of followers.\nThis metrics was named `arangodb_refused_followers_count`
     in previous\nversions of ArangoDB.\n"
   exposedBy:
@@ -2618,7 +2618,7 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of CPU cores visible to the arangod process, unless the.
+  description: 'Number of CPU cores visible to the arangod process, unless the
 
     environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES`
 
@@ -2709,7 +2709,7 @@
 
     '
   name: arangodb_server_statistics_server_uptime_total
-  type: gauge
+  type: counter
   unit: s
 - category: Statistics
   complexity: simple
