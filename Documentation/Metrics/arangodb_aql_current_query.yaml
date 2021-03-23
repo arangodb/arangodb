@@ -9,5 +9,6 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
   Current number of AQL queries executing.
