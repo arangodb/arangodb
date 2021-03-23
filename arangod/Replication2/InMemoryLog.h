@@ -30,23 +30,34 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace arangodb::replication2 {
 
 struct LogIndex {
   LogIndex() : value{0} {}
+  explicit LogIndex(std::uint64_t value) : value{value} {}
   std::uint64_t value;
+
+  [[nodiscard]] auto operator==(LogIndex) const -> bool;
+  [[nodiscard]] auto operator<=(LogIndex) const -> bool;
+  [[nodiscard]] auto operator<(LogIndex) const -> bool;
 };
 struct LogTerm {
   LogTerm() : value{0} {}
+  explicit LogTerm(std::uint64_t value) : value{value} {}
   std::uint64_t value;
 };
 struct LogPayload {
   // just a placeholder for now
+  std::string dummy;
 };
-struct ParticipantId {
-  // just a placeholder for now
+// just a placeholder for now, must have a hash<>
+using ParticipantId = std::size_t;
+struct LogStatistics {
+  LogIndex spearHead{};
+  LogIndex commitIndex{};
 };
 
 // TODO This should probably be moved into a separate file
@@ -78,12 +89,6 @@ struct AppendEntriesRequest {
   std::vector<LogEntry> entries;
 };
 
-struct LogConfiguration {
-  ParticipantId leaderId;
-  std::unordered_set<ParticipantId> followerIds;
-  std::size_t writeConcern;
-};
-
 /**
  * @brief State stub, later to be replaced by a RocksDB state.
  */
@@ -99,28 +104,53 @@ class InMemoryState {
  */
 class InMemoryLog {
  public:
-  InMemoryLog() = default;
-  explicit InMemoryLog(std::shared_ptr<InMemoryState> state);
+  InMemoryLog() = delete;
+  explicit InMemoryLog(ParticipantId participantId, std::shared_ptr<InMemoryState> state);
 
+  // follower only
   auto appendEntries(AppendEntriesRequest) -> arangodb::futures::Future<AppendEntriesResult>;
 
+  // leader only
   auto insert(LogPayload) -> LogIndex;
 
+  // leader only
   auto createSnapshot() -> std::pair<LogIndex, std::shared_ptr<InMemoryState const>>;
 
+  // leader only
   auto waitFor(LogIndex) -> arangodb::futures::Future<arangodb::futures::Unit>;
 
   // Set to follower, and (strictly increase) term to the given value
-  auto becomeFollower(LogTerm, LogConfiguration) -> void;
+  auto becomeFollower(LogTerm, ParticipantId leaderId) -> void;
 
   // Set to leader, and (strictly increase) term to the given value
-  auto becomeLeader(LogTerm, LogConfiguration) -> void;
+  auto becomeLeader(LogTerm, std::unordered_set<ParticipantId> followerIds, std::size_t writeConcern) -> void;
+
+  [[nodiscard]] auto getStatistics() const -> LogStatistics;
+
+  auto runAsyncStep() -> void;
 
  private:
-  bool isLeader = false;
+  struct Unconfigured {};
+  struct Leader {
+    std::unordered_set<ParticipantId> followerIds{};
+    std::size_t writeConcern{};
+  };
+  struct Follower {
+    ParticipantId leaderId{};
+  };
+
+  std::variant<Unconfigured, Leader, Follower> _role;
+  ParticipantId _id{};
   LogTerm _currentTerm = LogTerm{};
   std::deque<LogEntry> _log;
   std::shared_ptr<InMemoryState> _state;
+  LogIndex _commitIndex{};
+
+  using WaitForPromise = futures::Promise<arangodb::futures::Unit>;
+  std::multimap<LogIndex, WaitForPromise> _waitForQueue;
+
+ private:
+  LogIndex nextIndex();
 };
 
 }  // namespace arangodb::replication2

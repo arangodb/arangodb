@@ -28,6 +28,36 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 
 TEST(InMemoryLogTest, test) {
-  auto log = InMemoryLog{};
-  ASSERT_TRUE(true);
+  auto const state = std::make_shared<InMemoryState>();
+  auto const ourParticipantId = ParticipantId{1};
+  auto log = InMemoryLog{ourParticipantId, state};
+
+  log.becomeLeader(LogTerm{1}, {}, 1);
+
+  {
+    auto stats = log.getStatistics();
+    ASSERT_EQ(LogIndex{0}, stats.commitIndex);
+    ASSERT_EQ(LogIndex{0}, stats.spearHead);
+  }
+
+  auto index = log.insert(LogPayload{"myLogEntry 1"});
+  ASSERT_EQ(LogIndex{1}, index);
+
+  auto f = log.waitFor(index);
+
+  {
+    auto stats = log.getStatistics();
+    ASSERT_EQ(LogIndex{0}, stats.commitIndex);
+    ASSERT_EQ(LogIndex{1}, stats.spearHead);
+  }
+
+  log.runAsyncStep();
+
+  ASSERT_TRUE(f.isReady());
+
+  {
+    auto stats = log.getStatistics();
+    ASSERT_EQ(LogIndex{1}, stats.commitIndex);
+    ASSERT_EQ(LogIndex{1}, stats.spearHead);
+  }
 }
