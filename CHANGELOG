@@ -1,7 +1,7 @@
 devel
 -----
 
-* Fix a crash caused by returning a result produced by ANALYZER function
+* Fix a crash caused by returning a result produced by ANALYZER function.
 
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
