@@ -42,7 +42,6 @@
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -1336,12 +1335,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   } else if (exp == ShutdownState::InProgress) {
     return ExecutionState::WAITING;
   }
-
-  TRI_ASSERT (exp == ShutdownState::None);
-  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
-                                              std::memory_order_relaxed)) {
-    return ExecutionState::WAITING; // someone else got here
-  }
   
   enterState(QueryExecutionState::ValueType::FINALIZATION);
   
@@ -1354,16 +1347,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " Query::finalize: before _trx->commit"
       << " this: " << (uintptr_t)this;
 
-  // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    ScopeGuard guard([this](){
-      // If we exit here we need to throw the error.
-      // The caller will handle the error and will call this method
-      // again using an errorCode != NO_ERROR.
-      // If we do not reset to None here, this additional call will cause endless
-      // looping.
-      _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
-    });
     // simon: no need to wait here, a commit may never issue a commit
     // request to DBServers (done by AQL layer or RestTransactionHandler)
     futures::Future<Result> commitResult = _trx->commitAsync();
@@ -1371,12 +1355,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (commitResult.get().fail()) {
       THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
     }
-    TRI_IF_FAILURE("Query::finalize_before_done") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-    // We succeeded with commit. Let us cancel the guard
-    // The state of "in progress" is now correct if we exist the method.
-    guard.cancel();
   }
 
   LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
@@ -1384,7 +1362,16 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " Query::finalize: before cleanupPlanAndEngine"
       << " this: " << (uintptr_t)this;
 
+  TRI_IF_FAILURE("Query::finalize_before_done") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
+  TRI_ASSERT (exp == ShutdownState::None);
+  if (!_shutdownState.compare_exchange_strong(exp, ShutdownState::InProgress,
+                                              std::memory_order_relaxed)) {
+    return ExecutionState::WAITING; // someone else got here
+  }
+  
   if (_serverQueryIds.empty()) {
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
@@ -1392,32 +1379,15 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(_sharedState);
-  try {
-    TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
-    }
-    ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
-      LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-        << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
-      _sharedState->executeAndWakeup([&] {
-        _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
-        return true;
-      });
+  
+  ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
+    LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+      << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
+    _sharedState->executeAndWakeup([&] {
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+      return true;
     });
-    return ExecutionState::WAITING;
-  } catch (...) {
-    // In case of any error that happend in sending out the requests
-    // we simply reset to done, we tried to cleanup the engines.
-    // we only get here if something in the network stack is out of order.
-    // so there is no need to retry on cleaning up the engines, caller can continue
-    // Also note: If an error in cleanup happens the query was completed already,
-    // so this error does not need to be reported to client.
-    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
-    // TODO: For Max: should the Level be WARN or better INFO? This will not be sever as we clean up the state.
-    LOG_TOPIC("63572", WARN, Logger::QUERIES)
-        << " Failed to cleanup leftovers of a query. Due to communication errors. "
-        << " The DBServers will eventually clean up the state. If the query used exclusive locks "
-        << " you may see some delay in execution.";
-    return ExecutionState::DONE;
-  }
+  });
+  
+  return ExecutionState::WAITING;
 }
