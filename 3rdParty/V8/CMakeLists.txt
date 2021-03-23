@@ -441,9 +441,6 @@ message(${V8_GYP_ARGS})
       ${PYTHON_EXECUTABLE} ${GYP_MAIN} ${V8_GYP_ARGS}
     BUILD_COMMAND
       $(MAKE) ${V8_COMPILE_TARGETS} ${V8_COMPILE_ARGS}
-    BUILD_BYPRODUCTS
-      ${ICU_LIBRARY_DIR}/libicui18n.a
-      ${ICU_LIBRARY_DIR}/libicuuc.a
     STEP_TARGETS
       v8_libbase v8_libplatform icui18n icuuc v8_base v8_libsampler v8_init v8_initializers v8_nosnapshot mksnapshot v8_snapshot
     INSTALL_COMMAND
