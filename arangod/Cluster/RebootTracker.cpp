@@ -25,10 +25,14 @@
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <algorithm>
 
@@ -59,9 +63,16 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
-        
-  LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
-      << "updating reboot server state from " << _rebootIds << " to " << state;
+    
+  // FIXME: can't get this log message to compile in some build environments...
+  // ostreaming _rebootIds causes a compiler failure because operator<< is not visible
+  // here anymore for some reason, which is very likely due to a changed order of include
+  // files or some other change in declaration order.
+  // leaving the log message here because it can be compiled in some environments and
+  // maybe someone can fix it in the future
+  //
+  // LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
+  //     << "updating reboot server state from " << _rebootIds << " to " << state;
 
   // Call cb for each iterator.
   auto for_each_iter = [](auto begin, auto end, auto cb) {
@@ -319,6 +330,25 @@ void RebootTracker::queueCallback(DescriptedCallback callback) {
   queueCallbacks({std::make_shared<std::unordered_map<CallbackId, DescriptedCallback>>(
       std::unordered_map<CallbackId, DescriptedCallback>{
           std::make_pair(getNextCallbackId(), std::move(callback))})});
+}
+    
+void RebootTracker::PeerState::toVelocyPack(velocypack::Builder& builder) const {
+  builder.openObject();
+  builder.add(StaticStrings::AttrCoordinatorId, VPackValue(_serverId));
+  builder.add(StaticStrings::AttrCoordinatorRebootId, VPackValue(_rebootId.value()));
+  builder.close();
+}
+
+RebootTracker::PeerState RebootTracker::PeerState::fromVelocyPack(velocypack::Slice slice) {
+  TRI_ASSERT(slice.isObject());
+  VPackSlice serverIdSlice = slice.get(StaticStrings::AttrCoordinatorId);
+  VPackSlice rebootIdSlice = slice.get(StaticStrings::AttrCoordinatorRebootId);
+
+  if (!serverIdSlice.isString() || !rebootIdSlice.isInteger()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid reboot id");
+  }
+  
+  return { serverIdSlice.copyString(), RebootId(rebootIdSlice.getUInt()) };
 }
 
 CallbackGuard::CallbackGuard() : _callback(nullptr) {}

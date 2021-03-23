@@ -1,6 +1,13 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
 * Fix an assertion failure that occurred when restoring view definitions from a
   cluster into a single server.
 

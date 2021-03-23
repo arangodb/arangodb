@@ -23,8 +23,8 @@
 #ifndef ARANGOD_CLUSTER_REBOOTTRACKER_H
 #define ARANGOD_CLUSTER_REBOOTTRACKER_H
 
-#include "Cluster/CallbackGuard.h"
 #include "Basics/Mutex.h"
+#include "Cluster/CallbackGuard.h"
 
 #include <map>
 #include <memory>
@@ -35,6 +35,11 @@
 namespace arangodb {
 
 class SupervisedScheduler;
+
+namespace velocypack {
+class Builder;
+class Slice;
+}
 
 namespace cluster {
 
@@ -53,6 +58,9 @@ class RebootTracker {
 
     ServerID const& serverId() const noexcept { return _serverId; }
     RebootId rebootId() const noexcept { return _rebootId; }
+
+    void toVelocyPack(velocypack::Builder& builder) const;
+    static PeerState fromVelocyPack(velocypack::Slice);
 
    private:
     ServerID _serverId;

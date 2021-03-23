@@ -177,6 +177,7 @@ static void SetupAqlPhase(MockServer& server) {
 MockServer::MockServer()
     : _server(std::make_shared<arangodb::options::ProgramOptions>("", "", "", nullptr), nullptr),
       _engine(_server),
+      _oldRebootId(0),
       _started(false) {
   init();
 }
@@ -184,6 +185,8 @@ MockServer::MockServer()
 MockServer::~MockServer() {
   stopFeatures();
   _server.setStateUnsafe(_oldApplicationServerState);
+  
+  arangodb::ServerState::instance()->setRebootId(_oldRebootId);
 }
 
 application_features::ApplicationServer& MockServer::server() {
@@ -192,9 +195,14 @@ application_features::ApplicationServer& MockServer::server() {
 
 void MockServer::init() {
   _oldApplicationServerState = _server.state();
+  _oldRebootId = arangodb::ServerState::instance()->getRebootId();
 
   _server.setStateUnsafe(arangodb::application_features::ApplicationServer::State::IN_WAIT);
   arangodb::transaction::Methods::clearDataSourceRegistrationCallbacks();
+
+  // many other places rely on the reboot id being initialized, 
+  // so we do it here in a central place
+  arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1}); 
 }
 
 void MockServer::startFeatures() {
