@@ -1,7 +1,7 @@
 name: arangodb_server_statistics_iowait_percent
 help: |
   Percentage of time that the system CPUs have been waiting for I/O
-unit: number
+unit: percentage
 type: gauge
 category: Statistics
 complexity: simple
