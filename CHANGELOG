@@ -473,7 +473,7 @@ v3.7.7 (2021-02-05)
 v3.7.6 (2021-01-04)
 -------------------
 
-* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.45.6.
+* Updated OpenSSL to 1.1.1i and OpenLDAP to 2.4.56.
 
 * Added new metric: "arangodb_collection_lock_sequential_mode" this will count
   how many times we need to do a sequential locking of collections. If this
