@@ -14,7 +14,7 @@ description: |
   shard leader. This can happen if replication requests to the follower are 
   delayed or the follower is slow to process incoming requests and there was 
   a leader change for the shard.
-  If such refusal answer is received by the shard leader, it will drop the
+  If such a refusal answer is received by the shard leader, it will drop the
   follower from the list of followers.
   This metrics was named `arangodb_refused_followers_count` in previous
   versions of ArangoDB.
