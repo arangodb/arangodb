@@ -159,23 +159,6 @@ function ahuacatlFailureSuite () {
         ERROR_QUERY_COLLECTION_LOCK_FAILED
       );
     },
-
-    testThatQueryIsntStuckAtShutdownIfFinishDBServerPartsThrows: function() {
-      // Force cleanup to fail.
-      // This should result in a positive query, but may leave locks on DBServers.
-      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
-      const res = AQL_EXECUTE(`INSERT {Hallo:12} INTO ${cn}`);
-      assertEqual(res.stats.writesExecuted, 1);
-    },
-
-    testThatQueryIsntStuckAtShutdownIfCommitAndFinishDBServerPartsThrows: function() {
-      // Force commit and cleanup to fail.
-      // This should result in a failed commit (error reported)
-      // It should also leave locks on DBServers.
-      internal.debugSetFailAt("Query::finalize_before_done");
-      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
-      assertFailingQuery(`INSERT {Hallo:12} INTO ${cn}`);
-    },
   };
 }
  

@@ -23,11 +23,11 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Jan Steemann
 /// @author Michael Hackstein
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
