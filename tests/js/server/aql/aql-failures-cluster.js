@@ -159,7 +159,6 @@ function ahuacatlFailureSuite () {
         ERROR_QUERY_COLLECTION_LOCK_FAILED
       );
     },
-
   };
 }
  
