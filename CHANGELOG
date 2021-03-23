@@ -1,7 +1,13 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
-
+* Bug-fix in the case of very rare network issues there was a chance that
+  an AQL query could get stuck during a cleanup and after a commit.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
 
 v3.7.10 (2021-03-14)
 --------------------
