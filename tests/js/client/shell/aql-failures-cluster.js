@@ -8,7 +8,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,10 +22,10 @@
 /// See the License for the specific language governing permissions and
 /// limitations under the License.
 ///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -85,19 +85,13 @@ function aqlFailureSuite () {
     for (const {code, message} of warnings) {
       if (code === ERROR_CLUSTER_AQL_COMMUNICATION.code) {
         const parts = message.split(" ");
-        const route = parts.filter(m => m.startsWith("/_api/aql"))[0];
-        // Make sure we mentioned the API route (this is dynamic to be more resilient to change).
+        const route = parts.filter(m => m.startsWith("_api/aql"))[0];
         assertTrue(route !== undefined);
-        // Make sure we mentioned the server, this is dynamic as server name is randomly generated.
         const serverInfo = parts.filter(m => m.startsWith("server:"))[0];
         assertTrue(serverInfo !== undefined);
         const serverName = serverInfo.split(":")[1];
         assertTrue(serverName !== undefined);
         callFinish(serverName, route);
-
-        // Make sure we mentioned the database name
-        const databaseName = parts.filter(m => m === "_system");
-        assertEqual(databaseName.length, 1);
       }
     }
   };
@@ -140,10 +134,10 @@ function aqlFailureSuite () {
 
     /*
      * This test is disabled due to the following reasons:
-     * If we trigger an error during the commit, the warnings are removed from the query, it is replaced by an error only.
-     * Now we additionally trigger leftovers in cleanup of DBServers, which should produce warnings (which we use here to clean up ourselves)
+     * If we trigger an error during the commit, the warnings are removed from the query, it is repliced by an error only.
+     * Now we additionally trigger leftovers in cleanup of DBServers, which should produce warnings (which we use here to clean up ourselfs)
      * As we do not have the warnings available we cannot call finish with the correct input, so this test would trigger a lock-timeout
-     * which is too high to get it in for every jenkins run.
+     * this is too high to get it in for every jenkins run.
      * If we can in some other way call finish correctly this test can be activated.
     testThatQueryIsntStuckAtShutdownIfCommitAndFinishDBServerPartsThrows: function() {
       // Force commit and cleanup to fail.
