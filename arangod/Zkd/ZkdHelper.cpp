@@ -250,7 +250,7 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
 
   TRI_ASSERT(result.size() == dimensions);
   std::fill(result.begin(), result.end(), CompareResult{});
-  std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
+  std::size_t max_size = std::max({cur.size(), min.size(), max.size()});
 
   BitReader cur_reader(cur);
   BitReader min_reader(min);
@@ -309,7 +309,7 @@ auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view
     throw std::invalid_argument{msg};
   }
 
-  std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
+  std::size_t max_size = std::max({cur.size(), min.size(), max.size()});
 
   BitReader cur_reader(cur);
   BitReader min_reader(min);
