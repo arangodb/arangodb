@@ -1,6 +1,10 @@
 devel
 -----
-* Added new ArangoSearch analyzer type "mask"
+
+* Fix an assertion failure that occurred when restoring view definitions from
+  a cluster into a single server.
+
+* Added new ArangoSearch analyzer type "mask".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and
