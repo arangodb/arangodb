@@ -27,7 +27,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Scheduler/Scheduler.h"
@@ -65,9 +64,16 @@ RebootTracker::RebootTracker(RebootTracker::SchedulerPointer scheduler)
 
 void RebootTracker::updateServerState(std::unordered_map<ServerID, RebootId> const& state) {
   MUTEX_LOCKER(guard, _mutex);
-        
-  LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
-      << "updating reboot server state from " << _rebootIds << " to " << state;
+    
+  // FIXME: can't get this log message to compile in some build environments...
+  // ostreaming _rebootIds causes a compiler failure because operator<< is not visible
+  // here anymore for some reason, which is very likely due to a changed order of include
+  // files or some other change in declaration order.
+  // leaving the log message here because it can be compiled in some environments and
+  // maybe someone can fix it in the future
+  //
+  // LOG_TOPIC("77a6e", DEBUG, Logger::CLUSTER)
+  //     << "updating reboot server state from " << _rebootIds << " to " << state;
 
   // Call cb for each iterator.
   auto for_each_iter = [](auto begin, auto end, auto cb) {

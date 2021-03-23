@@ -82,7 +82,7 @@ struct Options {
   /// the info is send with the transaction begin requests to DB servers,
   /// which will also store the coordinator's id. this is so they can
   /// abort the transaction should the coordinator die or be rebooted.
-  ///. the server id and reboot id are intentionally empty in single server
+  /// the server id and reboot id are intentionally empty in single server
   /// case.
   arangodb::cluster::RebootTracker::PeerState origin;
 };

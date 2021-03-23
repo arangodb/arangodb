@@ -26,7 +26,6 @@
 
 #include "Basics/Mutex.h"
 #include "Cluster/CallbackGuard.h"
-#include "Cluster/ClusterTypes.h"
 
 #include <map>
 #include <memory>
