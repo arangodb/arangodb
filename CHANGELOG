@@ -1004,7 +1004,7 @@ v3.7.3 (2020-10-14)
   resulted in the REST handler returning HTTP 500 in cluster mode.
 
 * Use rclone built from v1.51.0 source with go1.15.2 instead of prebuilt
-  v1.51.0 release.
+  v1.53.0 release.
 
 * Fixed a bug in AQL COLLECT with OPTIONS { "hash" } that led to a quadratic
   runtime in the number of output rows.
