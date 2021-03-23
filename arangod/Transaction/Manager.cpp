@@ -135,19 +135,19 @@ uint64_t Manager::getActiveTransactionCount() {
   return _nrRunning.load(std::memory_order_relaxed);
 }
 
-/*static*/ double Manager::ttlForType(Manager::MetaType type) {
+/*static*/ double Manager::ttlForType(ManagerFeature const& feature, Manager::MetaType type) {
   if (type == Manager::MetaType::Tombstone) {
     return tombstoneTTL;
   }
 
   auto role = ServerState::instance()->getRole();
   if ((ServerState::isSingleServer(role) || ServerState::isCoordinator(role))) {
-    return idleTTL;
+    return feature.streamingIdleTimeout();
   }
   return idleTTLDBServer;
 }
 
-Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl, 
+Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t, double ttl, 
                                 std::shared_ptr<TransactionState> st,
                                 arangodb::cluster::CallbackGuard rGuard)
     : type(t),
@@ -155,7 +155,7 @@ Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
       wasExpired(false),
       finalStatus(Status::UNDEFINED),
       timeToLive(ttl),
-      expiryTime(TRI_microtime() + Manager::ttlForType(t)),
+      expiryTime(TRI_microtime() + Manager::ttlForType(feature, t)),
       state(std::move(st)),
       rGuard(std::move(rGuard)),
       user(::currentUser()),
@@ -299,8 +299,8 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
 
     auto& buck = _transactions[bucket];
 
-    double ttl = Manager::ttlForType(MetaType::StandaloneAQL);
-    auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state, std::move(rGuard));
+    double ttl = Manager::ttlForType(_feature, MetaType::StandaloneAQL);
+    auto it = buck._managed.try_emplace(tid, _feature, MetaType::StandaloneAQL, ttl, state, std::move(rGuard));
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_INTERNAL,
@@ -1342,7 +1342,7 @@ bool Manager::storeManagedState(TransactionId const& tid,
                                 std::shared_ptr<arangodb::TransactionState> state,
                                 double ttl) {
   if (ttl <= 0) {
-    ttl = Manager::ttlForType(MetaType::Managed);
+    ttl = Manager::ttlForType(_feature, MetaType::Managed);
   }
 
   TRI_ASSERT(state != nullptr);
@@ -1352,7 +1352,7 @@ bool Manager::storeManagedState(TransactionId const& tid,
   size_t const bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl,
+  auto it = _transactions[bucket]._managed.try_emplace(tid, _feature, MetaType::Managed, ttl,
                                                        std::move(state), std::move(rGuard));
   return it.second;
 }

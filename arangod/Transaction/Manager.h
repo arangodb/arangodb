@@ -58,7 +58,6 @@ struct Options;
 /// @brief Tracks TransasctionState instances
 class Manager final {
   static constexpr size_t numBuckets = 16;
-  static constexpr double idleTTL = 30.0;                          // 30 seconds
   static constexpr double idleTTLDBServer = 3 * 60.0;              //  3 minutes
   static constexpr double tombstoneTTL = 10.0 * 60.0;              // 10 minutes
   static constexpr size_t maxTransactionSize = 128 * 1024 * 1024;  // 128 MiB
@@ -70,7 +69,7 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType type, double ttl, 
+    ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl, 
                std::shared_ptr<TransactionState> state, 
                arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
@@ -239,7 +238,7 @@ class Manager final {
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(std::function<void(TransactionId, ManagedTrx const&)> const&) const;
 
-  static double ttlForType(Manager::MetaType);
+  static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
 
   bool transactionIdExists(TransactionId const& tid) const;
   bool storeManagedState(TransactionId const& tid,

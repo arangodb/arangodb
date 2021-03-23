@@ -1,7 +1,9 @@
 devel
 -----
 
-* Increase idle timeout in streaming transactions from 10 seconds to 30 seconds.
+* Increase default idle timeout in streaming transactions from 10 seconds to 
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
 
 * Use RebootTracker to abort cluster transactions on DB servers should the
   originating coordinator die or be rebooted. The previous implementation left
