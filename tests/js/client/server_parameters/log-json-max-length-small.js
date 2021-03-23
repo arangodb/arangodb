@@ -32,7 +32,7 @@ if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
     'log.max-entry-length': '16384',
-    'log.output': 'file://' + fs.getTempFile(),
+    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }

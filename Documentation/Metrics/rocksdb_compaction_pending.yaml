@@ -1,0 +1,13 @@
+name: rocksdb_compaction_pending
+help: |
+  rocksdb_compaction_pending
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  rocksdb_compaction_pending

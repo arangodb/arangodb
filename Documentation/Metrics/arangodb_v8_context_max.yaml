@@ -1,0 +1,14 @@
+name: arangodb_v8_context_max
+help: |
+  Maximum number of concurrent V8 contexts
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Maximum number of concurrent V8 contexts.

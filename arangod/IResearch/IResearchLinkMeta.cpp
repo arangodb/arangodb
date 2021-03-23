@@ -462,7 +462,7 @@ bool FieldMeta::json(arangodb::application_features::ApplicationServer& server,
       for (auto& entry : _fields) {
         fieldMask._fields = !entry.value()->_fields.empty(); // do not output empty fields on subobjects
         fieldsBuilder.add( // add sub-object
-          entry.key(), // field name
+          arangodb::velocypack::StringRef(entry.key().c_str(), entry.key().size()), // field name
           velocypack::Value(velocypack::ValueType::Object));
 
         if (!entry.value()->json(server, fieldsBuilder, &subDefaults, defaultVocbase, &fieldMask)) {
@@ -770,8 +770,8 @@ bool IResearchLinkMeta::init(arangodb::application_features::ApplicationServer& 
     }
   }
 
-  if (slice.hasKey(StaticStrings::CollectionNameField)) {
-    TRI_ASSERT(ServerState::instance()->isClusterRole());
+  if (slice.hasKey(StaticStrings::CollectionNameField) &&
+      ServerState::instance()->isClusterRole()) {
     auto const field = slice.get(StaticStrings::CollectionNameField);
     if (!field.isString()) {
       return false;

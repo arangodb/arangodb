@@ -374,6 +374,14 @@ void vencode_from_array(T expected_value, size_t expected_length) {
     ASSERT_EQ(expected_value, irs::vread<T>(ptr));
     ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
   }
+
+  // skip data
+  {
+    const auto* ptr = buf;
+    irs::vskip<T>(ptr);
+    ASSERT_GE(ptr, buf);
+    ASSERT_EQ(expected_length, std::distance((const irs::byte_type*)(buf), ptr));
+  }
 }
 
 #ifdef IRESEARCH_SSE2
@@ -438,7 +446,7 @@ TEST(store_utils_tests, vint_from_array) {
   tests::detail::vencode_from_array(UINT32_C(2097152), 4);
   tests::detail::vencode_from_array(UINT32_C(268435455), 4);
   tests::detail::vencode_from_array(UINT32_C(268435456), 5);
-  tests::detail::vencode_from_array(irs::integer_traits<uint32_t>::const_max, 5);
+  tests::detail::vencode_from_array(std::numeric_limits<uint32_t>::max(), 5);
 }
 
 TEST(store_utils_tests, vlong_from_array) {
@@ -460,7 +468,7 @@ TEST(store_utils_tests, vlong_from_array) {
   tests::detail::vencode_from_array(UINT64_C(4398046511104), 7);
   tests::detail::vencode_from_array(UINT64_C(72057594037927935), 8);
   tests::detail::vencode_from_array(UINT64_C(72057594037927936), 9);
-  tests::detail::vencode_from_array(irs::integer_traits<uint64_t>::const_max, 10);
+  tests::detail::vencode_from_array(std::numeric_limits<uint64_t>::max(), 10);
 }
 
 TEST(store_utils_tests, zvfloat_read_write) {

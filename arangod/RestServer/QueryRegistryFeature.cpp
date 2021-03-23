@@ -109,7 +109,7 @@ DECLARE_COUNTER(arangodb_aql_all_query_total,
                 "Total number of AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_query_time, QueryTimeScale,
                   "Execution time histogram for all AQL queries [s]");
-DECLARE_COUNTER(arangodb_aql_slow_query_total,
+DECLARE_LEGACY_COUNTER(arangodb_aql_slow_query_total,
                 "Total number of slow AQL queries finished");
 DECLARE_HISTOGRAM(arangodb_aql_slow_query_time, SlowQueryTimeScale,
                   "Execution time histogram for slow AQL queries [s]");

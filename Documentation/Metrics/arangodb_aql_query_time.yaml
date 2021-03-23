@@ -9,5 +9,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Execution time histogram for all AQL queries.
+  Execution time histogram for all AQL queries, in seconds.
+  The histogram includes all slow queries.
