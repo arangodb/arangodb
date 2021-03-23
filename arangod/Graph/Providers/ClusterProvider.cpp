@@ -153,7 +153,9 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        f.wait();
+        if (!f.empty()) {
+          std::ignore = std::move(f).await_unwrap();
+        }
       } catch (...) {
       }
     }
@@ -167,7 +169,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -192,7 +194,7 @@ void ClusterProvider::fetchVerticesFromEngines(std::vector<Step*> const& looseEn
       if (!_opts.getCache()->isVertexCached(vertexKey)) {
         // Will be protected by the datalake.
         // We flag to retain the payload.
-        _opts.getCache()->cacheVertex(std::move(vertexKey), pair.value);
+        _opts.getCache()->cacheVertex(vertexKey, pair.value);
         needToRetainPayload = true;
       }
     }
@@ -253,7 +255,7 @@ void ClusterProvider::destroyEngines() {
                                     "/_internal/traverser/" +
                                     arangodb::basics::StringUtils::itoa(engine.second),
                                     VPackBuffer<uint8_t>(), options)
-        .get();
+        .await_unwrap();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -287,7 +289,9 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
     for (Future<network::Response>& f : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to replace the wait with proper *finally* method.
-        f.wait();
+        if (!f.empty()) {
+          std::ignore = std::move(f).await_unwrap();
+        }
       } catch (...) {
       }
     }
@@ -302,7 +306,7 @@ Result ClusterProvider::fetchEdgesFromEngines(VertexType const& vertex) {
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = std::move(f).await_unwrap();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);

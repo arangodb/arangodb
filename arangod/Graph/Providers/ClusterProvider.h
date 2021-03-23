@@ -40,11 +40,6 @@
 
 namespace arangodb {
 
-namespace futures {
-template <typename T>
-class Future;
-}
-
 namespace aql {
 class QueryContext;
 }
