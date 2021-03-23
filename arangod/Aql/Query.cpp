@@ -1364,6 +1364,8 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       // looping.
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
+    // simon: no need to wait here, a commit may never issue a commit
+    // request to DBServers (done by AQL layer or RestTransactionHandler)
     futures::Future<Result> commitResult = _trx->commitAsync();
     TRI_ASSERT(commitResult.isReady());
     if (commitResult.get().fail()) {
