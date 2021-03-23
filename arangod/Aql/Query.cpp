@@ -1368,10 +1368,6 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " Query::finalize: before cleanupPlanAndEngine"
       << " this: " << (uintptr_t)this;
 
-  TRI_IF_FAILURE("Query::finalize_before_done") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
   if (_serverQueryIds.empty()) {
     _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
     return ExecutionState::DONE;
