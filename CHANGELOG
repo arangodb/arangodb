@@ -1,7 +1,8 @@
 devel
 -----
 
-* Switched to GCC 10 as the default compiler.
+* Switched to GCC 10 as the default compiler and use Sandy Bridge as the
+  default required architecture (Linux, macOS binaries).
 
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
