@@ -1570,6 +1570,8 @@
   complexity: advanced
   description: 'Internal request round-trip time as a percentage of timeout.
 
+    This metric will have a value between 0 and 100.
+
     '
   exposedBy:
   - coordinator
@@ -2471,7 +2473,7 @@
     '
   name: arangodb_server_statistics_idle_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
   description: 'Percentage of time that the system CPUs have been waiting for I/O,
@@ -2492,7 +2494,7 @@
     '
   name: arangodb_server_statistics_iowait_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
   description: "Physical memory of the system in bytes, as reported by the operating
@@ -2551,7 +2553,7 @@
     '
   name: arangodb_server_statistics_system_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Statistics
   complexity: simple
   description: 'Percentage of time that the system CPUs have spent in user mode, as
@@ -2571,7 +2573,7 @@
     '
   name: arangodb_server_statistics_user_percent
   type: gauge
-  unit: number
+  unit: percentage
 - category: Replication
   complexity: simple
   description: 'Number of leader shards on this machine. Every shard has a leader
