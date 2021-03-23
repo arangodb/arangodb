@@ -160,6 +160,23 @@ function ahuacatlFailureSuite () {
       );
     },
 
+    testThatQueryIsntStuckAtShutdownIfFinishDBServerPartsThrows: function() {
+      // Force cleanup to fail.
+      // This should result in a positive query, but may leave locks on DBServers.
+      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
+      // NOTE we need to insert two documents here to not end up with a single remote operation node.
+      const res = AQL_EXECUTE(`FOR value IN 1..2 INSERT {value} INTO ${cn}`);
+      assertEqual(res.stats.writesExecuted, 1);
+    },
+
+    testThatQueryIsntStuckAtShutdownIfCommitAndFinishDBServerPartsThrows: function() {
+      // Force commit and cleanup to fail.
+      // This should result in a failed commit (error reported)
+      // It should also leave locks on DBServers.
+      internal.debugSetFailAt("Query::finalize_before_done");
+      internal.debugSetFailAt("Query::finalize_error_on_finish_db_servers");
+      assertFailingQuery(`FOR value IN 1..2 INSERT {value} INTO ${cn}`);
+    },
   };
 }
  
