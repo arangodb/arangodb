@@ -88,15 +88,20 @@ less memory is needed because the server only needs to store a subset of
 results at a time. Read-only queries can benefit the most, unless `SORT`
 without index or `COLLECT` are involved that make it necessary to process all
 documents before a partial result can be returned. It is advisable to only use
-this option for queries without exclusive locks.
+this option for queries without exclusive locks (RocksDB) / write locks
+(MMFiles).
 
 Remarks:
-- The query will hold resources until it ends (such as RocksDB snapshots, which
-  prevents compaction to some degree). Writes will be in memory until the query
-  is committed.
-- If existing documents are modified, then write locks are held on these
-  documents and other queries trying to modify the same documents will fail
-  because of this conflict.
+- The query will hold resources until it ends (such as RocksDB snapshots if the
+  RocksDB storage engine is used, which prevents compaction to some degree).
+  Writes will be in memory until the query is committed.
+- With the MMFiles engine, long-running queries will need to hold collection
+  locks for as long as the query cursor exists. The option should thus be
+  enabled for short-running queries only, as other queries involving the same
+  collections will fail because of this conflict.
+- With the RocksDB storage engine, if existing documents are modified, then
+  write locks are held on these documents and other queries trying to modify
+  the same documents will fail because of this conflict.
 - A streaming query may fail late because of a conflict or for other reasons
   after some batches were already returned successfully, possibly rendering the
   results up to that point meaningless.
