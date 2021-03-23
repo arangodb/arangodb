@@ -1375,7 +1375,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     // We succeeded with commit. Let us cancel the guard
-    // The state of "in progress" is now correct if we exit the method.
+    // The state of "in progress" is now correct if we exist the method.
     guard.cancel();
   }
 
