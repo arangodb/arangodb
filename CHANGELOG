@@ -1,6 +1,9 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
 * Bug-fix in the case of very rare network issues there was a chance that an AQL
   query could get stuck during a cleanup and after a commit.
   This would cause the client to receive a timeout, and the Coordinator blocking
