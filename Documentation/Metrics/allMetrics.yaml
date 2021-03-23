@@ -1048,7 +1048,25 @@
   unit: ms
 - category: Statistics
   complexity: simple
-  description: 'Number of asynchronously executed HTTP requests.
+  description: 'This counter reflects the total number of **asynchronous** HTTP (or
+    VST)
+
+    requests which have hit this particular instance of `arangod`. Asynchronous
+
+    refers to the fact that the response is not sent with the HTTP response,
+
+    but is rather queried separately using the `/_api/jobs` API.
+
+    See [this Section](async-results-management.html) for details.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1060,13 +1078,23 @@
 
     '
   name: arangodb_http_request_statistics_async_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP DELETE requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **DELETE**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1076,13 +1104,23 @@
 
     '
   name: arangodb_http_request_statistics_http_delete_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP GET requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **GET** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1092,13 +1130,23 @@
 
     '
   name: arangodb_http_request_statistics_http_get_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP HEAD requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **HEAD** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1108,13 +1156,23 @@
 
     '
   name: arangodb_http_request_statistics_http_head_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP OPTIONS requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **OPTIONS**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1124,13 +1182,23 @@
 
     '
   name: arangodb_http_request_statistics_http_options_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP PATCH requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **PATCH**
+    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
+    this counter is ever growing during the lifetime of the\n`arangod` process. However,
+    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
+    it is usually visualized as a\nrate per second, averaged with a sliding window
+    of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1140,13 +1208,23 @@
 
     '
   name: arangodb_http_request_statistics_http_patch_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP POST requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **POST** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1156,13 +1234,23 @@
 
     '
   name: arangodb_http_request_statistics_http_post_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of HTTP PUT requests.
-
-    '
+  description: "This counter reflects the total number of HTTP (or VST) **PUT** \nrequests
+    which have hit this particular instance of `arangod`.\n\nNote that this counter
+    is ever growing during the lifetime of the\n`arangod` process. However, when the
+    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
+    usually visualized as a\nrate per second, averaged with a sliding window of a
+    minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1172,11 +1260,33 @@
 
     '
   name: arangodb_http_request_statistics_http_put_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of other HTTP requests.
+  description: 'This counter reflects the total number of HTTP (or VST) **other**
+
+    or **ILLEGAL** requests which have hit this particular instance of
+
+    `arangod`. These are all requests, which are not one of the following:
+
+    `DELETE`, `GET`, `HEAD`, `POST`, `PUT`, `OPTIONS`, `PATCH`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1188,11 +1298,33 @@
 
     '
   name: arangodb_http_request_statistics_other_http_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests executed by superuser/JWT.
+  description: 'This counter reflects the total number of HTTP (or VST)
+
+    requests that have been authenticated with the JWT superuser token,
+
+    which have hit this particular instance of
+
+    `arangod`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1204,11 +1336,28 @@
 
     '
   name: arangodb_http_request_statistics_superuser_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests.
+  description: 'This counter reflects the total number of HTTP (or VST) requests which
+
+    have hit this particular instance of `arangod`. Note that this counter
+
+    is ever growing during the lifetime of the `arangod` process. However,
+
+    when the process is restarted, it starts from scratch. In the Grafana
+
+    dashboards, it is usually visualized as a rate per second, averaged
+
+    with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1220,11 +1369,33 @@
 
     '
   name: arangodb_http_request_statistics_total_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Total number of HTTP requests executed by user clients.
+  description: 'This counter reflects the total number of HTTP (or VST) requests
+
+    that have been authenticated for some user (as opposed to with the
+
+    JWT superuser token), which have hit this particular instance of
+
+    `arangod`.
+
+
+    Note that this counter is ever growing during the lifetime of the
+
+    `arangod` process. However, when the process is restarted, it starts
+
+    from scratch. In the Grafana dashboards, it is usually visualized as a
+
+    rate per second, averaged with a sliding window of a minute.
 
     '
   exposedBy:
@@ -1236,6 +1407,13 @@
 
     '
   name: arangodb_http_request_statistics_user_requests_total
+  threshold: 'This metrics reflects the performance of an instance in a certain way.
+
+    Note that your mileage may vary according to available resources as well
+
+    as to complexity of the requests the client sends.
+
+    '
   type: counter
   unit: number
 - category: Statistics
