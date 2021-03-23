@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
 
