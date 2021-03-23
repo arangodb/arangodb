@@ -2,7 +2,7 @@ name: arangodb_server_statistics_server_uptime_total
 help: |
   Number of seconds elapsed since server start
 unit: s
-type: gauge
+type: counter
 category: Statistics
 complexity: simple
 exposedBy:
