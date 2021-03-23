@@ -35,7 +35,7 @@ const vn = cn + 'View';
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
+
 
   db._drop(cn);
   var c = db._create(cn);
@@ -51,7 +51,7 @@ function runSetup () {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
   }
 
-  c.save({ name: "crashme" }, { waitForSync: true });
+  c.save({ name: 'crashme' }, { waitForSync: true, maxRuntime: 10 });
   c.truncate();
   // force sync
   db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length");

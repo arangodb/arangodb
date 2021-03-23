@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/application-exit.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -273,6 +274,12 @@ ErrorCode fuerteToArangoErrorCode(network::Response const& res) {
   LOG_TOPIC_IF("abcde", ERR, Logger::COMMUNICATION, res.error != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(res.error)
       << "' from destination '" << res.destination << "'";
+  TRI_IF_FAILURE("Networking::DieAfterConnectionFailure") {
+            TRI_ASSERT(false);
+    LOG_TOPIC("abcdf", FATAL, arangodb::Logger::SYSCALL)
+      << "exiting because of Networking::DieAfterConnectionFailure";
+    FATAL_ERROR_EXIT();
+  }
   return toArangoErrorCodeInternal(res.error);
 }
 

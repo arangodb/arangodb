@@ -34,7 +34,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
+
   var i;
 
   db._drop('UnitTestsDummy');

@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
+
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -42,7 +42,7 @@ function runSetup () {
   var v1 = db._createView('UnitTestsRecovery1', 'arangosearch', {});
   v1.properties({ "consolidationIntervalMsec": 15 });
 
-  c.save({ _key: 'crashme' }, true);
+  c.save({ name: 'crashme' }, { waitForSync: true, maxRuntime: 10 });
 
   internal.debugTerminate('crashing server');
 }

@@ -30,7 +30,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
+
   var v;
 
   db._dropView('UnitTestsRecovery');

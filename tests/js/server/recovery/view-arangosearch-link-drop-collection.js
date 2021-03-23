@@ -33,7 +33,7 @@ var jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
-  internal.debugClearFailAt();
+
 
   db._drop('UnitTestsRecoveryDummy');
   db._drop('UnitTestsRecoveryDummy2');
@@ -48,7 +48,7 @@ function runSetup () {
   c.drop();
 
   c = db._create('UnitTestsRecoveryDummy2');
-  c.save({ name: 'crashme' }, true);
+  c.save({ name: 'crashme' }, { waitForSync: true, maxRuntime: 10 });
 
   internal.debugTerminate('crashing server');
 }

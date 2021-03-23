@@ -210,6 +210,13 @@ void NetworkFeature::prepare() {
           LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connection(s) to failed server '"
             << srvId << "' on endpoint '" << endpoint << "'";
+          
+          TRI_IF_FAILURE("Networking::DieAfterConnectionFailure") {
+            TRI_ASSERT(false);
+            LOG_TOPIC("17d7c", FATAL, arangodb::Logger::SYSCALL)
+              << "exiting because of Networking::DieAfterConnectionFailure";
+            FATAL_ERROR_EXIT();
+          }
         }
       }
 

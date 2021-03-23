@@ -146,12 +146,17 @@ void TRI_AddFailurePointDebugging(char const* value) {
 
 /// @brief remove a failure point
 void TRI_RemoveFailurePointDebugging(char const* value) {
+  LOG_TOPIC("d8a5a", WARN, arangodb::Logger::FIXME)
+    << "removing intentional failure point '" << value
+        << "'.";
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
   ::failurePoints.erase(std::string(value));
 }
 
 /// @brief clear all failure points
 void TRI_ClearFailurePointsDebugging() {
+  LOG_TOPIC("d8a5b", WARN, arangodb::Logger::FIXME)
+    << "flushing failurepoints";
   WRITE_LOCKER(writeLocker, ::failurePointsLock);
   ::failurePoints.clear();
 }
