@@ -141,7 +141,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection() {
 
   // try to find an existing connection in the cache
   // the cache has one connection per endpoint
-  auto [newConnection, wasFromCache] = findConnection(retryCount);
+  auto [newConnection, wasFromCache] = findConnection();
   int retryCount = wasFromCache? 2 : 1;
   fu::StringMap params{{"details", "true"}};
   while (retryCount > 0) {
