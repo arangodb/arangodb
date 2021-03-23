@@ -24,6 +24,9 @@
 #ifndef IRESEARCH_FIELD_DATA_H
 #define IRESEARCH_FIELD_DATA_H
 
+#include <vector>
+#include <tuple>
+
 #include "field_meta.hpp"
 #include "postings.hpp"
 #include "formats/formats.hpp"
@@ -33,10 +36,7 @@
 #include "utils/block_pool.hpp"
 #include "utils/memory.hpp"
 #include "utils/noncopyable.hpp"
-
-#include <vector>
-#include <tuple>
-#include <unordered_map>
+#include "utils/hash_set_utils.hpp"
 
 namespace iresearch {
 
@@ -58,28 +58,13 @@ class doc_iterator;
 class sorting_doc_iterator;
 }
 
-IRESEARCH_API bool memcmp_less(
-  const byte_type* lhs,
-  size_t lhs_size,
-  const byte_type* rhs,
-  size_t rhs_size
-) noexcept;
-
-inline bool memcmp_less(
-    const bytes_ref& lhs,
-    const bytes_ref& rhs
-) noexcept {
-  return memcmp_less(lhs.c_str(), lhs.size(), rhs.c_str(), rhs.size());
-}
-
 class IRESEARCH_API field_data : util::noncopyable {
  public:
   field_data(
     const string_ref& name,
     byte_block_pool::inserter& byte_writer,
     int_block_pool::inserter& int_writer,
-    bool random_access
-  );
+    bool random_access);
 
   doc_id_t doc() const noexcept { return last_doc_; }
 
@@ -88,7 +73,7 @@ class IRESEARCH_API field_data : util::noncopyable {
 
   const field_meta& meta() const noexcept { return meta_; }
 
-  data_output& norms(columnstore_writer& writer);
+  data_output& norms(columnstore_writer& writer) const ;
 
   // returns false if field contains indexed data
   bool empty() const noexcept {
@@ -119,8 +104,8 @@ class IRESEARCH_API field_data : util::noncopyable {
   void new_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
   void add_term_random_access(posting& p, doc_id_t did, const payload* pay, const offset* offs);
 
-  columnstore_writer::values_writer_f norms_;
-  field_meta meta_;
+  mutable columnstore_writer::values_writer_f norms_;
+  mutable field_meta meta_;
   postings terms_;
   byte_block_pool::inserter* byte_writer_;
   int_block_pool::inserter* int_writer_;
@@ -137,8 +122,23 @@ class IRESEARCH_API field_data : util::noncopyable {
 };
 
 class IRESEARCH_API fields_data: util::noncopyable {
+ private:
+  struct field_ref_eq : value_ref_eq<field_data*> {
+    using self_t::operator();
+
+    bool operator()(const ref_t& lhs, const hashed_string_ref& rhs) const noexcept {
+      return lhs.second->meta().name == rhs;
+    }
+
+    bool operator()(const hashed_string_ref& lhs, const ref_t& rhs) const noexcept {
+      return this->operator()(rhs, lhs);
+    }
+  };
+
+  using fields_map = flat_hash_set<field_ref_eq>;
+
  public:
-  typedef std::unordered_map<hashed_string_ref, field_data> fields_map;
+  using postings_ref_t = std::vector<const posting*>;
 
   explicit fields_data(const comparer* comparator);
 
@@ -146,7 +146,12 @@ class IRESEARCH_API fields_data: util::noncopyable {
     return comparator_;
   }
 
-  field_data& emplace(const hashed_string_ref& name);
+  field_data* emplace(const hashed_string_ref& name);
+
+  field_data* field(size_t idx) noexcept {
+    assert(idx < fields_.size());
+    return &fields_[idx];
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory actively in-use by this instance
@@ -154,14 +159,17 @@ class IRESEARCH_API fields_data: util::noncopyable {
   size_t memory_active() const noexcept {
     return byte_writer_.pool_offset()
       + int_writer_.pool_offset() * sizeof(int_block_pool::value_type)
-      + fields_.size() * sizeof(fields_map::value_type);
+      + fields_map_.size() * sizeof(fields_map::value_type)
+      + fields_.size() * sizeof(decltype(fields_)::value_type);
   }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @return approximate amount of memory reserved by this instance
   //////////////////////////////////////////////////////////////////////////////
   size_t memory_reserved() const noexcept {
-    return sizeof(fields_data) + byte_pool_.size() + int_pool_.size();
+    return sizeof(fields_data) +
+           byte_pool_.size() +
+           int_pool_.size();
   }
 
   size_t size() const { return fields_.size(); }
@@ -176,7 +184,10 @@ class IRESEARCH_API fields_data: util::noncopyable {
  private:
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   const comparer* comparator_;
-  fields_map fields_;
+  std::deque<field_data> fields_; // pointers remain valid
+  fields_map fields_map_;
+  postings_ref_t sorted_postings_;
+  std::vector<const field_data*> sorted_fields_;
   byte_block_pool byte_pool_;
   byte_block_pool::inserter byte_writer_;
   int_block_pool int_pool_; // FIXME why don't to use std::vector<size_t>?

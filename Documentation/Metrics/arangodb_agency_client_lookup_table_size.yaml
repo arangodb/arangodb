@@ -9,3 +9,6 @@ exposedBy:
   - agent
 description: |
   Current number of entries in agency client id lookup table.
+  The lookup table is used internally for agency inquire operations
+  and should be compacted at the same time when the agency's in-memory
+  log is compacted. 

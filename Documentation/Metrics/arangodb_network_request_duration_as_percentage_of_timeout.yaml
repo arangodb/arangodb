@@ -11,3 +11,4 @@ exposedBy:
   - agent
 description: |
   Internal request round-trip time as a percentage of timeout.
+  This metric will have a value between 0 and 100.

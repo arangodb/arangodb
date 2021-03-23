@@ -105,7 +105,7 @@ IRESEARCH_API directory_cleaner::removal_acceptor_t remove_except_current_segmen
 /// @brief track files created/opened via file names
 //////////////////////////////////////////////////////////////////////////////
 struct IRESEARCH_API tracking_directory final : public directory {
-  typedef std::unordered_set<std::string> file_set;
+  using file_set = absl::flat_hash_set<std::string>;
 
   // @param track_open - track file refs for calls to open(...)
   explicit tracking_directory(
@@ -246,11 +246,10 @@ struct IRESEARCH_API ref_tracking_directory: public directory {
   bool visit_refs(const std::function<bool(const index_file_refs::ref_t& ref)>& visitor) const;
 
  private:
-  typedef std::unordered_set<
+  using refs_t = absl::flat_hash_set<
     index_file_refs::ref_t,
     index_file_refs::counter_t::hash,
-    index_file_refs::counter_t::equal_to
-  > refs_t;
+    index_file_refs::counter_t::equal_to> ;
 
   IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
   index_file_refs::attribute_t& attribute_;
