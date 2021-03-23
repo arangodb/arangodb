@@ -1405,7 +1405,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     });
     return ExecutionState::WAITING;
   } catch (...) {
-    // In case of any error that happened in sending out the requests
+    // In case of any error that happend in sending out the requests
     // we simply reset to done, we tried to cleanup the engines.
     // we only get here if something in the network stack is out of order.
     // so there is no need to retry on cleaning up the engines, caller can continue
@@ -1436,13 +1436,13 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
         return true;
       });
       LOG_TOPIC("63572", WARN, Logger::QUERIES)
-          << " Failed to cleanup leftovers of a query due to communication errors. "
+          << " Failed to cleanup leftovers of a query. Due to communication errors. "
           << " The DBServers will eventually clean up the state. The following locks still exist: "
-          << " write: " << writeLocked << ": you may not drop these collections until the locks time out."
-          << " exclusive: " << exclusiveLocked << ": you may not be able to write into these collections until the locks time out.";
+          << " write: " << writeLocked << " you may not drop this collection until timeout."
+          << " exclusive: " << exclusiveLocked << " you may not access this collection until timeout.";
       for (auto const& [serverDst, queryId] : _serverQueryIds) {
         TRI_ASSERT(serverDst.substr(0, 7) == "server:");
-        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to " + serverDst + " in database " + vocbase().name();
+        auto msg = "Failed to send unlock request DELETE _api/aql/finish/" + std::to_string(queryId) + " to " + serverDst;
         _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
         LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
       }
