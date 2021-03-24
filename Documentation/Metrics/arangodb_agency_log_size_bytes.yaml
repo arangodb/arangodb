@@ -8,4 +8,9 @@ complexity: simple
 exposedBy:
   - agent
 description: |
-  Agency replicated log size in bytes.
+  Size of the agency's in-memory part of replicated log in bytes.
+  The replicated log will grow in memory until a certain number of
+  log entries have been accumulated. Then the in-memory log will
+  be compacted. The number of in-memory log entries to keep before
+  log compaction kicks in can be controlled via the startup option
+  ` --agency.compaction-keep-size`.

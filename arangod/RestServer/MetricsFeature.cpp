@@ -483,7 +483,7 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
-        // In v1 we do a nameing conversion. Note that we set 
+        // In v1 we do a name conversion. Note that we set 
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.
         auto it = nameVersionTable.find(name);
