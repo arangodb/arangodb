@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix implicit capture of views in a context of JS transaction.
+
 * Fix a race in LogAppender::haveAppenders.
   `haveAppenders` is called as part of audit logging. It accesses internal maps
   but previously did not hold a lock while doing so.
@@ -15,7 +17,7 @@ v3.8.0-alpha.1 (XXXX-XX-XX)
 * Fix an assertion failure that occurred when restoring view definitions from a
   cluster into a single server.
 
-* Added new ArangoSearch analyzer type "mask".
+* Added new ArangoSearch analyzer type "stopwords".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and only
