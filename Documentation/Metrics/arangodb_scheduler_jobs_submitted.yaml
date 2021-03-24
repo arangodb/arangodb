@@ -1,6 +1,6 @@
 name: arangodb_scheduler_jobs_submitted
 help: |
-  Total number of jobs submitted to the queue.
+  Total number of jobs submitted to the scheduler.
 unit: number
 type: gauge
 category: Scheduler
@@ -9,5 +9,12 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Total number of jobs submitted to the queue.
+  Total number of jobs submitted to the scheduler.
+  Calculating the difference between `arangodb_scheduler_jobs_submitted` and
+  `arangodb_scheduler_jobs_dequeued` gives the total number of currently queued
+  jobs.
+  
+  In V2 this metric was changed to a counter and renamed to
+  `arangodb_scheduler_jobs_submitted_total`.

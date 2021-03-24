@@ -9,5 +9,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current number of working threads.
+  The current number of threads actually working on some job (i.e., not
+  spinning while waiting for new work).

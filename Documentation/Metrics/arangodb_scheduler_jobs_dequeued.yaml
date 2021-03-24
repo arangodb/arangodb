@@ -9,5 +9,15 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Total number of jobs dequeued.
+  The total number of jobs dequeued from all scheduler queues.
+  Calculating the difference between `arangodb_scheduler_jobs_submitted` and
+  `arangodb_scheduler_jobs_dequeued` gives the total number of currently queued
+  jobs.
+  Calculating the difference between `arangodb_scheduler_jobs_dequeued` and
+  `arangodb_scheduler_jobs_done` gives the number of jobs currently being
+  processed.
+  
+  In V2 this metric was changed to a counter and renamed to
+  `arangodb_scheduler_jobs_dequeued_total`.
