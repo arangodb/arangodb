@@ -556,8 +556,6 @@ setAnalyzers:
           }
         } break;
         case VPackValueType::Double:
-          setNumericValue(valueSlice);
-          return;
         case VPackValueType::Int:
         case VPackValueType::UInt:
         case VPackValueType::SmallInt:

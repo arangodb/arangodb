@@ -25,13 +25,17 @@
 
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "utils/frozen_attributes.hpp"
 #include "Aql/Ast.h"
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "StorageEngine/TransactionState.h"
+#include "IResearchAnalyzerValueTypeAttribute.h"
 
 #include <string>
 
@@ -43,9 +47,19 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
   struct Options {
     Options() = default;
 
-    Options(std::string&& query, bool collapse, bool keep, uint32_t batch, uint32_t limit)
+    Options(std::string&& query, bool collapse, bool keep, uint32_t batch, uint32_t limit,
+            AnalyzerValueType retType)
       : queryString(query), collapsePositions(collapse),
-      keepNull(keep), batchSize(batch), memoryLimit(limit) {}
+      keepNull(keep), batchSize(batch), memoryLimit(limit), returnType(retType) {}
+
+    bool substreamInUse() const noexcept {
+      return returnType == AnalyzerValueType::Bool ||
+             returnType == AnalyzerValueType::Number;
+    }
+
+    bool substreamWillCountPositions() const noexcept {
+      return substreamInUse() && !collapsePositions;
+    }
 
     /// @brief Query string to be executed for each document.
     /// Field value is set with @param binded parameter.
@@ -66,6 +80,12 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
     /// @brief memory limit for query.  1Mb by default. Could be increased to 32Mb
     uint32_t memoryLimit{ 1048576U };
+
+    /// @brief target type to convert query output. Could be
+    ///        string, bool, number. If missing - backward compatible mode is used
+    ///        strings are passed verbatim, nulls discarder/replaced other types
+    ///        silently discarded.
+    AnalyzerValueType returnType{AnalyzerValueType::Undefined};
   };
 
   static constexpr irs::string_ref type_name() noexcept {
@@ -79,32 +99,52 @@ class AqlAnalyzer final : public irs::analysis::analyzer{
 
   explicit AqlAnalyzer(Options const& options);
 
-  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override {
-    if (type == irs::type<irs::increment>::id()) {
-      return &_inc;
-    }
-
-    return type == irs::type<irs::term_attribute>::id()
-      ? &_term : nullptr;
+  virtual irs::attribute* get_mutable(irs::type_info::type_id type) noexcept override final {
+    return irs::get_mutable(_attrs, type);
   }
 
   virtual bool next() override;
   virtual bool reset(irs::string_ref const& field) noexcept override;
 
  private:
-  irs::term_attribute _term;
-  irs::increment _inc;
+  using attributes = std::tuple<
+    irs::attribute_ptr<irs::increment>,
+    AnalyzerValueTypeAttribute,
+    irs::attribute_ptr<irs::term_attribute>>;
+
+  irs::token_stream* getSubStream(AnalyzerValueType type) noexcept {
+    switch (type) {
+      case AnalyzerValueType::Bool:
+        return &_boolean_stream;
+      case AnalyzerValueType::Number:
+        return &_numeric_stream;
+      default:
+        return nullptr;
+    }
+  }
+
   std::string _str;
   Options _options;
   std::unique_ptr<arangodb::aql::QueryContext> _query;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   arangodb::aql::AqlItemBlockManager _itemBlockManager;
   arangodb::aql::ExecutionEngine _engine;
   std::unique_ptr<arangodb::aql::ExecutionPlan> _plan;
   arangodb::aql::SharedAqlItemBlockPtr _queryResults;
-  size_t _resultRowIdx{ 0 };
   std::vector<arangodb::aql::AstNode*> _bindedNodes;
   arangodb::aql::ExecutionState _executionState{arangodb::aql::ExecutionState::DONE};
+  irs::term_attribute _aqlTerm;
+  irs::increment _aqlIncrement;
+
+  // sub-streams
+  irs::numeric_token_stream _numeric_stream;
+  irs::boolean_token_stream _boolean_stream;
+  irs::token_stream* _active_sub_stream{nullptr};
+
+  attributes _attrs;
+  size_t _resultRowIdx{ 0 };
   uint32_t _nextIncVal{0};
+
 }; // AqlAnalyzer
 } // namespace iresearch
 } // namespace arangodb

@@ -28,6 +28,7 @@
 #endif
 
 #include "IResearchAqlAnalyzer.h"
+#include "IResearchAnalyzerValueTypeAttribute.h"
 
 #include "utils/hash_utils.hpp"
 #include "utils/object_pool.hpp"
@@ -40,6 +41,7 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -67,6 +69,7 @@ constexpr const char KEEP_NULL_PARAM_NAME[] = "keepNull";
 constexpr const char BATCH_SIZE_PARAM_NAME[] = "batchSize";
 constexpr const char MEMORY_LIMIT_PARAM_NAME[] = "memoryLimit";
 constexpr const char CALCULATION_PARAMETER_NAME[] = "param";
+constexpr const char RETURN_TYPE_PARAM_NAME[] = "returnType";
 
 constexpr const uint32_t MAX_BATCH_SIZE{1000};
 constexpr const uint32_t MAX_MEMORY_LIMIT{33554432U}; // 32Mb
@@ -99,6 +102,19 @@ struct OptionsValidator {
                                    .append("' should be less or equal to ")
                                    .append(std::to_string(MAX_MEMORY_LIMIT))};
     }
+    if (opts.returnType != arangodb::iresearch::AnalyzerValueType::Undefined &&
+        opts.returnType != arangodb::iresearch::AnalyzerValueType::String &&
+        opts.returnType != arangodb::iresearch::AnalyzerValueType::Number &&
+        opts.returnType != arangodb::iresearch::AnalyzerValueType::Bool) {
+       return deserialize_error{
+           std::string("Value of '").append(RETURN_TYPE_PARAM_NAME)
+             .append("' should be ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING)
+             .append(" or ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER)
+             .append(" or ")
+             .append(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL)};
+    }
     return {};
   }
 };
@@ -108,7 +124,12 @@ using OptionsDeserializer = utilities::constructing_deserializer<Options, parame
   factory_simple_parameter<COLLAPSE_ARRAY_POSITIONS_PARAM_NAME, bool, false, values::numeric_value<bool, false>>,
   factory_simple_parameter<KEEP_NULL_PARAM_NAME, bool, false, values::numeric_value<bool, true>>,
   factory_simple_parameter<BATCH_SIZE_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 10>>,
-  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>
+  factory_simple_parameter<MEMORY_LIMIT_PARAM_NAME, uint32_t, false, values::numeric_value<uint32_t, 1048576U>>,
+  factory_deserialized_default<RETURN_TYPE_PARAM_NAME,
+                               arangodb::iresearch::AnalyzerValueTypeEnumDeserializer,
+                               values::numeric_value<arangodb::iresearch::AnalyzerValueType,
+                                   static_cast<std::underlying_type_t<arangodb::iresearch::AnalyzerValueType>>(
+                                       arangodb::iresearch::AnalyzerValueType::Undefined)>>
   >>;
 
 using ValidatingOptionsDeserializer = validate<OptionsDeserializer, OptionsValidator>;
@@ -137,6 +158,24 @@ bool normalize_slice(VPackSlice const& slice, VPackBuilder& builder) {
     builder.add(KEEP_NULL_PARAM_NAME, VPackValue(options.keepNull));
     builder.add(BATCH_SIZE_PARAM_NAME, VPackValue(options.batchSize));
     builder.add(MEMORY_LIMIT_PARAM_NAME, VPackValue(options.memoryLimit));
+    if (options.returnType != arangodb::iresearch::AnalyzerValueType::Undefined) {
+      switch (options.returnType) {
+        case arangodb::iresearch::AnalyzerValueType::String:
+          builder.add(RETURN_TYPE_PARAM_NAME,
+            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_STRING));
+          break;
+        case arangodb::iresearch::AnalyzerValueType::Number:
+          builder.add(RETURN_TYPE_PARAM_NAME,
+            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_NUMBER));
+          break;
+        case arangodb::iresearch::AnalyzerValueType::Bool:
+          builder.add(RETURN_TYPE_PARAM_NAME,
+            VPackValue(arangodb::iresearch::ANALYZER_VALUE_TYPE_BOOL));
+          break;
+        default:
+          TRI_ASSERT(false);
+      }
+    }
     return true;
   }
   return false;
@@ -471,7 +510,14 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
     _query(new CalculationQueryContext(arangodb::DatabaseFeature::getCalculationVocbase())),
     _itemBlockManager(_query->resourceMonitor(), SerializationFormat::SHADOWROWS),
     _engine(0, *_query, _itemBlockManager,
-            SerializationFormat::SHADOWROWS, nullptr) {
+            SerializationFormat::SHADOWROWS, nullptr),
+    _attrs((_options.substreamWillCountPositions()?
+              irs::get_mutable<irs::increment>(getSubStream(_options.returnType))
+              : &_aqlIncrement),
+           {},
+           (_options.substreamInUse()?
+              irs::get_mutable<irs::term_attribute>(getSubStream(_options.returnType))
+              : &_aqlTerm)) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   TRI_ASSERT(validateQuery(_options.queryString,
                            arangodb::DatabaseFeature::getCalculationVocbase())
@@ -480,19 +526,77 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
 
 bool AqlAnalyzer::next() {
   do {
+    if (_active_sub_stream && _active_sub_stream->next()) {
+      _aqlIncrement.value = _nextIncVal;
+      _nextIncVal = !_options.collapsePositions;
+      return true;
+    }
+    _active_sub_stream = nullptr;
     if (_queryResults != nullptr) {
       while (_queryResults->numRows() > _resultRowIdx) {
         AqlValue const& value =
             _queryResults->getValueReference(_resultRowIdx++, _engine.resultRegister());
-        if (value.isString() || (value.isNull(true) && _options.keepNull)) {
-          if (value.isString()) {
-            _term.value = arangodb::iresearch::getBytesRef(value.slice());
-          } else {
-            _term.value = irs::bytes_ref::EMPTY;
+        bool valueSet{false};
+        if (_options.returnType == AnalyzerValueType::Undefined) { // FIXME: use functors!
+          // old behaviour
+          if (value.isString() || (value.isNull(true) && _options.keepNull)) {
+            if (value.isString()) {
+              _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
+            } else {
+              _aqlTerm.value = irs::bytes_ref::EMPTY;
+            }
+            valueSet = true;
           }
-          _inc.value = _nextIncVal;
-          _nextIncVal = !_options.collapsePositions;
-          return true;
+        } else  if (!value.isNull(true) || _options.keepNull) {
+          if (_options.returnType == AnalyzerValueType::String) {
+            if (value.isString()) {
+              _aqlTerm.value = arangodb::iresearch::getBytesRef(value.slice());
+              valueSet = true;
+            } else {
+              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+              VPackFunctionParameters params{arena};
+              params.push_back(value);
+              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+              auto converted = aql::Functions::ToString(&ctx, *_query->ast()->root(), params);
+              TRI_ASSERT(converted.isString());
+              _aqlTerm.value = arangodb::iresearch::getBytesRef(converted.slice());
+              valueSet = true;
+            }
+          } else if (_options.returnType == AnalyzerValueType::Number) {
+            if (value.isNumber()) {
+              _numeric_stream.reset(value.toDouble());
+            } else {
+              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+              VPackFunctionParameters params{arena};
+              params.push_back(value);
+              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+              auto converted = aql::Functions::ToNumber(&ctx, *_query->ast()->root(), params);
+              TRI_ASSERT(converted.isNumber());
+              _numeric_stream.reset(converted.toDouble());
+              _active_sub_stream = &_numeric_stream;
+            }
+            _active_sub_stream = &_numeric_stream;
+            break; // go for upper cycle to drain sub_stream
+          } else if (_options.returnType == AnalyzerValueType::Bool) {
+            if (value.isBoolean()) {
+              _boolean_stream.reset(value.toBoolean());
+            } else {
+              arangodb::containers::SmallVector<AqlValue>::allocator_type::arena_type arena;
+              VPackFunctionParameters params{arena};
+              params.push_back(value);
+              aql::FixedVarExpressionContext ctx(_query->trxForOptimization(), *_query, _aqlFunctionsInternalCache);
+              auto converted = aql::Functions::ToBool(&ctx, *_query->ast()->root(), params);
+              TRI_ASSERT(converted.isBoolean());
+              _boolean_stream.reset(converted.toBoolean());
+            }
+            _active_sub_stream = &_boolean_stream;
+            break; // go for upper cycle to drain sub_stream
+          }
+          if (valueSet) {
+            _aqlIncrement.value = _nextIncVal;
+            _nextIncVal = !_options.collapsePositions;
+            return true;
+          }
         }
       }
     }
@@ -516,7 +620,7 @@ bool AqlAnalyzer::next() {
             << " AQL query: " << _options.queryString;
       }
     }
-  } while (_executionState != ExecutionState::DONE || (_queryResults != nullptr &&
+  } while (_active_sub_stream || _executionState != ExecutionState::DONE || (_queryResults != nullptr &&
                                                        _queryResults->numRows() > _resultRowIdx));
   return false;
 }
@@ -561,6 +665,7 @@ bool AqlAnalyzer::reset(irs::string_ref const& field) noexcept {
     }
     _queryResults = nullptr;
     _plan->clearVarUsageComputed();
+    _aqlFunctionsInternalCache.clear();
     _engine.initFromPlanForCalculation(*_plan);
     _executionState = ExecutionState::HASMORE;
     _resultRowIdx = 0;
