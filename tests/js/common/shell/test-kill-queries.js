@@ -29,77 +29,90 @@ let arangodb = require('@arangodb');
 let db = arangodb.db;
 
 
-function QueryKillSuite () {
+function QueryKillSuite() {
   'use strict';
   // generate a random collection name
+  const databaseName = "UnitTestsDBTemp"
   const collectionName = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
   const docsPerWrite = 10;
 
-  let debug = function(text) {
+  let debug = function (text) {
     console.warn(text);
   };
+
+  const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
+
+  let executeDefaultCursorQuery = () => {
+    // default execution
+    try {
+      db._query(exlusiveWriteQueryString);
+      fail();
+    } catch (e) {
+      debug(e);
+      assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+    }
+  }
+
+  let executeStreamCursorQuery = () => {
+    // stream execution
+    try {
+      db._query(exlusiveWriteQueryString, null, null, {stream: true});
+      fail();
+    } catch (e) {
+      debug(e);
+      assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
+    }
+  }
 
   return {
 
     setUp: function () {
-      db._drop(collectionName);
-      db._create(collectionName);
-      
-      db._drop("UnitTestsTemp");
-      let c = db._create("UnitTestsTemp", { numberOfShards: 4 });
+      db._useDatabase("_system");
+      db._createDatabase(databaseName);
+      db._useDatabase(databaseName);
+
+      let collection = db._create(collectionName, {numberOfShards: 4});
       let docs = [];
       for (let i = 0; i < 100000; ++i) {
-        docs.push({ value: i });
+        docs.push({value: i});
         if (docs.length === 5000) {
-          c.insert(docs);
+          collection.insert(docs);
           docs = [];
         }
       }
     },
 
     tearDown: function () {
-      db._drop(collectionName);
-      db._drop("UnitTestsTemp");
+      db._useDatabase("_system");
+      db._dropDatabase(databaseName);
     },
 
-    testKillAfterQueryOccursInCurrent: function() {
+    testKillAfterQueryOccursInCurrent: function () { // means before query is getting registered
       // 1.) We activate the failure point ClusterQuery::afterQueryGotRegistered
       //  -> Will trigger as soon registering happens => then directly kills and continues.
-      let exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
-      internal.debugSetFailAt("ClusterQuery::directKillAfterQueryGotRegistered");
-
-      // default execution
-      try {
-        db._query(exlusiveWriteQueryString);
-        fail();
-      } catch (e) {
-        assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
-      }
-
-      // stream execution
-      try {
-        console.log("============== STARTING STREAMING TEST ==================");
-        db._query(exlusiveWriteQueryString, null, null, {stream: true});
-        fail();
-      } catch (e) {
-        console.log(e);
-        console.log(e);console.log(e);console.log(e);console.log(e);console.log(e);
-        assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
-      }
+      const failureName = "ClusterQuery::directKillAfterQueryGotRegistered";
+      internal.debugSetFailAt(failureName);
+      executeDefaultCursorQuery();
+      executeStreamCursorQuery();
+      internal.debugClearFailAt(failureName);
     },
 
+    testKillQueryBeforeProcessingTheQuery: function () {
+      const failureName = "ClusterQuery::directKillAfterQueryIsGettingProcessed";
+      internal.debugSetFailAt(failureName);
+      executeDefaultCursorQuery();
+      executeStreamCursorQuery();
+      internal.debugClearFailAt(failureName);
+    },
 
     /*
-    testKillQueryBeforeExecuteCallStarts: function() {
-    },
+        testKillAfterQueryExecutionReturnsWaitingState: function() {},
 
-    testKillAfterQueryExecutionReturnsWaitingState: function() {},
+        testKillDuringCleanup: function() {},
 
-    testKillDuringCleanup: function() {},
+        testKillBeforeFinalization: function() {},
 
-    testKillBeforeFinalization: function() {},
-
-    testKillAfterFinalization: function() {}
+        testKillAfterFinalization: function() {}
 
      */
   };
