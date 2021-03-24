@@ -655,7 +655,7 @@
     temporarily, \nwhich will lead to an increase in lock acquisition times.\n"
   type: histogram
   unit: s
-- category: Transaction
+- category: Transactions
   complexity: advanced
   description: 'Number of transactions using sequential locking of collections to
     avoid deadlocking.
@@ -687,7 +687,7 @@
     run on multiple shards on different servers.\n"
   type: counter
   unit: number
-- category: Transaction
+- category: Transactions
   complexity: medium
   description: 'Number of timeouts when trying to acquire collection exclusive locks.
 
@@ -711,7 +711,7 @@
     for the same locks.\n"
   type: counter
   unit: number
-- category: Transaction
+- category: Transactions
   complexity: medium
   description: "Number of timeouts when trying to acquire collection write locks.\nThis
     counter will be increased whenever a collection write lock\ncannot be acquired
