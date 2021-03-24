@@ -337,7 +337,7 @@ void V8ClientConnection::connect() {
 void V8ClientConnection::reconnect() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
-  std::string id = connectionIdentifier(_builder);
+  std::string currentConnectionId = connectionIdentifier(_builder);
 
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
@@ -362,7 +362,7 @@ void V8ClientConnection::reconnect() {
     } else {
       // a non-closed connection. now try to insert it into the connection
       // cache for later reuse
-      _connectionCache.emplace(id, oldConnection);
+      _connectionCache.emplace(currentConnectionId, oldConnection);
     }
   }
   oldConnection.reset();
