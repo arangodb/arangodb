@@ -216,7 +216,7 @@ TYPED_TEST(GraphProviderTest, no_results_if_graph_is_empty) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = std::move(futures).await_unwrap();
   }
 
   std::vector<typename decltype(testee)::Step> result{};
@@ -256,7 +256,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_a_single_edge) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = std::move(futures).await_unwrap();
   }
 
   std::vector<typename decltype(testee)::Step> result{};
@@ -311,7 +311,7 @@ TYPED_TEST(GraphProviderTest, should_enumerate_all_edges) {
     std::vector<decltype(start)*> looseEnds{};
     looseEnds.emplace_back(&start);
     auto futures = testee.fetch(looseEnds);
-    auto steps = futures.get();
+    auto steps = std::move(futures).await_unwrap();
   }
 
   std::vector<typename decltype(testee)::Step> result{};

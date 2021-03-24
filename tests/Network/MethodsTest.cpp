@@ -242,7 +242,7 @@ TEST_F(NetworkMethodsTest, automatic_retry_when_from_pool) {
   auto f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
                                 "/", buffer, reqOpts);
 
-  network::Response res = std::move(f).get();
+  network::Response res = std::move(f).await_unwrap();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
   ASSERT_TRUE(res.hasResponse());
@@ -268,7 +268,7 @@ TEST_F(NetworkMethodsTest, automatic_retry_when_from_pool) {
   f = network::sendRequest(pool.get(), "tcp://example.org:80", fuerte::RestVerb::Get,
                            "/", buffer, reqOpts);
 
-  res = std::move(f).get();
+  res = std::move(f).await_unwrap();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::NoError);
 }

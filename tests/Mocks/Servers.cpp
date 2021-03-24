@@ -673,15 +673,15 @@ props.add(toIndex->slice());
     agencyTrx("/arango/Current/Collections/" + dbName + "/" + basics::StringUtils::itoa(dummy.planId().id()), current.toJson());
   }
 
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForPlan(agencyTrx("/arango/Plan/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
 
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
 
   ClusterInfo& clusterInfo = server().getFeature<ClusterFeature>().clusterInfo();
   return clusterInfo.getCollection(dbName, collectionName);
@@ -829,10 +829,10 @@ std::pair<std::string, std::string> MockCoordinator::registerFakedDBServer(std::
                 VPackValue(timepointToString(std::chrono::system_clock::now())));
   }
   agencyTrx("/arango/Current/ServersRegistered/" + serverName, builder.toJson());
-  _server.getFeature<arangodb::ClusterFeature>()
+  std::ignore = _server.getFeature<arangodb::ClusterFeature>()
       .clusterInfo()
       .waitForCurrent(agencyTrx("/arango/Current/Version", R"=({"op":"increment"})="))
-      .wait();
+      .await_unwrap();
   return std::make_pair(fakedHost, fakedPort);
 }
 
