@@ -758,8 +758,8 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
     return futures::makeFuture(OperationResult(Result(), options));
   });
 
-  return std::move(figures)
-      .then_bind([=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
+  futures::Future<OperationResult> fut = std::move(figures).then_bind(
+      [=, &ctxt](OperationResult&& figures) -> futures::Future<OperationResult> {
         if (figures.buffer) {
           _builder.add("figures", figures.slice());
         }
@@ -774,25 +774,26 @@ futures::Future<futures::Unit> RestCollectionHandler::collectionRepresentationAs
                                  options);
         }
         return futures::makeFuture(OperationResult(Result(), options));
-      })
-      .thenValue([=, &ctxt](OperationResult&& opRes) -> void {
-        if (opRes.fail()) {
-          if (showCount != CountType::None) {
-            auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
-            TRI_ASSERT(trx != nullptr);
-            trx->finish(opRes.result);
-          }
-          THROW_ARANGO_EXCEPTION(opRes.result);
-        }
-
-        if (showCount != CountType::None) {
-          _builder.add("count", opRes.slice());
-        }
-
-        if (!wasOpen) {
-          _builder.close();
-        }
       });
+
+  return std::move(fut).thenValue([=, &ctxt](OperationResult&& opRes) -> void {
+    if (opRes.fail()) {
+      if (showCount != CountType::None) {
+        auto trx = ctxt.trx(AccessMode::Type::READ, true, true);
+        TRI_ASSERT(trx != nullptr);
+        trx->finish(opRes.result);
+      }
+      THROW_ARANGO_EXCEPTION(opRes.result);
+    }
+
+    if (showCount != CountType::None) {
+      _builder.add("count", opRes.slice());
+    }
+
+    if (!wasOpen) {
+      _builder.close();
+    }
+  });
 }
 
 RestStatus RestCollectionHandler::standardResponse() {
