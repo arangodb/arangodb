@@ -152,7 +152,6 @@ add_library(arango STATIC
   Basics/tri-strings.cpp
   Basics/tri-zip.cpp
   Basics/exitcodes.cpp
-  Basics/xxhash.cpp
   Containers/MerkleTree.cpp
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp

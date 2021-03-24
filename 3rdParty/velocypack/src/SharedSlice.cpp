@@ -318,12 +318,9 @@ std::string SharedSlice::copyString() const { return slice().copyString(); }
 
 StringRef SharedSlice::stringRef() const { return slice().stringRef(); }
 
-#ifdef VELOCYPACK_HAS_STRING_VIEW
 std::string_view SharedSlice::stringView() const {
   return slice().stringView();
 }
-
-#endif
 
 std::shared_ptr<uint8_t const> SharedSlice::getBinary(ValueLength& length) const {
   return aliasPtr(slice().getBinary(length));

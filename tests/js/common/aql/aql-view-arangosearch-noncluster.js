@@ -88,14 +88,14 @@ function iResearchAqlTestSuite () {
         }
       };
       arrayV.properties(meta);
-      
+
       db._drop("TestsCollectionWithManyFields");
       let mfc = db._create("TestsCollectionWithManyFields");
       mfc.save({field1:"1value", field2:"2value", field3: 1, field4: 11111, field5: 1, field6: 1});
       mfc.save({field1:"1value1", field2:"2value1", field3: 2, field4: 11112, field5: 2, field6: 2});
       mfc.save({field1:"1value2", field2:"2value2", field3: 3, field4: 11113, field5: 3, field6: 3});
       mfc.save({field1:"1value3", field2:"2value3", field3: 4, field4: 11114, field5: 4, field6: 4});
-      
+
       try { analyzers.remove("customAnalyzer", true); } catch(err) {}
       analyzers.save("customAnalyzer", "text",  {"locale": "en.utf-8",
                                                  "case": "lower",
@@ -103,14 +103,14 @@ function iResearchAqlTestSuite () {
                                                  "accent": false,
                                                  "stemming": false},
                                                  ["position", "norm", "frequency"]);
-                                                 
+
       let wps = db._createView("WithPrimarySort", "arangosearch", 
                                {primarySort: [{field: "field1", direction: "asc"},
                                               {field: "field2", direction: "asc"},
                                               {field: "field3", direction: "asc"},
                                               {field: "field4", direction: "asc"},
                                               {field: "_key", direction: "asc"}]});
-                                    
+
       wps.properties({links:{TestsCollectionWithManyFields: {
                               storeValues: "id",
                               analyzers: ["customAnalyzer"],
@@ -208,6 +208,12 @@ function iResearchAqlTestSuite () {
       } catch (e) {
         assertEqual(ERRORS.ERROR_NOT_IMPLEMENTED.code, e.errorNum);
       }
+    },
+
+    testAnalyzerFunctionInReturnStatement: function () {
+      var result = db._query("FOR doc IN CompoundView SEARCH doc.name == 'full' OPTIONS { waitForSync: true } RETURN ANALYZER(doc.text, 'text_en')").toArray();
+      assertEqual(result.length, 1);
+      assertEqual(result[0], "the quick brown fox jumps over the lazy dog");
     },
 
     testViewCollectionOptions : function() {
@@ -308,8 +314,22 @@ function iResearchAqlTestSuite () {
     },
 
     testTransactionRegistration : function () {
-      // read lock
+      // ensure data is synced
+      db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");
+
+      // implicit read lock
       var result = db._executeTransaction({
+        collections: { },
+        action: function () {
+          var db = require("@arangodb").db;
+          return db._query("FOR d IN CompoundView SEARCH d.name == 'full' RETURN d.text").toArray();
+        }
+      });
+      assertEqual("the quick brown fox jumps over the lazy dog", result[0]);
+      assertEqual(1, result.length);
+
+      // read lock
+      result = db._executeTransaction({
         collections: {
           allowImplicit: false,
           read: [ v.name() ]

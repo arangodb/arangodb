@@ -1,7 +1,7 @@
 devel
 -----
 
-* The old metrics api contains the following gauges which should actually be
+* The old metrics API contains the following gauges which should actually be
   counters:
     * arangodb_scheduler_jobs_dequeued
     * arangodb_scheduler_jobs_submitted
@@ -10,13 +10,35 @@ devel
     * arangodb_scheduler_jobs_dequeued_total
     * arangodb_scheduler_jobs_submitted_total
     * arangodb_scheduler_jobs_done_total
-  These counters are only visible in the new v2 metric and replace the old
+  These counters are only visible in the new v2 metrics API and replace the old
   metrics which are suppressed for v2.
   
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
+* Fix implicit capture of views in a context of JS transaction.
+
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
+* Bug-fix in the case of very rare network issues there was a chance that
+  an AQL query could get stuck during a cleanup and after a commit.
+	This would cause the client to receive a timeout, and the Coordinator
+	blocking a Scheduler thread. This situation is sorted out and the thread
+	will not be blocked anymore. We also added logs in case the query
+	could not successfully be cleaned up, which would leave locks on shards
+	behind.
+
+* Switched to GCC 10 as the default compiler and use Sandy Bridge as the
+  default required architecture (Linux, macOS binaries).
+
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
 
-* Added new ArangoSearch analyzer type "mask".
+* Added new ArangoSearch analyzer type "stopwords".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and
