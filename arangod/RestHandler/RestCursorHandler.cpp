@@ -232,6 +232,9 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
   }
 
   registerQuery(std::move(query));
+  TRI_IF_FAILURE("ClusterQuery::directKillAfterQueryIsGettingProcessed") {
+    _query->debugKillQuery();
+  }
   return processQuery(/*continuation*/false);
 }
 
