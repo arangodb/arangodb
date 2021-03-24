@@ -1,4 +1,5 @@
 name: rocksdb_compression_ratio_at_level5
+introducedIn: "3.6"
 help: |
   rocksdb_compression_ratio_at_level5
 unit: number

@@ -1,4 +1,5 @@
 name: rocksdb_is_write_stopped
+introducedIn: "3.6"
 help: |
   rocksdb_is_write_stopped
 unit: number

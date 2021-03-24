@@ -1,4 +1,5 @@
 name: rocksdb_estimate_live_data_size
+introducedIn: "3.6"
 help: |
   rocksdb_estimate_live_data_size
 unit: number
