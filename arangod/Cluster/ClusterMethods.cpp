@@ -1806,10 +1806,10 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
   // Some stuff to prepare cluster-internal requests:
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  auto reqOpts = std::shared_ptr<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->retryNotFound = true;
+  reqOpts->param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   fuerte::RestVerb restVerb;
   if (!useMultiple) {
@@ -1817,9 +1817,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   } else {
     restVerb = fuerte::RestVerb::Put;
     if (options.silent) {
-      reqOpts.param(StaticStrings::SilentString, "true");
+      reqOpts->param(StaticStrings::SilentString, "true");
     }
-    reqOpts.param("onlyget", "true");
+    reqOpts->param("onlyget", "true");
   }
 
   if (canUseFastPath) {
@@ -1877,7 +1877,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
         }
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
-                                      std::move(url), std::move(buffer), reqOpts,
+                                      std::move(url), std::move(buffer), *reqOpts,
                                       std::move(headers)));
       }
 
@@ -1934,7 +1934,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
           pool, "shard:" + shard, restVerb,
           "/_api/document/" + StringUtils::urlEncode(shard) + "/" +
               StringUtils::urlEncode(key.data(), key.size()),
-          VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
+          VPackBuffer<uint8_t>(), *reqOpts, std::move(headers)));
     }
   } else {
     VPackBuffer<uint8_t> buffer;
@@ -1946,7 +1946,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
-                                    /*cannot move*/ buffer, reqOpts, std::move(headers)));
+                                    /*cannot move*/ buffer, *reqOpts, std::move(headers)));
     }
   }
 
@@ -2321,11 +2321,11 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   // Some stuff to prepare cluster-internal requests:
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+  auto reqOpts = std::make_shared<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts->retryNotFound = true;
+  reqOpts->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
          .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"))
          .param(StaticStrings::SkipDocumentValidation, (options.validate ? "false" : "true"))
          .param(StaticStrings::IsRestoreString, (options.isRestore ? "true" : "false"));
@@ -2334,17 +2334,17 @@ Future<OperationResult> modifyDocumentOnCoordinator(
   if (isPatch) {
     restVerb = fuerte::RestVerb::Patch;
     if (!options.keepNull) {
-      reqOpts.param(StaticStrings::KeepNullString, "false");
+      reqOpts->param(StaticStrings::KeepNullString, "false");
     }
-    reqOpts.param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
+    reqOpts->param(StaticStrings::MergeObjectsString, (options.mergeObjects ? "true" : "false"));
   } else {
     restVerb = fuerte::RestVerb::Put;
   }
   if (options.returnNew) {
-    reqOpts.param(StaticStrings::ReturnNewString, "true");
+    reqOpts->param(StaticStrings::ReturnNewString, "true");
   }
   if (options.returnOld) {
-    reqOpts.param(StaticStrings::ReturnOldString, "true");
+    reqOpts->param(StaticStrings::ReturnOldString, "true");
   }
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -2402,7 +2402,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
         futures.emplace_back(
             network::sendRequestRetry(pool, "shard:" + it.first, restVerb,
                                       std::move(url), std::move(buffer),
-                                      reqOpts, std::move(headers)));
+                                      *reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
@@ -2459,7 +2459,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       futures.emplace_back(
           network::sendRequestRetry(pool, "shard:" + shard, restVerb,
                                     std::move(url), /*cannot move*/ buffer,
-                                    reqOpts, std::move(headers)));
+                                    *reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
