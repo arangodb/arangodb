@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix implicit capture of views in a context of JS transaction.
+
 * Update the Web UI's list of built-in AQL functions for proper syntax
   highlighting in the query editor.
 
@@ -18,7 +20,7 @@ devel
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
 
-* Added new ArangoSearch analyzer type "mask".
+* Added new ArangoSearch analyzer type "stopwords".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and

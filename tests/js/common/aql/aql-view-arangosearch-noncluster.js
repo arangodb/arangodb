@@ -323,7 +323,7 @@ function iResearchAqlTestSuite () {
       assertEqual(1, result.length);
 
       // read lock
-      var result = db._executeTransaction({
+      result = db._executeTransaction({
         collections: {
           allowImplicit: false,
           read: [ v.name() ]
