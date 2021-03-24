@@ -1,6 +1,9 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
 * Introduce metrics for AQL query memory limit violations:
   - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
     global query memory limit was violated.
