@@ -47,7 +47,7 @@ class StringRef {
   /// @brief create an empty StringRef
   constexpr StringRef() noexcept : _data(""), _length(0) {}
   
-  /// @brief create a StringRef from an std::string
+  /// @brief create a StringRef from a std::string_view
   explicit StringRef(std::string_view sv) noexcept : StringRef(sv.data(), sv.size()) {}
 
   /// @brief create a StringRef from an std::string
