@@ -44,7 +44,7 @@ for root, dirs, files in os.walk("."):
         if f[-4:] == ".cpp":
           ff = os.path.join(root, f)
           continuation = False
-          s = open(ff)
+          s = open(ff, 'rt', encoding='utf-8')
           while True:
               l = s.readline()
               if not(continuation):
