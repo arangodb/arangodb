@@ -1546,21 +1546,21 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   // First determine the collection ID from the name:
   std::shared_ptr<ShardMap> shardIds = coll.shardIds();
 
-  CrudOperationCtx opCtx;
-  opCtx.options = options;
+  auto opCtx = std::make_shared<CrudOperationCtx>();
+  opCtx->options = options;
   const bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      auto res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(*opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    auto res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(*opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
@@ -1583,8 +1583,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
     // lazily begin transactions on leaders
     Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx.shardMap.size() > 1) {
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      if (isManaged && opCtx->shardMap.size() > 1) {
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
       }
       return makeFuture(Result());
     });
@@ -1598,9 +1598,9 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       // Now prepare the requests:
       auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
-      futures.reserve(opCtx.shardMap.size());
+      futures.reserve(opCtx->shardMap.size());
 
-      for (auto const& it : opCtx.shardMap) {
+      for (auto const& it : opCtx->shardMap) {
         VPackBuffer<uint8_t> buffer;
         if (!useMultiple) {
           TRI_ASSERT(it.second.size() == 1);
@@ -1637,7 +1637,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultDelete, opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultDelete, *opCtx, results);
           });
     });
 
@@ -1780,21 +1780,21 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
   // delete the document. All but one will not know it.
   // Now find the responsible shard(s)
 
-  CrudOperationCtx opCtx;
-  opCtx.options = options;
+  auto opCtx = std::make_shared<CrudOperationCtx>();
+  opCtx->options = options;
   const bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      auto res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(*opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         canUseFastPath = false;
         break;
       }
     }
   } else {
-    auto res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(*opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       canUseFastPath = false;
     }
@@ -1826,8 +1826,8 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
     // Contact all shards directly with the correct information.
 
     Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin the transaction
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin the transaction
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
       }
       return makeFuture(Result());
     });
@@ -1841,9 +1841,9 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
       // Now prepare the requests:
       auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
-      futures.reserve(opCtx.shardMap.size());
+      futures.reserve(opCtx->shardMap.size());
 
-      for (auto const& it : opCtx.shardMap) {
+      for (auto const& it : opCtx->shardMap) {
         network::Headers headers;
         addTransactionHeaderForShard(trx, *shardIds, /*shard*/ it.first, headers);
         std::string url;
@@ -1894,7 +1894,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) {
-            return handleCRUDShardResponsesFast(network::clusterResultDocument, opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultDocument, *opCtx, results);
           });
     });
 
@@ -2292,14 +2292,14 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
   ShardID shardID;
 
-  CrudOperationCtx opCtx;
-  opCtx.options = options;
+  auto opCtx = std::make_shared<CrudOperationCtx>();
+  opCtx->options = options;
   const bool useMultiple = slice.isArray();
 
   bool canUseFastPath = true;
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      auto res = distributeBabyOnShards(opCtx, coll, value);
+      auto res = distributeBabyOnShards(*opCtx, coll, value);
       if (res != TRI_ERROR_NO_ERROR) {
         if (!isPatch) { // shard keys cannot be changed, error out early
           return makeFuture(OperationResult(res, options));
@@ -2309,7 +2309,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
       }
     }
   } else {
-    auto res = distributeBabyOnShards(opCtx, coll, slice);
+    auto res = distributeBabyOnShards(*opCtx, coll, slice);
     if (res != TRI_ERROR_NO_ERROR) {
       if (!isPatch) { // shard keys cannot be changed, error out early
         return makeFuture(OperationResult(res, options));
@@ -2353,8 +2353,8 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     // Contact all shards directly with the correct information.
 
     Future<Result> f = std::invoke([&] {
-      if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+      if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+        return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
       }
       return makeFuture(Result());
     });
@@ -2362,15 +2362,15 @@ Future<OperationResult> modifyDocumentOnCoordinator(
     return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
                                       Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {  // bail out
-        return Future<OperationResult>{std::in_place, r, opCtx.options};
+        return Future<OperationResult>{std::in_place, r, opCtx->options};
       }
 
       // Now prepare the requests:
       auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
       std::vector<Future<network::Response>> futures;
-      futures.reserve(opCtx.shardMap.size());
+      futures.reserve(opCtx->shardMap.size());
 
-      for (auto const& it : opCtx.shardMap) {
+      for (auto const& it : opCtx->shardMap) {
         std::string url;
         VPackBuffer<uint8_t> buffer;
 
@@ -2419,7 +2419,7 @@ Future<OperationResult> modifyDocumentOnCoordinator(
 
       return futures::collectAll(std::move(futures))
           .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-            return handleCRUDShardResponsesFast(network::clusterResultModify, opCtx, results);
+            return handleCRUDShardResponsesFast(network::clusterResultModify, *opCtx, results);
           });
     });
   }
