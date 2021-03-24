@@ -704,9 +704,6 @@ typedef std::shared_ptr<IResearchView::Snapshot const> SnapshotPtr;
 SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::FindOrCreate,
-                                                      IResearchView::SnapshotMode::SyncAndReplace};
-
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
   auto* resolver = trx.resolver();
@@ -737,9 +734,12 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
     snapshotKey = &node;
   }
 
+  IResearchView::SnapshotMode const mode = !options.forceSync
+    ? IResearchView::SnapshotMode::FindOrCreate
+    : IResearchView::SnapshotMode::SyncAndReplace;
+
   // use aliasing ctor
-  return {SnapshotPtr(), view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)],
-                                       &collections, snapshotKey)};
+  return {SnapshotPtr(), view.snapshot(trx, mode, &collections, snapshotKey)};
 }
 
 /// @brief Since single-server is transactional we do the following:
@@ -757,15 +757,19 @@ SnapshotPtr snapshotDBServer(IResearchViewNode const& node, transaction::Methods
 SnapshotPtr snapshotSingleServer(IResearchViewNode const& node, transaction::Methods& trx) {
   TRI_ASSERT(ServerState::instance()->isSingleServer());
 
-  static IResearchView::SnapshotMode const SNAPSHOT[]{IResearchView::SnapshotMode::Find,
-                                                      IResearchView::SnapshotMode::SyncAndReplace};
-
   auto& view = LogicalView::cast<IResearchView>(*node.view());
   auto& options = node.options();
 
+  IResearchView::SnapshotMode mode = IResearchView::SnapshotMode::Find;
+
+  if (options.forceSync) {
+    mode = IResearchView::SnapshotMode::SyncAndReplace;
+  } else if (!trx.isMainTransaction()) {
+    mode = IResearchView::SnapshotMode::FindOrCreate;
+  }
+
   // use aliasing ctor
-  auto reader = SnapshotPtr(SnapshotPtr(),
-                            view.snapshot(trx, SNAPSHOT[size_t(options.forceSync)]));
+  auto reader = SnapshotPtr(SnapshotPtr(), view.snapshot(trx, mode));
 
   if (options.restrictSources && reader) {
     // reassemble reader
