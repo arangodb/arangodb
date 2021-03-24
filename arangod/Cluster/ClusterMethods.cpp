@@ -1418,19 +1418,19 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
   // create vars used in this function
   bool const useMultiple = slice.isArray();  // insert more than one document
-  CreateOperationCtx opCtx;
-  opCtx.options = options;
+  auto opCtx = std::make_shared<CreateOperationCtx>();
+  opCtx->options = options;
 
   // create shard map
   if (useMultiple) {
     for (VPackSlice value : VPackArrayIterator(slice)) {
-      auto res = distributeBabyOnShards(opCtx, coll, value, options.isRestore);
+      auto res = distributeBabyOnShards(*opCtx, coll, value, options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return makeFuture(OperationResult(res, options));
       }
     }
   } else {
-    auto res = distributeBabyOnShards(opCtx, coll, slice, options.isRestore);
+    auto res = distributeBabyOnShards(*opCtx, coll, slice, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return makeFuture(OperationResult(res, options));
     }
@@ -1438,8 +1438,8 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
   Future<Result> f = std::invoke([&] {
     const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    if (isManaged && opCtx.shardMap.size() > 1) {  // lazily begin transactions on leaders
-      return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx.shardMap);
+    if (isManaged && opCtx->shardMap.size() > 1) {  // lazily begin transactions on leaders
+      return beginTransactionOnSomeLeaders(*trx.state(), coll, opCtx->shardMap);
     }
     return makeFuture(Result());
   });
@@ -1471,8 +1471,8 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
-    futures.reserve(opCtx.shardMap.size());
-    for (auto const& it : opCtx.shardMap) {
+    futures.reserve(opCtx->shardMap.size());
+    for (auto const& it : opCtx->shardMap) {
       VPackBuffer<uint8_t> reqBuffer;
       VPackBuilder reqBuilder(reqBuffer);
 
@@ -1529,7 +1529,7 @@ Future<OperationResult> createDocumentOnCoordinator(transaction::Methods const& 
 
     return futures::collectAll(std::move(futures))
         .thenValue([opCtx = std::move(opCtx)](std::vector<Try<network::Response>>&& results) -> OperationResult {
-          return handleCRUDShardResponsesFast(network::clusterResultInsert, opCtx, results);
+          return handleCRUDShardResponsesFast(network::clusterResultInsert, *opCtx, results);
         });
   });
 }
