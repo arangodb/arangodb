@@ -143,7 +143,7 @@ For Oskar you may use the following:
 
     shellInAlpineContainer
 
-    apk add --no-cache nodejs npm && cd /work/ArangoDB/build && cmake --build . --target frontend
+    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
 
 To remove all available node modules and start a clean installation run:
 
@@ -152,13 +152,13 @@ To remove all available node modules and start a clean installation run:
 The frontend can also be built using these commands:
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
-    npm install
-    npm run build
+    yarn install
+    yarn run build
 
 For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
 run:
 
-    npm start
+    yarn start
 
 This will deploy a development server (Port: 3000) and automatically start your
 favorite browser and open the web UI.
