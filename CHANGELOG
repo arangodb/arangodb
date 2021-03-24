@@ -1,6 +1,10 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
 * Bug-fix in the case of very rare network issues there was a chance that an AQL
   query could get stuck during a cleanup and after a commit.
   This would cause the client to receive a timeout, and the Coordinator blocking
