@@ -247,6 +247,12 @@
         }
       },
 
+      testAnalyzerFunctionInReturnStatement: function () {
+        var result = db._query("FOR doc IN CompoundView SEARCH doc.name == 'full' OPTIONS { waitForSync: true } RETURN ANALYZER(doc.text, 'text_en')").toArray();
+        assertEqual(result.length, 1);
+        assertEqual(result[0], "the quick brown fox jumps over the lazy dog");
+      },
+
       testTransactionRegistration : function () {
         // ensure data is synced
         db._query("FOR d IN CompoundView OPTIONS {waitForSync:true} LIMIT 1 RETURN 1");

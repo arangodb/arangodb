@@ -3,6 +3,8 @@ devel
 
 * Fix implicit capture of views in a context of JS transaction.
 
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
 * Update the Web UI's list of built-in AQL functions for proper syntax
   highlighting in the query editor.
 
