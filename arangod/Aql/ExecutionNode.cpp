@@ -126,6 +126,7 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
     {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
+    {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
 };
 
 void propagateConstVariables(RegisterPlan& from, RegisterPlan& to) {
@@ -1484,6 +1485,7 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case LIMIT:
     case READALL:
     case WINDOW:
+    case READALL:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.
