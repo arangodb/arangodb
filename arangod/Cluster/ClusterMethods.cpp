@@ -1567,13 +1567,14 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
   }
   // We sorted the shards correctly.
 
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
-  reqOpts.retryNotFound = true;
-  reqOpts.param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
-         .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
-         .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
+  auto reqOpts = std::make_shared<network::RequestOptions>();
+  reqOpts->database = trx.vocbase().name();
+  reqOpts->timeout = network::Timeout(CL_DEFAULT_LONG_TIMEOUT);
+  reqOpts->retryNotFound = true;
+  reqOpts
+      ->param(StaticStrings::WaitForSyncString, (options.waitForSync ? "true" : "false"))
+      .param(StaticStrings::ReturnOldString, (options.returnOld ? "true" : "false"))
+      .param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
 
   const bool isManaged = trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
 
@@ -1589,8 +1590,8 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
       return makeFuture(Result());
     });
 
-    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options]
-                                  (Result&& r) mutable -> Future<OperationResult> {
+    return std::move(f).then_bind([=, &trx, opCtx(std::move(opCtx)), options = options](
+                                      Result&& r) mutable -> Future<OperationResult> {
       if (r.fail()) {
         return Future<OperationResult>{std::in_place, std::move(r), options};
       }
@@ -1619,7 +1620,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
         futures.emplace_back(network::sendRequestRetry(
             pool, "shard:" + it.first, fuerte::RestVerb::Delete,
             "/_api/document/" + StringUtils::urlEncode(it.first),
-            std::move(buffer), reqOpts, std::move(headers)));
+            std::move(buffer), *reqOpts, std::move(headers)));
       }
 
       // Now listen to the results:
@@ -1683,7 +1684,7 @@ Future<OperationResult> removeDocumentOnCoordinator(arangodb::transaction::Metho
           network::sendRequestRetry(pool, "shard:" + shard, fuerte::RestVerb::Delete,
                                     "/_api/document/" + StringUtils::urlEncode(shard),
                                     /*cannot move*/ buffer,
-                                    reqOpts, std::move(headers)));
+                                    *reqOpts, std::move(headers)));
     }
 
     return futures::collectAll(std::move(futures))
