@@ -87,6 +87,10 @@ function QueryKillSuite() {
       db._dropDatabase(databaseName);
     },
 
+    // a = sync variant
+    // b = async variant
+
+    // 1.a)
     testKillAfterDefaultQueryOccursInCurrent: function () { // means before query is getting registered
       // 1.) We activate the failure point ClusterQuery::afterQueryGotRegistered
       //  -> Will trigger as soon registering happens => then directly kills and continues.
@@ -96,6 +100,7 @@ function QueryKillSuite() {
       internal.debugClearFailAt(failureName);
     },
 
+    // 1.b)
     testKillAfterStreamQueryOccursInCurrent: function () { // means before query is getting registered
       // 1.) We activate the failure point ClusterQuery::afterQueryGotRegistered
       //  -> Will trigger as soon registering happens => then directly kills and continues.
@@ -105,6 +110,7 @@ function QueryKillSuite() {
       internal.debugClearFailAt(failureName);
     },
 
+    // 2.a)
     testKillDefaultQueryBeforeProcessingTheQuery: function () {
       const failureName = "ClusterQuery::directKillAfterQueryIsGettingProcessed";
       internal.debugSetFailAt(failureName);
@@ -112,12 +118,37 @@ function QueryKillSuite() {
       internal.debugClearFailAt(failureName);
     },
 
+    // 2.b)
     testKillStreamQueryBeforeProcessingTheQuery: function () {
-      const failureName = "ClusterQuery::directKillAfterQueryIsGettingProcessed";
+      const failureName = "ClusterQuery::directKillAfterStreamQueryIsGettingProcessed";
       internal.debugSetFailAt(failureName);
       executeStreamCursorQuery();
       internal.debugClearFailAt(failureName);
     },
+
+    // => Kill before WAITING
+    // 3.a) directKillAfterQueryExecuteReturnsWaiting
+    // 3.b.1) directKillAfterStreamQueryExecuteReturnsWaiting (?? wakeupHandler // runHandlerStateMachine ??)
+    // 3.b.2) directKillAfterStreamQueryGenerateCursorResultReturnsWaiting (generateCursorResult => Dump?)
+    //        (std::pair<ExecutionState, Result> QueryStreamCursor::dump(VPackBuilder& builder))
+
+    // => Execute before Requests
+    // 4.a) RestCursorHandler::handleQueryResult() before buffer is filled
+    //      NOTE: Where is: VPackSlice qResult = _queryResult.data->slice(); <-- set
+    // 4.b) ExecutionState QueryStreamCursor::prepareDump() { ?? before getSome
+
+    // => Execute after Requests
+    // 5.a) RestCursorHandler::handleQueryResult() after buffer is filled
+    //      NOTE: Where is: VPackSlice qResult = _queryResult.data->slice(); <-- set
+    // 5.b) ExecutionState QueryStreamCursor::prepareDump() { ?? after getSome
+
+    // => Finalize before commiting
+    // 6.a) ClusterQuery::directKillBeforeQueryWillBeFinalized
+    // 6.b) before cleanupStateCallback in QueryStreamCursor::prepareDump()
+
+    // => Finalize after commiting
+    // 7.a) ClusterQuery::directKillAfterQueryWillBeFinalized
+    // 8.b) after cleanupStateCallback in QueryStreamCursor::prepareDump()
 
     /*
         testKillAfterQueryExecutionReturnsWaitingState: function() {},
