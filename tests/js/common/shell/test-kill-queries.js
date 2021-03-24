@@ -87,20 +87,34 @@ function QueryKillSuite() {
       db._dropDatabase(databaseName);
     },
 
-    testKillAfterQueryOccursInCurrent: function () { // means before query is getting registered
+    testKillAfterDefaultQueryOccursInCurrent: function () { // means before query is getting registered
       // 1.) We activate the failure point ClusterQuery::afterQueryGotRegistered
       //  -> Will trigger as soon registering happens => then directly kills and continues.
       const failureName = "ClusterQuery::directKillAfterQueryGotRegistered";
       internal.debugSetFailAt(failureName);
       executeDefaultCursorQuery();
+      internal.debugClearFailAt(failureName);
+    },
+
+    testKillAfterStreamQueryOccursInCurrent: function () { // means before query is getting registered
+      // 1.) We activate the failure point ClusterQuery::afterQueryGotRegistered
+      //  -> Will trigger as soon registering happens => then directly kills and continues.
+      const failureName = "ClusterQuery::directKillAfterQueryGotRegistered";
+      internal.debugSetFailAt(failureName);
       executeStreamCursorQuery();
       internal.debugClearFailAt(failureName);
     },
 
-    testKillQueryBeforeProcessingTheQuery: function () {
+    testKillDefaultQueryBeforeProcessingTheQuery: function () {
       const failureName = "ClusterQuery::directKillAfterQueryIsGettingProcessed";
       internal.debugSetFailAt(failureName);
       executeDefaultCursorQuery();
+      internal.debugClearFailAt(failureName);
+    },
+
+    testKillStreamQueryBeforeProcessingTheQuery: function () {
+      const failureName = "ClusterQuery::directKillAfterQueryIsGettingProcessed";
+      internal.debugSetFailAt(failureName);
       executeStreamCursorQuery();
       internal.debugClearFailAt(failureName);
     },
