@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
 
 
 v3.7.10 (2021-03-14)
