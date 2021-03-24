@@ -9,5 +9,6 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Total number of ongoing RestHandlers coming from the low prio queue.
+  Total number of low priority jobs currently being processed.
