@@ -3,6 +3,8 @@ v3.7.11 (XXXX-XX-XX)
 
 * Fix a crash caused by returning a result produced by ANALYZER function.
 
+* Fix implicit capture of views in a context of JS transaction.
+
 * Use RebootTracker to abort cluster transactions on DB servers should the
   originating coordinator die or be rebooted. The previous implementation left
   the coordinator's transactions open on DB servers until they timed out there.
@@ -59,6 +61,10 @@ v3.7.11 (XXXX-XX-XX)
 
 v3.7.10 (2021-03-14)
 --------------------
+
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore
+  if it is in the backup. This helps with unique key generation after
+  a hotbackup is restored to a young cluster.
 
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 

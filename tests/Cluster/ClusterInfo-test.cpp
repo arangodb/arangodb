@@ -37,6 +37,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/AgencyCache.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/DatabaseFeature.h"
@@ -258,3 +259,15 @@ TEST_F(ClusterInfoTest, test_drop_database) {
     EXPECT_FALSE(!logicalView);
   }
 }
+
+TEST_F(ClusterInfoTest, plan_will_provide_latest_id) {
+  auto &cache {server.getFeature<ClusterFeature>().agencyCache()};
+  auto [acb, index] {cache.read({AgencyCommHelper::path("Sync/LatestID")})};
+  auto expectedLatestId {acb->slice().at(0).get("arango").get("Sync").get("LatestID").getInt()};
+  auto& ci {server.getFeature<arangodb::ClusterFeature>().clusterInfo()};
+  auto builder {std::make_shared<VPackBuilder>()};
+  auto result {ci.agencyPlan(builder)};
+  ASSERT_TRUE(result.ok());
+  ASSERT_EQ(builder->slice().at(0).get("arango").get("Sync").get("LatestID").getInt(), expectedLatestId);
+}
+
