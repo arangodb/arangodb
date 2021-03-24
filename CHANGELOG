@@ -1,6 +1,8 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
 * Fix implicit capture of views in a context of JS transaction.
 
 * Use RebootTracker to abort cluster transactions on DB servers should the
