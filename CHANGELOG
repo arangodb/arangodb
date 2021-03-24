@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix shortName labels in metrics, in particular for agents.
+
 * Fix a race in LogAppender::haveAppenders.
   `haveAppenders` is called as part of audit logging. It accesses internal maps
   but previously did not hold a lock while doing so.
