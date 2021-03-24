@@ -133,6 +133,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/QueryHelper.cpp
   Aql/ReadAllExecutionBlockTest.cpp
   Aql/QueryCursorTest.cpp
+  Aql/ReadAllExecutionBlockTest.cpp
   Aql/RegisterPlanTest.cpp
   Aql/RemoteExecutorTest.cpp
   Aql/RemoveExecutorTest.cpp

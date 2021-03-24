@@ -389,6 +389,7 @@ set(LIB_ARANGO_AQL_SOURCES
   Aql/ReadAllExecutionBlock.cpp
   Aql/ReadAllNode.cpp
   Aql/RegisterId.cpp
+  Aql/ReadAllExecutionBlock.cpp
   Aql/ReadAllNode.cpp
   Aql/RegisterInfos.cpp
   Aql/RegisterPlan.cpp
