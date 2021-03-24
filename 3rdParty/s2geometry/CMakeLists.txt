@@ -4,6 +4,7 @@ set (PYTHON_INCLUDE_DIR "")
 project(s2-geometry C CXX)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare -Wno-unused-const-variable -Wno-mismatched-tags -Wno-unused-function")
 endif()
 

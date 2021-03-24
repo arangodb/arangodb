@@ -35,6 +35,7 @@ function (add_snappy)
     # use the function to open a scope so CMAKE_CXX_FLAGS is only changed for
     # snappy
     if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-suggest-override -Wno-sign-compare")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override -Wno-sign-compare")
     endif()
     set(SNAPPY_VERSION "1.1.8")
