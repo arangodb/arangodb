@@ -27,6 +27,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/Result.h"
+#include "Cluster/CallbackGuard.h"
 #include "Cluster/ResultT.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Status.h"
@@ -71,7 +72,8 @@ class Manager final {
   };
 
   struct ManagedTrx {
-    ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st);
+    ManagedTrx(MetaType t, double ttl, std::shared_ptr<TransactionState> st,
+               arangodb::cluster::CallbackGuard rGuard);
     ~ManagedTrx();
 
     bool hasPerformedIntermediateCommits() const;
@@ -91,6 +93,7 @@ class Manager final {
     const double timeToLive;
     double expiryTime;                        // time this expires
     std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
+    arangodb::cluster::CallbackGuard rGuard;
     std::string user;         /// user owning the transaction
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
@@ -117,6 +120,8 @@ class Manager final {
   void disallowInserts() {
     _disallowInserts.store(true, std::memory_order_release);
   }
+
+  arangodb::cluster::CallbackGuard buildCallbackGuard(TransactionState const& state);
 
   /// @brief register a AQL transaction
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);

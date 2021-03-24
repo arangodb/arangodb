@@ -149,13 +149,15 @@ uint64_t Manager::getActiveTransactionCount() {
 }
 
 Manager::ManagedTrx::ManagedTrx(MetaType t, double ttl,
-                                std::shared_ptr<TransactionState> st)
+                                std::shared_ptr<TransactionState> st,
+                                arangodb::cluster::CallbackGuard rGuard)
     : type(t),
       intermediateCommits(false),
       finalStatus(Status::UNDEFINED),
       timeToLive(ttl),
       expiryTime(TRI_microtime() + Manager::ttlForType(t)),
       state(std::move(st)),
+      rGuard(std::move(rGuard)),
       user(::currentUser()),
       rwlock() {}
 
@@ -195,6 +197,26 @@ Manager::ManagedTrx::~ManagedTrx() {
 
 using namespace arangodb;
 
+arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(TransactionState const& state) {
+  arangodb::cluster::CallbackGuard rGuard;
+  
+  if (ServerState::instance()->isDBServer()) {
+    auto const& origin = state.options().origin;
+    if (!origin.serverId().empty()) {
+      auto& clusterFeature = _feature.server().getFeature<ClusterFeature>();
+      auto& clusterInfo = clusterFeature.clusterInfo();
+      rGuard = clusterInfo.rebootTracker().callMeOnChange(
+          cluster::RebootTracker::PeerState(origin.serverId(), origin.rebootId()),
+          [this, tid = state.id()]() {
+            // abort the transaction once the coordinator goes away
+            abortManagedTrx(tid);
+          },
+          "Transaction aborted since coordinator rebooted or failed.");
+    }
+  }
+  return rGuard;
+}
+
 /// @brief register a transaction shard
 /// @brief tid global transaction shard
 /// @param cid the optional transaction ID (use 0 for a single shard trx)
@@ -202,9 +224,11 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
   if (_disallowInserts.load(std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
-
+  
   TRI_ASSERT(state != nullptr);
-  auto const tid = state->id();
+  arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
+  
+  TRI_voc_tid_t const tid = state->id();
   size_t const bucket = getBucket(tid);
   {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
@@ -212,7 +236,7 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
     auto& buck = _transactions[bucket];
 
     double ttl = Manager::ttlForType(MetaType::StandaloneAQL);
-    auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state);
+    auto it = buck._managed.try_emplace(tid, MetaType::StandaloneAQL, ttl, state, std::move(rGuard));
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
                                      std::string("transaction ID ") + std::to_string(tid) +
@@ -344,7 +368,7 @@ transaction::Hints Manager::ensureHints(transaction::Options& options) const {
 
 Result Manager::beginTransaction(transaction::Hints hints,
                                  std::shared_ptr<TransactionState>& state) {
-  Result res{};
+  Result res;
   try {
     res = state->beginTransaction(hints);  // registers with transaction manager
   } catch (basics::Exception const& ex) {
@@ -1269,12 +1293,15 @@ bool Manager::storeManagedState(TRI_voc_tid_t const& tid,
     ttl = Manager::ttlForType(MetaType::Managed);
   }
 
+  TRI_ASSERT(state != nullptr);
+  arangodb::cluster::CallbackGuard rGuard = buildCallbackGuard(*state);
+
   // add transaction to bucket
   size_t const bucket = getBucket(tid);
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
-  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed,
-                                                       ttl, std::move(state));
+  auto it = _transactions[bucket]._managed.try_emplace(tid, MetaType::Managed, ttl,
+                                                       std::move(state), std::move(rGuard));
   return it.second;
 }
 
