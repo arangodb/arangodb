@@ -25,6 +25,55 @@ v3.8.0-alpha.1 (XXXX-XX-XX)
   The default value for the option is `jwt-compat`, which means this option 
   will not cause any extra JWT checks compared to 3.7.
 
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
+* Introduce metrics for AQL query memory limit violations:
+  - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
+    global query memory limit was violated.
+  - `arangodb_aql_local_query_memory_limit_reached`: Total number of times a
+    local query memory limit was violated.
+
+* Set the default value for `--query.global-memory-limit` to around 90% of RAM,
+  so that a global memory limit is now effective by default.
+
+  The default global memory limit value is calculated by a formula depending on
+  the amount of available RAM and will result in the following values for 
+  common RAM sizes:
+  
+  RAM:            0      (0MiB)  Limit:            0   unlimited, %mem:  n/a
+  RAM:    134217728    (128MiB)  Limit:     33554432     (32MiB), %mem: 25.0
+  RAM:    268435456    (256MiB)  Limit:     67108864     (64MiB), %mem: 25.0
+  RAM:    536870912    (512MiB)  Limit:    255013683    (243MiB), %mem: 47.5
+  RAM:    805306368    (768MiB)  Limit:    510027366    (486MiB), %mem: 63.3
+  RAM:   1073741824   (1024MiB)  Limit:    765041049    (729MiB), %mem: 71.2
+  RAM:   2147483648   (2048MiB)  Limit:   1785095782   (1702MiB), %mem: 83.1
+  RAM:   4294967296   (4096MiB)  Limit:   3825205248   (3648MiB), %mem: 89.0
+  RAM:   8589934592   (8192MiB)  Limit:   7752415969   (7393MiB), %mem: 90.2
+  RAM:  17179869184  (16384MiB)  Limit:  15504831938  (14786MiB), %mem: 90.2
+  RAM:  25769803776  (24576MiB)  Limit:  23257247908  (22179MiB), %mem: 90.2
+  RAM:  34359738368  (32768MiB)  Limit:  31009663877  (29573MiB), %mem: 90.2
+  RAM:  42949672960  (40960MiB)  Limit:  38762079846  (36966MiB), %mem: 90.2
+  RAM:  68719476736  (65536MiB)  Limit:  62019327755  (59146MiB), %mem: 90.2
+  RAM: 103079215104  (98304MiB)  Limit:  93028991631  (88719MiB), %mem: 90.2
+  RAM: 137438953472 (131072MiB)  Limit: 124038655509 (118292MiB), %mem: 90.2
+  RAM: 274877906944 (262144MiB)  Limit: 248077311017 (236584MiB), %mem: 90.2
+  RAM: 549755813888 (524288MiB)  Limit: 496154622034 (473169MiB), %mem: 90.2
+
+* Increase default idle timeout in streaming transactions from 10 seconds to 
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
+
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
 * Fix a crash caused by returning a result produced by ANALYZER function.
 
 * Fix a race in LogAppender::haveAppenders.
