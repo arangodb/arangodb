@@ -1,4 +1,5 @@
 name: rocksdb_free_disk_space
+introducedIn: "3.6"
 help: |
   rocksdb_free_disk_space
 unit: number

@@ -1,4 +1,5 @@
 name: arangodb_aql_query_time
+introducedIn: "3.6"
 help: |
   Execution time histogram for all AQL queries.
 unit: s
