@@ -2423,6 +2423,34 @@
   unit: number
 - category: Scheduler
   complexity: advanced
+  description: 'The total number of jobs dequeued from all scheduler queues.
+
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
+
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
+
+    currently queued jobs.
+
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+
+    and arangodb_scheduler_jobs_done_total gives the number of jobs currently
+
+    being processed.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of jobs dequeued.
+
+    '
+  name: arangodb_scheduler_jobs_dequeued_total
+  type: counter
+  unit: number
+- category: Scheduler
+  complexity: advanced
   description: 'Total number of queue jobs done.
 
     '
@@ -2438,6 +2466,28 @@
   unit: number
 - category: Scheduler
   complexity: advanced
+  description: 'The total number of queue jobs done.
+
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
+
+    and arangodb_scheduler_jobs_done_total gives the total number of jobs
+
+    currently being processed.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of queue jobs done.
+
+    '
+  name: arangodb_scheduler_jobs_done_total
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
   description: 'Total number of jobs submitted to the queue.
 
     '
@@ -2449,6 +2499,28 @@
 
     '
   name: arangodb_scheduler_jobs_submitted
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
+  description: 'Total number of jobs submitted to the scheduler.
+
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
+
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
+
+    currently queued jobs.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Total number of jobs submitted to the scheduler.
+
+    '
+  name: arangodb_scheduler_jobs_submitted_total
   type: gauge
   unit: number
 - category: Scheduler
