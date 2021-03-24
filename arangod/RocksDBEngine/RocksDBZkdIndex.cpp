@@ -76,6 +76,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
     _iter = mthds->NewIterator(options, index->columnFamily());
     TRI_ASSERT(_iter != nullptr);
     _iter->SeekToFirst();
+    _compareResult.resize(_dim);
   }
 
   char const* typeName() const override { return "rocksdb-zkd-index-iterator"; }
@@ -102,9 +103,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
           if (!zkd::testInBox(byteStringKey, _min, _max, _dim)) {
             _cur = byteStringKey;
 
-            auto cmp = zkd::compareWithBox(_cur, _min, _max, _dim);
-
-            auto const next = zkd::getNextZValue(_cur, _min, _max, cmp);
+            zkd::compareWithBoxInto(_cur, _min, _max, _dim, _compareResult);
+            auto const next = zkd::getNextZValue(_cur, _min, _max, _compareResult);
             if (!next) {
               _iterState = IterState::DONE;
             } else {
@@ -156,6 +156,8 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
 
   std::unique_ptr<rocksdb::Iterator> _iter;
   RocksDBZkdIndexBase* _index = nullptr;
+
+  std::vector<zkd::CompareResult> _compareResult;
 };
 
 }  // namespace arangodb

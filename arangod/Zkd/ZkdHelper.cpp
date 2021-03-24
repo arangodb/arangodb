@@ -1,6 +1,7 @@
 #include "ZkdHelper.h"
 
 #include <Basics/debugging.h>
+#include <Containers/SmallVector.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -8,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <optional>
+#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::zkd;
@@ -64,7 +66,6 @@ zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
 
   return result;
 }
-
 
 zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
   return byte_string{ reinterpret_cast<const std::byte*>(str), len};
@@ -240,61 +241,121 @@ auto zkd::compareWithBox(byte_string_view cur, byte_string_view min, byte_string
   }
   std::vector<CompareResult> result;
   result.resize(dimensions);
+  zkd::compareWithBoxInto(cur, min, max, dimensions, result);
+  return result;
+}
 
-  std::size_t max_size = std::max(std::max(cur.size(), min.size()), max.size());
+void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_string_view max,
+                    std::size_t dimensions, std::vector<CompareResult>& result) {
+
+  TRI_ASSERT(result.size() == dimensions);
+  std::fill(result.begin(), result.end(), CompareResult{});
+  std::size_t max_size = std::max({cur.size(), min.size(), max.size()});
 
   BitReader cur_reader(cur);
   BitReader min_reader(min);
   BitReader max_reader(max);
+  ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
+  isLargerLowerThanMinMax.resize(dimensions);
 
-  auto isLargerThanMin = std::vector<bool>{};
-  auto isLowerThanMax = std::vector<bool>{};
-  isLargerThanMin.resize(dimensions);
-  isLowerThanMax.resize(dimensions);
+  unsigned step = 0;
+  unsigned dim = 0;
 
   for (std::size_t i = 0; i < 8 * max_size; i++) {
-    unsigned step = i / dimensions;
-    unsigned dim = i % dimensions;
+    TRI_ASSERT(step == i / dimensions);
+    TRI_ASSERT(dim == i % dimensions);
 
     auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
     auto min_bit = min_reader.next().value_or(Bit::ZERO);
     auto max_bit = max_reader.next().value_or(Bit::ZERO);
 
-    if (result[dim].flag != 0) {
-      continue;
-    }
+    if (result[dim].flag == 0) {
+      if (!isLargerLowerThanMinMax[dim].first) {
+        if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
+          result[dim].outStep = step;
+          result[dim].flag = -1;
+        } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
+          isLargerLowerThanMinMax[dim].first = true;
+          result[dim].saveMin = step;
+        }
+      }
 
-    if (!isLargerThanMin[dim]) {
-      if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
-        result[dim].outStep = step;
-        result[dim].flag = -1;
-      } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
-        isLargerThanMin[dim] = true;
-        result[dim].saveMin = step;
+      if (!isLargerLowerThanMinMax[dim].second) {
+        if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
+          result[dim].outStep = step;
+          result[dim].flag = 1;
+        } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
+          isLargerLowerThanMinMax[dim].second = true;
+          result[dim].saveMax = step;
+        }
       }
     }
-
-    if (!isLowerThanMax[dim]) {
-      if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
-        result[dim].outStep = step;
-        result[dim].flag = 1;
-      } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
-        isLowerThanMax[dim] = true;
-        result[dim].saveMax = step;
-      }
+    dim += 1;
+    if (dim >= dimensions) {
+      dim = 0;
+      step += 1;
     }
   }
-
-  return result;
 }
 
 auto zkd::testInBox(byte_string_view cur, byte_string_view min, byte_string_view max, std::size_t dimensions)
 -> bool {
-  auto cmp = compareWithBox(cur, min, max, dimensions);
 
-  return std::all_of(cmp.begin(), cmp.end(), [](auto const& r) {
-    return r.flag == 0;
-  });
+  if (dimensions == 0) {
+    auto msg = std::string{"dimensions argument to "};
+    msg += __func__;
+    msg += " must be greater than zero.";
+    throw std::invalid_argument{msg};
+  }
+
+  std::size_t max_size = std::max({cur.size(), min.size(), max.size()});
+
+  BitReader cur_reader(cur);
+  BitReader min_reader(min);
+  BitReader max_reader(max);
+
+  ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
+  ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
+  isLargerLowerThanMinMax.resize(dimensions);
+
+  unsigned dim = 0;
+  unsigned finished_dims = 2 * dimensions;
+  for (std::size_t i = 0; i < 8 * max_size; i++) {
+
+    auto cur_bit = cur_reader.next().value_or(Bit::ZERO);
+    auto min_bit = min_reader.next().value_or(Bit::ZERO);
+    auto max_bit = max_reader.next().value_or(Bit::ZERO);
+
+    if (!isLargerLowerThanMinMax[dim].first) {
+      if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
+        return false;
+      } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
+        isLargerLowerThanMinMax[dim].first = true;
+        if (--finished_dims == 0) {
+          break;
+        }
+      }
+    }
+
+    if (!isLargerLowerThanMinMax[dim].second) {
+      if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
+        return false;
+      } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
+        isLargerLowerThanMinMax[dim].second = true;
+        if (--finished_dims == 0) {
+          break;
+        }
+      }
+    }
+
+    dim += 1;
+    if (dim >= dimensions) {
+      dim = 0;
+    }
+  }
+
+  return true;
 }
 
 auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_view max, std::vector<CompareResult>& cmpResult)
