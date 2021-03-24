@@ -1,6 +1,9 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Update the Web UI's list of built-in AQL functions for proper syntax
+  highlighting in the query editor.
+
 * Fix a crash caused by returning a result produced by ANALYZER function.
 
 * Fix a race in LogAppender::haveAppenders.
