@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI builds are now using the yarn package manager instead of the previously
+  used node package manager.
+
 * Fix implicit capture of views in a context of JS transaction.
 
 * Fix a crash caused by returning a result produced by ANALYZER function.
