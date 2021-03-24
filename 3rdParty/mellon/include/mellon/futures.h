@@ -450,10 +450,10 @@ struct future
                                          std::is_nothrow_move_constructible_v<T>);
 
   template <typename U, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
-  future(future<U, Tag>&& o) noexcept : future(std::move(o).template as<T>()) {}
+  explicit future(future<U, Tag>&& o) noexcept : future(std::move(o).template as<T>()) {}
 
   template <typename U, typename F, typename S, std::enable_if_t<std::is_convertible_v<U, T>, int> = 0>
-  future(future_temporary<S, F, U, Tag>&& o) noexcept
+  explicit future(future_temporary<S, F, U, Tag>&& o) noexcept
       : future(std::move(o).template as<U>().finalize()) {}
 
   /**
