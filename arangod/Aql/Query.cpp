@@ -42,6 +42,7 @@
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
@@ -1354,15 +1355,28 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " Query::finalize: before _trx->commit"
       << " this: " << (uintptr_t)this;
 
+  // Only one thread is allowed to call commit
   if (errorCode == TRI_ERROR_NO_ERROR) {
-    // simon: no need to wait here, a commit may never issue a commit
-    // request to DBServers (done by AQL layer or RestTransactionHandler)
+    ScopeGuard guard([this](){
+      // If we exit here we need to throw the error.
+      // The caller will handle the error and will call this method
+      // again using an errorCode != NO_ERROR.
+      // If we do not reset to None here, this additional call will cause endless
+      // looping.
+      _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
+    });
     futures::Future<Result> commitResult = _trx->commitAsync();
     static_assert(futures::Future<Result>::is_value_inlined);
     TRI_ASSERT(commitResult.holds_inline_value());
     if (auto res = std::move(commitResult).await_unwrap(); res.fail()) {
       THROW_ARANGO_EXCEPTION(std::move(res));
     }
+    TRI_IF_FAILURE("Query::finalize_before_done") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    // We succeeded with commit. Let us cancel the guard
+    // The state of "in progress" is now correct if we exit the method.
+    guard.cancel();
   }
 
   LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
@@ -1377,21 +1391,62 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   TRI_ASSERT(_sharedState);
-
-  ::finishDBServerParts(*this, errorCode).finally([ss = _sharedState, this](expect::expected<Result> tryR) noexcept {
-    try {
-      auto& r = tryR.unwrap();
+  try {
+    TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
+    }
+    ::finishDBServerParts(*this, errorCode).thenValue([ss = _sharedState, this](Result r) {
       LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES, r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-          << "received error from DBServer on query finalization: " << r.errorNumber()
-          << ", '" << r.errorMessage() << "'";
+        << "received error from DBServer on query finalization: " << r.errorNumber() << ", '" << r.errorMessage() << "'";
       _sharedState->executeAndWakeup([&] {
         _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
         return true;
       });
-    } catch (...) {
-      /* ignore */
-    }
-  });
+    });
+    return ExecutionState::WAITING;
+  } catch (...) {
+    // In case of any error that happened in sending out the requests
+    // we simply reset to done, we tried to cleanup the engines.
+    // we only get here if something in the network stack is out of order.
+    // so there is no need to retry on cleaning up the engines, caller can continue
+    // Also note: If an error in cleanup happens the query was completed already,
+    // so this error does not need to be reported to client.
+    _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
 
-  return ExecutionState::WAITING;
+    if (isModificationQuery()) {
+      // For modification queries these left-over locks will have negative side effects
+      // We will report those to the user.
+      // Lingering Read-locks should not block the system.
+      std::vector<std::string_view> writeLocked{};
+      std::vector<std::string_view> exclusiveLocked{};
+      _collections.visit([&](std::string const& name, Collection& col) -> bool {
+        switch (col.accessType()) {
+          case AccessMode::Type::WRITE: {
+            writeLocked.emplace_back(name);
+            break;
+          }
+          case AccessMode::Type::EXCLUSIVE: {
+            exclusiveLocked.emplace_back(name);
+            break;
+          }
+          default:
+            // We do not need to capture reads.
+            break;
+        }
+        return true;
+      });
+      LOG_TOPIC("63572", WARN, Logger::QUERIES)
+          << " Failed to cleanup leftovers of a query due to communication errors. "
+          << " The DBServers will eventually clean up the state. The following locks still exist: "
+          << " write: " << writeLocked << ": you may not drop these collections until the locks time out."
+          << " exclusive: " << exclusiveLocked << ": you may not be able to write into these collections until the locks time out.";
+      for (auto const& [serverDst, queryId] : _serverQueryIds) {
+        TRI_ASSERT(serverDst.substr(0, 7) == "server:");
+        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" + std::to_string(queryId) + " to " + serverDst + " in database " + vocbase().name();
+        _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
+        LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
+      }
+    }
+    return ExecutionState::DONE;
+  }
 }

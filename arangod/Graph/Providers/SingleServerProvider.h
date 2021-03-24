@@ -130,7 +130,7 @@ struct SingleServerProvider {
 
   auto startVertex(VertexType vertex) -> Step;
   auto fetch(std::vector<Step*> const& looseEnds)
-      -> futures::Future<std::vector<Step*>>;                           // rocks
+      -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
 
@@ -157,10 +157,10 @@ struct SingleServerProvider {
 
   std::unique_ptr<RefactoredSingleServerEdgeCursor> _cursor;
 
-  RefactoredTraverserCache _cache;
-
   BaseProviderOptions _opts;
 
+  RefactoredTraverserCache _cache;
+  
   arangodb::aql::TraversalStats _stats;
 };
 }  // namespace graph

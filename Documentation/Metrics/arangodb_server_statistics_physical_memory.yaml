@@ -11,4 +11,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Physical memory in bytes.
+  Physical memory of the system in bytes, as reported by the operating system 
+  unless the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY` 
+  is set. In that case, the environment variable's value will be reported.
