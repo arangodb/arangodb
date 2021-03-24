@@ -166,7 +166,8 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::unique_ptr<AgencyCallbackRegistry> _agencyCallbackRegistry;
   ServerState::RoleEnum _requestedRole = ServerState::RoleEnum::ROLE_UNDEFINED;
   std::unique_ptr<network::ConnectionPool> _asyncAgencyCommPool;
-
+  std::shared_ptr<AgencyCallback> _hotbackupRestoreCallback;
+  
   /// @brief lock for dirty database list
   mutable arangodb::Mutex _dirtyLock;
   /// @brief dirty databases, where a job could not be posted)

@@ -58,6 +58,10 @@ v3.7.11 (XXXX-XX-XX)
 v3.7.10 (2021-03-14)
 --------------------
 
+* Put Sync/LatestID into hotbackup and restore it on hotbackup restore
+  if it is in the backup. This helps with unique key generation after
+  a hotbackup is restored to a young cluster.
+
 * Reasonably harden MoveShard against unexpected VelocyPack input.
 
 * Follower DB servers will now respond with error code
