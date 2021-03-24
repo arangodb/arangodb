@@ -35,12 +35,8 @@
 #include <algorithm>
 #include <functional>
 #include <tuple>
-#include <type_traits>
-
-#if __cplusplus >= 201703L
 #include <string_view>
-#define VELOCYPACK_HAS_STRING_VIEW 1
-#endif
+#include <type_traits>
 
 #include "velocypack/velocypack-common.h"
 #include "velocypack/Exception.h"
@@ -609,11 +605,7 @@ class Slice {
   }
 
   Slice get(char const* attribute) const {
-#if __cplusplus >= 201703
     return get(StringRef(attribute, std::char_traits<char>::length(attribute)));
-#else
-    return get(StringRef(attribute, strlen(attribute)));
-#endif
   }
 
   Slice get(char const* attribute, std::size_t length) const {
@@ -657,11 +649,7 @@ class Slice {
   }
 
   bool hasKey(char const* attribute) const {
-#if __cplusplus >= 201703
     return hasKey(StringRef(attribute, std::char_traits<char>::length(attribute)));
-#else
-    return hasKey(StringRef(attribute, std::strlen(attribute)));
-#endif
   }
 
   bool hasKey(char const* attribute, std::size_t length) const {
@@ -873,12 +861,11 @@ class Slice {
 
     throw Exception(Exception::InvalidValueType, "Expecting type String");
   }
-#ifdef VELOCYPACK_HAS_STRING_VIEW
+
   std::string_view stringView() const {
     StringRef ref  = this->stringRef();
     return std::string_view(ref.data(), ref.size());
   }
-#endif
 
   // return the value for a Binary object
   uint8_t const* getBinary(ValueLength& length) const {
@@ -1394,14 +1381,12 @@ struct Extractor<StringRef> {
   }
 };
 
-#if VELOCYPACK_HAS_STRING_VIEW
 template<>
 struct Extractor<std::string_view> {
   static std::string_view extract(Slice slice) {
     return slice.stringView();
   }
 };
-#endif
 
 template<>
 struct Extractor<bool> {
