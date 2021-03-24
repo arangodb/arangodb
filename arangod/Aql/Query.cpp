@@ -1448,3 +1448,11 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     return ExecutionState::DONE;
   }
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void Query::debugKillQuery() {
+    // A query can only be killed under certain circumstances.
+    // We assert here that one of those is true.
+    kill();
+  }
+#endif
