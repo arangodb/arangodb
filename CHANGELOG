@@ -1,8 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
-* UI builds are now using the yarn package manager instead of the previously
-  used node package manager.
+* Fix implicit capture of views in a context of JS transaction.
+
 
 * Introduce metrics for AQL query memory limit violations:
   - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
@@ -66,7 +66,7 @@ v3.8.0-alpha.1 (XXXX-XX-XX)
 * Fix an assertion failure that occurred when restoring view definitions from a
   cluster into a single server.
 
-* Added new ArangoSearch analyzer type "mask".
+* Added new ArangoSearch analyzer type "stopwords".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and only
