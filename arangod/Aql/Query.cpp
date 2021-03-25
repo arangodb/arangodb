@@ -1465,6 +1465,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void Query::debugKillQuery() {
+    if (_wasDebugKilled) {
+      return;
+    }
+    _wasDebugKilled = true;
     // A query can only be killed under certain circumstances.
     // We assert here that one of those is true.
     // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
