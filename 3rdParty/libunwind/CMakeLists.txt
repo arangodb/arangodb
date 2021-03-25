@@ -53,4 +53,8 @@ if (LINUX)
 
   set(LIBUNWIND_HOME "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}" PARENT_SCOPE)
   set(LIBUNWIND_LIB "${LIBUNWIND_LIB}" PARENT_SCOPE)
+
+  add_library(unwind_lib INTERFACE)
+  target_link_libraries(unwind_lib INTERFACE ${LIBUNWIND_LIB})
+  target_include_directories(unwind_lib INTERFACE ${LIBUNWIND_HOME}/include)
 endif ()
