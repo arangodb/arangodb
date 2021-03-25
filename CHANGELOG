@@ -1,6 +1,30 @@
 devel
 -----
 
+* Add an option for locking down all endpoints in the `/_admin/cluster` REST
+  API for callers without a proper JWT set in the request. There is a new
+  startup option `--cluster.api-jwt-policy` that allows *additional* checks
+  for a valid JWT in requests to sub-routes of `/_admin/cluster`. The
+  possible values for the startup option are:
+
+  - "jwt-all": requires a valid JWT for all accesses to `/_admin/cluster` and
+    its sub-routes. If this configuration is used, the "Cluster" and "Nodes"
+    sections of the web interface will be disabled, as they are relying on the
+    ability to read data from several cluster APIs.
+  - "jwt-write": requires a valid JWT for write accesses (all HTTP methods
+    except HTTP GET) to `/_admin/cluster`. This setting can be used to allow
+    privileged users to read data from the cluster APIs, but not to do any
+    modifications. All existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that read operations without
+    a valid JWT may still require dedicated other permissions (as in 3.7).
+  - "jwt-compat": no *additional* access checks are in place for the cluster
+    APIs. However, all existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that all operations may
+    still require dedicated other permissions (as in 3.7).
+
+  The default value for the option is `jwt-compat`, which means this option 
+  will not cause any extra JWT checks compared to 3.7.
+
 * Increase default idle timeout in streaming transactions from 10 seconds to 
   60 seconds, and make the timeout configurable via a startup parameter
   `--transaction.streaming-idle-timeout`.
