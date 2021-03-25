@@ -1,4 +1,5 @@
 name: rocksdb_estimate_pending_compaction_bytes
+introducedIn: "3.6"
 help: |
   rocksdb_estimate_pending_compaction_bytes
 unit: number

@@ -1,4 +1,5 @@
 name: rocksdb_num_live_versions
+introducedIn: "3.6"
 help: |
   rocksdb_num_live_versions
 unit: number

@@ -1,4 +1,5 @@
 name: rocksdb_size_all_mem_tables
+introducedIn: "3.6"
 help: |
   rocksdb_size_all_mem_tables
 unit: number

@@ -1,4 +1,5 @@
 name: arangodb_maintenance_action_duplicate_total
+introducedIn: "3.7"
 help: |
   Counter of actions that have been discarded because of a duplicate.
 unit: number

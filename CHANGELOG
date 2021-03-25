@@ -1,11 +1,11 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
-* Add an option for locking down all endpoints in the `/_admin/cluster` REST
-  API for callers without a proper JWT set in the request. There is a new
-  startup option `--cluster.api-jwt-policy` that allows *additional* checks
-  for a valid JWT in requests to sub-routes of `/_admin/cluster`. The
-  possible values for the startup option are:
+* Add an option for locking down all endpoints in the `/_admin/cluster` REST API
+  for callers without a proper JWT set in the request. There is a new startup
+  option `--cluster.api-jwt-policy` that allows *additional* checks for a valid
+  JWT in requests to sub-routes of `/_admin/cluster`. The possible values for
+  the startup option are:
 
   - "jwt-all": requires a valid JWT for all accesses to `/_admin/cluster` and
     its sub-routes. If this configuration is used, the "Cluster" and "Nodes"
@@ -19,14 +19,28 @@ v3.8.0-alpha.1 (XXXX-XX-XX)
     a valid JWT may still require dedicated other permissions (as in 3.7).
   - "jwt-compat": no *additional* access checks are in place for the cluster
     APIs. However, all existing permissions checks for the cluster API routes
-    are still in effect with this setting, meaning that all operations may
-    still require dedicated other permissions (as in 3.7).
+    are still in effect with this setting, meaning that all operations may still
+    require dedicated other permissions (as in 3.7).
   
-  The default value for the option is `jwt-compat`, which means this option 
-  will not cause any extra JWT checks compared to 3.7.
+  The default value for the option is `jwt-compat`, which means this option will
+  not cause any extra JWT checks compared to 3.7.
 
 * UI builds are now using the yarn package manager instead of the previously
   used node package manager.
+
+* Fix shortName labels in metrics, in particular for agents.
+
+* The old metrics api contains the following gauges which should actually be
+  counters:
+    - arangodb_scheduler_jobs_dequeued
+    - arangodb_scheduler_jobs_submitted
+    - arangodb_scheduler_jobs_done
+  Therefore the new v2 metric api adds the following counters:
+    - arangodb_scheduler_jobs_dequeued_total
+    - arangodb_scheduler_jobs_submitted_total
+    - arangodb_scheduler_jobs_done_total
+  These counters are only visible in the new v2 metric and replace the old
+  metrics which are suppressed for v2.
 
 * Fix implicit capture of views in a context of JS transaction.
 
