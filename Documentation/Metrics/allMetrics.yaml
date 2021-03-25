@@ -428,6 +428,42 @@
   unit: bytes
 - category: AQL
   complexity: simple
+  description: "Total number of times the global query memory limit threshold was
+    reached.\nThis can happen if all running AQL queries in total try to use more
+    memory than\nconfigured via the `--query.global-memory-limit` startup option.\nEvery
+    time this counter will increase, an AQL query will have aborted with a \n\"resource
+    limit exceeded\" error.\n"
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of times the global query memory limit threshold was reached.
+
+    '
+  name: arangodb_aql_global_query_memory_limit_reached
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
+  description: "Total number of times a local query memory limit threshold was reached,
+    i.e.\na single query tried to allocate more memory than configured in the query's\n`memoryLimit`
+    attribute or the value configured via the startup option\n`--query.memory-limit`.\nEvery
+    time this counter will increase, an AQL query will have aborted with a \n\"resource
+    limit exceeded\" error.\n"
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of times a local query memory limit threshold was reached.
+
+    '
+  name: arangodb_aql_local_query_memory_limit_reached
+  type: counter
+  unit: number
+- category: AQL
+  complexity: simple
   description: 'Execution time histogram for all AQL queries, in seconds.
 
     The histogram includes all slow queries.
@@ -2377,20 +2413,29 @@
   type: counter
   unit: number
 - category: Scheduler
-  complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s high priority
-    queue.
-
-    The capacity of the high priority queue can be configured via the startup
-
-    option `--server.prio1-size`.
+  complexity: simple
+  description: 'Number of awake worker threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
+  help: 'Number of awake worker threads.
+
+    '
+  name: arangodb_scheduler_awake_threads
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: medium
+  description: 'Current queue length of the high priority queue in the scheduler.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
   help: 'Current queue length of the high priority queue in the scheduler.
 
     '
@@ -2399,24 +2444,34 @@
   unit: number
 - category: Scheduler
   complexity: advanced
+  description: 'Total number of jobs dequeued.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of jobs dequeued.
+
+    '
+  name: arangodb_scheduler_jobs_dequeued
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
   description: 'The total number of jobs dequeued from all scheduler queues.
 
-    Calculating the difference between `arangodb_scheduler_jobs_submitted` and
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
 
-    `arangodb_scheduler_jobs_dequeued` gives the total number of currently queued
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
 
-    jobs.
+    currently queued jobs.
 
-    Calculating the difference between `arangodb_scheduler_jobs_dequeued` and
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
 
-    `arangodb_scheduler_jobs_done` gives the number of jobs currently being
+    and arangodb_scheduler_jobs_done_total gives the number of jobs currently
 
-    processed.
-
-
-    In V2 this metric was changed to a counter and renamed to
-
-    `arangodb_scheduler_jobs_dequeued_total`.
+    being processed.
 
     '
   exposedBy:
@@ -2427,23 +2482,33 @@
   help: 'Total number of jobs dequeued.
 
     '
-  name: arangodb_scheduler_jobs_dequeued
+  name: arangodb_scheduler_jobs_dequeued_total
+  type: counter
+  unit: number
+- category: Scheduler
+  complexity: advanced
+  description: 'Total number of queue jobs done.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of queue jobs done.
+
+    '
+  name: arangodb_scheduler_jobs_done
   type: gauge
   unit: number
 - category: Scheduler
   complexity: advanced
   description: 'The total number of queue jobs done.
 
-    Calculating the difference between `arangodb_scheduler_jobs_dequeued` and
+    Calculating the difference between arangodb_scheduler_jobs_dequeued_total
 
-    `arangodb_scheduler_jobs_done` gives the total number of jobs currently being
+    and arangodb_scheduler_jobs_done_total gives the total number of jobs
 
-    processed.
-
-
-    In V2 this metric was changed to a counter and renamed to
-
-    `arangodb_scheduler_jobs_done_total`.
+    currently being processed.
 
     '
   exposedBy:
@@ -2454,23 +2519,33 @@
   help: 'Total number of queue jobs done.
 
     '
-  name: arangodb_scheduler_jobs_done
+  name: arangodb_scheduler_jobs_done_total
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
+  description: 'Total number of jobs submitted to the queue.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of jobs submitted to the queue.
+
+    '
+  name: arangodb_scheduler_jobs_submitted
   type: gauge
   unit: number
 - category: Scheduler
   complexity: advanced
   description: 'Total number of jobs submitted to the scheduler.
 
-    Calculating the difference between `arangodb_scheduler_jobs_submitted` and
+    Calculating the difference between arangodb_scheduler_jobs_submitted_total
 
-    `arangodb_scheduler_jobs_dequeued` gives the total number of currently queued
+    and arangodb_scheduler_jobs_dequeued_total gives the total number of
 
-    jobs.
-
-
-    In V2 this metric was changed to a counter and renamed to
-
-    `arangodb_scheduler_jobs_submitted_total`.
+    currently queued jobs.
 
     '
   exposedBy:
@@ -2481,28 +2556,18 @@
   help: 'Total number of jobs submitted to the scheduler.
 
     '
-  name: arangodb_scheduler_jobs_submitted
+  name: arangodb_scheduler_jobs_submitted_total
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Last recorded dequeue time for a low priority queue item, i.e., the
-    amount of
-
-    time the job was sitting in the queue. If there is nothing to do for a long
-
-    time, this metric will be reset to zero.
-
-    A large value for this metric indicates that the server is under heavy load
-
-    and low priority jobs cannot be dequeued in a timely manner.
+  description: 'Last recorded dequeue time for a low priority queue item.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Last recorded dequeue time for a low priority queue item.
 
     '
@@ -2511,19 +2576,13 @@
   unit: ms
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s low priority
-    queue.
-
-    The capacity of the low priority queue can be configured via the startup
-
-    option `--server.maximal-queue-size`.
+  description: 'Current queue length of the low priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the low priority queue in the scheduler.
 
     '
@@ -2532,21 +2591,13 @@
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s maintenance
-    priority
-
-    queue. These are the jobs with the highest priority and are mainly used for
-
-    cluster internal operations. The capacity of the maintenance priority queue
-
-    can be configured via the startup option `--server.scheduler-queue-size`.
+  description: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
@@ -2555,19 +2606,13 @@
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s medium priority
-    queue.
-
-    The capacity of the medium priority queue can be configured via the startup
-
-    option `--server.prio2-size`.
+  description: 'Current queue length of the medium priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the medium priority queue in the scheduler.
 
     '
@@ -2576,17 +2621,13 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The number of worker threads currently started. Worker threads can
-    be started
-
-    and stopped dynamically based on the server load.
+  description: 'Current number of worker threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current number of worker threads.
 
     '
@@ -2595,17 +2636,13 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The current number of threads actually working on some job (i.e.,
-    not
-
-    spinning while waiting for new work).
+  description: 'Current number of working threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current number of working threads.
 
     '
@@ -2614,14 +2651,13 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Total number of low priority jobs currently being processed.
+  description: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
     '
@@ -2630,19 +2666,13 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Number of tasks dropped because the queue was already full. The queue
-    capacities
-
-    can be configured via the startup options `--server.scheduler-queue-size`,
-
-    `--server.prio1-size`, `--server.prio2-size` and `--server.maximal-queue-size`.
+  description: 'Number of tasks dropped and not added to internal queue.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Number of tasks dropped and not added to internal queue.
 
     '
@@ -2651,14 +2681,13 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The total number of currently queued jobs in all queues.
+  description: 'Server''s internal queue length.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Server''s internal queue length.
 
     '
@@ -2667,17 +2696,13 @@
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Total accumulated number of scheduler threads started. Worker threads
-    can be
-
-    started and stopped dynamically based on the server load.
+  description: 'Total accumulated number of scheduler threads started.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Total accumulated number of scheduler threads started.
 
     '
@@ -2686,17 +2711,13 @@
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Total accumulated number of scheduler threads stopped. Worker threads
-    can be
-
-    started and stopped dynamically based on the server load.
+  description: 'Accumulated total number of scheduler threads stopped.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Accumulated total number of scheduler threads stopped.
 
     '
