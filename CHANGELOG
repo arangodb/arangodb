@@ -1,8 +1,13 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
-* arangosh may keep connections establinged and switch between them
-  transparently using the arango.reconnect() function.
+* When using connections to multiple endpoints and switching between them,
+  arangosh can now reuse existing connections by referring to an internal
+  connection cache. This helps for arangosh scripts that repeatedly connect
+  to multiple endpoints, and avoids wasting lots of ephemeral TCP ports
+  remaining in CLOSE_WAIT state.
+  This change is transparent to any arangosh scripts or commands that do not
+  reconnect to other endpoints than the one specified at arangosh start.
 
 * The old metrics api contains the following gauges which should actually be
   counters:
