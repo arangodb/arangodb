@@ -277,6 +277,17 @@ void RocksDBKey::constructRevisionTreeValue(uint64_t collectionObjectId) {
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructLogEntry(uint64_t objectId, replication2::LogIndex idx) {
+  TRI_ASSERT(objectId != 0);
+  _type = RocksDBEntryType::LogEntry;
+  size_t keyLength = 2 * sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, objectId);
+  uint64ToPersistent(*_buffer, idx.value);
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 // ========================= Member methods ===========================
 
 RocksDBEntryType RocksDBKey::type(RocksDBKey const& key) {
@@ -370,6 +381,15 @@ VPackSlice RocksDBKey::indexedVPack(rocksdb::Slice const& slice) {
 uint64_t RocksDBKey::geoValue(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
   return uintFromPersistentBigEndian<uint64_t>(slice.data() + sizeof(uint64_t));
+}
+
+replication2::LogIndex RocksDBKey::logIndex(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() == 2 * sizeof(uint64_t));
+  return replication2::LogIndex{uint64FromPersistent(slice.data() + sizeof(uint64_t))};
+}
+
+replication2::LogIndex RocksDBKey::logIndex(RocksDBKey const& key) {
+  return RocksDBKey::logIndex(key.string());
 }
 
 // ====================== Private Methods ==========================

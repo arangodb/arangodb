@@ -26,7 +26,7 @@ using namespace arangodb::replication2;
 
 auto arangodb::MockLog::insert(std::shared_ptr<LogIterator> iter) -> arangodb::Result {
   while (auto entry = iter->next()) {
-    _storage[entry->logIndex()] = entry.value();
+    _storage.emplace(entry->logIndex(), entry.value());
   }
 
   return {};

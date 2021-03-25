@@ -156,6 +156,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, replication2::LogTerm, replication2::LogPayload);
   explicit RocksDBValue(S2Point const&);
 
  private:

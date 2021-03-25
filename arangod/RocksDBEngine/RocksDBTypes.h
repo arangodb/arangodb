@@ -53,6 +53,7 @@ enum class RocksDBEntryType : char {
   KeyGeneratorValue = '=',
   View = '>',
   GeoIndexValue = '?',
+  LogEntry = 'L',
   RevisionTreeValue = '@'
 };
 

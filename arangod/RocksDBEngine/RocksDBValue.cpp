@@ -76,6 +76,10 @@ RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
 
+RocksDBValue RocksDBValue::LogEntry(replication2::LogTerm term, replication2::LogPayload payload) {
+  return RocksDBValue(RocksDBEntryType::LogEntry, term, payload);
+}
+
 LocalDocumentId RocksDBValue::documentId(RocksDBValue const& value) {
   return documentId(value._buffer.data(), value._buffer.size());
 }
@@ -141,6 +145,15 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
                  intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
 }
 
+replication2::LogTerm RocksDBValue::logTerm(const rocksdb::Slice& slice) {
+  TRI_ASSERT(slice.size() == 8);
+  return replication2::LogTerm(uint64FromPersistent(slice.data()));
+}
+
+replication2::LogPayload RocksDBValue::logPayload(const rocksdb::Slice&) {
+  return replication2::LogPayload();
+}
+
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId, RevisionId revision)
@@ -199,6 +212,13 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, arangodb::velocypack::StringRe
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
+}
+
+RocksDBValue::RocksDBValue(RocksDBEntryType type, replication2::LogTerm term,
+                           replication2::LogPayload) {
+  TRI_ASSERT(type == RocksDBEntryType::LogEntry);
+  _buffer.reserve(sizeof(uint64_t));
+  uint64ToPersistent(_buffer, term.value);
 }
 
 RocksDBValue::RocksDBValue(S2Point const& p)
