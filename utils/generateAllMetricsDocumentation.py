@@ -136,7 +136,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "-c":
   onlyCheck = True
 
 outfile = "Documentation/Metrics/allMetrics.yaml"
-output = dump(yamls, Dumper=Dumper)
+output = dump(yamls, Dumper=Dumper, default_flow_style=False)
 if onlyCheck:
   input = open(outfile, "r")
   found = input.read()
