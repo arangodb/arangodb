@@ -326,6 +326,7 @@ bool CursorRepository::garbageCollect(bool force) {
 
   // remove cursors outside the lock
   for (auto it : found) {
+    TRI_ASSERT(it != nullptr);
     delete it;
   }
 

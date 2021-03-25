@@ -66,8 +66,8 @@ function GenericQueryKillSuite(type) { // can be either default or stream
 
   const testCasesStream = [
     "ClusterQuery::directKillAfterStreamQueryIsGettingProcessed",
-    "ClusterQuery::directKillAfterStreamQueryBeforeCursorIsBeingCreated",
-    "ClusterQuery::directKillAfterStreamQueryAfterCursorIsBeingCreated",
+    "ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated",
+    "ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated",
     "RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped",
     "RestCursorHandler::directKillAfterStreamQueryIsGettingDumped"
   ]
@@ -118,8 +118,8 @@ function GenericQueryKillSuite(type) { // can be either default or stream
       // unexpected errors in stream
       const unexpectedStreamFailures = [
         'ClusterQuery::directKillAfterStreamQueryIsGettingProcessed',
-        'ClusterQuery::directKillAfterStreamQueryBeforeCursorIsBeingCreated', // shutdown loop
-        'ClusterQuery::directKillAfterStreamQueryAfterCursorIsBeingCreated', // shutdown loop
+        'ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated', // shutdown loop
+        'ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated', // shutdown loop
         'RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped', // shutdown loop
         'RestCursorHandler::directKillAfterStreamQueryIsGettingDumped',
         'ExecutionEngine::directKillBeforeAQLQueryExecute', // shutdown loop (sometimes)

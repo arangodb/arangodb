@@ -207,8 +207,12 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
     }
-    TRI_IF_FAILURE("ClusterQuery::directKillAfterStreamQueryBeforeCursorIsBeingCreated") {
-      _query->debugKillQuery();
+    TRI_IF_FAILURE("ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated") {
+      if (_query.get() != nullptr) {
+        _query->debugKillQuery();
+      } else {
+        LOG_DEVEL << "Entered failure point but cannot call kill. _query not constructed yet!";
+      }
     }
     
     CursorRepository* cursors = _vocbase.cursorRepository();
@@ -216,8 +220,12 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
 
-    TRI_IF_FAILURE("ClusterQuery::directKillAfterStreamQueryAfterCursorIsBeingCreated") {
-      _query->debugKillQuery();
+    TRI_IF_FAILURE("ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated") {
+      if (_query.get() != nullptr) {
+        _query->debugKillQuery();
+      } else {
+        LOG_DEVEL << "Entered failure point but cannot call kill. _query not constructed yet!";
+      }
     }
     
     return generateCursorResult(rest::ResponseCode::CREATED);
