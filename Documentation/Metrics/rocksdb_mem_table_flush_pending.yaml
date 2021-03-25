@@ -1,4 +1,5 @@
 name: rocksdb_mem_table_flush_pending
+introducedIn: "3.6"
 help: |
   rocksdb_mem_table_flush_pending
 unit: number

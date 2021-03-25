@@ -1,9 +1,10 @@
 name: arangodb_collection_lock_sequential_mode_total
+introducedIn: "3.7"
 help: |
   Number of transactions using sequential locking of collections to avoid deadlocking.
 unit: number
 type: counter
-category: Transaction
+category: Transactions
 complexity: advanced
 exposedBy:
   - coordinator
