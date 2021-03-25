@@ -543,7 +543,17 @@ auto ExecutionEngine::execute(AqlCallStack const& stack)
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillBeforeAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
   auto const res = _root->execute(stack);
+
+  TRI_IF_FAILURE("ExecutionEngine::directKillAfterAQLQueryExecute") {
+    _query.debugKillQuery();
+  }
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (std::get<ExecutionState>(res) == ExecutionState::WAITING) {
     auto const skipped = std::get<SkipResult>(res);

@@ -1344,6 +1344,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   }
   
   enterState(QueryExecutionState::ValueType::FINALIZATION);
+
+  TRI_IF_FAILURE("Query::directKillBeforeQueryWillBeFinalized") {
+    debugKillQuery();
+  }
   
   // simon: do not unregister _queryProfile here, since kill() will be called
   //        under the same QueryList lock
@@ -1377,6 +1381,10 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     guard.cancel();
   }
 
+  TRI_IF_FAILURE("Query::directKillAfterQueryWillBeFinalized") {
+    debugKillQuery();
+  }
+
   LOG_TOPIC("7ef18", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime)
       << " Query::finalize: before cleanupPlanAndEngine"
@@ -1401,6 +1409,11 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
         return true;
       });
     });
+
+    TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
+      debugKillQuery();
+    }
+
     return ExecutionState::WAITING;
   } catch (...) {
     // In case of any error that happened in sending out the requests

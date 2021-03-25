@@ -207,11 +207,18 @@ RestStatus RestCursorHandler::registerQueryOrCursor(VPackSlice const& slice) {
                            "cannot use 'count' option for a streaming query"));
       return RestStatus::DONE;
     }
+    TRI_IF_FAILURE("ClusterQuery::directKillAfterStreamQueryBeforeCursorIsBeingCreated") {
+      _query->debugKillQuery();
+    }
     
     CursorRepository* cursors = _vocbase.cursorRepository();
     TRI_ASSERT(cursors != nullptr);
     _cursor = cursors->createQueryStream(std::move(query), batchSize, ttl);
     _cursor->setWakeupHandler([self = shared_from_this()]() { return self->wakeupHandler(); });
+
+    TRI_IF_FAILURE("ClusterQuery::directKillAfterStreamQueryAfterCursorIsBeingCreated") {
+      _query->debugKillQuery();
+    }
     
     return generateCursorResult(rest::ResponseCode::CREATED);
   }
@@ -257,7 +264,11 @@ RestStatus RestCursorHandler::processQuery(bool continuation) {
 
     // continue handler is registered earlier
     auto state = _query->execute(_queryResult);
+
     if (state == aql::ExecutionState::WAITING) {
+      TRI_IF_FAILURE("ClusterQuery::directKillAfterQueryExecuteReturnsWaiting") {
+        _query->debugKillQuery();
+      }
       guard.cancel();
       return RestStatus::WAITING;
     }
@@ -536,7 +547,16 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   VPackBuilder builder(buffer);
   builder.openObject(/*unindexed*/true);
 
+  TRI_IF_FAILURE("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped") {
+    _query->debugKillQuery();
+  }
+
   auto const [state, r] = _cursor->dump(builder);
+
+  TRI_IF_FAILURE("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped") {
+    _query->debugKillQuery();
+  }
+
   if (state == aql::ExecutionState::WAITING) {
     builder.clear();
     TRI_ASSERT(r.ok());
