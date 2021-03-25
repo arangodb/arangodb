@@ -1,4 +1,5 @@
 name: rocksdb_total_sst_files_size
+introducedIn: "3.6"
 help: |
   rocksdb_total_sst_files_size
 unit: number

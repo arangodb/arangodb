@@ -10,6 +10,7 @@
   help: 'Agency RAFT follower append histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_append_hist_total
   threshold: 'Normally these times should be clearly sub-second.
 
@@ -45,6 +46,7 @@
   help: 'Current number of entries in agency cache callbacks table.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_cache_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
@@ -69,6 +71,7 @@
   help: 'Current number of agency callbacks registered.
 
     '
+  introducedIn: '3.6'
   name: arangodb_agency_callback_number
   threshold: 'This number will usually be very low, something like 2 or 3.
 
@@ -92,6 +95,7 @@
   help: 'Total number of agency callbacks ever registered.
 
     '
+  introducedIn: '3.8'
   name: arangodb_agency_callback_registered_total
   type: counter
   unit: number
@@ -105,6 +109,7 @@
   help: 'Current number of entries in agency client id lookup table.
 
     '
+  introducedIn: '3.6'
   name: arangodb_agency_client_lookup_table_size
   type: gauge
   unit: number
@@ -118,6 +123,7 @@
   help: 'Agency RAFT commit histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_commit_hist
   type: histogram
   unit: ms
@@ -131,6 +137,7 @@
   help: 'Agency compaction time histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_compaction_hist
   type: histogram
   unit: ms
@@ -144,6 +151,7 @@
   help: 'This agent''s commit index.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_local_commit_index
   type: gauge
   unit: number
@@ -167,6 +175,7 @@
   help: 'Agency replicated log size.
 
     '
+  introducedIn: '3.6'
   name: arangodb_agency_log_size_bytes
   type: gauge
   unit: bytes
@@ -180,6 +189,7 @@
   help: 'Agency read no leader.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_read_no_leader_total
   threshold: 'This should normally not happen. If it happens regularly, the agency
 
@@ -205,6 +215,7 @@
   help: 'Agency read ok.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_read_ok_total
   type: counter
   unit: number
@@ -218,6 +229,7 @@
   help: 'Counter for FailedServer jobs.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_failed_server_total
   threshold: 'Many FailedServer jobs indicate frequent failures of dbservers. This
 
@@ -242,6 +254,7 @@
   help: 'Agency Supervision runtime histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_runtime_msec
   threshold: 'The supervision runtime goes up linearly with the number of collections
 
@@ -260,6 +273,7 @@
   help: 'Agency supervision wait for replication time.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_supervision_runtime_wait_for_replication_msec
   type: histogram
   unit: ms
@@ -273,6 +287,7 @@
   help: 'Agency''s term.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_term
   threshold: 'This number should usually not grow. If it does, the agency is doing
 
@@ -298,6 +313,7 @@
   help: 'Agency write time histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_write_hist
   type: histogram
   unit: ms
@@ -311,6 +327,7 @@
   help: 'Agency write operations with no leader.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_write_no_leader_total
   type: counter
   unit: number
@@ -324,6 +341,7 @@
   help: 'Agency write operations which went ok.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agency_write_ok_total
   type: counter
   unit: number
@@ -338,6 +356,7 @@
   help: 'Request time for Agency requests.
 
     '
+  introducedIn: '3.7'
   name: arangodb_agencycomm_request_time_msec
   threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
     \n"
@@ -365,6 +384,7 @@
   help: 'Total number of AQL queries finished.
 
     '
+  introducedIn: '3.6'
   name: arangodb_aql_all_query_total
   type: counter
   unit: number
@@ -381,6 +401,7 @@
   help: 'Current number of AQL queries executing.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_current_query
   type: gauge
   unit: number
@@ -403,6 +424,7 @@
   help: 'Total memory limit for all AQL queries combined.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_global_memory_limit
   type: gauge
   unit: bytes
@@ -423,6 +445,7 @@
     steps.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_global_memory_usage
   type: gauge
   unit: bytes
@@ -441,6 +464,7 @@
   help: 'Number of times the global query memory limit threshold was reached.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_global_query_memory_limit_reached
   type: counter
   unit: number
@@ -459,6 +483,7 @@
   help: 'Number of times a local query memory limit threshold was reached.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_local_query_memory_limit_reached
   type: counter
   unit: number
@@ -477,6 +502,7 @@
   help: 'Execution time histogram for all AQL queries.
 
     '
+  introducedIn: '3.6'
   name: arangodb_aql_query_time
   type: histogram
   unit: s
@@ -499,6 +525,7 @@
   help: 'Execution time histogram for slow AQL queries.
 
     '
+  introducedIn: '3.6'
   name: arangodb_aql_slow_query_time
   type: histogram
   unit: s
@@ -517,6 +544,7 @@
   help: 'Total execution time of all AQL queries.
 
     '
+  introducedIn: '3.6'
   name: arangodb_aql_total_query_time_msec_total
   type: counter
   unit: ms
@@ -533,6 +561,7 @@
   help: 'Bytes received for a request
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_bytes_received
   type: histogram
   unit: bytes
@@ -549,6 +578,7 @@
   help: 'Bytes sent for a request
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_bytes_sent
   type: histogram
   unit: bytes
@@ -565,6 +595,7 @@
   help: 'The number of client connections that are currently open
 
     '
+  introducedIn: '3.6'
   name: arangodb_client_connection_statistics_client_connections
   type: gauge
   unit: number
@@ -581,6 +612,7 @@
   help: 'Total connection time of a client
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_connection_time
   type: histogram
   unit: s
@@ -597,6 +629,7 @@
   help: 'I/O time needed to answer a request
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_io_time
   type: histogram
   unit: number
@@ -613,6 +646,7 @@
   help: 'Queueing time needed for requests
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_queue_time
   type: histogram
   unit: s
@@ -629,6 +663,7 @@
   help: 'Request time needed to answer a request
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_request_time
   type: histogram
   unit: s
@@ -645,6 +680,7 @@
   help: 'Total time needed to answer a request
 
     '
+  introducedIn: '3.7'
   name: arangodb_client_connection_statistics_total_time
   type: histogram
   unit: s
@@ -660,6 +696,7 @@
   help: 'Total amount of collection lock acquisition time.
 
     '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_micros_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -684,6 +721,7 @@
   help: 'Collection lock acquisition time histogram.
 
     '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_time
   troubleshoot: "In case these values are considered too high, check if there are
     AQL queries\nor transactions that use exclusive locks on collections, and try
@@ -715,6 +753,7 @@
   help: 'Number of transactions using sequential locking of collections to avoid deadlocking.
 
     '
+  introducedIn: '3.7'
   name: arangodb_collection_lock_sequential_mode_total
   troubleshoot: "In case this value is increasing, check if there are AQL queries
     or transactions that \nuse exclusive locks on collections, and try to reduce them.
@@ -739,6 +778,7 @@
   help: 'Number of timeouts when trying to acquire collection exclusive locks.
 
     '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_exclusive_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -761,6 +801,7 @@
   help: 'Number of timeouts when trying to acquire collection write locks.
 
     '
+  introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_write_total
   troubleshoot: "In case this value is considered too high, check if there are AQL
     queries\nor transactions that use exclusive locks on collections, and try to reduce
@@ -789,6 +830,7 @@
   help: 'Total time spent in collection truncate operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_collection_truncate_time
   type: histogram
   unit: s
@@ -806,6 +848,7 @@
   help: 'Total number of collection truncate operations by synchronous replication.
 
     '
+  introducedIn: '3.8'
   name: arangodb_collection_truncates_replication_total
   type: counter
   unit: number
@@ -825,6 +868,7 @@
   help: 'Total number of collection truncate operations (excl. synchronous replication).
 
     '
+  introducedIn: '3.8'
   name: arangodb_collection_truncates_total
   type: counter
   unit: number
@@ -845,6 +889,7 @@
   help: 'Total number of connections created for connection pool.
 
     '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_connections_created_total
   type: counter
   unit: number
@@ -864,6 +909,7 @@
   help: 'Current number of connections in pool.
 
     '
+  introducedIn: '3.6'
   name: arangodb_connection_connections_current
   type: gauge
   unit: number
@@ -883,6 +929,7 @@
   help: 'Time to lease a connection from the connection pool.
 
     '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_lease_time_hist
   type: histogram
   unit: ms
@@ -902,6 +949,7 @@
   help: 'Total number of failed connection leases.
 
     '
+  introducedIn: '3.6'
   name: arangodb_connection_pool_leases_failed_total
   type: counter
   unit: number
@@ -922,6 +970,7 @@
   help: 'Total number of successful connection leases from connection pool.
 
     '
+  introducedIn: '3.6'
   name: arangodb_connection_leases_successful_total
   type: counter
   unit: number
@@ -945,6 +994,7 @@
   help: 'Total time spent in document insert operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_insert_time
   type: histogram
   unit: s
@@ -965,6 +1015,7 @@
   help: 'Total time spent in document read-by-primary-key operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_read_time
   type: histogram
   unit: s
@@ -988,6 +1039,7 @@
   help: 'Total time spent in document remove operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_remove_time
   type: histogram
   unit: s
@@ -1011,6 +1063,7 @@
   help: 'Total time spent in document replace operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_replace_time
   type: histogram
   unit: s
@@ -1034,6 +1087,7 @@
   help: 'Total time spent in document update operations.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_update_time
   type: histogram
   unit: s
@@ -1049,6 +1103,7 @@
   help: 'Total number of document write operations by synchronous replication.
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_writes_replication_total
   type: counter
   unit: number
@@ -1065,6 +1120,7 @@
   help: 'Total number of document write operations (excl. synchronous replication).
 
     '
+  introducedIn: '3.8'
   name: arangodb_document_writes_total
   type: counter
   unit: number
@@ -1080,6 +1136,7 @@
   help: 'Number of drop-follower events.
 
     '
+  introducedIn: '3.6'
   name: arangodb_dropped_followers_total
   threshold: 'Usually, drop-follower events should only happen if servers are
 
@@ -1099,6 +1156,7 @@
   help: 'Total number of failed heartbeat transmissions.
 
     '
+  introducedIn: '3.7'
   name: arangodb_heartbeat_failures_total
   threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
 
@@ -1125,6 +1183,7 @@
   help: 'Time required to send a heartbeat.
 
     '
+  introducedIn: '3.7'
   name: arangodb_heartbeat_send_time_msec
   type: histogram
   unit: ms
@@ -1159,6 +1218,7 @@
   help: 'Number of asynchronously executed HTTP requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_async_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1185,6 +1245,7 @@
   help: 'Number of HTTP DELETE requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_delete_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1211,6 +1272,7 @@
   help: 'Number of HTTP GET requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_get_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1237,6 +1299,7 @@
   help: 'Number of HTTP HEAD requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_head_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1263,6 +1326,7 @@
   help: 'Number of HTTP OPTIONS requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_options_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1289,6 +1353,7 @@
   help: 'Number of HTTP PATCH requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_patch_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1315,6 +1380,7 @@
   help: 'Number of HTTP POST requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_post_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1341,6 +1407,7 @@
   help: 'Number of HTTP PUT requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_http_put_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1379,6 +1446,7 @@
   help: 'Number of other HTTP requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_other_http_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1417,6 +1485,7 @@
   help: 'Total number of HTTP requests executed by superuser/JWT
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_superuser_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1450,6 +1519,7 @@
   help: 'Total number of HTTP requests
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_total_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1488,6 +1558,7 @@
   help: 'Total number of HTTP requests executed by user clients
 
     '
+  introducedIn: '3.6'
   name: arangodb_http_request_statistics_user_requests_total
   threshold: 'This metrics reflects the performance of an instance in a certain way.
 
@@ -1515,6 +1586,7 @@
   help: 'Number of intermediate commits performed in transactions.
 
     '
+  introducedIn: '3.6'
   name: arangodb_intermediate_commits_total
   troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.
     It can\nhappen for large transactions and large data-loading jobs. However, as
@@ -1537,6 +1609,7 @@
   help: '`Current` loading runtimes.
 
     '
+  introducedIn: '3.7'
   name: arangodb_load_current_runtime
   type: histogram
   unit: ms
@@ -1551,6 +1624,7 @@
   help: '`Plan` loading runtimes.
 
     '
+  introducedIn: '3.7'
   name: arangodb_load_plan_runtime
   type: histogram
   unit: ms
@@ -1572,6 +1646,7 @@
   help: 'Counter of actions that are done and have been removed from the registry.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_done_total
   type: counter
   unit: number
@@ -1595,6 +1670,7 @@
   help: 'Counter of actions that have been discarded because of a duplicate.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_duplicate_total
   type: counter
   unit: number
@@ -1618,6 +1694,7 @@
   help: 'Failure counter for the maintenance actions.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_failure_total
   type: counter
   unit: number
@@ -1639,6 +1716,7 @@
   help: 'Time spent in the queue before execution for maintenance actions.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_queue_time_msec
   type: histogram
   unit: ms
@@ -1660,6 +1738,7 @@
   help: 'Counter of actions that have been registered in the action registry.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_registered_total
   type: counter
   unit: number
@@ -1681,6 +1760,7 @@
   help: 'Time spent executing a maintenance action.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_action_runtime_msec
   type: histogram
   unit: ms
@@ -1710,6 +1790,7 @@
   help: 'Total time spent on agency sync.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_agency_sync_runtime_msec
   type: histogram
   unit: ms
@@ -1737,6 +1818,7 @@
   help: 'Maintenance Phase 1 runtime histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_phase1_runtime_msec
   type: histogram
   unit: ms
@@ -1764,6 +1846,7 @@
   help: 'Maintenance Phase 2 runtime histogram.
 
     '
+  introducedIn: '3.7'
   name: arangodb_maintenance_phase2_runtime_msec
   type: histogram
   unit: ms
@@ -1777,6 +1860,7 @@
   help: 'Number of requests forwarded to another coordinator.
 
     '
+  introducedIn: '3.6'
   name: arangodb_network_forwarded_requests_total
   type: counter
   unit: number
@@ -1794,6 +1878,7 @@
   help: 'Internal request round-trip time as a percentage of timeout.
 
     '
+  introducedIn: '3.8'
   name: arangodb_network_request_duration_as_percentage_of_timeout
   type: gauge
   unit: percentage
@@ -1809,6 +1894,7 @@
   help: 'Number of internal requests that have timed out.
 
     '
+  introducedIn: '3.8'
   name: arangodb_network_request_timeouts_total
   type: counter
   unit: number
@@ -1824,6 +1910,7 @@
   help: 'Number of outgoing internal requests in flight.
 
     '
+  introducedIn: '3.8'
   name: arangodb_network_requests_in_flight
   type: gauge
   unit: number
@@ -1844,6 +1931,7 @@
   help: 'Number of major page faults.
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_major_page_faults_total
   type: counter
   unit: number
@@ -1862,6 +1950,7 @@
   help: 'Number of minor faults the process.
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_minor_page_faults_total
   type: gauge
   unit: number
@@ -1878,6 +1967,7 @@
   help: 'Number of threads in the arangod process
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_number_of_threads
   type: gauge
   unit: number
@@ -1900,6 +1990,7 @@
   help: 'Resident set size
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_resident_set_size
   type: gauge
   unit: bytes
@@ -1924,6 +2015,7 @@
   help: 'Resident set size as fraction of system memory
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_resident_set_size_percent
   type: gauge
   unit: number
@@ -1942,6 +2034,7 @@
   help: 'Process system time.
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_system_time
   type: gauge
   unit: s
@@ -1960,6 +2053,7 @@
   help: 'Process user time
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_user_time
   type: gauge
   unit: s
@@ -1982,6 +2076,7 @@
   help: 'Virtual memory size
 
     '
+  introducedIn: '3.6'
   name: arangodb_process_statistics_virtual_memory_size
   type: gauge
   unit: bytes
@@ -2000,6 +2095,7 @@
   help: 'Number of refusal answers from a follower during synchronous replication.
 
     '
+  introducedIn: '3.6'
   name: arangodb_refused_followers_total
   threshold: "Usually, refusal answers only occur if request processing on followers
     is \ndelayed and there was a recent leadership change. This should not be a\ncommon
@@ -2016,6 +2112,7 @@
   help: 'Number of cluster replication inventory requests received.
 
     '
+  introducedIn: '3.6'
   name: arangodb_replication_cluster_inventory_requests_total
   type: counter
   unit: number
@@ -2029,6 +2126,7 @@
   help: 'Accumulated time needed to apply replication dump data.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_apply_time_total
   type: counter
   unit: ms
@@ -2042,6 +2140,7 @@
   help: 'Number of bytes received in replication dump requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_bytes_received_total
   type: counter
   unit: bytes
@@ -2055,6 +2154,7 @@
   help: 'Number of documents received in replication dump requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_documents_total
   type: counter
   unit: number
@@ -2068,6 +2168,7 @@
   help: 'Accumulated wait time for replication requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_request_time_total
   type: counter
   unit: ms
@@ -2081,6 +2182,7 @@
   help: 'Number of replication dump requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_dump_requests_total
   type: counter
   unit: number
@@ -2094,6 +2196,7 @@
   help: 'Number of failed connection attempts and response errors during replication.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_failed_connects_total
   type: counter
   unit: number
@@ -2107,6 +2210,7 @@
   help: 'Accumulated wait time for replication key chunks determination requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_chunks_requests_time_total
   type: counter
   unit: ms
@@ -2120,6 +2224,7 @@
   help: 'Accumulated time needed to apply replication docs data.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_docs_requests_time_total
   type: counter
   unit: ms
@@ -2133,6 +2238,7 @@
   help: 'Accumulated time needed to apply replication initial sync insertions.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_insert_apply_time_total
   type: counter
   unit: ms
@@ -2146,6 +2252,7 @@
   help: 'Accumulated wait time for replication keys requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_keys_requests_time_total
   type: counter
   unit: ms
@@ -2159,6 +2266,7 @@
   help: 'Accumulated time needed for replication initial sync key lookups.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_lookup_time_total
   type: counter
   unit: ms
@@ -2172,6 +2280,7 @@
   help: 'Accumulated time needed to apply replication initial sync removals.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
@@ -2185,6 +2294,7 @@
   help: 'Accumulated time needed to apply replication initial sync removals:
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_remove_apply_time_total
   type: counter
   unit: ms
@@ -2198,6 +2308,7 @@
   help: 'Number of documents inserted by replication initial sync.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_inserted_total
   type: counter
   unit: number
@@ -2211,6 +2322,7 @@
   help: 'Number of documents removed by replication initial sync.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_removed_total
   type: counter
   unit: number
@@ -2224,6 +2336,7 @@
   help: 'Number of documents requested by replication initial sync.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_requested_total
   type: counter
   unit: number
@@ -2237,6 +2350,7 @@
   help: 'Number of replication initial sync docs requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_docs_requests_total
   type: counter
   unit: number
@@ -2250,6 +2364,7 @@
   help: 'Number of replication initial sync keys requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_initial_sync_keys_requests_total
   type: counter
   unit: number
@@ -2263,6 +2378,7 @@
   help: 'Total number of synchronous replication requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_synchronous_requests_total_number._total
   type: counter
   unit: number
@@ -2276,6 +2392,7 @@
   help: 'Total time needed for all synchronous replication requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_synchronous_requests_total_time_total
   type: counter
   unit: ms
@@ -2289,6 +2406,7 @@
   help: 'Accumulated time needed to apply replication tailing data.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_apply_time_total
   type: counter
   unit: ms
@@ -2302,6 +2420,7 @@
   help: 'Accumulated number of bytes received for replication tailing requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_bytes_received_total
   type: counter
   unit: bytes
@@ -2316,6 +2435,7 @@
   help: 'Accumulated number of replication tailing document inserts/replaces processed.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_documents_total
   type: counter
   unit: number
@@ -2329,6 +2449,7 @@
   help: 'Number of replication tailing failures due to missing tick on leader.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_follow_tick_failures_total
   type: counter
   unit: number
@@ -2342,6 +2463,7 @@
   help: 'Number of replication tailing markers processed.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_markers_total
   type: counter
   unit: number
@@ -2355,6 +2477,7 @@
   help: 'Number of replication tailing document removals processed.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_removals_total
   type: counter
   unit: number
@@ -2368,6 +2491,7 @@
   help: 'Aggregated wait time for replication tailing requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_request_time_total
   type: counter
   unit: ms
@@ -2381,6 +2505,7 @@
   help: 'Number of replication tailing requests.
 
     '
+  introducedIn: '3.8'
   name: arangodb_replication_tailing_requests_total
   type: counter
   unit: number
@@ -2395,6 +2520,7 @@
   help: 'Number of times RocksDB has entered a stalled (slowed) write state.
 
     '
+  introducedIn: '3.8'
   name: arangodb_rocksdb_write_stalls_total
   type: counter
   unit: number
@@ -2409,28 +2535,56 @@
   help: 'Number of times RocksDB has entered a stopped write state.
 
     '
+  introducedIn: '3.8'
   name: arangodb_rocksdb_write_stops_total
   type: counter
   unit: number
 - category: Scheduler
-  complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s high priority
-    queue.
-
-    The capacity of the high priority queue can be configured via the startup
-
-    option `--server.prio1-size`.
+  complexity: simple
+  description: 'Number of awake worker threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
+  help: 'Number of awake worker threads.
+
+    '
+  introducedIn: '3.6'
+  name: arangodb_scheduler_awake_threads
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: medium
+  description: 'Current queue length of the high priority queue in the scheduler.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
   help: 'Current queue length of the high priority queue in the scheduler.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_high_prio_queue_length
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
+  description: 'Total number of jobs dequeued.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of jobs dequeued.
+
+    '
+  introducedIn: '3.6'
+  name: arangodb_scheduler_jobs_dequeued
   type: gauge
   unit: number
 - category: Scheduler
@@ -2463,6 +2617,22 @@
   unit: number
 - category: Scheduler
   complexity: advanced
+  description: 'Total number of queue jobs done.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of queue jobs done.
+
+    '
+  introducedIn: '3.6'
+  name: arangodb_scheduler_jobs_done
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
   description: 'The total number of queue jobs done.
 
     Calculating the difference between arangodb_scheduler_jobs_dequeued_total
@@ -2481,6 +2651,22 @@
 
     '
   name: arangodb_scheduler_jobs_done_total
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: advanced
+  description: 'Total number of jobs submitted to the queue.
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  help: 'Total number of jobs submitted to the queue.
+
+    '
+  introducedIn: '3.6'
+  name: arangodb_scheduler_jobs_submitted
   type: gauge
   unit: number
 - category: Scheduler
@@ -2507,220 +2693,177 @@
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Last recorded dequeue time for a low priority queue item, i.e., the
-    amount of
-
-    time the job was sitting in the queue. If there is nothing to do for a long
-
-    time, this metric will be reset to zero.
-
-    A large value for this metric indicates that the server is under heavy load
-
-    and low priority jobs cannot be dequeued in a timely manner.
+  description: 'Last recorded dequeue time for a low priority queue item.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Last recorded dequeue time for a low priority queue item.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_low_prio_queue_last_dequeue_time
   type: gauge
   unit: ms
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s low priority
-    queue.
-
-    The capacity of the low priority queue can be configured via the startup
-
-    option `--server.maximal-queue-size`.
+  description: 'Current queue length of the low priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the low priority queue in the scheduler.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_low_prio_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s maintenance
-    priority
-
-    queue. These are the jobs with the highest priority and are mainly used for
-
-    cluster internal operations. The capacity of the maintenance priority queue
-
-    can be configured via the startup option `--server.scheduler-queue-size`.
+  description: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the maintenance priority queue in the scheduler.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_maintenance_prio_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'The number of jobs currently queued on the scheduler''s medium priority
-    queue.
-
-    The capacity of the medium priority queue can be configured via the startup
-
-    option `--server.prio2-size`.
+  description: 'Current queue length of the medium priority queue in the scheduler.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current queue length of the medium priority queue in the scheduler.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_medium_prio_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The number of worker threads currently started. Worker threads can
-    be started
-
-    and stopped dynamically based on the server load.
+  description: 'Current number of worker threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current number of worker threads.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_num_worker_threads
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The current number of threads actually working on some job (i.e.,
-    not
-
-    spinning while waiting for new work).
+  description: 'Current number of working threads.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Current number of working threads.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_num_working_threads
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Total number of low priority jobs currently being processed.
+  description: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Total number of ongoing RestHandlers coming from the low prio queue.
 
     '
+  introducedIn: '3.8'
   name: arangodb_scheduler_ongoing_low_prio
   type: gauge
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'Number of tasks dropped because the queue was already full. The queue
-    capacities
-
-    can be configured via the startup options `--server.scheduler-queue-size`,
-
-    `--server.prio1-size`, `--server.prio2-size` and `--server.maximal-queue-size`.
+  description: 'Number of tasks dropped and not added to internal queue.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Number of tasks dropped and not added to internal queue.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_queue_full_failures_total
   type: counter
   unit: number
 - category: Scheduler
   complexity: simple
-  description: 'The total number of currently queued jobs in all queues.
+  description: 'Server''s internal queue length.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Server''s internal queue length.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_queue_length
   type: gauge
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Total accumulated number of scheduler threads started. Worker threads
-    can be
-
-    started and stopped dynamically based on the server load.
+  description: 'Total accumulated number of scheduler threads started.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Total accumulated number of scheduler threads started.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_threads_started_total
   type: counter
   unit: number
 - category: Scheduler
   complexity: medium
-  description: 'Total accumulated number of scheduler threads stopped. Worker threads
-    can be
-
-    started and stopped dynamically based on the server load.
+  description: 'Accumulated total number of scheduler threads stopped.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  - single
   help: 'Accumulated total number of scheduler threads stopped.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_threads_stopped_total
   type: counter
   unit: number
@@ -2741,6 +2884,7 @@
   help: 'Number of CPU cores visible to the arangod process
 
     '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_cpu_cores
   type: gauge
   unit: number
@@ -2757,6 +2901,7 @@
   help: 'Percentage of time that the system CPUs have been idle
 
     '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_idle_percent
   type: gauge
   unit: percentage
@@ -2778,6 +2923,7 @@
   help: 'Percentage of time that the system CPUs have been waiting for I/O
 
     '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_iowait_percent
   type: gauge
   unit: percentage
@@ -2794,6 +2940,7 @@
   help: 'Physical memory in bytes
 
     '
+  introducedIn: '3.6'
   name: arangodb_server_statistics_physical_memory
   type: gauge
   unit: bytes
@@ -2816,6 +2963,7 @@
   help: 'Number of seconds elapsed since server start
 
     '
+  introducedIn: '3.6'
   name: arangodb_server_statistics_server_uptime_total
   type: counter
   unit: s
@@ -2837,6 +2985,7 @@
   help: 'Percentage of time that the system CPUs have spent in kernel mode
 
     '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_system_percent
   type: gauge
   unit: percentage
@@ -2857,6 +3006,7 @@
   help: 'Percentage of time that the system CPUs have spent in user mode
 
     '
+  introducedIn: '3.8'
   name: arangodb_server_statistics_user_percent
   type: gauge
   unit: percentage
@@ -2875,6 +3025,7 @@
   help: 'Number of leader shards on this machine.
 
     '
+  introducedIn: '3.7'
   name: arangodb_shards_leader_number
   troubleshoot: 'Since the leaders perform all the read and write operations and
 
@@ -2920,6 +3071,7 @@
   help: 'Number of shards not replicated at all.
 
     '
+  introducedIn: '3.7'
   name: arangodb_shards_not_replicated
   troubleshoot: 'Needless to say, such a situation is very bad for resilience, since
     it
@@ -2957,6 +3109,7 @@
   help: 'Number of shards on this machine.
 
     '
+  introducedIn: '3.7'
   name: arangodb_shards_number
   troubleshoot: 'Since both leader and follower shards use memory and disk space,
 
@@ -2994,6 +3147,7 @@
   help: 'Number of leader shards not fully replicated.
 
     '
+  introducedIn: '3.7'
   name: arangodb_shards_out_of_sync
   troubleshoot: 'Needless to say, such a situation is not good resilience, since we
 
@@ -3040,6 +3194,7 @@
   help: 'Number of times a mismatching shard checksum was detected when syncing shards.
 
     '
+  introducedIn: '3.6'
   name: arangodb_sync_wrong_checksum_total
   troubleshoot: 'Normally, this number will always be 0. If it is not, then usually
 
@@ -3064,6 +3219,7 @@
   help: 'Number of transactions aborted.
 
     '
+  introducedIn: '3.6'
   name: arangodb_transactions_aborted_total
   type: counter
   unit: number
@@ -3081,6 +3237,7 @@
   help: 'Number of transactions committed.
 
     '
+  introducedIn: '3.6'
   name: arangodb_transactions_committed_total
   type: counter
   unit: number
@@ -3100,6 +3257,7 @@
   help: 'Total number of expired transactions.
 
     '
+  introducedIn: '3.8'
   name: arangodb_transactions_expired_total
   type: counter
   unit: number
@@ -3117,6 +3275,7 @@
   help: 'Number of transactions started.
 
     '
+  introducedIn: '3.6'
   name: arangodb_transactions_started_total
   type: counter
   unit: number
@@ -3133,6 +3292,7 @@
   help: 'Number of V8 contexts currently alive
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_alive
   type: gauge
   unit: number
@@ -3149,6 +3309,7 @@
   help: 'Number of V8 contexts currently busy
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_busy
   type: gauge
   unit: number
@@ -3163,6 +3324,7 @@
   help: 'Total number of V8 contexts ever created.
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_created_total
   type: counter
   unit: number
@@ -3177,6 +3339,7 @@
   help: 'Accumulated total time for creating V8 contexts.
 
     '
+  introducedIn: '3.8'
   name: arangodb_v8_context_creation_time_msec_total
   type: counter
   unit: ms
@@ -3191,6 +3354,7 @@
   help: 'Total number of V8 contexts ever destroyed.
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_destroyed_total
   type: counter
   unit: number
@@ -3207,6 +3371,7 @@
   help: 'Number of V8 contexts currently dirty
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_dirty
   type: gauge
   unit: number
@@ -3222,6 +3387,7 @@
   help: 'Total number of V8 context enter failures.
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_enter_failures_total
   type: counter
   unit: number
@@ -3237,6 +3403,7 @@
   help: 'Total number of V8 context enter events.
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_entered_total
   type: counter
   unit: number
@@ -3252,6 +3419,7 @@
   help: 'Total number of V8 context exit events.
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_exited_total
   type: counter
   unit: number
@@ -3268,6 +3436,7 @@
   help: 'Number of V8 contexts currently free
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_free
   type: gauge
   unit: number
@@ -3284,6 +3453,7 @@
   help: 'Maximum number of concurrent V8 contexts
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_max
   type: gauge
   unit: number
@@ -3300,6 +3470,7 @@
   help: 'Minimum number of concurrent V8 contexts
 
     '
+  introducedIn: '3.6'
   name: arangodb_v8_context_min
   type: gauge
   unit: number
@@ -3315,6 +3486,7 @@
   help: 'rocksdb_actual_delayed_write_rate
 
     '
+  introducedIn: '3.6'
   name: rocksdb_actual_delayed_write_rate
   type: gauge
   unit: number
@@ -3330,6 +3502,7 @@
   help: 'rocksdb_background_errors
 
     '
+  introducedIn: '3.6'
   name: rocksdb_background_errors
   type: gauge
   unit: number
@@ -3345,6 +3518,7 @@
   help: 'rocksdb_base_level
 
     '
+  introducedIn: '3.6'
   name: rocksdb_base_level
   type: gauge
   unit: number
@@ -3360,6 +3534,7 @@
   help: 'rocksdb_block_cache_capacity
 
     '
+  introducedIn: '3.6'
   name: rocksdb_block_cache_capacity
   type: gauge
   unit: number
@@ -3375,6 +3550,7 @@
   help: 'rocksdb_block_cache_pinned_usage
 
     '
+  introducedIn: '3.6'
   name: rocksdb_block_cache_pinned_usage
   type: gauge
   unit: number
@@ -3390,6 +3566,7 @@
   help: 'rocksdb_block_cache_usage
 
     '
+  introducedIn: '3.6'
   name: rocksdb_block_cache_usage
   type: gauge
   unit: number
@@ -3405,6 +3582,7 @@
   help: 'rocksdb_cache_allocated
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cache_allocated
   type: gauge
   unit: number
@@ -3420,6 +3598,7 @@
   help: 'rocksdb_cache_hit_rate_lifetime
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_lifetime
   type: gauge
   unit: number
@@ -3435,6 +3614,7 @@
   help: 'rocksdb_cache_hit_rate_recent
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_recent
   type: gauge
   unit: number
@@ -3450,6 +3630,7 @@
   help: 'rocksdb_cache_limit
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cache_limit
   type: gauge
   unit: number
@@ -3465,6 +3646,7 @@
   help: 'rocksdb_compaction_pending
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compaction_pending
   type: gauge
   unit: number
@@ -3480,6 +3662,7 @@
   help: 'rocksdb_compression_ratio_at_level0
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level0
   type: gauge
   unit: number
@@ -3495,6 +3678,7 @@
   help: 'rocksdb_compression_ratio_at_level1
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level1
   type: gauge
   unit: number
@@ -3510,6 +3694,7 @@
   help: 'rocksdb_compression_ratio_at_level2
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level2
   type: gauge
   unit: number
@@ -3525,6 +3710,7 @@
   help: 'rocksdb_compression_ratio_at_level3
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level3
   type: gauge
   unit: number
@@ -3540,6 +3726,7 @@
   help: 'rocksdb_compression_ratio_at_level4
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level4
   type: gauge
   unit: number
@@ -3555,6 +3742,7 @@
   help: 'rocksdb_compression_ratio_at_level5
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level5
   type: gauge
   unit: number
@@ -3570,6 +3758,7 @@
   help: 'rocksdb_compression_ratio_at_level6
 
     '
+  introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level6
   type: gauge
   unit: number
@@ -3585,6 +3774,7 @@
   help: 'rocksdb_cur_size_active_mem_table
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cur_size_active_mem_table
   type: gauge
   unit: number
@@ -3600,6 +3790,7 @@
   help: 'rocksdb_cur_size_all_mem_tables
 
     '
+  introducedIn: '3.6'
   name: rocksdb_cur_size_all_mem_tables
   type: gauge
   unit: number
@@ -3615,6 +3806,7 @@
   help: 'rocksdb_estimate_live_data_size
 
     '
+  introducedIn: '3.6'
   name: rocksdb_estimate_live_data_size
   type: gauge
   unit: number
@@ -3630,6 +3822,7 @@
   help: 'rocksdb_estimate_num_keys
 
     '
+  introducedIn: '3.6'
   name: rocksdb_estimate_num_keys
   type: gauge
   unit: number
@@ -3645,6 +3838,7 @@
   help: 'rocksdb_estimate_pending_compaction_bytes
 
     '
+  introducedIn: '3.6'
   name: rocksdb_estimate_pending_compaction_bytes
   type: gauge
   unit: number
@@ -3660,6 +3854,7 @@
   help: 'rocksdb_estimate_table_readers_mem
 
     '
+  introducedIn: '3.6'
   name: rocksdb_estimate_table_readers_mem
   type: gauge
   unit: number
@@ -3675,6 +3870,7 @@
   help: 'rocksdb_free_disk_space
 
     '
+  introducedIn: '3.6'
   name: rocksdb_free_disk_space
   type: gauge
   unit: number
@@ -3690,6 +3886,7 @@
   help: 'rocksdb_free_inodes
 
     '
+  introducedIn: '3.6'
   name: rocksdb_free_inodes
   type: gauge
   unit: number
@@ -3705,6 +3902,7 @@
   help: 'rocksdb_is_file_deletions_enabled
 
     '
+  introducedIn: '3.6'
   name: rocksdb_is_file_deletions_enabled
   type: gauge
   unit: number
@@ -3720,6 +3918,7 @@
   help: 'rocksdb_is_write_stopped
 
     '
+  introducedIn: '3.6'
   name: rocksdb_is_write_stopped
   type: gauge
   unit: number
@@ -3735,6 +3934,7 @@
   help: 'rocksdb_live_sst_files_size
 
     '
+  introducedIn: '3.6'
   name: rocksdb_live_sst_files_size
   type: gauge
   unit: number
@@ -3750,6 +3950,7 @@
   help: 'rocksdb_mem_table_flush_pending
 
     '
+  introducedIn: '3.6'
   name: rocksdb_mem_table_flush_pending
   type: gauge
   unit: number
@@ -3765,6 +3966,7 @@
   help: 'rocksdb_min_log_number_to_keep
 
     '
+  introducedIn: '3.6'
   name: rocksdb_min_log_number_to_keep
   type: gauge
   unit: number
@@ -3780,6 +3982,7 @@
   help: 'rocksdb_num_deletes_active_mem_table
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_deletes_active_mem_table
   type: gauge
   unit: number
@@ -3795,6 +3998,7 @@
   help: 'rocksdb_num_deletes_imm_mem_tables
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_deletes_imm_mem_tables
   type: gauge
   unit: number
@@ -3810,6 +4014,7 @@
   help: 'rocksdb_num_entries_active_mem_table
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_entries_active_mem_table
   type: gauge
   unit: number
@@ -3825,6 +4030,7 @@
   help: 'rocksdb_num_entries_imm_mem_tables
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_entries_imm_mem_tables
   type: gauge
   unit: number
@@ -3840,6 +4046,7 @@
   help: 'rocksdb_num_files_at_level0
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level0
   type: gauge
   unit: number
@@ -3855,6 +4062,7 @@
   help: 'rocksdb_num_files_at_level1
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level1
   type: gauge
   unit: number
@@ -3870,6 +4078,7 @@
   help: 'rocksdb_num_files_at_level2
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level2
   type: gauge
   unit: number
@@ -3885,6 +4094,7 @@
   help: 'rocksdb_num_files_at_level3
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level3
   type: gauge
   unit: number
@@ -3900,6 +4110,7 @@
   help: 'rocksdb_num_files_at_level4
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level4
   type: gauge
   unit: number
@@ -3915,6 +4126,7 @@
   help: 'rocksdb_num_files_at_level5
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level5
   type: gauge
   unit: number
@@ -3930,6 +4142,7 @@
   help: 'rocksdb_num_files_at_level6
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_files_at_level6
   type: gauge
   unit: number
@@ -3945,6 +4158,7 @@
   help: 'rocksdb_num_immutable_mem_table
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_immutable_mem_table
   type: gauge
   unit: number
@@ -3960,6 +4174,7 @@
   help: 'rocksdb_num_immutable_mem_table_flushed
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_immutable_mem_table_flushed
   type: gauge
   unit: number
@@ -3975,6 +4190,7 @@
   help: 'rocksdb_num_live_versions
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_live_versions
   type: gauge
   unit: number
@@ -3990,6 +4206,7 @@
   help: 'rocksdb_num_running_compactions
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_running_compactions
   type: gauge
   unit: number
@@ -4005,6 +4222,7 @@
   help: 'rocksdb_num_running_flushes
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_running_flushes
   type: gauge
   unit: number
@@ -4020,6 +4238,7 @@
   help: 'rocksdb_num_snapshots
 
     '
+  introducedIn: '3.6'
   name: rocksdb_num_snapshots
   type: gauge
   unit: number
@@ -4035,6 +4254,7 @@
   help: 'rocksdb_oldest_snapshot_time
 
     '
+  introducedIn: '3.6'
   name: rocksdb_oldest_snapshot_time
   type: gauge
   unit: number
@@ -4050,6 +4270,7 @@
   help: 'rocksdb_size_all_mem_tables
 
     '
+  introducedIn: '3.6'
   name: rocksdb_size_all_mem_tables
   type: gauge
   unit: number
@@ -4065,6 +4286,7 @@
   help: 'rocksdb_total_disk_space
 
     '
+  introducedIn: '3.6'
   name: rocksdb_total_disk_space
   type: gauge
   unit: number
@@ -4080,6 +4302,7 @@
   help: 'rocksdb_total_inodes
 
     '
+  introducedIn: '3.6'
   name: rocksdb_total_inodes
   type: gauge
   unit: number
@@ -4095,6 +4318,7 @@
   help: 'rocksdb_total_sst_files_size
 
     '
+  introducedIn: '3.6'
   name: rocksdb_total_sst_files_size
   type: gauge
   unit: number
@@ -4110,6 +4334,7 @@
   help: 'rocksdbengine_throttle_bps
 
     '
+  introducedIn: '3.6'
   name: rocksdbengine_throttle_bps
   type: gauge
   unit: number
