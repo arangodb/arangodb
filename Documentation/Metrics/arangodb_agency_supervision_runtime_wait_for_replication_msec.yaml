@@ -1,4 +1,5 @@
 name: arangodb_agency_supervision_runtime_wait_for_replication_msec
+introducedIn: "3.7"
 help: |
   Agency supervision wait for replication time.
 unit: ms

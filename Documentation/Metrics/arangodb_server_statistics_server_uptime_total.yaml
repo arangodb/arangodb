@@ -1,4 +1,5 @@
 name: arangodb_server_statistics_server_uptime_total
+introducedIn: "3.6"
 help: |
   Number of seconds elapsed since server start
 unit: s
