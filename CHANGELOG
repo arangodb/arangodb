@@ -1,6 +1,10 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix connectionTime statistic. This statistic should provide the distribution
+  of the connection lifetimes, but in previous versions the tracking was broken
+  and no values were reported.
+  
 * When using connections to multiple endpoints and switching between them,
   arangosh can now reuse existing connections by referring to an internal
   connection cache. This helps for arangosh scripts that repeatedly connect
