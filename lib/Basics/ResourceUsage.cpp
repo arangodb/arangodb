@@ -130,6 +130,8 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       // revert the change that we already made to the instance's own counter.
       rollback();
 
+      // track local limit violation
+      _global.trackLocalViolation();
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION(TRI_ERROR_RESOURCE_LIMIT);
     }
@@ -141,6 +143,8 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       // the allocation would exceed the global maximum value, so we need to roll back.
       rollback();
 
+      // track global limit violation
+      _global.trackGlobalViolation();
       // now we can safely signal an exception
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT, "global memory limit exceeded");
     }
