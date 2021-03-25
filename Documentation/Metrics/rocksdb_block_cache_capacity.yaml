@@ -1,4 +1,5 @@
 name: rocksdb_block_cache_capacity
+introducedIn: "3.6"
 help: |
   rocksdb_block_cache_capacity
 unit: number

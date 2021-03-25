@@ -8,6 +8,12 @@ except ImportError:
 
 import os, re, sys
 
+# Some data:
+categoryNames = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
+                 "Statistics", "Replication", "Disk", "Errors", \
+                 "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",\
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+
 # Check that we are in the right place:
 lshere = os.listdir(".")
 if not("arangod" in lshere and "arangosh" in lshere and \
@@ -38,7 +44,7 @@ for root, dirs, files in os.walk("."):
         if f[-4:] == ".cpp":
           ff = os.path.join(root, f)
           continuation = False
-          s = open(ff)
+          s = open(ff, 'rt', encoding='utf-8')
           while True:
               l = s.readline()
               if not(continuation):
@@ -105,19 +111,23 @@ for i in range(0, len(metricsList)):
 
         # Check a few things in the yaml:
         for attr in ["name", "help", "exposedBy", "description", "unit",\
-                     "type", "category", "complexity"]:
+                     "type", "category", "complexity", "introducedIn"]:
             if not attr in y:
                 print("YAML file '" + filename + "' does not have required attribute '" + attr + "'")
                 bad = True
         if not bad:
             for attr in ["name", "help", "description", "unit",\
-                         "type", "category", "complexity"]:
+                         "type", "category", "complexity", "introducedIn"]:
                 if not isinstance(y[attr], str):
                     print("YAML file '" + filename + "' has an attribute '" + attr + "' whose value must be a string but isn't.")
                     bad = True
             if not isinstance(y["exposedBy"], list):
                 print("YAML file '" + filename + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
                 bad = True
+            if not bad:
+                if not y["category"] in categoryNames:
+                    print("YAML file '" + filename + "' has an unknown category '" + y["category"] + "', please fix.")
+                    bad = True
             
     if bad:
         missing = True
