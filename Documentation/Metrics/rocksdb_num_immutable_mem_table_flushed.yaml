@@ -1,7 +1,7 @@
 name: rocksdb_num_immutable_mem_table_flushed
 introducedIn: "3.6"
 help: |
-  RocksDB metric "num-immutable-mem-table-flushed"
+  RocksDB metric "num-immutable-mem-table-flushed" - sum over column families
 unit: number
 type: gauge
 category: RocksDB
@@ -13,6 +13,8 @@ exposedBy:
 description: |
   This metric exhibits the RocksDB metric "num-immutable-mem-table-flushed", 
   which shows the number of immutable memtables that have already been
-  flushed. Mem tables are sorted tables of key/value pairs which begin
+  flushed. This value is the sum over all column families.
+
+  Mem tables are sorted tables of key/value pairs which begin
   to be built up in memory. At some stage they are closed and become
   immutable, and some time later they are flushed to disk.
