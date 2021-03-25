@@ -118,6 +118,14 @@ class QueryContext {
     
   virtual bool killed() const = 0;
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  // Debug method to kill a query at a specific position
+  // during execution. It internally asserts that the query
+  // is actually visible through other APIS (e.g. current queries)
+  // so user actually has a chance to kill it here.
+  virtual void debugKillQuery() = 0;
+#endif
+
   /// @brief whether or not a query is a modification query
   virtual bool isModificationQuery() const noexcept = 0;
   virtual bool isAsyncQuery() const noexcept = 0;
