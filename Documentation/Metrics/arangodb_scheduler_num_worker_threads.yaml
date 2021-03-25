@@ -10,5 +10,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current number of worker threads.
+  The number of worker threads currently started. Worker threads can be started
+  and stopped dynamically based on the server load.

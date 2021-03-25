@@ -10,5 +10,8 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current queue length of the high priority queue in the scheduler.
+  The number of jobs currently queued on the scheduler's high priority queue.
+  The capacity of the high priority queue can be configured via the startup
+  option `--server.prio1-size`.

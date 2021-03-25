@@ -10,5 +10,6 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Server's internal queue length.
+  The total number of currently queued jobs in all queues.
