@@ -3,7 +3,7 @@ help: |
   Number of timeouts when trying to acquire collection exclusive locks.
 unit: number
 type: counter
-category: Transaction
+category: Transactions
 complexity: medium
 exposedBy:
   - dbserver
