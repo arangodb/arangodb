@@ -82,6 +82,47 @@ TEST(FutureTests, expected_no_throw_test) {
       });
 }
 
+TEST(FutureTests, fulfill_midway) {
+  auto&& [future, promise] = make_promise<int>();
+
+  bool executed_last = false;
+
+  auto f2 = std::move(future).and_then_direct([](int x) noexcept {
+    EXPECT_EQ(x, 3);
+    return x * 2;
+  });
+
+  std::move(promise).fulfill(3);
+
+  std::move(f2).finally([&](int x) noexcept {
+    EXPECT_EQ(x, 6);
+    executed_last = true;
+  });
+
+  EXPECT_TRUE(executed_last);
+}
+
+TEST(FutureTests, fulfill_in_vector) {
+  auto&& [f1, p] = make_promise<int>();
+
+  bool executed_last = false;
+
+  std::vector<future<int>> v;
+
+  v.emplace_back(std::move(f1).and_then([](int x) noexcept {
+     return 2 * x;
+   }));
+
+  std::move(p).fulfill(3);
+
+  std::move(v.back()).finally([&](int x) noexcept {
+    EXPECT_EQ(x, 6);
+    executed_last = true;
+  });
+
+  EXPECT_TRUE(executed_last);
+}
+
 void print_exception(const std::exception& e, int level = 0) {
   std::cerr << std::string(level, ' ') << "exception of type "
             << typeid(e).name() << ": " << e.what() << '\n';

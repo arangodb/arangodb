@@ -75,28 +75,34 @@ struct invocable_test_object : copy_constructor_trait<copy_constructor>,
 
   invocable_test_object(invocable_test_object&&) noexcept = default;
   invocable_test_object(invocable_test_object const&) = default;
-
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER, int> = 0>
+  
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER, int> = 0>
   void operator()(T) noexcept(is_noexcept_invocable) {
     signal();
   }
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER, int> = 0>
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER, int> = 0>
   void operator()(T) & noexcept(is_noexcept_invocable) {
     signal();
   }
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER, int> = 0>
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER, int> = 0>
   void operator()(T) && noexcept(is_noexcept_invocable) {
     signal();
   }
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER_CONST, int> = 0>
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::NO_QUALIFIER_CONST, int> = 0>
   void operator()(T) const noexcept(is_noexcept_invocable) {
     signal();
   }
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER_CONST, int> = 0>
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::LVALUE_REF_QUALIFIER_CONST, int> = 0>
   void operator()(T) const& noexcept(is_noexcept_invocable) {
     signal();
   }
-  template <auto U = irq, std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER_CONST, int> = 0>
+  template <invocable_ref_qualification U = irq,
+            std::enable_if_t<U == invocable_ref_qualification::RVALUE_QUALIFIER_CONST, int> = 0>
   void operator()(T) const&& noexcept(is_noexcept_invocable) {
     signal();
   }

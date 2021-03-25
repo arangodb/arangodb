@@ -8,11 +8,14 @@ struct no_inline_test_tag {};
 struct always_inline_test_tag {};
 struct no_temporaries_test_tag {};
 struct no_temporaries_always_inline_test_tag {};
+struct no_inline_no_temporaries_test_tag {};
+
 template<typename... Ts>
 struct only_inline_these_types {};
 
 using my_test_tags =
-    ::testing::Types<default_test_tag, no_inline_test_tag, always_inline_test_tag, no_temporaries_test_tag, no_temporaries_always_inline_test_tag>;
+    ::testing::Types<default_test_tag, no_inline_test_tag, always_inline_test_tag, no_temporaries_test_tag,
+                     no_temporaries_always_inline_test_tag, no_inline_no_temporaries_test_tag>;
 
 template <>
 struct mellon::tag_trait<default_test_tag> {
@@ -48,6 +51,12 @@ struct mellon::tag_trait<no_temporaries_always_inline_test_tag>
     : mellon::tag_trait<default_test_tag> {
   static constexpr bool disable_temporaries = true;
   static constexpr auto small_value_size = std::numeric_limits<std::size_t>::max();  // turn off
+};
+template <>
+struct mellon::tag_trait<no_inline_no_temporaries_test_tag>
+    : mellon::tag_trait<default_test_tag> {
+  static constexpr bool disable_temporaries = true;
+  static constexpr auto small_value_size = 0;
 };
 template <typename... Ts>
 struct mellon::tag_trait<only_inline_these_types<Ts...>>
