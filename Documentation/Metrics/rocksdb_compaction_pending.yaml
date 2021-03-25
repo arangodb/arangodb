@@ -1,4 +1,5 @@
 name: rocksdb_compaction_pending
+introducedIn: "3.6"
 help: |
   rocksdb_compaction_pending
 unit: number

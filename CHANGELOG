@@ -1,6 +1,51 @@
 devel
 -----
 
+* Add an option for locking down all endpoints in the `/_admin/cluster` REST
+  API for callers without a proper JWT set in the request. There is a new
+  startup option `--cluster.api-jwt-policy` that allows *additional* checks
+  for a valid JWT in requests to sub-routes of `/_admin/cluster`. The
+  possible values for the startup option are:
+
+  - "jwt-all": requires a valid JWT for all accesses to `/_admin/cluster` and
+    its sub-routes. If this configuration is used, the "Cluster" and "Nodes"
+    sections of the web interface will be disabled, as they are relying on the
+    ability to read data from several cluster APIs.
+  - "jwt-write": requires a valid JWT for write accesses (all HTTP methods
+    except HTTP GET) to `/_admin/cluster`. This setting can be used to allow
+    privileged users to read data from the cluster APIs, but not to do any
+    modifications. All existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that read operations without
+    a valid JWT may still require dedicated other permissions (as in 3.7).
+  - "jwt-compat": no *additional* access checks are in place for the cluster
+    APIs. However, all existing permissions checks for the cluster API routes
+    are still in effect with this setting, meaning that all operations may
+    still require dedicated other permissions (as in 3.7).
+
+  The default value for the option is `jwt-compat`, which means this option 
+  will not cause any extra JWT checks compared to 3.7.
+
+* Increase default idle timeout in streaming transactions from 10 seconds to 
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
+
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
+* Fix shortName labels in metrics, in particular for agents.
+
+* Fix a race in LogAppender::haveAppenders.
+  `haveAppenders` is called as part of audit logging. It accesses internal maps
+  but previously did not hold a lock while doing so.
+
+* Fix implicit capture of views in a context of JS transaction.
+
+* Fix a crash caused by returning a result produced by ANALYZER function.
+
 * Update the Web UI's list of built-in AQL functions for proper syntax
   highlighting in the query editor.
 
@@ -18,13 +63,13 @@ devel
 * Fix an assertion failure that occurred when restoring view definitions from
   a cluster into a single server.
 
-* Added new ArangoSearch analyzer type "mask".
+* Added new ArangoSearch analyzer type "stopwords".
 
 * Fix error message in case of index unique constraint violations. They were
   lacking the actual error message (i.e. "unique constraint violated") and
   only showed the index details. The issue was introduced only in devel in Feb.
 
-* Removed old metrics in new v2 metric api. Those metric endpoints were
+* Removed obsolete metrics in new v2 metric API. Those metrics' values were
   identical to the sum value of histograms.
 
 * Allow process-specific logfile names.

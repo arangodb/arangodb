@@ -34,6 +34,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
@@ -1759,6 +1760,19 @@ static void JS_DebugClearFailAt(v8::FunctionCallbackInfo<v8::Value> const& args)
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_ClusterApiJwtPolicy(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+    
+  ClusterFeature const& cf = v8g->_server.getFeature<ClusterFeature>();
+  std::string const& policy = cf.apiJwtPolicy();
+  TRI_V8_RETURN_STD_STRING(policy);
+
+  TRI_V8_TRY_CATCH_END
+}
+
 static void JS_IsFoxxApiDisabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
@@ -1852,6 +1866,8 @@ static void JS_CreateHotbackup(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 void TRI_InitV8ServerUtils(v8::Isolate* isolate) {
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_API_JWT_POLICY"), JS_ClusterApiJwtPolicy, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_IS_FOXX_API_DISABLED"), JS_IsFoxxApiDisabled, true);
   TRI_AddGlobalFunctionVocbase(isolate,
