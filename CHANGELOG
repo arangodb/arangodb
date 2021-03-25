@@ -25,6 +25,17 @@ devel
   The default value for the option is `jwt-compat`, which means this option 
   will not cause any extra JWT checks compared to 3.7.
 
+* Increase default idle timeout in streaming transactions from 10 seconds to 
+  60 seconds, and make the timeout configurable via a startup parameter
+  `--transaction.streaming-idle-timeout`.
+
+* Use RebootTracker to abort cluster transactions on DB servers should the
+  originating coordinator die or be rebooted. The previous implementation left
+  the coordinator's transactions open on DB servers until they timed out there.
+  Now, the coordinator's unavailability or reboot will be detected as early as
+  it is reported by the agency, and all open transactions from that coordinator
+  will be auto-aborted on DB servers.
+
 * Fix shortName labels in metrics, in particular for agents.
 
 * Fix a race in LogAppender::haveAppenders.
@@ -58,7 +69,7 @@ devel
   lacking the actual error message (i.e. "unique constraint violated") and
   only showed the index details. The issue was introduced only in devel in Feb.
 
-* Removed old metrics in new v2 metric api. Those metric endpoints were
+* Removed obsolete metrics in new v2 metric API. Those metrics' values were
   identical to the sum value of histograms.
 
 * Allow process-specific logfile names.
