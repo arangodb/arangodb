@@ -1,4 +1,5 @@
 name: rocksdbengine_throttle_bps
+introducedIn: "3.6"
 help: |
   rocksdbengine_throttle_bps
 unit: number

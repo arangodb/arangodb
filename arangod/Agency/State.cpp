@@ -1049,6 +1049,7 @@ bool State::loadOrPersistConfiguration() {
       }
     }
     _agent->id(uuid);
+    ServerState::instance()->setId(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(*_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);

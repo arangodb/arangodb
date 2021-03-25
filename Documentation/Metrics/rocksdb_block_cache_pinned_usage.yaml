@@ -1,4 +1,5 @@
 name: rocksdb_block_cache_pinned_usage
+introducedIn: "3.6"
 help: |
   rocksdb_block_cache_pinned_usage
 unit: number

@@ -1,4 +1,5 @@
 name: arangodb_replication_initial_sync_keys_requests_total
+introducedIn: "3.8"
 help: |
   Number of replication initial sync keys requests.
 unit: number

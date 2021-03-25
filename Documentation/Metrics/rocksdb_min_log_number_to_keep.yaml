@@ -1,4 +1,5 @@
 name: rocksdb_min_log_number_to_keep
+introducedIn: "3.6"
 help: |
   rocksdb_min_log_number_to_keep
 unit: number
