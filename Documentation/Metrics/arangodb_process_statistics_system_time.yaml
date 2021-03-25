@@ -1,6 +1,6 @@
 name: arangodb_process_statistics_system_time
 help: |
-  Process system time.
+  Process system time
 unit: s
 type: gauge
 category: Statistics

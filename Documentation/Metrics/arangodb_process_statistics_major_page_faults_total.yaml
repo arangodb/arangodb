@@ -1,6 +1,6 @@
 name: arangodb_process_statistics_major_page_faults_total
 help: |
-  Number of major page faults.
+  Number of major page faults
 unit: number
 type: counter
 category: Statistics
