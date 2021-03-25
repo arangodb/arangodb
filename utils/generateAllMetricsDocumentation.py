@@ -7,6 +7,7 @@ except ImportError:
     from yaml import Loader, Dumper
 
 import os, re, sys
+from typing import List
 
 # Check that we are in the right place:
 lshere = os.listdir(".")
@@ -24,14 +25,9 @@ if "template.yaml" in yamlfiles:
     yamlfiles.remove("template.yaml")
 
 # Read list of metrics from source:
-metricsList = []
-linematchcounter = re.compile(r"DECLARE_COUNTER\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-linematchgauge = re.compile(r"DECLARE_GAUGE\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-linematchhistogram = re.compile(r"DECLARE_HISTOGRAM\s*\(\s*([a-z_A-Z0-9]+)\s*,")
-headercounter = re.compile(r"DECLARE_COUNTER\s*\(")
-headergauge = re.compile(r"DECLARE_GAUGE\s*\(")
-headerhistogram = re.compile(r"DECLARE_HISTOGRAM\s*\(")
-namematch = re.compile(r"^\s*([a-z_A-Z0-9]+)\s*,")
+metricsList: List[str] = []
+headermatch = re.compile(r"DECLARE_(?:COUNTER|GAUGE|HISTOGRAM)\s*\(")
+namematch = re.compile(r"^\s*(?P<name>[a-z_A-Z0-9]+)\s*,")
 for root, dirs, files in os.walk("."):
     if root[:10] == "./arangod/" or root[:6] == "./lib/":
       for f in files:
@@ -41,35 +37,21 @@ for root, dirs, files in os.walk("."):
           s = open(ff, 'rt', encoding='utf-8')
           while True:
               l = s.readline()
+              if l == "":
+                  break
               if not(continuation):
-                  if l == "":
-                      break
-                  m = linematchcounter.search(l)
-                  if m:
-                      metricsList.append(m.group(1))
-                      continue
-                  m = linematchgauge.search(l)
-                  if m:
-                      metricsList.append(m.group(1))
-                      continue
-                  m = linematchhistogram.search(l)
-                  if m:
-                      metricsList.append(m.group(1))
-                      continue
-                  m = headercounter.search(l)
+                  m = headermatch.search(l)
                   if m:
                       continuation = True
-                  m = headergauge.search(l)
-                  if m:
-                      continuation = True
-                  m = headerhistogram.search(l)
-                  if m:
-                      continuation = True
-              else:
-                  continuation = False
+                      l = l[m.end():]
+              if continuation:
                   m = namematch.search(l)
                   if m:
-                      metricsList.append(m.group(1))
+                      name = m.group('name')
+                      metricsList.append(name)
+                      continuation = False
+          if continuation:
+              raise Exception("Unexpected EOF while parsing metric")
           s.close()
 if len(metricsList) == 0:
     print("Did not find any metrics in arangod/RestServer/MetricsFeature.h!")
