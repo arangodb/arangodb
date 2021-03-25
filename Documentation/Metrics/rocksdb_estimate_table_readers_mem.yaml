@@ -1,4 +1,5 @@
 name: rocksdb_estimate_table_readers_mem
+introducedIn: "3.6"
 help: |
   rocksdb_estimate_table_readers_mem
 unit: number

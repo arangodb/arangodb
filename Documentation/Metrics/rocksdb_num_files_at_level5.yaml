@@ -1,4 +1,5 @@
 name: rocksdb_num_files_at_level5
+introducedIn: "3.6"
 help: |
   rocksdb_num_files_at_level5
 unit: number

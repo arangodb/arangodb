@@ -1,4 +1,5 @@
 name: arangodb_aql_total_query_time_msec_total
+introducedIn: "3.6"
 help: |
   Total execution time of all AQL queries.
 unit: ms
