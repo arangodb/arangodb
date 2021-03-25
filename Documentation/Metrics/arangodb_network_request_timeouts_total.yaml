@@ -1,4 +1,5 @@
 name: arangodb_network_request_timeouts_total
+introducedIn: "3.8"
 help: |
   Number of internal requests that have timed out.
 unit: number

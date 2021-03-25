@@ -1,4 +1,5 @@
 name: arangodb_connection_pool_connections_created_total
+introducedIn: "3.6"
 help: |
   Total number of connections created for connection pool.
 unit: number
