@@ -34,9 +34,9 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
+#include "Containers/AbslFlatHashSet.h"
 
 #include <memory>
-#include <unordered_set>
 
 namespace arangodb {
 struct ResourceMonitor;
@@ -123,7 +123,7 @@ class DistinctCollectExecutor {
 
  private:
   Infos const& _infos;
-  std::unordered_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
+  arangodb::absl::flat_hash_set<AqlValue, AqlValueGroupHash, AqlValueGroupEqual> _seen;
 };
 
 }  // namespace aql

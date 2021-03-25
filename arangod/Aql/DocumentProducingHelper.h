@@ -26,7 +26,6 @@
 
 #include <functional>
 #include <string>
-#include <unordered_set>
 #include <vector>
 
 #include <velocypack/Builder.h>
@@ -35,6 +34,7 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Projections.h"
+#include "Containers/AbslFlatHashSet.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -132,7 +132,7 @@ struct DocumentProducingFunctionContext {
   arangodb::velocypack::Builder _objectBuilder;
 
   /// @brief set of already returned documents. Used to make the result distinct
-  std::unordered_set<LocalDocumentId> _alreadyReturned;
+  arangodb::absl::flat_hash_set<LocalDocumentId> _alreadyReturned;
 
   RegisterId const _outputRegister;
   bool const _produceResult;

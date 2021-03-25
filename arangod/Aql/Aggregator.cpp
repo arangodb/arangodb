@@ -27,6 +27,7 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/Functions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/AbslFlatHashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -635,7 +636,7 @@ struct AggregatorUnique : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  arangodb::absl::flat_hash_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
   mutable arangodb::velocypack::Builder builder;
 };
 
@@ -777,7 +778,7 @@ struct AggregatorCountDistinct : public Aggregator {
   }
 
   MemoryBlockAllocator allocator;
-  std::unordered_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
+  arangodb::absl::flat_hash_set<velocypack::Slice, basics::VelocyPackHelper::VPackHash, basics::VelocyPackHelper::VPackEqual> seen;
 };
 
 template <class T>

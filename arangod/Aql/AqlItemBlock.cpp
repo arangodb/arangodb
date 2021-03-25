@@ -739,6 +739,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   VPackOptions options(VPackOptions::Defaults);
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
+  options.paddingBehavior = VPackOptions::PaddingBehavior::UsePadding;
 
   VPackBuilder raw(&options);
   raw.openArray();
@@ -757,7 +758,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
     Positional,  // saw a value previously encountered
   };
 
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
+  arangodb::absl::flat_hash_map<AqlValue, size_t> table;  // remember duplicates
   size_t lastTablePos = 0;
   State lastState = Positional;
 

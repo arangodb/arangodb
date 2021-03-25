@@ -29,6 +29,7 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Range.h"
+#include "Containers/AbslFlatHashSet.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -51,7 +52,7 @@ SharedAqlItemBlockPtr InputAqlItemRow::cloneToBlock(AqlItemBlockManager& manager
                                                     RegisterCount newNrRegs) const {
   SharedAqlItemBlockPtr block = manager.requestBlock(1, newNrRegs);
   if (isInitialized()) {
-    std::unordered_set<AqlValue> cache;
+    arangodb::absl::flat_hash_set<AqlValue> cache;
     TRI_ASSERT(getNumRegisters() <= newNrRegs);
     // Should we transform this to output row and reuse copy row?
     for (RegisterId::value_t col = 0; col < getNumRegisters(); col++) {
