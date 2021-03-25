@@ -8,6 +8,12 @@ except ImportError:
 
 import os, re, sys
 
+# Some data:
+categoryNames = ["Health", "AQL", "Transactions", "Foxx", "Pregel", \
+                 "Statistics", "Replication", "Disk", "Errors", \
+                 "RocksDB", "Hotbackup", "k8s", "Connectivity", "Network",\
+                 "V8", "Agency", "Scheduler", "Maintenance", "kubearangodb"]
+
 # Check that we are in the right place:
 lshere = os.listdir(".")
 if not("arangod" in lshere and "arangosh" in lshere and \
@@ -118,6 +124,10 @@ for i in range(0, len(metricsList)):
             if not isinstance(y["exposedBy"], list):
                 print("YAML file '" + filename + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
                 bad = True
+            if not bad:
+                if not y["category"] in categoryNames:
+                    print("YAML file '" + filename + "' has an unknown category '" + y["category"] + "', please fix.")
+                    bad = True
             
     if bad:
         missing = True
