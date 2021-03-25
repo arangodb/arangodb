@@ -37,6 +37,7 @@
 #include "Aql/PlanCache.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/Timing.h"
@@ -1466,6 +1467,28 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   void Query::debugKillQuery() {
     // A query can only be killed under certain circumstances.
     // We assert here that one of those is true.
+    // a) Query is in the list of current queries, this can be requested by the user and the query can be killed by user
+    // b) Query is in the query-registery. In this case the query registry can hit a timeout, which triggers the kill
+    // c) The query id has been handed out to the user (stream query only)
+    bool isStreaming = queryOptions().stream;
+    bool wasInList = false;
+    bool isInRegistry = false;
+    auto const& queryList = vocbase().queryList();
+    if (queryList->enabled()) {
+      auto const& current = queryList->listCurrent();
+      for (auto const& it : current) {
+        if (it.id == _queryId) {
+          wasInList = true;
+          break;
+        }
+      }
+    }
+
+    QueryRegistry* registry = QueryRegistryFeature::registry();
+    if (registry != nullptr) {
+      isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
+    }
+    TRI_ASSERT(wasInList || isStreaming || isInRegistry);
     kill();
   }
 #endif
