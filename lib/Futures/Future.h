@@ -23,11 +23,28 @@
 
 #ifndef ARANGOD_FUTURES_FUTURE_H
 #define ARANGOD_FUTURES_FUTURE_H 1
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 #include <mellon/futures.h>
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
+
 #include "Basics/CrashHandler.h"
 #include "Basics/debugging.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
+
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
 
 namespace arangodb::futures {
 struct arangodb_tag {};
@@ -40,6 +57,9 @@ template<typename T>
 using Future = ::mellon::future<Try<T>, arangodb_tag>;
 template<typename T>
 using Promise = ::mellon::promise<Try<T>, arangodb_tag>;
+
+template<typename T, template<typename> typename Fut, typename Tag>
+struct scheduler_addition {};
 
 }  // namespace arangodb::futures
 
@@ -125,7 +145,8 @@ struct mellon::tag_trait<arangodb::futures::arangodb_tag> {
   template<typename T, template<typename> typename Fut>
   struct user_defined_additions;
   template <typename T, template <typename> typename Fut>
-  struct user_defined_additions<arangodb::futures::Try<T>, Fut> {
+  struct user_defined_additions<arangodb::futures::Try<T>, Fut>
+      : arangodb::futures::scheduler_addition<T, Fut, arangodb::futures::arangodb_tag> {
     template <typename F>
     auto thenValue(F&& f) && noexcept {
       return std::move(self()).then(std::forward<F>(f));
@@ -176,5 +197,10 @@ auto makePromise() -> std::pair<Future<T>, Promise<T>> {
 }
 
 }
+
+
+#if defined(__GNUC__) && (__GNUC__ > 9 || (__GNUC__ == 9 && __GNUC_MINOR__ >= 2))
+#pragma GCC diagnostic pop
+#endif
 
 #endif  // ARANGOD_FUTURES_FUTURE_H
