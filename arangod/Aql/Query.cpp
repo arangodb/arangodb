@@ -1488,6 +1488,7 @@ aql::ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
     if (registry != nullptr) {
       isInRegistry = registry->queryIsRegistered(vocbase().name(), _queryId);
     }
+    LOG_DEVEL << "Query killed for debugging in current " << std::boolalpha << wasInList << " streaming " << isStreaming << " in QueryRegistry " << isInRegistry;
     TRI_ASSERT(wasInList || isStreaming || isInRegistry);
     kill();
   }
