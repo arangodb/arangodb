@@ -581,7 +581,7 @@ Result IndexFactory::enhanceJsonIndexFulltext(VPackSlice definition,
   return res;
 }
 
-/// @brief enhances the json of a fulltext index
+/// @brief enhances the json of a zkd index
 Result IndexFactory::enhanceJsonIndexZkd(VPackSlice definition,
                                               VPackBuilder& builder, bool create) {
   if (auto fieldValueTypes = definition.get("fieldValueTypes");

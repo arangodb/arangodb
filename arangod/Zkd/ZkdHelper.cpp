@@ -1,7 +1,9 @@
 #include "ZkdHelper.h"
 
-#include <Basics/debugging.h>
-#include <Containers/SmallVector.h>
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
+#include "Containers/SmallVector.h"
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -113,7 +115,7 @@ auto zkd::ByteReader::next() -> std::optional<std::byte> {
 
 void zkd::BitWriter::append(Bit bit) {
   if (bit == Bit::ONE) {
-    _value |= std::byte{1} << (7u - _nibble);
+    _value |= std::byte{1} << (7U - _nibble);
   }
   _nibble += 1;
   if (_nibble == 8) {
@@ -143,31 +145,35 @@ void zkd::BitWriter::reserve(std::size_t amount) {
   _buffer.reserve(amount);
 }
 
-zkd::RandomBitReader::RandomBitReader(byte_string_view ref) : ref(ref) {}
+zkd::RandomBitReader::RandomBitReader(byte_string_view ref) : _ref(ref) {}
 
-auto zkd::RandomBitReader::getBit(std::size_t index) -> Bit {
+auto zkd::RandomBitReader::getBit(std::size_t index) const -> Bit {
   auto byte = index / 8;
   auto nibble = index % 8;
 
-  if (byte >= ref.size()) {
+  if (byte >= _ref.size()) {
     return Bit::ZERO;
   }
 
-  auto b = ref[byte] & (1_b << (7 - nibble));
+  auto b = _ref[byte] & (1_b << (7 - nibble));
   return b != 0_b ? Bit::ONE : Bit::ZERO;
 }
 
-zkd::RandomBitManipulator::RandomBitManipulator(byte_string& ref) : ref(ref) {}
+auto zkd::RandomBitReader::bits() const -> std::size_t {
+  return 8 * _ref.size();
+}
 
-auto zkd::RandomBitManipulator::getBit(std::size_t index) -> Bit {
+zkd::RandomBitManipulator::RandomBitManipulator(byte_string& ref) : _ref(ref) {}
+
+auto zkd::RandomBitManipulator::getBit(std::size_t index) const -> Bit {
   auto byte = index / 8;
   auto nibble = index % 8;
 
-  if (byte >= ref.size()) {
+  if (byte >= _ref.size()) {
     return Bit::ZERO;
   }
 
-  auto b = ref[byte] & (1_b << (7 - nibble));
+  auto b = _ref[byte] & (1_b << (7 - nibble));
   return b != 0_b ? Bit::ONE : Bit::ZERO;
 }
 
@@ -175,11 +181,15 @@ auto zkd::RandomBitManipulator::setBit(std::size_t index, Bit value) -> void {
   auto byte = index / 8;
   auto nibble = index % 8;
 
-  if (byte >= ref.size()) {
-    ref.resize(byte + 1);
+  if (byte >= _ref.size()) {
+    _ref.resize(byte + 1);
   }
   auto bit = 1_b << (7 - nibble);
-  ref[byte] = (ref[byte] & ~bit) | (value == Bit::ONE ? bit : 0_b);
+  _ref[byte] = (_ref[byte] & ~bit) | (value == Bit::ONE ? bit : 0_b);
+}
+
+auto zkd::RandomBitManipulator::bits() const -> std::size_t {
+  return 8 * _ref.size();
 }
 
 auto zkd::interleave(std::vector<zkd::byte_string> const& vec) -> zkd::byte_string {
@@ -187,7 +197,7 @@ auto zkd::interleave(std::vector<zkd::byte_string> const& vec) -> zkd::byte_stri
   std::vector<BitReader> reader;
   reader.reserve(vec.size());
 
-  for (auto& str : vec) {
+  for (auto const& str : vec) {
     if (str.size() > max_size) {
       max_size = str.size();
     }
@@ -255,9 +265,13 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
   BitReader cur_reader(cur);
   BitReader min_reader(min);
   BitReader max_reader(max);
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>>::allocator_type::arena_type a;
-  ::arangodb::containers::SmallVector<std::pair<bool, bool>> isLargerLowerThanMinMax{a};
-  isLargerLowerThanMinMax.resize(dimensions);
+
+  auto const isLargerThanMin = [&result](auto const dim) {
+    return result[dim].saveMin != CompareResult::max;
+  };
+  auto const isLowerThanMax = [&result](auto const dim) {
+    return result[dim].saveMax != CompareResult::max;
+  };
 
   unsigned step = 0;
   unsigned dim = 0;
@@ -271,22 +285,20 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min, byte_st
     auto max_bit = max_reader.next().value_or(Bit::ZERO);
 
     if (result[dim].flag == 0) {
-      if (!isLargerLowerThanMinMax[dim].first) {
+      if (!isLargerThanMin(dim)) {
         if (cur_bit == Bit::ZERO && min_bit == Bit::ONE) {
           result[dim].outStep = step;
           result[dim].flag = -1;
         } else if (cur_bit == Bit::ONE && min_bit == Bit::ZERO) {
-          isLargerLowerThanMinMax[dim].first = true;
           result[dim].saveMin = step;
         }
       }
 
-      if (!isLargerLowerThanMinMax[dim].second) {
+      if (!isLowerThanMax(dim)) {
         if (cur_bit == Bit::ONE && max_bit == Bit::ZERO) {
           result[dim].outStep = step;
           result[dim].flag = 1;
         } else if (cur_bit == Bit::ZERO && max_bit == Bit::ONE) {
-          isLargerLowerThanMinMax[dim].second = true;
           result[dim].saveMax = step;
         }
       }
@@ -374,7 +386,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
     }
     return a.outStep < b.outStep;
   });
-  assert(minOutstepIter->flag != 0);
+  TRI_ASSERT(minOutstepIter->flag != 0);
   auto const d = std::distance(cmpResult.begin(), minOutstepIter);
 
   RandomBitReader nisp(cur);
@@ -382,7 +394,8 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
   std::size_t changeBP = dims * minOutstepIter->outStep + d;
 
   if (minOutstepIter->flag > 0) {
-    while (changeBP != 0) {
+    bool update_dims = false;
+    while (changeBP != 0 && !update_dims) {
       --changeBP;
       if (nisp.getBit(changeBP) == Bit::ZERO) {
         auto dim = changeBP % dims;
@@ -390,22 +403,39 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
         if (cmpResult[dim].saveMax <= step) {
           cmpResult[dim].saveMin = step;
           cmpResult[dim].flag = 0;
-          goto update_dims;
+          update_dims = true;
         }
       }
     }
 
-    return std::nullopt;
+    if (!update_dims) {
+      return std::nullopt;
+    }
   }
 
-  update_dims:
-  RandomBitManipulator rbm(result);
-  assert(rbm.getBit(changeBP) == Bit::ZERO);
-  rbm.setBit(changeBP, Bit::ONE);
-  assert(rbm.getBit(changeBP) == Bit::ONE);
+  {
+    RandomBitManipulator rbm(result);
+    TRI_ASSERT(rbm.getBit(changeBP) == Bit::ZERO);
+    rbm.setBit(changeBP, Bit::ONE);
+    TRI_ASSERT(rbm.getBit(changeBP) == Bit::ONE);
+  }
+  auto resultManipulator = RandomBitManipulator{result};
+  auto minReader = RandomBitReader{min};
 
-  auto min_trans = transpose(min, dims);
-  auto next_v = transpose(result, dims);
+  // Calculate the next bit position in dimension `dim` (regarding dims)
+  // after `bitPos`
+  auto const nextGreaterBitInDim = [dims](std::size_t const bitPos, std::size_t const dim) {
+    auto const posRem = bitPos % dims;
+    auto const posFloor = bitPos - posRem;
+    auto const result = dim > posRem ? (posFloor + dim) : posFloor + dims + dim;
+    // result must be a bit of dimension `dim`
+    TRI_ASSERT(result % dims == dim);
+    // result must be strictly greater than bitPos
+    TRI_ASSERT(bitPos < result);
+    // and the lowest bit with the above properties
+    TRI_ASSERT(result <= bitPos + dims);
+    return result;
+  };
 
   for (unsigned dim = 0; dim < dims; dim++) {
     auto& cmpRes = cmpResult[dim];
@@ -413,45 +443,24 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min, byte_string_
       auto bp = dims * cmpRes.saveMin + dim;
       if (changeBP >= bp) {
         // “set all bits of dim with bit positions > changeBP to 0”
-        BitReader br(next_v[dim]);
-        BitWriter bw;
-        size_t i = 0;
-        while (auto bit = br.next()) {
-          if (i * dims + dim > changeBP) {
-            break;
-          }
-          bw.append(bit.value());
-          i++;
+        for (std::size_t i = nextGreaterBitInDim(changeBP, dim); i < resultManipulator.bits(); i += dims) {
+          resultManipulator.setBit(i, Bit::ZERO);
         }
-        next_v[dim] = std::move(bw).str();
       } else {
         // “set all bits of dim with bit positions >  changeBP  to  the  minimum  of  the  query  box  in  this dim”
-        BitReader br(next_v[dim]);
-        BitWriter bw;
-        size_t i = 0;
-        while (auto bit = br.next()) {
-          if (i * dims + dim > changeBP) {
-            break;
-          }
-          bw.append(bit.value());
-          i++;
+        for (std::size_t i = nextGreaterBitInDim(changeBP, dim); i < resultManipulator.bits(); i += dims) {
+          resultManipulator.setBit(i, minReader.getBit(i));
         }
-        BitReader br_min(min_trans[dim]);
-        for (size_t j = 0; j < i; ++j) {
-          br_min.next();
-        }
-        for (; auto bit = br_min.next(); ++i) {
-          bw.append(bit.value());
-        }
-        next_v[dim] = std::move(bw).str();
       }
     } else {
       // load the minimum for that dimension
-      next_v[dim] = min_trans[dim];
+      for (std::size_t i = dim; i < resultManipulator.bits(); i += dims) {
+        resultManipulator.setBit(i, minReader.getBit(i));
+      }
     }
   }
 
-  return interleave(next_v);
+  return result;
 }
 
 template<typename T>
