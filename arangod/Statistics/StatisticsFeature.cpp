@@ -30,6 +30,7 @@
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
@@ -73,6 +74,15 @@ namespace {
 std::string const stats15Query = "/*stats15*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds SORT s.time COLLECT clusterId = s.clusterId INTO clientConnections = s.client.httpConnections LET clientConnectionsCurrent = LAST(clientConnections) COLLECT AGGREGATE clientConnections15M = SUM(clientConnectionsCurrent) RETURN {clientConnections15M: clientConnections15M || 0}";
 
 std::string const statsSamplesQuery = "/*statsSample*/ FOR s IN @@collection FILTER s.time > @start FILTER s.clusterId IN @clusterIds RETURN { time: s.time, clusterId: s.clusterId, physicalMemory: s.server.physicalMemory, residentSizeCurrent: s.system.residentSize, clientConnectionsCurrent: s.client.httpConnections, avgRequestTime: s.client.avgRequestTime, bytesSentPerSecond: s.client.bytesSentPerSecond, bytesReceivedPerSecond: s.client.bytesReceivedPerSecond, http: { optionsPerSecond: s.http.requestsOptionsPerSecond, putsPerSecond: s.http.requestsPutPerSecond, headsPerSecond: s.http.requestsHeadPerSecond, postsPerSecond: s.http.requestsPostPerSecond, getsPerSecond: s.http.requestsGetPerSecond, deletesPerSecond: s.http.requestsDeletePerSecond, othersPerSecond: s.http.requestsOptionsPerSecond, patchesPerSecond: s.http.requestsPatchPerSecond } }";
+
+std::string_view metricType(std::string_view type, bool v2) {
+  auto pos = type.find('/');
+  if (pos == std::string::npos) {
+    return type;
+  }
+  return v2 ? std::string_view(type.data() + pos + 1, type.size() - pos - 1)
+            : std::string_view(type.data(), pos);
+}
 } // namespace
 
 namespace arangodb {
@@ -184,9 +194,9 @@ DECLARE_GAUGE(arangodb_v8_context_max,
 DECLARE_GAUGE(arangodb_v8_context_min,
     double, "Minimum number of concurrent V8 contexts");
 
-
+namespace {
 // local_name: {"prometheus_name", "type", "help"}
-std::map<std::string, std::vector<std::string>> statStrings{
+auto const statStrings = std::map<std::string_view, std::vector<std::string_view>>{
   {"bytesReceived",
    {"arangodb_client_connection_statistics_bytes_received", "histogram",
     "Bytes received for a request"}},
@@ -339,6 +349,76 @@ std::map<std::string, std::vector<std::string>> statStrings{
     "Minimum number of concurrent V8 contexts"}},
 };
 
+// Connect legacy statistics with metrics definitions for automatic checks
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+using StatBuilder =
+    std::unordered_map<std::string_view, std::unique_ptr<metrics::Builder const> const>;
+auto makeStatBuilder(std::initializer_list<std::pair<std::string_view, metrics::Builder const* const>> initList)
+    -> StatBuilder {
+  auto unomap = StatBuilder{};
+  unomap.reserve(initList.size());
+  for (auto const& it : initList) {
+    unomap.emplace(it.first, it.second);
+  }
+  return unomap;
+}
+auto const statBuilder = makeStatBuilder({
+    {"bytesReceived", new arangodb_client_connection_statistics_bytes_received()},
+    {"bytesSent", new arangodb_client_connection_statistics_bytes_sent()},
+    {"minorPageFaults", new arangodb_process_statistics_minor_page_faults_total()},
+    {"majorPageFaults", new arangodb_process_statistics_major_page_faults_total()},
+    {"userTime", new arangodb_process_statistics_user_time()},
+    {"systemTime", new arangodb_process_statistics_system_time()},
+    {"numberOfThreads", new arangodb_process_statistics_number_of_threads()},
+    {"residentSize", new arangodb_process_statistics_resident_set_size()},
+    {"residentSizePercent", new arangodb_process_statistics_resident_set_size_percent()},
+    {"virtualSize", new arangodb_process_statistics_virtual_memory_size()},
+    {"clientHttpConnections", new arangodb_client_connection_statistics_client_connections()},
+    {"connectionTime", new arangodb_client_connection_statistics_connection_time()},
+    {"connectionTimeCount", nullptr},
+    {"connectionTimeSum", nullptr},
+    {"totalTime", new arangodb_client_connection_statistics_total_time()},
+    {"totalTimeCount", nullptr},
+    {"totalTimeSum", nullptr},
+    {"requestTime", new arangodb_client_connection_statistics_request_time()},
+    {"requestTimeCount", nullptr},
+    {"requestTimeSum", nullptr},
+    {"queueTime", new arangodb_client_connection_statistics_queue_time()},
+    {"queueTimeCount", nullptr},
+    {"queueTimeSum", nullptr},
+    {"ioTime", new arangodb_client_connection_statistics_io_time()},
+    {"ioTimeCount", nullptr},
+    {"ioTimeSum", nullptr},
+    {"httpReqsTotal", new arangodb_http_request_statistics_total_requests_total()},
+    {"httpReqsSuperuser", new arangodb_http_request_statistics_superuser_requests_total()},
+    {"httpReqsUser", new arangodb_http_request_statistics_user_requests_total()},
+    {"httpReqsAsync", new arangodb_http_request_statistics_async_requests_total()},
+    {"httpReqsDelete", new arangodb_http_request_statistics_http_delete_requests_total()},
+    {"httpReqsGet", new arangodb_http_request_statistics_http_get_requests_total()},
+    {"httpReqsHead", new arangodb_http_request_statistics_http_head_requests_total()},
+    {"httpReqsOptions", new arangodb_http_request_statistics_http_options_requests_total()},
+    {"httpReqsPatch", new arangodb_http_request_statistics_http_patch_requests_total()},
+    {"httpReqsPost", new arangodb_http_request_statistics_http_post_requests_total()},
+    {"httpReqsPut", new arangodb_http_request_statistics_http_put_requests_total()},
+    {"httpReqsOther", new arangodb_http_request_statistics_other_http_requests_total()},
+    {"uptime", new arangodb_server_statistics_server_uptime_total()},
+    {"physicalSize", new arangodb_server_statistics_physical_memory()},
+    {"cores", new arangodb_server_statistics_cpu_cores()},
+    {"userPercent", new arangodb_server_statistics_user_percent()},
+    {"systemPercent", new arangodb_server_statistics_system_percent()},
+    {"idlePercent", new arangodb_server_statistics_idle_percent()},
+    {"iowaitPercent", new arangodb_server_statistics_iowait_percent()},
+    {"v8ContextAvailable", new arangodb_v8_context_alive()},
+    {"v8ContextBusy", new arangodb_v8_context_busy()},
+    {"v8ContextDirty", new arangodb_v8_context_dirty()},
+    {"v8ContextFree", new arangodb_v8_context_free()},
+    {"v8ContextMax", new arangodb_v8_context_max()},
+    {"v8ContextMin", new arangodb_v8_context_min()},
+});
+#endif
+
+}  // namespace
+
 Counter AsyncRequests;
 Counter HttpConnections;
 Counter TotalRequests;
@@ -425,6 +505,52 @@ StatisticsFeature::StatisticsFeature(application_features::ApplicationServer& se
       _descriptions(server) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool foundError = false;
+  for (auto const& it : statBuilder) {
+    if (auto const& statIt = statStrings.find(it.first); statIt != statStrings.end()) {
+      if (it.second != nullptr) {
+        auto const& builder = *it.second;
+        auto const& stat = statIt->second;
+        auto const& statName = stat[0];
+        auto const& statType = metricType(stat[1], true);
+        [[maybe_unused]] auto const& statHelp = stat[2];
+        if (builder.name() != statName) {
+          foundError = true;
+          LOG_TOPIC("f66dd", ERR, Logger::STATISTICS)
+              << "Statistic '" << it.first << "' has mismatching names: '"
+              << builder.name() << "' in statBuilder but '" << statName
+              << "' in statStrings";
+        }
+        if (builder.type() != statType) {
+          foundError = true;
+          LOG_TOPIC("9fe22", ERR, Logger::STATISTICS)
+              << "Statistic '" << it.first
+              << "' has mismatching types (for API v2): '" << builder.type()
+              << "' in statBuilder but '" << statType << "' in statStrings";
+        }
+      }
+    } else {
+      foundError = true;
+      LOG_TOPIC("015da", ERR, Logger::STATISTICS)
+          << "Statistic '" << it.first
+          << "' defined in statBuilder, but not in statStrings";
+    }
+  }
+  for (auto const& it : statStrings) {
+    auto const& statIt = statBuilder.find(it.first);
+    if (statIt == statBuilder.end()) {
+      foundError = true;
+      LOG_TOPIC("eedac", ERR, Logger::STATISTICS)
+          << "Statistic '" << it.first
+          << "' defined in statStrings, but not in statBuilder";
+    }
+  }
+  if (foundError) {
+    FATAL_ERROR_EXIT();
+  }
+#endif
 }
 
 StatisticsFeature::~StatisticsFeature() = default;
@@ -562,17 +688,18 @@ void StatisticsFeature::appendHistogram(
   std::string& result, statistics::Distribution const& dist,
   std::string const& label, std::initializer_list<std::string> const& les,
   bool v2) {
+  using StringUtils::concatT;
 
   VPackBuilder tmp = fillDistribution(dist);
   VPackSlice slc = tmp.slice();
   VPackSlice counts = slc.get("counts");
 
   auto const& stat = statStrings.at(label);
-  std::string const& name = stat.at(0);
+  auto const& name = stat.at(0);
 
-  result +=
-    "\n# HELP " + name + " " + stat[2] +
-    "\n# TYPE " + name + " " + stat[1] + '\n';
+  result += concatT(
+      "\n# HELP ", name, " ", stat[2],
+      "\n# TYPE ", name, " ", stat[1], '\n');
 
   TRI_ASSERT(les.size() == counts.length());
   size_t i = 0;
@@ -581,41 +708,30 @@ void StatisticsFeature::appendHistogram(
     uint64_t v = counts.at(i++).getNumber<uint64_t>();
     sum += v;
     v = v2 ? sum : v;
-    result +=
-      name + "_bucket{le=\"" + le + "\"}"  + " " +
-      std::to_string(v) + '\n';
+    result += concatT(name, "_bucket{le=\"", le, "\"}", " ", v, '\n');
   }
-  result += name + "_count " + std::to_string(sum) + '\n';
+  result += concatT(name, "_count ", sum, '\n');
   if (v2) {
     double v = slc.get("sum").getNumber<double>();
-    result += name + "_sum " + std::to_string(v) + '\n';
+    result += concatT(name, "_sum ", v, '\n');
   }
-}
-
-std::string_view metricType(std::string const& type, bool v2) {
-  auto pos = type.find('/');
-  if (pos == std::string::npos) {
-    return type;
-  }
-  return v2 ? std::string_view(type.c_str() + pos + 1,
-                               type.size() - pos - 1) :
-              std::string_view(type.c_str(), pos);
 }
 
 void StatisticsFeature::appendMetric(std::string& result, std::string const& val, std::string const& label, bool v2) {
+  using StringUtils::concatT;
   auto const& stat = statStrings.at(label);
-  std::string name = stat.at(0);
+  auto name = std::string{stat.at(0)};
   std::string_view type = metricType(stat[1], v2);
   if (type == "counter") {  // Note that this only happens for v2==true
     TRI_ASSERT(v2);
     name += "_total";
   }
 
-  result +=
-    "\n# HELP " + name + " " + stat[2] +
-    "\n# TYPE " + name + " ";
+  result += concatT(
+    "\n# HELP ", name, " ", stat[2],
+    "\n# TYPE ", name, " ");
   result.append(type.data(), type.size());
-  result += '\n' + name + " " + val + '\n';
+  result += concatT('\n', name, " ", val, '\n');
 }
 
 void StatisticsFeature::toPrometheus(std::string& result, double const& now, bool v2) {
