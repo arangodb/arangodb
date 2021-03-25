@@ -3476,14 +3476,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_actual_delayed_write_rate
+  description: 'This metric exhibits the RocksDB metric "rocksdb-actual-delayed-write-rate".
+
+    It shows the current actual delayed write rate. The value 0 means no delay.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_actual_delayed_write_rate
+  help: 'RocksDB metric "rocksdb-actual-delayed-write-rate"
 
     '
   introducedIn: '3.6'
@@ -3492,14 +3494,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_background_errors
+  description: 'This metric exhibits the RocksDB metric "background-errors". It shows
+
+    the accumulated number of background errors.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_background_errors
+  help: 'RocksDB metric "background-errors"
 
     '
   introducedIn: '3.6'
@@ -3508,14 +3512,18 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_base_level
+  description: 'This metric exhibits the RocksDB metric "rocksdb-base-level".
+
+    It shows the number of the level to which L0 data will be
+
+    compacted.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_base_level
+  help: 'RocksDB metric "rocksdb-base-level"
 
     '
   introducedIn: '3.6'
@@ -3524,78 +3532,101 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_capacity
+  description: 'This metric exhibits the RocksDB metric "rocksdb-block-cache-capacity".
+
+    It shows the block cache capacity in bytes. This can be configured with
+
+    the `--rocksdb.block-cache-size` option, for details, see
+
+    [the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb).
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_block_cache_capacity
+  help: 'RocksDB metric "rocksdb-block-cache-capacity"
 
     '
   introducedIn: '3.6'
   name: rocksdb_block_cache_capacity
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_pinned_usage
-
-    '
+  description: "This metric exhibits the RocksDB metric \"rocksdb-block-cache-pinned-usage\".\nIt
+    shows the memory size for the RocksDB block cache for the entries \nwhich are
+    pinned in bytes.\n"
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_block_cache_pinned_usage
+  help: 'RocksDB metric "rocksdb-block-cache-pinned-usage"
 
     '
   introducedIn: '3.6'
   name: rocksdb_block_cache_pinned_usage
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_block_cache_usage
+  description: 'This metric exhibits the RocksDB metric "rocksdb-block-cache-usage".
+
+    It shows the memory size for the entries residing in the block cache
+
+    in bytes.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_block_cache_usage
+  help: 'RocksDB metric "rocksdb-block-cache-usage"
 
     '
   introducedIn: '3.6'
   name: rocksdb_block_cache_usage
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_allocated
-
-    '
+  description: "This metric reflects the current global allocation for the ArangoDB\ncache
+    which sits in front of RocksDB. For example, the edge cache\ncounts towards this
+    allocation. All these caches together have a \nglobal limit which can be controlled
+    with the `--cache.size` option.\nSee [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).\n"
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cache_allocated
+  help: 'Global current allocation of ArangoDB cache
 
     '
   introducedIn: '3.6'
   name: rocksdb_cache_allocated
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_hit_rate_lifetime
+  description: 'This metric reflects the lifetime hit rate of the ArangoDB in-memory
+
+    cache which is sitting in front of RocksDB. For example, the edge
+
+    cache is a part of this. The value will be a ratio between 0 and 1.
+
+    "Lifetime" means here that accounting is done from the most recent
+
+    start of the `arangod` instance.
+
+    If the hit rate is too low, you might have to little RAM available
+
+    for the in-memory caches.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cache_hit_rate_lifetime
+  help: 'Lifetime hit rate of the ArangoDB cache in front of RocksDB
 
     '
   introducedIn: '3.6'
@@ -3604,46 +3635,66 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_hit_rate_recent
+  description: 'This metric reflects the recent hit rate of the ArangoDB in-memory
+
+    cache which is sitting in front of RocksDB. For example, the edge
+
+    cache is a part of this. The value will be a ratio between 0 and 1.
+
+    If the hit rate is too low, you might have to little RAM available
+
+    for the in-memory caches.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cache_hit_rate_recent
+  help: 'Recent hit rate of the ArangoDB cache in front of RocksDB
 
     '
   introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_recent
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cache_limit
+  description: 'This metric reflects the current global allocation limit for the
+
+    ArangoDB caches which sit in front of RocksDB. For example, the
+
+    edge cache counts towards this allocation. This global limit can
+
+    be controlled with the `--cache.size` option. See
+
+    [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cache_limit
+  help: 'Global allocation limit for the ArangoDB cache in front of RocksDB
 
     '
   introducedIn: '3.6'
   name: rocksdb_cache_limit
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compaction_pending
+  description: 'This metric exhibits the RocksDB metric "compaction-pending".
+
+    It shows the number of column families for which at least one compaction
+
+    is pending.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compaction_pending
+  help: 'RocksDB metric "compaction-pending" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -3652,158 +3703,232 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level0
+  description: 'This metric exhibits the compression ratio of data at level 0 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 0.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level0
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level0"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level0
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level1
+  description: 'This metric exhibits the compression ratio of data at level 1 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 1.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level1
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level1"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level1
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level2
+  description: 'This metric exhibits the compression ratio of data at level 2 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 2.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level2
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level2"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level2
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level3
+  description: 'This metric exhibits the compression ratio of data at level 3 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 3.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level3
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level3"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level3
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level4
+  description: 'This metric exhibits the compression ratio of data at level 4 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 4.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level4
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level4"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level4
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level5
+  description: 'This metric exhibits the compression ratio of data at level 5 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 5.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level5
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level5"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level5
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_compression_ratio_at_level6
+  description: 'This metric exhibits the compression ratio of data at level 6 in RocksDB''s
+
+    log structured merge tree. Here, compression
+
+    ratio is defined as uncompressed data size / compressed file size.
+
+    Returns "-1.0" if there are no open files at level 6.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_compression_ratio_at_level6
+  help: 'RocksDB metric "rocksdb-compression-ratio-at-level6"
 
     '
   introducedIn: '3.6'
   name: rocksdb_compression_ratio_at_level6
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cur_size_active_mem_table
+  description: 'This metric exhibits the RocksDB metric "rocksdb-cur-size-active-mem-table".
+
+    It shows the approximate size of the active memtable in bytes, summed
+
+    over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cur_size_active_mem_table
+  help: 'RocksDB metric "rocksdb-cur-size-active-mem-table" - sum over column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_cur_size_active_mem_table
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_cur_size_all_mem_tables
+  description: 'This metric exhibits the RocksDB metric "rocksdb-cur-size-all-mem-tables".
+
+    It shows the approximate size of active and unflushed immutable memtables
+
+    in bytes, summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_cur_size_all_mem_tables
+  help: 'RocksDB metric "rocksdb-cur-size-all-mem-tables" - sum over column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_cur_size_all_mem_tables
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_live_data_size
+  description: "This metric exposes the current write rate limit of the ArangoDB\nRocksDB
+    throttle. The throttle is limits the write rate to allow\nRocksDB's background
+    threads to catch up with compactions and not\nfall behind too much, since this
+    would in the end lead to nasty\nwrite stops in RocksDB and incur considerable
+    delays. If 0 is\nshown, no throtteling happens, otherwise, you see the current\nwrite
+    rate limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)
+    for details.\n"
+  exposedBy:
+  - dbserver
+  - agent
+  - single
+  help: 'Current rate of the RocksDB throttle in bytes per second
+
+    '
+  introducedIn: '3.6'
+  name: rocksd_bengine_throttle_bps
+  type: gauge
+  unit: bytes per second
+- category: RocksDB
+  complexity: advanced
+  description: 'This metric exhibits the RocksDB metric "rocksdb-estimate-live-data-size".
+
+    It shows an estimate of the amount of live data in bytes, summed over
+
+    all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_estimate_live_data_size
+  help: 'RocksDB metric "rocksdb-estimate-live-data-size" - sum over all column families
 
     '
   introducedIn: '3.6'
@@ -3812,14 +3937,18 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_num_keys
+  description: 'This metric exhibits the RocksDB metric "rocksdb-estimate-num-keys".
+
+    It shows the estimated number of total keys in the active and unflushed
+
+    immutable memtables and storage, summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_estimate_num_keys
+  help: 'RocksDB metric "rocksdb-estimate-num-keys" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -3828,62 +3957,94 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_pending_compaction_bytes
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-estimate-pending-compaction-bytes".
+
+    It shows the estimated total number of bytes compaction needs to
+
+    rewrite to get all levels down to under target size. Not valid for
+
+    other compactions than level-based. This value is summed over all
+
+    column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_estimate_pending_compaction_bytes
+  help: 'RocksDB metric "rocksdb-estimate-pending-compaction-bytes" - sum over all
+    column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_estimate_pending_compaction_bytes
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_estimate_table_readers_mem
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-estimate-table-readers-mem".
+
+    It shows the estimated memory used for reading SST tables, excluding
+
+    memory used in block cache (e.g. filter and index blocks), summed over
+
+    all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_estimate_table_readers_mem
+  help: 'RocksDB metric "rocksdb-estimate-table-readers-mem" - sum over column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_estimate_table_readers_mem
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_free_disk_space
+  description: 'This metric shows the currently free disk space in bytes on the volume
+
+    which is used by RocksDB. Since RocksDB does not like out of disk
+
+    space scenarios, please make sure that there is enough free disk space
+
+    available at all times!
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_free_disk_space
+  help: 'Free disk space in bytes on volume used by RocksDB
 
     '
   introducedIn: '3.6'
   name: rocksdb_free_disk_space
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_free_inodes
+  description: 'This metric shows the currently free number of inodes on the disk
+    volume
+
+    used by RocksDB. Since RocksDB does not like out of disk space
+
+    scenarios, please make sure that there is enough free inodes available
+
+    at all times!
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_free_inodes
+  help: 'Number of free inodes on the volume used by RocksDB
 
     '
   introducedIn: '3.6'
@@ -3892,14 +4053,22 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_is_file_deletions_enabled
+  description: 'This metric exhibits the RocksDB metric "rocksdb-is-file-deletions-enabled".
+
+    It shows 0 if deletion of obsolete files is enabled, and otherwise,
+
+    it shows a non-zero number. Note that for ArangoDB, this is supposed
+
+    to always return 1, since the deletion of obsolete WAL files is done
+
+    from ArangoDB, externally to RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_is_file_deletions_enabled
+  help: 'RocksDB metric "rocksdb-is-file-deletions-enabled"
 
     '
   introducedIn: '3.6'
@@ -3908,14 +4077,26 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_is_write_stopped
+  description: 'This metric exhibits the RocksDB metric "rocksdb-is-write-stopped".
+
+    It shows 1 if writing to RocksDB has been stopped, and otherwise 0.
+
+    If 1 is shown, this usually means that there are too many uncompacted
+
+    files and the RocksDB background threads have not managed to keep up
+
+    with their compaction work. This situation should be avoided, since
+
+    nasty delays in database operations are incurred. If in doubt,
+
+    contact ArangoDB support.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_is_write_stopped
+  help: 'RocksDB metric "rocksdb-is-write-stopped"
 
     '
   introducedIn: '3.6'
@@ -3924,30 +4105,39 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_live_sst_files_size
+  description: 'This metric exhibits the RocksDB metric "rocksdb-live-sst-files-size".
+
+    It shows the total size in bytes of all SST files belonging to the latest
+
+    LSM tree, summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_live_sst_files_size
+  help: 'RocksDB metric "rocksdb-live-sst-files-size" - sum over all column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_live_sst_files_size
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_mem_table_flush_pending
+  description: 'This metric exhibits the RocksDB metric "mem-table-flush-pending".
+    It
+
+    shows the number of column families which which a memtable flush is
+
+    pending.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_mem_table_flush_pending
+  help: 'RocksDB metric "mem_table_flush_pending", sum over column families
 
     '
   introducedIn: '3.6'
@@ -3956,14 +4146,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_min_log_number_to_keep
+  description: 'This metric exhibits the RocksDB metric "rocksdb-min-log-number-to-keep".
+
+    It shows the minimum log number of the log files that should be kept.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_min_log_number_to_keep
+  help: 'RocksDB metric "rocksdb-min-log-number-to-keep"
 
     '
   introducedIn: '3.6'
@@ -3972,14 +4164,20 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_deletes_active_mem_table
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-deletes-active-mem-table".
+
+    It shows the total number of delete entries in the active memtable,
+
+    summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_deletes_active_mem_table
+  help: 'RocksDB metric "rocksdb-num-deletes-active-mem-table" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -3988,14 +4186,20 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_deletes_imm_mem_tables
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-deletes-imm-mem-tables".
+
+    It shows the total number of delete entries in the unflushed immutable
+
+    memtables, summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_deletes_imm_mem_tables
+  help: 'RocksDB metric "rocksdb-num-deletes-imm-mem-tables" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -4004,14 +4208,14 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_entries_active_mem_table
-
-    '
+  description: "This metric exhibits the RocksDB metric \n\"rocksdb-num-entries-active-mem-table\".\nIt
+    shows the total number of entries in the active memtable,\nsummed over all column
+    families.\n"
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_entries_active_mem_table
+  help: 'RocksDB metric "rocksdb-num-entries-active-mem-table" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -4020,14 +4224,20 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_entries_imm_mem_tables
+  description: 'This metric exhibits the RocksDB metric
+
+    "rocksdb-num-entries-imm-mem-tables".
+
+    It shows the total number of entries in the unflushed immutable memtables,
+
+    summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_entries_imm_mem_tables
+  help: 'RocksDB metric "rocksdb-num-entries-imm-mem-tables" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -4036,14 +4246,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level0
+  description: 'This metric reports the number of files at level 0 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level0
+  help: 'RocksDB metric "num-files-at-level0"
 
     '
   introducedIn: '3.6'
@@ -4052,14 +4264,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level1
+  description: 'This metric reports the number of files at level 1 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level1
+  help: 'RocksDB metric "num-files-at-level1"
 
     '
   introducedIn: '3.6'
@@ -4068,14 +4282,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level2
+  description: 'This metric reports the number of files at level 2 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level2
+  help: 'RocksDB metric "num-files-at-level2"
 
     '
   introducedIn: '3.6'
@@ -4084,14 +4300,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level3
+  description: 'This metric reports the number of files at level 3 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level3
+  help: 'RocksDB metric "num-files-at-level3"
 
     '
   introducedIn: '3.6'
@@ -4100,14 +4318,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level4
+  description: 'This metric reports the number of files at level 4 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level4
+  help: 'RocksDB metric "num-files-at-level4"
 
     '
   introducedIn: '3.6'
@@ -4116,14 +4336,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level5
+  description: 'This metric reports the number of files at level 5 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level5
+  help: 'RocksDB metric "num-files-at-level5"
 
     '
   introducedIn: '3.6'
@@ -4132,14 +4354,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_files_at_level6
+  description: 'This metric reports the number of files at level 6 in the log structured
+
+    merge tree of RocksDB.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_files_at_level6
+  help: 'RocksDB metric "num-files-at-level6"
 
     '
   introducedIn: '3.6'
@@ -4148,14 +4372,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_immutable_mem_table
-
-    '
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table\",
+    \nwhich shows the number of immutable memtables that have not yet been\nflushed.
+    This value is the sum over all column families.\n\nMem tables are sorted tables
+    of key/value pairs which begin\nto be built up in memory. At some stage they are
+    closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_immutable_mem_table
+  help: 'RocksDB metric "num-immutable-mem-table" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -4164,14 +4390,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_immutable_mem_table_flushed
-
-    '
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table-flushed\",
+    \nwhich shows the number of immutable memtables that have already been\nflushed.
+    This value is the sum over all column families.\n\nMem tables are sorted tables
+    of key/value pairs which begin\nto be built up in memory. At some stage they are
+    closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_immutable_mem_table_flushed
+  help: 'RocksDB metric "num-immutable-mem-table-flushed" - sum over column families
 
     '
   introducedIn: '3.6'
@@ -4180,14 +4408,24 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_live_versions
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-live-versions".
+
+    It shows the number of live versions. `Version` is an internal data
+
+    structure. See `version_set.h` in the RocksDB source for details. More
+
+    live versions often mean more SST files are held from being deleted,
+
+    by iterators or unfinished compactions. This number is the number
+
+    summed up over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_live_versions
+  help: 'RocksDB metric "rocksdb-num-live-versions"
 
     '
   introducedIn: '3.6'
@@ -4196,14 +4434,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_running_compactions
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-running-compactions".
+
+    It shows the number of currently running compactions.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_running_compactions
+  help: 'RocksDB metric "rocksdb-num-running-compactions"
 
     '
   introducedIn: '3.6'
@@ -4212,14 +4452,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_running_flushes
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-running-flushes".
+
+    It shows the number of currently running flushes.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_running_flushes
+  help: 'RocksDB metric "rocksdb-num-running-flushes"
 
     '
   introducedIn: '3.6'
@@ -4228,14 +4470,16 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_num_snapshots
+  description: 'This metric exhibits the RocksDB metric "rocksdb-num-snapshots".
+
+    It shows the number of unreleased snapshots of the database.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_num_snapshots
+  help: 'RocksDB metric "rocksdb-num-snapshots"
 
     '
   introducedIn: '3.6'
@@ -4244,14 +4488,18 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_oldest_snapshot_time
+  description: 'This metric exhibits the RocksDB metric "rocksdb-oldest-snapshot-time".
+
+    It shows a number representing the unix timestamp of the oldest
+
+    unreleased snapshot.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_oldest_snapshot_time
+  help: 'RocksDB metric "rocksdb-oldest-snapshot-time"
 
     '
   introducedIn: '3.6'
@@ -4260,46 +4508,63 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_size_all_mem_tables
+  description: 'This metric exhibits the RocksDB metric "rocksdb-size-all-mem-tables".
+
+    It shows the approximate size of all active, unflushed immutable, and
+
+    pinned immutable memtables in bytes, summed over all column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_size_all_mem_tables
+  help: 'RocksDB metric "rocksdb-size-all-mem-tables" - sum over column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_size_all_mem_tables
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_disk_space
+  description: 'This metric shows the currently used disk space in bytes on the volume
+
+    which is used by RocksDB. Since RocksDB does not like out of disk
+
+    space scenarios, please make sure that there is enough free disk space
+
+    available at all times!
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_total_disk_space
+  help: 'Used disk space in bytes on volume used by RocksDB
 
     '
   introducedIn: '3.6'
   name: rocksdb_total_disk_space
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_inodes
+  description: 'This metric shows the currently used number of inodes on the disk
+    volume
+
+    used by RocksDB. Since RocksDB does not like out of disk space
+
+    scenarios, please make sure that there is enough free inodes available
+
+    at all times!
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_total_inodes
+  help: 'Number of used inodes on the volume used by RocksDB
 
     '
   introducedIn: '3.6'
@@ -4308,33 +4573,21 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: 'rocksdb_total_sst_files_size
+  description: 'This metric exhibits the RocksDB metric "rocksdb-total-sst-files-size".
+
+    It shows the total size in bytes of all SST files, summed over all
+
+    column families.
 
     '
   exposedBy:
   - dbserver
   - agent
   - single
-  help: 'rocksdb_total_sst_files_size
+  help: 'RocksDB metric "rocksdb-total-sst-files-size" - sum over all column families
 
     '
   introducedIn: '3.6'
   name: rocksdb_total_sst_files_size
   type: gauge
-  unit: number
-- category: RocksDB
-  complexity: advanced
-  description: 'rocksdbengine_throttle_bps
-
-    '
-  exposedBy:
-  - dbserver
-  - agent
-  - single
-  help: 'rocksdbengine_throttle_bps
-
-    '
-  introducedIn: '3.6'
-  name: rocksdbengine_throttle_bps
-  type: gauge
-  unit: number
+  unit: bytes
