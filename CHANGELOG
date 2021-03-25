@@ -1,6 +1,9 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* arangosh may keep connections establinged and switch between them
+  transparently using the arango.reconnect() function.
+
 * The old metrics api contains the following gauges which should actually be
   counters:
     - arangodb_scheduler_jobs_dequeued
