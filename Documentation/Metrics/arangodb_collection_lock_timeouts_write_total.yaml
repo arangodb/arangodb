@@ -4,7 +4,7 @@ help: |
   Number of timeouts when trying to acquire collection write locks.
 unit: number
 type: counter
-category: Transaction
+category: Transactions
 complexity: medium
 exposedBy:
   - dbserver

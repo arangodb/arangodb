@@ -465,8 +465,15 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
     
     std::lock_guard<std::recursive_mutex> guard(_lock);
     if (_globalLabels.find("shortname") == _globalLabels.end()) {
-      _globalLabels.try_emplace("shortname", ServerState::instance()->getShortName());
-      changed = true;
+      std::string shortName = ServerState::instance()->getShortName();
+      // Very early after a server start it is possible that the
+      // short name is not yet known. This check here is to prevent
+      // that the label is permanently empty if metrics are requested
+      // too early.
+      if (!shortName.empty()) {
+        _globalLabels.try_emplace("shortname", shortName);
+        changed = true;
+      }
     }
     if (_globalLabels.find("role") == _globalLabels.end() &&
         ServerState::instance() != nullptr &&
