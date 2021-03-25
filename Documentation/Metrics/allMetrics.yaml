@@ -2408,21 +2408,6 @@
   unit: number
 - category: Scheduler
   complexity: advanced
-  description: 'Total number of jobs dequeued.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of jobs dequeued.
-
-    '
-  name: arangodb_scheduler_jobs_dequeued
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: advanced
   description: 'The total number of jobs dequeued from all scheduler queues.
 
     Calculating the difference between arangodb_scheduler_jobs_submitted_total
@@ -2451,21 +2436,6 @@
   unit: number
 - category: Scheduler
   complexity: advanced
-  description: 'Total number of queue jobs done.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of queue jobs done.
-
-    '
-  name: arangodb_scheduler_jobs_done
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: advanced
   description: 'The total number of queue jobs done.
 
     Calculating the difference between arangodb_scheduler_jobs_dequeued_total
@@ -2484,21 +2454,6 @@
 
     '
   name: arangodb_scheduler_jobs_done_total
-  type: gauge
-  unit: number
-- category: Scheduler
-  complexity: advanced
-  description: 'Total number of jobs submitted to the queue.
-
-    '
-  exposedBy:
-  - coordinator
-  - dbserver
-  - agent
-  help: 'Total number of jobs submitted to the queue.
-
-    '
-  name: arangodb_scheduler_jobs_submitted
   type: gauge
   unit: number
 - category: Scheduler

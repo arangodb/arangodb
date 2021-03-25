@@ -146,11 +146,11 @@ class SupervisedSchedulerWorkerThread final : public SupervisedSchedulerThread {
 
 DECLARE_GAUGE(arangodb_scheduler_awake_threads, uint64_t,
               "Number of awake worker threads");
-DECLARE_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_dequeued, uint64_t,
               "Total number of jobs dequeued");
-DECLARE_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_done, uint64_t,
               "Total number of queue jobs done");
-DECLARE_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
+DECLARE_LEGACY_GAUGE(arangodb_scheduler_jobs_submitted, uint64_t,
               "Total number of jobs submitted to the scheduler");
 DECLARE_COUNTER(arangodb_scheduler_jobs_done_total,
               "Total number of queue jobs done");
