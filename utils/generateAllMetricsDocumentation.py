@@ -7,7 +7,8 @@ except ImportError:
     from yaml import Loader, Dumper
 
 import os, re, sys
-from typing import List
+from typing import NamedTuple, List
+from enum import Enum
 
 # Check that we are in the right place:
 lshere = os.listdir(".")
@@ -24,9 +25,24 @@ if "allMetrics.yaml" in yamlfiles:
 if "template.yaml" in yamlfiles:
     yamlfiles.remove("template.yaml")
 
+class MetricType(Enum):
+    gauge = 1
+    counter = 2
+    histogram = 3
+    def fromStr(typeStr: str):
+        return {
+            "GAUGE": MetricType.gauge,
+            "COUNTER": MetricType.counter,
+            "HISTOGRAM": MetricType.histogram,
+        }[typeStr]
+
+class Metric(NamedTuple):
+    name: str
+    type: MetricType
+
 # Read list of metrics from source:
-metricsList: List[str] = []
-headermatch = re.compile(r"DECLARE_(?:COUNTER|GAUGE|HISTOGRAM)\s*\(")
+metricsList: List[Metric] = []
+headermatch = re.compile(r"DECLARE_(?P<type>COUNTER|GAUGE|HISTOGRAM)\s*\(")
 namematch = re.compile(r"^\s*(?P<name>[a-z_A-Z0-9]+)\s*,")
 for root, dirs, files in os.walk("."):
     if root[:10] == "./arangod/" or root[:6] == "./lib/":
@@ -35,6 +51,7 @@ for root, dirs, files in os.walk("."):
           ff = os.path.join(root, f)
           continuation = False
           s = open(ff, 'rt', encoding='utf-8')
+          type : MetricType = None
           while True:
               l = s.readline()
               if l == "":
@@ -42,13 +59,14 @@ for root, dirs, files in os.walk("."):
               if not(continuation):
                   m = headermatch.search(l)
                   if m:
+                      type = MetricType.fromStr(m.group('type'))
                       continuation = True
                       l = l[m.end():]
               if continuation:
                   m = namematch.search(l)
                   if m:
                       name = m.group('name')
-                      metricsList.append(name)
+                      metricsList.append(Metric(name=name, type=type))
                       continuation = False
           if continuation:
               raise Exception("Unexpected EOF while parsing metric")
@@ -64,12 +82,13 @@ missing = False
 yamls = []
 for i in range(0, len(metricsList)):
     bad = False
-    if not metricsList[i] + ".yaml" in yamlfiles:
-        print("Missing metric documentation for metric '" + metricsList[i] + "'")
+    metricName = metricsList[i].name
+    if not metricName + ".yaml" in yamlfiles:
+        print("Missing metric documentation for metric '" + metricName + "'")
         bad = True
     else:
         # Check yaml:
-        filename = os.path.join("Documentation/Metrics", metricsList[i]) + ".yaml"
+        filename = os.path.join("Documentation/Metrics", metricName) + ".yaml"
         try:
             s = open(filename)
         except FileNotFoundError:
@@ -100,14 +119,15 @@ for i in range(0, len(metricsList)):
             if not isinstance(y["exposedBy"], list):
                 print("YAML file '" + filename + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
                 bad = True
-            
+
     if bad:
         missing = True
-    
+
+metricNames = { metric.name : True for metric in metricsList }
 tooMany = False
 for i in range(0, len(yamlfiles)):
     name = yamlfiles[i][:-5]
-    if not(name in metricsList):
+    if not(name in metricNames):
         tooMany = True
         print("YAML file '" + name + ".yaml'\n  does not have a corresponding metric declared in the source code!")
 
