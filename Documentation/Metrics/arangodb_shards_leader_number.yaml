@@ -1,4 +1,5 @@
 name: arangodb_shards_leader_number
+introducedIn: "3.7"
 help: |
   Number of leader shards on this machine.
 unit: number
