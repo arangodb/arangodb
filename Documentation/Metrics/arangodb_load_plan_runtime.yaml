@@ -1,4 +1,5 @@
 name: arangodb_load_plan_runtime
+introducedIn: "3.7"
 help: |
   `Plan` loading runtimes.
 unit: ms

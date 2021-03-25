@@ -386,6 +386,15 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
         "arangodb_load_current_accum_runtime_msec_total",
         "arangodb_load_plan_accum_runtime_msec_total",
         "arangodb_aql_slow_query_total",
+        "arangodb_scheduler_jobs_dequeued",
+        "arangodb_scheduler_jobs_submitted",
+        "arangodb_scheduler_jobs_done",
+    };
+    
+    v1suppressions = {
+        "arangodb_scheduler_jobs_dequeued_total",
+        "arangodb_scheduler_jobs_submitted_total",
+        "arangodb_scheduler_jobs_done_total",
     };
   } catch (std::exception const& e) {
     LOG_TOPIC("efd51", ERR, Logger::MEMORY) <<
@@ -490,6 +499,9 @@ void MetricsFeature::toPrometheus(std::string& result, bool v2) const {
       std::string name = i.second->name();
       std::string alternativeName;
       if (!v2) {
+        if (v1suppressions.find(name) != v1suppressions.end()) {
+          continue;
+        }
         // In v1 we do a name conversion. Note that we set 
         // alternativeName == name in the end, in v2 though,
         // alternativeName is empty and no conversion happens.

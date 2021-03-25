@@ -111,13 +111,13 @@ for i in range(0, len(metricsList)):
 
         # Check a few things in the yaml:
         for attr in ["name", "help", "exposedBy", "description", "unit",\
-                     "type", "category", "complexity"]:
+                     "type", "category", "complexity", "introducedIn"]:
             if not attr in y:
                 print("YAML file '" + filename + "' does not have required attribute '" + attr + "'")
                 bad = True
         if not bad:
             for attr in ["name", "help", "description", "unit",\
-                         "type", "category", "complexity"]:
+                         "type", "category", "complexity", "introducedIn"]:
                 if not isinstance(y[attr], str):
                     print("YAML file '" + filename + "' has an attribute '" + attr + "' whose value must be a string but isn't.")
                     bad = True

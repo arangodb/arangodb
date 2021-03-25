@@ -189,6 +189,7 @@ class MetricsFeature final : public application_features::ApplicationFeature {
 
   std::unordered_map<std::string, std::string> nameVersionTable;
   std::unordered_set<std::string> v2suppressions;
+  std::unordered_set<std::string> v1suppressions;
 };
 
 }  // namespace arangodb

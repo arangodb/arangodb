@@ -1,4 +1,5 @@
 name: arangodb_collection_lock_timeouts_write_total
+introducedIn: "3.6"
 help: |
   Number of timeouts when trying to acquire collection write locks.
 unit: number
