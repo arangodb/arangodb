@@ -18,7 +18,8 @@ if not("arangod" in lshere and "arangosh" in lshere and \
   sys.exit(1)
 
 # List files in Documentation/Metrics:
-yamlfiles = os.listdir("Documentation/Metrics")
+yamlfiles = [f for f in os.listdir("Documentation/Metrics")
+        if not f.startswith('.')]
 yamlfiles.sort()
 if "allMetrics.yaml" in yamlfiles:
     yamlfiles.remove("allMetrics.yaml")
@@ -31,14 +32,15 @@ class MetricType(Enum):
     histogram = 3
     def fromStr(typeStr: str):
         return {
-            "GAUGE": MetricType.gauge,
-            "COUNTER": MetricType.counter,
-            "HISTOGRAM": MetricType.histogram,
-        }[typeStr]
+            "gauge": MetricType.gauge,
+            "counter": MetricType.counter,
+            "histogram": MetricType.histogram,
+        }[typeStr.lower()]
 
 class Metric(NamedTuple):
     name: str
     type: MetricType
+    file: str
 
 # Read list of metrics from source:
 metricsList: List[Metric] = []
@@ -66,7 +68,7 @@ for root, dirs, files in os.walk("."):
                   m = namematch.search(l)
                   if m:
                       name = m.group('name')
-                      metricsList.append(Metric(name=name, type=type))
+                      metricsList.append(Metric(name=name, type=type, file=f))
                       continuation = False
           if continuation:
               raise Exception("Unexpected EOF while parsing metric")
@@ -77,48 +79,71 @@ if len(metricsList) == 0:
 
 metricsList.sort()
 
+def verifyYaml(metric, y, fileName, filePath):
+    # Check a few things in the yaml:
+    for attr in ["name", "help", "exposedBy", "description", "unit",\
+                 "type", "category", "complexity"]:
+        if not attr in y:
+            print("YAML file '" + filePath + "' does not have required attribute '" + attr + "'")
+            return False
+    for attr in ["name", "help", "description", "unit",\
+                 "type", "category", "complexity"]:
+        if not isinstance(y[attr], str):
+            print("YAML file '" + filePath + "' has an attribute '" + attr + "' whose value must be a string but isn't.")
+            return False
+    if not isinstance(y["exposedBy"], list):
+        print("YAML file '" + filePath + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
+        return False
+    if y['name'] != metric.name:
+        print("Metric name '{}' defined in cpp file '{}' "
+                "doesn't match name '{}' defined in YAML file '{}'"
+                .format(metric.name, metric.file, y['name'], fileName))
+        return False
+    knownTypes = ['gauge', 'counter', 'histogram']
+    if not y['type'] in knownTypes:
+        print("Unexpected type '{}', expected one of {} in YAML file '{}'"
+                .format(y['type'], knownTypes, fileName))
+        return False
+    elif MetricType.fromStr(y['type']) != metric.type:
+        print("Type mismatch for metric '{}': "
+                "Defined as {} in cpp file '{}', "
+                "but defined as {} in YAML file '{}'."
+                .format(metric.name, metric.type.name, metric.file,
+                    y['type'], fileName))
+        return False
+    return True
+
 # Check that every listed metric has a .yaml documentation file:
 missing = False
 yamls = []
 for i in range(0, len(metricsList)):
     bad = False
-    metricName = metricsList[i].name
-    if not metricName + ".yaml" in yamlfiles:
-        print("Missing metric documentation for metric '" + metricName + "'")
+    metric = metricsList[i]
+    fileName = metric.name + ".yaml"
+    if not fileName in yamlfiles:
+        print("Missing metric documentation for metric '" + metric.name + "'")
         bad = True
     else:
         # Check yaml:
-        filename = os.path.join("Documentation/Metrics", metricName) + ".yaml"
+        filePath = os.path.join("Documentation/Metrics", fileName)
         try:
-            s = open(filename)
+            s = open(filePath)
         except FileNotFoundError:
-            print("Could not open file '" + filename + "'")
+            print("Could not open file '" + filePath + "'")
             bad = True
             continue
         try:
             y = load(s, Loader=Loader)
         except YAMLError as err:
-            print("Could not parse YAML file '" + filename + "', error:\n" + str(err))
+            print("Could not parse YAML file '" + filePath + "', error:\n" + str(err))
             bad = True
             continue
 
         yamls.append(y)   # for later dump
 
-        # Check a few things in the yaml:
-        for attr in ["name", "help", "exposedBy", "description", "unit",\
-                     "type", "category", "complexity"]:
-            if not attr in y:
-                print("YAML file '" + filename + "' does not have required attribute '" + attr + "'")
-                bad = True
-        if not bad:
-            for attr in ["name", "help", "description", "unit",\
-                         "type", "category", "complexity"]:
-                if not isinstance(y[attr], str):
-                    print("YAML file '" + filename + "' has an attribute '" + attr + "' whose value must be a string but isn't.")
-                    bad = True
-            if not isinstance(y["exposedBy"], list):
-                print("YAML file '" + filename + "' has an attribute 'exposedBy' whose value must be a list but isn't.")
-                bad = True
+        if not verifyYaml(metric, y, fileName, filePath):
+            bad = True
+
 
     if bad:
         missing = True
