@@ -42,6 +42,8 @@
     x() { _name = #x; _help = help; } \
     }
 
+#define DECLARE_LEGACY_GAUGE(x, type, help) DECLARE_GAUGE(x, type, help)
+
 #define DECLARE_HISTOGRAM(x, scale, help)                   \
   struct x : arangodb::metrics::HistogramBuilder<x, scale> { \
     x() { _name = #x; _help = help; } \
