@@ -28,18 +28,13 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 
-
-function QueryKillSuite() {
+function GenericQueryKillSuite(type) { // can be either default or stream
   'use strict';
+
   // generate a random collection name
   const databaseName = "UnitTestsDBTemp"
   const collectionName = "UnitTests" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
-  const docsPerWrite = 10;
-
-  let debug = function (text) {
-    console.warn(text);
-  };
-
+  const docsPerWrite = 5;
   const exlusiveWriteQueryString = `FOR x IN 1..${docsPerWrite} INSERT {} INTO ${collectionName} OPTIONS {exclusive: true}`;
 
   let executeDefaultCursorQuery = () => {
@@ -48,7 +43,7 @@ function QueryKillSuite() {
       db._query(exlusiveWriteQueryString);
       fail();
     } catch (e) {
-      debug(e);
+      console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
   }
@@ -59,13 +54,34 @@ function QueryKillSuite() {
       db._query(exlusiveWriteQueryString, null, null, {stream: true});
       fail();
     } catch (e) {
-      debug(e);
+      console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
   }
 
-  return {
+  const testCasesDefault = [
+    "ClusterQuery::directKillAfterQueryGotRegistered",
+    "ClusterQuery::directKillAfterQueryIsGettingProcessed"
+  ];
 
+  const testCasesStream = [
+    "ClusterQuery::directKillAfterStreamQueryIsGettingProcessed",
+    "ClusterQuery::directKillAfterStreamQueryBeforeCursorIsBeingCreated",
+    "ClusterQuery::directKillAfterStreamQueryAfterCursorIsBeingCreated",
+    "RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped",
+    "RestCursorHandler::directKillAfterStreamQueryIsGettingDumped"
+  ]
+
+  const testCasesBoth = [
+    "ExecutionEngine::directKillBeforeAQLQueryExecute",
+    "ExecutionEngine::directKillAfterAQLQueryExecute",
+    "Query::directKillBeforeQueryWillBeFinalized",
+    "Query::directKillAfterQueryWillBeFinalized",
+    "Query::directKillAfterDBServerFinishRequests",
+    "ClusterQuery::directKillAfterQueryExecuteReturnsWaiting"
+  ];
+
+  const testSuite = {
     setUp: function () {
       db._useDatabase("_system");
       db._createDatabase(databaseName);
@@ -86,9 +102,55 @@ function QueryKillSuite() {
       db._useDatabase("_system");
       db._dropDatabase(databaseName);
     },
+  }
 
-    // a = sync variant
-    // b = async variant
+  const createTestName = (failurePoint) => {
+    return `test_${type}_${failurePoint.split("::")[1]}`;
+  };
+
+  const addTestCase = (suite, failurePointName, type) => {
+    suite[createTestName(failurePointName)] = function (failurePointName, type) {
+      console.warn("Failure Point: " + failurePointName);
+      console.warn("Failure Type: " + type);
+
+      try {
+        internal.debugSetFailAt(failurePointName);
+      } catch (e) {
+        console.error("Failed to initialize the failure point.")
+      }
+
+      if (type === 'stream') {
+        executeStreamCursorQuery();
+      } else if (type === 'default') {
+        executeDefaultCursorQuery();
+      }
+
+      try {
+        internal.debugClearFailAt(failurePointName);
+      } catch (e) {
+        console.error("Failed to release the failure point: " + failurePointName)
+        console.error(e);
+      }
+    }.bind(this, failurePointName, type)
+  };
+
+  if (type === 'default') {
+    for (const failurePoint of testCasesDefault) {
+      addTestCase(testSuite, failurePoint, type);
+    }
+  } else if (type === 'stream') {
+    for (const failurePoint of testCasesStream) {
+      addTestCase(testSuite, failurePoint, type);
+    }
+  }
+  for (const failurePoint of testCasesBoth) {
+    addTestCase(testSuite, failurePoint, type);
+  }
+
+  return testSuite;
+
+  /*
+  return {
 
     // 1.a)
     testKillAfterDefaultQueryOccursInCurrent: function () { // means before query is getting registered
@@ -143,26 +205,29 @@ function QueryKillSuite() {
     // 5.b) ExecutionState QueryStreamCursor::prepareDump() { ?? after getSome
 
     // => Finalize before commiting
-    // 6.a) ClusterQuery::directKillBeforeQueryWillBeFinalized
+    // 6.a)
     // 6.b) before cleanupStateCallback in QueryStreamCursor::prepareDump()
 
     // => Finalize after commiting
-    // 7.a) ClusterQuery::directKillAfterQueryWillBeFinalized
-    // 8.b) after cleanupStateCallback in QueryStreamCursor::prepareDump()
-
-    /*
+    // 7.a)
+    // 7.b) after cleanupStateCallback in QueryStreamCursor::prepareDump()
         testKillAfterQueryExecutionReturnsWaitingState: function() {},
-
         testKillDuringCleanup: function() {},
-
         testKillBeforeFinalization: function() {},
-
         testKillAfterFinalization: function() {}
-
-     */
   };
+  */
 }
 
-jsunity.run(QueryKillSuite);
+function DefaultQueryKillSuite() {
+  return GenericQueryKillSuite("default");
+}
+
+function StreamQueryKillSuite() {
+  return GenericQueryKillSuite("stream");
+}
+
+jsunity.run(DefaultQueryKillSuite);
+jsunity.run(StreamQueryKillSuite);
 
 return jsunity.done();
