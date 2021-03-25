@@ -1933,7 +1933,7 @@
 
     memory manager has committed for the arangod process. On other systems,
 
-    this figure contains The size of the virtual memory the process is
+    this figure contains the size of the virtual memory the process is
 
     using.
 
