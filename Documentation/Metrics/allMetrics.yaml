@@ -464,6 +464,7 @@
   help: 'Number of times the global query memory limit threshold was reached.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_global_query_memory_limit_reached
   type: counter
   unit: number
@@ -482,6 +483,7 @@
   help: 'Number of times a local query memory limit threshold was reached.
 
     '
+  introducedIn: '3.8'
   name: arangodb_aql_local_query_memory_limit_reached
   type: counter
   unit: number
