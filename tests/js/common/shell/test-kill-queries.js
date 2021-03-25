@@ -87,15 +87,7 @@ function GenericQueryKillSuite(type) { // can be either default or stream
       db._createDatabase(databaseName);
       db._useDatabase(databaseName);
 
-      let collection = db._create(collectionName, {numberOfShards: 4});
-      let docs = [];
-      for (let i = 0; i < 100000; ++i) {
-        docs.push({value: i});
-        if (docs.length === 5000) {
-          collection.insert(docs);
-          docs = [];
-        }
-      }
+      db._create(collectionName, {numberOfShards: 4});
     },
 
     tearDown: function () {
