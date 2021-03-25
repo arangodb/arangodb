@@ -27,25 +27,6 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 
-auto LogIndex::operator==(LogIndex other) const -> bool {
-  return this->value == other.value;
-}
-auto LogIndex::operator<=(LogIndex other) const -> bool {
-  return value <= other.value;
-}
-auto LogIndex::operator<(LogIndex other) const -> bool {
-  return value < other.value;
-}
-
-LogEntry::LogEntry(LogTerm logTerm, LogIndex logIndex, LogPayload payload)
-    : _logTerm{logTerm}, _logIndex{logIndex}, _payload{std::move(payload)} {}
-
-LogTerm LogEntry::logTerm() const { return _logTerm; }
-
-LogIndex LogEntry::logIndex() const { return _logIndex; }
-
-LogPayload const& LogEntry::logPayload() const { return _payload; }
-
 InMemoryLog::InMemoryLog(ParticipantId id, std::shared_ptr<InMemoryState> state)
     : _id(id), _state(std::move(state)), _commitIndex{LogIndex{0}} {}
 

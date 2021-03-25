@@ -276,7 +276,7 @@ set(ARANGODB_TESTS_SOURCES
   VPackDeserializer/BasicTests.cpp)
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
-  Replication2/InMemoryLogTest.cpp)
+  Replication2/InMemoryLogTest.cpp Replication2/MockLog.cpp Replication2/MockLog.h)
 
 if (USE_FAILURE_TESTS)
   # add test that depends on USE_FAILURE_TESTS

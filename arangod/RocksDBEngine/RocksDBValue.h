@@ -36,6 +36,7 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Replication2/Common.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
@@ -59,6 +60,7 @@ class RocksDBValue {
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
   static RocksDBValue S2Value(S2Point const& c);
+  static RocksDBValue LogEntry(replication2::LogTerm, replication2::LogPayload);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -111,6 +113,16 @@ class RocksDBValue {
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the term of a log index value
+  //////////////////////////////////////////////////////////////////////////////
+  static replication2::LogTerm logTerm(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extract the payload
+  //////////////////////////////////////////////////////////////////////////////
+  static replication2::LogPayload logPayload(rocksdb::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

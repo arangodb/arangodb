@@ -33,47 +33,9 @@
 #include <variant>
 #include <vector>
 
+#include "Common.h"
+
 namespace arangodb::replication2 {
-
-struct LogIndex {
-  LogIndex() : value{0} {}
-  explicit LogIndex(std::uint64_t value) : value{value} {}
-  std::uint64_t value;
-
-  [[nodiscard]] auto operator==(LogIndex) const -> bool;
-  [[nodiscard]] auto operator<=(LogIndex) const -> bool;
-  [[nodiscard]] auto operator<(LogIndex) const -> bool;
-};
-struct LogTerm {
-  LogTerm() : value{0} {}
-  explicit LogTerm(std::uint64_t value) : value{value} {}
-  std::uint64_t value;
-};
-struct LogPayload {
-  // just a placeholder for now
-  std::string dummy;
-};
-// just a placeholder for now, must have a hash<>
-using ParticipantId = std::size_t;
-struct LogStatistics {
-  LogIndex spearHead{};
-  LogIndex commitIndex{};
-};
-
-// TODO This should probably be moved into a separate file
-class LogEntry {
- public:
-  LogEntry(LogTerm, LogIndex, LogPayload);
-
-  [[nodiscard]] LogTerm logTerm() const;
-  [[nodiscard]] LogIndex logIndex() const;
-  [[nodiscard]] LogPayload const& logPayload() const;
-
- private:
-  LogTerm _logTerm{};
-  LogIndex _logIndex{};
-  LogPayload _payload;
-};
 
 struct AppendEntriesResult {
   bool success = false;

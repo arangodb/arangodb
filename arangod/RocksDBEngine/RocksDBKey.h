@@ -28,6 +28,7 @@
 #include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "RocksDBEngine/RocksDBLog.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -163,6 +164,11 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructRevisionTreeValue(uint64_t objectId);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for revision tree for a collection
+  //////////////////////////////////////////////////////////////////////////////
+  void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
+
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the type from a key
@@ -265,6 +271,13 @@ class RocksDBKey {
   /// May be called only on GeoIndexValues
   //////////////////////////////////////////////////////////////////////////////
   static uint64_t geoValue(rocksdb::Slice const& slice);
+
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts log index from key
+  //////////////////////////////////////////////////////////////////////////////
+  static replication2::LogIndex logIndex(RocksDBKey const&);
+  static replication2::LogIndex logIndex(rocksdb::Slice const&);
 
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }

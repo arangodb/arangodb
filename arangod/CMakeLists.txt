@@ -546,7 +546,7 @@ set(LIB_ARANGO_REPLICATION_SOURCES
   )
 
 set(LIB_ARANGO_REPLICATION2_SOURCES
-  Replication2/InMemoryLog.cpp Replication2/InMemoryLog.h)
+  Replication2/InMemoryLog.cpp Replication2/InMemoryLog.h Replication2/Common.h Replication2/Common.cpp Replication2/PersistedLog.h)
 
 set (LIB_ARANGO_METRICS_SOURCES
   RestServer/Metrics.cpp
