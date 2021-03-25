@@ -10,5 +10,7 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Accumulated total number of scheduler threads stopped.
+  Total accumulated number of scheduler threads stopped. Worker threads can be
+  started and stopped dynamically based on the server load.
