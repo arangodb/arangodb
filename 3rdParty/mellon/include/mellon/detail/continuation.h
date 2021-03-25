@@ -6,6 +6,7 @@
 #endif
 
 #ifdef MELLON_RECORD_PENDING_OBJECTS
+#include <vector>
 #include <unordered_set>
 #endif
 
