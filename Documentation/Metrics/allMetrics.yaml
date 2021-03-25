@@ -2612,6 +2612,7 @@
   help: 'Total number of jobs dequeued.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_jobs_dequeued_total
   type: counter
   unit: number
@@ -2650,6 +2651,7 @@
   help: 'Total number of queue jobs done.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_jobs_done_total
   type: gauge
   unit: number
@@ -2688,6 +2690,7 @@
   help: 'Total number of jobs submitted to the scheduler.
 
     '
+  introducedIn: '3.6'
   name: arangodb_scheduler_jobs_submitted_total
   type: gauge
   unit: number

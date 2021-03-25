@@ -1,4 +1,5 @@
 name: arangodb_scheduler_jobs_done_total
+introducedIn: "3.6"
 help: |
   Total number of queue jobs done.
 unit: number
