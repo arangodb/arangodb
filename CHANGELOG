@@ -1,6 +1,8 @@
 v3.8.0-alpha.1 (XXXX-XX-XX)
 ---------------------------
 
+* Fix shortName labels in metrics, in particular for agents.
+
 * The old metrics api contains the following gauges which should actually be
   counters:
     - arangodb_scheduler_jobs_dequeued
@@ -14,7 +16,6 @@ v3.8.0-alpha.1 (XXXX-XX-XX)
   metrics which are suppressed for v2.
 
 * Fix implicit capture of views in a context of JS transaction.
-
 
 * Introduce metrics for AQL query memory limit violations:
   - `arangodb_aql_global_query_memory_limit_reached`: Total number of times the
