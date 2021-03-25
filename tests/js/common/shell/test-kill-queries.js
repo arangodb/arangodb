@@ -28,7 +28,7 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 
-function GenericQueryKillSuite(type) { // can be either default or stream
+function GenericQueryKillSuite() { // can be either default or stream
   'use strict';
 
   // generate a random collection name
@@ -48,38 +48,94 @@ function GenericQueryKillSuite(type) { // can be either default or stream
     }
   }
 
-  let executeStreamCursorQuery = () => {
+  let executeStreamCursorQuery = (reportKilled) => {
     // stream execution
+    let localQuery;
+
     try {
-      db._query(exlusiveWriteQueryString, null, null, {stream: true});
-      fail();
+      localQuery = db._query(exlusiveWriteQueryString, null, null, {stream: true});
+      if (reportKilled) {
+        fail();
+      }
     } catch (e) {
+      console.warn("Expected to fail here: ");
       console.warn(e);
       assertEqual(e.errorNum, internal.errors.ERROR_QUERY_KILLED.code);
     }
+
+    // in case we're expecting a success here
+    if (!reportKilled) {
+      console.info("Not expecting to be killed in this case.");
+      console.info(typeof localQuery);
+      assertTrue(localQuery);
+    }
   }
 
-  const testCasesDefault = [
-    "ClusterQuery::directKillAfterQueryGotRegistered",
-    "ClusterQuery::directKillAfterQueryIsGettingProcessed"
-  ];
+  /*
+   * failurePointName: <Class::Name>
+   * onlyInCluster: <boolean>
+   * stream: <string> - "on", "off" or "both"
+   * reportKilled: <boolean>
+   */
+  const createTestCaseEntry = (failurePointName, onlyInCluster, stream, reportKilled) => {
+    if (!internal.isCluster() && onlyInCluster) {
+      return;
+    }
 
-  const testCasesStream = [
-    "ClusterQuery::directKillAfterStreamQueryIsGettingProcessed",
-    "ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated",
-    "ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated",
-    "RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped",
-    "RestCursorHandler::directKillAfterStreamQueryIsGettingDumped"
-  ]
+    let error = false;
+    if (typeof failurePointName !== 'string') {
+      console.error("Wrong definition of failurePointName, given: " + JSON.stringify(failurePointName));
+      error = true;
+    }
+    if (typeof onlyInCluster !== 'boolean') {
+      console.error("Wrong definition of onlyInCluster, given: " + JSON.stringify(onlyInCluster));
+      error = true;
+    }
+    if (typeof stream !== 'string') {
+      const acceptedValues = ['on', 'off', 'both'];
+      if (!acceptedValues.find(entry => entry === stream)) {
+        console.error("Wrong definition of stream, given: " + JSON.stringify(stream));
+      }
+    }
+    if (typeof reportKilled !== 'boolean') {
+      console.error("Wrong definition of reportKilled, given: " + JSON.stringify(reportKilled));
+      error = true;
+    }
 
-  const testCasesBoth = [
-   "ExecutionEngine::directKillBeforeAQLQueryExecute",
-   "ExecutionEngine::directKillAfterAQLQueryExecute",
-   "Query::directKillBeforeQueryWillBeFinalized",
-   "Query::directKillAfterQueryWillBeFinalized",
-   "Query::directKillAfterDBServerFinishRequests",
-   "ClusterQuery::directKillAfterQueryExecuteReturnsWaiting"
-  ];
+    if (error) {
+      throw "Wrong param for createTestCaseEntry()";
+    }
+
+    return {
+      failurePointName: failurePointName,
+      onlyInCluster: onlyInCluster,
+      stream: stream,
+      reportKilled: reportKilled
+    }
+  };
+
+  const testCases = [];
+  // TODOs: check reportKilled flags for each entry
+
+  // defaults
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryGotRegistered", true, "off", true));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryIsGettingProcessed", true, "off", true));
+
+  // stream
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterStreamQueryIsGettingProcessed", true, "on", true));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated", true, "on", true));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated", true, "on", true));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped", false, "on", true));
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillAfterStreamQueryIsGettingDumped", false, "on", true));
+
+  // execution in default & stream
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillBeforeAQLQueryExecute", false, 'both', true));
+  testCases.push(createTestCaseEntry("ExecutionEngine::directKillAfterAQLQueryExecute", false, 'both', true));
+  testCases.push(createTestCaseEntry("Query::directKillBeforeQueryWillBeFinalized", false, 'both', true));
+  testCases.push(createTestCaseEntry("Query::directKillAfterQueryWillBeFinalized", false, 'both', true));
+  testCases.push(createTestCaseEntry("Query::directKillAfterDBServerFinishRequests", false, 'both', true));
+  testCases.push(createTestCaseEntry("ClusterQuery::directKillAfterQueryExecuteReturnsWaiting", true, 'both', false));
+  console.info(testCases);
 
   const testSuite = {
     setUp: function () {
@@ -96,47 +152,55 @@ function GenericQueryKillSuite(type) { // can be either default or stream
     },
   }
 
-  const createTestName = (failurePoint) => {
-    return `test_${type}_${failurePoint.split("::")[1]}`;
+  const createTestName = (failurePoint, stream) => {
+    let typedef = '_'
+    if (stream === 'on') {
+      typedef = '_stream_';
+    } else if (stream === 'off') {
+      typedef = '_nonstream_';
+    }
+    return `test${typedef}${failurePoint.split("::")[1]}`;
   };
 
-  const addTestCase = (suite, failurePointName, type) => {
-    if (type === "default") {
-      // unexpected errors in default
-      const unexpectedFailures = [
-        'ClusterQuery::directKillAfterQueryIsGettingProcessed',
-        'Query::directKillBeforeQueryWillBeFinalized',
-        'Query::directKillAfterQueryWillBeFinalized',
-        'Query::directKillAfterDBServerFinishRequests',
-        'ClusterQuery::directKillAfterQueryExecuteReturnsWaiting'
-      ];
-      const found = unexpectedFailures.find(entry => entry === failurePointName);
-      if (found) {
-        return;
+  const addTestCase = (suite, testCase) => {
+    const unexpectedFailures = [];
+    if (suite.stream === "off") {
+      // unexpected errors in default (non-stream)
+      unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
+      unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
+      unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
+
+      // cluster only
+      if (internal.isCluster() && suite.onlyInCluster) {
+        unexpectedFailures.push('ClusterQuery::directKillAfterQueryExecuteReturnsWaiting');
+        unexpectedFailures.push('ClusterQuery::directKillAfterQueryIsGettingProcessed');
       }
-    } else if (type === "stream") {
+    } else if (testCase.stream === "on") {
       // unexpected errors in stream
-      const unexpectedStreamFailures = [
-        'ClusterQuery::directKillAfterStreamQueryIsGettingProcessed',
-        'ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated', // shutdown loop
-        'ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated', // shutdown loop
-        'RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped', // shutdown loop
-        'RestCursorHandler::directKillAfterStreamQueryIsGettingDumped',
-        'ExecutionEngine::directKillBeforeAQLQueryExecute', // shutdown loop (sometimes)
-        'Query::directKillBeforeQueryWillBeFinalized',
-        'Query::directKillAfterQueryWillBeFinalized',
-        'Query::directKillAfterDBServerFinishRequests',
-        'ClusterQuery::directKillAfterQueryExecuteReturnsWaiting'
-      ];
-      const found = unexpectedStreamFailures.find(entry => entry === failurePointName);
-      if (found) {
-        return;
+      unexpectedFailures.push('RestCursorHandler::directKillBeforeStreamQueryIsGettingDumped');
+      unexpectedFailures.push('RestCursorHandler::directKillAfterStreamQueryIsGettingDumped');
+      unexpectedFailures.push('ExecutionEngine::directKillBeforeAQLQueryExecute');
+      unexpectedFailures.push('Query::directKillBeforeQueryWillBeFinalized');
+      unexpectedFailures.push('Query::directKillAfterQueryWillBeFinalized');
+      unexpectedFailures.push('Query::directKillAfterDBServerFinishRequests');
+
+      // cluster only
+      if (internal.isCluster() && suite.onlyInCluster) {
+        unexpectedFailures.push('ClusterQuery::directKillAfterQueryExecuteReturnsWaiting');
+        unexpectedFailures.push('ClusterQuery::directKillAfterStreamQueryIsGettingProcessed');
+        unexpectedFailures.push('ClusterQuery::directKillStreamQueryBeforeCursorIsBeingCreated'); // shutdown loop
+        unexpectedFailures.push('ClusterQuery::directKillStreamQueryAfterCursorIsBeingCreated'); // shutdown loop
       }
     }
 
-    suite[createTestName(failurePointName)] = function (failurePointName, type) {
+    const found = unexpectedFailures.find(entry => entry === testCase.failurePointName);
+    if (found) {
+      return;
+    }
+
+    suite[createTestName(testCase.failurePointName, testCase.stream)] = function (failurePointName, stream, reportKilled) {
       console.warn("Failure Point: " + failurePointName);
-      console.warn("Failure Type: " + type);
+      console.warn("Stream type: " + stream);
 
       try {
         internal.debugSetFailAt(failurePointName);
@@ -144,10 +208,13 @@ function GenericQueryKillSuite(type) { // can be either default or stream
         console.error("Failed to initialize the failure point.")
       }
 
-      if (type === 'stream') {
-        executeStreamCursorQuery();
-      } else if (type === 'default') {
-        executeDefaultCursorQuery();
+      if (stream === 'on') {
+        executeStreamCursorQuery(reportKilled);
+      } else if (stream === 'off') {
+        executeDefaultCursorQuery(reportKilled);
+      } else if (stream === 'both') {
+        executeStreamCursorQuery(reportKilled);
+        executeDefaultCursorQuery(reportKilled);
       }
 
       try {
@@ -156,20 +223,11 @@ function GenericQueryKillSuite(type) { // can be either default or stream
         console.error("Failed to release the failure point: " + failurePointName)
         console.error(e);
       }
-    }.bind(this, failurePointName, type)
+    }.bind(this, testCase.failurePointName, testCase.stream, testCase.reportKilled)
   };
 
-  if (type === 'default') {
-    for (const failurePoint of testCasesDefault) {
-      addTestCase(testSuite, failurePoint, type);
-    }
-  } else if (type === 'stream') {
-    for (const failurePoint of testCasesStream) {
-      addTestCase(testSuite, failurePoint, type);
-    }
-  }
-  for (const failurePoint of testCasesBoth) {
-    addTestCase(testSuite, failurePoint, type);
+  for (const testCase of testCases) {
+    addTestCase(testSuite, testCase);
   }
 
   return testSuite;
@@ -244,15 +302,10 @@ function GenericQueryKillSuite(type) { // can be either default or stream
   */
 }
 
-function DefaultQueryKillSuite() {
-  return GenericQueryKillSuite("default");
+function QueryKillSuite() {
+  return GenericQueryKillSuite();
 }
 
-function StreamQueryKillSuite() {
-  return GenericQueryKillSuite("stream");
-}
-
-//jsunity.run(DefaultQueryKillSuite);
-jsunity.run(StreamQueryKillSuite);
+jsunity.run(QueryKillSuite);
 
 return jsunity.done();
