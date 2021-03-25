@@ -35,6 +35,7 @@
 #include <vector>
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Logger/LogGroup.h"
 #include "Logger/LogLevel.h"
@@ -82,7 +83,7 @@ class LogAppender {
                                 LogTopic*& topic);
  
  private:
-  static Mutex _appendersLock;
+  static arangodb::basics::ReadWriteLock _appendersLock;
   static std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count> _globalAppenders;
   static std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>, LogGroup::Count> _topics2appenders;
   static std::array<std::map<std::string, std::shared_ptr<LogAppender>>, LogGroup::Count> _definition2appenders;
