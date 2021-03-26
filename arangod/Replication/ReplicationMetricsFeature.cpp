@@ -77,7 +77,7 @@ DECLARE_COUNTER(arangodb_replication_tailing_bytes_received_total,
                 "Number of bytes received for replication tailing requests");
 DECLARE_COUNTER(arangodb_replication_failed_connects_total,
                 "Number of failed connection attempts and response errors "
-                "during replication");
+                "during initial asynchronous replication");
 DECLARE_COUNTER(arangodb_replication_tailing_request_time_total,
                 "Wait time for replication tailing requests [ms]");
 DECLARE_COUNTER(arangodb_replication_tailing_apply_time_total,
