@@ -10,3 +10,10 @@ exposedBy:
   - dbserver
 description: |
   Aggregated wait time for replication tailing requests.
+troubleshoot:
+  If you see unusual spikes here, please inspect potential
+  network issues. It may help to increase network bandwith
+  and/or reduce network latency. In case there are no network
+  issues, also check the load of the serving leader dbserver,
+  as well as the follower dbserver, as they could potentially
+  be overloaded and reaching hardware-based limits.
