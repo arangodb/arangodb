@@ -81,7 +81,9 @@ CommTask::CommTask(GeneralServer& server,
   _connectionStatistics.SET_START();
 }
 
-CommTask::~CommTask() = default;
+CommTask::~CommTask() {
+  _connectionStatistics.SET_END();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
