@@ -2042,7 +2042,7 @@
   unit: percentage
 - category: Network
   complexity: medium
-  description: 'Number of internal requests that have timed out. This metric in increased
+  description: 'Number of internal requests that have timed out. This metric is increased
 
     whenever any cluster-internal request executed in the underlying connection
 
@@ -2069,10 +2069,10 @@
   unit: number
 - category: Network
   complexity: medium
-  description: "Number of outgoing internal requests in flight. This metric in increased\nwhenever
+  description: "Number of outgoing internal requests in flight. This metric is increased\nwhenever
     any cluster-internal request is about to be sent via the underlying \nconnection
-    pool, and is decreased whenever a response for such request is\nreceived or the
-    request runs into a timeout.\nThis metric provides an estimate of the fan-out
+    pool, and is decreased whenever a response for such a request is\nreceived or
+    the request runs into a timeout.\nThis metric provides an estimate of the fan-out
     of operations. For example,\na user operation on a collection with a single shard
     will normally lead to\na single internal request (plus replication), whereas an
     operation on a\ncollection with 10 shards may lead to a fan-out of 10 (plus replication).\n"
