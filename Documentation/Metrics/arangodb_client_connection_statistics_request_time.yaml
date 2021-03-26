@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Request time needed to answer a request.
+  Histogram of the time required to actually process a request. This does not
+  include the time required to read the incoming request, the time the request
+  is sitting on the queue, or the time required to send the response.

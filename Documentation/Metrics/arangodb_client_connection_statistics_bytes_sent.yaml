@@ -12,4 +12,4 @@ exposedBy:
   - agent
   - single
 description: |
-  Bytes sent for a request.
+  Histogram of the sent response sizes in bytes

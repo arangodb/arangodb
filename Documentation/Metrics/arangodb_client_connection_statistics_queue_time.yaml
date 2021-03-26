@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Queueing time needed for requests.
+  Histogram of the time requests are spending on a queue waiting to be
+  processed. The overwhelming majority of these times should be clearly
+  sub-second.
