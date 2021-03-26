@@ -17,7 +17,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <rocksdb/db.h>
@@ -53,14 +53,24 @@ struct RocksDBLogTest : testing::Test {
     TRI_RemoveDirectory(_path.c_str());
   }
 
-  auto createLog(LogId id, uint64_t objectId) const -> std::unique_ptr<RocksDBLog> {
-    return std::make_unique<RocksDBLog>(id, _db->DefaultColumnFamily(), _db, objectId);
+  auto createLog(LogId id) const -> std::unique_ptr<RocksDBLog> {
+    if (id > _maxLogId) {
+      _maxLogId = id;
+    }
+
+    return std::make_unique<RocksDBLog>(id, _db->DefaultColumnFamily(), _db, id.id());
   }
 
+  auto createUniqueLog() const -> std::unique_ptr<RocksDBLog> {
+    return createLog(LogId{_maxLogId.id() + 1});
+  }
+
+  static LogId _maxLogId;
   static std::string _path;
   static rocksdb::DB* _db;
 };
 
+LogId RocksDBLogTest::_maxLogId = LogId{0};
 std::string RocksDBLogTest::_path = {};
 rocksdb::DB* RocksDBLogTest::_db = nullptr;
 
@@ -92,7 +102,7 @@ auto make_iterator(std::initializer_list<LogEntry> c)
 }
 
 TEST_F(RocksDBLogTest, insert_iterate) {
-  auto log = createLog(LogId{12}, 12);
+  auto log = createUniqueLog();
 
   {
     auto entries = std::vector{
@@ -135,6 +145,97 @@ TEST_F(RocksDBLogTest, insert_iterate) {
     ASSERT_EQ(entry->logTerm().value, 2);
     ASSERT_EQ(entry->logPayload().dummy, "thousand");
 
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
+
+TEST_F(RocksDBLogTest, insert_remove_iterate) {
+  auto log = createUniqueLog();
+
+  {
+    auto entries = std::vector{
+        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
+        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
+        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
+        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
+    };
+    auto iter = make_iterator(entries);
+
+    auto res = log->insert(iter);
+    ASSERT_TRUE(res.ok());
+  }
+
+  {
+    auto s = log->remove(LogIndex{1000});
+    ASSERT_TRUE(s.ok());
+  }
+
+  {
+    auto entry = std::optional<LogEntry>{};
+    auto iter = log->read(LogIndex{1});
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 1000);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "thousand");
+
+    entry = iter->next();
+    ASSERT_FALSE(entry.has_value());
+  }
+}
+
+
+TEST_F(RocksDBLogTest, insert_iterate_remove_iterate) {
+  auto log = createUniqueLog();
+
+  {
+    auto entries = std::vector{
+        LogEntry{LogTerm{1}, LogIndex{1}, LogPayload{"first"}},
+        LogEntry{LogTerm{1}, LogIndex{2}, LogPayload{"second"}},
+        LogEntry{LogTerm{2}, LogIndex{3}, LogPayload{"third"}},
+        LogEntry{LogTerm{2}, LogIndex{1000}, LogPayload{"thousand"}},
+    };
+    auto iter = make_iterator(entries);
+
+    auto res = log->insert(iter);
+    ASSERT_TRUE(res.ok());
+  }
+
+  auto iter = log->read(LogIndex{1});
+
+  {
+    auto s = log->remove(LogIndex{1000});
+    ASSERT_TRUE(s.ok());
+  }
+
+  {
+    auto entry = std::optional<LogEntry>{};
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 1);
+    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logPayload().dummy, "first");
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 2);
+    ASSERT_EQ(entry->logTerm().value, 1);
+    ASSERT_EQ(entry->logPayload().dummy, "second");
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 3);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "third");
+
+    entry = iter->next();
+    ASSERT_TRUE(entry.has_value());
+    ASSERT_EQ(entry->logIndex().value, 1000);
+    ASSERT_EQ(entry->logTerm().value, 2);
+    ASSERT_EQ(entry->logPayload().dummy, "thousand");
     entry = iter->next();
     ASSERT_FALSE(entry.has_value());
   }

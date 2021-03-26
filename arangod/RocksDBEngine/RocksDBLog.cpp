@@ -107,5 +107,10 @@ auto RocksDBLog::drop() -> Result {
 }
 
 auto RocksDBLog::remove(replication2::LogIndex stop) -> Result {
-  return Result();
+  auto last = RocksDBKey();
+  last.constructLogEntry(_objectId, LogIndex{stop.value - 1});
+
+  rocksdb::WriteOptions opts;
+  auto s = _db->DeleteRange(opts, _cf, getBounds().start(), last.string());
+  return rocksutils::convertStatus(s);
 }
