@@ -60,10 +60,10 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: "This metric reflects the current number of agency callbacks being\nregistered,
-    including agency cache callbacks.\nThis metric was named `arangodb_agency_callback_count`
-    in previous versions \nof ArangoDB.\nNote that on single servers this metrics
-    will only have a non-zero value\nin \"active failover\" deployment mode.\n"
+  description: "This metric reflects the current number of agency callbacks being\n\
+    registered, including agency cache callbacks.\nThis metric was named `arangodb_agency_callback_count`\
+    \ in previous versions \nof ArangoDB.\nNote that on single servers this metrics\
+    \ will only have a non-zero value\nin \"active failover\" deployment mode.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -85,9 +85,9 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: "This metric was named `arangodb_agency_callback_registered` in previous
-    versions \nof ArangoDB.\nNote that on single servers this metrics will only have
-    a non-zero value\nin \"active failover\" deployment mode.\n"
+  description: "This metric was named `arangodb_agency_callback_registered` in previous\
+    \ versions \nof ArangoDB.\nNote that on single servers this metrics will only\
+    \ have a non-zero value\nin \"active failover\" deployment mode.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -101,9 +101,9 @@
   unit: number
 - category: Agency
   complexity: advanced
-  description: "Current number of entries in agency client id lookup table.\nThe lookup
-    table is used internally for agency inquire operations\nand should be compacted
-    at the same time when the agency's in-memory\nlog is compacted. \n"
+  description: "Current number of entries in agency client id lookup table.\nThe lookup\
+    \ table is used internally for agency inquire operations\nand should be compacted\
+    \ at the same time when the agency's in-memory\nlog is compacted. \n"
   exposedBy:
   - agent
   help: 'Current number of entries in agency client id lookup table.
@@ -156,8 +156,8 @@
   unit: ms
 - category: Agency
   complexity: simple
-  description: "This agent's commit index (i.e. the index until it has advanced in
-    \nthe agency's RAFT protocol).\n"
+  description: "This agent's commit index (i.e. the index until it has advanced in\
+    \ \nthe agency's RAFT protocol).\n"
   exposedBy:
   - agent
   help: 'This agent''s commit index.
@@ -245,10 +245,10 @@
   unit: number
 - category: Agency
   complexity: medium
-  description: "Counter for FailedServer jobs. This counter is increased whenever
-    a \nsupervision run encounters a failed server and starts a FailedServer job.\nThis
-    metric was named `arangodb_agency_supervision_failed_server_count`\nin previous
-    versions of ArangoDB.\n"
+  description: "Counter for FailedServer jobs. This counter is increased whenever\
+    \ a \nsupervision run encounters a failed server and starts a FailedServer job.\n\
+    This metric was named `arangodb_agency_supervision_failed_server_count`\nin previous\
+    \ versions of ArangoDB.\n"
   exposedBy:
   - agent
   help: 'Counter for FailedServer jobs.
@@ -293,10 +293,10 @@
   unit: ms
 - category: Agency
   complexity: medium
-  description: "Agency supervision replication time histogram. Whenever the agency\nsupervision
-    carries out changes, it will write them to the leader's log \nand replicate the
-    changes to followers. This metric provides a histogram\nof the time it took to
-    replicate the supervision changes to followers.\n"
+  description: "Agency supervision replication time histogram. Whenever the agency\n\
+    supervision carries out changes, it will write them to the leader's log \nand\
+    \ replicate the changes to followers. This metric provides a histogram\nof the\
+    \ time it took to replicate the supervision changes to followers.\n"
   exposedBy:
   - agent
   help: 'Agency supervision wait for replication time.
@@ -417,8 +417,8 @@
     '
   introducedIn: '3.7'
   name: arangodb_agencycomm_request_time_msec
-  threshold: "Usually, such requests should be relatively quick, mostly clearly\nsub-second.
-    \n"
+  threshold: "Usually, such requests should be relatively quick, mostly clearly\n\
+    sub-second. \n"
   troubleshoot: 'If the network or the agents are overloaded, it can help to move
 
     agent instances to separate machines.
@@ -489,12 +489,13 @@
   unit: bytes
 - category: AQL
   complexity: simple
-  description: "Total memory usage of all AQL queries currently executing.\nThe granularity
-    of this metric is steps of 32768 bytes. The current\nmemory usage of all AQL queries
-    will be compared against the configured\nlimit in the `--query.global-memory-limit`
-    startup option. \nIf the startup option has a value of `0`, then no global memory
-    limit\nwill be enforced. If the startup option has a non-zero value, queries\nwill
-    be aborted once the total query memory usage goes above the configured\nlimit.\n"
+  description: "Total memory usage of all AQL queries currently executing.\nThe granularity\
+    \ of this metric is steps of 32768 bytes. The current\nmemory usage of all AQL\
+    \ queries will be compared against the configured\nlimit in the `--query.global-memory-limit`\
+    \ startup option. \nIf the startup option has a value of `0`, then no global memory\
+    \ limit\nwill be enforced. If the startup option has a non-zero value, queries\n\
+    will be aborted once the total query memory usage goes above the configured\n\
+    limit.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -510,11 +511,11 @@
   unit: bytes
 - category: AQL
   complexity: simple
-  description: "Total number of times the global query memory limit threshold was
-    reached.\nThis can happen if all running AQL queries in total try to use more
-    memory than\nconfigured via the `--query.global-memory-limit` startup option.\nEvery
-    time this counter will increase, an AQL query will have aborted with a \n\"resource
-    limit exceeded\" error.\n"
+  description: "Total number of times the global query memory limit threshold was\
+    \ reached.\nThis can happen if all running AQL queries in total try to use more\
+    \ memory than\nconfigured via the `--query.global-memory-limit` startup option.\n\
+    Every time this counter will increase, an AQL query will have aborted with a \n\
+    \"resource limit exceeded\" error.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -529,11 +530,11 @@
   unit: number
 - category: AQL
   complexity: simple
-  description: "Total number of times a local query memory limit threshold was reached,
-    i.e.\na single query tried to allocate more memory than configured in the query's\n`memoryLimit`
-    attribute or the value configured via the startup option\n`--query.memory-limit`.\nEvery
-    time this counter will increase, an AQL query will have aborted with a \n\"resource
-    limit exceeded\" error.\n"
+  description: "Total number of times a local query memory limit threshold was reached,\
+    \ i.e.\na single query tried to allocate more memory than configured in the query's\n\
+    `memoryLimit` attribute or the value configured via the startup option\n`--query.memory-limit`.\n\
+    Every time this counter will increase, an AQL query will have aborted with a \n\
+    \"resource limit exceeded\" error.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -779,9 +780,9 @@
   unit: s
 - category: Transactions
   complexity: medium
-  description: "Total amount of time it took to acquire collection/shard locks for\nwrite
-    operations, summed up for all collections/shards. Will not be increased \nfor
-    any read operations.\nThe value is measured in microseconds.\n"
+  description: "Total amount of time it took to acquire collection/shard locks for\n\
+    write operations, summed up for all collections/shards. Will not be increased\
+    \ \nfor any read operations.\nThe value is measured in microseconds.\n"
   exposedBy:
   - dbserver
   - agent
@@ -791,10 +792,10 @@
     '
   introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_micros_total
-  troubleshoot: "In case this value is considered too high, check if there are AQL
-    queries\nor transactions that use exclusive locks on collections, and try to reduce
-    them. \nOperations using exclusive locks may lock out other queries/transactions
-    temporarily, \nwhich will lead to an increase in lock acquisition time.\n"
+  troubleshoot: "In case this value is considered too high, check if there are AQL\
+    \ queries\nor transactions that use exclusive locks on collections, and try to\
+    \ reduce them. \nOperations using exclusive locks may lock out other queries/transactions\
+    \ temporarily, \nwhich will lead to an increase in lock acquisition time.\n"
   type: counter
   unit: us
 - category: RocksDB
@@ -816,10 +817,10 @@
     '
   introducedIn: '3.6'
   name: arangodb_collection_lock_acquisition_time
-  troubleshoot: "In case these values are considered too high, check if there are
-    AQL queries\nor transactions that use exclusive locks on collections, and try
-    to reduce them. \nOperations using exclusive locks may lock out other queries/transactions
-    temporarily, \nwhich will lead to an increase in lock acquisition times.\n"
+  troubleshoot: "In case these values are considered too high, check if there are\
+    \ AQL queries\nor transactions that use exclusive locks on collections, and try\
+    \ to reduce them. \nOperations using exclusive locks may lock out other queries/transactions\
+    \ temporarily, \nwhich will lead to an increase in lock acquisition times.\n"
   type: histogram
   unit: s
 - category: Transactions
@@ -848,11 +849,11 @@
     '
   introducedIn: '3.7'
   name: arangodb_collection_lock_sequential_mode_total
-  troubleshoot: "In case this value is increasing, check if there are AQL queries
-    or transactions that \nuse exclusive locks on collections, and try to reduce them.
-    \nOperations using exclusive locks may lock out other queries/transactions temporarily,
-    \nwhich will lead can lead to (temporary) deadlocks in case the queries/transactions\nare
-    run on multiple shards on different servers.\n"
+  troubleshoot: "In case this value is increasing, check if there are AQL queries\
+    \ or transactions that \nuse exclusive locks on collections, and try to reduce\
+    \ them. \nOperations using exclusive locks may lock out other queries/transactions\
+    \ temporarily, \nwhich will lead can lead to (temporary) deadlocks in case the\
+    \ queries/transactions\nare run on multiple shards on different servers.\n"
   type: counter
   unit: number
 - category: Transactions
@@ -873,20 +874,20 @@
     '
   introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_exclusive_total
-  troubleshoot: "In case this value is considered too high, check if there are AQL
-    queries\nor transactions that use exclusive locks on collections, and try to reduce
-    them. \nOperations using exclusive locks may lock out other queries/transactions
-    temporarily, \nwhich can lead to other operations running into timeouts waiting
-    for the same locks.\n"
+  troubleshoot: "In case this value is considered too high, check if there are AQL\
+    \ queries\nor transactions that use exclusive locks on collections, and try to\
+    \ reduce them. \nOperations using exclusive locks may lock out other queries/transactions\
+    \ temporarily, \nwhich can lead to other operations running into timeouts waiting\
+    \ for the same locks.\n"
   type: counter
   unit: number
 - category: Transactions
   complexity: medium
-  description: "Number of timeouts when trying to acquire collection write locks.\nThis
-    counter will be increased whenever a collection write lock\ncannot be acquired
-    within the configured lock timeout. \nThis can only happen if writes on a collection
-    are locked out by\nother operations on the collection that use an exclusive lock.
-    Writes\nare not locked out by other, non-exclusively locked writes.\n"
+  description: "Number of timeouts when trying to acquire collection write locks.\n\
+    This counter will be increased whenever a collection write lock\ncannot be acquired\
+    \ within the configured lock timeout. \nThis can only happen if writes on a collection\
+    \ are locked out by\nother operations on the collection that use an exclusive\
+    \ lock. Writes\nare not locked out by other, non-exclusively locked writes.\n"
   exposedBy:
   - dbserver
   - agent
@@ -896,11 +897,11 @@
     '
   introducedIn: '3.6'
   name: arangodb_collection_lock_timeouts_write_total
-  troubleshoot: "In case this value is considered too high, check if there are AQL
-    queries\nor transactions that use exclusive locks on collections, and try to reduce
-    them. \nOperations using exclusive locks may lock out other queries/transactions
-    temporarily, \nwhich can lead to other operations running into timeouts waiting
-    for the same locks.\n"
+  troubleshoot: "In case this value is considered too high, check if there are AQL\
+    \ queries\nor transactions that use exclusive locks on collections, and try to\
+    \ reduce them. \nOperations using exclusive locks may lock out other queries/transactions\
+    \ temporarily, \nwhich can lead to other operations running into timeouts waiting\
+    \ for the same locks.\n"
   type: counter
   unit: number
 - category: Transactions
@@ -1223,11 +1224,12 @@
   unit: s
 - category: Replication
   complexity: medium
-  description: "Total number of document write operations by synchronous replication.\nThis
-    metric is only present if the option\n`--server.export-read-write-metrics` is
-    set to `true`.\nTotal number of document write operations (insert, update, replace,
-    remove)\nexecuted by the synchronous replication on followers.\nThis metric is
-    only present if the option `--server.export-read-write-metrics` \nis set to `true`.\n"
+  description: "Total number of document write operations by synchronous replication.\n\
+    This metric is only present if the option\n`--server.export-read-write-metrics`\
+    \ is set to `true`.\nTotal number of document write operations (insert, update,\
+    \ replace, remove)\nexecuted by the synchronous replication on followers.\nThis\
+    \ metric is only present if the option `--server.export-read-write-metrics` \n\
+    is set to `true`.\n"
   exposedBy:
   - dbserver
   help: 'Total number of document write operations by synchronous replication.
@@ -1239,10 +1241,10 @@
   unit: number
 - category: Transactions
   complexity: medium
-  description: "Total number of document write operations (insert, update, replace,
-    remove) on\nleaders, excluding writes by the synchronous replication on followers.\nThis
-    metric is only present if the option `--server.export-read-write-metrics` \nis
-    set to `true`.\n"
+  description: "Total number of document write operations (insert, update, replace,\
+    \ remove) on\nleaders, excluding writes by the synchronous replication on followers.\n\
+    This metric is only present if the option `--server.export-read-write-metrics`\
+    \ \nis set to `true`.\n"
   exposedBy:
   - agent
   - dbserver
@@ -1256,11 +1258,11 @@
   unit: number
 - category: Health
   complexity: simple
-  description: "Total number of drop-follower events. This metric is increased on
-    leaders\nwhenever a write operation cannot be replicated to a follower during\nsynchronous
-    replication, and it would be unsafe in terms of data consistency \nto keep that
-    follower.\nThis metric was named `arangodb_dropped_followers_count` in previous\nversions
-    of ArangoDB.\n"
+  description: "Total number of drop-follower events. This metric is increased on\
+    \ leaders\nwhenever a write operation cannot be replicated to a follower during\n\
+    synchronous replication, and it would be unsafe in terms of data consistency \n\
+    to keep that follower.\nThis metric was named `arangodb_dropped_followers_count`\
+    \ in previous\nversions of ArangoDB.\n"
   exposedBy:
   - dbserver
   help: 'Number of drop-follower events.
@@ -1327,12 +1329,12 @@
     '
   introducedIn: '3.8'
   name: arangodb_heartbeat_send_time_msec
-  threshold: "It is a bad sign for health if heartbeat transmissions are not fast.
-    \nIf there are heartbeats which frequently take longer than a few hundred\nmilliseconds,
-    or even seconds, this can eventually lead to failover actions \nwhich are ultimately
-    bad for the service.\n"
-  troubleshoot: "High heartbeat send times can be a sign of overload or of bad network
-    \nconnectivity. Potentially move the agent instances to separate machines.\n"
+  threshold: "It is a bad sign for health if heartbeat transmissions are not fast.\
+    \ \nIf there are heartbeats which frequently take longer than a few hundred\n\
+    milliseconds, or even seconds, this can eventually lead to failover actions \n\
+    which are ultimately bad for the service.\n"
+  troubleshoot: "High heartbeat send times can be a sign of overload or of bad network\
+    \ \nconnectivity. Potentially move the agent instances to separate machines.\n"
   type: histogram
   unit: ms
 - category: Statistics
@@ -1379,12 +1381,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **DELETE**
-    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
-    this counter is ever growing during the lifetime of the\n`arangod` process. However,
-    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
-    it is usually visualized as a\nrate per second, averaged with a sliding window
-    of a minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **DELETE**\
+    \ \nrequests which have hit this particular instance of `arangod`.\n\nNote that\
+    \ this counter is ever growing during the lifetime of the\n`arangod` process.\
+    \ However, when the process is restarted, it starts\nfrom scratch. In the Grafana\
+    \ dashboards, it is usually visualized as a\nrate per second, averaged with a\
+    \ sliding window of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1406,12 +1408,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **GET** \nrequests
-    which have hit this particular instance of `arangod`.\n\nNote that this counter
-    is ever growing during the lifetime of the\n`arangod` process. However, when the
-    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
-    usually visualized as a\nrate per second, averaged with a sliding window of a
-    minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **GET** \n\
+    requests which have hit this particular instance of `arangod`.\n\nNote that this\
+    \ counter is ever growing during the lifetime of the\n`arangod` process. However,\
+    \ when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,\
+    \ it is usually visualized as a\nrate per second, averaged with a sliding window\
+    \ of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1433,12 +1435,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **HEAD** \nrequests
-    which have hit this particular instance of `arangod`.\n\nNote that this counter
-    is ever growing during the lifetime of the\n`arangod` process. However, when the
-    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
-    usually visualized as a\nrate per second, averaged with a sliding window of a
-    minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **HEAD** \n\
+    requests which have hit this particular instance of `arangod`.\n\nNote that this\
+    \ counter is ever growing during the lifetime of the\n`arangod` process. However,\
+    \ when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,\
+    \ it is usually visualized as a\nrate per second, averaged with a sliding window\
+    \ of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1460,12 +1462,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **OPTIONS**
-    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
-    this counter is ever growing during the lifetime of the\n`arangod` process. However,
-    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
-    it is usually visualized as a\nrate per second, averaged with a sliding window
-    of a minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **OPTIONS**\
+    \ \nrequests which have hit this particular instance of `arangod`.\n\nNote that\
+    \ this counter is ever growing during the lifetime of the\n`arangod` process.\
+    \ However, when the process is restarted, it starts\nfrom scratch. In the Grafana\
+    \ dashboards, it is usually visualized as a\nrate per second, averaged with a\
+    \ sliding window of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1487,12 +1489,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **PATCH**
-    \nrequests which have hit this particular instance of `arangod`.\n\nNote that
-    this counter is ever growing during the lifetime of the\n`arangod` process. However,
-    when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,
-    it is usually visualized as a\nrate per second, averaged with a sliding window
-    of a minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **PATCH**\
+    \ \nrequests which have hit this particular instance of `arangod`.\n\nNote that\
+    \ this counter is ever growing during the lifetime of the\n`arangod` process.\
+    \ However, when the process is restarted, it starts\nfrom scratch. In the Grafana\
+    \ dashboards, it is usually visualized as a\nrate per second, averaged with a\
+    \ sliding window of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1514,12 +1516,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **POST** \nrequests
-    which have hit this particular instance of `arangod`.\n\nNote that this counter
-    is ever growing during the lifetime of the\n`arangod` process. However, when the
-    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
-    usually visualized as a\nrate per second, averaged with a sliding window of a
-    minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **POST** \n\
+    requests which have hit this particular instance of `arangod`.\n\nNote that this\
+    \ counter is ever growing during the lifetime of the\n`arangod` process. However,\
+    \ when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,\
+    \ it is usually visualized as a\nrate per second, averaged with a sliding window\
+    \ of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1541,12 +1543,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "This counter reflects the total number of HTTP (or VST) **PUT** \nrequests
-    which have hit this particular instance of `arangod`.\n\nNote that this counter
-    is ever growing during the lifetime of the\n`arangod` process. However, when the
-    process is restarted, it starts\nfrom scratch. In the Grafana dashboards, it is
-    usually visualized as a\nrate per second, averaged with a sliding window of a
-    minute.\n"
+  description: "This counter reflects the total number of HTTP (or VST) **PUT** \n\
+    requests which have hit this particular instance of `arangod`.\n\nNote that this\
+    \ counter is ever growing during the lifetime of the\n`arangod` process. However,\
+    \ when the process is restarted, it starts\nfrom scratch. In the Grafana dashboards,\
+    \ it is usually visualized as a\nrate per second, averaged with a sliding window\
+    \ of a minute.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1719,15 +1721,15 @@
   unit: number
 - category: Statistics
   complexity: medium
-  description: "Number of intermediate commits performed in transactions.\nAn intermediate
-    commit happens if a logical transaction needs to be\nsplit into multiple physical
-    transaction because of the volume of data\nhandled in the transaction. The thresholds
-    for when to perform an\nintermediate commit can be controlled by startup options
-    \n`--rocksdb.intermediate-commit-count` (number of write operations after\nwhich
-    an intermediate commit is triggered) and `--rocksdb.intermediate-commit-size`\n(cumulated
-    size of write operations after which an intermediate commit is triggered).\nThe
-    values can also be overridden for individual transactions.\nThis metric was named
-    `arangodb_intermediate_commits` in previous\nversions of ArangoDb.\n"
+  description: "Number of intermediate commits performed in transactions.\nAn intermediate\
+    \ commit happens if a logical transaction needs to be\nsplit into multiple physical\
+    \ transaction because of the volume of data\nhandled in the transaction. The thresholds\
+    \ for when to perform an\nintermediate commit can be controlled by startup options\
+    \ \n`--rocksdb.intermediate-commit-count` (number of write operations after\n\
+    which an intermediate commit is triggered) and `--rocksdb.intermediate-commit-size`\n\
+    (cumulated size of write operations after which an intermediate commit is triggered).\n\
+    The values can also be overridden for individual transactions.\nThis metric was\
+    \ named `arangodb_intermediate_commits` in previous\nversions of ArangoDb.\n"
   exposedBy:
   - dbserver
   - single
@@ -1736,23 +1738,24 @@
     '
   introducedIn: '3.6'
   name: arangodb_intermediate_commits_total
-  troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.
-    It can\nhappen for large transactions and large data-loading jobs. However, as
-    modifications\nperformed by intermediate commits are persisted and cannot simply
-    be rolled back in \nmemory, it should be monitored whether the intermediate commits
-    only happen for\noperations where they are expected. If they also happen for operations
-    that are\nsupposed to be atomic, then the intermediate commit size and count parameters
-    need\nto be adjusted, or larger operations should be broken up into smaller ones
-    in the\nclient application.\n"
+  troubeshoot: "If this value is non-zero, it doesn't necessarily indicate a problem.\
+    \ It can\nhappen for large transactions and large data-loading jobs. However,\
+    \ as modifications\nperformed by intermediate commits are persisted and cannot\
+    \ simply be rolled back in \nmemory, it should be monitored whether the intermediate\
+    \ commits only happen for\noperations where they are expected. If they also happen\
+    \ for operations that are\nsupposed to be atomic, then the intermediate commit\
+    \ size and count parameters need\nto be adjusted, or larger operations should\
+    \ be broken up into smaller ones in the\nclient application.\n"
   type: counter
   unit: number
 - category: Maintenance
   complexity: medium
-  description: "Histogram of `Current` loading runtimes, i.e. the runtimes\nof the
-    `ClusterInfo::loadCurrent` internal method. Provides a\ndistribution of all loading
-    times for the `Current`\nsection of the agency data. The `Current` section gets\nloaded
-    on server startup, and then gets reloaded on servers \nonly for any databases
-    in which there have been recent structural \nchanges (i.e. DDL changes).\n"
+  description: "Histogram of `Current` loading runtimes, i.e. the runtimes\nof the\
+    \ `ClusterInfo::loadCurrent` internal method. Provides a\ndistribution of all\
+    \ loading times for the `Current`\nsection of the agency data. The `Current` section\
+    \ gets\nloaded on server startup, and then gets reloaded on servers \nonly for\
+    \ any databases in which there have been recent structural \nchanges (i.e. DDL\
+    \ changes).\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1778,11 +1781,11 @@
   unit: ms
 - category: Maintenance
   complexity: medium
-  description: "Histogram of `Plan` loading runtimes, i.e. the runtimes\nof the `ClusterInfo::loadPlan`
-    internal method. Provides a\ndistribution of all loading times for the `Plan`\nsection
-    of the agency data. The `Plan` section normally gets\nloaded on server startup,
-    and then gets reloaded on servers \nonly for any databases in which there have
-    been recent structural \nchanges (i.e. DDL changes).\n"
+  description: "Histogram of `Plan` loading runtimes, i.e. the runtimes\nof the `ClusterInfo::loadPlan`\
+    \ internal method. Provides a\ndistribution of all loading times for the `Plan`\n\
+    section of the agency data. The `Plan` section normally gets\nloaded on server\
+    \ startup, and then gets reloaded on servers \nonly for any databases in which\
+    \ there have been recent structural \nchanges (i.e. DDL changes).\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -2030,11 +2033,11 @@
   unit: ms
 - category: Network
   complexity: simple
-  description: "Number of requests forwarded to another coordinator.\nRequest forwarding
-    can happen in load-balanced setups,\nwhen one coordinator receives and forwards
-    requests \nthat can only be handled by a different coordinator.\nThis includes
-    requests for streaming transactions,\nAQL, query cursors, Pregel jobs and some
-    others.\n"
+  description: "Number of requests forwarded to another coordinator.\nRequest forwarding\
+    \ can happen in load-balanced setups,\nwhen one coordinator receives and forwards\
+    \ requests \nthat can only be handled by a different coordinator.\nThis includes\
+    \ requests for streaming transactions,\nAQL, query cursors, Pregel jobs and some\
+    \ others.\n"
   exposedBy:
   - coordinator
   help: 'Number of requests forwarded to another coordinator.
@@ -2046,9 +2049,9 @@
   unit: number
 - category: Network
   complexity: advanced
-  description: "Histogram providing the round-trip time of internal requests as a
-    percentage \nof the respective request timeout.\nThis metric will provide values
-    between 0 and 100.\n"
+  description: "Histogram providing the round-trip time of internal requests as a\
+    \ percentage \nof the respective request timeout.\nThis metric will provide values\
+    \ between 0 and 100.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -2103,13 +2106,14 @@
   unit: number
 - category: Network
   complexity: medium
-  description: "Number of outgoing internal requests in flight. This metric is increased\nwhenever
-    any cluster-internal request is about to be sent via the underlying \nconnection
-    pool, and is decreased whenever a response for such a request is\nreceived or
-    the request runs into a timeout.\nThis metric provides an estimate of the fan-out
-    of operations. For example,\na user operation on a collection with a single shard
-    will normally lead to\na single internal request (plus replication), whereas an
-    operation on a\ncollection with 10 shards may lead to a fan-out of 10 (plus replication).\n"
+  description: "Number of outgoing internal requests in flight. This metric is increased\n\
+    whenever any cluster-internal request is about to be sent via the underlying \n\
+    connection pool, and is decreased whenever a response for such a request is\n\
+    received or the request runs into a timeout.\nThis metric provides an estimate\
+    \ of the fan-out of operations. For example,\na user operation on a collection\
+    \ with a single shard will normally lead to\na single internal request (plus replication),\
+    \ whereas an operation on a\ncollection with 10 shards may lead to a fan-out of\
+    \ 10 (plus replication).\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -2345,14 +2349,14 @@
   unit: bytes
 - category: Replication
   complexity: advanced
-  description: "Number of refusal answers from a follower during synchronous replication.\nA
-    refusal answer will only be sent by a follower if the follower is under\nthe impression
-    that the replication request was not sent by the current\nshard leader. This can
-    happen if replication requests to the follower are \ndelayed or the follower is
-    slow to process incoming requests and there was \na leader change for the shard.\nIf
-    such a refusal answer is received by the shard leader, it will drop the\nfollower
-    from the list of followers.\nThis metrics was named `arangodb_refused_followers_count`
-    in previous\nversions of ArangoDB.\n"
+  description: "Number of refusal answers from a follower during synchronous replication.\n\
+    A refusal answer will only be sent by a follower if the follower is under\nthe\
+    \ impression that the replication request was not sent by the current\nshard leader.\
+    \ This can happen if replication requests to the follower are \ndelayed or the\
+    \ follower is slow to process incoming requests and there was \na leader change\
+    \ for the shard.\nIf such a refusal answer is received by the shard leader, it\
+    \ will drop the\nfollower from the list of followers.\nThis metrics was named\
+    \ `arangodb_refused_followers_count` in previous\nversions of ArangoDB.\n"
   exposedBy:
   - dbserver
   help: 'Number of refusal answers from a follower during synchronous replication.
@@ -2360,9 +2364,9 @@
     '
   introducedIn: '3.6'
   name: arangodb_refused_followers_total
-  threshold: "Usually, refusal answers only occur if request processing on followers
-    is \ndelayed and there was a recent leadership change. This should not be a\ncommon
-    case and normally indicates a problem with the setup or with the load.\n"
+  threshold: "Usually, refusal answers only occur if request processing on followers\
+    \ is \ndelayed and there was a recent leadership change. This should not be a\n\
+    common case and normally indicates a problem with the setup or with the load.\n"
   type: counter
   unit: number
 - category: Replication
@@ -2633,7 +2637,9 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Total number of synchronous replication requests.
+  description: 'The total amount of all synchronous replication operation requests
+
+    between dbservers being done.
 
     '
   exposedBy:
@@ -2642,12 +2648,14 @@
 
     '
   introducedIn: '3.8'
-  name: arangodb_replication_synchronous_requests_total_number._total
+  name: arangodb_replication_synchronous_requests_total_number_total
   type: counter
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Total time needed for all synchronous replication requests.
+  description: 'The total time needed for all synchronous replication requests
+
+    between dbservers being done.
 
     '
   exposedBy:
@@ -2661,7 +2669,11 @@
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated time needed to apply replication tailing data.
+  description: 'The accumulated time needed to locally process the continuous
+
+    replication log on a follower received from a replication
+
+    Leader.
 
     '
   exposedBy:
@@ -2671,13 +2683,24 @@
     '
   introducedIn: '3.8'
   name: arangodb_replication_tailing_apply_time_total
+  throubleshoot: 'If you see unusual spikes here, the follower might not have enough
+
+    IO bandwith or might be overloaded. Try to provision more IOPS or
+
+    more CPU capacity. Additionally, it could make sense to compare the
+
+    value with all other available follower dbservers to detect potential
+
+    differences.
+
+    '
   type: counter
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Accumulated number of bytes received for replication tailing requests.
-
-    '
+  description: The accumulated number of bytes received from a Leader for replication
+    tailing requests. The higher the amount of bytes is, the more data is being processed
+    afterwards on the follower dbserver.
   exposedBy:
   - dbserver
   help: 'Accumulated number of bytes received for replication tailing requests.
@@ -2685,14 +2708,16 @@
     '
   introducedIn: '3.8'
   name: arangodb_replication_tailing_bytes_received_total
+  troubleshoot: Compare this metric with all other related participating follower
+    dbservers. If the given value on a dbserver is considerable higher, you might
+    want to think about rebalancing your data as the overall work might not be evenly
+    distributed.
   type: counter
   unit: bytes
 - category: Replication
   complexity: medium
-  description: 'Accumulated number of replication tailing document inserts/replaces
-    processed.
-
-    '
+  description: The accumulated number of replication tailing document inserts/replaces
+    processed on a follower.
   exposedBy:
   - dbserver
   help: 'Accumulated number of replication tailing document inserts/replaces processed.
@@ -2700,11 +2725,20 @@
     '
   introducedIn: '3.8'
   name: arangodb_replication_tailing_documents_total
+  troubleshoot: Compare this metric with all other related participating follower
+    dbservers. If the given value on a dbserver is considerable higher, you might
+    want to think about rebalancing your data as the overall work might not be evenly
+    distributed. It is important to understand that this metric only enumerates the
+    amount of documents and does not compare document sizes. Even if values compared
+    to other dbservers may vary, work load could be fine. Therefore also check the
+    metric arangodb_replication_tailing_bytes_received_total to have an overall and
+    more precise picture.
   type: counter
   unit: number
 - category: Replication
   complexity: advanced
-  description: 'Number of replication tailing failures due to missing tick on leader.
+  description: 'The number of replication tailing failures due to missing tick on
+    leader.
 
     '
   exposedBy:
@@ -2714,11 +2748,25 @@
     '
   introducedIn: '3.8'
   name: arangodb_replication_tailing_follow_tick_failures_total
+  troubleshoot: If this is non-zero, action is required. A required follower tick
+    is not present (potentially removed) on a leader dbserver. Please check the related
+    leader dbserver log-files to identify the origin of the cause. It may be required
+    to do a full re-sync and/or increase the number of historic logfiles on the leader(s).
   type: counter
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication tailing markers processed.
+  description: 'The number of replication tailing markers processed on a follower
+
+    dbserver. Markers are specific operations which are part of the
+
+    write-ahead log (WAL). Example actions which are being used in
+
+    markers: Create or drop a database. Create, drop, rename, change
+
+    or truncate a collection. Create or drop an index. Create, drop,
+
+    change a view. Start, commit or abort a transaction.
 
     '
   exposedBy:
@@ -2732,7 +2780,9 @@
   unit: number
 - category: Replication
   complexity: medium
-  description: 'Number of replication tailing document removals processed.
+  description: 'The amount of document removal based marker operations on a
+
+    follower dbserver.
 
     '
   exposedBy:
@@ -2756,11 +2806,16 @@
     '
   introducedIn: '3.8'
   name: arangodb_replication_tailing_request_time_total
+  troubleshoot: If you see unusual spikes here, please inspect potential network issues.
+    It may help to increase network bandwith and/or reduce network latency. In case
+    there are no network issues, also check the load of the serving leader dbserver,
+    as well as the follower dbserver, as they could potentially be overloaded and
+    reaching hardware-based limits.
   type: counter
   unit: ms
 - category: Replication
   complexity: medium
-  description: 'Number of replication tailing requests.
+  description: 'The total amount of network replication tailing requests.
 
     '
   exposedBy:
@@ -3172,9 +3227,9 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: "Percentage of time that the system CPUs have been idle, as \na value
-    between 0 and 100, and as reported by the operating system.\nThis metric is only
-    reported on some operating systems.\n"
+  description: "Percentage of time that the system CPUs have been idle, as \na value\
+    \ between 0 and 100, and as reported by the operating system.\nThis metric is\
+    \ only reported on some operating systems.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3211,9 +3266,9 @@
   unit: percentage
 - category: Statistics
   complexity: simple
-  description: "Physical memory of the system in bytes, as reported by the operating
-    system \nunless the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY`
-    \nis set. In that case, the environment variable's value will be reported.\n"
+  description: "Physical memory of the system in bytes, as reported by the operating\
+    \ system \nunless the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY`\
+    \ \nis set. In that case, the environment variable's value will be reported.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3489,10 +3544,10 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: "Total number of transactions aborted. In the cluster, this metric
-    will \nbe collected separately for transactions on coordinators and the\ntransaction
-    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_aborted`
-    in previous\nversions of ArangoDB.\n"
+  description: "Total number of transactions aborted. In the cluster, this metric\
+    \ will \nbe collected separately for transactions on coordinators and the\ntransaction\
+    \ counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_aborted`\
+    \ in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3507,10 +3562,10 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: "Total number of transactions committed. In the cluster, this metric
-    will \nbe collected separately for transactions on coordinators and the\ntransaction
-    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_committed`
-    in previous\nversions of ArangoDB.\n"
+  description: "Total number of transactions committed. In the cluster, this metric\
+    \ will \nbe collected separately for transactions on coordinators and the\ntransaction\
+    \ counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_committed`\
+    \ in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3525,12 +3580,12 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: "Total number of expired transactions, i.e. transactions that have\nbeen
-    begun but that were automatically garbage-collected due to \ninactivity within
-    the transactions' time-to-live (TTL) period.\nIn the cluster, this metric will
-    be collected separately for transactions \non coordinators and the transaction
-    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_expired`
-    in previous\nversions of ArangoDB.\n"
+  description: "Total number of expired transactions, i.e. transactions that have\n\
+    been begun but that were automatically garbage-collected due to \ninactivity within\
+    \ the transactions' time-to-live (TTL) period.\nIn the cluster, this metric will\
+    \ be collected separately for transactions \non coordinators and the transaction\
+    \ counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_expired`\
+    \ in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3545,10 +3600,10 @@
   unit: number
 - category: Transactions
   complexity: simple
-  description: "Total number of transactions started/begun. In the cluster, this metric
-    will \nbe collected separately for transactions on coordinators and the\ntransaction
-    counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_started`
-    in previous\nversions of ArangoDB.\n"
+  description: "Total number of transactions started/begun. In the cluster, this metric\
+    \ will \nbe collected separately for transactions on coordinators and the\ntransaction\
+    \ counterparts on leaders and followers.\nThis metric was named `arangodb_transactions_started`\
+    \ in previous\nversions of ArangoDB.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -3563,7 +3618,12 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently alive.
+  description: 'Number of V8 contexts currently alive. Normally, only coordinators
+    and
+
+    single servers should have V8 contexts, for dbservers and agents the
+
+    value is always zero.
 
     '
   exposedBy:
@@ -3576,11 +3636,28 @@
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_alive
+  threshold: 'If this number is close to the maximum allowed number of V8 contexts,
+
+    there might be a shortage. This can delay Foxx queries and AQL
+
+    user defined functions. On the other hand, V8 contexts can use
+
+    quite a lot of memory, so one should not have too many if RAM
+
+    is scarce.
+
+    '
   type: gauge
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently busy.
+  description: 'Number of V8 contexts currently busy, that means, they are currently
+
+    working on some JavaScript task. Normally, only coordinators and
+
+    single servers should have V8 contexts, for dbservers and agents the
+
+    value is always zero.
 
     '
   exposedBy:
@@ -3593,17 +3670,37 @@
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_busy
+  threshold: 'If this number is close to the maximum allowed number of V8 contexts,
+
+    there might be a shortage. This can delay Foxx queries and AQL
+
+    user defined functions. On the other hand, V8 contexts can use
+
+    quite a lot of memory, so one should not have too many if RAM
+
+    is scarce.
+
+    '
   type: gauge
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 contexts ever created.
+  description: 'This counter reflects the total number of V8 contexts ever created.
+    It is
+
+    OK if this number keeps growing since the V8 contexts are created and
+
+    destroyed as needed. In rare cases a high fluctuation can indicate
+
+    some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Total number of V8 contexts ever created.
+  help: 'Total number of V8 contexts ever created
 
     '
   introducedIn: '3.6'
@@ -3612,13 +3709,21 @@
   unit: number
 - category: V8
   complexity: medium
-  description: 'Accumulated total time for creating V8 contexts.
+  description: 'This counter reflects the accumulated total time for creating V8
+
+    contexts, in milliseconds. It is OK if this number keeps growing since
+
+    the V8 contexts are created and destroyed as needed. In rare cases a
+
+    high fluctuation can indicate some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Accumulated total time for creating V8 contexts.
+  help: 'Accumulated total time for creating V8 contexts
 
     '
   introducedIn: '3.8'
@@ -3627,13 +3732,21 @@
   unit: ms
 - category: V8
   complexity: medium
-  description: 'Total number of V8 contexts ever destroyed.
+  description: 'This counter reflects the total number of V8 contexts ever destroyed.
+
+    It is OK if this number keeps growing since the V8 contexts are
+
+    created and destroyed as needed. In rare cases a high fluctuation can
+
+    indicate some unfortunate usage pattern.
 
     '
   exposedBy:
   - coordinator
+  - dbserver
+  - agent
   - single
-  help: 'Total number of V8 contexts ever destroyed.
+  help: 'Total number of V8 contexts ever destroyed
 
     '
   introducedIn: '3.6'
@@ -3642,7 +3755,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently dirty.
+  description: 'This gauge reflects the number of V8 contexts that are currently dirty.
+
+    A V8 context is dirty, if it has executed JavaScript for some time and
+
+    is due for a garbage collection.
 
     '
   exposedBy:
@@ -3659,30 +3776,55 @@
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context enter failures.
+  description: 'Total number of V8 context enter failures. A context receives a context
+
+    enter event every time it begins to execute some JavaScript. If no
+
+    context is available at such a time the system waits for 60s for a
+
+    context to become free. If this does not happen within the 60s, the
+
+    context enter event fails, a warning is logged and this counter is
+
+    increased by one.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context enter failures.
+  - single
+  help: 'Total number of V8 context enter failures
 
     '
   introducedIn: '3.6'
   name: arangodb_v8_context_enter_failures_total
+  threshold: 'If you see V8 context enter failures, then you do not have enough
+
+    V8 contexts or the server is overloaded by JavaScript tasks. If some
+
+    JavaScript code blocks V8 contexts for too long, the free V8 contexts
+
+    can run out and these failures begin to happen.
+
+    '
   type: counter
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context enter events.
+  description: 'Total number of V8 context enter events. A context receives a context
+
+    enter event every time it begins to execute some JavaScript. This number
+
+    is a rough estimate as to how much JavaScript the server executes.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context enter events.
+  - single
+  help: 'Total number of V8 context enter events
 
     '
   introducedIn: '3.6'
@@ -3691,14 +3833,19 @@
   unit: number
 - category: V8
   complexity: simple
-  description: 'Total number of V8 context exit events.
+  description: 'This counter reflects the total number of V8 context exit events.
+
+    A context receives a context exit event every time it finishes to
+
+    execute some JavaScript.
 
     '
   exposedBy:
   - coordinator
   - dbserver
   - agent
-  help: 'Total number of V8 context exit events.
+  - single
+  help: 'Total number of V8 context exit events
 
     '
   introducedIn: '3.6'
@@ -3707,7 +3854,9 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Number of V8 contexts currently free.
+  description: 'This gauge reflects the number of V8 contexts that are currently free.
+
+    If this number drops to 0 there might be a shortage of V8 contexts.
 
     '
   exposedBy:
@@ -3724,7 +3873,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Maximum number of concurrent V8 contexts.
+  description: 'This is the maximum number of concurrent V8 contexts. This is limited
+
+    by a server option, since V8 contexts can use a lot of RAM. V8 contexts
+
+    are created and destroyed as needed up to the limit shown in this metric.
 
     '
   exposedBy:
@@ -3741,7 +3894,11 @@
   unit: number
 - category: Statistics
   complexity: simple
-  description: 'Minimum number of concurrent V8 contexts.
+  description: 'This is the minimum number of concurrent V8 contexts. This is limited
+
+    by a server option. V8 contexts are created and destroyed as needed
+
+    but there are never fewer than the limit shown in this metric.
 
     '
   exposedBy:
@@ -3836,9 +3993,9 @@
   unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: "This metric exhibits the RocksDB metric \"rocksdb-block-cache-pinned-usage\".\nIt
-    shows the memory size for the RocksDB block cache for the entries \nwhich are
-    pinned, in bytes.\n"
+  description: "This metric exhibits the RocksDB metric \"rocksdb-block-cache-pinned-usage\"\
+    .\nIt shows the memory size for the RocksDB block cache for the entries \nwhich\
+    \ are pinned, in bytes.\n"
   exposedBy:
   - dbserver
   - agent
@@ -3872,10 +4029,10 @@
   unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: "This metric reflects the current global allocation for the ArangoDB\ncache
-    which sits in front of RocksDB. For example, the edge cache\ncounts towards this
-    allocation. All these caches together have a \nglobal limit which can be controlled
-    with the `--cache.size` option.\nSee [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).\n"
+  description: "This metric reflects the current global allocation for the ArangoDB\n\
+    cache which sits in front of RocksDB. For example, the edge cache\ncounts towards\
+    \ this allocation. All these caches together have a \nglobal limit which can be\
+    \ controlled with the `--cache.size` option.\nSee [the manual for details](https://www.arangodb.com/docs/stable/programs-arangod-options.html#cache).\n"
   exposedBy:
   - dbserver
   - agent
@@ -4179,13 +4336,13 @@
   unit: bytes
 - category: RocksDB
   complexity: advanced
-  description: "This metric exposes the current write rate limit of the ArangoDB\nRocksDB
-    throttle. The throttle limits the write rate to allow\nRocksDB's background threads
-    to catch up with compactions and not\nfall behind too much, since this would in
-    the end lead to nasty\nwrite stops in RocksDB and incur considerable delays. If
-    0 is\nshown, no throttling happens, otherwise, you see the current\nwrite rate
-    limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)
-    for details.\n"
+  description: "This metric exposes the current write rate limit of the ArangoDB\n\
+    RocksDB throttle. The throttle limits the write rate to allow\nRocksDB's background\
+    \ threads to catch up with compactions and not\nfall behind too much, since this\
+    \ would in the end lead to nasty\nwrite stops in RocksDB and incur considerable\
+    \ delays. If 0 is\nshown, no throttling happens, otherwise, you see the current\n\
+    write rate limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)\
+    \ for details.\n"
   exposedBy:
   - dbserver
   - agent
@@ -4491,9 +4648,9 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: "This metric exhibits the RocksDB metric \n\"rocksdb-num-entries-active-mem-table\".\nIt
-    shows the total number of entries in the active memtable,\nsummed over all column
-    families.\n"
+  description: "This metric exhibits the RocksDB metric \n\"rocksdb-num-entries-active-mem-table\"\
+    .\nIt shows the total number of entries in the active memtable,\nsummed over all\
+    \ column families.\n"
   exposedBy:
   - dbserver
   - agent
@@ -4655,11 +4812,11 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table\",
-    \nwhich shows the number of immutable memtables that have not yet been\nflushed.
-    This value is the sum over all column families.\n\nMemtables are sorted tables
-    of key/value pairs which begin\nto be built up in memory. At some stage they are
-    closed and become\nimmutable, and some time later they are flushed to disk.\n"
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table\"\
+    , \nwhich shows the number of immutable memtables that have not yet been\nflushed.\
+    \ This value is the sum over all column families.\n\nMemtables are sorted tables\
+    \ of key/value pairs which begin\nto be built up in memory. At some stage they\
+    \ are closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
   - dbserver
   - agent
@@ -4673,11 +4830,11 @@
   unit: number
 - category: RocksDB
   complexity: advanced
-  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table-flushed\",
-    \nwhich shows the number of immutable memtables that have already been\nflushed.
-    This value is the sum over all column families.\n\nMemtables are sorted tables
-    of key/value pairs which begin\nto be built up in memory. At some stage they are
-    closed and become\nimmutable, and some time later they are flushed to disk.\n"
+  description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table-flushed\"\
+    , \nwhich shows the number of immutable memtables that have already been\nflushed.\
+    \ This value is the sum over all column families.\n\nMemtables are sorted tables\
+    \ of key/value pairs which begin\nto be built up in memory. At some stage they\
+    \ are closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
   - dbserver
   - agent

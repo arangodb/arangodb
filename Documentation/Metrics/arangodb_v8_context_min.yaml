@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Minimum number of concurrent V8 contexts.
+  This is the minimum number of concurrent V8 contexts. This is limited
+  by a server option. V8 contexts are created and destroyed as needed
+  but there are never fewer than the limit shown in this metric.

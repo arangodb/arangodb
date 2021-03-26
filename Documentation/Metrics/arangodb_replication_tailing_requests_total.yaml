@@ -9,4 +9,4 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Number of replication tailing requests.
+  The total amount of network replication tailing requests.
