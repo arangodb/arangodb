@@ -193,12 +193,12 @@
   unit: bytes
 - category: Agency
   complexity: simple
-  description: 'Agency read with no leader.
+  description: 'Total number of agency read operations with no leader or on followers.
 
     '
   exposedBy:
   - agent
-  help: 'Agency read no leader.
+  help: 'Agency read operations with no leader or on followers.
 
     '
   introducedIn: '3.7'
@@ -219,12 +219,24 @@
   unit: number
 - category: Agency
   complexity: simple
-  description: 'Number of agency read operations which went ok.
+  description: 'Number of agency read operations which were successful (i.e. completed
+
+    without any error). Successful reads can only be executed on the leader, so
+
+    this metric is supposed to increase only on agency leaders, but not on
+
+    followers. Read requests that are executed on followers will be rejected
+
+    and can be tracked via the metric `arangodb_agency_read_no_leader_total`.
+
+    This metric was named `arangodb_agency_read_ok` in previous
+
+    versions of ArangoDB.
 
     '
   exposedBy:
   - agent
-  help: 'Agency read ok.
+  help: 'Number of successful agency read operations.
 
     '
   introducedIn: '3.7'
@@ -233,9 +245,10 @@
   unit: number
 - category: Agency
   complexity: medium
-  description: 'Counter for FailedServer jobs.
-
-    '
+  description: "Counter for FailedServer jobs. This counter is increased whenever
+    a \nsupervision run encounters a failed server and starts a FailedServer job.\nThis
+    metric was named `arangodb_agency_supervision_failed_server_count`\nin previous
+    versions of ArangoDB.\n"
   exposedBy:
   - agent
   help: 'Counter for FailedServer jobs.
@@ -258,15 +271,18 @@
   unit: number
 - category: Agency
   complexity: simple
-  description: 'Agency Supervision runtime histogram.
+  description: 'Agency supervision runtime histogram. A new value is recorded for
+    each
+
+    run of the supervision.
 
     '
   exposedBy:
   - agent
-  help: 'Agency Supervision runtime histogram.
+  help: 'Agency supervision runtime histogram.
 
     '
-  introducedIn: '3.7'
+  introducedIn: '3.8'
   name: arangodb_agency_supervision_runtime_msec
   threshold: 'The supervision runtime goes up linearly with the number of collections
 
@@ -277,21 +293,22 @@
   unit: ms
 - category: Agency
   complexity: medium
-  description: 'Agency supervision wait for replication time.
-
-    '
+  description: "Agency supervision replication time histogram. Whenever the agency\nsupervision
+    carries out changes, it will write them to the leader's log \nand replicate the
+    changes to followers. This metric provides a histogram\nof the time it took to
+    replicate the supervision changes to followers.\n"
   exposedBy:
   - agent
   help: 'Agency supervision wait for replication time.
 
     '
-  introducedIn: '3.7'
+  introducedIn: '3.8'
   name: arangodb_agency_supervision_runtime_wait_for_replication_msec
   type: histogram
   unit: ms
 - category: Agency
   complexity: medium
-  description: 'Agency''s term.
+  description: 'The Agency''s current term.
 
     '
   exposedBy:
@@ -317,7 +334,13 @@
   unit: number
 - category: Agency
   complexity: medium
-  description: 'Agency write time histogram.
+  description: 'Agency write time histogram. This histogram provides the distribution
+
+    of the times spent in agency write operations, in milliseconds. This only
+
+    includes the time required to write the data into the leader''s log, but
+
+    does not include the time required to replicate the writes to the followers.
 
     '
   exposedBy:
@@ -331,26 +354,50 @@
   unit: ms
 - category: Agency
   complexity: medium
-  description: 'Agency write operations with no leader.
+  description: 'Total number of agency write operations with no leader or on followers.
 
     '
   exposedBy:
   - agent
-  help: 'Agency write operations with no leader.
+  help: 'Agency write operations with no leader or on followers.
 
     '
   introducedIn: '3.7'
   name: arangodb_agency_write_no_leader_total
+  threshold: 'This should normally not happen. If it happens regularly, the agency
+
+    is reelecting its leader often.
+
+    '
+  troubleshoot: 'The latency of the network between the agents might be too high or
+
+    the agents may be overloaded. It might help to move agent instances
+
+    to separate machines.
+
+    '
   type: counter
   unit: number
 - category: Agency
-  complexity: medium
-  description: 'Agency write operations which went ok.
+  complexity: simple
+  description: 'Number of agency write operations which were successful (i.e. completed
+
+    without any error). Successful writes can only be executed on the leader, so
+
+    this metric is supposed to increase only on agency leaders, but not on
+
+    followers. Write requests that are executed on followers will be rejected
+
+    and can be tracked via the metric `arangodb_agency_write_no_leader_total`.
+
+    This metric was named `arangodb_agency_write_ok` in previous
+
+    versions of ArangoDB.
 
     '
   exposedBy:
   - agent
-  help: 'Agency write operations which went ok.
+  help: 'Number of successful agency write operations.
 
     '
   introducedIn: '3.7'
@@ -1165,7 +1212,7 @@
 
     the agency to report their own liveliness. This counter gets
 
-    increased whenever sending such heartbeat fails. In the single
+    increased whenever sending such a heartbeat fails. In the single
 
     server, this counter is only used in active failover mode.
 
@@ -1928,11 +1975,9 @@
   unit: number
 - category: Network
   complexity: advanced
-  description: 'Internal request round-trip time as a percentage of timeout.
-
-    This metric will have a value between 0 and 100.
-
-    '
+  description: "Histogram providing the round-trip time of internal requests as a
+    percentage \nof the respective request timeout.\nThis metric will provide values
+    between 0 and 100.\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1942,11 +1987,29 @@
     '
   introducedIn: '3.8'
   name: arangodb_network_request_duration_as_percentage_of_timeout
+  troubleshoot: 'High values indicate problems with requests that have timed out or
+    have not been
+
+    far away from running into timeouts. If many requests timeout, this is normally
+
+    a symptom of overload. This can normally be mitigated by reducing the workload
+
+    or adjusting the type of operations that are causing the high response times.
+
+    If the timeouts happen as a result of not enough processing power, it may be
+
+    useful to scale up the cluster.
+
+    '
   type: gauge
   unit: percentage
 - category: Network
   complexity: medium
-  description: 'Number of internal requests that have timed out.
+  description: 'Number of internal requests that have timed out. This metric in increased
+
+    whenever any cluster-internal request executed in the underlying connection
+
+    pool runs into a timeout.
 
     '
   exposedBy:
@@ -1958,13 +2021,24 @@
     '
   introducedIn: '3.8'
   name: arangodb_network_request_timeouts_total
+  troubleshoot: 'Request timeouts can be caused by the destination servers being overloaded
+
+    and thus slow to respond, or by network errors. If this counter increases,
+
+    it is advised to check network connectivity and server loads.
+
+    '
   type: counter
   unit: number
 - category: Network
   complexity: medium
-  description: 'Number of outgoing internal requests in flight.
-
-    '
+  description: "Number of outgoing internal requests in flight. This metric in increased\nwhenever
+    any cluster-internal request is about to be sent via the underlying \nconnection
+    pool, and is decreased whenever a response for such request is\nreceived or the
+    request runs into a timeout.\nThis metric provides an estimate of the fan-out
+    of operations. For example,\na user operation on a collection with a single shard
+    will normally lead to\na single internal request (plus replication), whereas an
+    operation on a\ncollection with 10 shards may lead to a fan-out of 10 (plus replication).\n"
   exposedBy:
   - coordinator
   - dbserver
