@@ -1,5 +1,5 @@
 name: arangodb_scheduler_jobs_submitted_total
-introducedIn: "3.8"
+introducedIn: "3.6"
 help: |
   Total number of jobs submitted to the scheduler.
 unit: number

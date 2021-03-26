@@ -1,5 +1,5 @@
 name: arangodb_scheduler_jobs_dequeued_total
-introducedIn: "3.8"
+introducedIn: "3.6"
 help: |
   Total number of jobs dequeued.
 unit: number
