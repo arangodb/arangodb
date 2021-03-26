@@ -412,6 +412,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new WindowNode(plan, slice, std::move(bounds),
                             rangeVar, aggregateVariables);
     }
+    case READALL:
+      return new ReadAllNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
