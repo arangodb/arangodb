@@ -9,4 +9,6 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Number of replication tailing markers processed.
+  The number of replication tailing markers processed on
+  a Follower DB-Server. Markers are specific operations
+  which are part of the write-ahead log (WAL).
