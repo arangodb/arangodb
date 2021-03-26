@@ -1,6 +1,13 @@
 v3.7.11 (XXXX-XX-XX)
 --------------------
 
+* Try to automatically resume RocksDB operations after a RocksDB background
+  error. On a background error, RocksDB may have gone into read-only mode and
+  not try to recover from it automatically in some situations, e.g. if the
+  background error happened during compaction.
+  Now we try to automatically resume operations every few seconds in case a
+  background error has happened.
+
 * Fix a crash caused by returning a result produced by ANALYZER function.
 
 * Fix implicit capture of views in a context of JS transaction.
