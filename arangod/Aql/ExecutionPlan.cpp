@@ -2026,6 +2026,15 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous, AstNode co
   return addDependency(previous, en);
 }
 
+ExecutionNode* ExecutionPlan::fromNodeReadAll(ExecutionNode* previous, AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_READ_ALL);
+  TRI_ASSERT(node->numMembers() == 0);
+
+  ExecutionNode* en = registerNode(new ReadAllNode(this, nextId()));
+
+  return addDependency(previous, en);
+}
+
 /// @brief create an execution plan from an abstract syntax tree node
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);

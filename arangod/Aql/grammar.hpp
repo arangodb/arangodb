@@ -1,8 +1,8 @@
-/* A Bison parser, made by GNU Bison 3.6.2.  */
+/* A Bison parser, made by GNU Bison 3.7.5.  */
 
 /* Bison interface for Yacc-like parsers in C
 
-   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2020 Free Software Foundation,
+   Copyright (C) 1984, 1989-1990, 2000-2015, 2018-2021 Free Software Foundation,
    Inc.
 
    This program is free software: you can redistribute it and/or modify
@@ -35,8 +35,8 @@
    especially those whose name start with YY_ or yy_.  They are
    private implementation details that can be changed or removed.  */
 
-#ifndef YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
-# define YY_AQL_AQL_GRAMMAR_HPP_INCLUDED
+#ifndef YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED
+# define YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED
 /* Debug traces.  */
 #ifndef YYDEBUG
 # define YYDEBUG 0
@@ -136,7 +136,7 @@ extern int Aqldebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 37 "Aql/grammar.y"
+#line 37 "arangod/Aql/grammar.y"
 
   arangodb::aql::AstNode*  node;
   struct {
@@ -146,7 +146,7 @@ union YYSTYPE
   bool                     boolval;
   int64_t                  intval;
 
-#line 150 "Aql/grammar.hpp"
+#line 150 "arangod/Aql/grammar.hpp"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -172,4 +172,4 @@ struct YYLTYPE
 
 int Aqlparse (arangodb::aql::Parser* parser);
 
-#endif /* !YY_AQL_AQL_GRAMMAR_HPP_INCLUDED  */
+#endif /* !YY_AQL_ARANGOD_AQL_GRAMMAR_HPP_INCLUDED  */
