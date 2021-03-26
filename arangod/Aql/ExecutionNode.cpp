@@ -124,7 +124,6 @@ std::unordered_map<int, std::string const> const typeNames{
     {static_cast<int>(ExecutionNode::MATERIALIZE), "MaterializeNode"},
     {static_cast<int>(ExecutionNode::ASYNC), "AsyncNode"},
     {static_cast<int>(ExecutionNode::MUTEX), "MutexNode"},
-    {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
     {static_cast<int>(ExecutionNode::WINDOW), "WindowNode"},
     {static_cast<int>(ExecutionNode::READALL), "ReadAllNode"},
 };
@@ -412,8 +411,6 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan, VPackSlice c
       return new WindowNode(plan, slice, std::move(bounds),
                             rangeVar, aggregateVariables);
     }
-    case READALL:
-      return new ReadAllNode(plan, slice);
     default: {
       // should not reach this point
       TRI_ASSERT(false);
@@ -1487,7 +1484,6 @@ bool ExecutionNode::alwaysCopiesRows(NodeType type) {
     case LIMIT:
     case READALL:
     case WINDOW:
-    case READALL:
       return false;
     // It should be safe to return false for these, but is it necessary?
     // Returning true can lead to more efficient register usage.

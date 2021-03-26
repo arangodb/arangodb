@@ -483,7 +483,6 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::READALL:
     case ExecutionNode::WINDOW:
     case ExecutionNode::READALL:
       return false;
@@ -529,7 +528,6 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::READALL:
     case ExecutionNode::WINDOW:
     case ExecutionNode::READALL:
       return false;
@@ -575,7 +573,6 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::SUBQUERY_END:
     case ExecutionNode::MATERIALIZE:
     case ExecutionNode::ASYNC:
-    case ExecutionNode::READALL:
     case ExecutionNode::WINDOW:
     case ExecutionNode::READALL:
       return false;

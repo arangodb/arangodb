@@ -4674,7 +4674,6 @@ void arangodb::aql::distributeFilterCalcToClusterRule(Optimizer* opt,
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::READALL:
         case EN::WINDOW:
-        case EN::READALL:
           // do break
           stopSearching = true;
           break;
@@ -4813,7 +4812,6 @@ void arangodb::aql::distributeSortToClusterRule(Optimizer* opt,
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::READALL:
         case EN::WINDOW:
-        case EN::READALL:
 
           // For all these, we do not want to pull a SortNode further down
           // out to the DBservers, note that potential FilterNodes and
