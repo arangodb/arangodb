@@ -1,7 +1,7 @@
 name: arangodb_process_statistics_minor_page_faults_total
 introducedIn: "3.6"
 help: |
-  Number of minor faults the process.
+  Number of minor page faults
 unit: number
 type: gauge
 category: Statistics
