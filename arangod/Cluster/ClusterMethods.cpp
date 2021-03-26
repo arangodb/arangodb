@@ -1806,7 +1806,7 @@ Future<OperationResult> getDocumentOnCoordinator(transaction::Methods& trx,
 
   // Some stuff to prepare cluster-internal requests:
 
-  auto reqOpts = std::shared_ptr<network::RequestOptions>();
+  auto reqOpts = std::make_shared<network::RequestOptions>();
   reqOpts->database = trx.vocbase().name();
   reqOpts->retryNotFound = true;
   reqOpts->param(StaticStrings::IgnoreRevsString, (options.ignoreRevs ? "true" : "false"));
