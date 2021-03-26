@@ -9,4 +9,15 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Accumulated number of replication tailing document inserts/replaces processed.
+  The accumulated number of replication tailing document inserts/replaces
+  processed on a Follower.
+troubleshoot:
+  Compare this metric with all other related participating Follower
+  DB-Servers. If the given value on a DB-Server is considerable higher,
+  you might want to think about rebalancing your data as the overall
+  work might not be evenly distributed. It is important to understand
+  that this metric only enumerates the amount of documents and does not
+  compare document sizes. Even if values compared to other DB-Servers
+  may vary, work load could be fine. Therefore also check the metric
+  arangodb_replication_tailing_bytes_received_total to have an overall
+  and more precise picture.
