@@ -1,5 +1,5 @@
 name: rocksdb_is_write_stopped
-introducedIn: "3.6"
+introducedIn: "3.8"
 help: |
   RocksDB metric "rocksdb-is-write-stopped"
 unit: number

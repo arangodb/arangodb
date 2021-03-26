@@ -12,5 +12,5 @@ exposedBy:
   - single
 description: |
   This metric exhibits the RocksDB metric "mem-table-flush-pending". It
-  shows the number of column families which which a memtable flush is
+  shows the number of column families for which a memtable flush is
   pending.
