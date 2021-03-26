@@ -10,4 +10,4 @@ exposedBy:
   - dbserver
 description: |
   The total time needed for all synchronous replication requests
-  between DB-Servers being done.
+  between dbservers being done.
