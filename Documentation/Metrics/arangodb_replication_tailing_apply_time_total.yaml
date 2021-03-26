@@ -11,7 +11,7 @@ exposedBy:
 description: |
   The accumulated time needed to locally process the continuous
   replication log on a follower received from a replication
-  Leader.
+  leader.
 throubleshoot: |
   If you see unusual spikes here, the follower might not have enough
   IO bandwith or might be overloaded. Try to provision more IOPS or
