@@ -30,7 +30,7 @@ using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_replication_dump_requests_total,
-                "Number of replication dump requests");
+                "Number of requests used in initial asynchronous replication phase.");
 DECLARE_COUNTER(arangodb_replication_dump_bytes_received_total,
                 "Total number of bytes replicated in initial asynchronous phase.");
 DECLARE_COUNTER(arangodb_replication_dump_documents_total,
