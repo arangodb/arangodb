@@ -319,6 +319,9 @@ MetricsFeature::MetricsFeature(application_features::ApplicationServer& server)
     nameVersionTable.try_emplace(
       "arangodb_scheduler_threads_stopped_total",
       "arangodb_scheduler_threads_stopped");
+    nameVersionTable.try_emplace(
+      "arangodb_scheduler_num_awake_threads",
+      "arangodb_scheduler_awake_threads");
     // For the sake of completeness, we add the renamings from v1 to v2 from the
     // statistics feature:
     nameVersionTable.try_emplace(

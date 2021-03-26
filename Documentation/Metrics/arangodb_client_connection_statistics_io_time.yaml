@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  I/O time needed to answer a request.
+  Histogram of I/O times needed to answer a request. This includes the time
+  required to read the incoming request as well as the time required to send
+  the response.

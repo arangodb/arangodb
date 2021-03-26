@@ -115,6 +115,8 @@ class QueryRegistryFeature final : public application_features::ApplicationFeatu
   Gauge<uint64_t>& _runningQueries;
   Gauge<uint64_t>& _globalQueryMemoryUsage;
   Gauge<uint64_t>& _globalQueryMemoryLimit;
+  Counter& _globalQueryMemoryLimitReached; 
+  Counter& _localQueryMemoryLimitReached; 
 };
 
 }  // namespace arangodb

@@ -38,7 +38,14 @@ class alignas(64) GlobalResourceMonitor final {
  public:
   constexpr GlobalResourceMonitor() 
       : _current(0),
-        _limit(0) {}
+        _limit(0),
+        _globalLimitReachedCounter(0),
+        _localLimitReachedCounter(0) {}
+
+  struct Stats {
+    std::uint64_t globalLimitReached;
+    std::uint64_t localLimitReached;
+  };
 
   /// @brief set the global memory limit
   void memoryLimit(std::int64_t value) noexcept;
@@ -48,6 +55,15 @@ class alignas(64) GlobalResourceMonitor final {
 
   /// @brief return the current global memory usage
   std::int64_t current() const noexcept;
+
+  /// @brief number of times the global and any local limits were reached
+  Stats stats() const noexcept;
+
+  /// @brief increase the counter for global memory limit violations
+  void trackGlobalViolation() noexcept;
+
+  /// @brief increase the counter for local memory limit violations
+  void trackLocalViolation() noexcept;
   
   /// @brief increase global memory usage by <value> bytes. if increasing exceeds the
   /// memory limit, does not perform the increase and returns false. if increasing
@@ -79,6 +95,12 @@ class alignas(64) GlobalResourceMonitor final {
   /// @brief maximum allowed global memory limit for all tracked operations combined.
   /// a value of 0 means that there will be no global limit enforced.
   std::int64_t _limit;
+
+  /// @brief number of times the global memory limit was reached
+  std::atomic<std::uint64_t> _globalLimitReachedCounter;
+  
+  /// @brief number of times a local memory limit was reached
+  std::atomic<std::uint64_t> _localLimitReachedCounter;
 };
 
 }  // namespace arangodb
