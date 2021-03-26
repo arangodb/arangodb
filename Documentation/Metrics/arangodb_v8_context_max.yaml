@@ -12,4 +12,6 @@ exposedBy:
   - agent
   - single
 description: |
-  Maximum number of concurrent V8 contexts.
+  This is the maximum number of concurrent V8 contexts. This is limited
+  by a server option, since V8 contexts can use a lot of RAM. V8 contexts
+  are created and destroyed as needed up to the limit shown in this metric.
