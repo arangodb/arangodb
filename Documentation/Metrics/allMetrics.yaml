@@ -2139,11 +2139,19 @@
   - dbserver
   - agent
   - single
-  help: 'Number of major page faults.
+  help: 'Number of major page faults
 
     '
   introducedIn: '3.6'
   name: arangodb_process_statistics_major_page_faults_total
+  troubleshooting: 'If the rate of this is high, i.e. it increases fast, it could
+    be an indication
+
+    that the memory usage is too high, or the memory is too low, or paging is done
+
+    too aggressively (for Linux, this see sysctl and vm.swappiness).
+
+    '
   type: counter
   unit: number
 - category: Statistics
@@ -2158,7 +2166,7 @@
   - dbserver
   - agent
   - single
-  help: 'Number of minor faults the process.
+  help: 'Number of minor page faults
 
     '
   introducedIn: '3.6'
@@ -2175,7 +2183,7 @@
   - dbserver
   - agent
   - single
-  help: 'Number of threads in the arangod process
+  help: 'Number of threads
 
     '
   introducedIn: '3.6'
@@ -2228,6 +2236,26 @@
     '
   introducedIn: '3.6'
   name: arangodb_process_statistics_resident_set_size_percent
+  threshold: 'This value can be consistently relatively high, even when not under
+    load,
+
+    due to different caches like the RocksDB block cache or the edge cache. There
+
+    should be some safety margin left, so it should not get too close to 1.
+
+    '
+  troubleshooting: 'If the memory is nearly full, this can lead to performance degradation,
+    errors
+
+    because queries can''t be executed, or the process being killed by the
+
+    operating system to free memory. This can be mitigated by adding more memory,
+
+    decreasing the size of caches if they aren''t much needed, or restricting the
+
+    amount of memory AQL queries may use.
+
+    '
   type: gauge
   unit: number
 - category: Statistics
@@ -2242,11 +2270,25 @@
   - dbserver
   - agent
   - single
-  help: 'Process system time.
+  help: 'Process system time
 
     '
   introducedIn: '3.6'
   name: arangodb_process_statistics_system_time
+  threshold: 'This metric can vary significantly dependent on the workload. If the
+    rate is
+
+    consistently very high, it could be an indication of some problem.
+
+    '
+  troubleshooting: 'There are many possible reasons for this, and specific advice
+    cannot be given
+
+    here. Examples can be costly or inefficient queries being executed, or just
+
+    that the machine''s performance is not sufficient for the tasks.
+
+    '
   type: gauge
   unit: s
 - category: Statistics
@@ -2266,6 +2308,20 @@
     '
   introducedIn: '3.6'
   name: arangodb_process_statistics_user_time
+  threshold: 'This metric can vary significantly dependent on the workload. If the
+    rate is
+
+    consistently very high, it could be an indication of some problem.
+
+    '
+  troubleshooting: 'There are many possible reasons for this, and specific advice
+    cannot be given
+
+    here. Examples can be costly or inefficient queries being executed, or just
+
+    that the machine''s performance is not sufficient for the tasks.
+
+    '
   type: gauge
   unit: s
 - category: Statistics
@@ -2274,7 +2330,7 @@
 
     memory manager has committed for the arangod process. On other systems,
 
-    this figure contains The size of the virtual memory the process is
+    this figure contains the size of the virtual memory the process is
 
     using.
 
