@@ -115,7 +115,9 @@
   unit: number
 - category: Agency
   complexity: medium
-  description: 'Agency RAFT commit time histogram.
+  description: 'Agency RAFT commit time histogram. Provides a distribution
+
+    of commit times for all agency write operations.
 
     '
   exposedBy:
@@ -129,7 +131,13 @@
   unit: ms
 - category: Agency
   complexity: medium
-  description: 'Agency compaction time histogram.
+  description: 'Agency compaction time histogram. Provides a distribution
+
+    of agency compaction run times. Compactions are triggered after
+
+    `--agency.compaction-keep-size` entries have accumulated in the
+
+    RAFT log.
 
     '
   exposedBy:
@@ -137,15 +145,19 @@
   help: 'Agency compaction time histogram.
 
     '
-  introducedIn: '3.7'
+  introducedIn: '3.6'
   name: arangodb_agency_compaction_hist
+  troubleshoot: 'If compaction takes too long, it may be useful to reduce the number
+
+    of log entries to keep in `--agency.compaction-keep-size`.
+
+    '
   type: histogram
   unit: ms
 - category: Agency
   complexity: simple
-  description: 'This agent''s commit index.
-
-    '
+  description: "This agent's commit index (i.e. the index until it has advanced in
+    \nthe agency's RAFT protocol).\n"
   exposedBy:
   - agent
   help: 'This agent''s commit index.
@@ -1111,14 +1123,23 @@
   complexity: simple
   description: 'Total number of failed heartbeat transmissions.
 
+    Servers in a cluster periodically send their heartbeats to
+
+    the agency to report their own liveliness. This counter gets
+
+    increased whenever sending such heartbeat fails. In the single
+
+    server, this counter is only used in active failover mode.
+
     '
   exposedBy:
   - coordinator
   - dbserver
+  - single
   help: 'Total number of failed heartbeat transmissions.
 
     '
-  introducedIn: '3.7'
+  introducedIn: '3.8'
   name: arangodb_heartbeat_failures_total
   threshold: 'It is a bad sign for health if heartbeat transmissions fail. This can
 
@@ -1138,15 +1159,24 @@
 
     sent the time is measured and an event is put into the histogram.
 
+    In the single server, this counter is only used in active failover mode.
+
     '
   exposedBy:
   - coordinator
   - dbserver
+  - single
   help: 'Time required to send a heartbeat.
 
     '
-  introducedIn: '3.7'
+  introducedIn: '3.8'
   name: arangodb_heartbeat_send_time_msec
+  threshold: "It is a bad sign for health if heartbeat transmissions are not fast.
+    \nIf there are heartbeats which frequently take longer than a few hundred\nmilliseconds,
+    or even seconds, this can eventually lead to failover actions \nwhich are ultimately
+    bad for the service.\n"
+  troubleshoot: "High heartbeat send times can be a sign of overload or of bad network
+    \nconnectivity. Potentially move the agent instances to separate machines.\n"
   type: histogram
   unit: ms
 - category: Statistics
@@ -1562,9 +1592,11 @@
   unit: number
 - category: Maintenance
   complexity: medium
-  description: 'Histogram of `Current` loading runtimes.
-
-    '
+  description: "Histogram of `Current` loading runtimes, i.e. the runtimes\nof the
+    `ClusterInfo::loadCurrent` internal method. Provides a\ndistribution of all loading
+    times for the `Current`\nsection of the agency data. The `Current` section gets\nloaded
+    on server startup, and then gets reloaded on servers \nonly for any databases
+    in which there have been recent structural \nchanges (i.e. DDL changes).\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1573,13 +1605,28 @@
     '
   introducedIn: '3.7'
   name: arangodb_load_current_runtime
+  troubleshoot: 'In case this histogram contains very high loading times, this
+
+    may be due to using many collections or many shards inside a
+
+    database for which there are often structural changes. It then
+
+    may make sense to reduce the number of collections or number
+
+    of shards. Note that this can have other effects, so it requires
+
+    an informed decision.
+
+    '
   type: histogram
   unit: ms
 - category: Maintenance
   complexity: medium
-  description: 'Histogram of `Plan` loading runtimes.
-
-    '
+  description: "Histogram of `Plan` loading runtimes, i.e. the runtimes\nof the `ClusterInfo::loadPlan`
+    internal method. Provides a\ndistribution of all loading times for the `Plan`\nsection
+    of the agency data. The `Plan` section normally gets\nloaded on server startup,
+    and then gets reloaded on servers \nonly for any databases in which there have
+    been recent structural \nchanges (i.e. DDL changes).\n"
   exposedBy:
   - coordinator
   - dbserver
@@ -1588,6 +1635,19 @@
     '
   introducedIn: '3.7'
   name: arangodb_load_plan_runtime
+  troubleshoot: 'In case this histogram contains very high loading times, this
+
+    may be due to using many collections or many shards inside a
+
+    database for which there are often structural changes. It then
+
+    may make sense to reduce the number of collections or number
+
+    of shards. Note that this can have other effects, so it requires
+
+    an informed decision.
+
+    '
   type: histogram
   unit: ms
 - category: Maintenance
@@ -1814,9 +1874,11 @@
   unit: ms
 - category: Network
   complexity: simple
-  description: 'Number of requests forwarded to another coordinator.
-
-    '
+  description: "Number of requests forwarded to another coordinator.\nRequest forwarding
+    can happen in load-balanced setups,\nwhen one coordinator receives and forwards
+    requests \nthat can only be handled by a different coordinator.\nThis includes
+    requests for streaming transactions,\nAQL, query cursors, Pregel jobs and some
+    others.\n"
   exposedBy:
   - coordinator
   help: 'Number of requests forwarded to another coordinator.

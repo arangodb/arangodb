@@ -1,5 +1,5 @@
 name: arangodb_heartbeat_failures_total
-introducedIn: "3.7"
+introducedIn: "3.8"
 help: |
   Total number of failed heartbeat transmissions.
 unit: number
@@ -9,8 +9,13 @@ complexity: simple
 exposedBy:
   - coordinator
   - dbserver
+  - single
 description: |
   Total number of failed heartbeat transmissions.
+  Servers in a cluster periodically send their heartbeats to
+  the agency to report their own liveliness. This counter gets
+  increased whenever sending such a heartbeat fails. In the single
+  server, this counter is only used in active failover mode.
 threshold: |
   It is a bad sign for health if heartbeat transmissions fail. This can
   lead to failover actions which are ultimately bad for the service.

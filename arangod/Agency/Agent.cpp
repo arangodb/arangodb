@@ -1923,7 +1923,7 @@ void Agent::compact() {
         << _config.compactionKeepSize() << " did not work.";
     } else {
       _compaction_hist_msec.count(
-        duration<float, std::milli>(clock::now()-start).count());
+        duration<float, std::milli>(clock::now() - start).count());
     }
   }
 }
