@@ -2756,6 +2756,26 @@
   unit: number
 - category: Scheduler
   complexity: simple
+  description: 'The number of worker threads currently working on some job or spinning
+    while
+
+    waiting for new work (i.e., not sleeping).
+
+    '
+  exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+  help: 'Number of awake worker threads.
+
+    '
+  introducedIn: '3.8'
+  name: arangodb_scheduler_num_awake_threads
+  type: gauge
+  unit: number
+- category: Scheduler
+  complexity: simple
   description: 'The number of worker threads currently started. Worker threads can
     be started
 
