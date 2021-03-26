@@ -16,4 +16,9 @@ description: |
   time the job was sitting in the queue. If there is nothing to do for a long
   time, this metric will be reset to zero.
   A large value for this metric indicates that the server is under heavy load
-  and low priority jobs cannot be dequeued in a timely manner.
+  and low priority jobs cannot be dequeued in a timely manner
+threshold: Normally this time should be clearly sub-second.
+troubleshoot: If you see larger values here, in particular over a longer period
+  of time, you should consider reducing the load of the server (if possible),
+  scaling up (bigger machine) or scaling out (more coordinators).
+  
