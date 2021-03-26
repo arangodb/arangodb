@@ -1,5 +1,5 @@
 name: rocksdb_total_sst_files_size
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-total-sst-files-size" - sum over all column families
 unit: bytes

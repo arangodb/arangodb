@@ -1,5 +1,5 @@
 name: rocksdb_compression_ratio_at_level1
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-compression-ratio-at-level1"
 unit: ratio

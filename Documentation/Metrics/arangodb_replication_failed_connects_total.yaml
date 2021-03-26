@@ -1,5 +1,6 @@
 name: arangodb_replication_failed_connects_total
-introducedIn: "3.8"
+renamedFrom: arangodb_replication_failed_connects
+introducedIn: "3.8.0"
 help: |
   Number of failed connection attempts and response errors during replication.
 unit: number

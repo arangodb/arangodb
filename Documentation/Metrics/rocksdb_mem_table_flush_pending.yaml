@@ -1,5 +1,5 @@
 name: rocksdb_mem_table_flush_pending
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "mem_table_flush_pending", sum over column families
 unit: number

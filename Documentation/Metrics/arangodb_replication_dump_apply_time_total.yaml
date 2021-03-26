@@ -1,5 +1,6 @@
 name: arangodb_replication_dump_apply_time_total
-introducedIn: "3.8"
+renamedFrom: arangodb_replication_dump_apply_time
+introducedIn: "3.8.0"
 help: |
   Accumulated time needed to apply replication dump data.
 unit: ms

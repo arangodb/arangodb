@@ -1,5 +1,5 @@
 name: rocksdb_actual_delayed_write_rate
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "rocksdb-actual-delayed-write-rate"
 unit: number

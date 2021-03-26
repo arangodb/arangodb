@@ -1,5 +1,5 @@
 name: arangodb_shards_not_replicated
-introducedIn: "3.7"
+introducedIn: "3.7.1"
 help: |
   Number of shards not replicated at all.
 unit: number

@@ -1,5 +1,5 @@
 name: rocksdb_background_errors
-introducedIn: "3.6"
+introducedIn: "3.6.1"
 help: |
   RocksDB metric "background-errors"
 unit: number

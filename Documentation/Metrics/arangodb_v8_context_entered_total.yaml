@@ -1,5 +1,6 @@
 name: arangodb_v8_context_entered_total
-introducedIn: "3.6"
+renamedFrom: arangodb_v8_context_entered
+introducedIn: "3.8.0"
 help: |
   Total number of V8 context enter events
 unit: number

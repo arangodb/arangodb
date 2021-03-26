@@ -1,5 +1,6 @@
 name: arangodb_v8_context_creation_time_msec_total
-introducedIn: "3.8"
+renamedFrom: arangodb_v8_context_creation_time_msec
+introducedIn: "3.8.0"
 help: |
   Accumulated total time for creating V8 contexts
 unit: ms
