@@ -1,4 +1,4 @@
-name: arangodb_replication_synchronous_requests_total_number._total
+name: arangodb_replication_synchronous_requests_total_number_total
 introducedIn: "3.8"
 help: |
   Total number of synchronous replication requests.
