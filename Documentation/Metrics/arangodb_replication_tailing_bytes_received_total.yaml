@@ -17,4 +17,3 @@ troubleshoot:
   DB-Servers. If the given value on a DB-Server is considerable higher,
   you might want to think about rebalancing your data as the overall
   work might not be evenly distributed.
-
