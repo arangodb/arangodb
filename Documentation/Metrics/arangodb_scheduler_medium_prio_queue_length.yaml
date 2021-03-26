@@ -10,5 +10,8 @@ exposedBy:
   - coordinator
   - dbserver
   - agent
+  - single
 description: |
-  Current queue length of the medium priority queue in the scheduler.
+  The number of jobs currently queued on the scheduler's medium priority queue.
+  The capacity of the medium priority queue can be configured via the startup
+  option `--server.prio2-size`.
