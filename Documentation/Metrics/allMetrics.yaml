@@ -860,11 +860,20 @@
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Total number of connections created for connection pool.
+  help: 'Total number of connections created for connection pool
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: arangodb_connection_pool_connections_created_total
+  threshold: 'Because of idle timeouts, the total number of connections ever created
+
+    will grow. However, under high load, most connections should usually
+
+    be reused and a fast growth of this number can indicate underlying
+
+    connectivity issues.
+
+    '
   type: counter
   unit: number
 - category: Connectivity
@@ -880,11 +889,16 @@
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Current number of connections in pool.
+  help: 'Current number of connections in pool
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: arangodb_connection_connections_current
+  threshold: 'Normally, one should not see an excessive amount of open connections
+
+    here, unless a very high amount of operations happens concurrently.
+
+    '
   type: gauge
   unit: number
 - category: Connectivity
@@ -900,11 +914,20 @@
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Time to lease a connection from the connection pool.
+  help: 'Time to lease a connection from the connection pool
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: arangodb_connection_pool_lease_time_hist
+  threshold: 'Leasing connections from the pool should be fast, unless a new connection
+
+    has to be formed, which can easily take (in particular with TLS) several
+
+    milliseconds. If times are a lot higher, then some underlying network
+
+    problem might be there.
+
+    '
   type: histogram
   unit: ms
 - category: Connectivity
@@ -920,11 +943,20 @@
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Total number of failed connection leases.
+  help: 'Total number of failed connection leases
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: arangodb_connection_pool_leases_failed_total
+  threshold: 'A failed lease can happen if a connection has been terminated
+
+    by some idle timeout or if it is already in use by some other request.
+
+    Since this can happen under concurrent load, failed leases are not
+
+    actually very worrying.
+
+    '
   type: counter
   unit: number
 - category: Connectivity
@@ -941,11 +973,16 @@
   exposedBy:
   - coordinator
   - dbserver
-  help: 'Total number of successful connection leases from connection pool.
+  help: 'Total number of successful connection leases from connection pool
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: arangodb_connection_leases_successful_total
+  threshold: 'It is normal that this number is growing rapidly when there is any
+
+    kind of activity in the cluster.
+
+    '
   type: counter
   unit: number
 - category: Transactions
@@ -1127,7 +1164,7 @@
 
     the agency to report their own liveliness. This counter gets
 
-    increased whenever sending such heartbeat fails. In the single
+    increased whenever sending such a heartbeat fails. In the single
 
     server, this counter is only used in active failover mode.
 
@@ -3535,7 +3572,7 @@
   complexity: advanced
   description: "This metric exhibits the RocksDB metric \"rocksdb-block-cache-pinned-usage\".\nIt
     shows the memory size for the RocksDB block cache for the entries \nwhich are
-    pinned in bytes.\n"
+    pinned, in bytes.\n"
   exposedBy:
   - dbserver
   - agent
@@ -3551,7 +3588,7 @@
   complexity: advanced
   description: 'This metric exhibits the RocksDB metric "rocksdb-block-cache-usage".
 
-    It shows the memory size for the entries residing in the block cache
+    It shows the memory size for the entries residing in the block cache,
 
     in bytes.
 
@@ -3611,7 +3648,7 @@
   introducedIn: '3.6'
   name: rocksdb_cache_hit_rate_lifetime
   type: gauge
-  unit: number
+  unit: ratio
 - category: RocksDB
   complexity: advanced
   description: 'This metric reflects the recent hit rate of the ArangoDB in-memory
@@ -3877,11 +3914,11 @@
 - category: RocksDB
   complexity: advanced
   description: "This metric exposes the current write rate limit of the ArangoDB\nRocksDB
-    throttle. The throttle is limits the write rate to allow\nRocksDB's background
-    threads to catch up with compactions and not\nfall behind too much, since this
-    would in the end lead to nasty\nwrite stops in RocksDB and incur considerable
-    delays. If 0 is\nshown, no throtteling happens, otherwise, you see the current\nwrite
-    rate limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)
+    throttle. The throttle limits the write rate to allow\nRocksDB's background threads
+    to catch up with compactions and not\nfall behind too much, since this would in
+    the end lead to nasty\nwrite stops in RocksDB and incur considerable delays. If
+    0 is\nshown, no throttling happens, otherwise, you see the current\nwrite rate
+    limit in bytes per second. See \n[the manual](https://www.arangodb.com/docs/stable/programs-arangod-options.html#rocksdb)
     for details.\n"
   exposedBy:
   - dbserver
@@ -3891,7 +3928,7 @@
 
     '
   introducedIn: '3.6'
-  name: rocksd_bengine_throttle_bps
+  name: rocksdb_engine_throttle_bps
   type: gauge
   unit: bytes per second
 - category: RocksDB
@@ -3913,7 +3950,7 @@
   introducedIn: '3.6'
   name: rocksdb_estimate_live_data_size
   type: gauge
-  unit: number
+  unit: bytes
 - category: RocksDB
   complexity: advanced
   description: 'This metric exhibits the RocksDB metric "rocksdb-estimate-num-keys".
@@ -3993,7 +4030,8 @@
 
     space scenarios, please make sure that there is enough free disk space
 
-    available at all times!
+    available at all times!  Note that this metric is only available/populated on
+    some platforms.
 
     '
   exposedBy:
@@ -4003,7 +4041,7 @@
   help: 'Free disk space in bytes on volume used by RocksDB
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: rocksdb_free_disk_space
   type: gauge
   unit: bytes
@@ -4016,7 +4054,7 @@
 
     scenarios, please make sure that there is enough free inodes available
 
-    at all times!
+    at all times! Note that this metric is only available/populated on some platforms.
 
     '
   exposedBy:
@@ -4026,7 +4064,7 @@
   help: 'Number of free inodes on the volume used by RocksDB
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: rocksdb_free_inodes
   type: gauge
   unit: number
@@ -4078,7 +4116,7 @@
   help: 'RocksDB metric "rocksdb-is-write-stopped"
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: rocksdb_is_write_stopped
   type: gauge
   unit: number
@@ -4107,7 +4145,7 @@
   description: 'This metric exhibits the RocksDB metric "mem-table-flush-pending".
     It
 
-    shows the number of column families which which a memtable flush is
+    shows the number of column families for which a memtable flush is
 
     pending.
 
@@ -4353,7 +4391,7 @@
   complexity: advanced
   description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table\",
     \nwhich shows the number of immutable memtables that have not yet been\nflushed.
-    This value is the sum over all column families.\n\nMem tables are sorted tables
+    This value is the sum over all column families.\n\nMemtables are sorted tables
     of key/value pairs which begin\nto be built up in memory. At some stage they are
     closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
@@ -4371,7 +4409,7 @@
   complexity: advanced
   description: "This metric exhibits the RocksDB metric \"num-immutable-mem-table-flushed\",
     \nwhich shows the number of immutable memtables that have already been\nflushed.
-    This value is the sum over all column families.\n\nMem tables are sorted tables
+    This value is the sum over all column families.\n\nMemtables are sorted tables
     of key/value pairs which begin\nto be built up in memory. At some stage they are
     closed and become\nimmutable, and some time later they are flushed to disk.\n"
   exposedBy:
@@ -4513,7 +4551,8 @@
 
     space scenarios, please make sure that there is enough free disk space
 
-    available at all times!
+    available at all times! Note that this metric is only available/populated on some
+    platforms.
 
     '
   exposedBy:
@@ -4523,7 +4562,7 @@
   help: 'Used disk space in bytes on volume used by RocksDB
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: rocksdb_total_disk_space
   type: gauge
   unit: bytes
@@ -4534,9 +4573,9 @@
 
     used by RocksDB. Since RocksDB does not like out of disk space
 
-    scenarios, please make sure that there is enough free inodes available
+    scenarios, please make sure that there are enough free inodes available
 
-    at all times!
+    at all times! Note that this metric is only available/populated on some platforms.
 
     '
   exposedBy:
@@ -4546,7 +4585,7 @@
   help: 'Number of used inodes on the volume used by RocksDB
 
     '
-  introducedIn: '3.6'
+  introducedIn: '3.8'
   name: rocksdb_total_inodes
   type: gauge
   unit: number
