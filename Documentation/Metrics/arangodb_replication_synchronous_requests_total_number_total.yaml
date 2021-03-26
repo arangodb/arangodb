@@ -9,4 +9,4 @@ complexity: medium
 exposedBy:
   - dbserver
 description: |
-  Total number of synchronous replication requests.
+  The total amount of all synchronous replication operation requests being done.
