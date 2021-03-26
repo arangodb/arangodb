@@ -13,5 +13,4 @@ exposedBy:
 description: |
   This metric exhibits the RocksDB metric "rocksdb-block-cache-pinned-usage".
   It shows the memory size for the RocksDB block cache for the entries 
-  which are pinned in bytes.
-
+  which are pinned, in bytes.

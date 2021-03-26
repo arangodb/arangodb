@@ -1,5 +1,5 @@
 name: rocksdb_free_inodes
-introducedIn: "3.6"
+introducedIn: "3.8"
 help: |
   Number of free inodes on the volume used by RocksDB
 unit: number
@@ -14,4 +14,4 @@ description: |
   This metric shows the currently free number of inodes on the disk volume
   used by RocksDB. Since RocksDB does not like out of disk space
   scenarios, please make sure that there is enough free inodes available
-  at all times!
+  at all times! Note that this metric is only available/populated on some platforms.
